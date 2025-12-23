@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .profile-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            background: #ff4757;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .notification-icon::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+        }
+
+        .left-section {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .welcome-section {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .welcome-text h2 {
+            font-size: 28px;
+            color: #4285f4;
+            margin-bottom: 5px;
+        }
+
+        .welcome-text p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .welcome-illustration {
+            width: 150px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-illustration::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .stat-card.attendance {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+        }
+
+        .stat-card.leaves {
+            background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+        }
+
+        .stat-card.feedback {
+            background: white;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stat-card h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-card.attendance .stat-value,
+        .stat-card.leaves .stat-value {
+            color: white;
+        }
+
+        .stat-card.attendance h3,
+        .stat-card.leaves h3 {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .feedback-button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .happiness-section {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .happiness-section h3 {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .happiness-graph {
+            height: 120px;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .happiness-graph::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+        }
+
+        .calendar-team-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .calendar-section, .team-section {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .calendar-section h3, .team-section h3 {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .calendar-date {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .date-circle {
+            width: 60px;
+            height: 60px;
+            background: #4285f4;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .calendar-dates {
+            display: flex;
+            gap: 15px;
+        }
+
+        .calendar-dates span {
+            padding: 8px 12px;
+            background: #f1f3f4;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .scrum-event {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .scrum-event h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .scrum-event p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .team-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .team-count {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .team-progress {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: conic-gradient(#4285f4 0% 40%, #e8f0fe 40% 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4285f4;
+        }
+
+        .team-members {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .team-member {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .member-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .member-info h4 {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .member-info p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .updates-section {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .updates-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .updates-header h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+        }
+
+        .appreciation-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #1976d2;
+        }
+
+        .appreciation-badge::before {
+            content: '🏆';
+        }
+
+        .update-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .update-stat {
+            text-align: center;
+        }
+
+        .update-stat h4 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .update-stat p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .april-summary {
+            background: #4285f4;
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .april-summary h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .april-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .april-circle {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .april-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .april-breakdown div {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .week-schedule {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }
+
+        .schedule-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 1fr;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f1f3f4;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .schedule-row:last-child {
+            border-bottom: none;
+        }
+
+        .schedule-row.mon { background: #fff3e0; }
+        .schedule-row.tue { background: #fce4ec; }
+        .schedule-row.wed { background: #e8f5e8; }
+        .schedule-row.thu { background: #fff3e0; }
+        .schedule-row.fri { background: #f3e5f5; }
+
+        .day-label {
+            font-weight: 600;
+        }
+
+        .holidays-section {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .holidays-section h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .holiday-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .holiday-count {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4285f4;
+        }
+
+        .holiday-icons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .holiday-icon {
+            width: 30px;
+            height: 30px;
+            background: #4285f4;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .calendar-team-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Dashboard</h1>
+            <div class="user-profile">
+                <div class="notification-icon"></div>
+                <div class="profile-pic"></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="left-section">
+                <div class="welcome-section">
+                    <div class="welcome-text">
+                        <h2>Welcome back, Lisa</h2>
+                        <p>Your summary for 11 Apr 2020</p>
+                    </div>
+                    <div class="welcome-illustration"></div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card attendance">
+                        <h3>Attendance</h3>
+                        <div class="stat-value">98%</div>
+                    </div>
+                    <div class="stat-card leaves">
+                        <h3>Leaves</h3>
+                        <div class="stat-value">1</div>
+                    </div>
+                    <div class="stat-card feedback">
+                        <h3>Have any special feedback?</h3>
+                        <button class="feedback-button">Post Now</button>
+                    </div>
+                </div>
+
+                <div class="happiness-section">
+                    <h3>Happiness Graph</h3>
+                    <div class="happiness-graph"></div>
+                </div>
+
+                <div class="calendar-team-section">
+                    <div class="calendar-section">
+                        <h3>Calendar</h3>
+                        <div class="calendar-date">
+                            <div class="date-circle">17</div>
+                            <div>
+                                <div style="font-size: 12px; color: #666;">APR</div>
+                            </div>
+                        </div>
+                        <div class="calendar-dates">
+                            <span>18 APR</span>
+                            <span>19 APR</span>
+                            <span>20 APR</span>
+                        </div>
+                        <div class="scrum-event">
+                            <h4>Daily Scrum</h4>
+                            <p>iOS Team Scrum</p>
+                            <p>09:30 AM</p>
+                        </div>
+                        <div class="scrum-event" style="margin-top: 10px;">
+                            <h4>New Web Templates</h4>
+                            <p>New templates for listings</p>
+                        </div>
+                    </div>
+
+                    <div class="team-section">
+                        <h3>Team Members</h3>
+                        <div class="team-stats">
+                            <div class="team-count">29</div>
+                            <div style="font-size: 12px; color: #666;">TEAM MEMBERS</div>
+                            <div class="team-progress">40%</div>
+                        </div>
+                        <div class="team-members">
+                            <div class="team-member">
+                                <div class="member-avatar"></div>
+                                <div class="member-info">
+                                    <h4>Sylvia Thomas</h4>
+                                    <p>iOS Developer</p>
+                                </div>
+                            </div>
+                            <div class="team-member">
+                                <div class="member-avatar"></div>
+                                <div class="member-info">
+                                    <h4>Ionut Zamfir</h4>
+                                    <p>UX Designer</p>
+                                </div>
+                            </div>
+                            <div class="team-member">
+                                <div class="member-avatar"></div>
+                                <div class="member-info">
+                                    <h4>Roxana Durso</h4>
+                                    <p>Product Designer</p>
+                                </div>
+                            </div>
+                            <div class="team-member">
+                                <div class="member-avatar"></div>
+                                <div class="member-info">
+                                    <h4>Paresh Khatri</h4>
+                                    <p>Developer</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-section">
+                <div class="updates-section">
+                    <div class="updates-header">
+                        <h3>Updates</h3>
+                    </div>
+                    <div class="appreciation-badge">
+                        Appreciation received from Cristiano Ronaldo
+                    </div>
+                    <div class="update-stats">
+                        <div class="update-stat">
+                            <h4>2</h4>
+                            <p>Reimbursements</p>
+                        </div>
+                        <div class="update-stat">
+                            <h4>1</h4>
+                            <p>Information</p>
+                        </div>
+                        <div class="update-stat">
+                            <h4>1</h4>
+                            <p>Documents</p>
+                        </div>
+                        <div class="update-stat">
+                            <h4>0</h4>
+                            <p>Feedback</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="april-summary">
+                    <h3>April This Week</h3>
+                    <div class="april-stats">
+                        <div class="april-circle">28</div>
+                        <div class="april-breakdown">
+                            <div><span>HOURS</span></div>
+                            <div><span>WORKED</span></div>
+                            <div><span>THIS WEEK</span></div>
+                            <div><span>25 / 40</span></div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <div style="display: flex; gap: 15px; font-size: 12px;">
+                                <span>3</span>
+                                <span>1</span>
+                            </div>
+                            <div style="display: flex; gap: 8px; font-size: 10px;">
+                                <span>OT</span>
+                                <span>CL</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week-schedule">
+                    <div class="schedule-row mon">
+                        <div class="day-label">MON<br>13 APR</div>
+                        <div>In<br>09:15</div>
+                        <div>Out<br>20:12</div>
+                    </div>
+                    <div class="schedule-row tue">
+                        <div class="day-label">TUE<br>14 APR</div>
+                        <div>In<br>09:15</div>
+                        <div>Out<br>20:12</div>
+                    </div>
+                    <div class="schedule-row wed">
+                        <div class="day-label">WED<br>15 APR</div>
+                        <div>In<br>09:02</div>
+                        <div>Out<br>17:04</div>
+                    </div>
+                    <div class="schedule-row thu">
+                        <div class="day-label">THU<br>16 APR</div>
+                        <div>In<br>09:05</div>
+                        <div>Out<br>18:02</div>
+                    </div>
+                    <div class="schedule-row fri">
+                        <div class="day-label">FRI<br>17 APR</div>
+                        <div>In<br>-</div>
+                        <div>Out<br>-</div>
+                    </div>
+                </div>
+
+                <div class="holidays-section">
+                    <h3>Upcoming Holidays</h3>
+                    <div class="holiday-info">
+                        <div class="holiday-count">3</div>
+                        <div>
+                            <div style="font-size: 12px; color: #666;">Days</div>
+                            <div style="font-size: 10px; color: #666;">GOOD FRIDAY</div>
+                        </div>
+                        <div class="holiday-icons">
+                            <div class="holiday-icon"></div>
+                            <div class="holiday-icon"></div>
+                            <div class="holiday-icon"></div>
+                            <div class="holiday-icon"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

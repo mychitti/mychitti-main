@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Project;
+use Illuminate\Database\Eloquent\Model;
+
+class ProjectTeamMember extends Model
+{
+    protected $fillable = ['project_id','employee_id'];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+    public function employee()
+{
+    return $this->belongsTo(VendorEmployee::class, 'employee_id');
+}
+}

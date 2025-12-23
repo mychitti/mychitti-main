@@ -1,0 +1,169 @@
+<style>
+    .ck-editor__editable {
+        min-height: 100px;
+        /* adjust as you like */
+    }
+</style>
+<link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/43.0.0/ckeditor5.css" />
+<script type="importmap">
+{
+    "imports": {
+        "ckeditor5": "https://cdn.ckeditor.com/ckeditor5/43.0.0/ckeditor5.js",
+        "ckeditor5/": "https://cdn.ckeditor.com/ckeditor5/43.0.0/"
+    }
+}
+</script>
+<script type="module">
+    import {
+        ClassicEditor,
+        Essentials,
+        Bold,
+        Italic,
+        Underline,
+        Font,
+        Paragraph,
+        Alignment,
+        BlockQuote,
+        Link,
+        Table,
+        TableToolbar,
+        SpecialCharacters,
+        SourceEditing,
+        SimpleUploadAdapter
+    } from 'ckeditor5';
+
+    const config = {
+        plugins: [
+            Essentials, Bold, Italic, Underline, Font,
+            Paragraph, Alignment, BlockQuote, Link, Table, TableToolbar,
+            SpecialCharacters, SourceEditing, SimpleUploadAdapter
+        ],
+        toolbar: {
+            items: [
+                'undo', 'redo', '|',
+                'bold', 'italic', 'underline', '|',
+                'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
+                'alignment:left', 'alignment:right', 'alignment:center', 'alignment:justify', '|',
+                'link', 'unlink', '|',
+                'insertTable', 'mergeTableCells'
+            ],
+            shouldNotGroupWhenFull: true
+        },
+        table: {
+            contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+        }
+    };
+
+    window.ckeditors = {};
+    window.ckeditors2 = {};
+
+    document.querySelectorAll('.ck_editor').forEach(el => {
+        ClassicEditor.create(el, config)
+            .then(editor => {
+                window.ckeditors[el.id] = editor;
+            })
+            .catch(error => console.error('Editor init error:', error));
+    });
+    document.querySelectorAll('.ck_editor2').forEach(el => {
+        ClassicEditor.create(el, config)
+            .then(editor => {
+                window.ckeditors2[el.id] = editor;
+            })
+            .catch(error => console.error('Editor init error:', error));
+    });
+   function base64EncodeUnicode(str) {
+    let b64 = btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+        function(match, p1) {
+            return String.fromCharCode('0x' + p1);
+        }
+    ));
+    // Convert to URL-safe base64
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+
+    $('#ck_editor_form').on('submit', function(e) {
+        e.preventDefault();
+        $('#formSubmitButton').attr('disabled', true);
+
+        let formData = new FormData(this);
+
+        document.querySelectorAll('.ck_editor').forEach(editorElement => {
+            let editor = window.ckeditors[editorElement.id];
+            if (editor) {
+                formData.set(editorElement.name, base64EncodeUnicode(editor.getData()));
+            }
+        });
+
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function(data) {
+                toastr.success("Saved successfully!");
+                if (data.url) {
+                    setTimeout(() => {
+                        $('#formSubmitButton').attr('disabled', false);
+                        window.location.href = data.url
+                    }, 1000)
+                }
+            },
+            error: function(xhr) {
+                $('#formSubmitButton').attr('disabled', false);
+                toastr.error('Something went wrong!');
+                console.error(xhr.responseText);
+            }
+        });
+    });
+    $('#ck_editor_form2').on('submit', function(e) {
+        e.preventDefault();
+        $('#formSubmitButton').attr('disabled', true);
+
+        let formData = new FormData(this);
+
+        document.querySelectorAll('.ck_editor2').forEach(editorElement => {
+            let editor = window.ckeditors2[editorElement.id];
+            if (editor) {
+                formData.set(editorElement.name, base64EncodeUnicode(editor.getData()));
+            }
+        });
+
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function(data) {
+                toastr.success("Saved successfully!");
+                if (data.url) {
+                    setTimeout(() => {
+                        $('#formSubmitButton').attr('disabled', false);
+                        window.location.href = data.url
+                    }, 1000)
+                }
+            },
+            error: function(xhr) {
+                $('#formSubmitButton').attr('disabled', false);
+                toastr.error('Something went wrong!');
+                console.error(xhr.responseText);
+            }
+        });
+    });
+</script>

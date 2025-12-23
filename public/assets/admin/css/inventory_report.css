@@ -1,0 +1,43 @@
+.report-summary {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.report-card {
+    flex: 1;
+    min-width: 108px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.report-card:nth-child(1) {
+    background: #ffe3e0ff;
+}
+
+.report-card:nth-child(4) {
+    background: #ecffd7ff;
+}
+
+.report-card:nth-child(2) {
+    background: #d7fff4ff;
+}
+
+.report-card:nth-child(3) {
+    background: #fff6e0ff;
+}
+
+.report-title {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.report-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #222;
+}

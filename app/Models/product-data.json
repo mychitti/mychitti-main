@@ -1,0 +1,551 @@
+{
+    "total_size": 3,
+    "limit": 10,
+    "offset": 0,
+    "products": [
+        {
+            "id": 33,
+            "name": "Front Load Washing Machine",
+            "description": "Front Load Washing Machine",
+            "specifications": null,
+            "image": "2024-08-22-66c701a15723e.png",
+            "category_id": 57,
+            "category_ids": [
+                {
+                    "id": "57",
+                    "position": 1,
+                    "name": "Home Appliances"
+                }
+            ],
+            "variations": [
+                {
+                    "type": "Samsung",
+                    "price": 12000,
+                    "stock": 0
+                }
+            ],
+            "add_ons": [],
+            "attributes": [
+                "18"
+            ],
+            "choice_options": [
+                {
+                    "name": "choice_18",
+                    "title": "Brand",
+                    "options": [
+                        "Samsung"
+                    ]
+                }
+            ],
+            "price": 12000,
+            "tax": 18,
+            "tax_type": "percent",
+            "discount": 0,
+            "discount_type": "percent",
+            "available_time_starts": "00:00:00",
+            "available_time_ends": "23:59:59",
+            "veg": 0,
+            "status": 1,
+            "store_id": 20,
+            "store_ids": null,
+            "created_at": "2024-08-22T09:15:13.000000Z",
+            "updated_at": "2024-09-09T08:36:51.000000Z",
+            "order_count": 0,
+            "avg_rating": 0,
+            "rating_count": 0,
+            "module_id": 5,
+            "stock": 0,
+            "unit_id": 2,
+            "images": [],
+            "food_variations": [],
+            "slug": "front-load-washing-machine",
+            "recommended": 1,
+            "organic": 0,
+            "maximum_cart_quantity": null,
+            "is_approved": 1,
+            "module_type": "ecommerce",
+            "store_name": "REFACE ENTERPRISE",
+            "is_campaign": 0,
+            "zone_id": 21,
+            "flash_sale": 0,
+            "store_discount": 0,
+            "schedule_order": false,
+            "delivery_time": "30-60 min",
+            "free_delivery": false,
+            "unit": {
+                "id": 2,
+                "unit": "NO",
+                "created_at": "2024-06-07T12:30:20.000000Z",
+                "updated_at": "2024-06-07T12:30:20.000000Z",
+                "translations": [
+                    {
+                        "id": 136,
+                        "translationable_type": "App\\Models\\Unit",
+                        "translationable_id": 2,
+                        "locale": "en",
+                        "key": "unit",
+                        "value": "NO",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            },
+            "min_delivery_time": 30,
+            "max_delivery_time": 60,
+            "common_condition_id": 0,
+            "is_basic": 0,
+            "unit_type": "NO",
+            "translations": [
+                {
+                    "id": 333,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 33,
+                    "locale": "en",
+                    "key": "name",
+                    "value": "Front Load Washing Machine",
+                    "created_at": null,
+                    "updated_at": null
+                },
+                {
+                    "id": 334,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 33,
+                    "locale": "en",
+                    "key": "description",
+                    "value": "Front Load Washing Machine",
+                    "created_at": null,
+                    "updated_at": null
+                }
+            ],
+            "module": {
+                "id": 5,
+                "module_name": "SHOPPING",
+                "module_type": "ecommerce",
+                "thumbnail": "2024-08-26-66cc0b03a20ba.png",
+                "status": "1",
+                "stores_count": 21,
+                "created_at": "2024-05-21T20:22:09.000000Z",
+                "updated_at": "2024-09-10T11:23:06.000000Z",
+                "icon": "2024-08-26-66cc0b03a1b38.png",
+                "theme_id": 1,
+                "description": "<p>Mychitty Shop</p>",
+                "all_zone_service": 0,
+                "translations": [
+                    {
+                        "id": 63,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "module_name",
+                        "value": "SHOPPING",
+                        "created_at": null,
+                        "updated_at": null
+                    },
+                    {
+                        "id": 64,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "description",
+                        "value": "<p>Mychitty Shop</p>",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            }
+        },
+        {
+            "id": 32,
+            "name": "LG TOPLOAD WASHING MACHINE 7KG",
+            "description": "LG 7 Kg 5 Star Inverter TurboDrum Fully Automatic Top Loading Washing Machine (T70SKSF1Z, Waterfall Circulation, Smart Motion, Middle Free Silver)",
+            "specifications": null,
+            "image": "2024-08-22-66c6ee0be6a34.png",
+            "category_id": 57,
+            "category_ids": [
+                {
+                    "id": "57",
+                    "position": 1,
+                    "name": "Home Appliances"
+                }
+            ],
+            "variations": [
+                {
+                    "type": "LG-7KG-BROWN-WI-FI-MACHINE-TOPLOADWASHINGMACHINE",
+                    "price": 17490,
+                    "stock": 1
+                }
+            ],
+            "add_ons": [],
+            "attributes": [
+                "18",
+                "26",
+                "3",
+                "27",
+                "28",
+                "23"
+            ],
+            "choice_options": [
+                {
+                    "name": "choice_18",
+                    "title": "Brand",
+                    "options": [
+                        "LG"
+                    ]
+                },
+                {
+                    "name": "choice_26",
+                    "title": "Capacity",
+                    "options": [
+                        "7KG"
+                    ]
+                },
+                {
+                    "name": "choice_3",
+                    "title": "Color",
+                    "options": [
+                        "BROWN"
+                    ]
+                },
+                {
+                    "name": "choice_27",
+                    "title": "Connectivity",
+                    "options": [
+                        "WI-FI"
+                    ]
+                },
+                {
+                    "name": "choice_28",
+                    "title": "In The Box",
+                    "options": [
+                        "MACHINE"
+                    ]
+                },
+                {
+                    "name": "choice_23",
+                    "title": "Model",
+                    "options": [
+                        "TOPLOAD WASHING MACHINE"
+                    ]
+                }
+            ],
+            "price": 17490,
+            "tax": 18,
+            "tax_type": "percent",
+            "discount": 20,
+            "discount_type": "percent",
+            "available_time_starts": "00:00:00",
+            "available_time_ends": "23:59:59",
+            "veg": 0,
+            "status": 1,
+            "store_id": 20,
+            "store_ids": null,
+            "created_at": "2024-08-22T07:51:39.000000Z",
+            "updated_at": "2024-08-29T02:17:48.000000Z",
+            "order_count": 0,
+            "avg_rating": 0,
+            "rating_count": 0,
+            "module_id": 5,
+            "stock": 1,
+            "unit_id": 2,
+            "images": [
+                "2024-08-22-66c6ee0be3f0f.png",
+                "2024-08-22-66c6ee0be6397.png",
+                "2024-08-22-66c6ee0be6510.png",
+                "2024-08-22-66c6ee0be66d8.png"
+            ],
+            "food_variations": [],
+            "slug": "lg-topload-washing-machine-7kg",
+            "recommended": 1,
+            "organic": 0,
+            "maximum_cart_quantity": 1,
+            "is_approved": 1,
+            "module_type": "ecommerce",
+            "store_name": "REFACE ENTERPRISE",
+            "is_campaign": 0,
+            "zone_id": 21,
+            "flash_sale": 0,
+            "store_discount": 0,
+            "schedule_order": false,
+            "delivery_time": "30-60 min",
+            "free_delivery": false,
+            "unit": {
+                "id": 2,
+                "unit": "NO",
+                "created_at": "2024-06-07T12:30:20.000000Z",
+                "updated_at": "2024-06-07T12:30:20.000000Z",
+                "translations": [
+                    {
+                        "id": 136,
+                        "translationable_type": "App\\Models\\Unit",
+                        "translationable_id": 2,
+                        "locale": "en",
+                        "key": "unit",
+                        "value": "NO",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            },
+            "min_delivery_time": 30,
+            "max_delivery_time": 60,
+            "common_condition_id": 0,
+            "is_basic": 0,
+            "unit_type": "NO",
+            "translations": [
+                {
+                    "id": 331,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 32,
+                    "locale": "en",
+                    "key": "name",
+                    "value": "LG TOPLOAD WASHING MACHINE 7KG",
+                    "created_at": null,
+                    "updated_at": null
+                },
+                {
+                    "id": 332,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 32,
+                    "locale": "en",
+                    "key": "description",
+                    "value": "LG 7 Kg 5 Star Inverter TurboDrum Fully Automatic Top Loading Washing Machine (T70SKSF1Z, Waterfall Circulation, Smart Motion, Middle Free Silver)",
+                    "created_at": null,
+                    "updated_at": null
+                }
+            ],
+            "module": {
+                "id": 5,
+                "module_name": "SHOPPING",
+                "module_type": "ecommerce",
+                "thumbnail": "2024-08-26-66cc0b03a20ba.png",
+                "status": "1",
+                "stores_count": 21,
+                "created_at": "2024-05-21T20:22:09.000000Z",
+                "updated_at": "2024-09-10T11:23:06.000000Z",
+                "icon": "2024-08-26-66cc0b03a1b38.png",
+                "theme_id": 1,
+                "description": "<p>Mychitty Shop</p>",
+                "all_zone_service": 0,
+                "translations": [
+                    {
+                        "id": 63,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "module_name",
+                        "value": "SHOPPING",
+                        "created_at": null,
+                        "updated_at": null
+                    },
+                    {
+                        "id": 64,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "description",
+                        "value": "<p>Mychitty Shop</p>",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            }
+        },
+        {
+            "id": 26,
+            "name": "samsung washing machine",
+            "description": "Explore all Samsung washing machines, dryers and airdresser. Compare washer dryer by price, kg, and smart features at Samsung India online.",
+            "specifications": null,
+            "image": "2024-08-13-66bb81f06800b.png",
+            "category_id": 57,
+            "category_ids": [
+                {
+                    "id": "57",
+                    "position": 1,
+                    "name": "Home Appliances"
+                }
+            ],
+            "variations": [
+                {
+                    "type": "samsung-6.5kgtopload-carton-6.5-230V-25",
+                    "price": 19000,
+                    "stock": 1
+                },
+                {
+                    "type": "samsung-6.5kgtopload-carton-6.5-50HZ-25",
+                    "price": 19000,
+                    "stock": 1
+                }
+            ],
+            "add_ons": [],
+            "attributes": [
+                "18",
+                "23",
+                "17",
+                "5",
+                "20",
+                "10"
+            ],
+            "choice_options": [
+                {
+                    "name": "choice_18",
+                    "title": "Brand",
+                    "options": [
+                        "samsung"
+                    ]
+                },
+                {
+                    "name": "choice_23",
+                    "title": "Model",
+                    "options": [
+                        "6.5kg top load"
+                    ]
+                },
+                {
+                    "name": "choice_17",
+                    "title": "Packaging",
+                    "options": [
+                        "carton"
+                    ]
+                },
+                {
+                    "name": "choice_5",
+                    "title": "Size",
+                    "options": [
+                        "6.5"
+                    ]
+                },
+                {
+                    "name": "choice_20",
+                    "title": "Voltage",
+                    "options": [
+                        "230V",
+                        " 50HZ"
+                    ]
+                },
+                {
+                    "name": "choice_10",
+                    "title": "Weight",
+                    "options": [
+                        "25"
+                    ]
+                }
+            ],
+            "price": 19000,
+            "tax": 18,
+            "tax_type": "percent",
+            "discount": 50,
+            "discount_type": "percent",
+            "available_time_starts": "00:00:00",
+            "available_time_ends": "23:59:59",
+            "veg": 0,
+            "status": 1,
+            "store_id": 20,
+            "store_ids": null,
+            "created_at": "2024-08-13T15:55:28.000000Z",
+            "updated_at": "2024-08-29T02:18:49.000000Z",
+            "order_count": 0,
+            "avg_rating": 0,
+            "rating_count": 0,
+            "module_id": 5,
+            "stock": 2,
+            "unit_id": 1,
+            "images": [],
+            "food_variations": [],
+            "slug": "samsung-washing-machine",
+            "recommended": 1,
+            "organic": 0,
+            "maximum_cart_quantity": 1,
+            "is_approved": 1,
+            "module_type": "ecommerce",
+            "store_name": "REFACE ENTERPRISE",
+            "is_campaign": 0,
+            "zone_id": 21,
+            "flash_sale": 0,
+            "store_discount": 0,
+            "schedule_order": false,
+            "delivery_time": "30-60 min",
+            "free_delivery": false,
+            "unit": {
+                "id": 1,
+                "unit": "kg",
+                "created_at": "2024-06-05T00:57:29.000000Z",
+                "updated_at": "2024-06-05T00:57:29.000000Z",
+                "translations": [
+                    {
+                        "id": 121,
+                        "translationable_type": "App\\Models\\Unit",
+                        "translationable_id": 1,
+                        "locale": "en",
+                        "key": "unit",
+                        "value": "kg",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            },
+            "min_delivery_time": 30,
+            "max_delivery_time": 60,
+            "common_condition_id": 0,
+            "is_basic": 0,
+            "unit_type": "kg",
+            "translations": [
+                {
+                    "id": 278,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 26,
+                    "locale": "en",
+                    "key": "name",
+                    "value": "samsung washing machine",
+                    "created_at": null,
+                    "updated_at": null
+                },
+                {
+                    "id": 279,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 26,
+                    "locale": "en",
+                    "key": "description",
+                    "value": "Explore all Samsung washing machines, dryers and airdresser. Compare washer dryer by price, kg, and smart features at Samsung India online.",
+                    "created_at": null,
+                    "updated_at": null
+                }
+            ],
+            "module": {
+                "id": 5,
+                "module_name": "SHOPPING",
+                "module_type": "ecommerce",
+                "thumbnail": "2024-08-26-66cc0b03a20ba.png",
+                "status": "1",
+                "stores_count": 21,
+                "created_at": "2024-05-21T20:22:09.000000Z",
+                "updated_at": "2024-09-10T11:23:06.000000Z",
+                "icon": "2024-08-26-66cc0b03a1b38.png",
+                "theme_id": 1,
+                "description": "<p>Mychitty Shop</p>",
+                "all_zone_service": 0,
+                "translations": [
+                    {
+                        "id": 63,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "module_name",
+                        "value": "SHOPPING",
+                        "created_at": null,
+                        "updated_at": null
+                    },
+                    {
+                        "id": 64,
+                        "translationable_type": "App\\Models\\Module",
+                        "translationable_id": 5,
+                        "locale": "en",
+                        "key": "description",
+                        "value": "<p>Mychitty Shop</p>",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            }
+        }
+    ]
+}

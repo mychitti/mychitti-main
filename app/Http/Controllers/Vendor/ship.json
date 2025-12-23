@@ -1,0 +1,71 @@
+{
+    "products": [
+        {
+            "id": 27,
+            "name": "LG Single Inlet Valve for Top Load Washing Machine 2 Pin/LG",
+            "description": "About this item\r\nCompatible with Lg Fully Automatic Washing Machine\r\nCompatible with Lg Washing Machine\r\nNot Fit for any other Company Washing Machine\r\nIf you need more help Please contact customer support below in Manufacturer Details\r\nPack of 1",
+            "specifications": null,
+            "image": "2024-08-18-66c1dc1e62896.png",
+            "category_id": 23,
+            "category_ids": "[{\"id\":\"21\",\"position\":1},{\"id\":\"23\",\"position\":2}]",
+            "variations": "[{\"type\":\"CHINA-LGTOPLOAD-230V50HZ\",\"price\":549,\"stock\":15},{\"type\":\"CHINA-PANASONIC-230V50HZ\",\"price\":549,\"stock\":15}]",
+            "add_ons": "[]",
+            "attributes": "[\"18\",\"21\",\"20\"]",
+            "choice_options": "[{\"name\":\"choice_18\",\"title\":\"Brand\",\"options\":[\"CHINA\"]},{\"name\":\"choice_21\",\"title\":\"Sutabul\",\"options\":[\"LG TOPLOAD\",\"PANASONIC\"]},{\"name\":\"choice_20\",\"title\":\"Voltage\",\"options\":[\"230V 50HZ\"]}]",
+            "price": 549,
+            "tax": 0,
+            "tax_type": "percent",
+            "discount": 46,
+            "discount_type": "percent",
+            "available_time_starts": "00:00:00",
+            "available_time_ends": "23:59:59",
+            "veg": 0,
+            "status": 1,
+            "store_id": 20,
+            "store_ids": null,
+            "created_at": "2024-08-18T11:33:50.000000Z",
+            "updated_at": "2024-08-18T11:34:00.000000Z",
+            "order_count": 0,
+            "avg_rating": 0,
+            "rating_count": 0,
+            "rating": null,
+            "module_id": 5,
+            "stock": 30,
+            "unit_id": null,
+            "images": [
+                "2024-08-18-66c1dc1e6047b.png",
+                "2024-08-18-66c1dc1e625ec.png"
+            ],
+            "food_variations": "[]",
+            "slug": "lg-single-inlet-valve-for-top-load-washing-machine-2-pinlg",
+            "recommended": 1,
+            "organic": 0,
+            "maximum_cart_quantity": 2,
+            "is_approved": 1,
+            "unit_type": null,
+            "translations": [
+                {
+                    "id": 290,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 27,
+                    "locale": "en",
+                    "key": "name",
+                    "value": "LG Single Inlet Valve for Top Load Washing Machine 2 Pin/LG",
+                    "created_at": null,
+                    "updated_at": null
+                },
+                {
+                    "id": 291,
+                    "translationable_type": "App\\Models\\Item",
+                    "translationable_id": 27,
+                    "locale": "en",
+                    "key": "description",
+                    "value": "About this item\r\nCompatible with Lg Fully Automatic Washing Machine\r\nCompatible with Lg Washing Machine\r\nNot Fit for any other Company Washing Machine\r\nIf you need more help Please contact customer support below in Manufacturer Details\r\nPack of 1",
+                    "created_at": null,
+                    "updated_at": null
+                }
+            ],
+            "unit": null
+        }
+    ]
+}

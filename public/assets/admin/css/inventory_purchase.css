@@ -1,0 +1,312 @@
+.gst_elem {
+    display: none;
+}
+
+/* === Design tokens === */
+:root {
+    --pox-bg: #f6fbfc;
+    --pox-card: #ffffff;
+    --pox-text: #0f1724;
+    --pox-muted: #6b7280;
+    --pox-primary: #0ea5b7;
+    --pox-accent: #16a085;
+    --pox-danger: #ef4444;
+    --pox-warning: #f97316;
+    --pox-radius: 12px;
+    --pox-shadow: 0 8px 24px rgba(2, 6, 23, 0.06);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial;
+}
+
+.pox-wrap {
+    width: 100%;
+    padding: 22px;
+}
+
+/* Header */
+.pox-header {
+    margin-bottom: 14px;
+}
+
+.pox-title {
+    font-size: 24px;
+    margin: 4px 0;
+    font-weight: 800;
+}
+
+.pox-sub {
+    color: var(--pox-muted);
+    font-size: 13px;
+}
+
+/* Layout */
+.pox-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+}
+
+/* Card */
+.pox-card {
+    background: var(--pox-card);
+    border-radius: var(--pox-radius);
+    padding: 18px;
+    box-shadow: var(--pox-shadow);
+    border: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+/* Form fields */
+.pox-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.pox-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.pox-label {
+    font-weight: 700;
+    color: var(--pox-muted);
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.pox-input,
+.pox-select,
+.pox-textarea {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+}
+
+.pox-textarea {
+    min-height: 84px;
+    resize: vertical;
+    /* width: 400px; */
+}
+
+/* Buttons */
+.pox-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--pox-accent);
+    font-weight: 700;
+    cursor: pointer;
+    color: #878787 !important;
+}
+
+.pox-btn--alt {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    color: var(--pox-muted);
+}
+
+.pox-btn--ghost {
+    background: transparent;
+    border: 1px dashed rgba(15, 23, 42, 0.06);
+    color: var(--pox-muted);
+}
+
+.pox-btn--danger {
+    background: var(--pox-danger);
+}
+
+.pox-pill {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.03);
+    font-size: 12px;
+}
+
+/* Table styles */
+.pox-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.pox-table thead th {
+    padding: 12px 8px;
+    text-align: left;
+    color: var(--pox-muted);
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.pox-table tbody td {
+    padding: 12px 8px;
+    border-top: 1px solid rgba(15, 23, 42, 0.03);
+    vertical-align: middle;
+}
+
+.pox-col--name,
+.pox-col--name input {
+    width: 200px !important;
+}
+
+.pox-col--price,
+.pox-col--price {
+    width: 100px !important;
+}
+
+.pox-col--tax,
+.pox-col--qty,
+.pox-col--tax input,
+.pox-col--qty input {
+    width: 95px !important;
+}
+
+.pox-col--total {
+    width: 120px;
+    font-weight: 800;
+}
+
+.pox-addrow {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: #fff;
+    color: var(--pox-primary);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+/* Sidebar summary */
+.pox-side-summary {
+    padding: 18px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fff, #fbffff);
+    box-shadow: 0 8px 30px rgba(2, 6, 23, 0.04);
+}
+
+.pox-sline {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed rgba(15, 23, 42, 0.03);
+}
+
+.pox-sline:last-child {
+    border-bottom: 0;
+}
+
+.pox-grand {
+    font-size: 20px;
+    font-weight: 900;
+    margin-top: 8px;
+}
+
+.pox-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.pox-actions .pox-btn {
+    width: 100%;
+}
+
+.pox-actions .pox-btn--reset {
+    background: #fff;
+    border: 1px solid rgba(239, 68, 68, 0.12);
+    color: var(--pox-danger);
+}
+
+.pox-actions .pox-btn--print {
+    background: transparent;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    color: var(--pox-primary);
+}
+
+/* Catalog */
+.pox-catalog {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 12px;
+    background: var(--pox-card);
+    box-shadow: var(--pox-shadow);
+}
+
+.pox-catalog-search {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pox-catalog-list {
+    margin-top: 12px;
+    max-height: 260px;
+    overflow: auto;
+    border-top: 1px solid rgba(15, 23, 42, 0.03);
+}
+
+.pox-catalog-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.03);
+    align-items: center;
+}
+
+.pox-cat-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.pox-cat-name {
+    font-weight: 800;
+}
+
+.pox-cat-stock {
+    font-size: 13px;
+    color: var(--pox-muted);
+}
+
+.pox-cat-add {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: transparent;
+    cursor: pointer;
+}
+
+.pox-trash {
+    background: transparent;
+    border: 0;
+    color: var(--pox-danger);
+    cursor: pointer;
+}
+
+/* responsive */
+@media (max-width: 880px) {
+    .pox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pox-side-summary {
+        order: 2;
+    }
+    .pox-card{
+        width: 98vw;
+    }
+}
+
+.btn-outline-primary.active {
+    background-color: #00868f !important;
+    color: white !important;
+}

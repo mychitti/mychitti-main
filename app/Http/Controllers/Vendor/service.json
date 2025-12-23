@@ -1,0 +1,71 @@
+{
+    "products": [
+        {
+            "id": 35,
+            "name": "Housekeeping",
+            "description": "cooking",
+            "specifications": null,
+            "image": "2024-07-18-6698caaabd6bf.png",
+            "category_id": 35,
+            "category_ids": "[{\"id\":\"35\",\"position\":1}]",
+            "variations": "[]",
+            "add_ons": "[]",
+            "attributes": "[]",
+            "choice_options": "[]",
+            "price": 1999,
+            "tax": 0,
+            "tax_type": "percent",
+            "discount": 12,
+            "discount_type": "percent",
+            "available_time_starts": "00:00:00",
+            "available_time_ends": "23:59:59",
+            "veg": 0,
+            "status": 1,
+            "store_id": null,
+            "store_ids": "26,10",
+            "created_at": "2024-07-18T07:56:26.000000Z",
+            "updated_at": "2024-07-18T08:00:38.000000Z",
+            "order_count": 0,
+            "avg_rating": 0,
+            "rating_count": 0,
+            "rating": null,
+            "module_id": 6,
+            "stock": 0,
+            "unit_id": 20,
+            "images": [
+                "2024-07-18-6698cc172ed66.png"
+            ],
+            "food_variations": "[]",
+            "slug": "housekeeping",
+            "recommended": 0,
+            "organic": 1,
+            "maximum_cart_quantity": 34,
+            "is_approved": 1,
+            "parent_id": 0,
+            "position": 0,
+            "keywords": null,
+            "priority": 0,
+            "featured": 1,
+            "unit_type": "Diet Type",
+            "translations": [],
+            "unit": {
+                "id": 20,
+                "unit": "Diet Type",
+                "created_at": "2024-06-16T08:11:27.000000Z",
+                "updated_at": "2024-06-16T08:11:27.000000Z",
+                "translations": [
+                    {
+                        "id": 187,
+                        "translationable_type": "App\\Models\\Unit",
+                        "translationable_id": 20,
+                        "locale": "en",
+                        "key": "unit",
+                        "value": "Diet Type",
+                        "created_at": null,
+                        "updated_at": null
+                    }
+                ]
+            }
+        }
+    ]
+}

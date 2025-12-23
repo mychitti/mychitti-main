@@ -1,0 +1,8 @@
+
+<h1>WORKER</h1>
+ps aux | grep queue:work
+kill process_id
+nohup php artisan queue:work --tries=3 --timeout=90 > storage/logs/worker.log 2>&1 &
+
+to check upcoming schedule
+php artisan schedule:list

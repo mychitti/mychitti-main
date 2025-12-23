@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /login/
+Disallow: /register/
+Disallow: /cart/
+Disallow: /checkout/
+Disallow: /dashboard/
+
+Allow: /
+Sitemap: https://mychitti.net/sitemap.xml
+ 

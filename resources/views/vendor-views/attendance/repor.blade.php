@@ -1,0 +1,248 @@
+@extends('layouts.vendor.app')
+
+@section('title', 'Attendance Manage')
+
+@push('css_or_js')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<style>
+    .day-list-item {
+            display: flex;
+    justify-content: space-around;
+    flex-direction: column;
+        width: 12%;
+        height: 77px;
+        margin: 5px;
+        background: #ffffff5e;
+        box-shadow: 0px 0px 3px #cbc6c6;
+        padding: 4px;
+        border-radius: 5px;
+           font-size: 14px;
+    }
+    .invisible-item {
+    background: #ffffff00;
+    box-shadow: 0px 0px 3px #cbc6c600;
+}
+
+    .day-list {
+        /*border: 1px solid white;*/
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0px;
+    }
+
+    .day-name-list {
+        display: flex;
+        list-style: none;
+        padding: 0px;
+        margin-bottom: 0px;
+    }
+
+    .day-name-list-item {
+        /* border: 1px solid white; */
+        width: 12%;
+        margin: 5px;
+        font-weight: bold;
+    }
+</style>
+@endpush
+
+@section('content')
+
+
+<!--echo $sundays_in_month;-->
+<div class="content container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-header-title"><i class="tio-filter-list"></i> Attendance Manage </h1>
+        <div class="page-header-select-wrapper">
+
+        </div>
+    </div>
+    <!-- End Page Header -->
+
+
+
+    @if (session()->has('msg'))
+    <div class="alert alert-success" role="alert">
+        {{ session('msg') }}
+    </div>
+    @endif
+    <div class="row g-2">
+            @csrf
+            <input type="hidden" id="staff_id" name="staff_id" value="{{isset($staff->id ) ? $staff->id : ''}}">
+            <div class="col-md-12">
+                <div class="card h-100">
+                    <div class="row g-3 mb-3">
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-1">
+                                <h4 class="title">{{$days_in_month - $sundays_in_month - $day_data['absent'] - $day_data['cl'] -$day_data['holiday']}}</h4>
+                                <span class="subtitle">Present</span>
+
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-2">
+                                <h4 class="title">{{$day_data['absent']}}</h4>
+                                <span class="subtitle">Absent</span>
+
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-3">
+                                <h4 class="title">{{$day_data['halfday']}}</h4>
+                                <span class="subtitle">Half Days</span>
+
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-4">
+                                <h4 class="title">{{$day_data['cl']}}</h4>
+                                <span class="subtitle">Casual Leave</span>
+
+                            </div>
+                        </div>
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-1">
+                                <h4 class="title">{{$day_data['holiday']}}</h4>
+                                <span class="subtitle">Holiday</span>
+
+                            </div>
+                        </div>
+
+                        <div class="col-xl-2 col-sm-6">
+                            <div class="resturant-card card--bg-2">
+                                <h4 class="title">{{$sundays_in_month}}</h4>
+                                <span class="subtitle">Sundays</span>
+
+                            </div>
+                        </div>
+                    </div>
+                    <!--<h4 class="m-3 mb-0">Personal Information</h4>-->
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-3 shadow shadow-sm m-2 py-3">
+                                <form action="">
+                                <label>Year</label>
+                                <select name="year" style="width: 100%;" class="form-control">
+                                      @for($m = 2000; $m <= 2030; $m++) 
+                                        <option value="{{$m}}" {{$filter_year == $m ? 'selected' : '';}}>{{$m}}</option>
+                                      @endfor
+                                    </select>
+                                    <label>Month</label>
+                                    <select name="month" style="width: 100%;" class="form-control">
+                                        
+                                        @for($m = 1; $m <=12; $m++) 
+                                        @php $month = date('F', mktime(0,0,0,$m, 1, date('Y')));@endphp
+                                        <option value="{{$m}}"  {{$filter_month == $m ? 'selected' : '';}}>{{$month}}</option>
+                                         @endfor
+                                        
+                                    </select>
+                                    <button class="btn btn--primary btn-outline-primary w-100 my-3">View</button>
+                                    </form>
+                                </div>
+                            <div class="col-8 shadow shadow-sm m-2 calendar p-3" style="background-image: linear-gradient(45deg, #ffffff, #6f9ef557);
+}">
+                                <h1>{{date("F", mktime(0, 0, 0, $filter_month, 10)) . ' ' . $filter_year}}</h1>
+                                <!--<p>Holidays and Daily Observances in the United States</a>-->
+                                <ul class="day-name-list">
+                                    <li class="day-name-list-item">Mon</li>
+                                    <li class="day-name-list-item">Tue</li>
+                                    <li class="day-name-list-item">Wed</li>
+                                    <li class="day-name-list-item">Thu</li>
+                                    <li class="day-name-list-item">Fri</li>
+                                    <li class="day-name-list-item">Sat</li>
+                                    <li class="day-name-list-item">Sun</li>
+                                </ul>
+                                <ul class="day-list">
+                               
+                                    @for ($d=1; $d <  $firstDayOfMonth  ; $d++) 
+                                     <li class="day-list-item invisible-item"></li>
+                                    @endfor
+                                    
+                                     @for ($t=1; $t <=  $days_in_month  ; $t++) 
+                                      
+                                    <li class="day-list-item">{{$t}} 
+                                    <select class="att_status" style="height: 25px;width: 100%;border: 0px;background: #ffffff80;" data-id="{{$t}}">
+                                        <option value="P" {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'P' ? 'selected': '';}}>P</option>
+                                        <option value="CL" {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'CL' ? 'selected': '';}}>CL</option>
+                                        <option value="A" {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'A' ? 'selected': '';}}>A</option>
+                                        <option value="HD" {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'HD' ? 'selected': '';}}>HD</option>
+                                        <option value="HL" {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'HL' ? 'selected': '';}}>HL</option>
+                                        <option value="Sun" {{ (empty($attendance) && date('l', strtotime(date($filter_year . '-' . $filter_month. '-'. $t))) == 'Sunday') ? ' selected': ''  }} {{ !empty($attendance) && in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'Sun' ? 'selected': '';}}>Sun</option>
+                                    </select>
+                                    </li>
+                                    @endfor
+                                  
+                                </ul>
+                            </div>
+                        </div>
+
+
+                        <div class="form-row">
+                            <form action="{{route('vendor.attendance.save')}}" id="att_form" method="post">
+                                @csrf
+                                <input type ="hidden" class="month_inp" value="{{$filter_month}}">
+                                <input type ="hidden" class="year_inp" value="{{$filter_year}}">
+                                <input type ="hidden" class="emp_id" value="{{$staff->id}}">
+                                <div class="col my-2 d-flex justify-content-end pr-5">
+                                    <button class="btn  btn--primary btn-outline-primary" style="height: 44px;109px;">Update</button>
+                                </div>
+                            
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+
+
+        @endsection
+
+        @push('script_2')
+        
+        <script>
+            $("#att_form").on('submit', function(e){
+                e.preventDefault();
+                  var filteredElements =$(".att_status");
+                  var daysArr = [];
+                  var statusArr = [];
+                  var month = $('.month_inp').val();
+                  var year = $('.year_inp').val();
+                  var emp_id = $('.emp_id').val();
+    
+                    filteredElements.each(function() {
+                        if($(this).val() != 'P'){
+                            statusArr.push($(this).val());
+                            daysArr.push($(this).attr('data-id'));
+                        }
+                    });
+                    
+                  $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                 });
+                $.post({
+                    url: '{{route('vendor.attendance.save')}}',
+                    data: {
+                        statusArr : statusArr,
+                        daysArr: daysArr, 
+                        year: year,
+                        month: month,
+                        emp_id : emp_id
+                    },
+                    success: function (data) {
+                    //   console.log(data)
+                    //   var datat = JSON.parse(data)
+                    //   console.log(data['status']);
+                    //   if(data.status){
+                           window.location.reload();
+                    //   }
+                    },
+                });
+            })
+        </script>
+        @endpush

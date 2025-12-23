@@ -1,0 +1,290 @@
+.mrp-cut {
+    color: #999;
+    text-decoration: line-through;
+    text-decoration-color: red;
+    text-decoration-thickness: 2px;
+}
+
+.pc-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.pc-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.pc-tab-btn {
+    padding: 8px 20px;
+    background: white;
+    border: 1px solid #ddd;
+    color: #333;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.pc-tab-btn.pc-active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
+.pc-tab-btn:hover {
+    background: #f0f0f0;
+}
+
+.pc-tab-btn.pc-active:hover {
+    background: #6fa607;
+}
+
+.pc-panel {
+    display: none;
+    background: white;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.pc-panel.pc-active {
+    display: block;
+    animation: pcFadeIn 0.3s;
+}
+
+@keyframes pcFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pc-heading {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.pc-calc-section {
+    margin-top: 15px;
+}
+
+.pc-module-item {
+    background: #fafafa;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.pc-module-item.pc-selected {
+    border-color: var(--primary);
+    background: #fcf0f7de;
+}
+
+.pc-module-top {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.pc-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.pc-module-name {
+    flex-grow: 1;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.pc-price-amount {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.pc-duration-wrap {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.pc-duration-wrap.pc-show {
+    display: block;
+}
+
+.pc-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #555;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.pc-duration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pc-duration-card {
+    padding: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: all 0.3s;
+    text-align: center; 
+}
+
+.pc-duration-card:hover {
+    border-color: var(--primary);
+}
+
+.pc-duration-card.pc-selected {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.pc-duration-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.pc-duration-cost {
+    font-size: 13px;
+}
+
+.pc-duration-save {
+    font-size: 11px;
+    margin-top: 4px;
+    color: var(--primary);
+}
+
+.pc-duration-card.pc-selected .pc-duration-save {
+    color: #d4f4dd;
+}
+
+.pc-summary {
+    background: #fff2f9ff;
+    color: #090909;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+    height: fit-content;
+    margin-top: 46px;
+}
+
+.pc-summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.pc-summary-row.pc-total {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    padding-top: 10px;
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.pc-breakdown {
+    margin-top: 8px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.pc-breakdown-item {
+    background: white;
+    padding: 10px;
+    border: 1px solid var(--primary);
+    border-radius: 7px;
+    margin: 4px 0;
+}
+
+.pm-card {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.2s;
+}
+
+.pm-card:hover {
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.pm-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.pm-expiry {
+    font-size: 13px;
+    color: #777;
+    margin: 0;
+}
+
+.pm-right {
+    text-align: right;
+}
+
+.pm-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.pm-duration {
+    font-size: 13px;
+    color: #444;
+}
+
+.pc-duration-wrap {
+    display: none;
+}
+
+.pc-duration-wrap.pc-show {
+    display: block;
+}
+
+.pc-global-duration-card {
+    cursor: pointer;
+    height: 56px;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    font-weight: bold;
+    font-size: 16px;
+    background: #f1f1f1ff;
+}
+
+.pc-global-duration-card.pc-selected,
+.pc-duration-card.pc-selected {
+    border: 2px solid var(--primary);
+    background: var(--primary);
+    color: white;
+}
