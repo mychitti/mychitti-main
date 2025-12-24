@@ -29,6 +29,10 @@ jobs:
           git checkout main
           git pull origin main
 
+          echo "Fixing Laravel permissions (excluding DO Spaces mount)..."
+          chown -R apache:apache storage/framework storage/logs bootstrap/cache
+          chmod -R 775 storage/framework storage/logs bootstrap/cache
+
           echo "Clearing caches..."
           php artisan config:clear
           php artisan route:clear
