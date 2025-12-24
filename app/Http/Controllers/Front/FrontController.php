@@ -112,7 +112,7 @@ class FrontController extends Controller
     }
     public function testing(Request $request)
     {
-        echo 'hello from gh actions vr';
+        echo 'hello from gh actions vr f';die;
         $controller = new ProfileController();
         return $controller->buyModule(26, '6');
         die;
