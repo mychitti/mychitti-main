@@ -1,0 +1,53 @@
+name: Deploy to Shop Server
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -H 167.71.233.92 >> ~/.ssh/known_hosts
+
+    - name: Deploy Code to Server
+      run: |
+        ssh root@167.71.233.92 << 'EOF'
+          set -e
+          cd /var/www/html/vendor
+
+          echo "Fetching latest code..."
+          git fetch origin
+          git checkout main
+          git pull origin main
+
+          echo "Fixing Laravel permissions (excluding DO Spaces mount)..."
+          chown -R apache:apache storage/framework storage/logs bootstrap/cache
+          chmod -R 775 storage/framework storage/logs bootstrap/cache
+
+          echo "Clearing caches..."
+          php artisan config:clear
+          php artisan route:clear
+          php artisan view:clear
+          php artisan cache:clear
+
+          echo "Installing dependencies..."
+          composer install --no-dev --optimize-autoloader --no-interaction
+
+          echo "Rebuilding caches..."
+          php artisan config:cache
+          php artisan view:cache
+
+          echo "Running migrations..."
+          php artisan migrate --force
+
+          echo "Deployment completed successfully!"
+        EOF
