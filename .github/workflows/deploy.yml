@@ -1,8 +1,10 @@
 name: Deploy to Shop Server
+
 on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -29,22 +31,22 @@ jobs:
           git checkout main
           git pull origin main
 
-          echo "Fixing Laravel permissions (excluding DO Spaces mount)..."
-          chown -R apache:apache storage/framework storage/logs bootstrap/cache
-          chmod -R 775 storage/framework storage/logs bootstrap/cache
+          echo "Installing dependencies..."
+          composer install --no-dev --optimize-autoloader --no-interaction
 
           echo "Clearing caches..."
           php artisan config:clear
           php artisan route:clear
-          php artisan view:clear 
+          php artisan view:clear
           php artisan cache:clear
-
-          echo "Installing dependencies..."
-          composer install --no-dev --optimize-autoloader --no-interaction
 
           echo "Rebuilding caches..."
           php artisan config:cache
           php artisan view:cache
+
+          echo "Fixing Laravel permissions (excluding DO Spaces mount)..."
+          chown -R apache:apache storage/framework storage/logs bootstrap/cache
+          chmod -R 775 storage/framework storage/logs bootstrap/cache
 
           echo "Running migrations..."
           php artisan migrate --force
