@@ -16,10 +16,10 @@ class FixVendorEmployeeUrls
             
             $content = $response->getContent();
             
-            // Replace all vendor.mychitti.net URLs with vendor-employee.mychitti.net
+            // Replace all vendor.mychitti.shop URLs with vendor-employee.mychitti.shop
             $content = str_replace(
-                'vendor.mychitti.net', 
-                'vendor-employee.mychitti.net', 
+                'vendor.mychitti.shop', 
+                'vendor-employee.mychitti.shop', 
                 $content
             );
             

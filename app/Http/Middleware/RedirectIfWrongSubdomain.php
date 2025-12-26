@@ -20,15 +20,15 @@ class RedirectIfWrongSubdomain
             if ($request->isMethod('GET') && Str::startsWith($path, 'login')) {
 
                 $allowedPaths = [
-                    'admin.mychitti.net' => ['login/admin', 'login/admin-employee'],
-                    'vendor.mychitti.net' => ['login/store'],
-                    'vendor-employee.mychitti.net' => ['login/store-employee'],
+                    'admin.mychitti.shop' => ['login/admin', 'login/admin-employee'],
+                    'vendor.mychitti.shop' => ['login/store'],
+                    'vendor-employee.mychitti.shop' => ['login/store-employee'],
                 ];
 
                 $defaultLoginPath = [
-                    'admin.mychitti.net' => 'login/admin',
-                    'vendor.mychitti.net' => 'login/store',
-                    'vendor-employee.mychitti.net' => 'login/store-employee',
+                    'admin.mychitti.shop' => 'login/admin',
+                    'vendor.mychitti.shop' => 'login/store',
+                    'vendor-employee.mychitti.shop' => 'login/store-employee',
                 ];
 
                 if (isset($allowedPaths[$host])) {
@@ -47,14 +47,14 @@ class RedirectIfWrongSubdomain
                 }
             }
             if (auth('vendor')->check()) {
-                if (!str_contains($host, 'vendor.mychitti.net')) {
-                    return redirect()->away('https://vendor.mychitti.net' . $request->getRequestUri());
+                if (!str_contains($host, 'vendor.mychitti.shop')) {
+                    return redirect()->away('https://vendor.mychitti.shop' . $request->getRequestUri());
                 }
             }
 
             if (auth('vendor_employee')->check()) {
-                if (!str_contains($host, 'vendor-employee.mychitti.net')) {
-                    return redirect()->away('https://vendor-employee.mychitti.net' . $request->getRequestUri());
+                if (!str_contains($host, 'vendor-employee.mychitti.shop')) {
+                    return redirect()->away('https://vendor-employee.mychitti.shop' . $request->getRequestUri());
                 }
             }
         }
