@@ -11,7 +11,7 @@ class FixVendorEmployeeUrls
         $response = $next($request);
         
         // Only process HTML responses on vendor-employee domain
-        if ($request->getHost() === 'vendor-employee.mychitti.net' && 
+        if ($request->getHost() === 'vendor-employee.mychitti.shop' && 
             $response instanceof \Illuminate\Http\Response) {
             
             $content = $response->getContent();

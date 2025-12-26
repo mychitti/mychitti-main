@@ -55,7 +55,7 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/admin.php'));
 
-            Route::domain('vendor-employee.mychitti.net')
+            Route::domain('vendor-employee.mychitti.shop')
                 // ->prefix('staff')
                 ->middleware(['web', 'fix-urls'])
                 ->namespace($this->namespace)

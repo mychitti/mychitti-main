@@ -86,7 +86,7 @@ class AppServiceProvider extends ServiceProvider
         } elseif (Str::contains($host, 'vendor')) {
             config(['session.cookie' => 'vendor_session']);
         }
-        if (request()->getHost() === 'vendor-employee.mychitti.net') {
+        if (request()->getHost() === 'vendor-employee.mychitti.shop') {
 
             // Override the global route() helper function
             $this->app->singleton('url', function ($app) {
@@ -94,7 +94,7 @@ class AppServiceProvider extends ServiceProvider
                 $request = $app['request'];
 
                 $url = new \Illuminate\Routing\UrlGenerator($routes, $request);
-                $url->forceRootUrl('https://vendor-employee.mychitti.net');
+                $url->forceRootUrl('https://vendor-employee.mychitti.shop');
 
                 return $url;
             });
