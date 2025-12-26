@@ -56,7 +56,7 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/admin.php'));
 
             // Store Panel Routes: store.mychitti.net
-            Route::domain('vendor.mychitti.net')
+            Route::domain('vendor.mychitti.shop')
                 ->middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/vendor.php'));
