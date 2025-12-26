@@ -690,10 +690,10 @@ class SalaryController extends Controller
     { // employee specific
         $emp = Helpers::get_loggedin_user();
 
-        $advance_requests = AdvanceRequest::wiht('employee')->where('employee_id', $emp->id)->get();
+        $advance_requests = AdvanceRequest::with('employee')->where('employee_id', $emp->id)->get();
         return view('vendor-views.salary.advance-requests', compact('advance_requests'));
     }
-    public function advance_request_store(Request $request)
+    public function advance_request_store(Request $request) 
     {
         $rules = [
             'amount' => 'required|numeric',
