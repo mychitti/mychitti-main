@@ -43,45 +43,50 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+   public function boot()
     {
         $this->configureRateLimiting();
 
         $this->routes(function () {
 
-            // Admin Panel Routes: admin.mychitti.net
-            Route::domain('admin.mychitti.net')
+            Route::domain('admin.mychitti.shop')
+                // Route::prefix('admin')
                 ->middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/admin.php'));
 
-            // Store Panel Routes: store.mychitti.net
+            Route::domain('vendor-employee.mychitti.net')
+                // ->prefix('staff')
+                ->middleware(['web', 'fix-urls'])
+                ->namespace($this->namespace)
+                ->group(base_path('routes/vendor_employee.php'));
+
             Route::domain('vendor.mychitti.shop')
-                ->middleware('web')
+                // Route::prefix('store-panel')
+                ->middleware(['web'])
                 ->namespace($this->namespace)
                 ->group(base_path('routes/vendor.php'));
 
-            // Admin Sectional Routes (if needed separately)
-            Route::domain('admin.mychitti.net')
-                ->middleware('web')
-                ->namespace($this->namespace)
-                ->group(base_path('routes/admin/routes.php'));
-
-            // API v1 Routes (remain unchanged)
             Route::prefix('api/v1')
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/api/v1/api.php'));
 
-            // API v2 Routes (remain unchanged)
             Route::prefix('api/v2')
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/api/v2/api.php'));
 
-            // Frontend Routes: mychitti.net
-            Route::domain('mychitti.net')
+
+            //new routes
+            Route::domain('admin.mychitti.shop')
+                // Route::prefix('admin')
                 ->middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/admin/routes.php'));
+
+
+            Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
         });
