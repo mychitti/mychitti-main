@@ -41,7 +41,7 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-
+echo 'hie' ; die;
         $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
         if ($request->has('date_range')) {
             Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
