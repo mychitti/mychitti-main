@@ -153,7 +153,7 @@ class FrontController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function icons_view()
+    public function icons_view() 
     {
         return view('front-views.icons');
     }
