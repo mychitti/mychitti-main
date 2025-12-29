@@ -9,6 +9,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        include:
+          - name: admin
+            host: 64.227.158.127
+            path: /var/www/html/admin
+
+          - name: vendor
+            host: 167.71.233.92
+            path: /var/www/html/vendor
+
+          - name: shop
+            host: 64.227.178.210
+            path: /var/www/html/mychitti
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -18,13 +33,13 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
-        ssh-keyscan -H 167.71.233.92 >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ matrix.host }} >> ~/.ssh/known_hosts
 
-    - name: Deploy Code to Server
+    - name: Deploy Code to ${{ matrix.name }} Server
       run: |
-        ssh root@167.71.233.92 << 'EOF'
+        ssh root@${{ matrix.host }} << 'EOF'
           set -e
-          cd /var/www/html/vendor
+          cd ${{ matrix.path }}
 
           echo "Fetching latest code..."
           git fetch origin
