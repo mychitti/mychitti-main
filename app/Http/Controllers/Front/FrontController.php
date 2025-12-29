@@ -167,7 +167,7 @@ class FrontController extends Controller
         die;
         $url = asset('storage/app/public/promotional_banner/2024-10-06-67027935e17c5.png');
 
-        $tmpFile = storage_path('app/tmp_ocr.png');
+        $tmpFile = storage_path('app/tmp_ocr.png'); 
         file_put_contents($tmpFile, file_get_contents($url)); 
 
         $ch = curl_init("http://159.65.159.250:5000/ocr");

@@ -47,8 +47,8 @@ jobs:
 
           echo "Fetching latest code..."
           git fetch origin
-          git checkout main
-          git pull origin main
+          git reset --hard origin/main
+
 
           echo "Installing dependencies..."
           composer install --no-dev --optimize-autoloader --no-interaction
