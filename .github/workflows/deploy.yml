@@ -41,33 +41,21 @@ jobs:
 
     - name: Deploy Code to ${{ matrix.name }} Server
       run: |
-        ssh -o StrictHostKeyChecking=no root@${{ matrix.host }} << 'ENDSSH'
-        set -e
-        cd ${{ matrix.path }}
-
-        echo "Fetching latest code..."
-        git fetch origin
-        git reset --hard origin/main
-
-        echo "Installing dependencies..."
-        composer install --no-dev --optimize-autoloader --no-interaction
-
-        echo "Clearing caches..."
-        php artisan config:clear
-        php artisan route:clear
-        php artisan view:clear
-        php artisan cache:clear
-
-        echo "Rebuilding caches..."
-        php artisan config:cache
-        php artisan view:cache
-
-        echo "Fixing Laravel permissions (excluding DO Spaces mount)..."
-        chown -R apache:apache storage/framework storage/logs bootstrap/cache
-        chmod -R 775 storage/framework storage/logs bootstrap/cache
-
-        echo "Running migrations..."
-        php artisan migrate --force
-
-        echo "Deployment completed successfully!"
-        ENDSSH
+        ssh -o StrictHostKeyChecking=no root@${{ matrix.host }} "
+        set -e && \
+        cd ${{ matrix.path }} && \
+        echo 'Fetching latest code...' && \
+        git fetch origin && \
+        git reset --hard origin/main && \
+        composer install --no-dev --optimize-autoloader --no-interaction && \
+        php artisan config:clear && \
+        php artisan route:clear && \
+        php artisan view:clear && \
+        php artisan cache:clear && \
+        php artisan config:cache && \
+        php artisan view:cache && \
+        chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
+        chmod -R 775 storage/framework storage/logs bootstrap/cache && \
+        php artisan migrate --force && \
+        echo 'Deployment completed successfully!'
+        "
