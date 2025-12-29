@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+
+
+<html>
+
+<head>
+    <meta charset="utf-8" /> 
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MC Vendor Hub — Price Calculator</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ asset('assets/admin/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/admin/vendor/icon-set/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('assets/admin') }}/css/toastr.css">
+    <link rel="stylesheet" href="{{ asset('assets/admin') }}/css/common.css">
+
+    <link href="{{ asset('assets/front/lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
+    <style>
+        .pc-global-duration-card {
+            height: 100px;
+            padding: 10px;
+            background: #f3ffdf;
+            margin: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .pc-global-duration-card .pc-selected {
+            {{-- background: #d0ff86ff; --}}
+        }
+
+        .sidebar-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .sidebar-card h3 {
+            font-size: 16px;
+            margin: 0 0 12px 0;
+            color: #333;
+        }
+
+        .sidebar-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }
+
+        .sidebar-card li {
+            font-size: 14px;
+            color: #666;
+            margin: 8px 0;
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .sidebar-card li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #81c408;
+        }
+
+        .sidebar-card a {
+            display: block;
+            text-align: center;
+            width: 100%;
+            text-decoration: none;
+            background: #81c408;
+            color: white;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .sidebar-card a:hover {
+            background: #81c408;
+        }
+
+        .pc-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pc-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .pc-tab-btn {
+            padding: 8px 20px;
+            background: white;
+            border: 1px solid #ddd;
+            color: #333;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .pc-tab-btn.pc-active {
+            background: #81c408;
+            color: white;
+            border-color: #81c408;
+            font-weight: 600;
+        }
+
+        .pc-tab-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .pc-tab-btn.pc-active:hover {
+            background: #6fa607;
+        }
+
+        .pc-panel {
+            display: none;
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .pc-panel.pc-active {
+            display: block;
+            animation: pcFadeIn 0.3s;
+        }
+
+        @keyframes pcFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pc-heading {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .pc-calc-section {
+            margin-top: 15px;
+        }
+
+        .pc-module-item {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .pc-module-item.pc-selected {
+            border-color: #81c408;
+            background: #f8fcf0;
+        }
+
+        .pc-module-top {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .pc-checkbox {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .pc-module-name {
+            flex-grow: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .pc-price-amount {
+            color: #81c408;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .pc-duration-wrap {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .pc-duration-wrap.pc-show {
+            {{-- display: block; --}}
+        }
+
+        .pc-label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .pc-duration-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .height_0 {
+
+            height: 0 !important;
+        }
+
+        .pc-duration-card {
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .pc-duration-card:hover {
+            border-color: #81c408;
+        }
+
+        .pc-global-duration-card.pc-selected,
+        .pc-duration-card.pc-selected {
+            border-color: #81c408;
+            background: #81c408;
+            color: white;
+        }
+
+        .pc-duration-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .pc-duration-cost {
+            font-size: 13px;
+        }
+
+        .pc-duration-save {
+            font-size: 11px;
+            margin-top: 4px;
+            color: #28a745;
+        }
+
+        .pc-duration-card.pc-selected .pc-duration-save {
+            color: #d4f4dd;
+        }
+
+        .pc-summary {
+            background: #edffcd;
+            color: #090909;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            height: fit-content;
+            margin-top: 46px;
+        }
+
+        .pc-summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .pc-summary-row.pc-total {
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 10px;
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .pc-breakdown {
+            margin-top: 8px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .pc-breakdown-item {
+            background: white;
+            padding: 10px;
+            border: 1px solid #81c408;
+            border-radius: 7px;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+
+<body>
+    @include('mc-vendor.partials.nav')
+
+    <div class="pc-container">
+
+
+        <!-- Calculator Panel -->
+        <div class="pc-panel pc-active" id="calculator">
+            <h2 class="pc-heading">Module Price Calculator</h2>
+            <div class="pc-global-duration mb-3">
+                <label class="pc-label"><b>Select Plan Duration</b></label>
+                <div class="pc-duration-grid">
+                    <div class="pc-global-duration-card pc-selected" data-months="1">Monthly</div>
+                    <div class="pc-global-duration-card" data-months="3">Quarterly</div>
+                    {{-- <div class="pc-global-duration-card" data-months="6">6 Months</div> --}}
+                    <div class="pc-global-duration-card" data-months="12">Annually</div>
+                </div>
+            </div>
+
+
+            <div class="row">
+                <div class="pc-calc-section col-md-8">
+                    <h3 style="color: #81c408; margin-bottom: 12px; font-size: 16px;">Select Modules & Duration</h3>
+
+                    @if (isset($sub_modules) && count($sub_modules) > 0)
+                        @foreach ($sub_modules as $module)
+                            <div class="pc-module-item" data-module-id="{{ $module->id }}">
+                                <div class="pc-module-top">
+                                    <input type="checkbox" class="pc-checkbox pc-module-check"
+                                        data-module-id="{{ $module->id }}">
+                                    <div class="pc-module-name">{{ $module->name }}</div>
+                                    <div class="pc-price-amount">₹{{ number_format($module->price_per_month) }}/month
+                                    </div>
+                                </div>
+                                <div class="pc-duration-wrap invisible h-0 p-0 m-0"
+                                    data-module-id="{{ $module->id }}">
+                                    {{-- <label class="pc-label">Select Duration:</label> --}}
+                                    {{-- [ 'months' => 6, 'label' => '6 Months', 'discount' => $module->discount_6_month ?? 0, ], --}}
+                                    <div class="pc-duration-grid height_0">
+                                        @php $durations = [ [ 'months' => 1, 'label' => '1 Month', 'discount' => $module->discount_1_month ?? 0, ], [ 'months' => 3, 'label' => '3 Months', 'discount' => $module->discount_3_month ?? 0, ], [ 'months' => 12, 'label' => '12 Months', 'discount' => $module->discount_12_month ?? 0, ], ]; @endphp
+
+                                        @foreach ($durations as $duration)
+                                            @php
+                                                $basePrice = $module->price_per_month * $duration['months'];
+                                                $discountAmount = ($basePrice * $duration['discount']) / 100;
+                                                $finalPrice = $basePrice - $discountAmount;
+                                            @endphp
+                                            <div class="pc-duration-card " data-module-id="{{ $module->id }}"
+                                                data-price="{{ $finalPrice }}"
+                                                data-months="{{ $duration['months'] }}"
+                                                data-base-price="{{ $basePrice }}"
+                                                data-discount="{{ $duration['discount'] }}"
+                                                data-discount-amount="{{ $discountAmount }}"
+                                                data-final-price="{{ $finalPrice }}">
+                                                <div class="pc-duration-title">{{ $duration['label'] }}</div>
+                                                <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}
+                                                </div>
+                                                <div class="pc-duration-save">
+                                                    @if ($duration['discount'] > 0)
+                                                        Save {{ $duration['discount'] }}%
+                                                    @else
+                                                        No discount
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <p style="color: #666; text-align: center; padding: 40px;">No modules available yet. Please try
+                            again later.</p>
+                    @endif
+
+
+                </div>
+                <div class=" col-md-4">
+                    <div class="pc-summary">
+                        <div class="pc-summary-row">
+                            <span>Subtotal (Base):</span>
+                            <span id="pcSubtotal">₹0.00</span>
+                        </div>
+                        <div class="pc-summary-row">
+                            <span>Discount:</span>
+                            <span id="pcDiscount">₹0.00</span>
+                        </div>
+                        <div class="pc-summary-row pc-total">
+                            <span>Total:</span>
+                            <span id="pcTotal">₹0.00</span>
+                        </div>
+                        <div style="font-size: 12px;" class="bg-white p-2">
+                            <b>Note:</b> This plan supports only 10 users.
+                            Need for more users? <a href="{{ route('contact') }}">Contact us</a> for an upgrade.
+                        </div>
+                        <div class="pc-breakdown" id="pcBreakdown"></div>
+                    </div>
+                    <div class="sidebar-card mt-4">
+                        <h3>Register for FREE on MC VENDOR HUB</h3>
+                        <ul>
+                            <li>Free Billing – up to 1000 bills</li>
+                            <li>Free Business Webpage</li>
+                        </ul>
+                        <a href="https://mychitti.net/list-your-business">Register Now</a>
+                    </div>
+                </div>
+
+
+            </div>
+
+        </div>
+    </div>
+
+
+    {{-- footer section  --}}
+    @include('mc-vendor.partials.footer')
+
+    <script src="{{ asset('assets/admin') }}/js/vendor.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous">
+    </script>
+    <script src="{{ asset('assets/front/lib/owlcarousel/owl.carousel.min.js') }}"></script>
+
+    <!-- JS Front -->
+    <script src="{{ asset('assets/admin') }}/js/theme.min.js"></script>
+    <script src="{{ asset('assets/admin') }}/js/toastr.js"></script>
+    <script>
+        $(document).ready(function() {
+
+            let selections = {};
+            let globalMonths = 1;
+
+            // ✅ GLOBAL DURATION CLICK
+            $('.pc-global-duration-card').on('click', function() {
+                $('.pc-global-duration-card').removeClass('pc-selected');
+                $(this).addClass('pc-selected');
+
+                globalMonths = parseInt($(this).data('months'));
+
+                // Highlight matching duration price for all modules
+                $('.pc-duration-card').removeClass('pc-selected');
+                $(`.pc-duration-card[data-months="${globalMonths}"]`).addClass('pc-selected');
+
+                recalculateAll();
+            });
+
+            $('.pc-module-check').on('change', function() {
+
+                const moduleId = $(this).data('module-id');
+                const moduleBox = $(`.pc-module-item[data-module-id="${moduleId}"]`);
+                const durationWrap = $(`.pc-duration-wrap[data-module-id="${moduleId}"]`);
+                const moduleName = moduleBox.find('.pc-module-name').text();
+
+                if ($(this).is(':checked')) {
+
+                    // ✅ OPEN DURATION SECTION
+                    durationWrap.addClass('pc-show');
+                    moduleBox.addClass('pc-selected');
+
+                    selections[moduleId] = {
+                        name: moduleName,
+                        cards: $(`.pc-duration-card[data-module-id="${moduleId}"]`)
+                    };
+
+                } else {
+
+                    // ✅ CLOSE DURATION SECTION
+                    durationWrap.removeClass('pc-show');
+                    moduleBox.removeClass('pc-selected');
+
+                    delete selections[moduleId];
+                }
+
+                recalculateAll();
+            });
+
+
+
+            // ✅ TOTAL CALCULATION
+            function recalculateAll() {
+
+                let totalBase = 0;
+                let totalDiscount = 0;
+                let breakdownHTML = '';
+
+                $.each(selections, function(moduleId, data) {
+
+                    const activeCard = data.cards.filter(`[data-months="${globalMonths}"]`);
+
+                    const base = parseFloat(activeCard.data('base-price'));
+                    const discountAmount = parseFloat(activeCard.data('discount-amount'));
+                    const final = parseFloat(activeCard.data('price'));
+
+                    totalBase += base;
+                    totalDiscount += discountAmount;
+
+                    breakdownHTML += `
+                <div class="pc-breakdown-item">
+                    ${data.name} (${globalMonths} months) - 
+                    ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>`;
+                });
+
+                const total = totalBase - totalDiscount;
+
+                $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                }));
+                $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                }));
+                $('#pcTotal').text('₹' + total.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                }));
+
+                $('#pcBreakdown').html(breakdownHTML ? `<div style="margin-top:15px;">${breakdownHTML}</div>` : '');
+            }
+
+        });
+    </script>
+
+
+</body>
+
+</html>

@@ -9,8 +9,26 @@ use Illuminate\Support\Facades\Route;
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
 
 
+
+
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
+
+    // mc vendorhub routes 
+    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () { 
+        Route::get('/', 'MCVendorController@index')->name('home');
+        Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
+        Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
+        Route::get('tnc', 'MCVendorController@mc_vendor_hub_tnc')->name('mc-vendor-hub-tnc');
+        Route::get('privacy-policy', 'MCVendorController@mc_vendor_hub_pp')->name('mc-vendor-hub-pp');
+        Route::get('contact', 'MCVendorController@contact')->name('contact');
+        Route::post('send-message', 'MCVendorController@send_message')->name('send-message');
+        Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
+        Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
+        Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
+    });
+
+
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
@@ -27,7 +45,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/reject-leave/{id}', 'VendorEmployeeController@leave_reject')->name('reject-leave');
 
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
-        Route::get('/', 'DashboardController@dashboard')->name('dashboard');
+        Route::get('/dashboard', 'DashboardController@dashboard')->name('dashboard');
+        // Route::get('/', 'DashboardController@dashboard')->name('dashboard'); 
         Route::get('/get-store-data', 'DashboardController@store_data')->name('get-store-data');
         Route::post('/store-token', 'DashboardController@updateDeviceToken')->name('store.token');
         Route::get('/reviews', 'ReviewController@index')->name('reviews')->middleware('module:reviews');
@@ -718,8 +737,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('token-cancel/{id}', 'SalespointController@token_cancel')->name('token.cancel')->middleware('permission:pos_token,cancel');
             Route::post('token-generate', 'SalespointController@token_generate')->name('token-generate')->middleware('permission:pos_token,generate');
             Route::get('mark-paid/{id}', 'SalespointController@mark_paid')->name('token.mark-paid')->middleware('permission:pos_token,mark_paid');
+            Route::post('payment-method', 'SalespointController@payment_method')->name('token.payment-method')->middleware('permission:pos_token,edit');
 
             // POS ITEMS 
+            Route::post('items-import', 'SalespointController@items_import')->name('items_import');
             Route::get('items/{action?}', 'SalespointController@items')->name('items');
             Route::post('items-save', 'SalespointController@items_save')->name('items.save')->middleware('permission:pos_items,add');
             Route::get('item-remove/{item_id}/{branch_id}', 'SalespointController@item_remove')->name('item.remove')->middleware('permission:pos_items,delete');
