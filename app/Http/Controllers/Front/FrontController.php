@@ -159,7 +159,7 @@ class FrontController extends Controller
     }
     public function approve_success(Request $request)
     {
-        return view('vendor-views.documents.approve_success');
+        return view('vendor-views.documents.approve_success');  
     }
     public function testing(Request $request)
     {
