@@ -18,6 +18,8 @@
                  $('.items_header').hide();
              }
 
+             console.log(selectedOptions)
+
              selectedOptions.each(function() {
                  let itemId = $(this).val();
                  let itemName = $(this).text();
@@ -25,9 +27,9 @@
                  container.append(`
                 <div class="item-row d-grid align-items-center p-2 mb-2 rounded shadow-sm item_r" >
                     <div class="fw-bold text-truncate">${itemName}</div>
-                    <input type="number" id="stock_${itemId}" name="qty[${itemId}]" placeholder="Add to Stock" class="form-control form-control-sm">
-                    <input type="number" id="price_${itemId}" name="prices[${itemId}]" placeholder="Price" class="form-control form-control-sm">
-                    <input style="display:none;" type="number" id="gst_${itemId}" name="gst[${itemId}]" placeholder="GST" class="form-control form-control-sm">
+                    <input type="number" step="0.001" id="stock_${itemId}" name="qty[${itemId}]" placeholder="Add to Stock" class="form-control form-control-sm">
+                    <input type="number" step="0.001" id="price_${itemId}" name="prices[${itemId}]" placeholder="Price" class="form-control form-control-sm">
+                    <input style="display:none;" step="0.001" type="number" id="gst_${itemId}" name="gst[${itemId}]" placeholder="GST" class="form-control form-control-sm">
                 </div>`);
              });
 
@@ -49,14 +51,13 @@
                      branch_id: branchId
                  },
                  success: function(data) {
-                     console.log(data)
+                    // console.log(data)
                      var gst = false;
                      itemIds.forEach(function(itemId) {
                          if (data.items[itemId]) {
-                             $(`#stock_${itemId}`).val(data.items[itemId].stock);
+                             $(`#stock_${itemId}`).val(data.items[itemId].qty_left);
                              $(`#price_${itemId}`).val(data.items[itemId].price);
                              $(`#gst_${itemId}`).val(data.items[itemId].gst_percent);
-                           
                          } else {
                              $(`#stock_${itemId}`).val('');
                              $(`#price_${itemId}`).val('');
@@ -67,10 +68,10 @@
                      //hide gst elems if gst not available in branch 
                      if (data.gst_status) {
                          $(".gst_header").show()
-                        $("[id^='gst_']").show();
+                         $("[id^='gst_']").show();
                      } else {
                          $(".gst_header").hide()
-                        $("[id^='gst_']").hide();
+                         $("[id^='gst_']").hide();
                      }
 
                  }
@@ -83,16 +84,16 @@
      });
 
 
-    $(document).ready(function() {
-    $('#items').select2({
-        placeholder: "Select items",
-        language: {
-            noResults: function() {
-                return "Please add the item to the inventory first, then continue here.";
-            }
-        }
-    });
-});
+     $(document).ready(function() {
+         $('#items').select2({
+             placeholder: "Select items",
+             language: {
+                 noResults: function() {
+                     return "Please add the item to the inventory first, then continue here.";
+                 }
+             }
+         });
+     });
 
      $(document).ready(function() {
          $('#branch').select2({

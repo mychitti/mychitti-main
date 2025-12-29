@@ -59,6 +59,7 @@ use App\Models\VendorEmployee;
 use Illuminate\Support\Facades\DB;
 use App\Models\Zone;
 use Carbon\Carbon;
+use CURLFile;
 use Faker\Extension\Helper;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\View as FacadesView;
@@ -96,7 +97,57 @@ class FrontController extends Controller
             return $next($request);
         });
     }
+    public function ocrTest(Request $request)
+    {
+        return view('front-views.ocr-test');
 
+        // source paddle_env/bin/activate
+        // python app.py
+    }
+    public function ocrTestPost(Request $request)
+    {
+        // 1️⃣ Validate upload
+        $request->validate([
+            'image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        // 2️⃣ Get uploaded file (TEMP path)
+        $file = $request->file('image');
+
+        // VERY IMPORTANT: local real path
+        $filePath = $file->getRealPath();
+
+        // 3️⃣ Send to OCR API
+        $ch = curl_init("http://159.65.159.250:5000/ocr");
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => [
+                'image' => new \CURLFile(
+                    $filePath,
+                    $file->getMimeType(),
+                    $file->getClientOriginalName()
+                )
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 120, // OCR can take time
+        ]);
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+            return response()->json([
+                'error' => curl_error($ch)
+            ], 500);
+        }
+
+        curl_close($ch);
+
+        print_r($response);
+
+        // 4️⃣ Return OCR result
+        return response()->json(json_decode($response, true));
+    }
     /**  
      * Show the application dashboard.
      *
@@ -112,9 +163,26 @@ class FrontController extends Controller
     }
     public function testing(Request $request)
     {
-        echo 'hello from gh actions vr f56';die;
-        $controller = new ProfileController();
-        return $controller->buyModule(26, '6');
+        $url = asset('storage/app/public/promotional_banner/2024-10-06-67027935e17c5.png');
+
+        $tmpFile = storage_path('app/tmp_ocr.png');
+        file_put_contents($tmpFile, file_get_contents($url));
+
+        $ch = curl_init("http://159.65.159.250:5000/ocr");
+
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, [
+            'image' => new CURLFile($tmpFile)
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        unlink($tmpFile);
+
+        print_r(json_decode($response, true));
+
         die;
         $data = [
 

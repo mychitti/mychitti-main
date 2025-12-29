@@ -179,7 +179,7 @@ class InventoryController extends Controller
         }
 
         Toastr::success('Excel file imported successfully.');
-        // return redirect()->back();
+        return redirect()->back();
     }
     public function entry_import(Request $request)
     {
@@ -216,6 +216,7 @@ class InventoryController extends Controller
 
         $headings = [
             'sl',
+            'ID',
             'Name',
             'SKU ID',
             'GST(%)',
@@ -247,6 +248,7 @@ class InventoryController extends Controller
                 foreach ($variations as $var) {
                     $data[] = [
                         $firstVariation ? $sl : '',
+                        $firstVariation ? $item->id : '',
                         $firstVariation ? ucwords($item->item_name) : '',
                         $firstVariation ? $item->sku_id : '',
                         $firstVariation ? $item->gst_rate : '',
@@ -272,6 +274,7 @@ class InventoryController extends Controller
             } else {
                 $data[] = [
                     $sl,
+                    $item->id,
                     $item->item_name,
                     $item->sku_id,
                     $item->gst_rate,

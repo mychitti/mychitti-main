@@ -4,7 +4,6 @@
 
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
-
     <style>
         .dropdown-toggle:not(.dropdown-toggle-empty)::after {
             display: none;
@@ -33,8 +32,12 @@
                             id="itemCount">{{ $tokens->total() }}</span></h5>
                 </div>
                 @if (hasPermission('pos_token', 'export'))
-                    <a href="{{ route('vendor.pos.token.export') }}" class="btn btn-outline-primary mx-1">Export</a>
+                    <a href="{{ route('vendor.pos.token.export', request()->query()) }}"
+                        class="btn btn-outline-primary mx-1">
+                        Export
+                    </a>
                 @endif
+
 
                 <form action="" class="d-flex date-range-form gap-1">
                     @if (auth('vendor')->check())
@@ -47,8 +50,8 @@
                             @endforeach
                         </select>
                     @endif
-                    <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning mx-1" type="button"
-                        data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
+                    <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning mx-1"
+                        type="button" data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
 
                     {{-- date range modal --}}
                     @include('vendor-views/form_modals/date_range')
@@ -81,8 +84,8 @@
                         <thead class="thead-light">
                             <tr>
                                 <th class="border-0">{{ translate('sl') }}</th>
-                                <th class="border-0">Token Number</th>
-                                <th class="border-0">Client</th>
+                                <th class="border-0 ">Token Number</th>
+                                <th class="border-0 ">Client</th>
                                 <th class="border-0 ">Total</th>
                                 <th class="border-0 ">Payment Method</th>
                                 <th class="border-0 ">Payment Status</th>
@@ -111,13 +114,17 @@
                                         {{ _price($token->total) }}
                                     </td>
                                     <td>
-                                        @if ($token->payment_method == 'cash')
-                                            <span class="badge badge-primary">Cash</span>
-                                        @elseif($token->payment_method == 'card')
-                                            <span class="badge badge-success">Card</span>
-                                        @else
-                                            <span class="badge badge-info">UPI</span>
-                                        @endif
+                                        <a type="button" class="edit_token" data-id="{{ $token->id }}"
+                                            data-method="{{ $token->payment_method }}" data-toggle="modal"
+                                            data-target="#paymentEditModal">
+                                            @if ($token->payment_method == 'cash')
+                                                <span class="badge badge-primary">Cash</span>
+                                            @elseif($token->payment_method == 'card')
+                                                <span class="badge badge-success">Card</span>
+                                            @else
+                                                <span class="badge badge-info">UPI</span>
+                                            @endif
+                                        </a>
                                     </td>
                                     <td>
                                         @if ($token->payment_status == 'paid')
@@ -127,8 +134,8 @@
                                                 <a class="btn btn_sm btn-outline-danger form-alert" href="javascript:"
                                                     data-id="mark-paid-{{ $token->id }}"
                                                     style="    font-size: 11px;
-    padding: 4px 21px;
-    background: #ffecec !important;"
+                                                padding: 4px 21px;
+                                                background: #ffecec !important;"
                                                     data-message="{{ translate('Want to mark paid this token') }}"
                                                     title="{{ translate('messages.mark paid') }}"> Unpaid
                                                 </a>
@@ -237,12 +244,68 @@
 
     </div>
 
+    <div class="modal fade" id="paymentEditModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Payment Mehtod</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="post" action="{{ route('vendor.pos.token.payment-method') }}">
+                    @csrf
+                    <input type="hidden" name="token_id" class="edit_token_id">
+                    <div class="modal-body">
+                        <div class="pos--payment-options ">
+                            <ul style="flex-wrap: nowrap;">
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="payment_method"
+                                            value="cash" hidden>
+                                        <span class="size_span">Cash</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="payment_method"
+                                            value="card" hidden>
+                                        <span class="size_span">Card</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="payment_method"
+                                            value="upi" hidden>
+                                        <span class="size_span">UPI</span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
+        $(".edit_token").on('click', function() {
+            var id = $(this).data('id')
+            var method = $(this).data('method')
+
+            $('.edit_token_id').val(id)
+            $('.payment_method[value="' + method + '"]').prop('checked', true);
+        })
         $(document).on('change', '.item_type', function() {
             if ($(this).val() === 'inv_item') {
                 $('#itemDiv').show();

@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\InventoryItem;
+use App\Models\InvItemVariationDetail;
 use App\Models\TempInvItemImage;
 use App\Models\TempItemImage;
 use Illuminate\Support\Collection;
@@ -94,8 +95,8 @@ class InvItemImport implements ToCollection
 
                                 if (isset($decoded[$choiceKey])) {
                                     $item = [];
-                                    $item['name'] = $choiceKey;     
-                                    $item['title'] = "Attribute " . $attrId; 
+                                    $item['name'] = $choiceKey;
+                                    $item['title'] = "Attribute " . $attrId;
                                     $item['options'] = $decoded[$choiceKey];
 
                                     $choice_options[] = $item;
@@ -142,6 +143,7 @@ class InvItemImport implements ToCollection
                 $variationSellingPrice  = $row[13] ?? null;
                 $variationPurchasePrice = $row[14] ?? null;
                 $variationStock         = $row[15] ?? null;
+                $item->save();
 
                 if (!empty($variationName)) {
                     // Validate variation price fields if needed
@@ -149,6 +151,16 @@ class InvItemImport implements ToCollection
                         $this->failedRows[] = ['row' => $index + 1, 'reason' => 'Missing Variation MRP'];
                         continue;
                     }
+
+                    $vrDetails = new InvItemVariationDetail();
+                    $vrDetails->description = '';
+                    $vrDetails->specifications = '';
+                    $vrDetails->images = '';
+                    $vrDetails->type = $variationName;
+                    $vrDetails->item_id = $item->id;
+                    $vrDetails->sku = '';
+                    $vrDetails->save();
+
                     // if (empty($variationSellingPrice)) {
                     //     $this->failedRows[] = ['row' => $index + 1, 'reason' => 'Missing Variation Selling Price'];
                     //     continue;

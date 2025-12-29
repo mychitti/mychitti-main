@@ -7,6 +7,9 @@ use App\Exports\POSItemsExport;
 use App\Exports\POSReportExport;
 use App\Exports\TokenExport;
 use App\Http\Controllers\Controller;
+use App\Imports\InvItemImport;
+use App\Imports\POSInvItemImport;
+use App\Imports\POSItemImport;
 use App\Models\Account;
 use App\Models\AccountOption;
 use App\Models\Branch;
@@ -131,11 +134,11 @@ class SalespointController extends Controller
     {
         $store = Helpers::get_store_data();
         $token = PosToken::with('tokenItems', 'client')->findOrFail($id);
-        
+
         $invoice_id = Helpers::generateInvoiceId('M', $update = true, $serial_num = null,  $tax_type = $token->gst_type, $store ?? null); // M = manual
         $bill_to_type = $token->client ? ($token->client?->user_type == 'vendor' ? 'vendor' : 'user') : 'user';
         $user_type = $token->client?->user_type == 'vendor' ?  'store_vendor' : 'store_user';
-        
+
         $totalAmount = 0;
         // prx($bill_to_type);
         $add_charges[] = [
@@ -227,6 +230,12 @@ class SalespointController extends Controller
             ->join('branches as b', 'bi.branch_id', '=', 'b.id')
             ->where('ii.store_id', Helpers::get_store_id());
 
+        $deliveryConfig = StoreConfig::where('store_id', $store_id)
+            ->select('delivery_charges_gst_pos', 'delivery_charges_gst_percent')
+            ->first();
+        $delivery_gst['percent'] = $deliveryConfig?->delivery_charges_gst_percent ?? 0;
+        $delivery_gst['status'] = $deliveryConfig?->delivery_charges_gst_pos ?? 0;
+
         if (!auth('vendor')->check()) {
             $branch_id = Helpers::get_loggedin_user()->branch_id;
         } else {
@@ -280,7 +289,7 @@ class SalespointController extends Controller
         $data['order_from'] = OrderType::where('store_id', Helpers::get_store_id())->get();
         $data['upcoming_number'] = Helpers::_nextTokenNumber();
         $data['branchWiseItems'] = $branchWiseItems;
-        return view('vendor-views.salespoint.index', compact('data', 'branch_id'));
+        return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id'));
     }
 
     public function calendar(Request $request)
@@ -299,9 +308,10 @@ class SalespointController extends Controller
     {
         // prx($request->all());
         $store_id = Helpers::get_store_id();
+
         $branch_id = $request->branch_id ?? 0;
         $branch = Branch::where('store_id', $store_id)->where('id', $request->branch_id)->first();
-
+        $daybook_entry = false;
         // Get branch address and seller name
         $config =  StoreConfig::where('store_id', Helpers::get_store_id())->first();
         $addr_type = $config ? $config->address_on_token : 'branch';
@@ -332,7 +342,6 @@ class SalespointController extends Controller
         $pos_token->customer_id = $request->customer_id;
         $pos_token->token_number =  Helpers::generatePOSTokenNumber($tkn);
         $pos_token->serial_number =  Helpers::_nextTokenNumber();
-        $pos_token->delivery = $request->delivery;
         $pos_token->payment_method = $request->payment_method;
         $pos_token->payment_status = $request->payment_status;
         $pos_token->order_from = $request->order_from;
@@ -383,7 +392,9 @@ class SalespointController extends Controller
             $unit_price = (float) $basePrice;
             $item_total = $qty * $unit_price;
             $subtotal += $item_total;
-            $gstAmountTotal += $gstAmount;
+
+            $gstAmount = ($priceRow * $gst_percent) / (100 + $gst_percent);
+            $gstAmountTotal += $gstAmount * $qty; // For display only, not added to total
 
             // Save token item
             $token_item = new PosTokenItem();
@@ -409,7 +420,8 @@ class SalespointController extends Controller
                 _notifLowStock($itemRow, $qty_left); // send notification of low stock
             }
         }
-        $total = $subtotal + $gstAmountTotal + (float) $request->delivery;
+        // + $gstAmountTotal
+        $total = $subtotal  + $gstAmountTotal ;
 
         $pos_token->subtotal = $subtotal;
         $pos_token->gst_amount = $gstAmountTotal;
@@ -438,11 +450,27 @@ class SalespointController extends Controller
         }
         $pos_token->coupon = $coupon_amount;
         $pos_token->discount = $discount_amount;
-        $pos_token->total = $total - $coupon_amount - $discount_amount;
-        $pos_token->save();
+
 
         $store_id = Helpers::get_store_id();
         $store_config = StoreConfig::where('store_id', $store_id)->first();
+
+        $delivery_gst_percent = $store_config?->delivery_charges_gst_percent ?? 0;
+        $delivery_gst_status = $store_config?->delivery_charges_gst_pos ?? 0;
+
+        $delivery_charge = $request->delivery; 
+        $delivery_gst_amount = 0;
+        
+        if ($delivery_gst_percent > 0 && $delivery_gst_status == 1) {
+            $delivery_gst_amount = ($delivery_charge * $delivery_gst_percent) / 100;
+        }
+        $total_delivery = $delivery_charge + $delivery_gst_amount;
+        $pos_token->delivery = $total_delivery;
+        $pos_token->base_delivery = $request->delivery;
+        $pos_token->delivery_gst_amt = $delivery_gst_amount;
+        $pos_token->total = $total - $coupon_amount - $discount_amount + $total_delivery;
+
+        $pos_token->save();
 
         // daybook and account entry
         if ($request->payment_status == 'paid') {
@@ -483,9 +511,9 @@ class SalespointController extends Controller
                 //ledger entry 
                 $customer = StoreCustomer::find($invoice->bill_to);
                 $credit_account = Helpers::ensureSalesAccount();
-                if($customer){
+                if ($customer) {
                     $debit_account = Helpers::ensureCustomerLedger($customer);
-                }else{
+                } else {
                     $debit_account = Helpers::ensureOtherBankAccount();
                 }
                 $data2 = [
@@ -496,10 +524,10 @@ class SalespointController extends Controller
                     'status' => $invoice->payment_status == 'Paid' ? 'approved' : 'pending',
                     'description' => 'Sales Invoice',
                 ];
-              $voucher =   _masterLedgerEntry($data2, $credit_account, $debit_account, 'customer', 'store', null);
-              if($daybook_entry){
+                $voucher =   _masterLedgerEntry($data2, $credit_account, $debit_account, 'customer', 'store', null);
+                if ($daybook_entry) {
 
-                  _saveDayBookEntry($invoice->total_amount, 'credit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id);
+                    _saveDayBookEntry($invoice->total_amount, 'credit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id);
                 }
             }
         }
@@ -511,14 +539,33 @@ class SalespointController extends Controller
             return back();
         }
     }
+    public function payment_method(Request $request)
+    {
+        $token = PosToken::findOrFail($request->token_id);
+        $token->payment_method = $request->payment_method;
+        $token->save();
+
+        Toastr::success('Payment method updated successfully');
+        return back();
+    }
     public function token_export(Request $request)
     {
 
         $store_id = Helpers::get_store_id();
-        $tokens = PosToken::with("tokenItems", "branch", "client")->where('store_id', $store_id)->get();
+        $preset = request('date_range') ?? 'today';
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+        $formatted_from  = $range['start'];
+        $formatted_to = $range['end'];
+
+        $tokens = PosToken::with("tokenItems", "branch", "client")->where('store_id', $store_id)->whereBetween('created_at', [$formatted_from, $formatted_to])->get();
 
         foreach ($tokens as $key => $token) {
             $pdfUrl = asset('storage/app/public/store/tokens/')  . '/' . $token->pdf;
+            $itemsTax = $token->tokenItems
+                ->pluck('gst_percent')
+                ->filter()
+                ->implode('%, ');
 
             $data[$key] = [
                 $token->token_number,
@@ -526,9 +573,11 @@ class SalespointController extends Controller
                 $token->client?->f_name ?? ($token->client->name ?? 'Walk-in Customer'),
                 $token->order_from,
                 $token->subtotal,
-                $token->gst_type,
+                $itemsTax,
                 $token->gst_amount,
                 $token->delivery,
+                $token->coupon,
+                $token->discount,
                 $token->total,
                 $token->payment_method,
                 $token->payment_status,
@@ -538,7 +587,7 @@ class SalespointController extends Controller
             ];
         }
 
-        $headings =  ['Token Number', 'Branch', 'Client', 'Order Type',  'Subtotal', 'GST Type', 'GST Amount', 'Delivery', 'Total', 'Payment Method', 'Payment Status', 'Token PDF', 'Address Type', 'Created At'];
+        $headings =  ['Token Number', 'Branch', 'Client', 'Order Type',  'Subtotal', 'GST %', 'GST Amount', 'Delivery', 'Coupon', 'Discount', 'Total', 'Payment Method', 'Payment Status', 'Token PDF', 'Address Type', 'Created At'];
 
         return Excel::download(new TokenExport($data, $headings), 'Tokens_' .  time() . '.xlsx');
     }
@@ -690,6 +739,20 @@ class SalespointController extends Controller
         $branches = Branch::where('store_id', $storeId)->get();
         return view('vendor-views.salespoint.report', compact('sales', 'colors', 'data', 'branch_id', 'items', 'branches', 'preset'));
     }
+    public function items_import(Request $request)
+    {
+        $file = $request->file('file');
+        // $import = new POSInvItemImport(Helpers::get_store_id());
+        $import = new POSItemImport(Helpers::get_store_id());
+        Excel::import($import, $file);
+        if (!empty($import->failedRows)) {
+            // dd($import->failedRows);
+        } else {
+        }
+
+        Toastr::success('Excel file imported successfully.');
+        return redirect()->back();
+    }
     public function items(Request $request, $action = 'view')
     {
         $store_id = Helpers::get_store_id();
@@ -702,14 +765,16 @@ class SalespointController extends Controller
         if ($action == 'export') {
             foreach ($posItems as $key => $item) {
                 $data[$key] = [
+                    $item->id,
                     ucfirst($item->name),
                     $item->qty,
                     $item->qty_left,
                     $item->price,
+                    $item->gst_percent,
                     ucfirst($item->branch_name) . ' (' . $item->branch_type . ')',
                 ];
             }
-            $headings =  ['Item Name',  'Added Stock',  'Current Stock', 'Price', 'Branch'];
+            $headings =  ["Item ID", 'Item Name',  'Added Stock',  'Current Stock', 'Price', "GST %", 'Branch'];
 
             return Excel::download(new POSItemsExport($data, $headings), 'POS_Items_' .  time() . '.xlsx');
         }
@@ -801,13 +866,14 @@ class SalespointController extends Controller
 
         // Fetch data for each branch
         $data['items'] = DB::table('branch_inventory_item as bi')
-            ->join('branches as b', 'b.id', 'bi.branch_id')
-            ->whereIn('inventory_item_id', $itemIds)
-            ->where('branch_id', $branchId)
+            ->join('branches as b', 'b.id', '=', 'bi.branch_id')
+            ->whereIn('bi.inventory_item_id', $itemIds)
+            ->where('bi.branch_id', $branchId)
             ->select('bi.*', 'b.gst_number')
-            ->get();
+            ->get()
+            ->keyBy('inventory_item_id');
+
         $data['gst_status'] = $branch->gst_number ? true : false;
-        // ->keyBy('bi.inventory_item_id');
         // ->keyBy('branch_id');
         return response()->json($data);
     }

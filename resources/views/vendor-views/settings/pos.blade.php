@@ -1,3 +1,4 @@
+
  @extends('layouts.vendor.app')
 
  @section('title', 'POS Settings')
@@ -64,7 +65,7 @@
 
                  <!-- Body -->
                  <div class="card-body row align-items-end">
-                     <div class="col-sm-4 p-2 ">
+                     <div class="col-sm-3 p-2 ">
                          <div class="form-group mb-0 ">
                              <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
                                  for="token_footer_line_status">
@@ -84,7 +85,7 @@
                                  value="{{ $store?->token_footer_line }}" class="form-control">
                          </div>
                      </div>
-                     <div class="col-sm-4 p-2 ">
+                     <div class="col-sm-3 p-2 ">
                          <div class="form-group mb-0  p-1 border rounded ">
                              <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
                                  for="token_det_in_account">
@@ -102,7 +103,28 @@
                              </label>
                          </div>
                      </div>
-                     <div class="col-sm-4 p-2 ">
+
+                     <div class="col-sm-3 p-2 ">
+                         <div class="form-group mb-0 ">
+                             <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
+                                 for="delivery_charges_gst_pos">
+                                 <span>GST on Delivery Charges <span class="form-label-secondary" data-toggle="tooltip"
+                                         data-placement="right"
+                                         data-original-title="{{ translate('messages.this gst percent will be applied on delivery charges of pos token ') }}"><img
+                                             src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"></span></span>
+                                 <input type="hidden" name="delivery_charges_gst_pos" value="0">
+                                 <input type="checkbox" class="toggle-switch-input" name="delivery_charges_gst_pos"
+                                     id="delivery_charges_gst_pos" value="1"
+                                     {{ $store?->delivery_charges_gst_pos ? 'checked' : '' }}>
+                                 <span class="toggle-switch-label">
+                                     <span class="toggle-switch-indicator"></span>
+                                 </span>
+                             </label>
+                             <input type="text" id="delivery_charges_gst_percent" name="delivery_charges_gst_percent"
+                                 value="{{ $store?->delivery_charges_gst_percent }}" class="form-control">
+                         </div>
+                     </div>
+                     <div class="col-sm-3 p-2 ">
                          <div class="form-group mb-0  p-1 border rounded ">
                              <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
                                  for="auto_invoice_pos">
@@ -119,27 +141,29 @@
                              </label>
                          </div>
                      </div>
-                     <div class="col-sm-4 p-2 mb-3">
+                     <div class="col-sm-3 p-2 mb-3">
                          <label class="form-label" for="pos_daybook_entry">POS Daybook entry time</label>
                          <select class="form-control" name="pos_daybook_entry" id="pos_daybook_entry">
-                             <option value="end_of_day" {{ $store?->pos_daybook_entry == 'end_of_day' ? 'selected' : '' }}>
+                             <option value="end_of_day"
+                                 {{ $store?->pos_daybook_entry == 'end_of_day' ? 'selected' : '' }}>
                                  End of Day</option>
                              <option value="token_generate"
                                  {{ $store?->pos_daybook_entry == 'token_generate' ? 'selected' : '' }}>On Token Generate
                              </option>
                          </select>
                      </div>
-                     <div class="col-sm-4 p-2 mb-3">
+                     <div class="col-sm-3 p-2 mb-3">
                          <label class="form-label" for="pos_account">POS Account entry time</label>
                          <select class="form-control" name="pos_account_entry" id="pos_account">
-                             <option value="end_of_day" {{ $store?->pos_account_entry == 'end_of_day' ? 'selected' : '' }}>
+                             <option value="end_of_day"
+                                 {{ $store?->pos_account_entry == 'end_of_day' ? 'selected' : '' }}>
                                  End of Day</option>
                              <option value="token_generate"
                                  {{ $store?->pos_account_entry == 'token_generate' ? 'selected' : '' }}>On Token Generate
                              </option>
                          </select>
                      </div>
-                     <div class="col-sm-4 p-2 mb-3">
+                     <div class="col-sm-3 p-2 mb-3">
                          <label class="form-label" for="address_on_token">Address on Token</label>
                          <select class="form-control" name="address_on_token" id="address_on_token">
                              <option value="branch" {{ $store?->address_on_token == 'branch' ? 'selected' : '' }}>
@@ -149,7 +173,7 @@
                              </option>
                          </select>
                      </div>
-                     {{-- <div class="col-sm-4 p-2 mb-3">
+                     {{-- <div class="col-sm-3 p-2 mb-3">
                          <div class="form-group mb-0  p-1 border rounded ">
                              <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
                                  for="kitchen_token">
@@ -198,7 +222,7 @@
                                  </div>
                              @endforeach
                          </div>
-                     </div> 
+                     </div>
 
                      <div class="col-12  mb-3">
                          <button style="float:right" class="btn btn-lg btn-primary my-2">Update</button>

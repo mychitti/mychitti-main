@@ -37,12 +37,17 @@
                     <div class="search--button-wrapper">
                         <h5 class="card-title">{{ translate('messages.POS_items_list') }}<span
                                 class="badge badge-soft-dark ml-2" id="itemCount">{{ count($posItems) }}</span></h5>
+
+                        <a data-toggle="modal" data-target="#importExcelModal" class="btn btn-outline-primary btn_sm">Import
+                        </a>
+
                         <a href="{{ route('vendor.pos.items', ['action' => 'export']) }}"
-                                class="btn btn-outline-primary">{{ translate('messages.export') }}</a>
+                            class="btn btn-outline-primary">{{ translate('messages.export') }}</a>
                         <form action="" class="d-flex">
                             <div class="search_inp">
                                 <div class="input-group">
-                                    <input type="text" placeholder="Search Item Name" value="{{ request()->search  ?? ''}}" name="search" class=" form-control">
+                                    <input type="text" placeholder="Search Item Name"
+                                        value="{{ request()->search ?? '' }}" name="search" class=" form-control">
                                     <button type="submit" class="btn btn-white bg-light border outline-0 search-clear-btn">
                                         <i class="tio-search"></i>
                                     </button>
@@ -76,10 +81,12 @@
                                 <tr>
                                     <th class="border-0">{{ translate('sl') }}</th>
                                     {{-- <th class="border-0">Type</th> --}}
+                                    <th class="border-0 ">ID</th>
                                     <th class="border-0 ">Name</th>
                                     <th class="border-0 ">Added Stock</th>
                                     <th class="border-0 ">Current Stock</th>
                                     <th class="border-0 ">Price</th>
+                                    <th class="border-0 ">GST</th>
                                     <th class="border-0 ">Branch</th>
                                     <th class="border-0 ">Action</th>
                                 </tr>
@@ -89,7 +96,7 @@
                                 @foreach ($posItems as $key => $item)
                                     <tr>
                                         <td>{{ $key + 1 }}</td>
-                                        {{-- <td>{{ $item->item_type }}</td> --}}
+                                        <td>{{ $item->id }}</td>
                                         <td>
                                             {{ ucfirst($item->name) }}
                                         </td>
@@ -101,6 +108,9 @@
                                         </td>
                                         <td>
                                             {{ _price($item->price) }}
+                                        </td>
+                                         <td>
+                                            {{ $item->gst_percent  ?? 0}}%
                                         </td>
                                         <td>
                                             {{ ucfirst($item->branch_name) }}
@@ -150,7 +160,74 @@
             </div>
         @endif
     </div>
+    <div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
+                    <button type="button" class="close close_modal" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ route('vendor.pos.items_import') }}" method="post" enctype="multipart/form-data">
+                        @csrf
+                        <a href="{{ asset('storage/app/public/util/pos_item_example.xlsx') }}" download
+                            class="btn btn-outline-primary mb-2">View Example</a>
+                        <div class="form-group">
+                            <label for="file">Upload Excel File</label>
+                            <input type="file" style="height: 46px !important;" name="file" class="form-control"
+                                id="file" accept=".xlsx,.xls">
+                        </div>
+                        <div class="form-group w-100 ">
+                            <button type="submit" class="btn btn-primary float-right">Import</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="p-3">
+                    <h4>How It Works</h4>
+                    <ol>
+                        <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
+                        <li>
+                            <strong>Item ID</strong><br>
+                            Enter the existing Item ID for which you want to update details.
+                            Each row represents one item in one branch.
+                        </li>
 
+                        <li>
+                            <strong>Price</strong><br>
+                            Enter the selling price of the item for the specified branch.
+                        </li>
+
+                        <li>
+                            <strong>Stock</strong><br>
+                            Enter the available stock quantity for the item in that branch.
+                        </li>
+
+                        <li>
+                            <strong>GST Rate</strong><br>
+                            Enter the GST percentage applicable to the item
+                            (e.g., <code>0</code>, <code>5</code>, <code>12</code>, <code>18</code>, <code>28</code>).
+                        </li>
+
+                        <li>
+                            <strong>Branch ID</strong><br>
+                            Enter the Branch ID where this item belongs.
+                            <a href="{{ route('vendor.pos.branch.index') }}">Get branch ids from here</a>
+                        </li>
+
+                        <li>
+                            <strong>Important Rules</strong><br>
+                            • <strong>Item ID</strong> and <strong>Branch ID</strong> are mandatory.<br>
+                            • You can add multiple rows for the same Item ID if it exists in multiple branches.<br>
+                            • Leave a field blank only if you do not want to update that value.<br>
+                            • Existing records will be <strong>updated</strong>, not duplicated.
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script_2')

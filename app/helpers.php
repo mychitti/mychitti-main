@@ -1754,6 +1754,7 @@ if (!function_exists('_branchInventoryItems')) {
                 'b.name as branch_name',
                 'b.type as branch_type',
                 'bi.price',
+                'bi.gst_percent',
                 DB::raw("'Inventory Item' as item_type")
             );
 

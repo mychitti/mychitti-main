@@ -30,6 +30,8 @@ class StoreConfig extends Model
         'token_footer_line',
         'token_footer_line_status',
         'token_det_in_account',
+        'delivery_charges_gst_pos',
+        'delivery_charges_gst_percent',
         'pos_daybook_entry',
         'pos_account_entry',
         'address_on_token',

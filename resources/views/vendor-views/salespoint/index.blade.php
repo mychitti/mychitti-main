@@ -492,7 +492,7 @@
                          </div>
 
 
-                       
+
 
 
 
@@ -601,6 +601,14 @@
                                              onkeyup="calculateTotals()" class="delivery_show delivery_inp"
                                              value="0"></span>
                                  </div>
+                                 @if ($delivery_gst['status'] ?? 0)
+                                     <div class="total-row">
+                                         <span class="total-label">Delivery GST Amount:</span>
+                                         <input type="hidden" name="delivery_gst_percent" class="delivery_gst_percent"
+                                             value = "{{ $delivery_gst['percent'] }}">
+                                         <span class="gst-amount">₹<span class="delivery_gst_amount">0</span>
+                                     </div>
+                                 @endif
                                  <div class="total-row final-total">
                                      <span class="total-label">Total:</span>
                                      <span class="total-amount">₹<span class="total_show">0</span></span>
@@ -800,8 +808,17 @@
              }
 
              total = subtotal + delivery - coupon_amount - discount_amount;
+
+             var delivery_gst_percent = parseFloat($('.delivery_gst_percent').val()) || 0;
+
+             var delivery_gst_amount = (delivery * delivery_gst_percent) / 100;
+
+             total += delivery_gst_amount;
+
              $(".subtotal_show").text(subtotal.toFixed(3));
+             $(".delivery_gst_amount").text(delivery_gst_amount.toFixed(3));
              $(".total_show").text(total.toFixed(3));
+
          }
          $(".pos_search").on("keyup", function() {
              var searchTerm = $(this).val().toLowerCase();

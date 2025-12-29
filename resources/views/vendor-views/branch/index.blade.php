@@ -124,6 +124,7 @@
                             <thead class="thead-light">
                                 <tr>
                                     <th class="border-0">{{ translate('sl') }}</th>
+                                    <th class="border-0">ID</th>
                                     <th class="border-0">Name</th>
                                     <th class="border-0 ">Address</th>
                                     <th class="border-0 ">GST Number</th>
@@ -137,6 +138,7 @@
                                 @foreach ($branches as $key => $value)
                                     <tr>
                                         <td>{{ $key + $branches->firstItem() }}</td>
+                                        <td>{{ $value->id }}</td>
                                         <td>{{ ucfirst($value->name) }}</td>
                                         <td style="white-space: normal; word-break: break-word; max-width:180px;">
                                             {{ $value->address }}

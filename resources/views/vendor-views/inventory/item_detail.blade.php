@@ -4,7 +4,7 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         .specs_div {
             height: 250px;
@@ -307,7 +307,7 @@
                                         src="{{ asset('storage/app/public/inventory-item/barcode/') . '/' . $item->barcode }}"
                                         alt="">
                                 @else
-                                        {!! DNS1D::getBarcodeSVG($item->sku_id, 'C128', 2, 60, 'black', false) !!}
+                                    {!! DNS1D::getBarcodeSVG($item->sku_id, 'C128', 2, 60, 'black', false) !!}
                                 @endif
                             </div>
                         </div>
@@ -414,12 +414,13 @@
                                                 ->first();
                                             $images = $vr_det ? json_decode($vr_det->images) : [];
                                         @endphp
-
-                                        @foreach ($images as $image)
-                                            <img src="{{ asset('storage/app/public/inventory-variations/' . $image) }}"
-                                                alt="Variation Image" class="img-thumbnail"
-                                                style="width: 50px; height: 50px;">
-                                        @endforeach
+                                        @if ($images)
+                                            @foreach ($images as $image)
+                                                <img src="{{ asset('storage/app/public/inventory-variations/' . $image) }}"
+                                                    alt="Variation Image" class="img-thumbnail"
+                                                    style="width: 50px; height: 50px;">
+                                            @endforeach
+                                        @endif
                                     </div>
                                 </td>
                                 <td>
@@ -458,10 +459,12 @@
                                                             <h5 class="section-title">Images</h5>
 
                                                             <div class="highlight-icons">
-                                                                @foreach ($images as $image)
-                                                                    <img src="{{ asset('storage/app/public/inventory-variations/' . $image) }}"
-                                                                        alt="Variation Image">
-                                                                @endforeach
+                                                                @if ($images)
+                                                                    @foreach ($images as $image)
+                                                                        <img src="{{ asset('storage/app/public/inventory-variations/' . $image) }}"
+                                                                            alt="Variation Image">
+                                                                    @endforeach
+                                                                @endif
                                                             </div>
                                                         </div>
                                                     </div>
@@ -472,14 +475,14 @@
 
 
                                                         <!-- sku barcode -->
-                                                        @if($vr_det)
-                                                        <div class="card mb-1 p-3" style="white-space: break-spaces;">
-                                                            <h5 class="section-title">Barcode</h5>
+                                                        @if ($vr_det)
+                                                            <div class="card mb-1 p-3" style="white-space: break-spaces;">
+                                                                <h5 class="section-title">Barcode</h5>
                                                                 @if ($vr_det->sku)
                                                                     {!! DNS1D::getBarcodeSVG($vr_det->sku, 'C128', 2, 60, 'black', false) !!}
-                                                                    <span>{{$vr_det->sku}}</span>
+                                                                    <span>{{ $vr_det->sku }}</span>
                                                                 @endif
-                                                        </div>
+                                                            </div>
                                                         @endif
                                                         <!-- Highlights Section -->
                                                         <div class="card mb-1 p-3" style="white-space: break-spaces;">

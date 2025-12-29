@@ -189,6 +189,7 @@
                                                     <tr>
                                                         <th></th>
                                                         <th class="border-0">{{ translate('sl') }}</th>
+                                                        <th class="border-0"> ID</th>
                                                         <th class="border-0"> Name</th>
                                                         <th class="border-0 hide_on_phone"> Item Type</th>
                                                         <th class="border-0 hide_on_phone"> Brand</th>
@@ -213,6 +214,9 @@
                                                                     id="">
                                                             </td>
                                                             <td>{{ $key + $inventory_items->firstItem() }}</td>
+                                                             <td >
+                                                                {{$item->id }}
+                                                            </td>
                                                             <td>
                                                                 <a class="media align-items-center">
                                                                     <img class="avatar avatar-lg mr-3 onerror-image"
