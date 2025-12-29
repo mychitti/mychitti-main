@@ -160,7 +160,7 @@ class FrontController extends Controller
     public function approve_success(Request $request)
     {
         return view('vendor-views.documents.approve_success');  
-    }
+    } 
     public function testing(Request $request)
     {
         echo 'united repository test from 2 3:  ' . $request->server('SERVER_NAME');
