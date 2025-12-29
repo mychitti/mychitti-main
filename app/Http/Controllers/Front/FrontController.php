@@ -163,7 +163,7 @@ class FrontController extends Controller
     }
     public function testing(Request $request)
     {
-        echo 'united repository test from :  ' . $request->server('SERVER_NAME');
+        echo 'united repository test from 2 :  ' . $request->server('SERVER_NAME');
         die;
         $url = asset('storage/app/public/promotional_banner/2024-10-06-67027935e17c5.png');
 
