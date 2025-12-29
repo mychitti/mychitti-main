@@ -259,9 +259,9 @@ class LoginController extends Controller
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
-                return redirect()->to('https://vendor-employee.mychitti.shop');
+                return redirect()->to('https://vendor-employee.mychitti.shop/dashboard');
             }
-            return redirect()->to('https://vendor.mychitti.shop');
+            return redirect()->to('https://vendor.mychitti.shop/dashboard');
         }
 
         return redirect()->back()->withInput($request->only('email', 'remember'))
