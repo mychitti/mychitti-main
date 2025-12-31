@@ -54,8 +54,19 @@ jobs:
         php artisan cache:clear && \
         php artisan config:cache && \
         php artisan view:cache && \
+
+        mkdir -p storage/app/tmp && \
+        chown -R apache:apache storage/app/tmp && \
+        chmod -R 775 storage/app/tmp && \
+
+        mkdir -p storage/app/mpdf_temp && \
+        chown -R apache:apache storage/app/mpdf_temp && \
+        chmod -R 775 storage/app/mpdf_temp && \
+
+        restorecon -Rv /var/www/html/admin/storage/app/tmp && \
+        restorecon -Rv /var/www/html/admin/storage/app/mpdf_temp && \
+
         chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
         chmod -R 775 storage/framework storage/logs bootstrap/cache && \
-        php artisan migrate --force && \
         echo 'Deployment completed successfully!'
         "

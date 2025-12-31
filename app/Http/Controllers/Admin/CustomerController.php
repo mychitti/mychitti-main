@@ -119,7 +119,7 @@ class CustomerController extends Controller
             'f_name' => 'required',
             'l_name' => 'required',
             'email' => 'required|unique:users',
-            'phone' => 'required|unique:users|max:10',
+            'phone' => 'required|unique:users',
             'password' => ['required', RulesPassword::min(8)],
         ], [
             'f_name.required' => 'The first name field is required.',

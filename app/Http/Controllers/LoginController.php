@@ -280,6 +280,7 @@ class LoginController extends Controller
         $vendor = Vendor::where('id', $store->vendor_id)->first();
 
         if (!$store) {
+            die('phone not exist');
             return redirect()->back()->withInput($request->only('phone'))
                 ->withErrors(['Phone number does not exist.']);
         }
@@ -287,19 +288,23 @@ class LoginController extends Controller
         $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->first();
 
         if ($dbOtp && $dbOtp->otp != $otp) {
+            die('invalid otp');
             return redirect()->back()->withErrors(['Invalid OTP.']);
         }
 
         if ($vendor->stores[0]->status == 0) {
+            die('inactive vendor');
             return redirect()->back()->withErrors(['Vendor is inactive.']);
         }
         // login attempt
         Auth::guard('vendor')->login($vendor);
 
         if (auth('vendor')->check()) {
+            // die('otp login success');
             DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->delete();
             return redirect()->route('vendor.dashboard');
         } else {
+            die('otp login failed');
             return redirect()->back()->withErrors(['OTP login failed.']);
         }
     }

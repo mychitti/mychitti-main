@@ -4625,7 +4625,9 @@ if (!function_exists('_send_confirmation_sms')) {
         } else {
             $msg =  "Dear User , Your OTP for Mobile verification is " . $otp . " - Regards MY CHITTI APP.";
         }
-        $num =  $phone;
+        // $num =  $phone;
+        $num = substr(preg_replace('/\D/', '', $phone), -10);
+
         $ms = rawurlencode($msg); //This for encode your message content
         $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey . '&senderid=' . $apisender .
             '&channel=2&DCS=0&flashsms=0&number=' . $num . '&text=' . $ms . '&route=1';

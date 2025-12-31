@@ -58,7 +58,7 @@
                         </div>
                         <div class="col-sm-6 mb-3">
                             <label for="phoneInp" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control iti__tel-input" style="width: 100%;" name="phone" id="phoneInp" placeholder="Ex: 9988776655">
+                            <input type="tel" class="form-control " style="width: 100%;" name="phone" id="phoneInp" placeholder="Ex: 9988776655">
                             <div class="form-text text-danger response__phone"></div>
                         </div>
                         <div class="col-sm-6">
@@ -105,4 +105,6 @@
         @endsection
 
         @push('script_2')
+    @include('front-views.partials.tel_input')
+
         @endpush

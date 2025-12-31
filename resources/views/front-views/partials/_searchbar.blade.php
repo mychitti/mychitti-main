@@ -4,10 +4,12 @@
         <div class="modal-content">
             <div class="modal-header">
                 @php($store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
+                <a href="{{ route('home') }}" class="navbar-brand   nav-link " style=" width: 150px;">
                 <img style="width:150px" class="navbar-brand-logo initial--36 onerror-image onerror-image d-none d-sm-block "
                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
                     alt="Logo">
+                    </a>
                 <div class="position-relative search_inp_grp">
                     <input onkeyup="searchBar('autocomplete3', this)" id="mainSearchbar"
                         class="form-control border-2 border-secondary  py-2 px-4 rounded-pill new_searchbar"

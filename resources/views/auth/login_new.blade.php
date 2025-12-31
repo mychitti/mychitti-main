@@ -1181,11 +1181,11 @@ $log_email_succ = session()->get('log_email_succ');
 
 
                             <!-- Form Group -->
-                            <div class="js-form-message form-group">
+                            <div class="js-form-message form-group mb-2">
                                 <label class=""
                                     for="signinSrEmail">{{ translate('messages.mobile_number') }}</label>
 
-                                <input type="text" class="login-input mb-2" name="phone" id="signinSrMobile"
+                                <input type="tel" class="login-input mb-2" name="phone" id="signinSrMobile"
                                     tabindex="1" placeholder="Ex: 8899779988" aria-label="8899779988" required
                                     data-msg="{{ translate('Please_enter_mobile_number.') }}">
                             </div>
@@ -1273,6 +1273,7 @@ $log_email_succ = session()->get('log_email_succ');
     <script src="{{ asset('public/assets/admin') }}/js/theme.min.js"></script>
     <script src="{{ asset('public/assets/admin') }}/js/toastr.js"></script>
     {!! Toastr::message() !!}
+    @include('front-views.partials.tel_input')
 
     @if ($errors->any())
         <script>

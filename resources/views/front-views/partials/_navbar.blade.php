@@ -200,7 +200,7 @@
             </div>
             <div class="modal-body d-flex align-items-center flex-column">
                 <div class="input-group w-75 mx-auto d-flex">
-                    <input type="search" onkeyup="searchBar('autocomplete', this)" class="form-control p-3"
+                    <input type="search" class="form-control p-3 searchBarBtn" 
                         placeholder="keywords" aria-describedby="search-icon-1" autocomplete="off">
                     <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
                 </div>

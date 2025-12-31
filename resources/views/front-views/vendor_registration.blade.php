@@ -283,17 +283,19 @@
                         <div class="mb-3">
                             <h4 class="text-center">Phone Verification</h4>
 
-                            <label for="phoneInp" class="form-label">Phone Number</label>
+                            <label for="phoneInp" class="form-label w-100 text-center">Phone Number</label>
                             <!-- class=iti__tel-input id="phoneInp" -->
-                            <div class="d-flex align-items-center">
-                                <span
-                                    style="background: white; padding: 5px; border: 1px solid #d8d8d8; border-radius: 9px;">+91</span>
-                                <input type="number" class="form-control phone_number" style="width: 100%;" name="phone"
+                            <div class="d-flex justify-content-center">
+                                {{-- <span
+                                    style="background: white; padding: 5px; border: 1px solid #d8d8d8; border-radius: 9px;">+91</span> --}}
+                                <input type="tel" class="form-control phone_number" style="width: 100%;" name="phone"
                                     placeholder="Ex: 9988776655">
                             </div>
                             <div class="form-text text-danger response__phone"></div>
                         </div>
-                        <button type="submit" class="w-100 btn btn-primary send_otp">Send OTP</button>
+                        <div class="d-flex justify-content-center">
+                            <button type="submit" class=" btn btn-primary send_otp" style="width: 246px;">Send OTP</button>
+                        </div>
                     </form>
                     <form id="verify_screen" style="display: none;" class="otpForm"
                         action="{{ route('verify-vendor-otp') }}" method="post">
@@ -873,8 +875,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal"
-                        id="cancelClaimBtn">Okay Got it !</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" id="cancelClaimBtn">Okay Got it
+                        !</button>
                 </div>
             </div>
         </div>
@@ -888,41 +890,40 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value }}&libraries=drawing,places">
     </script>
+    @include('front-views.partials.tel_input')
     <script>
         $(".phone_number").on("keyup", function() {
-            if ($(this).val().length == 10) {
-                $.ajaxSetup({
-                    headers: {
-                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
-                    },
-                });
-                $.post({
-                    url: "{{ route('check-business') }}",
-                    data: {
-                        phone: $(this).val(),
-                    },
-                    success: function(data) {
-                        if (data.status == 1) {
+            $.ajaxSetup({
+                headers: {
+                    "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                },
+            });
+            $.post({
+                url: "{{ route('check-business') }}",
+                data: {
+                    phone: $(this).val(),
+                },
+                success: function(data) {
+                    if (data.status == 1) {
 
-                            if (!data.in_verification && !data.verified) {
-                                $('#claimBusinessBtn').attr('href',
-                                    "{{ route('business-verification') }}" + '?phone=' + data.phone
-                                );
-                                showClaimModal(data.name);
-                            } else if (data.in_verification) {
-                                showClaimedModal(data.name);
+                        if (!data.in_verification && !data.verified) {
+                            $('#claimBusinessBtn').attr('href',
+                                "{{ route('business-verification') }}" + '?phone=' + data.phone
+                            );
+                            showClaimModal(data.name);
+                        } else if (data.in_verification) {
+                            showClaimedModal(data.name);
 
-                                toasterNotification(
-                                    "Business is under verification process. Please wait for admin approval."
-                                );
-                            }
-                            {{-- else {
+                            toasterNotification(
+                                "Business is under verification process. Please wait for admin approval."
+                            );
+                        }
+                        {{-- else {
                                 toasterNotification("Phone number is already registered.");
                             } --}}
-                        } else {}
-                    },
-                });
-            }
+                    } else {}
+                },
+            });
 
         });
 
@@ -1511,17 +1512,6 @@
 
         }
 
-        const inputs = document.querySelectorAll('input[type="tel"]');
-
-        inputs.forEach(input => {
-            window.intlTelInput(input, {
-                initialCountry: "in",
-                utilsScript: "https://mychitti.net/public/assets/admin/intltelinput/js/utils.js",
-                autoInsertDialCode: true,
-                nationalMode: false,
-                formatOnDisplay: false,
-            });
-        });
 
         $(".add_more_cat").on('change', function() {
             if ($(this).prop('checked') == true) {

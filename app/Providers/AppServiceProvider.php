@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot() 
     {
+         Paginator::useBootstrap();
         // View::composer('*', function ($view) {
         //     $zone_id = Session::get('zone_ids', json_encode([])); // stored by _setLocation()
 

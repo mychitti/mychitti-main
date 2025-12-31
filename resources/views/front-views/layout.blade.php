@@ -713,38 +713,67 @@
         });
         $('#keywords').select2()
 
-        function searchBar(resultElem, elem) {
-            if ($(elem).val() == '') {
-                $('#' + resultElem).html('')
-            } else {
-                if ($(elem).val().length > 2) {
+        let searchTimeout = null;
+let currentRequest = null;
 
+$("#searchBarBtn").on('keyup', function() {
+    searchBar('autocomplete', this);
+});
 
-                    $.ajaxSetup({
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        }
-                    });
-                    $.get({
-                        url: "{{ route('searchbar-web') }}",
-                        data: {
-                            keyword: $(elem).val()
-                        },
-                        beforeSend: function() {
-                            $('#loading').show()
-                        },
-                        success: function(data) {
-                            $('#' + resultElem).html(data.html)
-
-                        },
-                        complete: function() {
-                            $('#loading').hide()
-                        }
-                    });
+function searchBar(resultElem, elem) {
+    // Clear previous timeout
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    // Abort previous AJAX request if it's still running
+    if (currentRequest && currentRequest.readyState !== 4) {
+        currentRequest.abort();
+    }
+    
+    if ($(elem).val() == '') {
+        $('#' + resultElem).html('');
+        $('#loading').hide();
+        return;
+    }
+    
+    if ($(elem).val().length >= 2) {
+        // Debounce: wait 300ms after user stops typing
+        searchTimeout = setTimeout(function() {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
-            }
-
-        }
+            });
+            
+            currentRequest = $.get({
+                url: "{{ route('searchbar-web') }}",
+                data: {
+                    keyword: $(elem).val()
+                },
+                beforeSend: function() {
+                    $('#loading').show();
+                },
+                success: function(data) {
+                    $('#' + resultElem).html(data.html);
+                    console.log('done');
+                },
+                error: function(xhr, status, error) {
+                    // Ignore aborted requests
+                    if (status !== 'abort') {
+                        console.error('Search error:', error);
+                    }
+                },
+                complete: function(xhr, status) {
+                    // Only hide loading if request wasn't aborted
+                    if (status !== 'abort') {
+                        $('#loading').hide();
+                    }
+                }
+            });
+        }, 300); // Wait 300ms after last keypress
+    }
+}
     </script>
 
     <script>

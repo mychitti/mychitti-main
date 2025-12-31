@@ -47,8 +47,6 @@
                 : 'min';
         @endphp
 
-                            {{-- @php print_r($store); @endphp--}}
-                            @php print_r($store['address']); @endphp 
         @php($defaultLang = 'en')
         <!-- End Page Header -->
         <form action="{{ route('admin.store.update', [$store['id']]) }}" method="post" class="js-validate"
