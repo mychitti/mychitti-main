@@ -63,8 +63,8 @@ jobs:
         chown -R apache:apache storage/app/mpdf_temp && \
         chmod -R 775 storage/app/mpdf_temp && \
 
-        restorecon -Rv /var/www/html/admin/storage/app/tmp && \
-        restorecon -Rv /var/www/html/admin/storage/app/mpdf_temp && \
+        restorecon -Rv ${{ matrix.path }}/storage/app/tmp && \
+        restorecon -Rv ${{ matrix.path }}/storage/app/mpdf_temp && \
 
         chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
         chmod -R 775 storage/framework storage/logs bootstrap/cache && \
