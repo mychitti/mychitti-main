@@ -153,22 +153,49 @@ class FrontController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function icons_view() 
+    public function icons_view()
     {
         return view('front-views.icons');
     }
     public function approve_success(Request $request)
     {
-        return view('vendor-views.documents.approve_success');  
-    } 
+        return view('vendor-views.documents.approve_success');
+    }
     public function testing(Request $request)
     {
+
+        // Create a test file
+        $content = "This is a test file";
+        $file = tmpfile(); // Creates a temporary file
+        fwrite($file, $content);
+        rewind($file); // Reset file pointer to beginning
+
+        // Get the file path
+        $filePath = stream_get_meta_data($file)['uri'];
+
+        // Now upload
+      echo   Helpers::upload('vendor_login/', 'txt', $filePath);
+
+        // Clean up
+        fclose($file);
+        die;
+        return view('front-views.test_view');
+        die;
+        // DB::statement('ALTER TABLE items ADD FULLTEXT(name)');
+        // DB::statement('ALTER TABLE categories ADD FULLTEXT(name)');
+        // DB::statement('ALTER TABLE stores ADD FULLTEXT(name)');
+        // DB::statement('ALTER TABLE service_keywords ADD FULLTEXT(keyword)');
+
+        return 'Fulltext indexes added successfully';
+
+        die;
+
         echo 'united repository test from *composer check ::  ' . $request->server('SERVER_NAME');
         die;
         $url = asset('storage/app/public/promotional_banner/2024-10-06-67027935e17c5.png');
 
-        $tmpFile = storage_path('app/tmp_ocr.png'); 
-        file_put_contents($tmpFile, file_get_contents($url));  
+        $tmpFile = storage_path('app/tmp_ocr.png');
+        file_put_contents($tmpFile, file_get_contents($url));
 
         $ch = curl_init("http://159.65.159.250:5000/ocr");
 
@@ -656,64 +683,190 @@ class FrontController extends Controller
 
     public function search(Request $request)
     {
-
         $zone_id = json_decode($this->zone_id, true);
+        $keyword = trim($request->keyword);
 
-        $resultItems = '';
-        $matchingProducts = DB::table('items')->where('items.name', 'like', '%' . $request->keyword . '%')
+        if (empty($keyword) || strlen($keyword) < 2) {
+            return response()->json([
+                'status' => false,
+                'html' => '<div class="p-5 fs-4">Please enter at least 2 characters...</div>'
+            ]);
+        }
+
+        $searchTerm = '%' . $keyword . '%';
+        $startsWithTerm = $keyword . '%';
+        $allResults = collect();
+
+        // 1. Search Products with relevance scoring
+        $products = DB::table('items')
+            ->join('stores', function ($join) {
+                $join->whereRaw("FIND_IN_SET(stores.id, items.store_ids)");
+            })
+            ->join('categories', 'categories.id', '=', 'items.category_id')
+            ->where(function ($query) use ($keyword, $searchTerm) {
+                $query->where('items.name', 'like', $searchTerm)
+                    ->orWhereRaw('items.name REGEXP ?', ['[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]']);
+            })
             ->where('items.is_approved', 1)
             ->where('items.status', 1)
-            ->join('stores', 'items.store_id', 'stores.id')
-            ->join('categories', 'categories.id', 'items.category_id')
-            ->whereIn('stores.zone_id', $zone_id)
             ->where('items.module_id', 6)
-            ->select('categories.slug as cat_slug', 'items.slug', 'items.name')
+            ->whereIn('stores.zone_id', $zone_id)
+            ->selectRaw(
+                "categories.slug as cat_slug,
+            items.slug,
+            items.name,
+            items.id,
+            NULL as keyword_text,
+            'product' as result_type,
+            CASE 
+                WHEN LOWER(items.name) = LOWER(?) THEN 100
+                WHEN items.name REGEXP ? THEN 80
+                WHEN LOWER(items.name) LIKE LOWER(?) THEN 50
+                ELSE 10
+            END as relevance_score",
+                [$keyword, '[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]', $startsWithTerm]
+            )
+            ->groupBy('items.id', 'items.slug', 'items.name', 'categories.slug')
             ->get();
 
-        // keywords =======================
-        $keyword = $request->keyword;
-        $keywordsMatch = ServiceKeyword::where('keyword', 'LIKE', "%{$keyword}%")->get();
+        // 2. Search Keywords with service details
+        $keywords = DB::table('service_keywords')
+            ->join('items', 'items.id', '=', 'service_keywords.service_id')
+            ->join('categories', 'categories.id', '=', 'items.category_id')
+            ->join('stores', function ($join) {
+                $join->whereRaw("FIND_IN_SET(stores.id, items.store_ids)");
+            })
+            ->where(function ($query) use ($keyword, $searchTerm) {
+                $query->where('service_keywords.keyword', 'LIKE', $searchTerm)
+                    ->orWhereRaw('service_keywords.keyword REGEXP ?', ['[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]']);
+            })
+            ->where('items.is_approved', 1)
+            ->where('items.status', 1)
+            ->where('items.module_id', 6)
+            ->whereIn('stores.zone_id', $zone_id)
+            ->selectRaw(
+                "categories.slug as cat_slug,
+            items.slug,
+            items.name,
+            items.id,
+            service_keywords.keyword as keyword_text,
+            'keyword' as result_type,
+            CASE 
+                WHEN LOWER(service_keywords.keyword) = LOWER(?) THEN 95
+                WHEN service_keywords.keyword REGEXP ? THEN 75
+                WHEN LOWER(service_keywords.keyword) LIKE LOWER(?) THEN 48
+                ELSE 8
+            END as relevance_score",
+                [$keyword, '[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]', $startsWithTerm]
+            )
+            ->groupBy('items.id', 'items.slug', 'items.name', 'categories.slug', 'service_keywords.keyword')
+            ->get();
 
-        foreach ($keywordsMatch as $result) {
-            $serviceId = $result->service_id;
-            $serviceName = DB::table('items')->join('categories', 'categories.id', 'items.category_id')->where('items.is_approved', 1)->where('items.module_id', 6)->where('items.id', $serviceId)->where('items.status', 1)->select('categories.slug as cat_slug', 'items.slug', 'items.name')->first();
-            if ($serviceName) {
-                $catSlug = $serviceName->cat_slug;
-                $serviceSlug = $serviceName->slug;
-                $name = $serviceName->name;
-                $resultItems .= '<li><a href="' . route('product.details', [$catSlug, $serviceSlug]) . '">' . $result->keyword . ' - ' . $name . ' </a></li>';
-            }
-        }
-        // end keywords ====================
-
-        $matchingCategories = Category::where('name', 'LIKE', "%{$request->keyword}%")->where('module_id', 6)
+        // 3. Search Categories
+        $categories = DB::table('categories')
+            ->where(function ($query) use ($keyword, $searchTerm) {
+                $query->where('name', 'LIKE', $searchTerm)
+                    ->orWhereRaw('name REGEXP ?', ['[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]']);
+            })
+            ->where('module_id', 6)
             ->where('position', 0)
             ->where('status', 1)
+            ->selectRaw(
+                "NULL as cat_slug,
+            slug,
+            name,
+            id,
+            NULL as keyword_text,
+            'category' as result_type,
+            CASE 
+                WHEN LOWER(name) = LOWER(?) THEN 90
+                WHEN name REGEXP ? THEN 70
+                WHEN LOWER(name) LIKE LOWER(?) THEN 45
+                ELSE 7
+            END as relevance_score",
+                [$keyword, '[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]', $startsWithTerm]
+            )
             ->get();
 
-        $matchingStores = Store::where('name', 'like', '%' . $request->keyword . '%')->where('module_id', 6)->where('status', 1)->whereIn('zone_id', $zone_id)->get();
+        // 4. Search Stores
+        $stores = DB::table('stores')
+            ->where(function ($query) use ($keyword, $searchTerm) {
+                $query->where('name', 'like', $searchTerm)
+                    ->orWhereRaw('name REGEXP ?', ['[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]']);
+            })
+            ->where('module_id', 6)
+            ->where('status', 1)
+            ->whereIn('zone_id', $zone_id)
+            ->selectRaw(
+                "NULL as cat_slug,
+            slug,
+            name,
+            id,
+            NULL as keyword_text,
+            'store' as result_type,
+            CASE 
+                WHEN LOWER(name) = LOWER(?) THEN 92
+                WHEN name REGEXP ? THEN 72
+                WHEN LOWER(name) LIKE LOWER(?) THEN 46
+                ELSE 7
+            END as relevance_score",
+                [$keyword, '[[:<:]]' . preg_quote($keyword, '/') . '[[:>:]]', $startsWithTerm]
+            )
+            ->get();
 
+        // Merge all results
+        $allResults = $allResults
+            ->concat($products)
+            ->concat($keywords)
+            ->concat($categories)
+            ->concat($stores);
 
-        foreach ($matchingProducts as $pro) {
-            $resultItems .= '<li><a href="' . route('product.details', [$pro->cat_slug, $pro->slug]) . '">' . $pro->name . ' </a></li> ';
-        }
-        foreach ($matchingCategories as $pro) {
-            $resultItems .= '<li><a href="' . route('category.listing', [$pro->slug]) . '">' . $pro->name . ' - Category </a></li>';
-        }
-        foreach ($matchingStores as $pro) {
-            $resultItems .= '<li><a href="' . route('store.details', [$pro->slug]) . '">' . $pro->name . ' - Store </a></li>';
-        }
+        // Sort by relevance and limit to 20
+        $allResults = $allResults
+            ->sortByDesc('relevance_score')
+            ->take(20)
+            ->values();
 
-        if (count($matchingProducts) || count($matchingCategories) || count($matchingStores) || count($keywordsMatch)) {
-            $html = '<ul class="list-unstyled mb-0">';
-            $html .= $resultItems;
-            $html .= '</ul>';
-
-            return response()->json(['status' => true, 'html' => $html]);
-        } else {
+        // If no results found
+        if ($allResults->isEmpty()) {
             $html = '<div class="p-5 fs-4">No Items Found...</div>';
             return response()->json(['status' => false, 'html' => $html]);
         }
+
+        // Build HTML output
+        $html = '<ul class="list-unstyled mb-0">';
+
+        foreach ($allResults as $result) {
+            $linkHtml = '';
+
+            switch ($result->result_type) {
+                case 'product':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . '</a></li>';
+                    break;
+
+                case 'keyword':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $linkHtml = '<li><a href="' . $url . '">' . e($result->keyword_text) . ' - ' . e($result->name) . '</a></li>';
+                    break;
+
+                case 'category':
+                    $url = route('category.listing', [$result->slug]);
+                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . ' - Category</a></li>';
+                    break;
+
+                case 'store':
+                    $url = route('store.details', [$result->slug]);
+                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . ' - Store</a></li>';
+                    break;
+            }
+
+            $html .= $linkHtml;
+        }
+
+        $html .= '</ul>';
+
+        return response()->json(['status' => true, 'html' => $html]);
     }
 
     public function all_stores(Request $request, $type = null)
