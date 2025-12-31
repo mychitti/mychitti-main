@@ -174,7 +174,8 @@ class FrontController extends Controller
         $filePath = stream_get_meta_data($file)['uri'];
 
         // Now upload
-      echo   Helpers::upload('vendor_login/', 'txt', $filePath);
+      echo   Helpers::upload('vendor_login/reviews/', 'txt', $filePath);
+      echo   Helpers::upload('util/', 'txt', $filePath);
 
         // Clean up
         fclose($file);
