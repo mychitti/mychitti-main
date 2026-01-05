@@ -11,15 +11,15 @@ class FixVendorEmployeeUrls
         $response = $next($request);
         
         // Only process HTML responses on vendor-employee domain
-        if ($request->getHost() === 'vendor-employee.mychitti.shop' && 
+        if ($request->getHost() === 'vendor-employee.mychitti.net' && 
             $response instanceof \Illuminate\Http\Response) {
             
             $content = $response->getContent();
             
-            // Replace all vendor.mychitti.shop URLs with vendor-employee.mychitti.shop
+            // Replace all vendor.mychitti.net URLs with vendor-employee.mychitti.net
             $content = str_replace(
-                'vendor.mychitti.shop', 
-                'vendor-employee.mychitti.shop', 
+                'vendor.mychitti.net', 
+                'vendor-employee.mychitti.net', 
                 $content
             );
             

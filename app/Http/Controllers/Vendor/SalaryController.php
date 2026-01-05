@@ -35,7 +35,7 @@ class SalaryController extends Controller
                     ->where('salary_month', $month_year);
             })
             ->where('vendor_employees.store_id', $v_id)
-            ->select('vendor_employees.id as ven_id', 'vendor_employees.*', 'salaries.*')
+            ->select('vendor_employees.id as ven_id', 'vendor_employees.f_name', 'vendor_employees.l_name', 'vendor_employees.salary_type', 'vendor_employees.base_salary', 'salaries.*')
             ->get();
         // prx($salary);
         return view('vendor-views.salary.index', compact('salary', 'month_year'));
@@ -525,41 +525,49 @@ class SalaryController extends Controller
     }
 
 
-    public function generate_monthly(Request $request, $month)
+    public function generate_monthly(Request $request, $month = null)
     {
         $monthInput = $month ?? Carbon::now()->subMonth()->format('Y-m');
         [$year, $month] = explode('-', $monthInput);
-
-        $employees = VendorEmployee::where('vendor_id', Helpers::get_store_id())->get(); // fetch all at once
-
+        $employees = VendorEmployee::where('store_id', Helpers::get_store_id())->get();
         foreach ($employees as $empInfo) {
             try {
-                // Skip if salary already exists
-                if (Salary::where('employee_id', $empInfo->id)
+
+                // Skip if already generated
+                if (
+                    Salary::where('employee_id', $empInfo->id)
                     ->where('salary_month', "$year-$month")
                     ->exists()
                 ) {
                     continue;
-                }
-
-                $total_allowance = 0;
-                $allowances = [];
+                } 
+                /* -------------------------------------------------
+             | COMMON VARIABLES
+             ------------------------------------------------- */
                 $salary_type = $empInfo->salary_type;
-                $base_salary = $empInfo->base_salary ?? 0;
-                $bonus = 0;
-                $deductions = 0;
+                $base_salary = (float) ($empInfo->base_salary ?? 0);
+                $bonus       = (float) ($empInfo->bonus_incentives ?? 0);
+                $deductions  = (float) ($empInfo->deductions ?? 0);
 
+                $payable_salary  = 0;
+                $total_allowance = 0;
+                $allowances      = [];
+
+                $total_days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)$month, (int)$year);
+                $vacation_or_leave = 0;
+
+                /* -------------------------------------------------
+             | MONTHLY SALARY
+             ------------------------------------------------- */
                 if ($salary_type === 'Monthly') {
-                    // Fetch attendance
+
                     $attendance = Attendance::where([
-                        'vendor_id'     => $empInfo->vendor_id,
+                        'vendor_id'     => $empInfo->store_id,
                         'employee_type' => 'vendor_employee',
                         'employee_id'   => $empInfo->id,
                         'month'         => $month,
                         'year'          => $year,
                     ])->get();
-
-                    $vacation_or_leave = 0;
                     foreach ($attendance as $att) {
                         if (in_array($att->label, ['HDF', 'HDS'])) {
                             $vacation_or_leave += 0.5;
@@ -567,17 +575,21 @@ class SalaryController extends Controller
                             $vacation_or_leave += 1;
                         }
                     }
-                    $total_days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)$month, (int)$year);
-                    $per_day_salary = $total_days_in_month ? ($base_salary / $total_days_in_month) : 0;
-                    $payable_salary = $base_salary - ($per_day_salary * $vacation_or_leave);
 
-                    $per_day_salary = $total_days_in_month ? ($base_salary / $total_days_in_month) : 0;
-                    $payable_salary = $base_salary - ($per_day_salary * $vacation_or_leave);
-                } elseif ($salary_type === 'Hourly') {
-                    $startOfMonth = Carbon::now()->startOfMonth();
-                    $endOfMonth = Carbon::now()->endOfMonth();
+                    $per_day_salary = $total_days_in_month > 0
+                        ? $base_salary / $total_days_in_month
+                        : 0;
 
-                    // fetch time card records for current month
+                    $payable_salary = $base_salary - ($per_day_salary * $vacation_or_leave);
+                }
+
+                /* -------------------------------------------------
+             | HOURLY SALARY
+             ------------------------------------------------- */ elseif ($salary_type === 'Hourly') {
+
+                    $startOfMonth = Carbon::create($year, $month)->startOfMonth();
+                    $endOfMonth   = Carbon::create($year, $month)->endOfMonth();
+
                     $records = DB::table('employee_time_cards')
                         ->where('emp_id', $empInfo->id)
                         ->whereBetween('in_time', [$startOfMonth, $endOfMonth])
@@ -587,90 +599,119 @@ class SalaryController extends Controller
 
                     foreach ($records as $record) {
                         if ($record->in_time && $record->out_time) {
-                            $in = Carbon::parse($record->in_time);
+                            $in  = Carbon::parse($record->in_time);
                             $out = Carbon::parse($record->out_time);
 
-                            // ensure out time is after in time
                             if ($out->greaterThan($in)) {
                                 $totalSeconds += $out->diffInSeconds($in);
                             }
                         }
                     }
 
-                    $workedHours = gmdate('H:i', $totalSeconds);
-                    $base_salary = (float) $base_salary; // hourly rate
-                    $payable_salary = 0;
-
-                    if ($workedHours && preg_match('/^\d{1,2}:\d{2}$/', $workedHours)) {
-                        [$hours, $minutes] = explode(':', $workedHours);
-                        $total_hours = ((int)$hours) + (((int)$minutes) / 60);
+                    if ($totalSeconds > 0) {
+                        $workedHours = gmdate('H:i', $totalSeconds);
+                        [$h, $m] = explode(':', $workedHours);
+                        $total_hours = ((int)$h) + (((int)$m) / 60);
                         $payable_salary = $base_salary * $total_hours;
                     }
-                } elseif ($salary_type === 'Task-Wise') {
-                    $payable_salary = 0;
-
-                    $tasks = StoreTask::with('taskCategory')
-                        ->where('employee_id', $empInfo->id)
-                        ->where('status', 'Completed')
-                        ->get();
-
-                    $totalAmount = $tasks->sum(function ($task) {
-                        return optional($task->taskCategory)->amount;
-                    });
-
-                    $payable_salary = $totalAmount;
                 }
 
-                // Calculate allowances
-                if ($request->has('item_name')) {
-                    foreach ($request->item_name as $key => $title) {
-                        $value = (float) $request->item_price[$key];
-                        if ($salary_type === 'Monthly') {
-                            $per_day_allowance = $total_days_in_month ? ($value / $total_days_in_month) : 0;
-                            $value = $value - ($per_day_allowance * $vacation_or_leave);
-                        }
-                        $allowances[] = ['title' => $title, 'amount' => $value];
-                        $total_allowance += $value;
+                /* -------------------------------------------------
+             | TASK-WISE SALARY (MATCHES FRONTEND)
+             ------------------------------------------------- */ elseif ($salary_type === 'Task-Wise') {
+                    $payable_salary = $base_salary;
+                }
+
+                /* -------------------------------------------------
+             | ALLOWANCES (MATCHES JS LOGIC)
+             ------------------------------------------------- */
+$monthlyAllowances = [];
+
+if (!empty($empInfo->monthly_allowances)) {
+
+    if (is_string($empInfo->monthly_allowances)) {
+        $decoded = json_decode($empInfo->monthly_allowances, true);
+        $monthlyAllowances = is_array($decoded) ? $decoded : [];
+    }
+
+    elseif (is_array($empInfo->monthly_allowances)) {
+        $monthlyAllowances = $empInfo->monthly_allowances;
+    }
+}
+
+                foreach ($monthlyAllowances as $item) {
+                    $value = (float) ($item['amount'] ?? 0);
+
+                    if (in_array($salary_type, ['Monthly', 'Task-Wise'])) {
+                        $per_day_allowance = $total_days_in_month > 0
+                            ? $value / $total_days_in_month
+                            : 0;
+
+                        $value = $value - ($per_day_allowance * $vacation_or_leave);
                     }
-                }
-                $allowances = json_decode($empInfo->monthly_allowances, true) ?? [];
 
+                    $allowances[] = [
+                        'title'  => $item['title'] ?? '',
+                        'amount' => round($value, 3),
+                    ];
+
+                    $total_allowance += $value;
+                }
+
+                /* -------------------------------------------------
+             | ADVANCE DEDUCTIONS
+             ------------------------------------------------- */
                 $advance_payment_deductions = 0;
+
                 $advance = AdvanceRequest::where('employee_id', $empInfo->id)
                     ->where('status', 'approved')
                     ->where('approved_amount', '>', 0)
                     ->first();
 
                 if ($advance) {
-                    $advance_payment_deductions = $advance->approved_amount;
+                    $advance_payment_deductions = (float) $advance->approved_amount;
                 }
 
-                $total_payable = $payable_salary + $total_allowance + $bonus - $deductions - $advance_payment_deductions;
-
-                \App\Models\Salary::create([
-                    'vendor_id'        => $empInfo->vendor_id,
+                /* -------------------------------------------------
+             | FINAL TOTAL (SAME AS FRONTEND)
+             ------------------------------------------------- */
+                $total_payable =
+                    $payable_salary
+                    + $total_allowance
+                    - $deductions
+                    - $advance_payment_deductions
+                    + $bonus;
+                /* -------------------------------------------------
+             | SAVE SALARY
+             ------------------------------------------------- */
+                Salary::create([
+                    'vendor_id'        => $empInfo->store_id,
                     'employee_id'      => $empInfo->id,
                     'base_salary'      => $base_salary,
-                    'payable_salary'   => $payable_salary,
-                    'total_payable'    => $total_payable,
-                    'salary_month'     => "$year-$month",
+                    'payable_salary'   => round($payable_salary, 3),
+                    'allowance_amount' => round($total_allowance, 3),
+                    'total_payable'    => round($total_payable, 3),
                     'bonus_incentives' => $bonus,
-                    'allowance_amount' => $total_allowance,
-                    'allowance'        => json_encode($allowances),
-                    'advance_payment_deductions' => $advance_payment_deductions,
                     'deductions'       => $deductions,
+                    'advance_payment_deductions' => $advance_payment_deductions,
+                    'allowance'        => json_encode($allowances),
+                    'salary_month'     => "$year-$month",
                     'generated_at'     => now(),
                     'created_at'       => now(),
                 ]);
             } catch (\Exception $e) {
-                // Optional: log error
+                prx($e->getMessage());
+                \Log::error('Salary generation failed', [
+                    'employee_id' => $empInfo->id,
+                    'error'       => $e->getMessage(),
+                ]);
             }
         }
-
 
         Toastr::success('Generated Successfully');
         return back();
     }
+
     public function all_advance_requests(Request $request)
     { // store's
         $staff = VendorEmployee::where('store_id', Helpers::get_store_id())->where('status', 1)->get();
@@ -693,7 +734,7 @@ class SalaryController extends Controller
         $advance_requests = AdvanceRequest::with('employee')->where('employee_id', $emp->id)->get();
         return view('vendor-views.salary.advance-requests', compact('advance_requests'));
     }
-    public function advance_request_store(Request $request) 
+    public function advance_request_store(Request $request)
     {
         $rules = [
             'amount' => 'required|numeric',

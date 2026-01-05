@@ -16,7 +16,7 @@
                         placeholder="Search"  autocomplete="off">
                     <div id="autocomplete3" style="z-index: 2;" class="w-100 border bg-white position-absolute">
 
-                    </div>
+                    </div> 
                 </div>
 
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

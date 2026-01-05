@@ -58,9 +58,12 @@ return [
             'prefix_indexes' => true,
             'strict' => false,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+           'options' => extension_loaded('pdo_mysql') ? array_filter([
+    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    PDO::ATTR_EMULATE_PREPARES => false, // Better for prepared statements
+    PDO::ATTR_STRINGIFY_FETCHES => false, // Get proper data types
+    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true, // Better for large results
+]) : [],
         ],
 
         'pgsql' => [

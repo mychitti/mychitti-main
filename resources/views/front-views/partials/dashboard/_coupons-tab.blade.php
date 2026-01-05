@@ -99,12 +99,15 @@
         border-top: 1px dashed #e5e7eb;
     }
 </style>
-<div class="tab-pane fade show active" id="v-pills-coupons" role="tabpanel" aria-labelledby="v-pills-coupons-tab">
+<div class="tab-pane fade" id="v-pills-coupons" role="tabpanel" aria-labelledby="v-pills-coupons-tab">
     <div class="container tab_inner">
 
         <div class="af-container-p9x2">
             <h2>Coupons for you </h2>
 <div class="row">
+@if($coupons->isEmpty())
+No coupons available at the moment.
+@else 
             @foreach ($coupons as $coupon)
                 <div class="coupon-card col-md-6 p-0">
                     <div class="coupon-top">
@@ -140,6 +143,7 @@
                     </div>
                 </div>
             @endforeach
+            @endif
 </div>
         </div>
     </div>

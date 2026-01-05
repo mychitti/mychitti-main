@@ -78,7 +78,9 @@
     /* Adjust for consistency */
     word-break: break-word;
 }
-
+.no-break-words {
+    word-break: normal;
+}
 .one-line-ellipsis {
     -webkit-line-clamp: 1;
 }
@@ -1178,49 +1180,102 @@ span.text-big {
 }
 .new_searchbar {
     border: 2px solid #90d249 !important;
-
     padding: 7px 12px;
-    border-radius: 13px !important;
+    border-radius: 7px !important;
     /* color: #bdbdbd !important; */
     cursor: text !important;
+    width: 320px !important;
 }
 .search_inp_grp {
     margin: 0 auto;
-    width: 70%;
+    width: 100%;
 }
-#autocomplete3 {
+.autocomplete3 {
     max-height: 70vh;
     overflow-y: scroll;
 }
+.search-placeholder{
+        padding: 10px;
+}
 /* Target the autocomplete result container */
-#autocomplete3::-webkit-scrollbar {
+.autocomplete3::-webkit-scrollbar {
     width: 8px;
 }
 
-#autocomplete3::-webkit-scrollbar-track {
+.autocomplete3::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 4px;
 }
 
-#autocomplete3::-webkit-scrollbar-thumb {
+.autocomplete3::-webkit-scrollbar-thumb {
     background: #90d249;
     border-radius: 4px;
 }
 
-#autocomplete3::-webkit-scrollbar-thumb:hover {
+.autocomplete3::-webkit-scrollbar-thumb:hover {
     background: #7cc338;
 }
 /* for firefox  */
-#autocomplete3 {
+.autocomplete3 {
     scrollbar-width: thin;
     scrollbar-color: #90d249 #f1f1f1;
 }
-#autocomplete3 ul li a {
+.autocomplete3 ul li a small{
+        font-size: 12px;
+}
+.autocomplete3 ul li .fa-search{
+    padding: 16px 0px 10px 18px;
+    color: #484848;
+}
+.autocomplete3 ul li a span{
+    font-size: 13px;
+    font-weight: bold;
+}
+.autocomplete3 ul li a {
     color: rgb(46, 46, 46) !important;
     display: block;
     width: 100%;
-    padding: 10px 20px;
+       padding: 8px 12px;
 }
+.search_inp_grp {
+    position: relative;
+}
+
+.animated-placeholder {
+    position: absolute;
+    left: 22px;
+    top: 44%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 14px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    height: 22px;
+    z-index: 1;
+}
+
+.changing-text {
+    display: inline-block;
+}
+
+/* animation class */
+.slide-up {
+    animation: slideUp 0.45s ease-in-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 
 .services_link {
     border-radius: 5px;
@@ -1280,10 +1335,10 @@ span.text-big {
 }
 
 .recent-search-chips .chip {
-    background-color: #f0f0f0;
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 14px;
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 11px;
     color: #333;
     cursor: pointer;
     transition: background-color 0.2s;
@@ -2127,7 +2182,7 @@ span.text-big {
 }
 
 .banner_section {
-    width: 77%;
+    /* width: 77%; */
     display: flex;
     justify-content: center;
 }

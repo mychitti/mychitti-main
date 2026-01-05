@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\URL;
 // Force Laravel to use the correct domain 
 $currentHost = request()->getHost();
 
-if ($currentHost ==  'vendor-employee.mychitti.shop') {
-    URL::forceRootUrl('https://vendor-employee.mychitti.shop');
-    app('url')->forceRootUrl('https://vendor-employee.mychitti.shop');
+if ($currentHost ==  'vendor-employee.mychitti.net') {
+    URL::forceRootUrl('https://vendor-employee.mychitti.net');
+    app('url')->forceRootUrl('https://vendor-employee.mychitti.net');
 }
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {

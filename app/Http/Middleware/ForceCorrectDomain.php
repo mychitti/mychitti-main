@@ -10,12 +10,12 @@ class ForceCorrectDomain
     {
         $host = $request->getHost();
 
-        if (auth('vendor')->check() && !str_contains($host, 'vendor.mychitti.shop')) {
-            return redirect()->to('https://vendor.mychitti.shop' . $request->getRequestUri());
+        if (auth('vendor')->check() && !str_contains($host, 'vendor.mychitti.net')) {
+            return redirect()->to('https://vendor.mychitti.net' . $request->getRequestUri());
         }
 
-        if (auth('vendor_employee')->check() && !str_contains($host, 'vendor-employee.mychitti.shop')) {
-            return redirect()->to('https://vendor-employee.mychitti.shop' . $request->getRequestUri());
+        if (auth('vendor_employee')->check() && !str_contains($host, 'vendor-employee.mychitti.net')) {
+            return redirect()->to('https://vendor-employee.mychitti.net' . $request->getRequestUri());
         }
 
         return $next($request);

@@ -49,19 +49,19 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->routes(function () {
 
-            Route::domain('admin.mychitti.shop')
+            Route::domain('admin.mychitti.net')
                 // Route::prefix('admin')
                 ->middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/admin.php'));
 
-            Route::domain('vendor-employee.mychitti.shop')
+            Route::domain('vendor-employee.mychitti.net')
                 // ->prefix('staff')
                 ->middleware(['web', 'fix-urls'])
                 ->namespace($this->namespace)
                 ->group(base_path('routes/vendor_employee.php'));
 
-            Route::domain('vendor.mychitti.shop')
+            Route::domain('vendor.mychitti.net')
                 // Route::prefix('store-panel')
                 ->middleware(['web'])
                 ->namespace($this->namespace)
@@ -79,7 +79,7 @@ class RouteServiceProvider extends ServiceProvider
 
 
             //new routes
-            Route::domain('admin.mychitti.shop')
+            Route::domain('admin.mychitti.net')
                 // Route::prefix('admin')
                 ->middleware('web')
                 ->namespace($this->namespace)

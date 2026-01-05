@@ -11,11 +11,7 @@
 </head>
 
 <body>
-
-
-    <div class="coupons-container">
-        <a href="{{ route('vendor.dashboard') }}">vendor dashboard</a>
-    </div>
+   
 </body>
 
 </html>

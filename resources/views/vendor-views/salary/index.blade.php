@@ -26,8 +26,7 @@
                     <h5 class="card-title">Salary List
                         {{ isset($month_year) ? date('F Y', strtotime($month_year)) : date('F Y') }}</h5>
                     <div class="d-flex align-items-start" style="gap:5px;">
-
-                        @if ($salary[0]->generated_at)
+                        @if (isset($salary[0]) && $salary[0]->generated_at)
                             @if (hasPermission('salary_manage', 'mark_paid'))
                                 <a href="{{ route('vendor.salary.mark-paid', [$month_year ?? date('Y-m')]) }}"
                                     class="btn btn_sm btn-outline-warning">Mark Paid</a>

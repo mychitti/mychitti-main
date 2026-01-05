@@ -1,7 +1,7 @@
 @if (!Request::is('store*') && !Request::is('store-terms-and-conditions'))
     <!-- Navbar start -->
     <style>
-       
+
     </style>
     <div class=" fixed-top ">
         <nav
@@ -71,25 +71,54 @@
 
 
                 <div class="d-flex ">
-                    <div class="navbar-nav">
-                        <div class="position-relative mx-auto search_parent w-100 nav-extra">
-                            {{-- <a type="button" class=" search_modal_btn text-primary d-flex" data-bs-toggle="modal"
+                    <div class="position-relative search_inp_grp">
+                        <input onkeyup="searchBar('search_results3', this)" id="mainSearchbar"
+                            class="form-control border-2 border-secondary p-2 rounded-pill new_searchbar"
+                            autocomplete="off">
+
+                            <a class="search_icon" style="    position: absolute;top: 10px;right: 60px;">
+                            <i class="fa fa-search"></i></a>
+
+
+
+                        <div class="animated-placeholder" id="animatedPlaceholder">
+                            <span class="fixed-text">Search&nbsp;</span>
+                            <span class="changing-text" id="changingText">Category</span>
+                        </div>
+
+                        <div id="autocomplete3" style="z-index: 2;"
+                            class="autocomplete3 w-100 bg-white position-absolute">
+                            <div id="search_results3">
+                                <ul class="list-unstyled mb-0">
+
+                                </ul>
+                            </div>
+                            <div id="search_placeholder" class="search-placeholder" style="display:none">
+                                <h6 class="recent_search_title" style="display:none">Recent Searches </h6>
+                                <div id="recent-searches" class="recent-search-chips">
+                                </div>
+                                <h6 class="mt-5">Trending Now</h6>
+                                <div class="recent-search-chips">
+                                    {!! _topsearched() !!}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- <a type="button" class=" search_modal_btn text-primary d-flex" data-bs-toggle="modal"
                             data-bs-target="#searchbarModal">Search Products, Services, Keywords, Stores <i
                                 class="fas fa-search p-1 pe-0"></i></a> --}}
+                    {{-- <div class="navbar-nav">
+                        <div class="position-relative mx-auto search_parent w-100 nav-extra">
                             <a type="button" class=" search_modal_btn text-primary d-flex" data-bs-toggle="modal"
                                 data-bs-target="#searchbarModal"><img
                                     src="{{ asset('storage/app/public/util/loupe.png') }}" width="40px" height="40px"
                                     class="  mx-2" alt="search"></a>
-
                         </div>
-
-
                         <div class="nav-cat-searchbar"></div>
-
-                    </div>
+                    </div> --}}
 
                     @if (Config::get('module.current_module_id') == 5)
-                        <div class="cart-count-outer mx-1" style="line-height: 7px;">
+                        {{-- <div class="cart-count-outer mx-1" style="line-height: 7px;">
                             <a href="{{ route('cart') }}" class="position-relative mx-2 my-auto cart-count-inner">
                                 <img src="{{ asset('storage/app/public/util/new_cart.png') }}" width="40px"
                                     height="40px" class="rounded   mx-2" alt="cart">
@@ -98,7 +127,7 @@
                                     class="position-absolute bg-danger rounded-circle d-flex align-items-center justify-content-center text-light px-1"
                                     style="top: -8px;right: 0px;height: 20px;min-width: 20px;">{{ _cartCount() }}</span>
                             </a>
-                        </div>
+                        </div> --}}
                     @endif
                     <a href="{{ !auth('web')->user() ? route('user-login') : route('dashboard') }}"
                         class="my-auto  mx-1 d-flex align-items-center text-dark">
@@ -178,7 +207,7 @@
                     @endif
                 </div>
 
-    
+
             </div>
 
 
@@ -193,15 +222,15 @@
 <!-- Modal Search Start -->
 <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content rounded-0"> 
+        <div class="modal-content rounded-0">
             <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Search by keyword</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body d-flex align-items-center flex-column">
                 <div class="input-group w-75 mx-auto d-flex">
-                    <input type="search" class="form-control p-3 searchBarBtn" 
-                        placeholder="keywords" aria-describedby="search-icon-1" autocomplete="off">
+                    <input type="search" class="form-control p-3 searchBarBtn" placeholder="keywords"
+                        aria-describedby="search-icon-1" autocomplete="off">
                     <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
                 </div>
                 <div id="autocomplete" class="w-75 bg-white">

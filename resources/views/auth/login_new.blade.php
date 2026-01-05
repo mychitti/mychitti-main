@@ -1147,11 +1147,11 @@ $log_email_succ = session()->get('log_email_succ');
                             </div>
                         @endif
 
-                        <button class="google-btn" style="width: 48%;" type="button">
+                        <a href="{{ route('vendor.google.login') }}" class="google-btn" style="width: 48%;" type="button">
                             <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                 alt="Google">
                             Continue with Google
-                        </button>
+                        </a>
                     </div>
                     <a class="btn signup-btn" href="{{ route('new-store.create') }}">SIGN UP NOW</a>
 

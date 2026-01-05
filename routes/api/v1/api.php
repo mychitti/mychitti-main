@@ -420,13 +420,12 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         });
 
         Route::group(['prefix' => 'stores'], function () {
-
             Route::get('get-stores/{filter_data}', 'StoreController@get_stores');
             Route::get('latest', 'StoreController@get_latest_stores');
             Route::get('popular', 'StoreController@get_popular_stores');
             Route::get('recommended', 'StoreController@get_recommended_stores');
-            Route::get('discounted', 'StoreController@get_discounted_stores');
             Route::get('top-rated', 'StoreController@get_top_rated_stores');
+            Route::get('discounted', 'StoreController@get_discounted_stores');
             Route::get('popular-items/{id}', 'StoreController@get_popular_store_items');
             Route::get('reviews', 'StoreController@reviews');
             Route::get('search', 'StoreController@get_searched_stores');

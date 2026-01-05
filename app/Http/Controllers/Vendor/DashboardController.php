@@ -41,6 +41,7 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
+
         $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
         if ($request->has('date_range')) {
             Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
@@ -57,7 +58,7 @@ class DashboardController extends Controller
         $expenses = [];
 
         $storeId = Helpers::get_store_id();
-
+        
         // ===================== LEADS =============================
         $baseQuery = DB::table('service_requests')
             ->join('items', 'service_requests.item_id', '=', 'items.id')

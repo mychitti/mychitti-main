@@ -330,27 +330,27 @@
     });
     $(".category-carousel").owlCarousel({
         autoplay: true,
-        smartSpeed: 1500,
+        smartSpeed: 2500,
         dots: true,
         loop: true,
-        margin: 10,
+        margin: 0,
         nav : false,
         responsiveClass: true,
         responsive: {
             0:{
-                items:4
+                items:8
             },
             576:{
-                items:6
-            },
-            768:{
-                items:9
-            },
-            992:{
                 items:10
             },
+            768:{
+                items:16
+            },
+            992:{
+                items:18
+            },
             1200:{
-                items:13
+                items:20
             }
         }
     });

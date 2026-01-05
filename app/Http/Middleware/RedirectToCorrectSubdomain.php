@@ -11,14 +11,14 @@ class RedirectToCorrectSubdomain
         $host = $request->getHost();
 
         if (Auth::guard('vendor')->check()) {
-            if (!str_contains($host, 'vendor.mychitti.shop')) {
-                return redirect()->away('https://vendor.mychitti.shop' . $request->getRequestUri());
+            if (!str_contains($host, 'vendor.mychitti.net')) {
+                return redirect()->away('https://vendor.mychitti.net' . $request->getRequestUri());
             }
         }
 
         if (Auth::guard('vendor_employee')->check()) {
-            if (!str_contains($host, 'vendor-employee.mychitti.shop')) {
-                return redirect()->away('https://vendor-employee.mychitti.shop' . $request->getRequestUri());
+            if (!str_contains($host, 'vendor-employee.mychitti.net')) {
+                return redirect()->away('https://vendor-employee.mychitti.net' . $request->getRequestUri());
             }
         }
 

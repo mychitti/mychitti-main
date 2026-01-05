@@ -259,9 +259,9 @@ class LoginController extends Controller
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
-                return redirect()->to('https://vendor-employee.mychitti.shop/dashboard');
+                return redirect()->to('https://vendor-employee.mychitti.net/dashboard');
             }
-            return redirect()->to('https://vendor.mychitti.shop/dashboard');
+            return redirect()->to('https://vendor.mychitti.net/dashboard');
         }
 
         return redirect()->back()->withInput($request->only('email', 'remember'))
@@ -296,11 +296,9 @@ class LoginController extends Controller
             die('inactive vendor');
             return redirect()->back()->withErrors(['Vendor is inactive.']);
         }
-        // login attempt
         Auth::guard('vendor')->login($vendor);
 
         if (auth('vendor')->check()) {
-            // die('otp login success');
             DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->delete();
             return redirect()->route('vendor.dashboard');
         } else {

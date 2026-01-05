@@ -3937,6 +3937,26 @@ if (!function_exists('_getSpecialProduct')) {
         }
     }
 }
+if (!function_exists('_getPopularService')) {
+    function _getPopularService($zone_id)
+    {
+       $items =  DB::table('service_requests')
+            ->join('items', 'service_requests.item_id', 'items.id')
+            ->join('stores', function ($join) use ($zone_id) {
+                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
+                $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
+            })
+            ->join('categories', 'categories.id', 'items.category_id')
+            ->select('categories.name as cat_name','categories.slug as cat_slug','items.*', 'stores.zone_id', 'stores.active as store_open', 'stores.delivery_time', 'service_requests.item_id', DB::raw('COUNT(service_requests.item_id) as total_requests'))
+            ->groupBy('items.id')
+            ->orderBy('total_requests', 'desc')
+            ->take(8)
+            ->get();
+
+            return $items;
+    }
+}
 if (!function_exists('_vendorTandC')) {
     function _vendorTandC($vId)
     {
@@ -4728,13 +4748,15 @@ if (!function_exists('_inAppNotification')) {
         $det->title = $title;
         $det->message = $msg;
         $det->url = $url;
-        $det->user_type = $user_typ; // vendor , vendor_employee, admin
+        $det->user_type = $user_typ; 
         $det->reciever = $to;
         if ($det->save()) {
             return 'sent';
         } else {
             return false;
         };
+
+        // calll here the job ProcessWhatsappNotification::dispatch($det->id);
     }
 }
 if (!function_exists('_sendMailToStaff')) {
@@ -4752,6 +4774,7 @@ if (!function_exists('_sendMailToStaff')) {
         return true;
     }
 }
+
 if (!function_exists('_topsearched')) {
     function _topsearched()
     {
@@ -4761,7 +4784,7 @@ if (!function_exists('_topsearched')) {
             ->select('text', 'url', DB::raw('COUNT(*) as total'))
             ->groupBy('text', 'url')
             ->orderByDesc('total')
-            ->limit(6)
+            ->limit(4)
             ->get();
 
         foreach ($popular_searches as $search) {

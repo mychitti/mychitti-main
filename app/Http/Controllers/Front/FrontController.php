@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Front;
 
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\Cache;
 use App\Jobs\SendOrderNotifications;
 use App\CentralLogics\BannerLogic;
 use App\CentralLogics\CouponLogic;
@@ -164,154 +164,116 @@ class FrontController extends Controller
     public function testing(Request $request)
     {
 
-        // Create a test file
-        $content = "This is a test file";
-        $file = tmpfile(); // Creates a temporary file
-        fwrite($file, $content);
-        rewind($file); // Reset file pointer to beginning
+        // ========================================================
+        // FIND CONFLICTING PHONE NUMBERS BEFORE UPDATION
+        //  ========================================================
+        $conflictsWithZero = DB::select("
+        SELECT 
+            s.id,
+            s.phone AS original_phone,
+            CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
+        FROM stores s
+        WHERE s.phone REGEXP '^0[0-9]{10}$'
+        AND EXISTS (
+            SELECT 1
+            FROM stores x
+            WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+        )
+    ");
 
-        // Get the file path
-        $filePath = stream_get_meta_data($file)['uri'];
+        $conflictsTenDigit = DB::select("
+        SELECT 
+            s.id,
+            s.phone AS original_phone,
+            CONCAT('+91', s.phone) AS normalized_phone
+        FROM stores s
+        WHERE s.phone REGEXP '^[0-9]{10}$'
+        AND EXISTS (
+            SELECT 1
+            FROM stores x
+            WHERE x.phone = CONCAT('+91', s.phone)
+        )
+    ");
 
-        // Now upload
-      echo   Helpers::upload('vendor_login/reviews/', 'txt', $filePath);
-      echo   Helpers::upload('util/', 'txt', $filePath);
-
-        // Clean up
-        fclose($file);
-        die;
-        return view('front-views.test_view');
-        die;
-        // DB::statement('ALTER TABLE items ADD FULLTEXT(name)');
-        // DB::statement('ALTER TABLE categories ADD FULLTEXT(name)');
-        // DB::statement('ALTER TABLE stores ADD FULLTEXT(name)');
-        // DB::statement('ALTER TABLE service_keywords ADD FULLTEXT(keyword)');
-
-        return 'Fulltext indexes added successfully';
-
-        die;
-
-        echo 'united repository test from *composer check ::  ' . $request->server('SERVER_NAME');
-        die;
-        $url = asset('storage/app/public/promotional_banner/2024-10-06-67027935e17c5.png');
-
-        $tmpFile = storage_path('app/tmp_ocr.png');
-        file_put_contents($tmpFile, file_get_contents($url));
-
-        $ch = curl_init("http://159.65.159.250:5000/ocr");
-
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, [
-            'image' => new CURLFile($tmpFile)
+        return response()->json([
+            'status' => true,
+            'zero_prefixed_conflicts' => $conflictsWithZero,
+            'ten_digit_conflicts' => $conflictsTenDigit,
+            'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
         ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // ========================================================
+        // UPDATE STORE PHONES TO INTERNATIONAL FORMAT +91XXXXXXXXXX
+        // =========================================================
+        // DB::beginTransaction();
 
-        unlink($tmpFile);
+        // try {
+        //     // Backup (run once)
+        //     DB::statement("
+        //     CREATE TABLE IF NOT EXISTS stores_backup 
+        //     AS SELECT * FROM stores
+        // ");
 
-        print_r(json_decode($response, true));
+        //     // 1️⃣ Normalize 0XXXXXXXXXX → +91XXXXXXXXXX (skip duplicates)
+        //     DB::statement("
+        //     UPDATE stores s
+        //     SET s.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+        //     WHERE s.phone REGEXP '^0[0-9]{10}$'
+        //     AND NOT EXISTS (
+        //         SELECT 1
+        //         FROM stores x
+        //         WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+        //     )
+        // ");
 
+        //     // 2️⃣ Normalize 10-digit numbers → +91XXXXXXXXXX (skip duplicates)
+        //     DB::statement("
+        //     UPDATE stores s
+        //     SET s.phone = CONCAT('+91', s.phone)
+        //     WHERE s.phone REGEXP '^[0-9]{10}$'
+        //     AND NOT EXISTS (
+        //         SELECT 1
+        //         FROM stores x
+        //         WHERE x.phone = CONCAT('+91', s.phone)
+        //     )
+        // ");
+
+        //     DB::commit();
+
+        //     return response()->json([
+        //         'status' => true,
+        //         'message' => 'Phone numbers normalized (duplicates skipped)'
+        //     ]);
+        // } catch (\Exception $e) {
+        //     DB::rollBack();
+
+        //     return response()->json([
+        //         'status' => false,
+        //         'error' => $e->getMessage()
+        //     ], 500);
+        // }
         die;
-        $data = [
-
-            // ['feature_id' => '99', 'action' => 'dashboard', 'display_name' => 'Dashboard'],
-            // ['feature_id' => '108', 'action' => 'add_for_others', 'display_name' => 'Add for others'],
-            // ['feature_id' => '108', 'action' => 'add', 'display_name' => 'Add for self'],
-            // ['feature_id' => '97', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '108', 'action' => 'view', 'display_name' => 'View'],
-            // ['feature_id' => '108', 'action' => 'settings', 'display_name' => 'Settings'],
-            // ['feature_id' => '108', 'action' => 'status_change', 'display_name' => 'Status Change'],
-            // ['feature_id' => '97', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '109', 'action' => 'list', 'display_name' => 'List'],
-            // ['feature_id' => '109', 'action' => 'generate', 'display_name' => 'Generate'],
-            // ['feature_id' => '109', 'action' => 'mark_paid', 'display_name' => 'Mark Paid'],
-            // ['feature_id' => '109', 'action' => 'export', 'display_name' => 'Export'],
-
-            // ['feature_id' => '117', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '117', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '117', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '117', 'action' => 'list', 'display_name' => 'List'],
-
-            // ['feature_id' => '118', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '118', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '118', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '118', 'action' => 'list', 'display_name' => 'List'],
-
-            // ['feature_id' => '119', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '119', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '119', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '119', 'action' => 'list', 'display_name' => 'List'],
-
-            // ['feature_id' => '120', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '120', 'action' => 'list', 'display_name' => 'List'],
-            // ['feature_id' => '120', 'action' => 'export', 'display_name' => 'Export'],
-            // ['feature_id' => '120', 'action' => 'import', 'display_name' => 'Import'],
-
-            // ['feature_id' => '120', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '120', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '120', 'action' => 'leads', 'display_name' => 'Leads'],
-            // ['feature_id' => '120', 'action' => 'tasks', 'display_name' => 'Tasks'],
-            // ['feature_id' => '120', 'action' => 'transactions', 'display_name' => 'Transactions'],
-            // ['feature_id' => '120', 'action' => 'projects', 'display_name' => 'Projects'],
-
-            // ['feature_id' => '111', 'action' => 'export', 'display_name' => 'Export'],
-            // ['feature_id' => '97', 'action' => 'settings', 'display_name' => 'Settings'],
-
-            // ['feature_id' => '100', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '100', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '100', 'action' => 'view', 'display_name' => 'View'],
-            // ['feature_id' => '100', 'action' => 'delete', 'display_name' => 'Delete'],
-
-            // ['feature_id' => '101', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '101', 'action' => 'edilistt', 'display_name' => 'List'],
-            // ['feature_id' => '101', 'action' => 'status_change', 'display_name' => 'Status Change'],
-            // ['feature_id' => '101', 'action' => 'delete', 'display_name' => 'Delete'],
-
-            // ['feature_id' => '102', 'action' => 'add', 'display_name' => 'Add'],
-            // ['feature_id' => '102', 'action' => 'edit', 'display_name' => 'Edit'],
-            // ['feature_id' => '102', 'action' => 'edilistt', 'display_name' => 'List'],
-            // ['feature_id' => '102', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '102', 'action' => 'delete', 'display_name' => 'Delete'],
-            // ['feature_id' => '102', 'action' => 'delete', 'display_name' => 'Delete'],
-
-            // ['feature_id' => '87', 'action' => 'delete' , 'display_name' => 'Delete'],
-
-            // ['feature_id' => '87', 'action' => 'add' , 'display_name' => 'Add'],
-            // ['feature_id' => '85', 'action' => 'jobcard' , 'display_name' => 'Jobcard'],
-            // ['feature_id' => '85', 'action' => 'receivable_receipt' , 'display_name' => 'Receivable Receipt'],
-            // ['feature_id' => '85', 'action' => 'list' , 'display_name' => 'List'],
-            // ['feature_id' => '85', 'action' => 'statuses' , 'display_name' => 'Statuses'],
-            // ['feature_id' => '85', 'action' => 'invoice' , 'display_name' => 'Invoice'],
-            // ['feature_id' => '85', 'action' => 'alot' , 'display_name' => 'Alot'],
-            // ['feature_id' => '85', 'action' => 'send_confirmation_request' , 'display_name' => 'Send COnfirmation Request'],
-            // ['feature_id' => '85', 'action' => 'accept' , 'display_name' => 'Accept'],
-            // ['feature_id' => '85', 'action' => 'gatepass' , 'display_name' => 'Gatepass'],
-            // ['feature_id' => '85', 'action' => 'quotation' , 'display_name' => 'Quotation'],
-            // ['feature_id' => '85', 'action' => 'start_job' , 'display_name' => 'Start Job'],
-            // ['feature_id' => '85', 'action' => 'add_comment' , 'display_name' => 'Add Comment'],
-            // ['feature_id' => '85', 'action' => 'report' , 'display_name' => 'Report'],
-            // ['feature_id' => '83', 'action' => 'import' , 'display_name' => 'Import'],
-            // ['feature_id' => '77', 'action' => 'mark_paid' , 'display_name' => 'Mark Paid'],
-            // ['feature_id' => '77', 'action' => 'share' , 'display_name' => 'Share'],
-            // ['feature_id' => '77', 'action' => 'reminder_update' , 'display_name' => 'Reminder Update'],
-            // ['feature_id' => '85', 'action' => 'export' , 'display_name' => 'Export'],
-            // ['feature_id' => '77', 'action' => 'download' , 'display_name' => 'Download'],
-
-        ];
-
-        foreach ($data as $key => $value) {
-            DB::table('feature_permissions')->insert([
-                'feature_id' => $value['feature_id'],
-                'action' => $value['action'],
-                'display_name' => $value['display_name'] ?? ucfirst($value['action']),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
 
         // return view('front-views.test_view');
+
+    }
+    public function add_feature_actions(Request $request)
+    {
+        // $data = [
+        // ['feature_id' => '99', 'action' => 'dashboard', 'display_name' => 'Dashboard'],
+        // ['feature_id' => '108', 'action' => 'add_for_others', 'display_name' => 'Add for others'],
+        // ['feature_id' => '108', 'action' => 'add', 'display_name' => 'Add for self'],
+        // ];
+
+        // foreach ($data as $key => $value) {
+        //     DB::table('feature_permissions')->insert([
+        //         'feature_id' => $value['feature_id'],
+        //         'action' => $value['action'],
+        //         'display_name' => $value['display_name'] ?? ucfirst($value['action']),
+        //         'created_at' => now(),
+        //         'updated_at' => now(),
+        //     ]);
+        // }
     }
     public function registration_success(Request $request)
     {
@@ -446,13 +408,13 @@ class FrontController extends Controller
                 ->get();
         }
 
-        // prx($this->zone_id);
-        $data['nearby_stores'] =   _nearbyStores($this->zone_id, 9);
+        $data['nearby_stores'] = _nearbyStores($this->zone_id, 9);
 
-        // prx($data['nearby_stores']);
+        // $data['special_product'] = _getSpecialProduct($zone_id);
 
-        $data['special_product'] = _getSpecialProduct($zone_id);
+        $data['popular_services'] = _getPopularService($zone_id) ?? [];
 
+        // prx($data['popular_services']);
         $data['banners'] = BannerLogic::get_all_module_banners($zone_id, 0, $type = 'default');
         return view('front-views.home', compact('stores', 'zone_id', 'data', 'modules'));
     }
@@ -681,8 +643,220 @@ class FrontController extends Controller
         $all_categories = BlogCategory::where('status', 1)->where('type', $type)->get();
         return view('front-views.blog.post', compact('blog', 'all_categories', 'all_blogs', 'type'));
     }
-
     public function search(Request $request)
+    {
+        $zone_id = json_decode($this->zone_id, true);
+        $keyword = trim($request->keyword);
+
+        if (empty($keyword) || strlen($keyword) < 2) {
+            return response()->json([
+                'status' => false,
+                'html' => '<div class="p-5 fs-4">Please enter at least 2 characters...</div>'
+            ]);
+        }
+
+        $searchTerm = '%' . $keyword . '%';
+        $startsWithTerm = strtolower($keyword) . '%';
+        $lowerKeyword = strtolower($keyword);
+        $zoneIdPlaceholders = implode(',', array_fill(0, count($zone_id), '?'));
+
+        // Optimized: Pre-filter stores by zone, then join
+        $sql = "
+        (
+            SELECT 
+                c.slug as cat_slug,
+                i.slug,
+                i.name,
+                i.id,
+                NULL as keyword_text,
+                'product' as result_type,
+                CASE 
+                    WHEN LOWER(i.name) = ? THEN 100
+                    WHEN LOWER(i.name) LIKE ? THEN 80
+                    ELSE 50
+                END as relevance_score
+            FROM items i
+            STRAIGHT_JOIN categories c ON c.id = i.category_id
+            WHERE LOWER(i.name) LIKE ?
+                AND i.is_approved = 1
+                AND i.status = 1
+                AND i.module_id = 6
+                AND EXISTS (
+                    SELECT 1 
+                    FROM stores s 
+                    WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    LIMIT 1
+                )
+            GROUP BY i.id
+            LIMIT 8
+        )
+        UNION ALL
+        (
+            SELECT 
+                c.slug as cat_slug,
+                i.slug,
+                i.name,
+                i.id,
+                sk.keyword as keyword_text,
+                'keyword' as result_type,
+                CASE 
+                    WHEN LOWER(sk.keyword) = ? THEN 95
+                    WHEN LOWER(sk.keyword) LIKE ? THEN 75
+                    ELSE 48
+                END as relevance_score
+            FROM service_keywords sk
+            STRAIGHT_JOIN items i ON i.id = sk.service_id
+            STRAIGHT_JOIN categories c ON c.id = i.category_id
+            WHERE LOWER(sk.keyword) LIKE ?
+                AND i.is_approved = 1
+                AND i.status = 1
+                AND i.module_id = 6
+                AND EXISTS (
+                    SELECT 1 
+                    FROM stores s 
+                    WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    LIMIT 1
+                )
+            GROUP BY sk.id
+            LIMIT 6
+        )
+        UNION ALL
+        (
+            SELECT 
+                NULL as cat_slug,
+                slug,
+                name,
+                id,
+                NULL as keyword_text,
+                'category' as result_type,
+                CASE 
+                    WHEN LOWER(name) = ? THEN 90
+                    WHEN LOWER(name) LIKE ? THEN 70
+                    ELSE 45
+                END as relevance_score
+            FROM categories
+            WHERE LOWER(name) LIKE ?
+                AND module_id = 6
+                AND position = 0
+                AND status = 1
+            LIMIT 3
+        )
+        UNION ALL
+        (
+            SELECT 
+                NULL as cat_slug,
+                slug,
+                name,
+                id,
+                NULL as keyword_text,
+                'store' as result_type,
+                CASE 
+                    WHEN LOWER(name) = ? THEN 92
+                    WHEN LOWER(name) LIKE ? THEN 72
+                    ELSE 46
+                END as relevance_score
+            FROM stores
+            WHERE LOWER(name) LIKE ?
+                AND module_id = 6
+                AND status = 1
+                AND zone_id IN ({$zoneIdPlaceholders})
+            LIMIT 3
+        )
+        ORDER BY relevance_score DESC
+        LIMIT 20
+    ";
+
+        $params = array_merge(
+            // Products
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id,
+            // Keywords
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id,
+            // Categories
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            // Stores
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id
+        );
+
+        $allResults = DB::select($sql, $params);
+
+        if (empty($allResults)) {
+            $html = '<div class="p-5 fs-4">No Items Found...</div>';
+            return response()->json(['status' => false, 'html' => $html]);
+        }
+
+        $html = '<ul class="list-unstyled mb-0">';
+
+        foreach ($allResults as $result) {
+            switch ($result->result_type) {
+                case 'product':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
+                    break;
+
+                case 'keyword':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
+                    break;
+
+                case 'category':
+                    $url = route('category.listing', [$result->slug]);
+                    $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
+                    break;
+
+                case 'store':
+                    $url = route('store.details', [$result->slug]);
+                    $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
+                    break;
+            }
+        }
+
+        $html .= '</ul>';
+
+        return response()->json(['status' => true, 'html' => $html]);
+    }
+    private function generateSearchResultsHtml($results)
+    {
+        $html = '<ul class="list-group list-group-flush cursor-pointer" id="search_result">';
+
+        foreach ($results as $result) {
+            $linkHtml = '';
+
+            switch ($result->result_type) {
+                case 'product':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
+                    break;
+
+                case 'keyword':
+                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
+                    break;
+
+                case 'category':
+                    $url = route('category.listing', [$result->slug]);
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
+                    break;
+
+                case 'store':
+                    $url = route('store.details', [$result->slug]);
+                    $linkHtml = '<li class="d-flex gap-2" ><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
+                    break;
+            }
+
+            $html .= $linkHtml;
+        }
+
+        $html .= '</ul>';
+
+        return $html;
+    }
+    public function search_old(Request $request)
     {
         $zone_id = json_decode($this->zone_id, true);
         $keyword = trim($request->keyword);
@@ -822,19 +996,16 @@ class FrontController extends Controller
             ->concat($categories)
             ->concat($stores);
 
-        // Sort by relevance and limit to 20
         $allResults = $allResults
             ->sortByDesc('relevance_score')
             ->take(20)
             ->values();
 
-        // If no results found
         if ($allResults->isEmpty()) {
             $html = '<div class="p-5 fs-4">No Items Found...</div>';
             return response()->json(['status' => false, 'html' => $html]);
         }
 
-        // Build HTML output
         $html = '<ul class="list-unstyled mb-0">';
 
         foreach ($allResults as $result) {
@@ -843,22 +1014,23 @@ class FrontController extends Controller
             switch ($result->result_type) {
                 case 'product':
                     $url = route('product.details', [$result->cat_slug, $result->slug]);
-                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . '</a></li>';
+
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'keyword':
                     $url = route('product.details', [$result->cat_slug, $result->slug]);
-                    $linkHtml = '<li><a href="' . $url . '">' . e($result->keyword_text) . ' - ' . e($result->name) . '</a></li>';
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'category':
                     $url = route('category.listing', [$result->slug]);
-                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . ' - Category</a></li>';
+                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
                     break;
 
                 case 'store':
                     $url = route('store.details', [$result->slug]);
-                    $linkHtml = '<li><a href="' . $url . '">' . e($result->name) . ' - Store</a></li>';
+                    $linkHtml = '<li class="d-flex gap-2" ><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
                     break;
             }
 

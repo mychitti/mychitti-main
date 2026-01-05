@@ -70,13 +70,11 @@
                         <button type="submit" class="w-100 btn btn-primary ">Login</button>
                     <div class="or-text">OR</div>
 
-                        <a href="{{ route('google.login') }}" class="google-btn border text-dark
-                        "  type="button">
+                        <a href="{{ route('google.login') }}" class="google-btn border text-dark"  type="button">
                             <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                 alt="Google">
                             Continue with Google
                         </a>
-                        
 
                         <small>Don't have an account? <a href="{{ route('user-signup') }}">Signup</a></small><br>
                         <small><a href="{{ route('forgot-password') }}">Forgot Password?</a></small>

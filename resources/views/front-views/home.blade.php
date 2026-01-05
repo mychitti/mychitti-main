@@ -16,7 +16,12 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
         <meta name="csrf-token" content="{{ csrf_token() }}">
+
         <style>
+            .text_dark {
+                color: #000000 !important;
+            }
+
             /*------------- page specific ------------------ */
 
 
@@ -159,6 +164,109 @@
             .tab-content {
                 width: 100%;
             }
+
+            .pop-items-section {
+                   padding: 23px 19px;
+    background: linear-gradient(135deg, #f2f2f24f 0%, #f8f8f8 100%);    margin-top: 17px;
+            }
+
+            .pop-section-title {
+                font-size: 32px;
+                font-weight: 700;
+                color: #2c3e50;
+                text-align: center;
+                margin-bottom: 40px;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .pop-items-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+
+            @media (min-width: 480px) {
+                .pop-items-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+
+            @media (min-width: 768px) {
+                .pop-items-grid {
+                    grid-template-columns: repeat(4, 1fr);
+                }
+            }
+
+            @media (min-width: 1024px) {
+                .pop-items-grid {
+                    grid-template-columns: repeat(6, 1fr);
+                }
+            }
+
+            @media (min-width: 1280px) {
+                .pop-items-grid {
+                    grid-template-columns: repeat(8, 1fr);
+                }
+            }
+
+            .pop-item-card {
+                background: #ffffff;
+                border-radius: 12px;
+                overflow: hidden;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            }
+
+            .pop-item-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            }
+
+            .pop-item-img {
+                width: 100%;
+                height: 160px;
+                object-fit: cover;
+            }
+
+            .pop-item-content {
+                padding: 12px;
+            }
+
+            .pop-item-name {
+                font-size: 15px;
+                font-weight: 600;
+                margin: 0 0 6px 0;
+                color: #2c3e50;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                {{-- white-space: nowrap; --}} overflow: hidden;
+            }
+
+            .pop-item-category {
+                font-size: 12px;
+                color: #ffffff;
+                background: #7ed810ff;
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 12px;
+                margin-bottom: 8px;
+                font-weight: 500;
+            }
+
+            .pop-item-providers {
+                font-size: 12px;
+                color: #7f8c8d;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .pop-item-providers::before {
+                content: "●";
+                color: #93c51dff;
+                font-size: 10px;
+            }
         </style>
     @endpush
 
@@ -188,7 +296,7 @@
                         @endforeach
                     </div>
                 </div>
-                <div class="offer_section zx7m-wrapper">
+                {{-- <div class="offer_section zx7m-wrapper">
                     <div class="zx7m-wrapper">
                         <div class="m4q8-container" id="carouselContainer">
                             <div class="w2n5-track" id="carouselTrack">
@@ -198,18 +306,8 @@
                                 @foreach ($data['offer_banners'] as $key => $banner)
                                     <a href="{{ $banner->url }}" class="r7t1-slide">
                                         <div class="v3l9-content position-relative">
-                                           @if($banner->title)
-                                            {{-- <span
-                                                style="position: absolute;
-    top: 7px;
-    background: #00000085;
-    color: white;
-    padding: 3px 5px;
-    border-radius: 5px;
-     left: 50%;
-    transform: translateX(-50%);
-   ">
-                                                {{$banner->title}}</span> --}}
+                                           @if ($banner->title)
+                                          
                                                 @endif
                                             <img data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($banner->image, asset('storage/app/public/banners/') . '/' . $banner->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'banners/') }}"
@@ -218,29 +316,22 @@
                                     </a>
                                 @endforeach
                             </div>
-                            {{-- <button class="nav-arrow prev" id="prevBtn">‹</button>
-                            <button class="nav-arrow next" id="nextBtn">›</button> --}}
                             <div class="x9m1-dots" id="dotsContainer"></div>
-                        </div>
-                    </div>
-                </div>
-                {{-- <div class=" offer_section ">
-                    <div class="side_banner h-100 rounded ">
-                        <div class="bg-white rounded d-flex justify-content-center" >
-                            <img src="{{ asset('storage/app/public/util/offer-banner.jpg') }}" alt="offer banner">
                         </div>
                     </div>
                 </div> --}}
             </div>
             <div>
+                <style>
+                    .category-carousel .owl-stage {
+                        display: grid;
+                        grid-auto-flow: column;
+                        grid-template-rows: repeat(2, 1fr);
+                    }
+                </style>
                 @foreach ($modules as $mod)
                     @if ($mod->id == 6)
                         <div class=" owl-carousel category-carousel mt-3">
-                            {{-- <div class=" ">
-                                <img loading="lazy" style="width: 30px;"
-                                    src="{{ asset('public/assets/front/img/cog-removebg-preview.png') }}" alt="">
-                                <h6>{{ $mod->module_name }}</h6>
-                            </div> --}}
 
                             @foreach ($data['service_categories'] as $key => $ct)
                                 <div style="">
@@ -251,26 +342,54 @@
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct['image'], asset('storage/app/public/category/') . '/' . $ct['image'], asset('public/assets/admin/img/160x160/img1.jpg'), 'category/') }}"
                                             class=" rounded-circle module_cat_img lazyload" alt="First slide">
 
-                                        <p class="text-center one-line-ellipsis pb-0">{{ $ct['name'] }}</p>
+                                        <p style="font-size: 14px;"
+                                            class="no-break-words text-center two-line-ellipsis pb-0">{{ $ct['name'] }}
+                                        </p>
                                     </a>
                                 </div>
                             @endforeach
-
                         </div>
                     @endif
                 @endforeach
             </div>
+            <div class="pop-items-section">
+                  <h1 style="" class="section_heading text_dark ">Most Popular Services
+                    </h1>
+                    <p style="margin:0 atuo;" class=""><i class="fas fa-crown text-secondary"></i> <span
+                            class="text_dark">Connect with verified providers in your area !</span><i class="fas fa-crown text-secondary"></i></p>
+
+                <div class="pop-items-grid">
+                    @if (count($data['popular_services']) > 0)
+                        @foreach ($data['popular_services'] as $item)
+                            <!-- Sample Item 1 -->
+                            <a href="{{ route('product.details', [$item->cat_slug, $item->slug]) }}" class="pop-item-card">
+                                <img  loading="lazy" style="object-fit:cover"
+                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/product/') . '/' . $item->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                    alt="Wireless Headphones" class="pop-item-img">
+                                <div class="pop-item-content">
+                                    <h3 class="pop-item-name two-line-ellipsis">{{ $item->name }}</h3>
+                                    <div class="pop-item-category">{{ $item->cat_name }}</div>
+                                    {{-- <div class="pop-item-providers">{{ count(explode(',', $item->store_ids)) }} providers
+                                        available</div> --}}
+                                </div>
+                            </a>
+                        @endforeach
+                    @endif
+                </div>
+            </div>
             {{-- TOP SELLING ITEMS  --}}
             <div class="  m-2 mt-3 ">
                 @if (count($data['top_sell_services']))
-                    <h1 style="" class="section_heading ">Find Goods, Services, Skilled Labour, and Book
+                    <h1 style="" class="section_heading text_dark ">Find Goods, Services, Skilled Labour, and Book
                         Repairs
                         Easily In Your
                         City!
                     </h1>
-                    <p style="margin:0 atuo;" class=""><i class="fas fa-fire text-secondary"></i> Discover Our
-                        Top-Selling Services - Customer Favorites
-                        You Can't Miss! <i class="fas fa-fire text-secondary"></i></p>
+                    <p style="margin:0 atuo;" class=""><i class="fas fa-fire text-secondary"></i> <span
+                            class="text_dark">Discover Our
+                            Top-Selling Services - Customer Favorites
+                            You Can't Miss! </span><i class="fas fa-fire text-secondary"></i></p>
                 @endif
                 <div class="row g-4 ">
 
@@ -301,7 +420,7 @@
                                 <div class="p-2 border border-top-0 rounded-bottom">
 
                                     <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}">
-                                        <h4 class="one-line-ellipsis text-start item__name"
+                                        <h4 class="one-line-ellipsis text-start item__name text_dark"
                                             title="{{ ucfirst($pro->name) }}" style="">
                                             {{ ucfirst($pro->name) }}</h4>
                                     </a>
@@ -336,7 +455,7 @@
                     @php $isShop = true; @endphp
                     <div class=" m-2 mt-3">
                         @if (count($data['top_sell_products']))
-                            <h1 class="section_heading text-end">Shop Products, Accessories, and
+                            <h1 class="section_heading text_dark text-end">Shop Products, Accessories, and
                                 Order
                                 Hotel Food - All in
                                 Your
@@ -461,9 +580,9 @@
         @if (count($data['nearby_stores']))
             <div class="d-flex justify-content-between align-items-end">
                 <div>
-                    <h1 style="font-size: 22px;" class="section_heading ">Nearby Stores
+                    <h1 style="font-size: 22px;" class="section_heading text_dark ">Nearby Stores
                     </h1>
-                    <p style="margin:0 atuo;" class=""><i class="fas fa-store"></i> Find Trusted Stores Near You
+                    <p style="margin:0 atuo;" class="text_dark"><i class="fas fa-store"></i> Find Trusted Stores Near You
                     </p>
                 </div>
                 <a class="btn btn-primary text-white" href="{{ route('all-stores', ['nearby']) }}">View All </a>
@@ -485,7 +604,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <span class="badge bg-light text-dark">{{ round($store->distance, 2) }} km</span>
-                                    <h6 class="card-title-cuctom mb-1 one-line-ellipsis"
+                                    <h6 class="card-title-cuctom mb-1 one-line-ellipsis text_dark"
                                         style="font-size: 14px !important;">{{ ucfirst($store->name) }}</h6>
                                 </div>
                                 @if (_storeExistInWishlist($store->id))
@@ -499,11 +618,11 @@
                                 @endif
                             </div>
 
-                            <p class="card-description mb-2 two-line-ellipsis">{{ $store->address }}</p>
+                            <p class="card-description mb-2 two-line-ellipsis text_dark">{{ $store->address }}</p>
 
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="card-sizes mb-3">
-                                    <span class="badge text-dark p-0 "><i class="fas fa-fire text-secondary"></i>
+                                    <span class="badge text_dark p-0 "><i class="fas fa-fire text-secondary"></i>
                                         {{ strtoupper($store->delivery_time) }}
                                     </span>
                                 </div>
@@ -598,30 +717,30 @@
 
 
     <div class="brand_directory p-2" style="background-color: #f5f5f5;">
-        <h6>Brand Directory</h6>
+        <h6 class="text_dark">Brand Directory</h6>
         <div class="d-flex flex-wrap">
             @foreach (_navCats() as $key => $ct1)
                 <div class="m-2 d-flex flex-column">
                     <a data-bs-toggle="collapse" href="#collapseExample{{ $key }}" role="button"
                         aria-expanded="false" aria-controls="collapseExample" class="text-dark">
-                        <span>
+                        <span class="text_dark">
                             {{ $ct1->name }}
                         </span><i class="fa fa-chevron-down px-1 pt-1"></i> </a>
                     <div class="collapse " id="collapseExample{{ $key }}">
                         <div class="d-flex flex-column">
                             @if ($ct1->module_id == 5)
                                 @foreach (_navSubCats($ct1->id, $ct1->module_id) as $key => $ct)
-                                    <a class="text-dark" href="{{ route('category.listing', [$ct->slug]) }}"
+                                    <a class="text_dark" href="{{ route('category.listing', [$ct->slug]) }}"
                                         style="font-size: 12px;">{{ $ct->name }}</a>
                                 @endforeach
                             @else
                                 @foreach (_navSubCats($ct1->id, $ct1->module_id) as $key => $ct)
-                                    <a class="text-dark"
+                                    <a class="text_dark"
                                         href="{{ route('product.details', [$ct->cat_slug, $ct->slug]) }}"
                                         style="font-size: 12px;">{{ $ct->name }}</a>
                                 @endforeach
                             @endif
-                            <a class="text-dark fw-bold" href="{{ route('category.listing', [$ct1->slug]) }}"
+                            <a class="text_dark fw-bold" href="{{ route('category.listing', [$ct1->slug]) }}"
                                 style="font-size: 12px;">View All </a>
                         </div>
                     </div>

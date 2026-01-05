@@ -12,13 +12,16 @@
     .btn-grey{
         background-color: #b8b8b8;
     }
+    .spacer {
+        height: 70px;
+    }
     </style>
 @endpush
 
 @section('content')
     <div class="spacer"></div>
 
-    <div class="container  mt-5">
+    <div class="container">
         <div class=" dash_div d-flex align-items-start shadow rounded ">
             <div class=" left_nav nav flex-column nav-pills me-3" id="v-pills-tab" role="tablist" aria-orientation="vertical">
                 <img class="profile_img"
@@ -29,14 +32,14 @@
                     aria-selected="false">Profile</button>
                 <button class="nav-link " id="v-pills-home-tab" data-bs-toggle="pill" data-bs-target="#v-pills-home"
                     type="button" role="tab" aria-controls="v-pills-home" aria-selected="true">Address</button>
-                @if (Config::get('module.current_module_id') == 5)
-                    <button class="nav-link " id="v-pills-order-tab" data-bs-toggle="pill" data-bs-target="#v-pills-order"
-                        type="button" role="tab" aria-controls="v-pills-order" aria-selected="true">Orders</button>
+                {{-- @if (Config::get('module.current_module_id') == 5) --}}
+                    {{-- <button class="nav-link " id="v-pills-order-tab" data-bs-toggle="pill" data-bs-target="#v-pills-order"
+                        type="button" role="tab" aria-controls="v-pills-order" aria-selected="true">Orders</button> --}}
 
                     <button class="nav-link " id="v-pills-service-tab" data-bs-toggle="pill"
                         data-bs-target="#v-pills-service" type="button" role="tab" aria-controls="v-pills-service"
                         aria-selected="true">Services</button>
-                @endif
+                {{-- @endif --}}
                 <button class="nav-link" id="v-pills-coupons-tab" data-bs-toggle="pill" data-bs-target="#v-pills-coupons"
                     type="button" role="tab" aria-controls="v-pills-coupons" aria-selected="false">Coupons</button>
                 <button class="nav-link" id="v-pills-messages-tab" data-bs-toggle="pill" data-bs-target="#v-pills-messages"
@@ -48,7 +51,7 @@
             
                 @include('front-views.partials.dashboard._profile-tab')
                 @include('front-views.partials.dashboard._address-tab')
-                @include('front-views.partials.dashboard._orders-tab')
+                {{-- @include('front-views.partials.dashboard._orders-tab') --}}
                 @include('front-views.partials.dashboard._service-tab')
                 @include('front-views.partials.dashboard._coupons-tab')
                 @include('front-views.partials.dashboard._favourites-tab')

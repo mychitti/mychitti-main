@@ -472,6 +472,7 @@
                 alt="Loading..." id="preloader-img">
         </div>
     @endif
+    {{-- <div class="w-100 bg-danger">Website under maintenance. Please do not make any payment</div> --}}
     @include('front-views.partials._navbar')
 
     @yield('content')

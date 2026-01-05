@@ -20,23 +20,15 @@ class VendorMiddleware
     {
         if (Auth::guard('vendor')->check()) {
             if (!auth('vendor')->user()->status) {
-                // auth()->guard('vendor')->logout(); 
-                //    return redirect()->route('vendor_homepage');
                 return redirect('login/store');
-                // return redirect()->route('vendor.auth.login');
             }
-            // echo 'fdd';
             return $next($request);
         } else if (Auth::guard('vendor_employee')->check()) {
             if (Auth::guard('vendor_employee')->user()->is_logged_in == 0) {
-                // auth()->guard('vendor_employee')->logout();
                 return redirect('login/store');
-                // return redirect()->route('vendor.auth.login');
             }
             if (!auth('vendor_employee')->user()->store->status) {
-                // auth()->guard('vendor_employee')->logout();
                 return redirect('login/store');
-                // return redirect()->route('vendor.auth.login');
             }
             return $next($request);
         }
