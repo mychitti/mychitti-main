@@ -207,7 +207,7 @@ class FrontController extends Controller
         // =========================================================
         DB::beginTransaction();
 
-        try {
+        // try {
             // Backup (run once)
         //     DB::statement("
         //     CREATE TABLE IF NOT EXISTS stores_backup 
