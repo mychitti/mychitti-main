@@ -163,43 +163,37 @@ class FrontController extends Controller
     }  
     public function testing(Request $request)
     {
+
+
  
         // ========================================================
         // FIND CONFLICTING PHONE NUMBERS BEFORE UPDATION
         //  ======================================================== 
         $conflictsWithZero = DB::select("
-            SELECT 
-                s.id,
-                s.phone AS original_phone,
-                CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
-            FROM stores s
-            WHERE s.phone REGEXP '^0[0-9]{10}$'
-            AND EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
-            )
+            SELECT *
+FROM users
+WHERE phone NOT LIKE '+%';
         ");
 
-        $conflictsTenDigit = DB::select("
-            SELECT 
-                s.id,
-                s.phone AS original_phone,
-                CONCAT('+91', s.phone) AS normalized_phone
-            FROM stores s 
-            WHERE s.phone REGEXP '^[0-9]{10}$'
-            AND EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', s.phone)
-            )
-        ");
+        // $conflictsTenDigit = DB::select("
+        //     SELECT 
+        //         s.id,
+        //         s.phone AS original_phone,
+        //         CONCAT('+91', s.phone) AS normalized_phone
+        //     FROM stores s 
+        //     WHERE s.phone REGEXP '^[0-9]{10}$'
+        //     AND EXISTS (
+        //         SELECT 1
+        //         FROM stores x
+        //         WHERE x.phone = CONCAT('+91', s.phone)
+        //     )
+        // ");
 
         return response()->json([
             'status' => true, 
             'zero_prefixed_conflicts' => $conflictsWithZero,
-            'ten_digit_conflicts' => $conflictsTenDigit,
-            'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
+            // 'ten_digit_conflicts' => $conflictsTenDigit,
+            // 'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
         ]); 
 
         // ========================================================
