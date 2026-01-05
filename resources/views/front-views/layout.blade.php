@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>My Chitti | @yield('title')</title>
+    <title>My Chitti SHOP | @yield('title')</title>
     <meta name="csrf-token" id="csrf-token" content="{{ csrf_token() }}">
     <meta name="google-site-verification" content="GKuvdu8PAKO0h9zq-kyGkm1OjAuHY44lWi01iSL40Sk" />
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
@@ -457,7 +457,7 @@
 
         #autocomplete ul li:hover,
         #autocomplete2 ul li:hover,
-        #autocomplete3 ul li:hover {
+        .autocomplete3 ul li:hover {
             background-color: #edfddd;
         }
     </style>
@@ -482,7 +482,7 @@
 
     <!-- <div class="modal fade show" id="mapModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-modal="true" role="dialog" style="display: block;"> -->
 
-    @include('front-views.partials._searchbar')
+    {{-- @include('front-views.partials._searchbar') --}}
     <div class="modal fade " id="mapModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
         aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -589,8 +589,46 @@
 
     @stack('script_2')
 
+    <script>
+$(document).ready(function () {
+
+    const words = [' Service', ' Keyword', ' Category', ' Store'];
+    let index = 0;
+
+    const $textEl = $('#changingText');
+    const $inputEl = $('#mainSearchbar');
+    const $placeholderEl = $('#animatedPlaceholder');
+
+    setInterval(function () {
+
+        // hide animation when user types
+        if ($inputEl.val().trim() !== '') {
+            $placeholderEl.hide();
+            return;
+        } else {
+            $placeholderEl.css('display', 'flex');
+        }
+
+        index = (index + 1) % words.length;
+
+        // restart animation
+        $textEl.removeClass('slide-up');
+
+        // force reflow (jQuery-safe)
+        $textEl[0].offsetWidth;
+
+        $textEl.text(words[index]).addClass('slide-up');
+
+    }, 2500);
+
+});
+</script>
+
 
     <script>
+        $("#mainSearchbar").on('focus', function() {
+            $('#search_placeholder').show()
+        });
         var phoneModal = new bootstrap.Modal(document.getElementById('myModal'));
 
         $('.phone_num_save').on('submit', function(e) {
@@ -714,66 +752,192 @@
         $('#keywords').select2()
 
         let searchTimeout = null;
-let currentRequest = null;
+        let currentRequest = null;
 
-$("#searchBarBtn").on('keyup', function() {
-    searchBar('autocomplete', this);
-});
+        $("#searchBarBtn").on('keyup', function() {
+            searchBar('autocomplete', this);
+        });
 
-function searchBar(resultElem, elem) {
-    // Clear previous timeout
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
-    }
-    
-    // Abort previous AJAX request if it's still running
-    if (currentRequest && currentRequest.readyState !== 4) {
-        currentRequest.abort();
-    }
-    
-    if ($(elem).val() == '') {
-        $('#' + resultElem).html('');
-        $('#loading').hide();
-        return;
-    }
-    
-    if ($(elem).val().length >= 2) {
-        // Debounce: wait 300ms after user stops typing
-        searchTimeout = setTimeout(function() {
+        function searchBar(resultElem, elem) {
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            if (currentRequest && currentRequest.readyState !== 4) {
+                currentRequest.abort();
+            }
+
+            if ($(elem).val() == '') {
+                $('#' + resultElem).html('');
+                $('#loading').hide();
+                return;
+            }
+
+            if ($(elem).val().length >= 2) {
+                searchTimeout = setTimeout(function() {
+                    $.ajaxSetup({
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        }
+                    });
+
+                    currentRequest = $.get({
+                        url: "{{ route('searchbar-web') }}",
+                        data: {
+                            keyword: $(elem).val()
+                        },
+                        beforeSend: function() {
+                            $('#loading').show();
+                        },
+                        success: function(data) {
+                            $('#' + resultElem).html(data.html);
+                        },
+                        error: function(xhr, status, error) {
+                            if (status !== 'abort') {
+                                console.error('Search error:', error);
+                            }
+                        },
+                        complete: function(xhr, status) {
+                            $("#search_placeholder").hide();
+
+                            if (status !== 'abort') {
+                                $('#loading').hide();
+                            }
+                        }
+                    });
+                }, 300);
+            } else {
+                $("#search_placeholder").show();
+                $("#search_results3").html('')
+            }
+        }
+
+        function performSearch(resultElem, keyword) {
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             });
-            
-            currentRequest = $.get({
+
+            currentRequest = $.ajax({
                 url: "{{ route('searchbar-web') }}",
+                method: 'GET',
                 data: {
-                    keyword: $(elem).val()
+                    keyword: keyword
                 },
+                dataType: 'json',
+                cache: true, // Enable browser caching for repeated searches
                 beforeSend: function() {
                     $('#loading').show();
                 },
                 success: function(data) {
-                    $('#' + resultElem).html(data.html);
-                    console.log('done');
+                    if (data.status) {
+                        $('#' + resultElem).html(data.html);
+                    } else {
+                        $('#' + resultElem).html(data.html);
+                    }
                 },
                 error: function(xhr, status, error) {
-                    // Ignore aborted requests
                     if (status !== 'abort') {
                         console.error('Search error:', error);
+                        $('#' + resultElem).html(
+                            '<div class="text-center mt-3 text-danger">Search error. Please try again.</div>'
+                        );
                     }
                 },
                 complete: function(xhr, status) {
-                    // Only hide loading if request wasn't aborted
                     if (status !== 'abort') {
                         $('#loading').hide();
                     }
                 }
             });
-        }, 300); // Wait 300ms after last keypress
-    }
-}
+        }
+
+        // Optional: Add keyboard navigation for results
+        $(document).on('keydown', '#search_input', function(e) {
+            const $results = $('#search_results3 li');
+            const $active = $results.filter('.active');
+            let $next;
+
+            if (e.keyCode === 40) { // Down arrow
+                e.preventDefault();
+                if ($active.length === 0) {
+                    $next = $results.first();
+                } else {
+                    $next = $active.next('li');
+                }
+                $results.removeClass('active');
+                $next.addClass('active');
+            } else if (e.keyCode === 38) { // Up arrow
+                e.preventDefault();
+                if ($active.length !== 0) {
+                    $next = $active.prev('li');
+                    $results.removeClass('active');
+                    $next.addClass('active');
+                }
+            } else if (e.keyCode === 13) { // Enter
+                e.preventDefault();
+                if ($active.length !== 0) {
+                    $active.find('a')[0].click();
+                }
+            }
+        });
+
+        function searchBar_old(resultElem, elem) {
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            if (currentRequest && currentRequest.readyState !== 4) {
+                currentRequest.abort();
+            }
+
+            if ($(elem).val() == '') {
+                $('#' + resultElem).html('');
+                $('#loading').hide();
+                return;
+            }
+
+            if ($(elem).val().length >= 2) {
+                searchTimeout = setTimeout(function() {
+                    $.ajaxSetup({
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        }
+                    });
+
+                    currentRequest = $.get({
+                        url: "{{ route('searchbar-web') }}",
+                        data: {
+                            keyword: $(elem).val()
+                        },
+                        beforeSend: function() {
+                            $('#loading').show();
+                        },
+                        success: function(data) {
+                            $('#' + resultElem).html(data.html);
+                            $("#search_placeholder").hide();
+
+                        },
+                        error: function(xhr, status, error) {
+                            // Ignore aborted requests
+                            if (status !== 'abort') {
+                                console.error('Search error:', error);
+                            }
+                        },
+                        complete: function(xhr, status) {
+                            // Only hide loading if request wasn't aborted
+                            if (status !== 'abort') {
+                                $('#loading').hide();
+                            }
+                        }
+                    });
+                }, 300); // Wait 300ms after last keypress
+            } else {
+                $("#search_placeholder").show();
+                $("#search_results3").html('')
+            }
+        }
     </script>
 
     <script>
