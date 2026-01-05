@@ -167,91 +167,91 @@ class FrontController extends Controller
         // ========================================================
         // FIND CONFLICTING PHONE NUMBERS BEFORE UPDATION
         //  ======================================================== 
-        $conflictsWithZero = DB::select("
-            SELECT 
-                s.id,
-                s.phone AS original_phone,
-                CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
-            FROM stores s
-            WHERE s.phone REGEXP '^0[0-9]{10}$'
-            AND EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
-            )
-        ");
-
-        $conflictsTenDigit = DB::select("
-            SELECT 
-                s.id,
-                s.phone AS original_phone,
-                CONCAT('+91', s.phone) AS normalized_phone
-            FROM stores s
-            WHERE s.phone REGEXP '^[0-9]{10}$'
-            AND EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', s.phone)
-            )
-        ");
-
-        return response()->json([
-            'status' => true, 
-            'zero_prefixed_conflicts' => $conflictsWithZero,
-            'ten_digit_conflicts' => $conflictsTenDigit,
-            'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
-        ]); 
-
-        // ========================================================
-        // UPDATE STORE PHONES TO INTERNATIONAL FORMAT +91XXXXXXXXXX
-        // =========================================================
-        // DB::beginTransaction();
-
-        // try {
-        //     // Backup (run once)
-        //     DB::statement("
-        //     CREATE TABLE IF NOT EXISTS stores_backup 
-        //     AS SELECT * FROM stores
-        // ");
-
-        //     // 1️⃣ Normalize 0XXXXXXXXXX → +91XXXXXXXXXX (skip duplicates)
-        //     DB::statement("
-        //     UPDATE stores s
-        //     SET s.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+        // $conflictsWithZero = DB::select("
+        //     SELECT 
+        //         s.id,
+        //         s.phone AS original_phone,
+        //         CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
+        //     FROM stores s
         //     WHERE s.phone REGEXP '^0[0-9]{10}$'
-        //     AND NOT EXISTS (
+        //     AND EXISTS (
         //         SELECT 1
         //         FROM stores x
         //         WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
         //     )
         // ");
 
-        //     // 2️⃣ Normalize 10-digit numbers → +91XXXXXXXXXX (skip duplicates)
-        //     DB::statement("
-        //     UPDATE stores s
-        //     SET s.phone = CONCAT('+91', s.phone)
+        // $conflictsTenDigit = DB::select("
+        //     SELECT 
+        //         s.id,
+        //         s.phone AS original_phone,
+        //         CONCAT('+91', s.phone) AS normalized_phone
+        //     FROM stores s 
         //     WHERE s.phone REGEXP '^[0-9]{10}$'
-        //     AND NOT EXISTS (
+        //     AND EXISTS (
         //         SELECT 1
         //         FROM stores x
         //         WHERE x.phone = CONCAT('+91', s.phone)
         //     )
         // ");
 
-        //     DB::commit();
+        // return response()->json([
+        //     'status' => true, 
+        //     'zero_prefixed_conflicts' => $conflictsWithZero,
+        //     'ten_digit_conflicts' => $conflictsTenDigit,
+        //     'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
+        // ]); 
 
-        //     return response()->json([
-        //         'status' => true,
-        //         'message' => 'Phone numbers normalized (duplicates skipped)'
-        //     ]);
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
+        // ========================================================
+        // UPDATE STORE PHONES TO INTERNATIONAL FORMAT +91XXXXXXXXXX
+        // =========================================================
+        DB::beginTransaction();
 
-        //     return response()->json([
-        //         'status' => false,
-        //         'error' => $e->getMessage()
-        //     ], 500);
-        // }
+        try {
+            // Backup (run once)
+            DB::statement("
+            CREATE TABLE IF NOT EXISTS stores_backup 
+            AS SELECT * FROM stores
+        ");
+
+            // 1️⃣ Normalize 0XXXXXXXXXX → +91XXXXXXXXXX (skip duplicates)
+            DB::statement("
+            UPDATE stores s
+            SET s.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+            WHERE s.phone REGEXP '^0[0-9]{10}$'
+            AND NOT EXISTS (
+                SELECT 1
+                FROM stores x
+                WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+            )
+        ");
+
+            // 2️⃣ Normalize 10-digit numbers → +91XXXXXXXXXX (skip duplicates)
+            DB::statement("
+            UPDATE stores s
+            SET s.phone = CONCAT('+91', s.phone)
+            WHERE s.phone REGEXP '^[0-9]{10}$'
+            AND NOT EXISTS (
+                SELECT 1
+                FROM stores x
+                WHERE x.phone = CONCAT('+91', s.phone)
+            )
+        ");
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Phone numbers normalized (duplicates skipped)'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
         die;
 
         // return view('front-views.test_view');
