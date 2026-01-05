@@ -160,48 +160,47 @@ class FrontController extends Controller
     public function approve_success(Request $request)
     {
         return view('vendor-views.documents.approve_success');
-    }
+    }  
     public function testing(Request $request)
     {
-
-        echo env('DB_DATABASE');die;
+ 
         // ========================================================
         // FIND CONFLICTING PHONE NUMBERS BEFORE UPDATION
-        //  ========================================================
+        //  ======================================================== 
         $conflictsWithZero = DB::select("
-        SELECT 
-            s.id,
-            s.phone AS original_phone,
-            CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
-        FROM stores s
-        WHERE s.phone REGEXP '^0[0-9]{10}$'
-        AND EXISTS (
-            SELECT 1
-            FROM stores x
-            WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
-        )
-    ");
+            SELECT 
+                s.id,
+                s.phone AS original_phone,
+                CONCAT('+91', SUBSTRING(s.phone, 2)) AS normalized_phone
+            FROM stores s
+            WHERE s.phone REGEXP '^0[0-9]{10}$'
+            AND EXISTS (
+                SELECT 1
+                FROM stores x
+                WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+            )
+        ");
 
         $conflictsTenDigit = DB::select("
-        SELECT 
-            s.id,
-            s.phone AS original_phone,
-            CONCAT('+91', s.phone) AS normalized_phone
-        FROM stores s
-        WHERE s.phone REGEXP '^[0-9]{10}$'
-        AND EXISTS (
-            SELECT 1
-            FROM stores x
-            WHERE x.phone = CONCAT('+91', s.phone)
-        )
-    ");
+            SELECT 
+                s.id,
+                s.phone AS original_phone,
+                CONCAT('+91', s.phone) AS normalized_phone
+            FROM stores s
+            WHERE s.phone REGEXP '^[0-9]{10}$'
+            AND EXISTS (
+                SELECT 1
+                FROM stores x
+                WHERE x.phone = CONCAT('+91', s.phone)
+            )
+        ");
 
         return response()->json([
-            'status' => true,
+            'status' => true, 
             'zero_prefixed_conflicts' => $conflictsWithZero,
             'ten_digit_conflicts' => $conflictsTenDigit,
             'total_conflicts' => count($conflictsWithZero) + count($conflictsTenDigit),
-        ]);
+        ]); 
 
         // ========================================================
         // UPDATE STORE PHONES TO INTERNATIONAL FORMAT +91XXXXXXXXXX
