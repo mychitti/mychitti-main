@@ -164,6 +164,7 @@ class FrontController extends Controller
     public function testing(Request $request)
     {
 
+        echo env('DB_DATABASE');die;
         // ========================================================
         // FIND CONFLICTING PHONE NUMBERS BEFORE UPDATION
         //  ========================================================
