@@ -206,7 +206,6 @@ class LoginController extends Controller
             'role' => 'required'
         ]);
 
-
         if ($request->role == 'admin_employee') {
             $data = Admin::where('email', $request->email)->where('role_id', 1)->exists();
             if ($data) {
@@ -239,7 +238,6 @@ class LoginController extends Controller
         }
 
         $data = $this->login_attemp($request->role, $request->email, $request->password, $request->remember);
-        // prx($data);
         if ($data == 'admin') {
             $admin = Admin::find(auth('admin')->id());
             $admin->is_logged_in = 1;
@@ -253,15 +251,29 @@ class LoginController extends Controller
         }
 
         // dd(config('session.cookie'));
+        $domain = $request->getHost();
 
         if ($data == 'vendor') {
+            // dd(auth('vendor')->check(), auth('vendor')->user());
+
             if ($request->role === 'vendor_employee') {
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
-                return redirect()->to('https://vendor-employee.mychitti.net/dashboard');
+                
+                return redirect()->route('vendor.dashboard');
             }
-            return redirect()->to('https://vendor.mychitti.net/dashboard');
+                return redirect()->route('vendor.dashboard');
+             // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
+                //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
+                // } else {
+                //     return redirect()->to('https://vendor-employee.mychitti.net/dashboard');
+                // }
+            // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
+            //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
+            // } else {
+            //     return redirect()->to('https://vendor.mychitti.net/dashboard');
+            // }
         }
 
         return redirect()->back()->withInput($request->only('email', 'remember'))

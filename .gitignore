@@ -19,5 +19,3 @@ installation/database.sql
 resources/lang
 app/Providers/RouteServiceProvider.php
 /vendor
-composer.json
-composer.lock

@@ -1123,6 +1123,7 @@ class Helpers
                 'parent_id' => 0,
                 'position' => 0,
                 'module_id' => 6,
+                'added_by' => Helpers::get_store_id() ?? 0
             ]);
             $category_id = $category->id;
         }

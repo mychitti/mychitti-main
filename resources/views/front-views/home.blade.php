@@ -352,11 +352,13 @@
                     @endif
                 @endforeach
             </div>
+            <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>
+            <p style="text-align: center;">Search, compare, and book trusted local services in just a few clicks.</p>
             <div class="pop-items-section">
                   <h1 style="" class="section_heading text_dark ">Most Popular Services
                     </h1>
-                    <p style="margin:0 atuo;" class=""><i class="fas fa-crown text-secondary"></i> <span
-                            class="text_dark">Connect with verified providers in your area !</span><i class="fas fa-crown text-secondary"></i></p>
+                    <p style="margin:0 atuo;" class=""><span
+                            class="text_dark">Connect with verified providers in your area !</span></p>
 
                 <div class="pop-items-grid">
                     @if (count($data['popular_services']) > 0)
@@ -386,10 +388,10 @@
                         Easily In Your
                         City!
                     </h1>
-                    <p style="margin:0 atuo;" class=""><i class="fas fa-fire text-secondary"></i> <span
+                    <p style="margin:0 atuo;" class=""><span
                             class="text_dark">Discover Our
                             Top-Selling Services - Customer Favorites
-                            You Can't Miss! </span><i class="fas fa-fire text-secondary"></i></p>
+                            You Can't Miss! </span></p>
                 @endif
                 <div class="row g-4 ">
 

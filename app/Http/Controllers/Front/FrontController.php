@@ -210,27 +210,27 @@ class FrontController extends Controller
 
             // 1️⃣ Normalize 0XXXXXXXXXX → +91XXXXXXXXXX (skip duplicates)
             DB::statement("
-            UPDATE stores s
-            SET s.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
-            WHERE s.phone REGEXP '^0[0-9]{10}$'
-            AND NOT EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
-            )
-        ");
+                UPDATE vendors s
+                SET s.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+                WHERE s.phone REGEXP '^0[0-9]{10}$'
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM vendors x
+                    WHERE x.phone = CONCAT('+91', SUBSTRING(s.phone, 2))
+                )
+            ");
 
             // 2️⃣ Normalize 10-digit numbers → +91XXXXXXXXXX (skip duplicates)
             DB::statement("
-            UPDATE stores s
-            SET s.phone = CONCAT('+91', s.phone)
-            WHERE s.phone REGEXP '^[0-9]{10}$'
-            AND NOT EXISTS (
-                SELECT 1
-                FROM stores x
-                WHERE x.phone = CONCAT('+91', s.phone)
-            )
-        ");
+                UPDATE stores s
+                SET s.phone = CONCAT('+91', s.phone)
+                WHERE s.phone REGEXP '^[0-9]{10}$'
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM stores x
+                    WHERE x.phone = CONCAT('+91', s.phone)
+                )
+            ");
 
             DB::commit();
 

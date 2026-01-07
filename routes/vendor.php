@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Route;
 // use App\WebSockets\Handler\ServiceReqSocketHandler;
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
 
-
-
-
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
