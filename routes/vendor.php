@@ -23,7 +23,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
-    });
+    }); 
 
      
 
