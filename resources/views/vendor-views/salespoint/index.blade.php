@@ -636,7 +636,7 @@
                              </style>
 
                              <button type="button" class="order-btn">Place order</button>
-                             <button onclick="printInvoice()">Print Invoice</button>
+                             <button type="button" onclick="printInvoice()">Print Invoice</button>
                              <div class="token_type">
                                  <div class="pos--payment-options mt-3 mb-3">
                                      <ul>
