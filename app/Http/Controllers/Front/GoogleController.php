@@ -18,19 +18,19 @@ class GoogleController extends Controller
     public function redirectToGoogle()
     {
         session(['google_login_type' => 'user']);
-        return Socialite::driver('google')->redirect();
+        return Socialite::driver('google')->stateless()->redirect();
     }
 
     public function vendorRedirectToGoogle()
     {
         session(['google_login_type' => 'vendor']);
-        return Socialite::driver('google')->redirect();
+        return Socialite::driver('google')->stateless()->redirect();
     }
 
     public function handleGoogleCallback(Request $request)
     {
         try {
-            $googleUser = Socialite::driver('google')->user();
+            $googleUser = Socialite::driver('google')->stateless()->user();
             $loginType = session('google_login_type', 'user');
 
             session()->forget('google_login_type'); // cleanup
