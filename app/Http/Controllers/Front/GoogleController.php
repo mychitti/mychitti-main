@@ -44,6 +44,7 @@ class GoogleController extends Controller
         | USER LOGIN FLOW
         |--------------------------------------------------------------------------
         */
+        prx( $loginType);
             if ($loginType === 'user') {
 
                 $user = User::where('email', $googleUser->getEmail())->first();
@@ -73,14 +74,10 @@ class GoogleController extends Controller
                 $vendor = Vendor::where('email', $googleUser->getEmail())->first();
                 if (!$vendor) {
                     Toastr::error('No vendor account associated with this Google account. Please contact support.');
-                                                                               return redirect()->route('login', ['tab' => 'store']);
-
-
-                }else if(!$vendor->status){
+                    return redirect()->route('login', ['tab' => 'store']);
+                } else if (!$vendor->status) {
                     Toastr::error('Your vendor account is inactive. Please contact support.');
-                              return redirect()->route('login', ['tab' => 'store']);
-
-                    
+                    return redirect()->route('login', ['tab' => 'store']);
                 }
 
                 Auth::guard('vendor')->login($vendor);
@@ -88,9 +85,8 @@ class GoogleController extends Controller
                 if (auth('vendor')->check()) {
                     return redirect()->route('vendor.dashboard');
                 } else {
-                                        Toastr::error('Some error occured.');
-
-                              return redirect()->route('login', ['tab' => 'store']);
+                    Toastr::error('Some error occured.');
+                    return redirect()->route('login', ['tab' => 'store']);
                 }
             }
         } catch (Throwable $e) {
