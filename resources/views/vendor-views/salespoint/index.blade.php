@@ -636,6 +636,7 @@
                              </style>
 
                              <button type="button" class="order-btn">Place order</button>
+                             <button onclick="printInvoice()">Print Invoice</button>
                              <div class="token_type">
                                  <div class="pos--payment-options mt-3 mb-3">
                                      <ul>
@@ -679,6 +680,16 @@
  @push('script_2')
      <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
 
+<script>
+  function printInvoice() {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({
+        type: 'PRINT_INVOICE',
+        url: "https://staging.mychitti.net/storage/app/public/store/tokens/token_1767781830.pdf"
+      })
+    );
+  }
+</script>
      <script>
          $('.order-btn').on('click', function() {
              if ($('.price-display').length) {
