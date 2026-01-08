@@ -44,7 +44,7 @@ class GoogleController extends Controller
         | USER LOGIN FLOW
         |--------------------------------------------------------------------------
         */
-        prx( $loginType);
+        // prx( $loginType);
             if ($loginType === 'user') {
 
                 $user = User::where('email', $googleUser->getEmail())->first();
