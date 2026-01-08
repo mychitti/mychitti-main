@@ -114,15 +114,15 @@ class LoginController extends Controller
         $host = request()->getHost();
 
         if(!$login_url ){
-               switch ($host) {
-            case 'vendor.mcvendorhub.com':
-                $login_url = 'vendor';
+            switch ($host) {
+                case 'vendor.mcvendorhub.com':
+                    $login_url = 'store';
 
-            case 'vendor-staff.mcvendorhub.com':
-                $login_url = 'vendor-employee';
+                case 'vendor-staff.mcvendorhub.com':
+                    $login_url = 'store-employee';
 
-            default:
-        }
+                default:
+             }
         }
         $data = array_column(DataSetting::whereIn('key', [
             'store_employee_login_url',
