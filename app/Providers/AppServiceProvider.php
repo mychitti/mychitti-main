@@ -82,12 +82,12 @@ class AppServiceProvider extends ServiceProvider
 
         $host = request()->getHost();
 
-        if (Str::contains($host, 'vendor-employee')) {
+        if (Str::contains($host, 'vendor-staff')) {
             config(['session.cookie' => 'vendor_employee_session']);
         } elseif (Str::contains($host, 'vendor')) {
             config(['session.cookie' => 'vendor_session']);
         }
-        if (request()->getHost() === 'vendor-employee.mcvendorhub.com') {
+        if (request()->getHost() === 'vendor-staff.mcvendorhub.com') {
 
             // Override the global route() helper function
             $this->app->singleton('url', function ($app) {
@@ -95,7 +95,7 @@ class AppServiceProvider extends ServiceProvider
                 $request = $app['request'];
 
                 $url = new \Illuminate\Routing\UrlGenerator($routes, $request);
-                $url->forceRootUrl('https://vendor-employee.mcvendorhub.com');
+                $url->forceRootUrl('https://vendor-staff.mcvendorhub.com');
 
                 return $url;
             });

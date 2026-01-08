@@ -11,7 +11,7 @@ class DynamicSessionCookie
     {
         $host = $request->getHost();
 
-        if (str_contains($host, 'vendor-employee')) {
+        if (str_contains($host, 'vendor-staff')) {
             config(['session.cookie' => 'vendor_employee_session']);
             config(['auth.defaults.guard' => 'vendor_employee']);
             $request->attributes->set('guard', 'vendor_employee');

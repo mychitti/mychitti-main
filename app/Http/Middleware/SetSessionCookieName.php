@@ -10,7 +10,7 @@ class SetSessionCookieName
     {
         $host = $request->getHost();
 
-        if (Str::contains($host, 'vendor-employee')) {
+        if (Str::contains($host, 'vendor-staff')) {
             config(['session.cookie' => 'vendor_employee_session']);
         } elseif (Str::contains($host, 'vendor')) {
             config(['session.cookie' => 'vendor_session']);

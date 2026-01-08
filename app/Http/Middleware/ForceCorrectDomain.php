@@ -14,8 +14,8 @@ class ForceCorrectDomain
             return redirect()->to('https://vendor.mcvendorhub.com' . $request->getRequestUri());
         }
 
-        if (auth('vendor_employee')->check() && !str_contains($host, 'vendor-employee.mcvendorhub.com')) {
-            return redirect()->to('https://vendor-employee.mcvendorhub.com' . $request->getRequestUri());
+        if (auth('vendor_employee')->check() && !str_contains($host, 'vendor-staff.mcvendorhub.com')) {
+            return redirect()->to('https://vendor-staff.mcvendorhub.com' . $request->getRequestUri());
         }
 
         return $next($request);

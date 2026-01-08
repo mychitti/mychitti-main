@@ -22,13 +22,13 @@ class RedirectIfWrongSubdomain
                 $allowedPaths = [
                     'admin.mychitti.net' => ['login/admin', 'login/admin-employee'],
                     'vendor.mcvendorhub.com' => ['login'],
-                    'vendor-employee.mcvendorhub.com' => ['login'],
+                    'vendor-staff.mcvendorhub.com' => ['login'],
                 ];
 
                 $defaultLoginPath = [
                     'admin.mychitti.net' => 'login/admin',
                     'vendor.mcvendorhub.com' => 'login',
-                    'vendor-employee.mcvendorhub.com' => 'login',
+                    'vendor-staff.mcvendorhub.com' => 'login',
                 ];
 
                 if (isset($allowedPaths[$host])) {
@@ -53,8 +53,8 @@ class RedirectIfWrongSubdomain
             }
 
             if (auth('vendor_employee')->check()) {
-                if (!str_contains($host, 'vendor-employee.mcvendorhub.com')) {
-                    return redirect()->away('https://vendor-employee.mcvendorhub.com' . $request->getRequestUri());
+                if (!str_contains($host, 'vendor-staff.mcvendorhub.com')) {
+                    return redirect()->away('https://vendor-staff.mcvendorhub.com' . $request->getRequestUri());
                 }
             }
         }
