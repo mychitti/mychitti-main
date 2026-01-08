@@ -354,7 +354,6 @@ class SalespointController extends Controller
         $pos_token->gst_number = $GST ?? '';
         $pos_token->save();
 
-
         // get pricing 
         $subtotal = 0;
         $total = 0;
@@ -421,7 +420,7 @@ class SalespointController extends Controller
             }
         }
         // + $gstAmountTotal
-        $total = $subtotal  + $gstAmountTotal ;
+        $total = $subtotal  + $gstAmountTotal;
 
         $pos_token->subtotal = $subtotal;
         $pos_token->gst_amount = $gstAmountTotal;
@@ -458,9 +457,9 @@ class SalespointController extends Controller
         $delivery_gst_percent = $store_config?->delivery_charges_gst_percent ?? 0;
         $delivery_gst_status = $store_config?->delivery_charges_gst_pos ?? 0;
 
-        $delivery_charge = $request->delivery; 
+        $delivery_charge = $request->delivery;
         $delivery_gst_amount = 0;
-        
+
         if ($delivery_gst_percent > 0 && $delivery_gst_status == 1) {
             $delivery_gst_amount = ($delivery_charge * $delivery_gst_percent) / 100;
         }
@@ -533,7 +532,13 @@ class SalespointController extends Controller
         }
         // prx($data); 
         if (isset($data['success']) && $data['success']) {
-            return redirect()->to($data['url']);
+            $isApp = request()->header('X-Client') === 'app';
+
+            if ($isApp) {
+                return redirect()->to($data['url']);
+            } else {
+                return redirect()->back()->with('pdf_url', $data['url']);
+            }
         } else {
             Toastr::error("Failed to generate POS token");
             return back();
