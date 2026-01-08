@@ -222,7 +222,6 @@ class LoginController extends Controller
                         ->withErrors([translate('messages.inactive_vendor_warning')]);
                 }
             }else{
-                echo 'not found'; die;
             }
         } elseif ($request->role == 'vendor_employee') {
             $employee = VendorEmployee::where('email', $request->email)->first();
@@ -276,7 +275,6 @@ class LoginController extends Controller
             //     return redirect()->to('https://vendor.mcvendorhub.com/dashboard');
             // }
         }
-        echo 'end '; die;
 
         return redirect()->back()->withInput($request->only('email', 'remember'))
             ->withErrors(['Credentials does not match.']);
