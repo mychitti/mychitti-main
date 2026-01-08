@@ -205,7 +205,7 @@ class LoginController extends Controller
             'password' => 'required|min:6',
             'role' => 'required'
         ]);
-
+prx($request->role);
         if ($request->role == 'admin_employee') {
             $data = Admin::where('email', $request->email)->where('role_id', 1)->exists();
             if ($data) {
