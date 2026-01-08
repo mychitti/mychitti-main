@@ -116,9 +116,19 @@ Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallb
 
 Route::get('registration-successfull', [FrontController::class, 'registration_success'])->name('registration-successfull');
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
-Route::get('login', [FrontUserController::class, 'login'])->name('user-login');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
-Route::post('login', [FrontUserController::class, 'login_post'])->name('login.post');
+
+// only if domain is mychitti.net or staging.mychitti.net
+Route::domain('{subdomain}.mychitti.net')->group(function () {
+
+    Route::where('subdomain', '^(staging)?$');
+
+    Route::get('login', [FrontUserController::class, 'login'])
+        ->name('user-login');
+
+    Route::post('login', [FrontUserController::class, 'login_post'])
+        ->name('login.post');
+});
 Route::post('signup', [FrontUserController::class, 'signup_post'])->name('signup.post');
 Route::get('user-logout', [FrontUserController::class, 'logout'])->name('user.logout');
 Route::get('forgot-password', [FrontUserController::class, 'forgot_password'])->name('forgot-password');
