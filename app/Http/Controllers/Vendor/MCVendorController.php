@@ -76,7 +76,7 @@ class MCVendorController extends Controller
                 return $url;
             default:
         }
-
+prx($host);
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
