@@ -32,7 +32,7 @@ class GoogleController extends Controller
 
         return Socialite::driver('google')
             ->stateless()
-            ->redirectUrl('https://vendor.mychitti.net/vendor/auth/google/callback')
+            ->redirectUrl('https://vendor.mychitti.net/auth/google/callback')
             ->redirect();
     }
 
