@@ -15,26 +15,26 @@ use Throwable;
 
 class GoogleController extends Controller
 {
-   
-public function redirectToGoogle()
-{
-    session(['google_login_type' => 'user']);
 
-    return Socialite::driver('google')
-        ->stateless()
-        ->redirectUrl(config('services.google.user_redirect'))
-        ->redirect();
-}
+    public function redirectToGoogle()
+    {
+        session(['google_login_type' => 'user']);
 
-public function vendorRedirectToGoogle()
-{
-    session(['google_login_type' => 'vendor']);
+        return Socialite::driver('google')
+            ->stateless()
+            ->redirectUrl('https://mychitti.net/auth/google/callback')
+            ->redirect();
+    }
 
-    return Socialite::driver('google')
-        ->stateless()
-        ->redirectUrl(config('services.google.vendor_redirect'))
-        ->redirect();
-}
+    public function vendorRedirectToGoogle()
+    {
+        session(['google_login_type' => 'vendor']);
+
+        return Socialite::driver('google')
+            ->stateless()
+            ->redirectUrl('https://vendor.mychitti.net/auth/google/callback')
+            ->redirect();
+    }
 
     public function handleGoogleCallback(Request $request)
     {
@@ -53,7 +53,7 @@ public function vendorRedirectToGoogle()
         | USER LOGIN FLOW
         |--------------------------------------------------------------------------
         */
-        // prx( $loginType);
+            // prx( $loginType);
             if ($loginType === 'user') {
 
                 $user = User::where('email', $googleUser->getEmail())->first();
