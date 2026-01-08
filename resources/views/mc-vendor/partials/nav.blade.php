@@ -24,9 +24,8 @@
                  <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="my-nav-link nav-link ">Price Calculator</a>
                  <a href="{{ route('vendor.mc-vendor.home') }}#faq_section" class="my-nav-link nav-link">FAQs</a>
                  <a href="{{ route('vendor.mc-vendor.home') }}#review_section" class="my-nav-link nav-link">Reviews</a>
-                 <a href="https://vendor.mcvendorhub.com/login/store" class="my-nav-link nav-link">Login</a>
+                 <a href="https://vendor.mcvendorhub.com/login" class="my-nav-link nav-link">Login</a>
                  <a href="https://vendor.mcvendorhub.com/list-your-business" class="my-nav-link nav-link">Signup</a>
-
              </div>
          </div>
      </div>

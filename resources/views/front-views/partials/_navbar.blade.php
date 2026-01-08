@@ -50,7 +50,7 @@
                         </div>
                     </li>
 
-                    <a class=" wrapper_link nav-link  position-relative" href="https://vendor.mcvendorhub.com">
+                    <a class=" wrapper_link nav-link  position-relative" href="https://vendor.mcvendorhub.com/login">
                         Store Login
                     </a>
 

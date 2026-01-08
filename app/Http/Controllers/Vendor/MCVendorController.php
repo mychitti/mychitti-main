@@ -67,10 +67,10 @@ class MCVendorController extends Controller
 
         switch ($host) {
             case 'vendor.mcvendorhub.com':
-                return redirect('/login/store');
+                return redirect('/login');
 
             case 'vendor-staff.mcvendorhub.com':
-                return redirect('/login/store-employee');
+                return redirect('/login');
 
             default:
         }

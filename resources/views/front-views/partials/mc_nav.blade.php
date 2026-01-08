@@ -23,8 +23,8 @@
                  <a href="{{ route('vendor_homepage') }}#products_section" class="my-nav-link nav-link ">Products</a>
                  <a href="{{ route('vendor_homepage') }}#faq_section" class="my-nav-link nav-link">FAQs</a>
                  <a href="{{ route('vendor_homepage') }}#review_section" class="my-nav-link nav-link">Reviews</a>
-                 <a href="{{ url('login/store') }}" class="my-nav-link nav-link">Login</a>
-                 <a href="{{ url('login/store') }}" class="my-nav-link nav-link">Signup</a>
+                 <a href="{{ url('login') }}" class="my-nav-link nav-link">Login</a>
+                 <a href="{{ url('login') }}" class="my-nav-link nav-link">Signup</a>
 
              </div>
          </div>
@@ -56,10 +56,10 @@
              <a href="{{ route('vendor_homepage') }}#review_section" class="my-nav-link nav-link">Reviews</a>
          </li>
          <li class="mx-4">
-             <a href="{{ url('login/store') }}" class="my-nav-link">Login</a>
+             <a href="{{ url('login') }}" class="my-nav-link">Login</a>
          </li>
          <li class="mx-4">
-             <a href="{{ url('login/store') }}" class="my-nav-link">Signup</a>
+             <a href="{{ url('login') }}" class="my-nav-link">Signup</a>
          </li>
      </ul>
 

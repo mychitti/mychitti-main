@@ -20,15 +20,15 @@ class VendorMiddleware
     {
         if (Auth::guard('vendor')->check()) {
             if (!auth('vendor')->user()->status) {
-                return redirect('login/store');
+                return redirect('login');
             }
             return $next($request);
         } else if (Auth::guard('vendor_employee')->check()) {
             if (Auth::guard('vendor_employee')->user()->is_logged_in == 0) {
-                return redirect('login/store');
+                return redirect('login');
             }
             if (!auth('vendor_employee')->user()->store->status) {
-                return redirect('login/store');
+                return redirect('login');
             }
             return $next($request);
         }
@@ -45,7 +45,7 @@ class VendorMiddleware
         // if ($platform == 'web') {
         //     return redirect()->route('vendor_homepage');
         // } else {
-            return redirect('login/store');
+            return redirect('login');
         // }
     }
 }

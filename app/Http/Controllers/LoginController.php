@@ -205,13 +205,26 @@ class LoginController extends Controller
             'password' => 'required|min:6',
             'role' => 'required'
         ]);
-        if ($request->role == 'admin_employee') {
+        $host = request()->getHost();
+
+        switch ($host) {
+            case 'vendor.mcvendorhub.com':
+                $role = 'vendor';
+
+            case 'vendor-staff.mcvendorhub.com':
+                $role = 'vendor_employee';
+
+            default:
+                $role = $request->role ?? 'admin';
+        }
+
+        if ($role == 'admin_employee') {
             $data = Admin::where('email', $request->email)->where('role_id', 1)->exists();
             if ($data) {
                 return redirect()->back()->withInput($request->only('email', 'remember'))
                     ->withErrors(['Credentials does not match.']);
             }
-        } elseif ($request->role == 'vendor') {
+        } elseif ($role == 'vendor') {
             $vendor = Vendor::where('email', $request->email)->first();
             if ($vendor) {
                 if ($vendor->stores[0]->suspended == 1) {
@@ -221,9 +234,9 @@ class LoginController extends Controller
                     return redirect()->back()->withInput($request->only('email', 'remember'))
                         ->withErrors([translate('messages.inactive_vendor_warning')]);
                 }
-            }else{
+            } else {
             }
-        } elseif ($request->role == 'vendor_employee') {
+        } elseif ($role == 'vendor_employee') {
             $employee = VendorEmployee::where('email', $request->email)->first();
             if ($employee) {
                 if ($employee?->terminate) {
@@ -237,7 +250,7 @@ class LoginController extends Controller
             }
         }
 
-        $data = $this->login_attemp($request->role, $request->email, $request->password, $request->remember);
+        $data = $this->login_attemp($role, $request->email, $request->password, $request->remember);
         if ($data == 'admin') {
             $admin = Admin::find(auth('admin')->id());
             $admin->is_logged_in = 1;
@@ -260,20 +273,15 @@ class LoginController extends Controller
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
-                
+
                 return redirect()->route('vendor.dashboard');
             }
+            if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
+                return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
+            }else{
                 return redirect()->route('vendor.dashboard');
-             // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
-                //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
-                // } else {
-                //     return redirect()->to('https://vendor-employee.mcvendorhub.com/dashboard');
-                // }
-            // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
-            //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
-            // } else {
-            //     return redirect()->to('https://vendor.mcvendorhub.com/dashboard');
-            // }
+            }
+            
         }
 
         return redirect()->back()->withInput($request->only('email', 'remember'))

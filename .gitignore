@@ -17,5 +17,5 @@ fcm.php
 installation/database.sql
 .vscode
 resources/lang
-app/Providers/RouteServiceProvider.php
+/app/Providers/RouteServiceProvider.php
 /vendor

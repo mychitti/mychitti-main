@@ -21,14 +21,14 @@ class RedirectIfWrongSubdomain
 
                 $allowedPaths = [
                     'admin.mychitti.net' => ['login/admin', 'login/admin-employee'],
-                    'vendor.mcvendorhub.com' => ['login/store'],
-                    'vendor-employee.mcvendorhub.com' => ['login/store-employee'],
+                    'vendor.mcvendorhub.com' => ['login'],
+                    'vendor-employee.mcvendorhub.com' => ['login'],
                 ];
 
                 $defaultLoginPath = [
                     'admin.mychitti.net' => 'login/admin',
-                    'vendor.mcvendorhub.com' => 'login/store',
-                    'vendor-employee.mcvendorhub.com' => 'login/store-employee',
+                    'vendor.mcvendorhub.com' => 'login',
+                    'vendor-employee.mcvendorhub.com' => 'login',
                 ];
 
                 if (isset($allowedPaths[$host])) {
