@@ -117,11 +117,9 @@ class LoginController extends Controller
             switch ($host) {
                 case 'vendor.mcvendorhub.com':
                     $login_url = 'store';
-                    die('vendor domain');
 
                 case 'vendor-staff.mcvendorhub.com':
                     $login_url = 'store-employee';
-                    die('employee domain');
 
                 default:
              }
