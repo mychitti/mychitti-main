@@ -1067,7 +1067,7 @@ $log_email_succ = session()->get('log_email_succ');
                                 src="{{ asset('storage/app/public/vendor_login/login_icon.jpeg') }}" alt="">
                         </div>
                         <div>
-                            <h2>Login with Password</h2>
+                            <h2>Login with Password</h2> {{$role}}
                             <div style="font-size:13px;color:var(--login-muted);margin-top:6px">
                                 Secure access to My Chitti vendor dashboard
                             </div>
