@@ -119,17 +119,24 @@ Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
 
 // only if domain is mychitti.net or staging.mychitti.net
+// Routes WITH subdomain
 Route::domain('{subdomain}.mychitti.net')
-    ->where('subdomain', '.*')
+    ->where('subdomain', 'staging')
     ->group(function () {
         Route::get('login', [FrontUserController::class, 'login'])
-            ->name('user-login')
-            ->defaults('subdomain', 'www');
+            ->name('user-login');
 
         Route::post('login', [FrontUserController::class, 'login_post'])
-            ->name('login.post')
-            ->defaults('subdomain', 'www');
+            ->name('login.post');
     });
+
+// Routes WITHOUT subdomain (default/www)
+Route::get('login', [FrontUserController::class, 'login'])
+    ->name('user-login');
+
+Route::post('login', [FrontUserController::class, 'login_post'])
+    ->name('login.post');
+    
 Route::post('signup', [FrontUserController::class, 'signup_post'])->name('signup.post');
 Route::get('user-logout', [FrontUserController::class, 'logout'])->name('user.logout');
 Route::get('forgot-password', [FrontUserController::class, 'forgot_password'])->name('forgot-password');
