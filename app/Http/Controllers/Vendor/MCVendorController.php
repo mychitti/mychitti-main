@@ -67,16 +67,13 @@ class MCVendorController extends Controller
         switch ($host) {
             case 'vendor.mcvendorhub.com':
                 $url = redirect()->to('/login/store')->getTargetUrl();
-                dd($url);
                 return $url;
 
             case 'vendor-staff.mcvendorhub.com':
                 $url = redirect()->to('/login/store-employee')->getTargetUrl();
-                dd($url);
                 return $url;
             default:
         }
-prx($host);
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
