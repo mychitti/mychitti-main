@@ -7,7 +7,6 @@
         <nav
             class="nav-wrapper navbar navbar-light bg-white navbar-expand-xl mx-md-5 mx-0 justify-content-between p-0 pt-2">
             <a href="{{ route('home') }}" class="navbar-brand   nav-link " style=" width: 150px;">
-                <!-- <h1 class="text-primary display-6">My Chitti</h1> -->
                 @php($store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
                 <img style="width:100%" class="navbar-brand-logo initial--36 onerror-image onerror-image "
                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
@@ -51,7 +50,7 @@
                         </div>
                     </li>
 
-                    <a class=" wrapper_link nav-link  position-relative" href="https://vendor.mychitti.net">
+                    <a class=" wrapper_link nav-link  position-relative" href="https://vendor.mcvendorhub.com">
                         Store Login
                     </a>
 

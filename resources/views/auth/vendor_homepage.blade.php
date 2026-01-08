@@ -1220,7 +1220,7 @@ $log_email_succ = session()->get('log_email_succ');
                             Your privacy is our commitment.
                             Your trust is our responsibility.
                             For full details, please see our <a
-                                href="https:/vendor.mychitti.net/mc-vendor-hub-privacy-policy">https:/vendor.mychitti.net/mc-vendor-hub-privacy-policy</a>
+                                href="https:/vendor.mcvendorhub.com/mc-vendor-hub-privacy-policy">https:/vendor.mcvendorhub.com/mc-vendor-hub-privacy-policy</a>
                         </p>
                     </div>
                 </div>

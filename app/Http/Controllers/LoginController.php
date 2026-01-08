@@ -267,12 +267,12 @@ class LoginController extends Controller
              // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                 //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
                 // } else {
-                //     return redirect()->to('https://vendor-employee.mychitti.net/dashboard');
+                //     return redirect()->to('https://vendor-employee.mcvendorhub.com/dashboard');
                 // }
             // if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
             //     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
             // } else {
-            //     return redirect()->to('https://vendor.mychitti.net/dashboard');
+            //     return redirect()->to('https://vendor.mcvendorhub.com/dashboard');
             // }
         }
 

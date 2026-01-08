@@ -355,8 +355,8 @@
             <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>
             <p style="text-align: center;">Search, compare, and book trusted local services in just a few clicks.</p>
             <div class="pop-items-section">
-                  <h1 style="" class="section_heading text_dark ">Most Popular Services
-                    </h1>
+                  <h2 style="" class="section_heading text_dark ">Most Popular Services
+                    </h2>
                     <p style="margin:0 atuo;" class=""><span
                             class="text_dark">Connect with verified providers in your area !</span></p>
 
@@ -383,11 +383,11 @@
             {{-- TOP SELLING ITEMS  --}}
             <div class="  m-2 mt-3 ">
                 @if (count($data['top_sell_services']))
-                    <h1 style="" class="section_heading text_dark ">Find Goods, Services, Skilled Labour, and Book
+                    <h2 style="" class="section_heading text_dark ">Find Goods, Services, Skilled Labour, and Book
                         Repairs
                         Easily In Your
                         City!
-                    </h1>
+                    </h2>
                     <p style="margin:0 atuo;" class=""><span
                             class="text_dark">Discover Our
                             Top-Selling Services - Customer Favorites
@@ -457,11 +457,11 @@
                     @php $isShop = true; @endphp
                     <div class=" m-2 mt-3">
                         @if (count($data['top_sell_products']))
-                            <h1 class="section_heading text_dark text-end">Shop Products, Accessories, and
+                            <h2 class="section_heading text_dark text-end">Shop Products, Accessories, and
                                 Order
                                 Hotel Food - All in
                                 Your
-                                City! </h1>
+                                City! </h2>
                             <p style="margin:0 atuo;" class="text-end"><i class="fas fa-fire text-secondary"></i>
                                 Discover
                                 Our
@@ -582,8 +582,8 @@
         @if (count($data['nearby_stores']))
             <div class="d-flex justify-content-between align-items-end">
                 <div>
-                    <h1 style="font-size: 22px;" class="section_heading text_dark ">Nearby Stores
-                    </h1>
+                    <h2 style="font-size: 22px;" class="section_heading text_dark ">Nearby Stores
+                    </h2>
                     <p style="margin:0 atuo;" class="text_dark"><i class="fas fa-store"></i> Find Trusted Stores Near You
                     </p>
                 </div>
@@ -651,7 +651,7 @@
             </div>
             <div class="aBc789">
                 <small style="letter-spacing: 1px; color: #999;">{{ $data['special_product']->store?->name }}</small>
-                <h1>{{ $data['special_product']->name }}</h1>
+                <h2>{{ $data['special_product']->name }}</h2>
                 @if ($data['special_product']->module_id == 5)
                     <p>{{ $data['special_product']->description }}</p>
                 @endif
@@ -712,7 +712,7 @@
         <div class="unavailable_data">
             <img style="mix-blend-mode: multiply;" class="img-fluid"
                 src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
-            <h1 class="fs-2 eb-garamond-text">Available Locations: Tirupati, Chittoor, Madanapalle<h1>
+            <h2 class="fs-2 eb-garamond-text">Available Locations: Tirupati, Chittoor, Madanapalle<h2>
                     <h3 class="fs-4 eb-garamond-text">Don’t see your city? We’re expanding soon! Stay tuned.</h3>
         </div>
     @endif

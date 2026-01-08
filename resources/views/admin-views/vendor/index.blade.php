@@ -489,7 +489,7 @@
                                     <div class="form-group mb-0">
                                         <label class="input-label"
                                             for="phone">{{ translate('messages.phone') }}</label>
-                                        <input type="number" id="phone" name="phone" class="form-control"
+                                        <input type="text" id="phone" name="phone" class="intl_input form-control"
                                             placeholder="{{ translate('messages.Ex:') }} 99********" required>
                                     </div>
                                 </div>
@@ -497,8 +497,8 @@
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="secondary_phone">Secondary
                                             {{ translate('messages.phone') }} <i>(Optional)</i></label>
-                                        <input type="number" id="secondary_phone" name="secondary_phone"
-                                            class="form-control"
+                                        <input type="text" id="secondary_phone" name="secondary_phone"
+                                            class="intl_input form-control"
                                             placeholder="{{ translate('messages.Ex:') }} 99********">
                                     </div>
                                 </div>
@@ -771,6 +771,7 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value }}&libraries=places&callback=initMap&v=3.45.8">
     </script>
+    @include('admin-views.partials.tel_input')
 
     <script>
         "use strict";
@@ -1009,7 +1010,7 @@
         $('#choice_zones').on('change', function() {
             let id = $(this).val();
             $.get({
-                url: '{{ url('/') }}/zone/get-coordinates/' + id,
+                url: '{{ url('/') }}{{request()->getHost() == "staging.mychitti.net" ? "/admin" : ""}}/zone/get-coordinates/' + id,
                 dataType: 'json',
                 success: function(data) {
                     if (zonePolygon) {

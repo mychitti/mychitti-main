@@ -61,7 +61,7 @@
                                             for="name">{{ translate('messages.contact_number') }}<span
                                                 class="text-danger">*</span></label>
                                         <input type="text" name="contact" value="{{ $shop->phone }}"
-                                            class="form-control" id="name" required>
+                                            class="form-control intl_input" id="name" required>
                                     </div>
                                     <input type="hidden" name="lang[]" value="default">
                                     <div class="form-group mb-0 col-md-6">
@@ -207,6 +207,7 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value }}&libraries=places&callback=initMap&v=3.45.8">
     </script>
+     @include('admin-views.partials.tel_input')
 
     <script>
         let myLatlng = {

@@ -168,8 +168,8 @@
                                         class="input-label-secondary">({{ translate('messages.optional') }})</span></label>
 
                                 <div class="">
-                                    <input type="text" class="js-masked-input form-control" name="phone"
-                                        id="phoneLabel" placeholder="+x(xxx)xxx-xx-xx" aria-label="+(xxx)xx-xxx-xxxxx"
+                                    <input type="text" class="js-masked-input form-control intl_input" name="phone"
+                                        id="phoneLabel" aria-label="+(xxx)xx-xxx-xxxxx"
                                         value="{{ auth('vendor')->check() ? auth('vendor')->user()->phone : auth('vendor_employee')->user()->phone }}"
                                         data-hs-mask-options='{
                                            "template": "+(880)00-000-00000"
@@ -456,6 +456,7 @@
 
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/profile-index.js"></script>
 
+     @include('admin-views.partials.tel_input')
 
     <script>
         $('.category_select').on('change', function() {

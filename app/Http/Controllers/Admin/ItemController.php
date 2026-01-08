@@ -35,6 +35,7 @@ use App\Models\ItemVariationDetail;
 use App\Models\LocationKeyword;
 use App\Models\ProductKeyword;
 use App\Models\ServiceKeyword;
+use App\Models\Zone;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
@@ -492,8 +493,9 @@ class ItemController extends Controller
             $sub_category = null;
         }
         $fee_categories = FeeCategory::all();
+        $zones = Zone::active()->get();
         $keywords = ServiceKeyword::where('service_id', $id)->get();
-        return view('admin-views.product.edit', compact('product', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
+        return view('admin-views.product.edit', compact('product', 'zones', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
     }
 
     public function status(Request $request)
@@ -505,8 +507,336 @@ class ItemController extends Controller
         return back();
     }
 
+/**
+ * Get areas within the zone using a flexible approach
+ */
+private function getAreasFromGoogleForZone($coordinates)
+{
+    // Get API key from BusinessSetting table
+    $apiKey = \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value ?? config('services.google.api_key');
+    
+    if (!$apiKey) {
+        echo "ERROR: Google API key not configured\n";
+        return ['error' => 'Google API key not configured'];
+    }
+    
+    echo "Coordinates from DB: " . $coordinates . "\n";
+    
+    // Parse polygon coordinates
+    $polygon = $this->parseZoneCoordinates($coordinates);
+    
+    if (empty($polygon)) {
+        echo "ERROR: Failed to parse coordinates\n";
+        return [];
+    }
+    
+    // Get bounds
+    $bounds = $this->calculateBounds($polygon);
+    
+    echo "Bounds calculated:\n";
+    echo json_encode($bounds, JSON_PRETTY_PRINT) . "\n";
+    
+    // Get areas using flexible grid sampling
+    $areas = $this->getFlexibleGridAreas($bounds, $apiKey);
+    
+    return $areas;
+}
+
+/**
+ * Parse coordinates from your zone format
+ */
+private function parseZoneCoordinates($coordinates)
+{
+    $polygon = [];
+    
+    try {
+        echo "Parsing coordinates: " . substr($coordinates, 0, 100) . "...\n";
+        
+        // Check if it's WKT format (POLYGON((...)))
+        if (preg_match('/POLYGON\s*\(\((.*?)\)\)/i', $coordinates, $matches)) {
+            echo "Detected WKT POLYGON format\n";
+            
+            // Extract the coordinate string
+            $coordString = $matches[1];
+            
+            // Split by comma to get individual coordinate pairs
+            $coordPairs = explode(',', $coordString);
+            
+            echo "Found " . count($coordPairs) . " coordinate pairs\n";
+            
+            $lastCord = null;
+            
+            foreach ($coordPairs as $index => $pair) {
+                // Each pair is "lng lat" separated by space
+                $coords = preg_split('/\s+/', trim($pair));
+                
+                if (count($coords) >= 2) {
+                    // WKT format is: longitude latitude (opposite of what we usually use!)
+                    $lng = (float) $coords[0];
+                    $lat = (float) $coords[1];
+                    
+                    echo "Pair $index: lng=$lng, lat=$lat\n";
+                    
+                    if ($index == 0) {
+                        $lastCord = ['lat' => $lat, 'lng' => $lng];
+                    }
+                    
+                    $polygon[] = [
+                        'lat' => $lat,
+                        'lng' => $lng
+                    ];
+                } else {
+                    echo "  -> WARNING: Invalid coordinate pair: " . $pair . "\n";
+                }
+            }
+            
+            echo "Total polygon points: " . count($polygon) . "\n";
+            
+        } else {
+            // Try the old format: (lat,lng),(lat,lng)
+            echo "Trying old format: (lat,lng),(lat,lng)...\n";
+            
+            $coordinates = preg_replace('/\s+/', '', $coordinates);
+            $coordPairs = explode('),(', trim($coordinates, '()'));
+            
+            echo "Found " . count($coordPairs) . " coordinate pairs\n";
+            
+            $lastCord = null;
+            
+            foreach ($coordPairs as $index => $pair) {
+                $coords = explode(',', trim($pair, '()'));
+                
+                if (count($coords) >= 2) {
+                    $lat = (float) trim($coords[0]);
+                    $lng = (float) trim($coords[1]);
+                    
+                    echo "Pair $index: lat=$lat, lng=$lng\n";
+                    
+                    if ($index == 0) {
+                        $lastCord = ['lat' => $lat, 'lng' => $lng];
+                    }
+                    
+                    $polygon[] = [
+                        'lat' => $lat,
+                        'lng' => $lng
+                    ];
+                }
+            }
+        }
+        
+    } catch (\Exception $e) {
+        echo "ERROR parsing coordinates: " . $e->getMessage() . "\n";
+    }
+    
+    return $polygon;
+}
+
+/**
+ * Calculate bounding box
+ */
+private function calculateBounds($polygon)
+{
+    $lats = array_column($polygon, 'lat');
+    $lngs = array_column($polygon, 'lng');
+    
+    return [
+        'north' => max($lats),
+        'south' => min($lats),
+        'east' => max($lngs),
+        'west' => min($lngs),
+        'center' => [
+            'lat' => (max($lats) + min($lats)) / 2,
+            'lng' => (max($lngs) + min($lngs)) / 2
+        ]
+    ];
+}
+
+/**
+ * Get areas with flexible approach - accepts any specific location type
+ */
+private function getFlexibleGridAreas($bounds, $apiKey)
+{
+    $areas = [];
+    
+    // Start with smaller grid for testing - 3x3 = 9 points
+    $gridSize = 3;
+    
+    $points = $this->generateGridPoints($bounds, $gridSize);
+    
+    echo "Generated " . count($points) . " grid points\n";
+    
+    $apiCallCount = 0;
+    
+    foreach ($points as $index => $point) {
+        try {
+            echo "Checking point $index: " . $point['lat'] . ',' . $point['lng'] . "\n";
+            
+            // Request ALL types, we'll filter after
+            $response = \Http::timeout(10)->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                'latlng' => $point['lat'] . ',' . $point['lng'],
+                'key' => $apiKey
+            ]);
+            
+            $apiCallCount++;
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                echo "API Response status: " . $response->status() . "\n";
+                
+                if (isset($data['status']) && $data['status'] === 'OK') {
+                    if (isset($data['results']) && !empty($data['results'])) {
+                        echo "Got " . count($data['results']) . " results for point $index\n";
+                        
+                        // Process ALL results to extract area names
+                        foreach ($data['results'] as $result) {
+                            $extracted = $this->extractAreaNames($result);
+                            
+                            if (!empty($extracted)) {
+                                $areas = array_merge($areas, $extracted);
+                            }
+                        }
+                    } else {
+                        echo "WARNING: No results for point $index\n";
+                    }
+                } else {
+                    echo "ERROR: Geocoding API error: " . ($data['status'] ?? 'unknown') . "\n";
+                    echo "Error message: " . ($data['error_message'] ?? 'none') . "\n";
+                }
+            } else {
+                echo "ERROR: HTTP request failed: " . $response->status() . "\n";
+            }
+            
+            // Delay to respect rate limits
+            usleep(150000); // 0.15 second
+            
+        } catch (\Exception $e) {
+            echo "ERROR for point $index: " . $e->getMessage() . "\n";
+        }
+    }
+    
+    echo "Total API calls made: $apiCallCount\n";
+    echo "Total areas before dedup: " . count($areas) . "\n";
+    
+    // Remove duplicates and return
+    $unique = $this->removeDuplicates($areas);
+    
+    echo "Total unique areas: " . count($unique) . "\n";
+    
+    return $unique;
+}
+
+/**
+ * Extract ALL meaningful area names from a geocoding result
+ */
+private function extractAreaNames($result)
+{
+    $extracted = [];
+    
+    // Define what we consider "areas" with priority
+    $areaTypes = [
+        'sublocality_level_1' => 1,
+        'sublocality_level_2' => 1,
+        'sublocality_level_3' => 1,
+        'sublocality' => 2,
+        'neighborhood' => 3,
+        'administrative_area_level_3' => 4,
+        'postal_code' => 5,
+        'locality' => 6, // Include locality but with lower priority
+    ];
+    
+    foreach ($result['address_components'] as $component) {
+        foreach ($component['types'] as $type) {
+            // Check if this is an area type we want
+            if (isset($areaTypes[$type])) {
+                $extracted[] = [
+                    'name' => $component['long_name'],
+                    'type' => $type,
+                    'priority' => $areaTypes[$type],
+                    'formatted_address' => $result['formatted_address'] ?? '',
+                    'latitude' => $result['geometry']['location']['lat'] ?? null,
+                    'longitude' => $result['geometry']['location']['lng'] ?? null,
+                    'place_id' => $result['place_id'] ?? null
+                ];
+            }
+        }
+    }
+    
+    return $extracted;
+}
+
+/**
+ * Generate grid points within bounding box
+ */
+private function generateGridPoints($bounds, $gridSize)
+{
+    $points = [];
+    
+    $latStep = ($bounds['north'] - $bounds['south']) / ($gridSize + 1);
+    $lngStep = ($bounds['east'] - $bounds['west']) / ($gridSize + 1);
+    
+    for ($i = 1; $i <= $gridSize; $i++) {
+        for ($j = 1; $j <= $gridSize; $j++) {
+            $points[] = [
+                'lat' => $bounds['south'] + ($latStep * $i),
+                'lng' => $bounds['west'] + ($lngStep * $j)
+            ];
+        }
+    }
+    
+    return $points;
+}
+
+/**
+ * Remove duplicate area names, keeping the most specific
+ */
+private function removeDuplicates($areas)
+{
+    $unique = [];
+    $seen = [];
+    
+    foreach ($areas as $area) {
+        $key = strtolower(trim($area['name']));
+        
+        // If we haven't seen this area, or this one has better priority
+        if (!isset($seen[$key]) || $area['priority'] < $seen[$key]['priority']) {
+            $seen[$key] = $area;
+        }
+    }
+    
+    // Convert to simple array
+    foreach ($seen as $area) {
+        $unique[] = [
+            'name' => $area['name'],
+            'type' => $area['type'],
+            'formatted_address' => $area['formatted_address'],
+            'latitude' => $area['latitude'],
+            'longitude' => $area['longitude'],
+            'place_id' => $area['place_id']
+        ];
+    }
+    
+    // Sort by name
+    usort($unique, function($a, $b) {
+        return strcmp($a['name'], $b['name']);
+    });
+    
+    return $unique;
+}
     public function update(Request $request, $id)
     {
+        // prx($request->all());
+        $zone = Zone::find($request->zone_id);
+        $coordinates  = $zone->coordinates;
+$areas = $this->getAreasFromGoogleForZone($coordinates);
+echo "Zone ID: " . $zone->id . "\n";
+echo "Areas found: " . count($areas) . "\n";
+echo "Areas: " . json_encode($areas, JSON_PRETTY_PRINT) . "\n";
+
+prx($areas);
+
+        die();
+
         $validator = Validator::make($request->all(), [
             'name' => 'array',
             'name.0' => 'required',

@@ -265,14 +265,14 @@ $log_email_succ = session()->get('log_email_succ');
 
         .login-page .signup-btn {
             display: inline-block;
-            margin-top: 14px;
+            margin-top: 2px;
             width: 100%;
             background: linear-gradient(90deg, #ff5f6d, #ffc371);
             color: white;
         }
 
         .login-page .or-text {
-            margin: 12px 0;
+            margin: 7px 0;
 
             text-align: center;
             color: var(--login-muted);
@@ -1138,7 +1138,7 @@ $log_email_succ = session()->get('log_email_succ');
 
                     <button type="submit" class="btn login-btn">Login</button>
                     <div class="or-text">OR</div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 mb-2">
                         @if (isset($role) && $role == 'vendor')
                             <div class="google-login-button" style="width: 48%;" id="switch_login_with_otp">
                                 <button type="button" class="btn login-btn">Login with OTP</button>
@@ -1146,13 +1146,14 @@ $log_email_succ = session()->get('log_email_succ');
                                 {{-- <img src="{{ asset('storage/app/public/util/OTP-1024.webp') }}" alt="OTP"> --}}
                             </div>
                         @endif
-
-                        <a href="{{ route('vendor.google.login') }}" class="google-btn" style="width: 48%;" type="button">
+{{-- {{ route('vendor.google.login') }} --}}
+                        <a href="javascript:;" class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
                             <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                 alt="Google">
-                            Continue with Google
+                            Login with Google
                         </a>
                     </div>
+                    <p class="mb-0 text-center">Don't have an account?</p>
                     <a class="btn signup-btn" href="{{ route('new-store.create') }}">SIGN UP NOW</a>
 
 

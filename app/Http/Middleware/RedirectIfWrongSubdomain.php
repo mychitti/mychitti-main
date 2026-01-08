@@ -21,14 +21,14 @@ class RedirectIfWrongSubdomain
 
                 $allowedPaths = [
                     'admin.mychitti.net' => ['login/admin', 'login/admin-employee'],
-                    'vendor.mychitti.net' => ['login/store'],
-                    'vendor-employee.mychitti.net' => ['login/store-employee'],
+                    'vendor.mcvendorhub.com' => ['login/store'],
+                    'vendor-employee.mcvendorhub.com' => ['login/store-employee'],
                 ];
 
                 $defaultLoginPath = [
                     'admin.mychitti.net' => 'login/admin',
-                    'vendor.mychitti.net' => 'login/store',
-                    'vendor-employee.mychitti.net' => 'login/store-employee',
+                    'vendor.mcvendorhub.com' => 'login/store',
+                    'vendor-employee.mcvendorhub.com' => 'login/store-employee',
                 ];
 
                 if (isset($allowedPaths[$host])) {
@@ -47,14 +47,14 @@ class RedirectIfWrongSubdomain
                 }
             }
             if (auth('vendor')->check()) {
-                if (!str_contains($host, 'vendor.mychitti.net')) {
-                    return redirect()->away('https://vendor.mychitti.net' . $request->getRequestUri());
+                if (!str_contains($host, 'vendor.mcvendorhub.com')) {
+                    return redirect()->away('https://vendor.mcvendorhub.com' . $request->getRequestUri());
                 }
             }
 
             if (auth('vendor_employee')->check()) {
-                if (!str_contains($host, 'vendor-employee.mychitti.net')) {
-                    return redirect()->away('https://vendor-employee.mychitti.net' . $request->getRequestUri());
+                if (!str_contains($host, 'vendor-employee.mcvendorhub.com')) {
+                    return redirect()->away('https://vendor-employee.mcvendorhub.com' . $request->getRequestUri());
                 }
             }
         }

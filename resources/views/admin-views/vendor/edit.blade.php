@@ -519,7 +519,7 @@
                                     <div class="form-group mb-0">
                                         <label class="input-label"
                                             for="phone">{{ translate('messages.phone') }}</label>
-                                        <input type="number" id="phone" name="phone" class="form-control"
+                                        <input type="text" id="phone" name="phone" class="intl_input form-control"
                                             placeholder="{{ translate('messages.Ex:') }} 99********"
                                             value="{{ $store->vendor->phone }}" required>
                                     </div>
@@ -528,8 +528,8 @@
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="secondary_phone">Secondary
                                             {{ translate('messages.phone') }} <i>(optional)</i></label>
-                                        <input type="number" id="secondary_phone" name="secondary_phone"
-                                            class="form-control" placeholder="{{ translate('messages.Ex:') }} 99********"
+                                        <input type="text" id="secondary_phone" name="secondary_phone"
+                                            class="intl_input form-control" placeholder="{{ translate('messages.Ex:') }} 99********"
                                             value="{{ $store->vendor->secondary_phone }}">
                                     </div>
                                 </div>
@@ -801,6 +801,8 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
+    @include('admin-views.partials.tel_input')
+   
     <script>
         "use strict";
 

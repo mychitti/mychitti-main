@@ -2,8 +2,8 @@
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
 
 <script>
-const inputs = document.querySelectorAll('input[type="tel"]');
-        inputs.forEach(input => {
+const inputs23 = document.querySelectorAll('input[type="tel"]');
+        inputs23.forEach(input => {
             const iti = window.intlTelInput(input, {
                 initialCountry: "in",
                 utilsScript: "https://mychitti.net/public/assets/admin/intltelinput/js/utils.js",

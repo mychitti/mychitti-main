@@ -153,7 +153,7 @@
                     <div id="">
                         @php
                             $today = date('Y-m-d');
-                            $startOfFinancialYear = date('Y') . '-04-01';
+                            $startOfFinancialYear = date('Y') -1 . '-04-01';
                         @endphp
 
                         <input type="date" name="invoice_date" class="form-control" min="{{ $startOfFinancialYear }}"

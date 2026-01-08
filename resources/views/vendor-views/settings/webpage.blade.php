@@ -360,14 +360,14 @@
                          @if (!empty($phones))
                              @foreach ($phones as $key => $value)
                                  <div class="settings-phone-item col-md-6">
-                                     <input type="number" name="phone[]" value="{{ $value }}"
-                                         class="form-control phone-input" placeholder="Phone Number">
+                                     <input type="text" name="phone[]" value="{{ $value }}"
+                                         class="form-control intl_input phone-input" placeholder="Phone Number">
                                  </div>
                              @endforeach
                          @else
                              <div class="settings-phone-item col-md-6">
-                                 <input type="number" name="phone[]" value="{{ $store->phone }}"
-                                     class="form-control phone-input" placeholder="Phone Number">
+                                 <input type="text" name="phone[]" value="{{ $store->phone }}"
+                                     class="form-control intl_input phone-input" placeholder="Phone Number">
                              </div>
                          @endif
                      </div>
@@ -396,8 +396,10 @@
                      </div>
                  </div>
                  <div class="mt-3">
-                     <input type="hidden" name="latitude" id="latitude" value="{{ $storeConfig?->webpage_latitude ?? $store->latitude}}">
-                     <input type="hidden" name="longitude" id="longitude" value="{{ $storeConfig?->webpage_longitude ?? $store->longitude }}">
+                     <input type="hidden" name="latitude" id="latitude"
+                         value="{{ $storeConfig?->webpage_latitude ?? $store->latitude }}">
+                     <input type="hidden" name="longitude" id="longitude"
+                         value="{{ $storeConfig?->webpage_longitude ?? $store->longitude }}">
                      {{-- <div class="invisible" style="height: 0px;">
                          <label class="form-label" for="latitude">{{ translate('messages.latitude') }}<span
                                  class="form-label-secondary" data-toggle="tooltip" data-placement="right"
@@ -421,7 +423,7 @@
                      {{-- <input id="pac-input" class="controls rounded" data-toggle="tooltip" data-placement="right"
                          data-original-title="{{ translate('messages.search_your_location_here') }}" type="text"
                          placeholder="{{ translate('messages.search_here') }}" /> --}}
-                         <h3>Map</h3>
+                     <h3>Map</h3>
                      <input type="text" id="searchInput" class="form-control">
 
                      <div id="map"></div>
@@ -615,6 +617,8 @@
 
  @push('script_2')
      {{-- <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script> --}}
+     @include('admin-views.partials.tel_input')
+
      <script>
          var map, marker, geocoder;
 
@@ -676,7 +680,6 @@
          }
      </script>
 
-     <!-- LOAD GOOGLE MAP ONLY ONCE -->
      <script
          src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value }}&libraries=places&callback=initMap"
          async defer></script>
@@ -687,12 +690,14 @@
              const phoneItem = document.createElement('div');
              phoneItem.className = 'settings-phone-item col-md-6';
              phoneItem.innerHTML = `
-                <input type="number" name="phone[]" class="form-control phone-input" placeholder="Phone Number">
+                <input type="text" name="phone[]" class="form-control intl_input phone-input" placeholder="Phone Number">
                 <button type="button" class="btn btn-outline-danger btn-sm" onclick="removePhoneNumber(this)">
                     <span><i class="tio-delete-outlined"></i></span>
                 </button>
             `;
              container.appendChild(phoneItem);
+           
+    initIntlPhone(phoneItem.querySelector('.intl_input'));
          }
 
          function removePhoneNumber(button) {

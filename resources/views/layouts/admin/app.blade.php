@@ -295,6 +295,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         <!-- JS Implementing Plugins -->
 
         @stack('script')
+
         <!-- JS Front -->
         <script src="{{ asset('public/assets/admin') }}/js/vendor.min.js"></script>
         <script src="{{ asset('public/assets/admin') }}/js/theme.min.js"></script>
@@ -323,6 +324,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
 
         @stack('script_2')
+
         <script>
             let baseUrl = '{{ url('/') }}';
         </script>

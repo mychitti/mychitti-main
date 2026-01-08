@@ -370,6 +370,21 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="col-sm-6 col-lg-3">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="zone_id">Zone
+                                            <span class="form-label-secondary text-danger" data-toggle="tooltip"
+                                                data-placement="right"
+                                                data-original-title="{{ translate('messages.Required.') }}"> *
+                                            </span></label>
+                                        <select name="zone_id" class="js-select2-custom form-control"
+                                            id="zone_id">
+                                            @foreach($zones as $key => $value)
+                                                <option value="{{ $value['id'] }}">{{ $value['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
                                 @if (Config::get('module.current_module_id') == 5)
                                     <div class="col-sm-6 col-lg-3">
                                         <div class="form-group mb-0">
