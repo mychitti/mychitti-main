@@ -117,14 +117,15 @@ class LoginController extends Controller
             switch ($host) {
                 case 'vendor.mcvendorhub.com':
                     $login_url = 'store';
+                    break;
 
                 case 'vendor-staff.mcvendorhub.com':
                     $login_url = 'store-employee';
+                    break;
 
                 default:
              }
         }
-        echo $login_url . ' ---- ';
         $data = array_column(DataSetting::whereIn('key', [
             'store_employee_login_url',
             'store_login_url',
@@ -151,7 +152,6 @@ class LoginController extends Controller
             'vendor_employee' => session()?->get('vendor_local') ?? $lang ?? 'en'
         ];
         $role = null;
-prx($data);
         $user_type = array_search($login_url, $data);
 
         abort_if(!$user_type, 404);
