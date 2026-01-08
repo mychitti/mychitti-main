@@ -6,8 +6,8 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\DataSetting;
-use App\Models\Plan; 
-use App\Models\SubModule;   
+use App\Models\Plan;
+use App\Models\SubModule;
 use App\Models\SubscriptionPlanRequest;
 use App\Models\VendorModuleInstruction;
 use Illuminate\Http\Request;
@@ -19,10 +19,10 @@ class MCVendorController extends Controller
 {
     public function module_info(Request $request, $module)
     {
-        $module = VendorModuleInstruction::where('slug', $module)->first(); 
+        $module = VendorModuleInstruction::where('slug', $module)->first();
         return view('mc-vendor.vendor_module', compact('module'));
     }
-    
+
     public function mc_vendor_hub_tnc(Request $request)
     {
         $terms_and_conditions =  DataSetting::where('key', 'vendorhub_terms_and_conditions')->first();
@@ -60,8 +60,13 @@ class MCVendorController extends Controller
             return response()->json(['status' => false, 'message' => "Some Error Occurred"]);
         }
     }
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->getHost() == 'vendor.mcvendorhub.com') {
+            return redirect()->to('/login/store');
+        } else if ($request->getHost() == 'vendor.mcvendorhub.com') {
+            return redirect()->to('/login/store-employee');
+        }
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
