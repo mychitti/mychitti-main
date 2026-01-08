@@ -15,17 +15,26 @@ use Throwable;
 
 class GoogleController extends Controller
 {
-    public function redirectToGoogle()
-    {
-        session(['google_login_type' => 'user']);
-        return Socialite::driver('google')->stateless()->redirect();
-    }
+   
+public function redirectToGoogle()
+{
+    session(['google_login_type' => 'user']);
 
-    public function vendorRedirectToGoogle()
-    {
-        session(['google_login_type' => 'vendor']);
-        return Socialite::driver('google')->stateless()->redirect();
-    }
+    return Socialite::driver('google')
+        ->stateless()
+        ->redirectUrl(config('services.google.user_redirect'))
+        ->redirect();
+}
+
+public function vendorRedirectToGoogle()
+{
+    session(['google_login_type' => 'vendor']);
+
+    return Socialite::driver('google')
+        ->stateless()
+        ->redirectUrl(config('services.google.vendor_redirect'))
+        ->redirect();
+}
 
     public function handleGoogleCallback(Request $request)
     {
