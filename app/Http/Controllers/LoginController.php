@@ -100,7 +100,7 @@ class LoginController extends Controller
 
         return view('auth.login', compact('custome_recaptcha', 'email', 'password', 'role', 'site_direction', 'locale'));
     }
-    public function login($login_url)
+    public function login($login_url = null)
     {
         $language = BusinessSetting::where('key', 'system_language')->first();
         if ($language) {
@@ -110,6 +110,19 @@ class LoginController extends Controller
                     $direction = $data['direction'];
                 }
             }
+        }
+        $host = request()->getHost();
+
+        if(!$login_url ){
+               switch ($host) {
+            case 'vendor.mcvendorhub.com':
+                $login_url = 'vendor';
+
+            case 'vendor-staff.mcvendorhub.com':
+                $login_url = 'vendor-employee';
+
+            default:
+        }
         }
         $data = array_column(DataSetting::whereIn('key', [
             'store_employee_login_url',
@@ -139,6 +152,7 @@ class LoginController extends Controller
         $role = null;
 
         $user_type = array_search($login_url, $data);
+
         abort_if(!$user_type, 404);
         $role = array_search($user_type, $loginTypes, true);
 
