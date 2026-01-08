@@ -66,11 +66,14 @@ class MCVendorController extends Controller
 
         switch ($host) {
             case 'vendor.mcvendorhub.com':
-                return redirect('/login/store');
+                $url = redirect()->to('/login/store')->getTargetUrl();
+                dd($url);
+                return $url;
 
-            case 'vendor-employee.mcvendorhub.com':
-                return redirect('/login/store-employee');
-
+            case 'vendor-staff.mcvendorhub.com':
+                $url = redirect()->to('/login/store-employee')->getTargetUrl();
+                dd($url);
+                return $url;
             default:
         }
 
