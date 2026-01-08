@@ -62,18 +62,19 @@ class MCVendorController extends Controller
     }
     public function index(Request $request)
     {
-        $host = $request->getHost();
+
+        $host = request()->getHost();
 
         switch ($host) {
             case 'vendor.mcvendorhub.com':
-                $url = redirect()->to('/login/store')->getTargetUrl();
-                return $url;
+                return redirect('/login/store');
 
             case 'vendor-staff.mcvendorhub.com':
-                $url = redirect()->to('/login/store-employee')->getTargetUrl();
-                return $url;
+                return redirect('/login/store-employee');
+
             default:
         }
+
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
