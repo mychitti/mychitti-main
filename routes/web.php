@@ -238,8 +238,7 @@ Route::post('send-message', 'HomeController@send_message')->name('send-message')
 Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')->name('newsletter.subscribe');
 
 
-Route::get('login-new/{tab}', 'LoginController@login_new')->name('login-new');
-Route::get('login/{tab}', 'LoginController@login')->name('login');
+Route::get('login/{tab?}', 'LoginController@login')->name('login');
 Route::get('business-verification', 'LoginController@business_verification')->name('business-verification');
 Route::post('business-verify', 'LoginController@business_verify')->name('business-verify');
 Route::get('vendor/auth/google', [GoogleController::class, 'vendorRedirectToGoogle'])->name('vendor.google.login');
