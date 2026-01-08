@@ -32,14 +32,27 @@ class GoogleController extends Controller
 
         return Socialite::driver('google')
             ->stateless()
-            ->redirectUrl('https://vendor.mychitti.net/auth/google/callback')
+            ->redirectUrl('https://vendor.mychitti.net/vendor/auth/google/callback')
             ->redirect();
     }
 
     public function handleGoogleCallback(Request $request)
     {
         try {
-            $googleUser = Socialite::driver('google')->stateless()->user();
+            $allowedDomains = [
+                'mychitti.net',
+                'vendor.mychitti.net',
+            ];
+
+            $domain = $request->getHost();
+
+            if (!in_array($domain, $allowedDomains, true)) {
+                abort(403, 'Unauthorized domain');
+            }
+            $googleUser = Socialite::driver('google')
+                ->stateless()
+                ->redirectUrl('https://' . $domain . '/auth/google/callback')
+                ->user();
             $loginType = session('google_login_type', 'user');
 
             session()->forget('google_login_type'); // cleanup
