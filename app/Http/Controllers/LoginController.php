@@ -289,7 +289,7 @@ class LoginController extends Controller
                 $employee->is_logged_in = 1;
                 $employee->save();
 
-                return redirect()->route('vendor.dashboard');
+                 return redirect()->to('https://vendor-staff.mcvendorhub.com/dashboard');
             }
             if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                 return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
