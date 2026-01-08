@@ -1060,6 +1060,7 @@ $log_email_succ = session()->get('log_email_succ');
 
                 <form class="login-form login_with_password_screen" {{ isset($role) && $role == 'vendor' ? '' : '' }}
                     action="{{ route('login_post') }}" method="post" id="form-id">
+                    @csrf
                     <div class="login-title">
                         <div class="lock-box" aria-hidden>
                             <img style="width: 50px;"
@@ -1072,7 +1073,6 @@ $log_email_succ = session()->get('log_email_succ');
                             </div>
                         </div>
                     </div>
-                    @csrf
                     <input type="hidden" name="role" value="{{ $role ?? null }}">
                     <label for="signinSrEmail">Email</label>
                     <input type="email" name="email" id="signinSrEmail" tabindex="1" class="login-input"
