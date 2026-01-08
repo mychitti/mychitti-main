@@ -205,7 +205,6 @@ class LoginController extends Controller
             'password' => 'required|min:6',
             'role' => 'required'
         ]);
-prx($request->role);
         if ($request->role == 'admin_employee') {
             $data = Admin::where('email', $request->email)->where('role_id', 1)->exists();
             if ($data) {
@@ -222,6 +221,8 @@ prx($request->role);
                     return redirect()->back()->withInput($request->only('email', 'remember'))
                         ->withErrors([translate('messages.inactive_vendor_warning')]);
                 }
+            }else{
+                echo 'not found'; die;
             }
         } elseif ($request->role == 'vendor_employee') {
             $employee = VendorEmployee::where('email', $request->email)->first();
@@ -275,6 +276,7 @@ prx($request->role);
             //     return redirect()->to('https://vendor.mcvendorhub.com/dashboard');
             // }
         }
+        echo 'end '; die;
 
         return redirect()->back()->withInput($request->only('email', 'remember'))
             ->withErrors(['Credentials does not match.']);
