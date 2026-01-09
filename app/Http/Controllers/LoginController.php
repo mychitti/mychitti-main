@@ -287,7 +287,7 @@ class LoginController extends Controller
             if ($request->role === 'vendor_employee') {
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
-                $employee->save();
+                $employee->save();  
 
                  return redirect()->to('https://vendor-staff.mcvendorhub.com/dashboard');
             }

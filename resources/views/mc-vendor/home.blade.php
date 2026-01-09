@@ -423,7 +423,7 @@ $log_email_succ = session()->get('log_email_succ');
                             Your privacy is our commitment.
                             Your trust is our responsibility.
                             For full details, please see our <a
-                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}">{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}</a>
+                                href="https://mcvendorhub.com/privacy-policy">https://mcvendorhub.com/privacy-policy</a>
                         </p>
                     </div>
                 </div>
@@ -521,7 +521,7 @@ $log_email_succ = session()->get('log_email_succ');
                             </ul>
 
                             <!-- Laravel Blade Button -->
-                            <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="pricing-cta">
+                            <a href="https://mcvendorhub.com/price-calculator" class="pricing-cta">
                                 Calculate Your Price →
                             </a>
                         </div>
@@ -560,11 +560,11 @@ $log_email_succ = session()->get('log_email_succ');
             <div class="capability-grid">
                 @foreach ($vendor_modules as $key => $value)
                     <div class="capability-item">
-                        <a href="{{ route('vendor.mc-vendor.mc-module', [$value->slug]) }}" class="capability-image lead-gen">
+                        <a href="https://mcvendorhub.com/mc-module/{{$value->slug}}" class="capability-image lead-gen">
                             <img style="width:100%;" src="{{ asset('storage/vendor_login/') . '/' . $value->image }}"
                                 alt="{{ $value->name }}">
                         </a>
-                        <a href="{{ route('vendor.mc-vendor.mc-module', [$value->slug]) }}"
+                        <a href="https://mcvendorhub.com/mc-module/{{$value->slug}}"
                             class="capability-title">{{ $value->name }}</a>
                     </div>
                 @endforeach

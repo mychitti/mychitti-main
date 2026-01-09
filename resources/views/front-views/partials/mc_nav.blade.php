@@ -9,7 +9,7 @@
  <nav class="navbar navbar-expand-lg bg-body-tertiary">
      <div class="container-fluid">
          <a href="{{ route('vendor_homepage') }}" class="">
-             <img class="" style="    width: 135px;margin:0 auto;" src="{{ $logo ?? '' }}">
+             <img class="" style="" src="{{ $logo ?? '' }}">
              {{-- <h1 class="fs-4 px-3" style="display:inline;">{{ $store['name'] }}</h1> --}}
          </a>
          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
