@@ -2175,6 +2175,20 @@ class BusinessSettingsController extends Controller
         Toastr::success(translate('messages.shipping_policy_updated'));
         return back();
     }
+    public function cookies_policy()
+    {
+
+        $cookies_policy = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'cookies_policy')->first();
+        $cookies_policy_status = DataSetting::where('type', 'admin_landing_page')->where('key', 'cookies_policy_status')->first();
+        return view('admin-views.business-settings.cookies_policy', compact('cookies_policy', 'cookies_policy_status'));
+    }
+
+    public function cookies_policy_update(Request $request)
+    {
+        $this->update_data($request, 'cookies_policy');
+        Toastr::success(translate('messages.cookies_policy_updated'));
+        return back();
+    }
 
 
     public function shipping_policy_status($status)

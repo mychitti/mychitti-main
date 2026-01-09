@@ -321,6 +321,15 @@
                                                 <span class="text-truncate">{{ translate('Shipping Policy') }}</span>
                                             </a>
                                         </li>
+                                        <li
+                                            class="nav-item {{ Request::is('business-settings/pages/business-page/cookies-policy') ? 'active' : '' }}">
+                                            <a class="nav-link "
+                                                href="{{ route('admin.business-settings.cookies-policy') }}"
+                                                title="{{ translate('messages.cookies_policy') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">{{ translate('Cookies Policy') }}</span>
+                                            </a>
+                                        </li>
                                     </ul>
                                 </li>
 

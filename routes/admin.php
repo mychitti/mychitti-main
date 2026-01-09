@@ -601,6 +601,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('pages/business-page/cancelation', 'BusinessSettingsController@cancellation_policy_update');
             Route::get('pages/cancellation-policy/{status}', 'BusinessSettingsController@cancellation_policy_status')->name('cancellation-policy-status');
 
+            Route::get('pages/business-page/cookies-policy', 'BusinessSettingsController@cookies_policy')->name('cookies-policy');
+            Route::post('pages/business-page/cookies-policy', 'BusinessSettingsController@cookies_policy_update');
             Route::get('pages/business-page/shipping-policy', 'BusinessSettingsController@shipping_policy')->name('shipping-policy');
             Route::post('pages/business-page/shipping-policy', 'BusinessSettingsController@shipping_policy_update');
             Route::get('pages/shipping-policy/{status}', 'BusinessSettingsController@shipping_policy_status')->name('shipping-policy-status');
