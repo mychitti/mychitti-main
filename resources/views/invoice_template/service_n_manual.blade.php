@@ -108,6 +108,7 @@
             <img width="100" class=""
                 src="{{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
                 alt="{{ $invoice->payment_status }}">
+                {{$invoice->payment_statusa}}
         @endif
     </div>
 
