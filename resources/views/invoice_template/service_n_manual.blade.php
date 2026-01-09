@@ -104,11 +104,12 @@
         @if ($bill_data['template_type'] == 'quotation')
             <img width="100" class=""
                 src="{{ asset('storage/app/public/util/') . '/' . 'quotation-ribbon2.png' }}" alt="Quotation">
+                {{ asset('storage/app/public/util/') . '/' . 'quotation-ribbon2.png' }}
         @else
             <img width="100" class=""
                 src="{{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
                 alt="{{ $invoice->payment_status }}">
-                {{$invoice->payment_statusa}}
+                {{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}
         @endif
     </div>
 
