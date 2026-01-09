@@ -1,5 +1,5 @@
 @if (count($combinations) > 0)
-    <table class="table table-borderless table--vertical-middle">
+    <table class="table table-borderless table-responsive table--vertical-middle">
         <thead class="thead-light __bg-7">
             <tr>
                 <th class="text-center border-0">
@@ -42,7 +42,7 @@
                         <input value="{{ $combination['type'] }}" name="type[]" type="hidden">
                     </td>
                     <td>
-                        <input oninput="calcValues()" type="number" name="mrpprice_{{ $combination['type'] }}"
+                        <input oninput="calcValues()" style="min-width: 90px;" type="number" name="mrpprice_{{ $combination['type'] }}"
                             value="{{ isset($combination['mrpprice']) ? $combination['mrpprice'] : 0 }}" min="0"
                             step="0.000001" class="form-control" required>
                     </td>
@@ -62,13 +62,13 @@
 
                     </td>
                        <td>
-                        <input type="text" name="sku_{{ $combination['type'] }}"
+                        <input type="text" style="min-width: 90px;" name="sku_{{ $combination['type'] }}"
                             value="{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->sku : '' }}" class="form-control"
                             >
                     </td>
 
                     <td>
-                        <input type="number" name="stock_{{ $combination['type'] }}"
+                        <input type="number" style="min-width: 90px;" name="stock_{{ $combination['type'] }}"
                             placeholder="{{ $primary_unit ?? '' }}" value="{{ $combination['stock'] ?? 0 }}"
                             min="0" class="form-control update_qty" required>
                     </td>
@@ -83,7 +83,7 @@
                         <label class="control-label m-0">Specifications</label>
                         <textarea id="specs_{{ $combination['type'] }}" class="editor">{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->specifications : '' }}</textarea>
                     </td>
-                    <td class="d-flex align-items-center">
+                    <td colspan="2" class="">
                         <input type="file" name="imgs_{{ $combination['type'] }}[]" multiple class="form-control">
                         <a type="button" data-toggle="modal" data-target="#imagesModal_{{ $key }}"
                             title="View Current Images" class="btn action-btn btn--warning btn-outline-warning"><i

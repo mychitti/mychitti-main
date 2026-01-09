@@ -531,12 +531,12 @@
                                     @if (isset($bill_from_type) && $bill_from_type == 'vendor_to_user' && (isset($invoice->sign) && $invoice->sign))
                                         <div><b>For {{ $bill_data['store']->name }}</b></div><br>
 
-                                        <img src="{{ asset('storage/app/public/store/signature/') . '/' . _signImgById($invoice->sign) }}"
+                                        <img src="{{ asset('storage/store/signature/') . '/' . _signImgById($invoice->sign) }}"
                                             width="110px">
                                     @elseif($bill_from_type != 'vendor_to_user')
                                         @php($sign = \App\Models\BusinessSetting::where('key', 'admin_signature')->first())
                                         @php($sign = $sign->value ?? '')
-                                        <img src="{{ asset('storage/app/public/business/') . '/' . $sign }}"
+                                        <img src="{{ asset('storage/business/') . '/' . $sign }}"
                                             width="110px">
                                     @endif
                                 </div>

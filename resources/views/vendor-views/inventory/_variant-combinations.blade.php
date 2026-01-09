@@ -1,5 +1,5 @@
 @if (count($combinations[0]) > 0)
-    <table class="table table-bordered">
+    <table class="table table-bordered table-responsive">
         <thead class="thead-light">
             <tr>
                 <th class="text-center border-0">
@@ -54,7 +54,7 @@
                         <label class="control-label">{{ $str }}</label>
                     </td>
                     <td>
-                        <input type="number" name="mrpprice_{{ $str }}" value="{{ $price }}"
+                        <input type="number" style="min-width: 90px;" name="mrpprice_{{ $str }}" value="{{ $price }}"
                             min="0" step="0.001" class="form-control" placeholder="{{ $placeholder . ' MRP' }}"
                             required>
                     </td>
@@ -67,7 +67,7 @@
                             class="form-control" placeholder="{{ $placeholder . ' Purchase Price' }}" required>
                     </td>
                     <td>
-                        <input type="text" name="sku_{{ $str }}" 
+                        <input type="text" style="min-width: 90px;" name="sku_{{ $str }}" 
                             class="form-control" placeholder="{{ $placeholder . ' SKU' }}">
                     </td>
                     @if ($secondary_unit)
@@ -75,11 +75,11 @@
                             <input type="number" name="secondary_qty_{{ $str }}" min="1"
                                 class="form-control" placeholder="{{ $secondary_unit }}" required>
                         </td> --}}
-                        <td> <input type="number" name="primary_qty_{{ $str }}" min="1"
+                        <td> <input type="number" style="min-width: 90px;" name="primary_qty_{{ $str }}" min="1"
                                 class="form-control" placeholder="{{ $primary_unit }}" required>
                         </td>
                     @else
-                        <td><input type="number" name="stock_{{ $str }}"
+                        <td><input type="number" style="min-width: 90px;" name="stock_{{ $str }}"
                                 placeholder="{{ $placeholder . ' Stock' }}" value="1" min="0"
                                 step="0.001" class="form-control vr_stock" required></td>
                     @endif
@@ -94,7 +94,7 @@
                         <label class="control-label m-0">Specifications</label>
                         <textarea id="specs_{{ $str }}" class="editor"></textarea>
                     </td>
-                    <td>
+                    <td  colspan="2">
                         <label class="control-label m-0">Images</label>
                         <input type="file" name="imgs_{{ $str }}[]" onchange="validateFileCount(this, 8)"
                             multiple class="form-control" required>

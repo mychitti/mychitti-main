@@ -570,7 +570,7 @@ class ServiceController extends Controller
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];
-                $InvoiceItem->unit = $request->item_unit_new[$key];
+                $InvoiceItem->unit = $request->item_unit_new[$key] ?? null;
                 $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
                 $InvoiceItem->hsn = $request->item_hsn_new[$key];
                 $InvoiceItem->inv_id = $request->inventory_item_id_new[$key] ?? null;

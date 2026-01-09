@@ -169,7 +169,7 @@
                 @php  $store_logo = $bill_to['logo']; @endphp
                 <img width="100" class=""
                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                     alt="Logo">
 
             </td>
@@ -389,7 +389,7 @@
                         <tr>
                             @if ($invoice->bankAccount?->upi_qr_code)
                                 <td style="width: 60px;">
-                                    <img src="{{ asset('storage/app/public/store/documents/') . '/' . $invoice->bankAccount?->upi_qr_code }}"
+                                    <img src="{{ asset('storage/store/documents/') . '/' . $invoice->bankAccount?->upi_qr_code }}"
                                         alt="QR Code" style="width: 70px; height: 70px;">
                                 </td>
                             @endif

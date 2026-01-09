@@ -103,10 +103,10 @@
     <div class="ribbon">
         @if ($bill_data['template_type'] == 'quotation')
             <img width="100" class=""
-                src="{{ asset('storage/app/public/util/') . '/' . 'quotation-ribbon2.png' }}" alt="Quotation">
+                src="{{ asset('storage/util/') . '/' . 'quotation-ribbon2.png' }}" alt="Quotation">
         @else
             <img width="100" class=""
-                src="{{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
+                src="{{ asset('storage/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
                 alt="{{ $invoice->payment_status }}">
         @endif
     </div>
@@ -161,7 +161,7 @@
                     @php  $store_logo = $bill_to['logo']; @endphp
                     <img width="100" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                         alt="Logo">
            
             </td>
@@ -377,7 +377,7 @@
                         <tr>
                             @if ($invoice->bankAccount?->upi_qr_code)
                                 <td style="width: 60px;">
-                                    <img src="{{ asset('storage/app/public/store/documents/') . '/' . $invoice->bankAccount?->upi_qr_code }}"
+                                    <img src="{{ asset('storage/store/documents/') . '/' . $invoice->bankAccount?->upi_qr_code }}"
                                         alt="QR Code" style="width: 70px; height: 70px;">
                                 </td>
                             @endif
@@ -502,12 +502,12 @@
                                     @if (isset($bill_from_type) && $bill_from_type == 'vendor_to_user' && (isset($invoice->sign) && $invoice->sign))
                                         <div><b>For {{ $bill_data['store']->name }}</b></div><br>
 
-                                        <img src="{{ asset('storage/app/public/store/signature/') . '/' . _signImgById($invoice->sign) }}"
+                                        <img src="{{ asset('storage/store/signature/') . '/' . _signImgById($invoice->sign) }}"
                                             width="110px">
                                     @elseif($bill_from_type != 'vendor_to_user')
                                         @php($sign = \App\Models\BusinessSetting::where('key', 'admin_signature')->first())
                                         @php($sign = $sign->value ?? '')
-                                        <img src="{{ asset('storage/app/public/business/') . '/' . $sign }}"
+                                        <img src="{{ asset('storage/business/') . '/' . $sign }}"
                                             width="110px">
                                     @endif
                                 </div>

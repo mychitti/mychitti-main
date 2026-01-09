@@ -116,7 +116,7 @@
                 $store_logo = $order->store?->logo; @endphp
                 <img width="100" class=""
                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                     alt="Logo">
             </td>
         </tr>
