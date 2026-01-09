@@ -118,18 +118,19 @@ Route::get('registration-successfull', [FrontController::class, 'registration_su
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
 
-Route::group(['domain' => config('app.url')], function() {
-    // This will match based on your APP_URL in .env
-    Route::get('login', [FrontUserController::class, 'login'])
-        ->name('user-login');
+// Main domain (no subdomain)
+Route::domain('mychitti.net')
+    ->group(function () {
+        Route::get('login', [FrontUserController::class, 'login'])
+            ->name('user-login');
 
-    Route::post('login', [FrontUserController::class, 'login_post'])
-        ->name('login.post');
-});
+        Route::post('login', [FrontUserController::class, 'login_post'])
+            ->name('login.post');
+    });
 
-// For subdomains
+// Subdomains
 Route::domain('{subdomain}.mychitti.net')
-    ->where('subdomain', '(?!www$)[a-z0-9-]+') // Exclude www
+    ->where('subdomain', '(?!www$)[a-z0-9-]+')
     ->group(function () {
         Route::get('login', [FrontUserController::class, 'login'])
             ->name('subdomain.user-login');
