@@ -1043,7 +1043,7 @@ $log_email_succ = session()->get('log_email_succ');
 <body>
 
     @if (isset($role) && $role == 'vendor')
-        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_hub_logo.jpeg'); @endphp
+        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_logo.png'); @endphp
     @else
         @php $logo = asset('storage/app/public/vendor_login/mc_vendor_staff_logo.jpeg'); @endphp
     @endif
