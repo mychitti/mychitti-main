@@ -1041,10 +1041,15 @@ $log_email_succ = session()->get('log_email_succ');
 </head>
 
 <body>
-    @php
-    $logo = asset('storage/app/public/vendor_login/mc_vendor_hub_logo.png'); @endphp
+
+    @if (isset($role) && $role == 'vendor')
+        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_hub_logo.jpeg'); @endphp
+    @else
+        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_staff_logo.jpeg'); @endphp
+    @endif
+
     {{-- <div id="toast" class="toast">This is a toaster notification!</div> --}}
-   
+
     <div class="login-page" id="login-page" style=" margin: 0 auto;">
         <div class="login-container login-card">
             <!-- Left Section -->
@@ -1067,9 +1072,11 @@ $log_email_succ = session()->get('log_email_succ');
                                 src="{{ asset('storage/app/public/vendor_login/login_icon.jpeg') }}" alt="">
                         </div>
                         <div>
-                            <h2>Login with Password</h2> 
+                            <h2>Login {{ isset($role) && $role == 'vendor' ? 'Vendor' : 'Staff' }}</h2>
                             <div style="font-size:13px;color:var(--login-muted);margin-top:6px">
-                                Secure access to My Chitti vendor dashboard
+                                Secure access to My Chitti
+                                {{ isset($role) && $role == 'vendor' ? 'Vendor' : 'Staff' }}
+                                Dashboard
                             </div>
                         </div>
                     </div>
@@ -1109,8 +1116,8 @@ $log_email_succ = session()->get('log_email_succ');
                     </div>
                     <div class="form-group d-flex justify-content-between">
                         <div class="d-flex gap-2">
-                            <input type="checkbox" class="" id="termsCheckbox"
-                                {{ $password ? 'checked' : '' }} name="remember" checked>
+                            <input type="checkbox" class="" id="termsCheckbox" {{ $password ? 'checked' : '' }}
+                                name="remember" checked>
                             <label class="text-muted" for="termsCheckbox">
                                 {{ translate('messages.remember_me') }}
                             </label>
@@ -1137,25 +1144,27 @@ $log_email_succ = session()->get('log_email_succ');
 
 
                     <button type="submit" class="btn login-btn">Login</button>
-                    <div class="or-text">OR</div>
-                    <div class="d-flex gap-2 mb-2">
-                        @if (isset($role) && $role == 'vendor')
-                            <div class="google-login-button" style="width: 48%;" id="switch_login_with_otp">
-                                <button type="button" class="btn login-btn">Login with OTP</button>
+                    @if (isset($role) && $role == 'vendor')
+                        <div class="or-text">OR</div>
+                        <div class="d-flex gap-2 mb-2">
+                            @if (isset($role) && $role == 'vendor')
+                                <div class="google-login-button" style="width: 48%;" id="switch_login_with_otp">
+                                    <button type="button" class="btn login-btn">Login with OTP</button>
 
-                                {{-- <img src="{{ asset('storage/app/public/util/OTP-1024.webp') }}" alt="OTP"> --}}
-                            </div>
-                        @endif
-{{-- {{ route('vendor.google.login') }} --}}
-                        <a href="javascript:;" class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
-                            <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
-                                alt="Google">
-                            Login with Google
-                        </a>
-                    </div>
-                    <p class="mb-0 text-center">Don't have an account?</p>
-                    <a class="btn signup-btn" href="{{ route('new-store.create') }}">SIGN UP NOW</a>
-
+                                    {{-- <img src="{{ asset('storage/app/public/util/OTP-1024.webp') }}" alt="OTP"> --}}
+                                </div>
+                            @endif
+                            {{-- {{ route('vendor.google.login') }} --}}
+                            <a href="{{ route('vendor.google.login') }}"
+                                class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
+                                <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
+                                    alt="Google">
+                                Login with Google
+                            </a>
+                        </div>
+                        <p class="mb-0 text-center">Don't have an account?</p>
+                        <a class="btn signup-btn" href="{{ route('new-store.create') }}">SIGN UP NOW</a>
+                    @endif
 
                 </form>
 
@@ -1196,7 +1205,7 @@ $log_email_succ = session()->get('log_email_succ');
                         </form>
                         <!--  -->
                         <div class="container-fluid contact pt-5" style="display:none;" id="verify_screen">
-                         <div class="login-title">
+                            <div class="login-title">
                                 <div class="lock-box" aria-hidden>
                                     <img style="width: 50px;"
                                         src="{{ asset('storage/app/public/vendor_login/login_icon.jpeg') }}"
@@ -1261,7 +1270,7 @@ $log_email_succ = session()->get('log_email_succ');
     </div>
 
 
-     @include('front-views.partials.mc_footer')
+    @include('front-views.partials.mc_footer')
 
     <!-- JS Implementing Plugins -->
     <script src="{{ asset('public/assets/admin') }}/js/vendor.min.js"></script>
