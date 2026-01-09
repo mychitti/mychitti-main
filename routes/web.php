@@ -119,7 +119,8 @@ Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
 
 // only if domain is mychitti.net or staging.mychitti.net
-Route::domain('{subdomain?}.mychitti.net')  // Make subdomain optional with ?
+Route::domain('{domain}')
+    ->where(['domain' => 'mychitti\.net|admin\.mychitti\.net|staging\.mychitti\.net'])
     ->group(function () {
         Route::get('login', [FrontUserController::class, 'login'])
             ->name('user-login');
