@@ -103,13 +103,11 @@
     <div class="ribbon">
         @if ($bill_data['template_type'] == 'quotation')
             <img width="100" class=""
-                src="{{ asset('storage/app/public/util/') . '/' . 'quotation-ribbon2.png' }}" alt="Quotation">
-                {{ asset('storage/app/public/util/') . '/' . 'quotation-ribbon2.png' }}
+                src="{{ asset('storage/util/') . '/' . 'quotation-ribbon2.png' }}" alt="Quotation">
         @else
             <img width="100" class=""
-                src="{{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
+                src="{{ asset('storage/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}"
                 alt="{{ $invoice->payment_status }}">
-                {{ asset('storage/app/public/util/') . '/' . $invoice->payment_status . '-ribbon.png' }}
         @endif
     </div>
 
@@ -165,13 +163,13 @@
                     @php  $store_logo = $bill_from['logo']; @endphp
                     <img width="100" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                         alt="Logo">
                 @else
                     @php  $store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value; @endphp
                     <img width="100" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
                         alt="Logo">
                 @endif
             </td>
