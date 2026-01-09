@@ -118,25 +118,14 @@ Route::get('registration-successfull', [FrontController::class, 'registration_su
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
 
-// Main domain (no subdomain)
-Route::domain('mychitti.net')
+// only if domain is mychitti.net or staging.mychitti.net
+Route::domain('{subdomain?}.mychitti.net')  // Make subdomain optional with ?
     ->group(function () {
         Route::get('login', [FrontUserController::class, 'login'])
             ->name('user-login');
 
         Route::post('login', [FrontUserController::class, 'login_post'])
             ->name('login.post');
-    });
-
-// Subdomains
-Route::domain('{subdomain}.mychitti.net')
-    ->where('subdomain', '(?!www$)[a-z0-9-]+')
-    ->group(function () {
-        Route::get('login', [FrontUserController::class, 'login'])
-            ->name('subdomain.user-login');
- 
-        Route::post('login', [FrontUserController::class, 'login_post'])
-            ->name('subdomain.login.post');
     });
 Route::post('signup', [FrontUserController::class, 'signup_post'])->name('signup.post');
 Route::get('user-logout', [FrontUserController::class, 'logout'])->name('user.logout');
