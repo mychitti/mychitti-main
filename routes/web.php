@@ -134,7 +134,7 @@ Route::domain('{subdomain}.mychitti.net')
     ->group(function () {
         Route::get('login', [FrontUserController::class, 'login'])
             ->name('subdomain.user-login');
-
+ 
         Route::post('login', [FrontUserController::class, 'login_post'])
             ->name('subdomain.login.post');
     });
