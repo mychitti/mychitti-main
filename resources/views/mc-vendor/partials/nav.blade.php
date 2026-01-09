@@ -22,8 +22,8 @@
                  <a href="https://mcvendorhub.com" class="my-nav-link nav-link ">Home</a>
                  <a href="https://mcvendorhub.com/#products_section" class="my-nav-link nav-link ">Products</a>
                  <a href="https://mcvendorhub.com/price-calculator" class="my-nav-link nav-link ">Price Calculator</a>
-                 <a href="https://mcvendorhub.com/price-calculator/#faq_section" class="my-nav-link nav-link">FAQs</a>
-                 <a href="https://mcvendorhub.com/price-calculator#review_section" class="my-nav-link nav-link">Reviews</a>
+                 <a href="https://mcvendorhub.com/#faq_section" class="my-nav-link nav-link">FAQs</a>
+                 <a href="https://mcvendorhub.com/#review_section" class="my-nav-link nav-link">Reviews</a>
                  <a href="https://vendor.mcvendorhub.com/login" class="my-nav-link nav-link">Login</a>
                  <a href="https://mychitti.net/list-your-business" class="my-nav-link nav-link">Signup</a>
              </div>
