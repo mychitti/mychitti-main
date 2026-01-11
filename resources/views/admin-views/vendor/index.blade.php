@@ -1010,7 +1010,7 @@
         $('#choice_zones').on('change', function() {
             let id = $(this).val();
             $.get({
-                url: '{{ url('/') }}{{request()->getHost() == "staging.mychitti.net" ? "/admin" : ""}}/zone/get-coordinates/' + id,
+                url: '{{ url('/') }}{{request()->getHost() == "staging.mychitti.net" ? "/admin" : "/admin"}}/zone/get-coordinates/' + id,
                 dataType: 'json',
                 success: function(data) {
                     if (zonePolygon) {
