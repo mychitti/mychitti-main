@@ -32,7 +32,7 @@ class GoogleController extends Controller
 
         return Socialite::driver('google')
             ->stateless()
-            ->redirectUrl('https://vendor.mychitti.net/auth/google/callback')
+            ->redirectUrl('https://vendor.mcvendorhub.com/auth/google/callback')
             ->redirect();
     }
 
@@ -41,7 +41,7 @@ class GoogleController extends Controller
         try {
             $allowedDomains = [
                 'mychitti.net',
-                'vendor.mychitti.net',
+                'vendor.mcvendorhub.com',
             ];
 
             $domain = $request->getHost();
