@@ -352,6 +352,8 @@
                     @endif
                 @endforeach
             </div>
+                    @if (count($data['popular_services']) > 0)
+
             <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>
             <p style="text-align: center;">Search, compare, and book trusted local services in just a few clicks.</p>
             <div class="pop-items-section">
@@ -361,7 +363,6 @@
                             class="text_dark">Connect with verified providers in your area !</span></p>
 
                 <div class="pop-items-grid">
-                    @if (count($data['popular_services']) > 0)
                         @foreach ($data['popular_services'] as $item)
                             <!-- Sample Item 1 -->
                             <a href="{{ route('product.details', [$item->cat_slug, $item->slug]) }}" class="pop-item-card">
@@ -377,9 +378,10 @@
                                 </div>
                             </a>
                         @endforeach
-                    @endif
                 </div>
             </div>
+                    @endif
+
             {{-- TOP SELLING ITEMS  --}}
             <div class="  m-2 mt-3 ">
                 @if (count($data['top_sell_services']))
@@ -708,11 +710,8 @@
 
         </div>
     @endif
-@if (
-    empty($data['top_sell_services']) &&
-    empty($data['top_sell_products']) &&
-    empty($data['special_product'])
-)        <div class="unavailable_data">
+    @if (!count($data['top_sell_services']) && !count($data['top_sell_products']))
+        <div class="unavailable_data">
             <img style="mix-blend-mode: multiply;" class="img-fluid"
                 src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
             <h2 class="fs-2 eb-garamond-text">Available Locations: Tirupati, Chittoor, Madanapalle<h2>
