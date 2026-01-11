@@ -708,7 +708,7 @@
 
         </div>
     @endif
-    @if (!count($data['top_sell_services']) && !count($data['top_sell_products']) && !$data['special_product'])
+    @if (!count($data['top_sell_services']) && !count($data['top_sell_products']) && (!$data['special_product'] ?? 0))
         <div class="unavailable_data">
             <img style="mix-blend-mode: multiply;" class="img-fluid"
                 src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
