@@ -113,7 +113,7 @@ class LoginController extends Controller
         }
         $host = request()->getHost();
 
-        if(!$login_url ){
+        if (!$login_url) {
             switch ($host) {
                 case 'vendor.mcvendorhub.com':
                     $login_url = 'store';
@@ -124,7 +124,7 @@ class LoginController extends Controller
                     break;
 
                 default:
-             }
+            }
         }
         $data = array_column(DataSetting::whereIn('key', [
             'store_employee_login_url',
@@ -287,16 +287,15 @@ class LoginController extends Controller
             if ($request->role === 'vendor_employee') {
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
-                $employee->save();  
+                $employee->save();
 
-                 return redirect()->to('https://vendor-staff.mcvendorhub.com/dashboard');
+                return redirect()->to('https://vendor-staff.mcvendorhub.com/dashboard');
             }
             if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                 return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
-            }else{
+            } else {
                 return redirect()->route('vendor.dashboard');
             }
-            
         }
 
         return redirect()->back()->withInput($request->only('email', 'remember'))
@@ -685,6 +684,11 @@ class LoginController extends Controller
     {
         if (auth('vendor')?->check()) {
             $user_link = Helpers::get_login_url('store_login_url');
+
+            $vendor = Vendor::find(Helpers::get_loggedin_user()->id);
+            $vendor->cm_firebase_token = null;
+            $vendor->save();
+
             auth()->guard('vendor')->logout();
         } elseif (auth('vendor_employee')?->check()) {
             $user_link = Helpers::get_login_url('store_employee_login_url');
@@ -702,6 +706,9 @@ class LoginController extends Controller
     public function vendor_logout()
     {
         if (auth('vendor')?->check()) {
+            $vendor = Vendor::find(Helpers::get_loggedin_user()->id);
+            $vendor->cm_firebase_token = null;
+            $vendor->save();
             $user_link = Helpers::get_login_url('store_login_url');
             auth()->guard('vendor')->logout();
         } elseif (auth('vendor_employee')?->check()) {
