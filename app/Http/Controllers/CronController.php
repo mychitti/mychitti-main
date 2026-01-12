@@ -453,6 +453,7 @@ public function monthly_maintenance_reminder(Request $request)
         // 1. Get all employees
         $employees = DB::table('vendor_employees')
             ->where('status', 1)
+            ->where('id', 7)
             ->select('id', 'store_id')
             ->get()
             ->keyBy('id');
