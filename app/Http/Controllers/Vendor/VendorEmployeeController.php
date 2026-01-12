@@ -34,7 +34,7 @@ class VendorEmployeeController extends Controller
         $obj->date = date('Y-m-d');
         $obj->created_at = date('Y-m-d H:i:s');
 
-        $att = Attendance::where('employee_id', $emp_id)->where('date', date('Y-m-d'))->exists();
+        $att = Attendance::where('employee_id', $emp_id)->where('date', date('Y-m-d'))->first();
         if (!$att) {
             $att = new Attendance;
             $att->employee_id = $emp_id;
