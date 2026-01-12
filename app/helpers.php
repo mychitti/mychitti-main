@@ -2440,13 +2440,21 @@ if (!function_exists('_clockedInEmployee')) {
 
 
 
+if (!function_exists('_clockedInEmployeeDutyHours')) {
+    function _clockedInEmployeeDutyHours()
+    {
+        return null;
+    }}
 if (!function_exists('_inTime')) {
-    function _inTime()
+    function _inTime($type = 'phrase')
     {
         $empId = \App\CentralLogics\Helpers::get_loggedin_user()->id;
         $clockIn =  EmployeeTimeCard::where('emp_id', $empId)->orderBy('id', 'desc')
             ->limit(1)
             ->first();
+        if ($type = 'timestamp') {
+            return $clockIn->in_time;
+        }
         if (_clockedInEmployee()) {
             return 'Clock started at ' . explode(' ', $clockIn->in_time)[1];
         } else {
@@ -3394,13 +3402,13 @@ if (!function_exists('_price')) {
             $rawPrice = floor($rawPrice);
         } elseif ($method === 'round') {
             $rawPrice = round($rawPrice, $decimal);
-        }else{
+        } else {
             $rawPrice = $rawPrice;
         }
 
         $formattedPrice = number_format($rawPrice, $decimal);
 
-        return \App\CentralLogics\Helpers::currency_symbol() . $formattedPrice ;
+        return \App\CentralLogics\Helpers::currency_symbol() . $formattedPrice;
     }
 }
 
@@ -3940,7 +3948,7 @@ if (!function_exists('_getSpecialProduct')) {
 if (!function_exists('_getPopularService')) {
     function _getPopularService($zone_id)
     {
-       $items =  DB::table('service_requests')
+        $items =  DB::table('service_requests')
             ->join('items', 'service_requests.item_id', 'items.id')
             ->join('stores', function ($join) use ($zone_id) {
                 $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
@@ -3949,13 +3957,13 @@ if (!function_exists('_getPopularService')) {
             })
             ->join('categories', 'categories.id', 'items.category_id')
             ->whereNull('categories.added_by')
-            ->select('categories.name as cat_name','categories.slug as cat_slug','items.*', 'stores.zone_id', 'stores.active as store_open', 'stores.delivery_time', 'service_requests.item_id', DB::raw('COUNT(service_requests.item_id) as total_requests'))
+            ->select('categories.name as cat_name', 'categories.slug as cat_slug', 'items.*', 'stores.zone_id', 'stores.active as store_open', 'stores.delivery_time', 'service_requests.item_id', DB::raw('COUNT(service_requests.item_id) as total_requests'))
             ->groupBy('items.id')
             ->orderBy('total_requests', 'desc')
             ->take(8)
             ->get();
 
-            return $items;
+        return $items;
     }
 }
 if (!function_exists('_vendorTandC')) {
@@ -4749,7 +4757,7 @@ if (!function_exists('_inAppNotification')) {
         $det->title = $title;
         $det->message = $msg;
         $det->url = $url;
-        $det->user_type = $user_typ; 
+        $det->user_type = $user_typ;
         $det->reciever = $to;
         if ($det->save()) {
             return 'sent';

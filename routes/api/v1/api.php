@@ -23,7 +23,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('zone/list', 'ZoneController@get_zones');
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 
- 
+
     Route::group(['prefix' => 'banners'], function () {
         Route::get('{store_id}/', 'BannerController@get_store_banners');
         Route::get('offer/{store_id}', 'BannerController@get_offer_banners');
@@ -151,10 +151,14 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
                 Route::post('send', 'ConversationController@dm_messages_store');
             });
         });
-    });
+        });
+        Route::group(['prefix' => 'vendor','namespace' => 'Vendor'], function () {
+            Route::post('save-fcm-token', 'VendorController@save_fcm_token');
+            });
 
     Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor', 'middleware' => ['vendor.api']], function () {
         Route::get('notifications', 'VendorController@get_notifications');
+
         Route::get('profile', 'VendorController@get_profile');
         Route::post('update-active-status', 'VendorController@active_status');
         Route::get('earning-info', 'VendorController@get_earning_data');
@@ -301,7 +305,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::group(['prefix' => 'banners2'], function () {
         Route::get('module-banner', 'BannerController@get_module_banners');
         Route::get('item-banner', 'BannerController@get_item_banners');
-
     });
 
     Route::get('customer/order/cancellation-reasons', 'OrderController@cancellation_reason');

@@ -41,13 +41,13 @@ class VendorEmployeeController extends Controller
             $att->vendor_id = $v_id;
             $att->employee_type = 'vendor_employee';
             $att->date = date('Y-m-d');
+            $att->label = 'P';
+            $att->day = date('d');
+            $att->month = date('m');
+            $att->year = date('Y');
+            $att->created_at = date('Y-m-d H:i:s');
+            $att->save();
         }
-        $att->label = 'P';
-        $att->day = date('d');
-        $att->month = date('m');
-        $att->year = date('Y');
-        $att->created_at = date('Y-m-d H:i:s');
-        $att->save();
 
 
         if ($obj->save()) {

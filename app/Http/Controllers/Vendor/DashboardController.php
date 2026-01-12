@@ -6,17 +6,20 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\AcceptedServiceRequest;
 use App\Models\AccountTransaction;
+use App\Models\Attendance;
 use App\Models\BusinessSetting;
 use App\Models\Coupon;
 use App\Models\InAppNotification;
 use App\Models\InventoryItem;
 use App\Models\Item;
+use App\Models\Leave;
 use App\Models\ManualInvoice;
 use App\Models\Order;
 use App\Models\Vendor;
 use App\Models\OrderTransaction;
 use App\Models\Project;
 use App\Models\ServiceInvoice;
+use App\Models\StoreConfig;
 use App\Models\StoreCustomer;
 use App\Models\StoreGallery;
 use App\Models\StoreLedgerEntry;
@@ -41,117 +44,156 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-        $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
-        if ($request->has('date_range')) {
-            Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
-        }
-        $custom = request('custom_date_range') ?? null;
-        $range = Helpers::calculatePresetDates($preset, $custom);
-        $formatted_from  = $range['start'];
-        $formatted_to = $range['end'];
-        $from = $range['start']->toDateString();
-        $to  = $range['end']->toDateString();
-
-        $earning = [];
-        $commission = [];
-        $expenses = [];
-
         $storeId = Helpers::get_store_id();
-        
-        // ===================== LEADS =============================
-        $baseQuery = DB::table('service_requests')
-            ->join('items', 'service_requests.item_id', '=', 'items.id')
-            ->join('categories', 'items.category_id', '=', 'categories.id')
-            ->join('users', 'service_requests.user_id', '=', 'users.id')
-            ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
-            ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
+        if (auth('vendor')->check()) {
 
-        $leadStatistics['new'] = (clone $baseQuery)
-            ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
-            ->distinct('service_requests.id')
-            ->count();
-        // $leadStatistics['in_progress'] = (clone $baseQuery)
-        //     ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-        //     ->where(function ($q) {
-        //         $q->whereNull('accepted_service_requests.tieup')
-        //             ->orWhere('accepted_service_requests.current_status', 'Confirmed');
-        //     })
-        //     ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-        //     ->distinct('service_requests.id')
-        //     ->count();
-        $leadStatistics['in_progress'] = (clone $baseQuery)
-            ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->where('accepted_service_requests.current_status', 9)
-            ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-            ->distinct('service_requests.id')
-            ->count();
+            $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
+            if ($request->has('date_range')) {
+                Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
+            }
+            $custom = request('custom_date_range') ?? null;
+            $range = Helpers::calculatePresetDates($preset, $custom);
+            $formatted_from  = $range['start'];
+            $formatted_to = $range['end'];
+            $from = $range['start']->toDateString();
+            $to  = $range['end']->toDateString();
 
-        $completedBase = DB::table('accepted_service_requests')
-            ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-            ->join('items', 'items.id', 'service_requests.item_id')
-            ->where('stores.id', Helpers::get_store_id())
-            ->where('accepted_service_requests.current_status', 'Completed')
-            ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-            ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
-
-        $leadStatistics['completed'] = (clone $completedBase)->count();
-
-        // =================== TASKS ==================================
-        $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
-        $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
-        $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
-        $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
-            'in progress',
-            'in_progress',
-            'inprogress',
-        ])->count();
-
-        // ====================== INVENTORY =====================
-        $inventory_items = InventoryItem::where('store_id', $storeId);
-        $inventoryStats['total'] = (clone $inventory_items)->count();
-        $inventoryStats['products'] = (clone $inventory_items)->where('item_type', 'product')->count();
-        $inventoryStats['services'] = (clone $inventory_items)->where('item_type', 'service')->count();
-
-        // ================ ACCOUNT SUMMARY ==================
-        // $accountBaseQ = StoreVoucher::where('store_id', $storeId)
-        //     ->whereBetween("voucher_date", [$formatted_from, $formatted_to]);
-        // $accountstats['expense'] = (clone $accountBaseQ)->where('status', 'approved')->where('debit_entity_type', 'store')->sum('total_amount');
-        // $accountstats['income'] = (clone $accountBaseQ)->where('status', 'approved')->where('credit_entity_type', 'store')->sum('total_amount');
-        // $accountstats['pending_payments'] = (clone $accountBaseQ)->where('status', 'pending')->sum('total_amount');
+            $earning = [];
+            $commission = [];
+            $expenses = [];
 
 
-        $baseQuery = StoreLedgerEntry::where('store_id', $storeId)
-            ->whereHas('voucher', function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where('debit_entity_type', 'store')
-                        ->orWhere('credit_entity_type', 'store');
+            // ===================== LEADS =============================
+            $baseQuery = DB::table('service_requests')
+                ->join('items', 'service_requests.item_id', '=', 'items.id')
+                ->join('categories', 'items.category_id', '=', 'categories.id')
+                ->join('users', 'service_requests.user_id', '=', 'users.id')
+                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
+                ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+                ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
+
+            $leadStatistics['new'] = (clone $baseQuery)
+                ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
+                ->distinct('service_requests.id')
+                ->count();
+            // $leadStatistics['in_progress'] = (clone $baseQuery)
+            //     ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
+            //     ->where(function ($q) {
+            //         $q->whereNull('accepted_service_requests.tieup')
+            //             ->orWhere('accepted_service_requests.current_status', 'Confirmed');
+            //     })
+            //     ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
+            //     ->distinct('service_requests.id')
+            //     ->count();
+            $leadStatistics['in_progress'] = (clone $baseQuery)
+                ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
+                ->where('accepted_service_requests.current_status', 9)
+                ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
+                ->distinct('service_requests.id')
+                ->count();
+
+            $completedBase = DB::table('accepted_service_requests')
+                ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
+                ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
+                ->join('items', 'items.id', 'service_requests.item_id')
+                ->where('stores.id', Helpers::get_store_id())
+                ->where('accepted_service_requests.current_status', 'Completed')
+                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
+                ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
+
+            $leadStatistics['completed'] = (clone $completedBase)->count();
+
+            // =================== TASKS ==================================
+            $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
+            $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
+            $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
+            $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
+                'in progress',
+                'in_progress',
+                'inprogress',
+            ])->count();
+
+            // ====================== INVENTORY =====================
+            $inventory_items = InventoryItem::where('store_id', $storeId);
+            $inventoryStats['total'] = (clone $inventory_items)->count();
+            $inventoryStats['products'] = (clone $inventory_items)->where('item_type', 'product')->count();
+            $inventoryStats['services'] = (clone $inventory_items)->where('item_type', 'service')->count();
+
+            // ================ ACCOUNT SUMMARY ==================
+            // $accountBaseQ = StoreVoucher::where('store_id', $storeId)
+            //     ->whereBetween("voucher_date", [$formatted_from, $formatted_to]);
+            // $accountstats['expense'] = (clone $accountBaseQ)->where('status', 'approved')->where('debit_entity_type', 'store')->sum('total_amount');
+            // $accountstats['income'] = (clone $accountBaseQ)->where('status', 'approved')->where('credit_entity_type', 'store')->sum('total_amount');
+            // $accountstats['pending_payments'] = (clone $accountBaseQ)->where('status', 'pending')->sum('total_amount');
+
+
+            $baseQuery = StoreLedgerEntry::where('store_id', $storeId)
+                ->whereHas('voucher', function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->where('debit_entity_type', 'store')
+                            ->orWhere('credit_entity_type', 'store');
+                    });
                 });
-            });
-        $accountstats['income'] = (clone $baseQuery)
-            ->whereHas('voucher', function ($q) {
-                $q->where('credit_entity_type', 'store');
-            })
-            ->where('credit', '>', 0)
-            ->sum('credit');
-        $accountstats['expense'] = (clone $baseQuery)
-            ->whereHas('voucher', function ($q) {
-                $q->where('debit_entity_type', 'store');
-            })
-            ->where('debit', '>', 0)
-            ->sum('debit');
+            $accountstats['income'] = (clone $baseQuery)
+                ->whereHas('voucher', function ($q) {
+                    $q->where('credit_entity_type', 'store');
+                })
+                ->where('credit', '>', 0)
+                ->sum('credit');
+            $accountstats['expense'] = (clone $baseQuery)
+                ->whereHas('voucher', function ($q) {
+                    $q->where('debit_entity_type', 'store');
+                })
+                ->where('debit', '>', 0)
+                ->sum('debit');
 
-        $accountstats['pending_payments'] = (clone $baseQuery)
-            ->where('status', 'pending')
-            ->sum(DB::raw('credit - debit'));
+            $accountstats['pending_payments'] = (clone $baseQuery)
+                ->where('status', 'pending')
+                ->sum(DB::raw('credit - debit'));
 
-        // ================= EMPLOYEE ACTIVITY ===================
-        $empBaseQ = VendorEmployee::where('store_id', $storeId);
-        $empStats['total_employees'] = (clone $empBaseQ)->count();
-        $empStats['present_employees'] = _clockedInEmployee(true);
+            // ================= EMPLOYEE ACTIVITY ===================
+            $empBaseQ = VendorEmployee::where('store_id', $storeId);
+            $empStats['total_employees'] = (clone $empBaseQ)->count();
+            $empStats['present_employees'] = _clockedInEmployee(true);
 
-        return view('vendor-views.dashboard', compact('empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
+            return view('vendor-views.dashboard', compact('empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
+        } else {
+            $employee_id = Helpers::get_loggedin_user()->id;
+            $month = (int) date('n');
+            $year = date('Y');
+            // $attendance = Attendance::where('month', $month)
+            //     ->where('year', $year)
+            //     ->where('employee_id', $employee_id)
+            //     ->get();
+            $att = Attendance::selectRaw("
+            SUM(label = 'P') as present,
+            SUM(label = 'A') as absent,
+            SUM(label = 'H') as holiday
+            ")
+                ->where('year', $year)
+                ->where('month', $month)
+                ->where('employee_id', $employee_id)
+                ->first();
+            $att['totalDays'] = date('t');
+
+            $leaves = Leave::selectRaw("
+    SUM(leave_type = 'SL') as SL,
+    SUM(leave_type = 'CL') as CL,
+    SUM(leave_type IN ('HDF', 'HDS')) as HD
+")
+                ->where('year', $year)
+                ->where('month', $month)
+                ->where('employee_type', 'vendor_employee')
+                ->where('emp_id', $employee_id)
+                ->first();
+
+            $store_config = StoreConfig::where('store_id', $storeId)->first();
+            $leaves['allowed_leaves'] = ($store_config->cl_for_employees ?? 0) + $store_config->sl_for_employees ?? 0;
+            $leaves['taken'] = $leaves['CL'] + $leaves['SL']  + ($leaves['HD'] / 2);
+            // prx($leaves);
+
+            return view('vendor-views.staff_dashboard', compact('att', 'leaves'));
+        }
     }
 
     public function lastNotification()

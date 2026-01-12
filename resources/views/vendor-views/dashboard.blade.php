@@ -103,7 +103,7 @@
         }
 
         .stat-badge {
-           min-width: 135px;
+            min-width: 135px;
             padding: 10px;
             border-radius: 8px;
             font-weight: 600;
@@ -234,9 +234,11 @@
                             </span>
                             <span>{{ translate('messages.dashboard') }}</span>
                         </h1>
-                        <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal" data-target="#exampleModal">Apply
+                        <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal"
+                            data-target="#exampleModal">Apply
                             Coupon for Customer</button>
-                        <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal" data-target="#exampleModal">Apply
+                        <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal"
+                            data-target="#exampleModal">Apply
                             Coupon</button>
                     </div>
 
@@ -434,9 +436,7 @@
                         <div id="js-clock-in-out" class="card dashboard-icon-widget clock-in-out-card time_det_outer">
                             <div class="card-body d-flex justify-content-between  timing_det">
                                 <div class="widget-icon {{ _clockedInEmployee() ? 'bg-info' : 'bg-danger' }}  "
-                                    style="    display: flex;
-    align-items: center;
-    padding: 10px 13px;">
+                                    style="    display: flex;align-items: center;padding: 10px 13px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34"
                                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                         stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock icon"
@@ -504,11 +504,11 @@
         <h3>Download Android Apps</h3>
         <div class="d-flex flex-wrap">
             <div class="app_dwnld_div">
-                    <a target="_blank" href="https://play.google.com/store/apps/details?id=com.mcvendor">
-                        <img src="{{asset('storage/app/public/util/android_app_download.png')}}" >
-                        <p>Vendor App</p>
-                    </a>    
-                </div>
+                <a target="_blank" href="https://play.google.com/store/apps/details?id=com.mcvendor">
+                    <img src="{{ asset('storage/app/public/util/android_app_download.png') }}">
+                    <p>Vendor App</p>
+                </a>
+            </div>
             <div class="app_dwnld_div">
                 <a target="_blank"
                     href="https://play.google.com/store/apps/details?id=com.mychitti.staff&pcampaignid=web_share">
@@ -517,8 +517,7 @@
                 </a>
             </div>
             <div class="app_dwnld_div">
-                <a target="_blank"
-                    href="https://play.google.com/store/apps/details?id=com.mychittiappuser">
+                <a target="_blank" href="https://play.google.com/store/apps/details?id=com.mychittiappuser">
                     <img src="{{ asset('storage/app/public/util/android_app_download.png') }}">
                     <p>User App</p>
                 </a>
@@ -578,6 +577,17 @@
 
 @push('script_2')
     <script>
+        console.log('vendor check')
+        @if (auth('vendor')->check())
+            window.ReactNativeWebView?.postMessage(
+                JSON.stringify({
+                    type: 'USER_LOGIN',
+                    vendor_id: {{ auth('vendor')->id() }}
+                })
+            );
+        @endif
+    </script>
+    <script>
         $(document).on('click', '.applyCouponBtn', function(e) {
             console.log('fsdf')
             e.preventDefault();
@@ -603,7 +613,7 @@
                     if (data.status) {
                         $('.coupon_success').text(data.message);
                         setTimeout(() => {
-            $(".applyCouponForm").trigger('reset')
+                            $(".applyCouponForm").trigger('reset')
 
                             $(".close_coupon_modal").click()
                             $(".applyCouponBtn").removeAttr('disabled')
