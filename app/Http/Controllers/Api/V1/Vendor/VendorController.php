@@ -50,7 +50,8 @@ class VendorController extends Controller
         $vendor_id = $request->vendor_id;
         $fcm_token = $request->fcm_token;
 
-        $vendor = Vendor::find($vendor_id)->first();
+
+        $vendor = Vendor::find($vendor_id);
         if (!$vendor->cm_firebase_token) {
             $vendor->cm_firebase_token = $fcm_token;
             $vendor->save();

@@ -359,7 +359,7 @@
                             @else
                                 <button class="staff-dash-punch-btn staff-dash-punch-in" id="staffDashPunchBtn">
                                     <span id="staffDashPunchIcon">▶</span>
-                                    <span id="staffDashPunchText">Punch In 2</span>
+                                    <span id="staffDashPunchText">Punch In</span>
                                 </button>
                             @endif
                         </div>
@@ -371,9 +371,12 @@
                 <div class="staff-dash-stats-grid">
                     <!-- Attendance -->
                     <div class="staff-dash-card">
-                        <div class="staff-dash-card-header">
-                            <span class="staff-dash-icon">📅</span>
-                            <h3>My Attendance</h3>
+                        <div class="staff-dash-card-header d-flex justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="staff-dash-icon">📅</span>
+                                <h3 class="mb-0">My Attendance</h3>
+                            </div>
+                            <a href="{{ route('vendor.employee-attendance') }}" class="text-primary">View Time Cards</a>
                         </div>
                         <div class="staff-dash-stats-grid-inner">
                             <div class="staff-dash-stat-item">
@@ -401,9 +404,13 @@
 
                     <!-- Leaves -->
                     <div class="staff-dash-card">
-                        <div class="staff-dash-card-header">
-                            <span class="staff-dash-icon">📄</span>
-                            <h3>My Leaves</h3>
+
+                        <div class="staff-dash-card-header d-flex justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="staff-dash-icon">📄</span>
+                                <h3 class="mb-0">My Leaves</h3>
+                            </div>
+                            <a href="{{ route('vendor.employee-leave') }}" class="text-primary">View Leaves</a>
                         </div>
                         <div class="staff-dash-stats-grid-inner">
                             <div class="staff-dash-stat-item">
@@ -436,7 +443,20 @@
                             <h3>Assigned Tasks</h3>
                         </div>
                         <div class="staff-dash-task-list" id="staffDashTaskList">
-                            <!-- Tasks will be populated here -->
+                            @foreach ($assingned_tasks as $key => $task)
+                                <div class="staff-dash-task-item">
+                                    <div class="staff-dash-task-header">
+                                        <div class="staff-dash-task-title">{{ $task->title }}</div>
+                                        <span
+                                            class="staff-dash-badge staff-dash-badge-${task.priority}">{{ $task->priority }}</span>
+                                    </div>
+                                    <div class="staff-dash-task-footer">
+                                        <span
+                                            class="staff-dash-badge staff-dash-badge-${task.status}">{{ $task->status }}</span>
+                                        <span class="staff-dash-due-date">Due: {{ $task->dueDate }}</span>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
 
@@ -447,7 +467,26 @@
                             <h3>Assigned Projects</h3>
                         </div>
                         <div class="staff-dash-project-list" id="staffDashProjectList">
-                            <!-- Projects will be populated here -->
+                            @foreach ($assingned_projects as $key => $project)
+                                <div class="staff-dash-project-item">
+                                    <div class="staff-dash-project-header">
+                                        <div class="staff-dash-project-name">{{$project->name}}</div>
+                                        <span
+                                            class="staff-dash-badge staff-dash-badge-{{$project->status}}">{{$project->status}}</span>
+                                    </div>
+                                    <div class="staff-dash-progress-section">
+                                        <div class="staff-dash-progress-header">
+                                            <span class="staff-dash-progress-label">Progress</span>
+                                            <span class="staff-dash-progress-value">{{$project->progress}}%</span>
+                                        </div>
+                                        <div class="staff-dash-progress-bar">
+                                            <div class="staff-dash-progress-fill" style="width: ${project.progress}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="staff-dash-project-deadline">Deadline: {{$project->deadline}}</div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -597,27 +636,7 @@
                 }
             ];
 
-            // Populate tasks
-            function staffDashPopulateTasks(tasks) {
-                const taskList = $('#staffDashTaskList');
-                taskList.empty();
 
-                tasks.forEach(task => {
-                    const taskHtml = `
-                        <div class="staff-dash-task-item">
-                            <div class="staff-dash-task-header">
-                                <div class="staff-dash-task-title">${task.title}</div>
-                                <span class="staff-dash-badge staff-dash-badge-${task.priority}">${task.priority}</span>
-                            </div>
-                            <div class="staff-dash-task-footer">
-                                <span class="staff-dash-badge staff-dash-badge-${task.status}">${task.status}</span>
-                                <span class="staff-dash-due-date">Due: ${task.dueDate}</span>
-                            </div>
-                        </div>
-                    `;
-                    taskList.append(taskHtml);
-                });
-            }
             $('#staffDashPunchBtn').on('click', function() {
                 staffDashIsPunchedIn = !staffDashIsPunchedIn;
                 const currentTime = new Date().toLocaleTimeString();
@@ -651,63 +670,7 @@
                 //     }
                 // });
             });
-            // Populate projects
-            function staffDashPopulateProjects(projects) {
-                const projectList = $('#staffDashProjectList');
-                projectList.empty();
 
-                projects.forEach(project => {
-                    const projectHtml = `
-                        <div class="staff-dash-project-item">
-                            <div class="staff-dash-project-header">
-                                <div class="staff-dash-project-name">${project.name}</div>
-                                <span class="staff-dash-badge staff-dash-badge-${project.status}">${project.status}</span>
-                            </div>
-                            <div class="staff-dash-progress-section">
-                                <div class="staff-dash-progress-header">
-                                    <span class="staff-dash-progress-label">Progress</span>
-                                    <span class="staff-dash-progress-value">${project.progress}%</span>
-                                </div>
-                                <div class="staff-dash-progress-bar">
-                                    <div class="staff-dash-progress-fill" style="width: ${project.progress}%"></div>
-                                </div>
-                            </div>
-                            <div class="staff-dash-project-deadline">Deadline: ${project.deadline}</div>
-                        </div>
-                    `;
-                    projectList.append(projectHtml);
-                });
-            }
-
-            // Initialize with sample data
-            staffDashPopulateTasks(staffDashTasks);
-            staffDashPopulateProjects(staffDashProjects);
-
-            // Example of how to load data from Laravel backend
-            // function staffDashLoadDashboardData() {
-            //     $.ajax({
-            //         url: '/api/dashboard/data',
-            //         method: 'GET',
-            //         success: function(response) {
-            //             // Update attendance
-            //             $('#staffDashPresentDays').text(response.attendance.present);
-            //             $('#staffDashAbsentDays').text(response.attendance.absent);
-            //             $('#staffDashLateDays').text(response.attendance.late);
-            //             $('#staffDashTotalDays').text(response.attendance.total);
-            //             
-            //             // Update leaves
-            //             $('#staffDashTotalLeaves').text(response.leaves.total);
-            //             $('#staffDashTakenLeaves').text(response.leaves.taken);
-            //             $('#staffDashPendingLeaves').text(response.leaves.pending);
-            //             $('#staffDashAvailableLeaves').text(response.leaves.available);
-            //             
-            //             // Populate tasks and projects
-            //             staffDashPopulateTasks(response.tasks);
-            //             staffDashPopulateProjects(response.projects);
-            //         }
-            //     });
-            // }
-            // staffDashLoadDashboardData();
         });
 
         function clock(action) {

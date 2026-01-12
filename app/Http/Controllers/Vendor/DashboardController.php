@@ -192,7 +192,38 @@ class DashboardController extends Controller
             $leaves['taken'] = $leaves['CL'] + $leaves['SL']  + ($leaves['HD'] / 2);
             // prx($leaves);
 
-            return view('vendor-views.staff_dashboard', compact('att', 'leaves'));
+            $employeeTaskIds = StoreTask::where('employee_id', $employee_id)
+                ->pluck('id')
+                ->toArray();
+
+            $assingned_tasks = StoreTask::where('task_type', 'common')
+                ->where(function ($query) use ($employeeTaskIds, $employee_id) {
+                    $query->where(function ($q) use ($employeeTaskIds, $employee_id) {
+                        $q->whereNotNull('parent_id')
+                            ->whereNotIn('parent_id', $employeeTaskIds)
+                            ->where('offered_to', $employee_id);
+                    })
+                        ->orWhere(function ($q) use ($employee_id) {
+                            $q->whereNull('parent_id')
+                                ->where('offered_to', $employee_id);
+                        });
+                })
+                ->take(10);
+            $assingned_projects = StoreTask::where('task_type', 'common')
+                ->where(function ($query) use ($employeeTaskIds, $employee_id) {
+                    $query->where(function ($q) use ($employeeTaskIds, $employee_id) {
+                        $q->whereNotNull('parent_id')
+                            ->whereNotIn('parent_id', $employeeTaskIds)
+                            ->where('offered_to', $employee_id);
+                    })
+                        ->orWhere(function ($q) use ($employee_id) {
+                            $q->whereNull('parent_id')
+                                ->where('offered_to', $employee_id);
+                        });
+                })
+                ->take(10);
+
+            return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assingned_projects'));
         }
     }
 

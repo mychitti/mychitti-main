@@ -577,7 +577,6 @@
 
 @push('script_2')
     <script>
-        console.log('vendor check')
         @if (auth('vendor')->check())
             window.ReactNativeWebView?.postMessage(
                 JSON.stringify({

@@ -11,7 +11,7 @@ class Vendor extends Authenticatable
 {
     use Notifiable;
 
-    protected $fillable = ['remember_token', 'image'];
+    protected $fillable = ['remember_token', 'image', 'cm_firebase_token'];
 
     protected $casts = [
         'created_at' => 'datetime', 
