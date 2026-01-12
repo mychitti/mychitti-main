@@ -207,23 +207,20 @@ class DashboardController extends Controller
                             $q->whereNull('parent_id')
                                 ->where('offered_to', $employee_id);
                         });
-                })
-                ->take(10);
-            $assingned_projects = StoreTask::where('task_type', 'common')
-                ->where(function ($query) use ($employeeTaskIds, $employee_id) {
-                    $query->where(function ($q) use ($employeeTaskIds, $employee_id) {
-                        $q->whereNotNull('parent_id')
-                            ->whereNotIn('parent_id', $employeeTaskIds)
-                            ->where('offered_to', $employee_id);
-                    })
-                        ->orWhere(function ($q) use ($employee_id) {
-                            $q->whereNull('parent_id')
-                                ->where('offered_to', $employee_id);
-                        });
-                })
-                ->take(10);
+                })->limit(8)->get();
 
-            return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assingned_projects'));
+
+            $assigned_projects = Project::with('teamMembers')
+                ->where('vendor_id', Helpers::get_store_id())
+                ->whereHas('teamMembers', function ($query) use ($employee_id) {
+                    $query->where('employee_id', $employee_id);
+                })
+                ->get();
+
+            // prx($assigned_projects);
+
+
+            return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assigned_projects', 'employee_id'));
         }
     }
 

@@ -2443,8 +2443,28 @@ if (!function_exists('_clockedInEmployee')) {
 if (!function_exists('_clockedInEmployeeDutyHours')) {
     function _clockedInEmployeeDutyHours()
     {
-        return null;
-    }}
+        $employee = Helpers::get_loggedin_user();
+        $shift = StoreShift::where('store_id', Helpers::get_store_id())->where('id', $employee->store_shift_id)->first();
+        if(!$shift){
+            return 0;
+        }
+        $start_time = $shift->start_time;
+        $end_time   = $shift->end_time;
+
+        $start = strtotime($start_time);
+        $end   = strtotime($end_time);
+
+        // Handle overnight shift (optional safety)
+        if ($end < $start) {
+            $end += 86400;
+        }
+
+        return round(($end - $start) / 3600, 2); // 4.00
+    }
+}
+
+
+
 if (!function_exists('_inTime')) {
     function _inTime($type = 'phrase')
     {

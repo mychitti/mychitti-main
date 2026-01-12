@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         :root {
-            --staff-dash-primary: #4F46E5;
-            --staff-dash-secondary: #10B981;
+            --staff-dash-primary: var(--primary);
+            --staff-dash-secondary: var(--primary-light-theme);
         }
 
         .staff-dashboard-wrapper {
@@ -324,18 +324,21 @@
                         <div class="staff-dash-punch-section">
                             <div class="staff-dash-punch-info">
                                 @if (_clockedInEmployee())
-                                    <div class="staff-dash-time-display">
-                                        <span style="font-size: 26px;">⏰</span>
-                                        <span id="staffDashCurrentDateTime">
-                                            <div style="text-align: center;">
-                                                <span style="font-weight: 600; font-size: 16px;">Remaining Time</span><br>
-                                                <span id="staffRemainingTime" class="remaining-time">
-                                                    Loading...
-                                                </span>
+                                    @if (_clockedInEmployeeDutyHours())
+                                        <div class="staff-dash-time-display">
+                                            <span style="font-size: 26px;">⏰</span>
+                                            <span id="staffDashCurrentDateTime">
+                                                <div style="text-align: center;">
+                                                    <span style="font-weight: 600; font-size: 16px;">Remaining
+                                                        Time</span><br>
+                                                    <span id="staffRemainingTime" class="remaining-time">
+                                                        Loading...
+                                                    </span>
 
-                                            </div>
-                                        </span>
-                                    </div>
+                                                </div>
+                                            </span>
+                                        </div>
+                                    @endif
 
                                     <div class="staff-dash-punch-time " id="staffDashPunchTimeDisplay">
                                         Punched in at: {{ date('H:i:s', strtotime(_inTime('timestamp'))) }}
@@ -438,54 +441,71 @@
                 <div class="staff-dash-content-grid">
                     <!-- Assigned Tasks -->
                     <div class="staff-dash-card">
-                        <div class="staff-dash-card-header">
-                            <span class="staff-dash-icon">✓</span>
-                            <h3>Assigned Tasks</h3>
+                        <div class="staff-dash-card-header d-flex justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="staff-dash-icon">✓</span>
+                                <h3 class="mb-0">Assigned Tasks</h3>
+                            </div>
+                            <a href="{{ route('vendor.task.assigned_tasks') }}" class="text-primary">View All</a>
                         </div>
                         <div class="staff-dash-task-list" id="staffDashTaskList">
                             @foreach ($assingned_tasks as $key => $task)
-                                <div class="staff-dash-task-item">
+                                <a href="{{ route('vendor.task.detail', [$task->id]) }}"
+                                    class="staff-dash-task-item text-dark">
                                     <div class="staff-dash-task-header">
-                                        <div class="staff-dash-task-title">{{ $task->title }}</div>
+                                        <div class="staff-dash-task-title">{{ ucfirst($task->title) }}</div>
                                         <span
-                                            class="staff-dash-badge staff-dash-badge-${task.priority}">{{ $task->priority }}</span>
+                                            class="staff-dash-badge staff-dash-badge-{{ $task->priority }}">{{ $task->priority }}</span>
                                     </div>
+                                    <p>{{ $task->description }}</p>
                                     <div class="staff-dash-task-footer">
-                                        <span
-                                            class="staff-dash-badge staff-dash-badge-${task.status}">{{ $task->status }}</span>
-                                        <span class="staff-dash-due-date">Due: {{ $task->dueDate }}</span>
+                                        <span class="badge badge-soft-success">{{ $task->status }}</span>
+                                        <span class="staff-dash-due-date">Duration: {{ $task->time_count }}
+                                            {{ $task->time_unit }}</span>
                                     </div>
-                                </div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
 
                     <!-- Assigned Projects -->
                     <div class="staff-dash-card">
-                        <div class="staff-dash-card-header">
-                            <span class="staff-dash-icon">💼</span>
-                            <h3>Assigned Projects</h3>
+
+                        <div class="staff-dash-card-header d-flex justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="staff-dash-icon">💼</span>
+                                <h3 class="mb-0">Assigned Projects</h3>
+                            </div>
+                            <a href="{{ route('vendor.service.assigned_projects') }}" class="text-primary">View All</a>
                         </div>
                         <div class="staff-dash-project-list" id="staffDashProjectList">
-                            @foreach ($assingned_projects as $key => $project)
-                                <div class="staff-dash-project-item">
+                            @foreach ($assigned_projects as $key => $project)
+                                <a href="{{ route('vendor.project.details', [$project->id]) }}"
+                                    class="staff-dash-project-item">
                                     <div class="staff-dash-project-header">
-                                        <div class="staff-dash-project-name">{{$project->name}}</div>
+                                        <div class="staff-dash-project-name">{{ ucfirst($project->project_title) }}
+                                            @if ($project->project_manager == $employee_id)
+                                                <span class="badge badge-soft-dark">Project Manager 👑</span>
+                                            @endif
+                                        </div>
                                         <span
-                                            class="staff-dash-badge staff-dash-badge-{{$project->status}}">{{$project->status}}</span>
+                                            class="staff-dash-badge staff-dash-badge-{{ $project->priority }}">{{ $project->priority }}</span>
                                     </div>
+                                    <p>{{ $project->short_description }}</p>
                                     <div class="staff-dash-progress-section">
                                         <div class="staff-dash-progress-header">
                                             <span class="staff-dash-progress-label">Progress</span>
-                                            <span class="staff-dash-progress-value">{{$project->progress}}%</span>
+                                            <span
+                                                class="staff-dash-progress-value">{{ $project->prog_percent ?? 0 }}%</span>
                                         </div>
                                         <div class="staff-dash-progress-bar">
-                                            <div class="staff-dash-progress-fill" style="width: ${project.progress}%">
+                                            <div class="staff-dash-progress-fill"
+                                                style="width: {{ $project->prog_percent ?? 0 }}%">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="staff-dash-project-deadline">Deadline: {{$project->deadline}}</div>
-                                </div>
+                                    <div class="staff-dash-project-deadline">Deadline: {{ $project->end_date }}</div>
+                                </a>
                             @endforeach
                         </div>
                     </div>
@@ -542,99 +562,45 @@
             let staffDashDutyHours = @json(_clockedInEmployeeDutyHours() ?? 8);
 
             if (staffDashPunchInTime) staffDashPunchInTime = new Date(staffDashPunchInTime);
+            @if (_clockedInEmployeeDutyHours())
+                function staffDashUpdateDateTime() {
+                    const now = new Date();
+                    const dateTimeStr = now.toLocaleDateString() + ' - ' + now.toLocaleTimeString();
 
-            function staffDashUpdateDateTime() {
-                const now = new Date();
-                const dateTimeStr = now.toLocaleDateString() + ' - ' + now.toLocaleTimeString();
+                    if (staffDashIsPunchedIn && staffDashPunchInTime) {
+                        const elapsedMs = now - staffDashPunchInTime;
+                        const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+                        const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const elapsedSeconds = Math.floor((elapsedMs % (1000 * 60)) / 1000);
 
-                if (staffDashIsPunchedIn && staffDashPunchInTime) {
-                    const elapsedMs = now - staffDashPunchInTime;
-                    const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
-                    const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
-                    const elapsedSeconds = Math.floor((elapsedMs % (1000 * 60)) / 1000);
+                        const totalDutyMs = staffDashDutyHours * 60 * 60 * 1000;
+                        const remainingMs = totalDutyMs - elapsedMs;
 
-                    const totalDutyMs = staffDashDutyHours * 60 * 60 * 1000;
-                    const remainingMs = totalDutyMs - elapsedMs;
+                        if (remainingMs > 0) {
+                            const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+                            const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                            const remainingSeconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
 
-                    if (remainingMs > 0) {
-                        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
-                        const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-                        const remainingSeconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+                            $('#staffDashCurrentDateTime').html(
+                                //  `<span style="color: var(--staff-dash-secondary); font-weight: 600;">Worked: ${String(elapsedHours).padStart(2,'0')}:${String(elapsedMinutes).padStart(2,'0')}:${String(elapsedSeconds).padStart(2,'0')}</span> | ` +
+                                `<span style=" font-weight: 600;">Remaining Time </span><br> <span style="font-size : 22px;"> ${String(remainingHours).padStart(2,'0')}:${String(remainingMinutes).padStart(2,'0')}:${String(remainingSeconds).padStart(2,'0')}</span>`
+                            );
+                        } else {
+                            const overtimeMs = Math.abs(remainingMs);
+                            const overtimeHours = Math.floor(overtimeMs / (1000 * 60 * 60));
+                            const overtimeMinutes = Math.floor((overtimeMs % (1000 * 60 * 60)) / (1000 * 60));
+                            const overtimeSeconds = Math.floor((overtimeMs % (1000 * 60)) / 1000);
 
-                        $('#staffDashCurrentDateTime').html(
-                            //  `<span style="color: var(--staff-dash-secondary); font-weight: 600;">Worked: ${String(elapsedHours).padStart(2,'0')}:${String(elapsedMinutes).padStart(2,'0')}:${String(elapsedSeconds).padStart(2,'0')}</span> | ` +
-                            `<span style=" font-weight: 600;">Remaining Time </span><br> <span style="font-size : 22px;"> ${String(remainingHours).padStart(2,'0')}:${String(remainingMinutes).padStart(2,'0')}:${String(remainingSeconds).padStart(2,'0')}</span>`
-                        );
-                    } else {
-                        const overtimeMs = Math.abs(remainingMs);
-                        const overtimeHours = Math.floor(overtimeMs / (1000 * 60 * 60));
-                        const overtimeMinutes = Math.floor((overtimeMs % (1000 * 60 * 60)) / (1000 * 60));
-                        const overtimeSeconds = Math.floor((overtimeMs % (1000 * 60)) / 1000);
-
-                        $('#staffDashCurrentDateTime').html(
-                            `<span style="color: var(--staff-dash-secondary); font-weight: 600;">Duty Completed!</span> | ` +
-                            `<span style="color: #F59E0B; font-weight: 600;">Overtime: ${String(overtimeHours).padStart(2,'0')}:${String(overtimeMinutes).padStart(2,'0')}:${String(overtimeSeconds).padStart(2,'0')}</span>`
-                        );
+                            $('#staffDashCurrentDateTime').html(
+                                `<span style="color: var(--staff-dash-secondary); font-weight: 600;">Duty Completed!</span> | ` +
+                                `<span style="color: #F59E0B; font-weight: 600;">Overtime: ${String(overtimeHours).padStart(2,'0')}:${String(overtimeMinutes).padStart(2,'0')}:${String(overtimeSeconds).padStart(2,'0')}</span>`
+                            );
+                        }
                     }
                 }
-            }
-
-            // Update every second
-            setInterval(staffDashUpdateDateTime, 1000);
-
-            // Sample data - Replace this with data from Laravel backend
-            const staffDashTasks = [{
-                    id: 1,
-                    title: 'Complete project documentation',
-                    status: 'in-progress',
-                    priority: 'high',
-                    dueDate: '2026-01-15'
-                },
-                {
-                    id: 2,
-                    title: 'Review pull requests',
-                    status: 'pending',
-                    priority: 'medium',
-                    dueDate: '2026-01-13'
-                },
-                {
-                    id: 3,
-                    title: 'Update client presentation',
-                    status: 'completed',
-                    priority: 'low',
-                    dueDate: '2026-01-12'
-                },
-                {
-                    id: 4,
-                    title: 'Team meeting preparation',
-                    status: 'pending',
-                    priority: 'high',
-                    dueDate: '2026-01-14'
-                }
-            ];
-
-            const staffDashProjects = [{
-                    id: 1,
-                    name: 'E-commerce Platform',
-                    progress: 75,
-                    deadline: '2026-02-28',
-                    status: 'active'
-                },
-                {
-                    id: 2,
-                    name: 'Mobile App Redesign',
-                    progress: 45,
-                    deadline: '2026-03-15',
-                    status: 'active'
-                },
-                {
-                    id: 3,
-                    name: 'API Integration',
-                    progress: 90,
-                    deadline: '2026-01-20',
-                    status: 'active'
-                }
-            ];
+                // Update every second
+                setInterval(staffDashUpdateDateTime, 1000);
+            @endif
 
 
             $('#staffDashPunchBtn').on('click', function() {

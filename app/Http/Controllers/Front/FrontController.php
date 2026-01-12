@@ -55,6 +55,7 @@ use App\Models\ZoneRequest;
 use App\Models\Store;
 use App\Models\StoreConfig;
 use App\Models\StoreGallery;
+use App\Models\Vendor;
 use App\Models\VendorEmployee;
 use Illuminate\Support\Facades\DB;
 use App\Models\Zone;
@@ -153,7 +154,7 @@ class FrontController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-  
+
     public function icons_view()
     {
         return view('front-views.icons');
@@ -161,10 +162,31 @@ class FrontController extends Controller
     public function approve_success(Request $request)
     {
         return view('vendor-views.documents.approve_success');
-    }  
+    }
     public function testing(Request $request)
     {
+
+        // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
+       
         return view('front-views.test_view');
+    }
+    public function send_test_notification(Request $request)
+    {
+        $email = $request->email;
+        $vendor = Vendor::where('email', $email)->first();
+        if ($vendor) {
+            $fcm_token = $vendor->cm_firebase_token; 
+            $data = [
+                'title' => 'Test Notification',
+                'description' => 'this is a test notification',
+                'order_id' => 0,
+                'image' => '',
+                'type' => 'order_status',
+            ];
+            echo   Helpers::send_push_notif_to_device($fcm_token, $data);
+        } else {
+            echo 'No vendor found';
+        }
     }
     public function add_feature_actions(Request $request)
     {
@@ -248,7 +270,7 @@ class FrontController extends Controller
                 $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
                 $join->whereIn('stores.zone_id', json_decode($zone_id, true));
             })
-            ->join('categories', 'categories.id', 'items.category_id' )
+            ->join('categories', 'categories.id', 'items.category_id')
             ->where('items.status', 1)
             ->whereNull('categories.added_by')
             ->where('items.module_id', 6)

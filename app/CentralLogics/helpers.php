@@ -3717,7 +3717,7 @@ class Helpers
         // Close cURL and return the result
         curl_close($ch);
         // echo 547823 ;  
-        //   prx($result);
+          prx($result);
     }
 
     public static function send_push_notif_to_topic($data, $topic, $type, $web_push_link = null)
