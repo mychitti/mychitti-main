@@ -2101,6 +2101,20 @@ class BusinessSettingsController extends Controller
         $lines = DataSetting::whereIn('key', ['mc_first_line', 'mc_second_line', 'mc_third_line'])->get();
         return view('admin-views.business-settings.vendor_homepage_config', compact('lines'));
     }
+    public function homepage_config_update(Request $request)
+    {
+       
+           DB::table('business_settings')->updateOrInsert(['key' => 'unavailability_heading_homepage'], [
+                    'value' => $request['unavailability_heading_homepage']
+                ]);
+        Toastr::success('Updated Successfully');
+        return back();
+    }
+    public function homepage_config(Request $request)
+    {
+        $unavailability_heading_homepage = BusinessSetting::where('key', 'unavailability_heading_homepage')->first();
+        return view('admin-views.business-settings.homepage_config', compact('unavailability_heading_homepage'));
+    }
     function base64UrlDecode($data)
     {
         $remainder = strlen($data) % 4;
@@ -2175,18 +2189,18 @@ class BusinessSettingsController extends Controller
         Toastr::success(translate('messages.shipping_policy_updated'));
         return back();
     }
-    public function cookies_policy()
+    public function disclaimer()
     {
 
-        $cookies_policy = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'cookies_policy')->first();
-        $cookies_policy_status = DataSetting::where('type', 'admin_landing_page')->where('key', 'cookies_policy_status')->first();
-        return view('admin-views.business-settings.cookies_policy', compact('cookies_policy', 'cookies_policy_status'));
+        $disclaimer = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'disclaimer')->first();
+        $disclaimer_status = DataSetting::where('type', 'admin_landing_page')->where('key', 'disclaimer_status')->first();
+        return view('admin-views.business-settings.disclaimer', compact('disclaimer', 'disclaimer_status'));
     }
 
-    public function cookies_policy_update(Request $request)
+    public function disclaimer_update(Request $request)
     {
-        $this->update_data($request, 'cookies_policy');
-        Toastr::success(translate('messages.cookies_policy_updated'));
+        $this->update_data($request, 'disclaimer');
+        Toastr::success(translate('messages.disclaimer_updated'));
         return back();
     }
 

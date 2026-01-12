@@ -9,9 +9,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
-    .owl-carousel .owl-item img{
+        .owl-carousel .owl-item img {
             border-radius: 10px !important;
-    }
+        }
+
         .owl-dot {
             width: 7px;
             height: 7px;
@@ -140,8 +141,7 @@
 
                     <div class="col-lg-10 mt-1">
                         {{-- category banners here --}}
-                        <div class="owl-carousel banner-carousel "
-                            style="  margin: 10px auto;">
+                        <div class="owl-carousel banner-carousel " style="  margin: 10px auto;">
                             @foreach ($data['banners'] as $key => $value)
                                 @if ($value['link'])
                                     <a href="{{ $value['link'] }}">
@@ -149,7 +149,7 @@
                                             src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                             alt="{{ $catDetails->name }}">
                                     </a>
-                                    {{--src="https://mychitti.net/storage/app/public/banner/2025-05-31-683ac67ce0716.png"  --}}
+                                    {{-- src="https://mychitti.net/storage/app/public/banner/2025-05-31-683ac67ce0716.png"  --}}
                                 @else
                                     <img loading="lazy" style="aspect-ratio: 4;"
                                         src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"

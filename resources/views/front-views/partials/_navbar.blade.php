@@ -30,7 +30,7 @@
                                 {{ session()->has('customer_city') ? session('customer_city') : '' }} </span></a>
                     @endif
 
-                    <li class="header__list-item has-submenu">
+                    {{-- <li class="header__list-item has-submenu">
                         <a href="#" class="wrapper_link nav-link ">
                             <span>Categories</span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="9" height="5" viewBox="0 0 9 5"
@@ -48,7 +48,7 @@
                                 </ul>
                             </div>
                         </div>
-                    </li>
+                    </li> --}}
 
                     <a class=" wrapper_link nav-link  position-relative" href="https://vendor.mcvendorhub.com/login">
                         Store Login

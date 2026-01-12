@@ -60,6 +60,7 @@ class StoreConfig extends Model
         'webpage_latitude',
         'webpage_longitude',
         'inventory_items_position',
+        'free_trial_consumed'
     ];
 
     protected $table;

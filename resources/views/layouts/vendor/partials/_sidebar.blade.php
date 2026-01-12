@@ -61,13 +61,13 @@
             <!-- Content -->
             {{-- bg--005555 --}}
             <div class="navbar-vertical-content text-capitalize bg-white" id="navbar-vertical-content">
-                <form class="sidebar--search-form">
+                {{-- <form class="sidebar--search-form">
                     <div class="search--form-group">
                         <button type="button" class="btn"><i class="tio-search"></i></button>
                         <input type="text" class="form-control form--control"
                             placeholder="{{ translate('messages.Search Menu...') }}" id="search-sidebar-menu">
                     </div>
-                </form>
+                </form> --}}
                 <ul class="navbar-nav navbar-nav-lg nav-tabs">
                     <!-- Dashboards -->
                     @if (selected_menu('dashboard'))
@@ -1642,7 +1642,7 @@
                     @endif
 
                     {{-- =============================== HR Management=========================== --}}
-                    @if (
+                   @if (
                         (selected_menu('staff_manage') ||
                             selected_menu('attendance_manage') ||
                             selected_menu('leave_manage') ||

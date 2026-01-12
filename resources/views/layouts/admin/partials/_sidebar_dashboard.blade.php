@@ -200,6 +200,15 @@
                                 style="display:{{ Request::is('business-settings/pages*') ? 'block' : 'none' }}">
 
                                 <li
+                                    class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/pages/homepage') ? 'active' : '' }}">
+                                    <a class="nav-link "
+                                        href="{{ route('admin.business-settings.homepage-config') }}"
+                                        title="{{ translate('messages.Homepage') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Homepage</span>
+                                    </a>
+                                </li>
+                                <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/pages/social-media') ? 'active' : '' }}">
                                     <a class="nav-link "
                                         href="{{ route('admin.business-settings.social-media.index') }}"
@@ -311,7 +320,6 @@
                                             </a>
                                         </li>
 
-
                                         <li
                                             class="nav-item {{ Request::is('business-settings/pages/business-page/shipping-policy') ? 'active' : '' }}">
                                             <a class="nav-link "
@@ -322,12 +330,12 @@
                                             </a>
                                         </li>
                                         <li
-                                            class="nav-item {{ Request::is('business-settings/pages/business-page/cookies-policy') ? 'active' : '' }}">
+                                            class="nav-item {{ Request::is('business-settings/pages/business-page/disclaimer') ? 'active' : '' }}">
                                             <a class="nav-link "
-                                                href="{{ route('admin.business-settings.cookies-policy') }}"
-                                                title="{{ translate('messages.cookies_policy') }}">
+                                                href="{{ route('admin.business-settings.disclaimer') }}"
+                                                title="disclaimer">
                                                 <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">{{ translate('Cookies Policy') }}</span>
+                                                <span class="text-truncate">Disclaimer</span>
                                             </a>
                                         </li>
                                     </ul>

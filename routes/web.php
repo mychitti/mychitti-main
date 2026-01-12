@@ -173,6 +173,7 @@ Route::get('store-terms-and-conditions/{type}', [FrontController::class, 'store_
 Route::get('refund-policy', [FrontController::class, 'refund_policy'])->name('refund-policy');
 Route::get('cancellation-policy', [FrontController::class, 'cancellation_policy'])->name('cancellation-policy');
 Route::get('shipping-policy', [FrontController::class, 'shipping_policy'])->name('shipping-policy');
+Route::get('disclaimer', [FrontController::class, 'disclaimer'])->name('disclaimer');
 
 Route::get('searchbar', [FrontController::class, 'search'])->name('searchbar-web');
 Route::post('update-location', [FrontController::class, 'update_location'])->name('update-location');
@@ -212,7 +213,6 @@ Route::get('delete-account/{id}', [FrontUserController::class, 'delete_account']
 
 Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home');
-    Route::get('/service', [FrontController::class, 'service_home'])->name('home.service');
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
     Route::get('contact', [FrontController::class, 'contact'])->name('contact');
     Route::get('cart', [FrontController::class, 'cart'])->name('cart');

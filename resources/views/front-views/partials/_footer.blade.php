@@ -94,6 +94,7 @@
                         @if (Config::get('module.current_module_id') == 5)
                             <a class="btn-link" href="{{ route('shipping-policy') }}">Shipping Policy</a>
                         @endif
+                            <a class="btn-link" href="{{ route('disclaimer') }}">Disclaimer</a>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">

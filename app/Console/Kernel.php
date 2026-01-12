@@ -3,8 +3,10 @@
 namespace App\Console;
 
 use App\Jobs\LowBalanceNotification;
+use App\Jobs\MarkEmployeeAttendance;
 use App\Jobs\ProcessMonthlyDepreciation;
 use App\Jobs\ProcessSingleVendorAccount;
+use App\Jobs\PunchInReminder;
 use App\Models\Store;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -29,6 +31,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // PROCESS VENDOR ====================================
         $schedule->call(function () {
             $date = now()->toDateString();
 
@@ -38,26 +41,50 @@ class Kernel extends ConsoleKernel
                     ProcessSingleVendorAccount::dispatch($store->id, $date);
                 }
             });
-        })->dailyAt('23:59');
+        })->name('process-vendor-accounts')->dailyAt('23:59')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
 
+        // LOW BALANCE NOTIFICATION ============================
         $schedule->call(function () {
             LowBalanceNotification::dispatch();
-        })->dailyAt('23:59');
+        })->name('low-balance-notification')->dailyAt('23:59')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
         // })->everyTwoMinutes();  
 
 
+        // PROCESS MONTHLY DEPRECIATION ==========================
         $schedule->call(function () {
             if (now()->isLastOfMonth()) {
-            // Log::info('Schedule job started at ' . now());
-            ProcessMonthlyDepreciation::dispatch();
-            // Log::info('Schedule job finished at ' . now());
+                // Log::info('Schedule job started at ' . now());
+                ProcessMonthlyDepreciation::dispatch();
+                // Log::info('Schedule job finished at ' . now());
             }
-        // })->everyFiveSeconds();
-        })->dailyAt('23:59');
+            // })->everyFiveSeconds();
+        })->name('monthly-depreciation')->dailyAt('23:59')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
 
+        // PUNCH IN REMINDER =======================================
         $schedule->call(function () {
             PunchInReminder::dispatch();
-        })->everyMinute();
+        })->name('punch-in-reminder')
+            // ->everyMinute() // main 
+            ->dailyAt('22:30')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
+
+
+        // EMPLOYEE ATTENDANCE =======================================
+        // $schedule->call(function () {
+        //     Log::info('Attendance scheduler triggered at ' . now());
+        //     MarkEmployeeAttendance::dispatch();
+        // })->name('employee-attendance')
+        //     // ->dailyAt('21:00')
+        //     ->everyMinute()
+        //     ->timezone('Asia/Kolkata')
+        //     ->withoutOverlapping();
     }
 
     /**

@@ -532,7 +532,7 @@
                      });
 
                      setTimeout(function() {
-                         {{-- location.href = '{{ route('vendor.inventory.index') }}'; --}}
+                         location.href = '{{ route('vendor.inventory.index') }}';
                      }, 1000);
                  }else{
                      toastr.error(data.msg, {

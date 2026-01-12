@@ -708,7 +708,7 @@ class LoginController extends Controller
             $user_link = Helpers::get_login_url('store_employee_login_url');
             auth()->guard('vendor_employee')->logout();
         }
-        return redirect()->route('login', [$user_link]);
+        return redirect()->route('login', [$user_link ?? 'store_login_url']);
     }
 
     public function otp_resent(Request $request)

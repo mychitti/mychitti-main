@@ -1072,6 +1072,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions');
 
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:subscriptions']], function () {
+            Route::get('enable-free-trial', 'ProfileController@enable_free_trial')->name('enable-free-trial');
             Route::post('buy-module', 'ProfileController@buy_module')->name('buy-module');
             Route::post('buy-plan', 'ProfileController@buy_plan')->name('buy-plan');
             Route::post('settings-plans', 'ProfileController@settings_plans')->name('settings-plans');

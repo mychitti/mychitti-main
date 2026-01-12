@@ -21,6 +21,7 @@ use App\Traits\Payment;
 use App\Library\Payment as PaymentInfo;
 use App\Library\Receiver;
 use App\Models\Store;
+use App\Models\StoreConfig;
 use App\Models\SubModule;
 use App\Models\TempModulePurchase;
 use App\Models\Zone;
@@ -29,6 +30,7 @@ use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
+   
     public function view()
     {
         $allPlans = Plan::where('status', 1)
@@ -70,6 +72,73 @@ class ProfileController extends Controller
     {
         $data = Helpers::get_vendor_data();
         return view('vendor-views.profile.bankView', compact('data'));
+    }
+    public function enable_free_trial(Request $request)
+    {
+        $storeId  = Helpers::get_store_id();
+        // CHECK IF ALREADY CONSUMED  
+        $StoreConfig = StoreConfig::firstOrCreate(
+            ['store_id' => $storeId],
+            ['store_id' => $storeId]
+        );
+     
+
+        if ((int) $StoreConfig->free_trial_consumed === 1) {
+            Toastr::error('Free Trial Already Consumed');
+            return back();
+        }
+
+        // ALL MODULES
+        $business_type = Helpers::get_store_data()->business_type;
+
+        $modules = DB::table('sub_modules')
+            ->where('business_type', 'all')
+            ->orWhere('business_type', $business_type)
+            ->get();
+        foreach ($modules as $module) {
+
+            if (!$module) continue;
+
+            $finalPrice = 0;
+
+            $free_trial_duration_count = 15;
+            $free_trial_duration_unit = 'Days';
+
+            $planDetails = Plan::where('key', $module->Key)->first();
+            if (!$planDetails) {
+                $planDetails = new Plan();
+                $planDetails->key   = $module->Key;
+                $planDetails->title = $module->name;
+                $dynamicColumn = $module->Key;
+                $planDetails->{$dynamicColumn} = 1;
+                $planDetails->price  = $module->price_per_month;
+                $planDetails->status = 1;
+                $planDetails->save();
+            }
+
+            $permitted_modules = json_encode([$module->Key]);
+
+            $expDate = new DateTime();
+            $expDate->modify('+' . $free_trial_duration_count . ' ' . $free_trial_duration_unit);
+            $expDate = $expDate->format('Y-m-d H:i:s');
+
+            $subscription = new VendorSubscription;
+            $subscription->vendor_id = Helpers::get_store_id();
+            $subscription->plan_id = $planDetails->id;
+            $subscription->duration_count = $free_trial_duration_count;
+            $subscription->duration_type = $free_trial_duration_unit;
+            $subscription->permitted_modules = $permitted_modules;
+            $subscription->plan_expiry = $expDate;
+            $subscription->purchased_at = $finalPrice;
+            $subscription->created_at = date('Y-m-d H:i:s');
+            $subscription->free_trial = 1;
+            $subscription->save();
+        }
+        $StoreConfig->free_trial_consumed = 1;
+        $StoreConfig->save();
+
+        Toastr::success('Free Trial Enabled Successfully');
+        return back();
     }
     public function buy_module(Request $request)
     {
@@ -619,13 +688,13 @@ class ProfileController extends Controller
             ->get();
         // prx($allPlans);
         $features = DB::table('subscription_modules')->where('status', 1)->get();
-
+ $StoreConfig = StoreConfig::where('store_id' , $storeId)->first();
         $sub_modules = SubModule::all();
         $subscriptions = VendorSubscription::with('plan')->where('vendor_id', $storeId)
             ->where('plan_expiry', '>', now())->get();
         // prx($subscriptions);
 
-        return view('vendor-views.subscriptions.index', compact('allPlans', 'features', 'sub_modules', 'subscriptions'));
+        return view('vendor-views.subscriptions.index', compact('allPlans','StoreConfig', 'features', 'sub_modules', 'subscriptions'));
     }
     public function settings_password_update(Request $request)
     {

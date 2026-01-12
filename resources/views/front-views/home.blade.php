@@ -166,8 +166,9 @@
             }
 
             .pop-items-section {
-                   padding: 23px 19px;
-    background: linear-gradient(135deg, #f2f2f24f 0%, #f8f8f8 100%);    margin-top: 17px;
+                padding: 23px 19px;
+                background: linear-gradient(135deg, #f2f2f24f 0%, #f8f8f8 100%);
+                margin-top: 17px;
             }
 
             .pop-section-title {
@@ -352,23 +353,23 @@
                     @endif
                 @endforeach
             </div>
-                    @if (count($data['popular_services']) > 0)
+            @if (count($data['popular_services']) > 0)
 
-            <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>
-            <p style="text-align: center;">Search, compare, and book trusted local services in just a few clicks.</p>
-            <div class="pop-items-section">
-                  <h2 style="" class="section_heading text_dark ">Most Popular Services
+                <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>
+                <p style="text-align: center;">Search, compare, and book trusted local services in just a few clicks.</p>
+                <div class="pop-items-section">
+                    <h2 style="" class="section_heading text_dark ">Most Popular Services
                     </h2>
-                    <p style="margin:0 atuo;" class=""><span
-                            class="text_dark">Connect with verified providers in your area !</span></p>
+                    <p style="margin:0 atuo;" class=""><span class="text_dark">Connect with verified providers in your
+                            area !</span></p>
 
-                <div class="pop-items-grid">
+                    <div class="pop-items-grid">
                         @foreach ($data['popular_services'] as $item)
                             <!-- Sample Item 1 -->
                             <a href="{{ route('product.details', [$item->cat_slug, $item->slug]) }}" class="pop-item-card">
-                                <img  loading="lazy" style="object-fit:cover"
-                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/product/') . '/' . $item->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                <img loading="lazy" style="object-fit:cover"
+                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/product/') . '/' . $item->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                     alt="Wireless Headphones" class="pop-item-img">
                                 <div class="pop-item-content">
                                     <h3 class="pop-item-name two-line-ellipsis">{{ $item->name }}</h3>
@@ -378,9 +379,9 @@
                                 </div>
                             </a>
                         @endforeach
+                    </div>
                 </div>
-            </div>
-                    @endif
+            @endif
 
             {{-- TOP SELLING ITEMS  --}}
             <div class="  m-2 mt-3 ">
@@ -390,8 +391,7 @@
                         Easily In Your
                         City!
                     </h2>
-                    <p style="margin:0 atuo;" class=""><span
-                            class="text_dark">Discover Our
+                    <p style="margin:0 atuo;" class=""><span class="text_dark">Discover Our
                             Top-Selling Services - Customer Favorites
                             You Can't Miss! </span></p>
                 @endif
@@ -714,7 +714,9 @@
         <div class="unavailable_data">
             <img style="mix-blend-mode: multiply;" class="img-fluid"
                 src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
-            <h2 class="fs-2 eb-garamond-text">Available Locations: Tirupati, Chittoor, Madanapalle<h2>
+            <h2 class="fs-2 eb-garamond-text">
+                {{ \App\Models\BusinessSetting::where(['key' => 'unavailability_heading_homepage'])->first()?->value ?? '' }}
+                <h2>
                     <h3 class="fs-4 eb-garamond-text">Don’t see your city? We’re expanding soon! Stay tuned.</h3>
         </div>
     @endif

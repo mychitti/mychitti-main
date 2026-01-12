@@ -21,9 +21,26 @@
             <!-- Calculator Panel -->
             <div class="m-4">
                 <h2 class="mb-3 font-weight-bold">Active Modules</h2>
+                @php
+                    if (isset($subscriptions) && count($subscriptions) > 0){
 
+                    $allFreeTrial = $subscriptions->every(fn($sub) => $sub->free_trial == 1);
+
+                    $trialStart = $subscriptions->first()->created_at;
+                    $expiryDate = $trialStart->copy()->addDays(15)->format('d M Y');
+                    }
+                @endphp
+
+                @if (isset($allFreeTrial) && $allFreeTrial)
+                    <div class="alert alert-info w-100" role="alert">
+                        ℹ️ Your 15-day free trial is currently active and will expire on {{ $expiryDate }}.
+
+                    </div>
+                @endif
                 <div class="row">
+
                     @if (isset($subscriptions) && count($subscriptions) > 0)
+
                         @foreach ($subscriptions as $sub)
                             <div class="col-md-4 mb-3 ">
                                 <div class="pm-card  ">
@@ -35,34 +52,26 @@
                                     </div>
                                     <div class="pm-right">
                                         <div class="pm-price">{{ $sub->duration_count }} {{ $sub->duration_type }}</div>
-                                        <div class="pm-duration">{{ _price($sub->purchased_at) }}</div>
+                                        @if ($sub->free_trial)
+                                            <span class="badge badge-soft-success">Free Trial</span>
+                                        @else
+                                            <div class="pm-duration">{{ _price($sub->purchased_at) }}</div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
-
-
-                            {{-- <div class="pc-module-item" >
-                                <div class="pc-module-top">
-                                    <div class="pc-module-name">{{ $sub->plan?->title ?? $sub->permitted_modules }}</div>
-                                    <div class="pc-price-amount">
-                                        ₹{{ number_format($sub->purchased_at) }}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Duration  {{ $sub->duration_count }} {{$sub->duration_type}}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Expiry  {{ $sub->plan_expiry }}
-                                    </div>
-                                </div>
-                            </div> --}}
                         @endforeach
                     @else
-                        <p style="color: #666; text-align: center; padding: 40px;">No modules available yet. Please
-                            try
-                            again later.</p>
+                    @if($StoreConfig && (int) $StoreConfig->free_trial_consumed === 0)
+                        <div class="alert alert-warning" role="alert">
+                            🎉 Start your free trial today! Get 15 days of free access with no automatic charges. You can
+                            upgrade whenever you’re ready.
+                            <a href="{{ route('vendor.profile.enable-free-trial') }}" class="btn btn-primary">Start Free
+                                Trial</a>
+                        </div>
+                        @endif
+                        <p style="color: #666; text-align: center; padding: 40px;">No modules available active yet.</p>
                     @endif
-
-
                 </div>
             </div>
             @include('partials.module_buy')
@@ -73,7 +82,7 @@
 
 @push('script_2')
 
-  @include('partials.module_buy_js')
+    @include('partials.module_buy_js')
 
 
     @if (request('flag') && request('flag') == 'success')

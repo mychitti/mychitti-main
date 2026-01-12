@@ -3948,6 +3948,7 @@ if (!function_exists('_getPopularService')) {
                 $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
             })
             ->join('categories', 'categories.id', 'items.category_id')
+            ->whereNull('categories.added_by')
             ->select('categories.name as cat_name','categories.slug as cat_slug','items.*', 'stores.zone_id', 'stores.active as store_open', 'stores.delivery_time', 'service_requests.item_id', DB::raw('COUNT(service_requests.item_id) as total_requests'))
             ->groupBy('items.id')
             ->orderBy('total_requests', 'desc')

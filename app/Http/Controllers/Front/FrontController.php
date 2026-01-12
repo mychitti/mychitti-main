@@ -153,6 +153,7 @@ class FrontController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
+  
     public function icons_view()
     {
         return view('front-views.icons');
@@ -218,32 +219,12 @@ class FrontController extends Controller
         // featured stores
         $stores['featued_stores'] = Store::whereIn('zone_id',  json_decode($this->zone_id, true))->where(['featured' => 1, 'active' => 1, 'module_id' =>  $this->module_id, 'status' => 1])->paginate(8);
 
-        // new on my chitti 
-        $stores['new_stores2'] = Store::join('vendors', 'stores.vendor_id', '=', 'vendors.id')
-            ->whereIn('zone_id', json_decode($this->zone_id, true))
-            ->where([
-                // 'stores.id' => 65,
-                'stores.active' => 1,
-                'stores.module_id' => $this->module_id,
-                'stores.status' => 1,
-            ])
-            ->select('stores.*') // Adjust as needed to select specific columns
-            ->get();
-
-
-        //products
-        $data['cats'] = Category::where('status', 1)
-            ->where(['position' => 0, 'status' => 1, 'featured' => 1])
-            ->when(config('module.current_module_data'), function ($query) {
-                $query->module(config('module.current_module_data')['id']);
-            })->orderBy('priority', 'desc')->get();
-
         // categories
         $catController = new V1CategoryController();
         $resp = $catController->get_categories($request);
         $data['h_categories'] = json_decode($resp->getContent(), true);
 
-        $data['service_categories'] = Category::where(['status' => 1, 'position' => 0])->module(6)->orderBy('priority', 'desc')->get();
+        $data['service_categories'] = Category::where(['status' => 1, 'position' => 0])->whereNull('added_by')->module(6)->orderBy('priority', 'desc')->get();
 
         $data['shop_categories'] = Category::with(['childes' => function ($query) {
             $query->withCount(['childes']);
@@ -267,7 +248,9 @@ class FrontController extends Controller
                 $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
                 $join->whereIn('stores.zone_id', json_decode($zone_id, true));
             })
+            ->join('categories', 'categories.id', 'items.category_id' )
             ->where('items.status', 1)
+            ->whereNull('categories.added_by')
             ->where('items.module_id', 6)
             ->distinct('items.category_id')
             ->pluck('items.category_id')
@@ -352,87 +335,6 @@ class FrontController extends Controller
         }
     }
 
-    public function service_home(Request $request)
-    {
-        // $module = $this->module;
-        $module_id = 6;
-
-        $type =  'all';
-        $store_type =  'all';
-        $zone_id = $this->zone_id;
-        $longitude = $this->longitude;
-        $latitude = $this->latitude;
-
-        // featured stores
-        $stores['featued_stores'] = Store::whereIn('zone_id',  json_decode($this->zone_id, true))->where(['featured' => 1, 'active' => 1, 'module_id' =>  $this->module_id, 'status' => 1])->paginate(8);
-
-        // new on my chitti 
-        $stores['new_stores2'] = Store::join('vendors', 'stores.vendor_id', '=', 'vendors.id')
-            ->whereIn('zone_id', json_decode($this->zone_id, true))
-            ->where([
-                // 'stores.id' => 65,
-                'stores.active' => 1,
-                'stores.module_id' => $this->module_id,
-                'stores.status' => 1,
-            ])
-            ->select('stores.*') // Adjust as needed to select specific columns
-            ->get();
-
-        // special offer  
-        $category_ids = '';
-
-        if (Config::get('module.current_module_id') == 6) {
-            $items['special_products'] =  DB::table('items')
-                ->whereNot('items.discount', 0)
-                ->where('items.is_approved', 1)
-                ->where('items.status', 1)
-                ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
-                })
-                ->join('categories', 'categories.id', 'items.category_id')
-                ->whereIn('stores.zone_id',  json_decode($zone_id, true))
-                ->when(config('module.current_module_data'), function ($query) {
-                    $query->where('items.module_id', config('module.current_module_data')['id']);
-                })
-                ->select('items.*')
-                ->distinct()
-                ->limit(6)
-                ->get();
-        } else {
-            $items['special_products'] =  DB::table('items')
-                ->whereNot('items.discount', 0)
-                ->where('items.status', 1)
-                ->where('items.is_approved', 1)
-                ->join('stores', 'items.store_id', 'stores.id')
-                ->join('categories', 'categories.id', 'items.category_id')
-                ->whereIn('stores.zone_id',  json_decode($zone_id, true))
-                ->when(config('module.current_module_data'), function ($query) {
-                    $query->where('items.module_id', config('module.current_module_data')['id']);
-                })
-                ->select('items.*')
-                ->distinct()
-                ->limit(4)
-                ->get();
-        }
-
-
-        //products
-        $data['cats'] = Category::where('status', 1)
-            ->where(['position' => 0, 'status' => 1, 'featured' => 1])
-            ->when(config('module.current_module_data'), function ($query) {
-                $query->module(config('module.current_module_data')['id']);
-            })->orderBy('priority', 'desc')->get();
-
-        // categories
-        $catController = new V1CategoryController();
-        $resp = $catController->get_categories($request);
-        $data['h_categories'] = json_decode($resp->getContent(), true);
-
-        //banners 
-        $data['banners'] = BannerLogic::get_banners($zone_id, 0);
-
-        return view('front-views.home', compact('stores', 'data', 'items'));
-    }
     public function vendor_terms_conditions(Request $request, $v_id)
     {
 
@@ -1012,6 +914,11 @@ class FrontController extends Controller
     {
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'faq')->first();
         return view('front-views.faq', compact('content'));
+    }
+    public function disclaimer()
+    {
+        $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'disclaimer')->first();
+        return view('front-views.disclaimer', compact('content'));
     }
     public function privacy_policy()
     {
@@ -2623,7 +2530,7 @@ class FrontController extends Controller
         }
 
         // all categories 
-        $data['all_categories'] = DB::table('categories')->where('status', 1)->where('module_id', $module)->where('position', 0)->orderBy('priority', 'desc')->get()->toArray();
+        $data['all_categories'] = DB::table('categories')->where('status', 1)->whereNull('added_by')->where('module_id', $module)->where('position', 0)->orderBy('priority', 'desc')->get()->toArray();
 
         if ($module == 6) {
 

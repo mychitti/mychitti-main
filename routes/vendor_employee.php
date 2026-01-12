@@ -14,12 +14,10 @@ if ($currentHost ==  'vendor-staff.mcvendorhub.com') {
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
 
-
-// Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     // mc vendorhub routes 
-    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
+    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () { 
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
@@ -30,9 +28,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
-    });
-
-
+    }); 
 
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
@@ -491,8 +487,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('select-template', 'LibraryController@select_template')->name('select-template');
             Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
                 // Route::group(['prefix' => 'purchase', 'as' => 'purchase.'], function () {
-                Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
-                Route::post('store', 'DocumentsController@store_gatepass')->name('store');
+                    Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
+                    Route::post('store', 'DocumentsController@store_gatepass')->name('store');
                 // });
                 // Route::group(['prefix' => 'sale', 'as' => 'sale.'], function () {
                 //     Route::get('add', 'DocumentsController@add_sale_gatepass')->name('add');
@@ -1081,6 +1077,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions');
 
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:subscriptions']], function () {
+            Route::get('enable-free-trial', 'ProfileController@enable_free_trial')->name('enable-free-trial');
             Route::post('buy-module', 'ProfileController@buy_module')->name('buy-module');
             Route::post('buy-plan', 'ProfileController@buy_plan')->name('buy-plan');
             Route::post('settings-plans', 'ProfileController@settings_plans')->name('settings-plans');
@@ -1127,4 +1124,3 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel');
     });
 });
-// WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);

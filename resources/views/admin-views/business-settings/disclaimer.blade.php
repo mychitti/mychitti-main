@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title',translate('messages.cookies_policy'))
+@section('title',translate('messages.disclaimer'))
 
 @push('css_or_js')
 
@@ -13,7 +13,7 @@
             <h1 class="d-flex flex-wrap justify-content-between page-header-title">
                 <span class="page-header-icon">
                     <img src="{{asset('public/assets/admin/img/privacy-policy.png')}}" class="w--26" alt="">
-                    {{translate('messages.Cookies Policy')}}
+                    {{translate('messages.disclaimer')}}
                 </span>
             </h1>
             <h5 class="d-flex flex-wrap justify-content-end">
@@ -21,7 +21,7 @@
                     <span class="mr-2 switch--custom-label-text text-primary on text-uppercase">{{ translate('messages.on') }}</span>
                     <span class="mr-2 switch--custom-label-text off text-uppercase">{{ translate('messages.Status') }}</span>
                     <input type="checkbox" id="data_status"   class="toggle-switch-input"
-                    {{$cookies_policy_status?->value == 1?'checked':''}}
+                    {{$disclaimer_status?->value == 1?'checked':''}}
                     >
                     <span class="toggle-switch-label text">
                         <span class="toggle-switch-indicator"></span>
@@ -32,7 +32,7 @@
         <!-- End Page Header -->
         <div class="row gx-2 gx-lg-3">
             <div class="col-sm-12 col-lg-12 mb-3 mb-lg-2">
-                <form action="{{route('admin.business-settings.cookies-policy')}}" method="post" id="tnc-form">
+                <form action="{{route('admin.business-settings.disclaimer')}}" method="post" id="tnc-form">
                     @csrf
 
                     @php($language=\App\Models\BusinessSetting::where('key','language')->first())
@@ -42,24 +42,24 @@
 
                     <div class="form-group lang_form" id="default-form">
                         <input type="hidden" name="lang[]" value="default">
-                        <textarea class="ckeditor form-control" name="cookies_policy[]">{!! $cookies_policy?->getRawOriginal('value') ?? '' !!}</textarea>
+                        <textarea class="ckeditor form-control" name="disclaimer[]">{!! $disclaimer?->getRawOriginal('value') ?? '' !!}</textarea>
                     </div>
 
                     @if ($language)
                         @forelse(json_decode($language) as $lang)
                             <?php
-                                if($cookies_policy?->translations){
+                                if($disclaimer?->translations){
                                     $translate = [];
-                                    foreach($cookies_policy?->translations as $t)
+                                    foreach($disclaimer?->translations as $t)
                                     {
-                                        if($t->locale == $lang && $t->key=="cookies_policy"){
-                                            $translate[$lang]['cookies_policy'] = $t->value;
+                                        if($t->locale == $lang && $t->key=="disclaimer"){
+                                            $translate[$lang]['disclaimer'] = $t->value;
                                         }
                                     }
                                 }
                                 ?>
                             <div class="form-group d-none lang_form" id="{{$lang}}-form">
-                                <textarea class="ckeditor form-control" name="cookies_policy[]">{!!  $translate[$lang]['cookies_policy'] ?? null !!}</textarea>
+                                <textarea class="ckeditor form-control" name="disclaimer[]">{!!  $translate[$lang]['disclaimer'] ?? null !!}</textarea>
                             </div>
                             <input type="hidden" name="lang[]" value="{{$lang}}">
                             @empty
@@ -89,7 +89,7 @@
                         status = 0;
                     }
             $.ajax({
-                url: '{{ url('business-settings/pages/cookies-policy') }}/'+status,
+                url: '{{ url('business-settings/pages/disclaimer') }}/'+status,
                 method: 'get',
                 success: function() {
                     toastr.success('{{ translate('messages.status updated!') }}', {

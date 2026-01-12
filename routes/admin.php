@@ -491,6 +491,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
         Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.'], function () {
+            Route::get('homepage-config', 'BusinessSettingsController@homepage_config')->name('homepage-config');
+            Route::post('homepage-config-update', 'BusinessSettingsController@homepage_config_update')->name('homepage-config.update');
             Route::get('vendor-homepage-config', 'BusinessSettingsController@vendor_homepage_config')->name('vendor-homepage-config');
             Route::post('vendor-homepage-config-update', 'BusinessSettingsController@vendor_homepage_config_update')->name('vendor-homepage-config.update');
             Route::get('vendor-modules', 'BusinessSettingsController@vendor_modules')->name('vendor-modules');
@@ -601,8 +603,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('pages/business-page/cancelation', 'BusinessSettingsController@cancellation_policy_update');
             Route::get('pages/cancellation-policy/{status}', 'BusinessSettingsController@cancellation_policy_status')->name('cancellation-policy-status');
 
-            Route::get('pages/business-page/cookies-policy', 'BusinessSettingsController@cookies_policy')->name('cookies-policy');
-            Route::post('pages/business-page/cookies-policy', 'BusinessSettingsController@cookies_policy_update');
+            Route::get('pages/business-page/disclaimer', 'BusinessSettingsController@disclaimer')->name('disclaimer');
+            Route::post('pages/business-page/disclaimer', 'BusinessSettingsController@disclaimer_update');
             Route::get('pages/business-page/shipping-policy', 'BusinessSettingsController@shipping_policy')->name('shipping-policy');
             Route::post('pages/business-page/shipping-policy', 'BusinessSettingsController@shipping_policy_update');
             Route::get('pages/shipping-policy/{status}', 'BusinessSettingsController@shipping_policy_status')->name('shipping-policy-status');
