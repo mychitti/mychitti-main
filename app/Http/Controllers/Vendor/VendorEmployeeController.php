@@ -34,20 +34,20 @@ class VendorEmployeeController extends Controller
         $obj->date = date('Y-m-d');
         $obj->created_at = date('Y-m-d H:i:s');
 
-        $attendance = Attendance::where('employee_id', $emp_id)->where('date', date('Y-m-d'))->exists();
-        // if (!$attendance) { 
+        $att = Attendance::where('employee_id', $emp_id)->where('date', date('Y-m-d'))->exists();
+        if (!$att) {
             $att = new Attendance;
             $att->employee_id = $emp_id;
             $att->vendor_id = $v_id;
             $att->employee_type = 'vendor_employee';
             $att->date = date('Y-m-d');
-            $att->label = 'P';
-            $att->day = date('d');
-            $att->month = date('m');
-            $att->year = date('Y');
-            $att->created_at = date('Y-m-d H:i:s');
-            $att->save();
-        // }
+        }
+        $att->label = 'P';
+        $att->day = date('d');
+        $att->month = date('m');
+        $att->year = date('Y');
+        $att->created_at = date('Y-m-d H:i:s');
+        $att->save();
 
 
         if ($obj->save()) {
@@ -219,7 +219,7 @@ class VendorEmployeeController extends Controller
             $att->year = date('Y');
             $att->created_at = date('Y-m-d H:i:s');
             $att->label = 'P';
-        }else{
+        } else {
             $att->label = $obj->leave_type;
         }
         $att->save();
