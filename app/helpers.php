@@ -84,6 +84,7 @@ use App\Models\Tracker;
 use App\Models\Unit;
 use App\Models\UserAddress;
 use App\Models\AuditLog;
+use App\Models\StoreDocument;
 use App\Models\UserRecentSearch;
 use App\Models\Vendor;
 use App\Models\VendorEmpJob;
@@ -2445,7 +2446,7 @@ if (!function_exists('_clockedInEmployeeDutyHours')) {
     {
         $employee = Helpers::get_loggedin_user();
         $shift = StoreShift::where('store_id', Helpers::get_store_id())->where('id', $employee->store_shift_id)->first();
-        if(!$shift){
+        if (!$shift) {
             return 0;
         }
         $start_time = $shift->start_time;
@@ -3165,6 +3166,11 @@ if (!function_exists('hasPermission')) {
     }
 }
 
+function _verifiedStoreBadge($storeId)
+{
+    $verifiedDoc = StoreDocument::where('store_id', $storeId)->where("verified", 1)->exists();
+    return 1 ? '<img src="' . asset('storage/app/public/util/verified_badge.jpeg') . '" style="width:32px;    position: absolute2;left: 3px;top: -3px; aspect-ratio:1;" alt="">' : '';
+}
 function _manualInvoice($id)
 {
     $invoice = ManualInvoice::where("id", $id)->first();
@@ -4785,6 +4791,22 @@ if (!function_exists('_inAppNotification')) {
             return false;
         };
 
+        if ($user_type == 'vendor') {
+            $vendor = Vendor::find($to);
+            if ($vendor) {
+                $data = [
+                    'title' => $title,
+                    'description' => $msg,
+                    'order_id' => null,
+                    'module_id' => 6,
+                    'order_type' => '',
+                    'image' => '',
+                    'type' => 'vendor_notification',
+                ];
+                // echo 'sending notification';
+                 self::send_push_notif_to_device($vendor->cm_firebase_token, $data);
+            }
+        }
         // calll here the job ProcessWhatsappNotification::dispatch($det->id);
     }
 }
