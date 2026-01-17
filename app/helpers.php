@@ -4792,13 +4792,10 @@ if (!function_exists('_inAppNotification')) {
                 $data = [
                     'title' => $title,
                     'description' => $msg,
-                    'order_id' => null,
-                    'module_id' => 6,
-                    'order_type' => '',
+                    'order_id' => '',
                     'image' => '',
-                    'type' => 'vendor_notification',
+                    'type'=> 'block'
                 ];
-                echo 'sending notification';
                 echo  Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
