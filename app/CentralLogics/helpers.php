@@ -422,13 +422,13 @@ class Helpers
 
         Storage::disk('public')->put($dir . $pdfName, $pdfContent, 'public');
 
-        $mpdf->Output('Purchase_Return.pdf', \Mpdf\Output\Destination::INLINE);
+        // $mpdf->Output('Purchase_Return.pdf', \Mpdf\Output\Destination::INLINE);
 
 
-        // $data['pdf'] = $pdfName;
-        // $data['url'] = asset('storage/app/public/') . '/' . $dir .  $pdfName;
+        $data['pdf'] = $pdfName;
+        $data['url'] = asset('storage/app/public/') . '/' . $dir .  $pdfName;
 
-        // return $data;
+        return $data;
     }
     public static function _nextTokenNumber()
     {
@@ -975,6 +975,16 @@ class Helpers
 
         return $voucherNo;
     }
+
+    public static  function _validatePhoneNumber(string $phone): bool
+    {
+        // Regex explanation:
+        // ^\+          => must start with +
+        // \d{1,3}      => country code (1 to 3 digits)
+        // \d{10}$      => exactly 10 digits for local number
+        return preg_match('/^\d{1,3}\d{10}$/', $phone) === 1;
+    }
+
     public static function _generateTaskId($increment = false)
     {
         $storeId = Helpers::get_store_id();
@@ -2512,27 +2522,329 @@ class Helpers
             return true;
         }
     }
+
+    //======================= ZONE (TRANSFER TO SEPERATE ZONE HELPER) ======================
+
+    public static function getAreasByZoneIds(array $zoneIds, int $limit = 5)
+    {
+        // Safety: keep only numeric IDs
+        $zoneIds = array_values(array_filter($zoneIds, 'is_numeric'));
+
+        if (empty($zoneIds)) {
+            return collect();
+        }
+
+        $randomZoneId = collect($zoneIds)->random();
+
+        $areas = \Cache::remember(
+            "zone_areas_$randomZoneId",
+            86400, // 24 hours
+            function () use ($randomZoneId) {
+
+                $zone = Zone::find($randomZoneId);
+
+                if (!$zone || !$zone->coordinates) {
+                    return [];
+                }
+
+                return self::getAreasFromGoogleForZone($zone->coordinates);
+            }
+        );
+
+        if (empty($areas)) {
+            return collect();
+        }
+
+        return collect(self::removeDuplicates($areas))
+            ->pluck('name')
+            ->shuffle()
+            ->take($limit)
+            ->values();
+    }
+
+
+    public static function getAreasFromGoogleForZone($coordinates)
+    {
+        // Get API key from BusinessSetting table
+        $apiKey = \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value ?? config('services.google.api_key');
+
+        if (!$apiKey) {
+            echo "ERROR: Google API key not configured\n";
+            return ['error' => 'Google API key not configured'];
+        }
+
+
+        $polygon = self::parseZoneCoordinates($coordinates);
+
+        if (empty($polygon)) {
+            echo "ERROR: Failed to parse coordinates\n";
+            return [];
+        }
+
+        $bounds = self::calculateBounds($polygon);
+
+        // Get areas using flexible grid sampling
+        $areas = self::getFlexibleGridAreas($bounds, $apiKey);
+
+        return $areas;
+    }
+
+    public static function parseZoneCoordinates($coordinates)
+    {
+        $polygon = [];
+
+        try {
+
+            if (preg_match('/POLYGON\s*\(\((.*?)\)\)/i', $coordinates, $matches)) {
+
+                $coordString = $matches[1];
+
+                // Split by comma to get individual coordinate pairs
+                $coordPairs = explode(',', $coordString);
+
+
+                $lastCord = null;
+
+                foreach ($coordPairs as $index => $pair) {
+                    $coords = preg_split('/\s+/', trim($pair));
+
+                    if (count($coords) >= 2) {
+                        $lng = (float) $coords[0];
+                        $lat = (float) $coords[1];
+
+                        if ($index == 0) {
+                            $lastCord = ['lat' => $lat, 'lng' => $lng];
+                        }
+
+                        $polygon[] = [
+                            'lat' => $lat,
+                            'lng' => $lng
+                        ];
+                    } else {
+                        echo "  -> WARNING: Invalid coordinate pair: " . $pair . "\n";
+                    }
+                }
+            } else {
+
+                $coordinates = preg_replace('/\s+/', '', $coordinates);
+                $coordPairs = explode('),(', trim($coordinates, '()'));
+
+                $lastCord = null;
+
+                foreach ($coordPairs as $index => $pair) {
+                    $coords = explode(',', trim($pair, '()'));
+
+                    if (count($coords) >= 2) {
+                        $lat = (float) trim($coords[0]);
+                        $lng = (float) trim($coords[1]);
+
+                        echo "Pair $index: lat=$lat, lng=$lng\n";
+
+                        if ($index == 0) {
+                            $lastCord = ['lat' => $lat, 'lng' => $lng];
+                        }
+
+                        $polygon[] = [
+                            'lat' => $lat,
+                            'lng' => $lng
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            echo "ERROR parsing coordinates: " . $e->getMessage() . "\n";
+        }
+
+        return $polygon;
+    }
+
+    public static function calculateBounds($polygon)
+    {
+        $lats = array_column($polygon, 'lat');
+        $lngs = array_column($polygon, 'lng');
+
+        return [
+            'north' => max($lats),
+            'south' => min($lats),
+            'east' => max($lngs),
+            'west' => min($lngs),
+            'center' => [
+                'lat' => (max($lats) + min($lats)) / 2,
+                'lng' => (max($lngs) + min($lngs)) / 2
+            ]
+        ];
+    }
+
+
+    public static function getFlexibleGridAreas($bounds, $apiKey)
+    {
+        $areas = [];
+
+        // Start with smaller grid for testing - 3x3 = 9 points
+        $gridSize = 3;
+
+        $points = self::generateGridPoints($bounds, $gridSize);
+
+        // echo "Generated " . count($points) . " grid points\n";
+
+        $apiCallCount = 0;
+
+        foreach ($points as $index => $point) {
+            try {
+                // echo "Checking point $index: " . $point['lat'] . ',' . $point['lng'] . "\n";
+
+                // Request ALL types, we'll filter after
+                $response = \Http::timeout(10)->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                    'latlng' => $point['lat'] . ',' . $point['lng'],
+                    'key' => $apiKey
+                ]);
+
+                $apiCallCount++;
+
+                if ($response->successful()) {
+                    $data = $response->json();
+
+                    // echo "API Response status: " . $response->status() . "\n";
+
+                    if (isset($data['status']) && $data['status'] === 'OK') {
+                        if (isset($data['results']) && !empty($data['results'])) {
+                            // echo "Got " . count($data['results']) . " results for point $index\n";
+
+                            // Process ALL results to extract area names
+                            foreach ($data['results'] as $result) {
+                                $extracted = self::extractAreaNames($result);
+
+                                if (!empty($extracted)) {
+                                    $areas = array_merge($areas, $extracted);
+                                }
+                            }
+                        } else {
+                            // echo "WARNING: No results for point $index\n";
+                        }
+                    } else {
+                        // echo "ERROR: Geocoding API error: " . ($data['status'] ?? 'unknown') . "\n";
+                        // echo "Error message: " . ($data['error_message'] ?? 'none') . "\n";
+                    }
+                } else {
+                    // echo "ERROR: HTTP request failed: " . $response->status() . "\n";
+                }
+
+                // Delay to respect rate limits
+                // usleep(150000); // 0.15 second
+
+            } catch (\Exception $e) {
+                // echo "ERROR for point $index: " . $e->getMessage() . "\n";
+            }
+        }
+
+        // echo "Total API calls made: $apiCallCount\n";
+        // echo "Total areas before dedup: " . count($areas) . "\n";
+
+        // Remove duplicates and return
+        $unique = self::removeDuplicates($areas);
+
+        // echo "Total unique areas: " . count($unique) . "\n";
+
+        return $unique;
+    }
+
+    public static function extractAreaNames($result)
+    {
+        $extracted = [];
+
+        // Define what we consider "areas" with priority
+        $areaTypes = [
+            'sublocality_level_1' => 4,
+            'sublocality_level_2' => 4,
+            'sublocality_level_3' => 4,
+            'sublocality_level_4' => 4,
+            'sublocality' => 2,
+            'administrative_area_level_3' => 1,
+            // 'postal_code' => 5,
+            'locality' => 3,
+            'political' => 1,
+        ];
+
+        foreach ($result['address_components'] as $component) {
+            foreach ($component['types'] as $type) {
+                // echo $type . '<br>'; 
+                // Check if this is an area type we want
+                if (isset($areaTypes[$type])) {
+                    $extracted[] = [
+                        'name' => $component['long_name'],
+                        'type' => $type,
+                        'priority' => $areaTypes[$type],
+                        // 'formatted_address' => $result['formatted_address'] ?? '',
+                        // 'latitude' => $result['geometry']['location']['lat'] ?? null,
+                        // 'longitude' => $result['geometry']['location']['lng'] ?? null,
+                        // 'place_id' => $result['place_id'] ?? null
+                    ];
+                }
+            }
+        }
+
+        return $extracted;
+    }
+
+    public static function generateGridPoints($bounds, $gridSize)
+    {
+        $points = [];
+
+        $latStep = ($bounds['north'] - $bounds['south']) / ($gridSize + 1);
+        $lngStep = ($bounds['east'] - $bounds['west']) / ($gridSize + 1);
+
+        for ($i = 1; $i <= $gridSize; $i++) {
+            for ($j = 1; $j <= $gridSize; $j++) {
+                $points[] = [
+                    'lat' => $bounds['south'] + ($latStep * $i),
+                    'lng' => $bounds['west'] + ($lngStep * $j)
+                ];
+            }
+        }
+
+        return $points;
+    }
+
+    public static function removeDuplicates($areas)
+    {
+        $unique = [];
+        $seen = [];
+
+        foreach ($areas as $area) {
+
+            // ✅ SAFETY CHECK
+            if (!isset($area['name'])) {
+                continue;
+            }
+
+            $priority = $area['priority'] ?? 999; // fallback priority
+            $key = strtolower(trim($area['name']));
+
+            if (!isset($seen[$key]) || $priority < ($seen[$key]['priority'] ?? 999)) {
+                $seen[$key] = [
+                    'name' => $area['name'],
+                    'type' => $area['type'] ?? null,
+                    'priority' => $priority,
+                ];
+            }
+        }
+
+        return collect($seen)
+            ->sortBy('name')
+            ->values()
+            ->toArray();
+    }
+
+
+    // ZONE HELPER ===========================================
+
+
     public static function _setLocation()
     {
-        // if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-        //     $ip = $_SERVER['HTTP_CLIENT_IP'];
-        // } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        //     $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        // } else {
-        //     $ip = $_SERVER['REMOTE_ADDR'];
-        // }
-        // $access_key = '197ebf50fdd1bf';
-
-        // $ch = curl_init('http://ipinfo.io/' . $ip . '/json?token=' . $access_key);
-        // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        // $json = curl_exec($ch);
-        // curl_close($ch);
-        // $location = json_decode($json, true);
-
-        // list($latitude, $longitude) = explode(',', $location['loc']);
 
         $defaultLat = 13.637410054671042;
         $defaultLon = 79.50621055192981;
+        $defaultCity = 'Tirupati';
 
         // $defaultAddr = $location['city'] . ',' . $location['region'] . ',' . $location['country'];
         $defaultAddr = '17/5051A, Rajendra Nagar, Tilak Nagar, Tirupati, Andhra Pradesh 517501, India';
@@ -2548,6 +2860,12 @@ class Helpers
         } else {
             $locationRes['longitude'] = $defaultLon;
             session()->put('longitude', $locationRes['longitude']);
+        }
+        if (session()->has('customer_city') && session('customer_city') != '') {
+            $locationRes['customer_city'] = session()->get('customer_city');
+        } else {
+            $locationRes['customer_city'] = $defaultCity;
+            session()->put('customer_city', $locationRes['customer_city']);
         }
 
         if (session()->has('customer_address')) {
@@ -3647,7 +3965,7 @@ class Helpers
         // Get OAuth 2.0 access token
         $accessToken = self::getAccessToken();
         // prx($accessToken);
-        $url = "https://fcm.googleapis.com/v1/projects/fcm-3-e0206/messages:send"; // Replace with your project ID
+        $url = "https://fcm.googleapis.com/v1/projects/fcm-3-e0206/messages:send"; 
 
         // Set headers for cURL request
         $header = array(
@@ -3717,7 +4035,7 @@ class Helpers
         // Close cURL and return the result
         curl_close($ch);
         // echo 547823 ;  
-          prx($result);
+        // prx($result);
     }
 
     public static function send_push_notif_to_topic($data, $topic, $type, $web_push_link = null)

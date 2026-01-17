@@ -4798,7 +4798,7 @@ if (!function_exists('_inAppNotification')) {
                     'type'        => 'block',
                 ];
 
-                echo Helpers::send_push_notif_to_device(
+                 Helpers::send_push_notif_to_device(
                     $store->vendor->cm_firebase_token,
                     $data
                 );
