@@ -4788,6 +4788,7 @@ if (!function_exists('_inAppNotification')) {
 
          if ($user_typ == 'vendor') {
             $vendor = Vendor::find($to);
+            echo $vendor->cm_firebase_token;
             if ($vendor) {
                 $data = [
                     'title' => $title,
