@@ -4788,7 +4788,6 @@ if (!function_exists('_inAppNotification')) {
 
          if ($user_typ == 'vendor') {
             $vendor = Vendor::find($to);
-            echo $vendor->cm_firebase_token;
             if ($vendor) {
                 $data = [
                     'title' => $title,
@@ -4797,7 +4796,7 @@ if (!function_exists('_inAppNotification')) {
                     'image' => '',
                     'type'=> 'block'
                 ];
-                echo  Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
+              Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
 
@@ -4808,7 +4807,6 @@ if (!function_exists('_inAppNotification')) {
             return false;
         };
 
-       
         // calll here the job ProcessWhatsappNotification::dispatch($det->id);
     }
 }
