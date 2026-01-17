@@ -4788,7 +4788,7 @@ if (!function_exists('_inAppNotification')) {
 
          if ($user_typ == 'vendor') {
             $vendor = Vendor::find($to);
-            if ($vendor) {
+            if ($vendor && $vendor->cm_firebase_token) {
                 $data = [
                     'title' => $title,
                     'description' => $msg,
@@ -4796,7 +4796,7 @@ if (!function_exists('_inAppNotification')) {
                     'image' => '',
                     'type'=> 'block'
                 ];
-              Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
+             echo  Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
 
