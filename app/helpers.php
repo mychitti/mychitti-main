@@ -4804,7 +4804,7 @@ if (!function_exists('_inAppNotification')) {
                     'type' => 'vendor_notification',
                 ];
                 // echo 'sending notification';
-                 self::send_push_notif_to_device($vendor->cm_firebase_token, $data);
+                 Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
         // calll here the job ProcessWhatsappNotification::dispatch($det->id);
