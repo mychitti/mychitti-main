@@ -4786,7 +4786,7 @@ if (!function_exists('_inAppNotification')) {
         $det->user_type = $user_typ;
         $det->reciever = $to;
 
-         if ($user_type == 'vendor') {
+         if ($user_typ == 'vendor') {
             $vendor = Vendor::find($to);
             if ($vendor) {
                 $data = [
@@ -4802,7 +4802,7 @@ if (!function_exists('_inAppNotification')) {
                 echo  Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
-        
+
         if ($det->save()) {
             
             return 'sent';
