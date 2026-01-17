@@ -4786,10 +4786,10 @@ if (!function_exists('_inAppNotification')) {
         $det->user_type = $user_typ;
         $det->reciever = $to;
 
-         if ($user_typ == 'vendor') {
-          $vendor_token = Store::where('id', $to)->value('cm_firebase_token');
+        if ($user_typ == 'vendor') {
+            $store = Store::with('vendor')->find($to);
 
-            if (!empty($vendor_token)) {
+            if (!empty($store?->vendor?->cm_firebase_token)) {
                 $data = [
                     'title'       => $title,
                     'description' => $msg,
@@ -4798,13 +4798,15 @@ if (!function_exists('_inAppNotification')) {
                     'type'        => 'block',
                 ];
 
-                echo Helpers::send_push_notif_to_device($vendor_token, $data);
+                echo Helpers::send_push_notif_to_device(
+                    $store->vendor->cm_firebase_token,
+                    $data
+                );
             }
-
         }
 
         if ($det->save()) {
-            
+
             return 'sent';
         } else {
             return false;
