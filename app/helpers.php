@@ -4803,8 +4803,8 @@ if (!function_exists('_inAppNotification')) {
                     'image' => '',
                     'type' => 'vendor_notification',
                 ];
-                // echo 'sending notification';
-                 Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
+                echo 'sending notification';
+                echo  Helpers::send_push_notif_to_device($vendor->cm_firebase_token, $data);
             }
         }
         // calll here the job ProcessWhatsappNotification::dispatch($det->id);
