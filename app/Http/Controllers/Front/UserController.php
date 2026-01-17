@@ -401,7 +401,7 @@ class UserController extends Controller
                         $url =  route('vendor.service.leads_list');
                         if ($store2) {
                             _sendSMS($store2->phone, $msg);
-                            _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
+                         echo    _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
                         }
                     }
                 }
