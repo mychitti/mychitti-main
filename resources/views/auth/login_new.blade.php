@@ -1157,7 +1157,7 @@ $log_email_succ = session()->get('log_email_succ');
                             {{-- {{ route('vendor.google.login') }} --}}
                             @php $platform = request()->header('X-Platform'); @endphp
                             @if ($platform !== 'app') 
-                            {{$platform}}
+                           df {{$platform}}
                             <a href="{{ route('vendor.google.login') }}"
                                 class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
                                 <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
