@@ -1155,12 +1155,15 @@ $log_email_succ = session()->get('log_email_succ');
                                 </div>
                             @endif
                             {{-- {{ route('vendor.google.login') }} --}}
+                            @php $platform = request()->header('X-Platform'); @endphp
+                            @if ($platform !== 'app') 
                             <a href="{{ route('vendor.google.login') }}"
                                 class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
                                 <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                     alt="Google">
                                 Login with Google
                             </a>
+                            @endif
                         </div>
                         <p class="mb-0 text-center">Don't have an account?</p>
                         <a class="btn signup-btn" href="{{ route('new-store.create') }}">SIGN UP NOW</a>
