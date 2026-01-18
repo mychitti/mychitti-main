@@ -1148,7 +1148,7 @@ $log_email_succ = session()->get('log_email_succ');
                         <div class="or-text">OR</div>
                         <div class="d-flex gap-2 mb-2">
                             @if (isset($role) && $role == 'vendor')
-                                <div class="google-login-button" style="width: 48%;" id="switch_login_with_otp">
+                                <div class="google-login-button" style="width: 100%;" id="switch_login_with_otp">
                                     <button type="button" class="btn login-btn">Login with OTP</button>
 
                                     {{-- <img src="{{ asset('storage/app/public/util/OTP-1024.webp') }}" alt="OTP"> --}}
@@ -1157,13 +1157,12 @@ $log_email_succ = session()->get('log_email_succ');
                             {{-- {{ route('vendor.google.login') }} --}}
                             @php $platform = request()->header('X-Platform'); @endphp
                             @if ($platform !== 'app') 
-                           df {{$platform}}
-                            <a href="{{ route('vendor.google.login') }}"
+                            {{-- <a href="{{ route('vendor.google.login') }}"
                                 class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
                                 <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                     alt="Google">
                                 Login with Google
-                            </a>
+                            </a> --}}
                             @endif
                         </div>
                         <p class="mb-0 text-center">Don't have an account?</p>
