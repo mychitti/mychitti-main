@@ -83,11 +83,61 @@ class FrontController extends Controller
             return $next($request);
         });
     }
- 
+    public function ocrTest(Request $request)
+    {
+        return view('front-views.ocr-test');
+
+        // source paddle_env/bin/activate
+        // python app.py
+    }
+    public function ocrTestPost(Request $request)
+    {
+        // 1️⃣ Validate upload
+        $request->validate([
+            'image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        // 2️⃣ Get uploaded file (TEMP path)
+        $file = $request->file('image');
+
+        // VERY IMPORTANT: local real path
+        $filePath = $file->getRealPath();
+
+        // 3️⃣ Send to OCR API
+        $ch = curl_init("http://159.65.159.250:5000/ocr");
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => [
+                'image' => new \CURLFile(
+                    $filePath,
+                    $file->getMimeType(),
+                    $file->getClientOriginalName()
+                )
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 120, // OCR can take time
+        ]);
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+            return response()->json([
+                'error' => curl_error($ch)
+            ], 500);
+        }
+
+        curl_close($ch);
+
+        print_r($response);
+
+        // 4️⃣ Return OCR result
+        return response()->json(json_decode($response, true));
+    }
     /**  
      * Show the application dashboard.
      *
-     * @return \Illuminate\Contracts\Support\Renderable
+     * @return \Illuminate\Contracts\Support\Renderable 
      */
 
     public function icons_view()
