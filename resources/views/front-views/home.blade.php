@@ -287,11 +287,11 @@
                             @if ($value['link'])
                                 <a href="{{ $value['link'] }}">
                                     <img 
-                                        src="{{ asset('storage/app/banner/') . '/' . $value['image'] }}"
+                                        src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                         alt="">
                                 </a>
                             @else
-                                <img  src="{{ asset('storage/app/banner/') . '/' . $value['image'] }}"
+                                <img  src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                     alt="">
                             @endif
                         @endforeach
@@ -311,7 +311,7 @@
                                           
                                                 @endif
                                             <img loading="lazy" data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($banner->image, asset('storage/app/banners/') . '/' . $banner->image, asset('assets/admin/img/160x160/img1.jpg'), 'banners/') }}"
+                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($banner->image, asset('storage/app/public/banners/') . '/' . $banner->image, asset('assets/admin/img/160x160/img1.jpg'), 'banners/') }}"
                                                 alt="offer banner" class="slide-image">
                                         </div>
                                     </a>
@@ -340,7 +340,7 @@
                                         href="{{ route('category.listing', [$ct['slug'], _selectedCity()]) }}">
                                         <img loading="lazy" loading="lazy"
                                             data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct['image'], asset('storage/app/category/') . '/' . $ct['image'], asset('assets/admin/img/160x160/img1.jpg'), 'category/') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct['image'], asset('storage/app/public/category/') . '/' . $ct['image'], asset('assets/admin/img/160x160/img1.jpg'), 'category/') }}"
                                             class=" rounded-circle module_cat_img lazyload" alt="First slide">
 
                                         <p style="font-size: 14px;"
@@ -369,7 +369,7 @@
                             <a href="{{ route('product.details', [_selectedCity(), $item->slug]) }}" class="pop-item-card">
                                 <img loading="lazy" loading="lazy" style="object-fit:cover"
                                     data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/product/') . '/' . $item->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/product/') . '/' . $item->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                     alt="Wireless Headphones" class="pop-item-img">
                                 <div class="pop-item-content">
                                     <h3 class="pop-item-name two-line-ellipsis">{{ $item->name }}</h3>
@@ -410,7 +410,7 @@
                                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                             loading="lazy" style="object-fit:cover"
                                             data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                             class="img-fluid w-100 rounded-top product__img" alt=""></a>
                                 </div>
 
@@ -493,7 +493,7 @@
                                             <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                                     loading="lazy" style="object-fit:cover"
                                                     data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                                     class="img-fluid w-100 rounded-top product__img" alt=""></a>
                                         </div>
 
@@ -600,7 +600,7 @@
                         <div class="card-image me-3">
                             <img loading="lazy" loading="lazy"
                                 data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
-                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/store/') . '/' . $store->logo, asset('assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store->logo, asset('assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                 class=" rounded-top" alt="">
                         </div>
 
@@ -648,7 +648,7 @@
         <div class="xyZ998 container my-3"
             style="border-radius: 33px;background: #ffffff;box-shadow:  21px 21px 42px #bfbfbf,-21px -21px 42px #ffffff;">
             <div class="uVw654">
-                <img loading="lazy" src="{{ asset('storage/app/product') . '/' . $data['special_product']->image }}"
+                <img loading="lazy" src="{{ asset('storage/app/public/product') . '/' . $data['special_product']->image }}"
                     alt="{{ $data['special_product']->name }}">
             </div>
             <div class="aBc789">
@@ -690,7 +690,7 @@
                                     class="position-relative">
                                     <div class="bg-circle bg-purple"></div>
                                     <div class="profile-circle border border-3 shadow-sm">
-                                        <img loading="lazy" src="{{ asset('storage/app/store') . '/' . $value->logo }}"
+                                        <img loading="lazy" src="{{ asset('storage/app/public/store') . '/' . $value->logo }}"
                                             alt="Profile 1" class="profile-image">
                                     </div>
                                 </a>
@@ -713,7 +713,7 @@
     @if (!count($data['top_sell_services']) && !count($data['top_sell_products']))
         <div class="unavailable_data">
             <img loading="lazy" style="mix-blend-mode: multiply;" class="img-fluid"
-                src="{{ asset('storage/app/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
+                src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
             <h2 class="fs-2 eb-garamond-text">
                 {{ \App\Models\BusinessSetting::where(['key' => 'unavailability_heading_homepage'])->first()?->value ?? '' }}
                 <h2>
