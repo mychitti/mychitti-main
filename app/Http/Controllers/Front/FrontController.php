@@ -2537,7 +2537,7 @@ class FrontController extends Controller
         return view('front-views.product_details', compact('item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
-    public function category_listing(Request $request, $slug, $e)
+    public function category_listing(Request $request, $slug)
     {
         $zone_id = $this->zone_id;
 
