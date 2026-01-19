@@ -254,7 +254,7 @@
         <nav style=" width: 100%;position: fixed; top: 0px; z-index: 2;"
             class="store-nav px-5 d-flex justify-content-between align-items-center  bg-white shadow-sm">
             <div class="">
-                <img class="store_logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
+                <img loading="lazy" class="store_logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
 
             </div>
             <ul class="my-nav mb-0 justify-content-center d-flex list-unstyled">
@@ -295,7 +295,7 @@
 
             <div class="row">
                 <div class="col-md-5">
-                    <img width="100%" style="aspect-ratio: 2 / 1; object-fit: cover;"
+                    <img loading="lazy" width="100%" style="aspect-ratio: 2 / 1; object-fit: cover;"
                         src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="cover">
                 </div>
                 <div class="col-md-6">
@@ -365,7 +365,7 @@
 
     <div class="owl-carousel 3banner-carousel justify-content-center mt-2 store_banner">
         @foreach ($data['banners'] as $key => $value)
-            <a href="{{ $value->default_link ?? '#' }}"><img
+            <a href="{{ $value->default_link ?? '#' }}"><img loading="lazy"
                     src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner"></a>
         @endforeach
     </div>
@@ -478,8 +478,8 @@
                                                                     <div class="fruite-img"
                                                                         style="height: 200px !important;">
                                                                         <a
-                                                                            href="{{ route('product.details', [$cat->cat_slug, $pro->slug]) }}">
-                                                                            <img loading="lazy"
+                                                                            href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                                                            <img loading="lazy" loading="lazy"
                                                                                 style="height: 200px !important;object-fit:cover"
                                                                                 data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
@@ -512,7 +512,7 @@
                                                                         class="p-2 border border-top-0 rounded-bottom text-start">
 
                                                                         <a
-                                                                            href="{{ route('product.details', [$cat->cat_slug, $pro->slug]) }}">
+                                                                            href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                                                             <h4 class="one-line-ellipsis text-start product_name"
                                                                                 data-id="pr_{{ $pro->id }}"
                                                                                 title="{{ ucfirst($pro->name) }}"
@@ -631,7 +631,7 @@
                                         href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                                         style="cursor:default;"
                                         class="table-rest-info gallery_atag gallery-item lightgallery-item"
-                                        alt="Gallery image"><img style="min-height:100px;" loading="lazy"
+                                        alt="Gallery image"><img loading="lazy" style="min-height:100px;" loading="lazy"
                                             src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
                                             alt="">
                                     </a>
@@ -652,7 +652,7 @@
                                         <br>
                                         @foreach ($data['reviews'] as $rev)
                                             <div class="d-flex border rounded my-2  p-2">
-                                                <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
+                                                <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                                     class="img-fluid rounded m-2 r_profile_img" style=""
                                                     alt="{{ $rev->f_name . ' ' . $rev->l_name }}">
                                                 <div class="d-flex flex-column w-100">
@@ -679,12 +679,12 @@
                                                                 <div class="d-flex">
                                                                     @foreach ($attachments as $img)
                                                                         <a target="_blank" class="mx-1"
-                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
                                                                                 class="rounded" style="width: 55px;"
                                                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                                 alt="review"></a>
                                                                         <a target="_blank"
-                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
                                                                                 class="rounded" style="width: 55px;"
                                                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                                 alt="review"></a>
@@ -695,7 +695,7 @@
                                                     </div>
                                                     @if ($rev->reply)
                                                         <div class="d-flex border rounded  p-2">
-                                                            <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                                                            <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                                                 class="img-fluid rounded m-2 reply_img" style=""
                                                                 alt="{{ $store->name }}">
                                                             <div class="">
@@ -733,7 +733,7 @@
                                 <!-- Address -->
                                 <div class="contact-box ">
                                     <div class="icon-circle">
-                                        <img src="https://img.icons8.com/ios-filled/50/map.png" alt="Address Icon" />
+                                        <img loading="lazy" src="https://img.icons8.com/ios-filled/50/map.png" alt="Address Icon" />
                                     </div>
                                     <div class="contact-title">Address:</div>
                                     <div class="contact-text" style="font-size: 9px;">
@@ -744,7 +744,7 @@
                                 <!-- Email -->
                                 <div class="contact-box ">
                                     <div class="icon-circle">
-                                        <img src="https://img.icons8.com/ios-filled/50/secured-letter.png"
+                                        <img loading="lazy" src="https://img.icons8.com/ios-filled/50/secured-letter.png"
                                             alt="Email Icon" />
                                     </div>
                                     <div class="contact-title">Email:</div>
@@ -756,7 +756,7 @@
                                 <!-- Email -->
                                 <div class="contact-box ">
                                     <div class="icon-circle">
-                                        <img src="https://img.icons8.com/ios-filled/50/phone.png" alt="Email Icon" />
+                                        <img loading="lazy" src="https://img.icons8.com/ios-filled/50/phone.png" alt="Email Icon" />
                                     </div>
                                     <div class="contact-title">Phone:</div>
                                     <div class="contact-text">
@@ -766,7 +766,7 @@
                                 <!-- Email -->
                                 <div class="contact-box ">
                                     <div class="icon-circle">
-                                        <img src="https://img.icons8.com/ios-filled/50/marker.png" alt="Email Icon" />
+                                        <img loading="lazy" src="https://img.icons8.com/ios-filled/50/marker.png" alt="Email Icon" />
                                     </div>
                                     <div class="contact-title">Location:</div>
                                     <div class="contact-text">

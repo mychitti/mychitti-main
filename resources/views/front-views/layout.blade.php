@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>My Chitti | @yield('title')</title>
+    <title>@yield('title', 'My Chitti')</title>
     <meta name="csrf-token" id="csrf-token" content="{{ csrf_token() }}">
     <meta name="google-site-verification" content="GKuvdu8PAKO0h9zq-kyGkm1OjAuHY44lWi01iSL40Sk" />
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
@@ -591,39 +591,39 @@
     @stack('script_2')
 
     <script>
-$(document).ready(function () {
+        $(document).ready(function() {
 
-    const words = [' Service', ' Keyword', ' Category', ' Store'];
-    let index = 0;
+            const words = [' Service', ' Keyword', ' Category', ' Store'];
+            let index = 0;
 
-    const $textEl = $('#changingText');
-    const $inputEl = $('#mainSearchbar');
-    const $placeholderEl = $('#animatedPlaceholder');
+            const $textEl = $('#changingText');
+            const $inputEl = $('#mainSearchbar');
+            const $placeholderEl = $('#animatedPlaceholder');
 
-    setInterval(function () {
+            setInterval(function() {
 
-        // hide animation when user types
-        if ($inputEl.val().trim() !== '') {
-            $placeholderEl.hide();
-            return;
-        } else {
-            $placeholderEl.css('display', 'flex');
-        }
+                // hide animation when user types
+                if ($inputEl.val().trim() !== '') {
+                    $placeholderEl.hide();
+                    return;
+                } else {
+                    $placeholderEl.css('display', 'flex');
+                }
 
-        index = (index + 1) % words.length;
+                index = (index + 1) % words.length;
 
-        // restart animation
-        $textEl.removeClass('slide-up');
+                // restart animation
+                $textEl.removeClass('slide-up');
 
-        // force reflow (jQuery-safe)
-        $textEl[0].offsetWidth;
+                // force reflow (jQuery-safe)
+                $textEl[0].offsetWidth;
 
-        $textEl.text(words[index]).addClass('slide-up');
+                $textEl.text(words[index]).addClass('slide-up');
 
-    }, 2500);
+            }, 2500);
 
-});
-</script>
+        });
+    </script>
 
 
     <script>
@@ -1135,7 +1135,7 @@ $(document).ready(function () {
         }
 
         function initMap(latitude, longitude) {
-            console.log("🗺️ Initializing map with:", latitude, longitude);
+            {{-- console.log("🗺️ Initializing map with:", latitude, longitude); --}}
 
             const initialLocation = {
                 lat: latitude,
@@ -1174,6 +1174,7 @@ $(document).ready(function () {
                         const address = results[0].formatted_address;
 
                         $('#user_city').val(locality).attr('title', locality);
+                        $(".location_name_show").text('in ' + locality); // store details page provider heading
                         $('#user_location').text(address).attr('title', address);
                         $('#user_address, #searchInput').val(address);
                         $('#user_latitude').val(lat);

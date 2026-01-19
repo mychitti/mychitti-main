@@ -31,11 +31,13 @@ use App\Imports\KeywordsImport;
 use App\Models\ActionLog;
 use App\Models\BusinessSetting;
 use App\Models\FeeCategory;
+use App\Models\ItemAreaKeyword;
 use App\Models\ItemVariationDetail;
 use App\Models\LocationKeyword;
 use App\Models\ProductKeyword;
 use App\Models\ServiceKeyword;
 use App\Models\Zone;
+use App\Models\SeoContent;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
@@ -52,13 +54,69 @@ class ItemController extends Controller
         $categories = Category::where(['position' => 0])->get();
         $keywords = ProductKeyword::where('status', 1)->get();
         $fee_categories = FeeCategory::all();
-
-        return view('admin-views.product.index', compact('categories', 'keywords', 'fee_categories'));
+        $zones = Zone::active()->get();
+        return view('admin-views.product.index', compact('zones', 'categories', 'keywords', 'fee_categories'));
     }
-
-    public function store(Request $request)
+    public function saveSEO($request, $item_id, $edit = false)
     {
 
+        try {
+            if ($edit) {
+                // delete existing 
+                SeoContent::where('data', $item_id)->delete();
+            }
+
+            if (empty($request)) {
+                return;
+            }
+            foreach ($request->all() as $key => $value) {
+
+                // Determine seo_type based on key prefix
+                if (str_starts_with($key, 'seo_editor_')) {
+                    $seoType = 'item';
+                } elseif (str_starts_with($key, 'faq_editor_')) {
+                    $seoType = 'faq';
+                } else {
+                    continue;
+                }
+
+                if (empty($value)) {
+                    continue;
+                }
+
+                $decoded = base64_decode($value, true);
+                if ($decoded === false) {
+                    continue;
+                }
+
+                $content = urldecode($decoded);
+                if (trim($content) === '') {
+                    continue;
+                }
+                SeoContent::create([
+                    'data'     => $item_id,
+                    'seo_type' => $seoType,
+                    'content'  => $content,
+                ]);
+            }
+        } catch (\Throwable $th) {
+            // log error if needed
+            // Log::error($th);
+        }
+    }
+
+
+    function base64UrlDecode($data)
+    {
+        $remainder = strlen($data) % 4;
+        if ($remainder) {
+            $data .= str_repeat('=', 4 - $remainder);
+        }
+        $data = strtr($data, '-_', '+/');
+        return base64_decode($data);
+    }
+    public function store(Request $request)
+    {
 
         $validator = Validator::make($request->all(), [
             'name.0' => 'required',
@@ -271,6 +329,13 @@ class ItemController extends Controller
         }
         $item->stock = $request->current_stock ?? 0;
         $item->images = $images;
+
+        //SEO 
+        $item->meta_title = $request->meta_title;
+        $item->seo_heading = $request->seo_heading;
+        $item->meta_desc = $request->meta_desc;
+        $item->short_desc = $request->short_desc;
+
         $item->save();
 
         try {
@@ -340,9 +405,29 @@ class ItemController extends Controller
         ]);
         // add vairations end 
 
+
+        // AREA KEYWORDS UPDATE
+        // if ($request->filled('areas')) {
+
+        //     ItemAreaKeyword::create([
+        //         'item_id' => $item->id,
+        //         'keyword' => $request->areas,
+        //     ]);
+        // }
+
         // export service keywords
         if ($request->hasFile('keyword_excel')) {
             Excel::import(new KeywordsImport($item->id), $request->file('keyword_excel'));
+        }
+        // additional keywords 
+        if ($request->has('more_keywords') && $request->more_keywords != '') {
+            $rows = explode(',',$request->more_keywords);
+            foreach ($rows as $kw) {
+                ServiceKeyword::create([
+                    'service_id' => $item->id,
+                    'keyword' => $kw,
+                ]);
+            }
         }
 
         $item->tags()->sync($tag_ids);
@@ -353,6 +438,8 @@ class ItemController extends Controller
             $item_details->is_basic = $request->basic ?? 0;
             $item_details->save();
         }
+        $this->saveSEO($request, $item->id);
+
         Helpers::add_or_update_translations(request: $request, key_data: 'name', name_field: 'name', model_name: 'Item', data_id: $item->id, data_value: $item->name);
         Helpers::add_or_update_translations(request: $request, key_data: 'description', name_field: 'description', model_name: 'Item', data_id: $item->id, data_value: $item->description);
 
@@ -494,8 +581,13 @@ class ItemController extends Controller
         }
         $fee_categories = FeeCategory::all();
         $zones = Zone::active()->get();
+        $item_area_keywords = ItemAreaKeyword::where('item_id', $id)->first();
         $keywords = ServiceKeyword::where('service_id', $id)->get();
-        return view('admin-views.product.edit', compact('product', 'zones', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
+        $seoContents = SeoContent::where('data', $id)->where('seo_type', 'item')->get();
+        $faqContents  = SeoContent::where('data', $id)->where('seo_type', 'faq')->get();
+
+        // prx($item_area_keywords->keyword);
+        return view('admin-views.product.edit', compact('seoContents', 'faqContents', 'product', 'item_area_keywords', 'zones', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
     }
 
     public function status(Request $request)
@@ -507,335 +599,20 @@ class ItemController extends Controller
         return back();
     }
 
-/**
- * Get areas within the zone using a flexible approach
- */
-private function getAreasFromGoogleForZone($coordinates)
-{
-    // Get API key from BusinessSetting table
-    $apiKey = \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value ?? config('services.google.api_key');
-    
-    if (!$apiKey) {
-        echo "ERROR: Google API key not configured\n";
-        return ['error' => 'Google API key not configured'];
-    }
-    
-    echo "Coordinates from DB: " . $coordinates . "\n";
-    
-    // Parse polygon coordinates
-    $polygon = $this->parseZoneCoordinates($coordinates);
-    
-    if (empty($polygon)) {
-        echo "ERROR: Failed to parse coordinates\n";
-        return [];
-    }
-    
-    // Get bounds
-    $bounds = $this->calculateBounds($polygon);
-    
-    echo "Bounds calculated:\n";
-    echo json_encode($bounds, JSON_PRETTY_PRINT) . "\n";
-    
-    // Get areas using flexible grid sampling
-    $areas = $this->getFlexibleGridAreas($bounds, $apiKey);
-    
-    return $areas;
-}
 
-/**
- * Parse coordinates from your zone format
- */
-private function parseZoneCoordinates($coordinates)
-{
-    $polygon = [];
-    
-    try {
-        echo "Parsing coordinates: " . substr($coordinates, 0, 100) . "...\n";
-        
-        // Check if it's WKT format (POLYGON((...)))
-        if (preg_match('/POLYGON\s*\(\((.*?)\)\)/i', $coordinates, $matches)) {
-            echo "Detected WKT POLYGON format\n";
-            
-            // Extract the coordinate string
-            $coordString = $matches[1];
-            
-            // Split by comma to get individual coordinate pairs
-            $coordPairs = explode(',', $coordString);
-            
-            echo "Found " . count($coordPairs) . " coordinate pairs\n";
-            
-            $lastCord = null;
-            
-            foreach ($coordPairs as $index => $pair) {
-                // Each pair is "lng lat" separated by space
-                $coords = preg_split('/\s+/', trim($pair));
-                
-                if (count($coords) >= 2) {
-                    // WKT format is: longitude latitude (opposite of what we usually use!)
-                    $lng = (float) $coords[0];
-                    $lat = (float) $coords[1];
-                    
-                    echo "Pair $index: lng=$lng, lat=$lat\n";
-                    
-                    if ($index == 0) {
-                        $lastCord = ['lat' => $lat, 'lng' => $lng];
-                    }
-                    
-                    $polygon[] = [
-                        'lat' => $lat,
-                        'lng' => $lng
-                    ];
-                } else {
-                    echo "  -> WARNING: Invalid coordinate pair: " . $pair . "\n";
-                }
-            }
-            
-            echo "Total polygon points: " . count($polygon) . "\n";
-            
-        } else {
-            // Try the old format: (lat,lng),(lat,lng)
-            echo "Trying old format: (lat,lng),(lat,lng)...\n";
-            
-            $coordinates = preg_replace('/\s+/', '', $coordinates);
-            $coordPairs = explode('),(', trim($coordinates, '()'));
-            
-            echo "Found " . count($coordPairs) . " coordinate pairs\n";
-            
-            $lastCord = null;
-            
-            foreach ($coordPairs as $index => $pair) {
-                $coords = explode(',', trim($pair, '()'));
-                
-                if (count($coords) >= 2) {
-                    $lat = (float) trim($coords[0]);
-                    $lng = (float) trim($coords[1]);
-                    
-                    echo "Pair $index: lat=$lat, lng=$lng\n";
-                    
-                    if ($index == 0) {
-                        $lastCord = ['lat' => $lat, 'lng' => $lng];
-                    }
-                    
-                    $polygon[] = [
-                        'lat' => $lat,
-                        'lng' => $lng
-                    ];
-                }
-            }
-        }
-        
-    } catch (\Exception $e) {
-        echo "ERROR parsing coordinates: " . $e->getMessage() . "\n";
-    }
-    
-    return $polygon;
-}
 
-/**
- * Calculate bounding box
- */
-private function calculateBounds($polygon)
-{
-    $lats = array_column($polygon, 'lat');
-    $lngs = array_column($polygon, 'lng');
-    
-    return [
-        'north' => max($lats),
-        'south' => min($lats),
-        'east' => max($lngs),
-        'west' => min($lngs),
-        'center' => [
-            'lat' => (max($lats) + min($lats)) / 2,
-            'lng' => (max($lngs) + min($lngs)) / 2
-        ]
-    ];
-}
+    public function get_areas_in_zone(Request $request)
+    {
+        $zone = Zone::find($request->zone_id);
+        $coordinates = $zone->coordinates;
 
-/**
- * Get areas with flexible approach - accepts any specific location type
- */
-private function getFlexibleGridAreas($bounds, $apiKey)
-{
-    $areas = [];
-    
-    // Start with smaller grid for testing - 3x3 = 9 points
-    $gridSize = 3;
-    
-    $points = $this->generateGridPoints($bounds, $gridSize);
-    
-    echo "Generated " . count($points) . " grid points\n";
-    
-    $apiCallCount = 0;
-    
-    foreach ($points as $index => $point) {
-        try {
-            echo "Checking point $index: " . $point['lat'] . ',' . $point['lng'] . "\n";
-            
-            // Request ALL types, we'll filter after
-            $response = \Http::timeout(10)->get('https://maps.googleapis.com/maps/api/geocode/json', [
-                'latlng' => $point['lat'] . ',' . $point['lng'],
-                'key' => $apiKey
-            ]);
-            
-            $apiCallCount++;
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                echo "API Response status: " . $response->status() . "\n";
-                
-                if (isset($data['status']) && $data['status'] === 'OK') {
-                    if (isset($data['results']) && !empty($data['results'])) {
-                        echo "Got " . count($data['results']) . " results for point $index\n";
-                        
-                        // Process ALL results to extract area names
-                        foreach ($data['results'] as $result) {
-                            $extracted = $this->extractAreaNames($result);
-                            
-                            if (!empty($extracted)) {
-                                $areas = array_merge($areas, $extracted);
-                            }
-                        }
-                    } else {
-                        echo "WARNING: No results for point $index\n";
-                    }
-                } else {
-                    echo "ERROR: Geocoding API error: " . ($data['status'] ?? 'unknown') . "\n";
-                    echo "Error message: " . ($data['error_message'] ?? 'none') . "\n";
-                }
-            } else {
-                echo "ERROR: HTTP request failed: " . $response->status() . "\n";
-            }
-            
-            // Delay to respect rate limits
-            usleep(150000); // 0.15 second
-            
-        } catch (\Exception $e) {
-            echo "ERROR for point $index: " . $e->getMessage() . "\n";
-        }
-    }
-    
-    echo "Total API calls made: $apiCallCount\n";
-    echo "Total areas before dedup: " . count($areas) . "\n";
-    
-    // Remove duplicates and return
-    $unique = $this->removeDuplicates($areas);
-    
-    echo "Total unique areas: " . count($unique) . "\n";
-    
-    return $unique;
-}
+        $areas = Helpers::getAreasFromGoogleForZone($coordinates);
 
-/**
- * Extract ALL meaningful area names from a geocoding result
- */
-private function extractAreaNames($result)
-{
-    $extracted = [];
-    
-    // Define what we consider "areas" with priority
-    $areaTypes = [
-        'sublocality_level_1' => 1,
-        'sublocality_level_2' => 1,
-        'sublocality_level_3' => 1,
-        'sublocality' => 2,
-        'neighborhood' => 3,
-        'administrative_area_level_3' => 4,
-        'postal_code' => 5,
-        'locality' => 6, // Include locality but with lower priority
-    ];
-    
-    foreach ($result['address_components'] as $component) {
-        foreach ($component['types'] as $type) {
-            // Check if this is an area type we want
-            if (isset($areaTypes[$type])) {
-                $extracted[] = [
-                    'name' => $component['long_name'],
-                    'type' => $type,
-                    'priority' => $areaTypes[$type],
-                    'formatted_address' => $result['formatted_address'] ?? '',
-                    'latitude' => $result['geometry']['location']['lat'] ?? null,
-                    'longitude' => $result['geometry']['location']['lng'] ?? null,
-                    'place_id' => $result['place_id'] ?? null
-                ];
-            }
-        }
+        return collect($areas)->pluck('name');
     }
-    
-    return $extracted;
-}
 
-/**
- * Generate grid points within bounding box
- */
-private function generateGridPoints($bounds, $gridSize)
-{
-    $points = [];
-    
-    $latStep = ($bounds['north'] - $bounds['south']) / ($gridSize + 1);
-    $lngStep = ($bounds['east'] - $bounds['west']) / ($gridSize + 1);
-    
-    for ($i = 1; $i <= $gridSize; $i++) {
-        for ($j = 1; $j <= $gridSize; $j++) {
-            $points[] = [
-                'lat' => $bounds['south'] + ($latStep * $i),
-                'lng' => $bounds['west'] + ($lngStep * $j)
-            ];
-        }
-    }
-    
-    return $points;
-}
-
-/**
- * Remove duplicate area names, keeping the most specific
- */
-private function removeDuplicates($areas)
-{
-    $unique = [];
-    $seen = [];
-    
-    foreach ($areas as $area) {
-        $key = strtolower(trim($area['name']));
-        
-        // If we haven't seen this area, or this one has better priority
-        if (!isset($seen[$key]) || $area['priority'] < $seen[$key]['priority']) {
-            $seen[$key] = $area;
-        }
-    }
-    
-    // Convert to simple array
-    foreach ($seen as $area) {
-        $unique[] = [
-            'name' => $area['name'],
-            'type' => $area['type'],
-            'formatted_address' => $area['formatted_address'],
-            'latitude' => $area['latitude'],
-            'longitude' => $area['longitude'],
-            'place_id' => $area['place_id']
-        ];
-    }
-    
-    // Sort by name
-    usort($unique, function($a, $b) {
-        return strcmp($a['name'], $b['name']);
-    });
-    
-    return $unique;
-}
     public function update(Request $request, $id)
     {
-        // prx($request->all());
-        $zone = Zone::find($request->zone_id);
-        $coordinates  = $zone->coordinates;
-$areas = $this->getAreasFromGoogleForZone($coordinates);
-echo "Zone ID: " . $zone->id . "\n";
-echo "Areas found: " . count($areas) . "\n";
-echo "Areas: " . json_encode($areas, JSON_PRETTY_PRINT) . "\n";
-
-prx($areas);
-
-        die();
 
         $validator = Validator::make($request->all(), [
             'name' => 'array',
@@ -1072,6 +849,8 @@ prx($areas);
         $item->organic = $request->organic ?? 0;
         $item->veg = $request->veg;
         $item->images = $images;
+
+
         if (Helpers::get_mail_status('product_approval') && $request?->temp_product) {
             $item->temp_product?->translations()->delete();
             $item?->pharmacy_item_details()?->delete();
@@ -1092,6 +871,13 @@ prx($areas);
                 info($e->getMessage());
             }
         }
+
+         //SEO 
+        $item->meta_title = $request->meta_title;
+        $item->seo_heading = $request->seo_heading;
+        $item->meta_desc = $request->meta_desc;
+        $item->short_desc = $request->short_desc;
+
         $item->save();
 
         try {
@@ -1112,9 +898,17 @@ prx($areas);
         if ($request->has('keyword_excel')) {
             // delete old keywords
             ServiceKeyword::where('service_id', $item->id)->delete();
-
-            // export service keywords
             Excel::import(new KeywordsImport($item->id), $request->file('keyword_excel'));
+        }
+         // additional keywords 
+        if ($request->has('more_keywords') && $request->more_keywords != '') {
+            $rows = explode(',',$request->more_keywords);
+            foreach ($rows as $kw) {
+                ServiceKeyword::create([
+                    'service_id' => $item->id,
+                    'keyword' => $kw,
+                ]);
+            }
         }
 
         $item->tags()->sync($tag_ids);
@@ -1128,6 +922,8 @@ prx($areas);
                     ]
                 );
         }
+        $this->saveSEO($request, $id, true);
+
         Helpers::add_or_update_translations(request: $request, key_data: 'name', name_field: 'name', model_name: 'Item', data_id: $item->id, data_value: $item->name);
         Helpers::add_or_update_translations(request: $request, key_data: 'description', name_field: 'description', model_name: 'Item', data_id: $item->id, data_value: $item->description);
 

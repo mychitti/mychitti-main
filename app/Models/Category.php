@@ -62,10 +62,10 @@ class Category extends Model
         'childes_count' => 'integer',
     ];
 
-    public function translations(): MorphMany
-    {
-        return $this->morphMany(Translation::class, 'translationable');
-    }
+    // public function translations(): MorphMany
+    // {
+    //     return $this->morphMany(Translation::class, 'translationable');
+    // }
 
     public function module(): BelongsTo
     {
@@ -130,24 +130,24 @@ class Category extends Model
 
     public function getNameAttribute($value): string
     {
-        if (count($this->translations) > 0) {
-            foreach ($this->translations as $translation) {
-                if ($translation['key'] == 'name') {
-                    return $translation['value'];
-                }
-            }
-        }
+        // if (count($this->translations) > 0) {
+        //     foreach ($this->translations as $translation) {
+        //         if ($translation['key'] == 'name') {
+        //             return $translation['value'];
+        //         }
+        //     }
+        // }
 
         return $value;
     }
 
-    protected static function booted(): Builder|null
-    {
-        static::addGlobalScope('translate', function (Builder $builder) {
-            $builder->with(['translations' => function ($query) {
-                return $query->where('locale', app()->getLocale());
-            }]);
-        });
-        return null;
-    }
+    // protected static function booted(): Builder|null
+    // {
+    //     static::addGlobalScope('translate', function (Builder $builder) {
+    //         $builder->with(['translations' => function ($query) {
+    //             return $query->where('locale', app()->getLocale());
+    //         }]);
+    //     });
+    //     return null;
+    // }
 }

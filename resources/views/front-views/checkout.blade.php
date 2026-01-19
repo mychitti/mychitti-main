@@ -245,7 +245,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex"><a class="" href="{{ route('store.details', [$store->slug]) }}"> + Add more items </a>{{$store->vendor_type == 'composition' ? '(Composition Vendor)' : ''}} </div>
+                        <div class="d-flex"><a class="" href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"> + Add more items </a>{{$store->vendor_type == 'composition' ? '(Composition Vendor)' : ''}} </div>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
@@ -292,7 +292,7 @@
                                         <tr>
                                             <th scope="row">
                                                 <div class="d-flex align-items-center mt-2">
-                                                    <a href="{{ route('product.details', [$ct->cat_slug, $ct->slug]) }}"> <img
+                                                    <a href="{{ route('product.details', [_selectedCity(), $ct->slug]) }}"> <img
                                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct->image, asset('storage/app/public/product/') . '/' . $ct->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                                             class="img-fluid rounded-circle"
@@ -302,7 +302,7 @@
                                             </th>
                                             @php $variations = json_decode(json_decode($ct->variation, true), true) ; @endphp
                                             <td class=""> <a
-                                                    href="{{ route('product.details', [$ct->cat_slug, $ct->slug]) }}">{{ $ct->name }}
+                                                    href="{{ route('product.details', [_selectedCity(), $ct->slug]) }}">{{ $ct->name }}
                                                     {{ empty($variations) ? '' : '(' . $variations[0]['type'] . ')' }}</a>
                                             </td>
                                             <td class="">

@@ -104,13 +104,13 @@
                                         <div
                                             class="d-flex align-items-center justify-content-start my-1 {{ $class }}">
                                             <div class="rounded border m-2" style="width: 40px;aspect-ratio: 1/1;">
-                                                <img style="height:100%; width: 100% ; object-fit:cover;"
+                                                <img loading="lazy" style="height:100%; width: 100% ; object-fit:cover;"
                                                     src="{{ asset('storage/app/public/category/') . '/' . $cat->image }}"
                                                     class="img-fluid rounded" alt="{{ ucfirst($cat->name) }}">
                                             </div>
                                             <div>
                                                 <h6 class="mb-2" style="font-size:14px;"><a class="text-dark"
-                                                        href="{{ route('category.listing', [$cat->slug]) }}">{{ ucfirst($cat->name) }}</a>
+                                                        href="{{ route('category.listing', [$cat->slug, _selectedCity()]) }}">{{ ucfirst($cat->name) }}</a>
                                                 </h6>
                                             </div>
                                         </div>
@@ -122,8 +122,8 @@
                                             @foreach ($data['all_categories'] as $key => $ct)
                                                 <div style="    padding: 5px 0px;">
                                                     <a class="nav_cat_card"
-                                                        href="{{ route('category.listing', [$ct->slug]) }}">
-                                                        <img loading="lazy" style="height: auto !important; max-width:50px;"
+                                                        href="{{ route('category.listing', [$ct->slug, _selectedCity()]) }}">
+                                                        <img loading="lazy" loading="lazy" style="height: auto !important; max-width:50px;"
                                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct->image, asset('storage/app/public/category/') . '/' . $ct->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'category/') }}"
                                                             class=" rounded module_cat_img" alt="First slide">
@@ -145,13 +145,13 @@
                             @foreach ($data['banners'] as $key => $value)
                                 @if ($value['link'])
                                     <a href="{{ $value['link'] }}">
-                                        <img loading="lazy" style="aspect-ratio: 4;"
+                                        <img loading="lazy" loading="lazy"
                                             src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                             alt="{{ $catDetails->name }}">
                                     </a>
                                     {{-- src="https://mychitti.net/storage/app/public/banner/2025-05-31-683ac67ce0716.png"  --}}
                                 @else
-                                    <img loading="lazy" style="aspect-ratio: 4;"
+                                    <img loading="lazy" loading="lazy"
                                         src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                         alt="{{ $catDetails->name }}">
                                     {{--  --}}
@@ -188,7 +188,7 @@
                                     <div class="rounded position-relative fruite-item">
 
                                         <div class="fruite-img" style="height: 170px !important;">
-                                            <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}"> <img
+                                            <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                                     loading="lazy" style="height: 170px !important;object-fit:cover"
                                                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
@@ -217,7 +217,7 @@
 
                                         <div class="p-2 border border-top-0 rounded-bottom">
 
-                                            <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}">
+                                            <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                                 <h4 class="one-line-ellipsis text-start product_name"
                                                     data-id="pr_{{ $pro->id }}" title="{{ ucfirst($pro->name) }}"
                                                     style="font-size: 15px;">
@@ -286,7 +286,7 @@
 
                         </div>
                         @if (!count($catProducts))
-                            <img style="width: 400px;"
+                            <img loading="lazy" style="width: 400px;"
                                 src="{{ asset('public/assets/front/img/sorry-item-not-found-3328225-2809510.webp') }}"
                                 alt="no-results">
                             <h4 style="text-align: center;">Oops! No products found</h4>

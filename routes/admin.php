@@ -193,6 +193,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'item', 'as' => 'item.', 'middleware' => ['module:item']], function () {
 
 
+            Route::post('get-areas-in-zone', 'ItemController@get_areas_in_zone')->name('get-areas-in-zone');
             Route::post('update-homepage-item', 'ItemController@update_homepage_item')->name('update-homepage-item');
             Route::get('location-keywords', 'ItemController@location_keywords')->name('location-keywords');
             Route::get('keywords', 'ItemController@keywords')->name('keywords');
@@ -353,6 +354,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc');
 
+
             Route::post('update_id', 'VendorController@update_id')->name('update_id');
             Route::get('terms-and-conditions', 'VendorController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('terms-and-conditions', 'VendorController@terms_and_conditions_store')->name('terms-and-conditions.store');
@@ -366,6 +368,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
             //  IF HAS EITHER store OR store_add_edit PERMISSION
             Route::group(['middleware' => ['module:store,store_add_edit']], function () {
+                Route::post('import', 'VendorController@import')->name('import');
+
                 Route::get('add', 'VendorController@index')->name('add');
                 Route::post('store', 'VendorController@store')->name('store');
                 Route::get('edit/{id}', 'VendorController@edit')->name('edit');

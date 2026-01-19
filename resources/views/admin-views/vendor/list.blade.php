@@ -26,7 +26,7 @@
                     })->where('module_id', Config::get('module.current_module_id'))->count())
                     @php($total_store = isset($total_store) ? $total_store : 0)
                     <h4 class="title">{{$total_store}}</h4>
-                    <span class="subtitle">{{translate('messages.total')}} {{Config::get('module.vendor_role')}}s</span>
+                    <span class="subtitle">{{translate('messages.total')}} {{Config::get('module.vendor_role')}} Stores</span>
                     <img class="resturant-icon" src="{{asset('/public/assets/admin/img/total-store.png')}}" alt="store">
                 </div>
             </div>
@@ -35,7 +35,7 @@
                     @php($active_stores = \App\Models\Store::where(['status'=>1])->where('module_id', Config::get('module.current_module_id'))->count())
                     @php($active_stores = isset($active_stores) ? $active_stores : 0)
                     <h4 class="title">{{$active_stores}}</h4>
-                    <span class="subtitle">{{translate('messages.active')}} {{Config::get('module.vendor_role')}}s</span>
+                    <span class="subtitle">{{translate('messages.active')}} {{Config::get('module.vendor_role')}} Stores</span>
                     <img class="resturant-icon" src="{{asset('/public/assets/admin/img/active-store.png')}}" alt="store">
                 </div>
             </div>
@@ -46,7 +46,7 @@
                     })->where(['status'=>0])->where('module_id', Config::get('module.current_module_id'))->count())
                     @php($inactive_stores = isset($inactive_stores) ? $inactive_stores : 0)
                     <h4 class="title">{{$inactive_stores}}</h4>
-                    <span class="subtitle">{{translate('messages.inactive')}} {{Config::get('module.vendor_role')}}s</span>
+                    <span class="subtitle">{{translate('messages.inactive')}} {{Config::get('module.vendor_role')}} Stores</span>
                     <img class="resturant-icon" src="{{asset('/public/assets/admin/img/close-store.png')}}" alt="store">
                 </div>
             </div>
@@ -54,7 +54,7 @@
                 <div class="resturant-card card--bg-4">
                     @php($data = \App\Models\Store::where('created_at', '>=', now()->subDays(30)->toDateTimeString())->where('module_id', Config::get('module.current_module_id'))->count())
                     <h4 class="title">{{$data}}</h4>
-                    <span class="subtitle">{{translate('messages.newly_joined')}} {{Config::get('module.vendor_role')}}s</span>
+                    <span class="subtitle">{{translate('messages.newly_joined')}} {{Config::get('module.vendor_role')}} Stores</span>
                     <img class="resturant-icon" src="{{asset('/public/assets/admin/img/add-store.png')}}" alt="store">
                 </div>
             </div>
@@ -111,6 +111,15 @@
                     </select>
                 </div>
                 @endif
+                 <form  class="search-form">
+                        <select onchange="this.form.submit()" data-placeholder="Added By" class="form-control js-select2-custom" name="created_by" id=""  >
+                        <option value=""></option>
+                        <option value="all">All</option>
+                        @foreach($adminStaff as $key => $value)
+                            <option {{ request()?->created_by == $value->id ? 'selected' : '' }} value="{{$value->id}}">{{$value->f_name . ' '  . $value->l_name. ' #' .$value->id}} </option>
+                        @endforeach
+                        </select>
+                    </form>
                     <form class="search-form">
                                     <!-- Search -->
                         <div class="input-group input--group">
@@ -125,8 +134,63 @@
                     <button type="reset" class="btn btn--primary ml-2 location-reload-to-base" data-url="{{url()->full()}}">{{translate('messages.reset')}}</button>
                     @endif
 
+   <button type="button" data-toggle="modal" data-target="#importStoreModal"
+                        class="btn btn-outline-primary">Import</button>
+                    <div class="modal fade" id="importStoreModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
+                                    <button type="button" class="close close_modal" data-dismiss="modal"
+                                        aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="{{ route('admin.store.import') }}" method="post"
+                                        enctype="multipart/form-data">
+                                        @csrf
+                                        <a href="{{ asset('storage/app/public/util/store_import_example.xlsx') }}"
+                                            download class="btn btn-outline-primary mb-2">View Example</a>
+                                        <div class="form-group">
+                                            <label for="file">Upload Excel File</label>
+                                            <input type="file" style="height: 46px !important;" name="file"
+                                                class="form-control" id="file" accept=".xlsx,.xls">
+                                        </div>
+                                        <div class="form-group w-100 ">
+                                            <button type="submit" class="btn btn-primary float-right">Import</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="p-3">
+                                    <h4>How It Works</h4>
+                                    <ol>
+                                        <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
+                                        <li><strong>Required Fields</strong><br> Must fill : <code>Store Name</code>,
+                                            <code>Phone</code>,
+                                            <code>Owner First Name</code>,
+                                            <code>Owner Last Name</code>,
+                                            <code>Google Verification</code>,
+                                            <code>Address</code>,
+                                            <code>Latitude</code>,
+                                            <code>Longitude</code>,
+                                            <code>Business Type</code>,
+                                            <code>Zone Id</code>
+                                        </li>
+                                        <li><strong>Phone</strong><br> Format : <code>Conuntry Code (91)</code> + <code>10
+                                                digits (9988779898)</code> eg. : <code>919988779898</code></li>
+                                        <li><strong>Business Type</strong><br> Options :
+                                            @foreach ($service_stores_type as $key => $value)
+                                                <code>{{$value->name}}</code>,
+                                            @endforeach
+                                        </li>
 
-                    <!-- Unfold -->
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    <!-- Unfold -->
                     <div class="hs-unfold mr-2">
                         <a class="js-hs-unfold-invoker btn btn-sm btn-white dropdown-toggle min-height-40" href="javascript:;"
                             data-hs-unfold-options='{
@@ -138,7 +202,6 @@
 
                         <div id="usersExportDropdown"
                             class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-sm-right">
-
                             <span class="dropdown-header">{{ translate('messages.download_options') }}</span>
                             <a id="export-excel" class="dropdown-item" href="{{route('admin.store.export', ['type'=>'excel',request()->getQueryString()])}}">
                                 <img class="avatar avatar-xss avatar-4by3 mr-2"
@@ -146,13 +209,12 @@
                                     alt="Image Description">
                                 {{ translate('messages.excel') }}
                             </a>
-                            <a id="export-csv" class="dropdown-item" href="{{route('admin.store.export', ['type'=>'csv',request()->getQueryString()])}}">
+                            {{-- <a id="export-csv" class="dropdown-item" href="{{route('admin.store.export', ['type'=>'csv',request()->getQueryString()])}}">
                                 <img class="avatar avatar-xss avatar-4by3 mr-2"
                                     src="{{ asset('public/assets/admin') }}/svg/components/placeholder-csv-format.svg"
                                     alt="Image Description">
                                 .{{ translate('messages.csv') }}
-                            </a>
-
+                            </a> --}}
                         </div>
                     </div>
                     <!-- End Unfold -->
@@ -186,6 +248,7 @@
                     <tbody id="set-rows">
                     @foreach($stores as $key=>$store)
                         <tr>
+                    
                             <td>{{$key+$stores->firstItem()}}</td>
                             <td>
                                 <div>

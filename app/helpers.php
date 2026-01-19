@@ -4269,8 +4269,66 @@ if (!function_exists('_isSubscription')) {
             ->exists();
     }
 }
-if (!function_exists('_nearbyStores')) {
-    function _nearbyStores($zone_id, $limit = null, $paginate = 9)
+if (!function_exists('_nearbyStoresOptimized')) {
+    function _nearbyStoresOptimized($zone_id, $limit = 9, $offset = 1)
+{
+    $zoneIds = json_decode($zone_id, true);
+    if (!is_array($zoneIds)) {
+        $zoneIds = [$zoneIds];
+    }
+
+    $userLat = session('latitude');
+    $userLng = session('longitude');
+
+    if (!$userLat || !$userLng) {
+        return collect();
+    }
+
+    // Subscribed store IDs
+    $subscribedStoreIds = DB::table('vendor_subscriptions')
+        ->where('plan_expiry', '>', now())
+        ->pluck('vendor_id')
+        ->toArray();
+
+    // Distance SQL (safe acos)
+    $distanceSql = "
+        (6371 * acos(
+            LEAST(1, GREATEST(-1,
+                cos(radians(?)) *
+                cos(radians(stores.latitude)) *
+                cos(radians(stores.longitude) - radians(?)) +
+                sin(radians(?)) *
+                sin(radians(stores.latitude))
+            ))
+        ))
+    ";
+
+    return Store::select('stores.*')
+        ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
+        ->selectRaw("
+            CASE 
+                WHEN stores.id IN (" . implode(',', $subscribedStoreIds ?: [0]) . ")
+                THEN 1 ELSE 0 
+            END AS subscribed
+        ")
+        ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', '=', 'stores.id')
+        ->where([
+            'stores.active' => 1,
+            'stores.status' => 1,
+            'stores.module_id' => 6
+        ])
+        ->whereIn('stores.zone_id', $zoneIds)
+        ->whereNotNull('stores.latitude')
+        ->whereNotNull('stores.longitude')
+        ->groupBy('stores.id')
+        ->orderByDesc('subscribed') // subscribed first
+        ->orderBy('distance')       // nearest first
+        ->paginate($limit, ['*'], 'page', $offset);
+}
+}
+
+if (!function_exists('_nearbyStoresOld')) {
+    function _nearbyStoresOld($zone_id, $limit = null, $paginate = 9)
     {
         $zoneIds = json_decode($zone_id, true);
 
@@ -4463,6 +4521,14 @@ if (!function_exists('_nearbyStoresMonthlyBillingWise')) {
         return $data['nearby_stores'];
     }
 }
+if (!function_exists('_selectedCity')) {
+    function _selectedCity()
+    {
+        $city = session('customer_city') ?? 'Tirupati';
+        return \Illuminate\Support\Str::slug($city);
+    }
+}
+
 if (!function_exists('_navCats')) {
     function _navCats()
     {
@@ -4788,25 +4854,27 @@ if (!function_exists('_inAppNotification')) {
 
         if ($user_typ == 'vendor') {
             $store = Store::with('vendor')->find($to);
+            $fcm = $store?->vendor?->cm_firebase_token;
+        } elseif ($user_typ == 'vendor_employee') {
+            $employee = VendorEmployee::find($to);
+            $fcm = $employee?->cm_firebase_token;
+        }
+        if (!empty($fcm)) {
+            $data = [
+                'title'       => $title,
+                'description' => $msg,
+                'order_id'    => '',
+                'image'       => '',
+                'type'        => 'block',
+            ];
 
-            if (!empty($store?->vendor?->cm_firebase_token)) {
-                $data = [
-                    'title'       => $title,
-                    'description' => $msg,
-                    'order_id'    => '',
-                    'image'       => '',
-                    'type'        => 'block',
-                ];
-
-                 Helpers::send_push_notif_to_device(
-                    $store->vendor->cm_firebase_token,
-                    $data
-                );
-            }
+            Helpers::send_push_notif_to_device(
+                $fcm,
+                $data
+            );
         }
 
         if ($det->save()) {
-
             return 'sent';
         } else {
             return false;

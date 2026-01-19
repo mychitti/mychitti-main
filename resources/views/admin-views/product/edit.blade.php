@@ -15,6 +15,87 @@
     }
 </script>
     <style>
+        .seo-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .seo-header {
+            background: #f4f4f4;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .seo-header:hover {
+            background: #e4e4e4;
+        }
+
+        .seo-header h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .seo-header i {
+            transition: transform 0.3s;
+        }
+
+        .seo-header[aria-expanded="true"] i {
+            transform: rotate(180deg);
+        }
+
+        .seo-body {
+            padding: 20px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-control,
+        .form-control:focus {
+            border-radius: 4px;
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .info-text {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .faq-item {
+            background-color: #f8f9fa;
+            position: relative;
+        }
+
+        .seo-content-item {
+            background-color: #f8f9fa;
+            position: relative;
+        }
+
+        .remove-faq,
+        .remove-seo-content {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+    <style>
         .non_changeable {
             pointer-events: none;
 
@@ -77,7 +158,7 @@
 
 
 
-        $('#product_form').on('submit', function(e) {
+        {{-- $('#product_form').on('submit', function(e) {
             console.log('working');
             let formData = new FormData(this);
             e.preventDefault();
@@ -141,12 +222,12 @@
                             ProgressBar: true
                         });
                         setTimeout(function() {
-                            location.href = '{{ route('admin.item.list') }}';
+                            {{-- location.href = '{{ route('admin.item.list') }}'; --}}
                         }, 2000);
                     }
                 }
             });
-        });
+        }); --}}
     </script>
 @endpush
 
@@ -165,26 +246,10 @@
                     {{ request()->product_gellary == 1 ? translate('Add_item') : translate('item_update') }}
                 </span>
             </h1>
-            <div class="d-flex align-items-end flex-wrap">
-                @if (Config::get('module.current_module_type') == 'food')
-                    <div class="text--primary-2 py-1 d-flex flex-wrap align-items-center foodModalShow" type="button">
-                        <strong class="mr-2">{{ translate('See_how_it_works!') }}</strong>
-                        <div>
-                            <i class="tio-info-outined"></i>
-                        </div>
-                    </div>
-                @else
-                    <div class="text--primary-2 py-1 d-flex flex-wrap align-items-center attributeModalShow" type="button">
-                        <strong class="mr-2">{{ translate('See_how_it_works!') }}</strong>
-                        <div>
-                            <i class="tio-info-outined"></i>
-                        </div>
-                    </div>
-                @endif
-            </div>
+
         </div>
         <!-- End Page Header -->
-        <form action="javascript:" method="post" id="product_form" enctype="multipart/form-data">
+        <form action="javascript:" method="post" id="product_form"  enctype="multipart/form-data">
 
             @if (request()->product_gellary == 1)
                 @php($route = route('admin.item.store', ['product_gellary' => request()->product_gellary]))
@@ -204,11 +269,11 @@
             <div class="row g-2">
                 <div class="col-md-6">
                     <div class="card h-100">
-                        <div class="card-body">
+                        <div class="card-body row">
 
 
-                            <div id="default-form">
-                                <div class="form-group">
+                            <div id="default-form" class="col-md-6">
+                                <div class="form-group mb-0">
                                     <label class="input-label"
                                         for="exampleFormControlInput1">{{ translate('messages.name') }}
                                     </label>
@@ -226,6 +291,24 @@
                                 @else
                                     <input type="hidden" name="description[]" value="service">
                                 @endif
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
+                                    <label class="input-label" for="category_id">{{ translate('messages.category') }}
+                                        <span class="form-label-secondary text-danger" data-toggle="tooltip"
+                                            data-placement="right"
+                                            data-original-title="{{ translate('messages.Required.') }}"> *
+                                        </span></label>
+                                    <select name="category_id" class="js-data-example-ajax form-control" id="category_id">
+                                        @if ($category)
+                                            <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
+                                        @endif
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group mb-0 col-md-6">
+                                <label class="input-label" for="short_desc">{{ translate('messages.short_description') }}</label>
+                                <input type="text" name="short_desc" value="{{$product->short_desc}}" placeholder="Professional {SERVICE_NAME} Experts" class="form-control" id="short_desc">
                             </div>
 
                         </div>
@@ -319,7 +402,7 @@
                         </div>
                     </div>
                 @endif
-                <div class="col-md-12">
+                {{-- <div class="col-md-12">
                     <div class="card shadow--card-2 border-0">
                         <div class="card-header">
                             <h5 class="card-title">
@@ -355,21 +438,7 @@
                                         </div>
                                     </div>
                                 @endif
-                                <div class="col-sm-6 col-lg-3">
-                                    <div class="form-group mb-0">
-                                        <label class="input-label" for="category_id">{{ translate('messages.category') }}
-                                            <span class="form-label-secondary text-danger" data-toggle="tooltip"
-                                                data-placement="right"
-                                                data-original-title="{{ translate('messages.Required.') }}"> *
-                                            </span></label>
-                                        <select name="category_id" class="js-data-example-ajax form-control"
-                                            id="category_id">
-                                            @if ($category)
-                                                <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
-                                            @endif
-                                        </select>
-                                    </div>
-                                </div>
+                                
                                 <div class="col-sm-6 col-lg-3">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="zone_id">Zone
@@ -377,12 +446,18 @@
                                                 data-placement="right"
                                                 data-original-title="{{ translate('messages.Required.') }}"> *
                                             </span></label>
-                                        <select name="zone_id" class="js-select2-custom form-control"
-                                            id="zone_id">
-                                            @foreach($zones as $key => $value)
+                                        <select name="zone_id" class="js-select2-custom form-control" id="zone_id">
+                                            <option value=""></option>
+                                            @foreach ($zones as $key => $value)
                                                 <option value="{{ $value['id'] }}">{{ $value['name'] }}</option>
                                             @endforeach
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="areas_input">Areas
+                                            <textarea class="form-control auto-expand" name="areas" id="areas_input">{{ $item_area_keywords?->keyword }}</textarea>
                                     </div>
                                 </div>
                                 @if (Config::get('module.current_module_id') == 5)
@@ -466,8 +541,8 @@
                                         <div class="form-group mb-0">
                                             <label class="input-label"
                                                 for="exampleFormControlInput1">{{ translate('messages.HSN Code') }}</label>
-                                            <input type="number" min="0" value="{{ $product->hsn_code }}"  max="999999999999" name="hsn_code"
-                                                id="" class="form-control"
+                                            <input type="number" min="0" value="{{ $product->hsn_code }}"
+                                                max="999999999999" name="hsn_code" id="" class="form-control"
                                                 placeholder="{{ translate('messages.Ex:') }} 6109" required>
                                         </div>
                                     </div>
@@ -510,7 +585,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> --}}
                 <div class="col-md-6" id="addon_input">
                     <div class="card shadow--card-2 border-0">
                         <div class="card-header">
@@ -640,9 +715,9 @@
                                             <label class="input-label"
                                                 for="exampleFormControlInput1">{{ translate('messages.selling_price') }}
                                             </label>
-                                            <input type="number" id="selling_price_inp"
-                                                value="{{ $product['price'] }}" min="0" max="999999999999.99"
-                                                name="price" class="form-control non_changeable" step="0.001"
+                                            <input type="number" id="selling_price_inp" value="{{ $product['price'] }}"
+                                                min="0" max="999999999999.99" name="price"
+                                                class="form-control non_changeable" step="0.001"
                                                 placeholder="{{ translate('messages.Ex:') }} 100" required>
                                         </div>
                                     </div>
@@ -706,7 +781,7 @@
                         </div>
                     </div>
                 @else
-                 <input type="hidden" value="1" name="price">
+                    <input type="hidden" value="1" name="price">
                     <input type="hidden" value="2" name="mrp_price">
                     <input type="hidden" value="1" name="asking_price">
                     <input type="hidden" value="0" name="discount">
@@ -813,90 +888,175 @@
                         </div>
                     </div>
                 @endif
-                <div class="col-md-12">
-                    <div class="card shadow--card-2 border-0">
-                        <div class="card-header">
-                            <h5 class="card-title">
-                                <span class="card-header-icon"><i class="tio-label"></i></span>
-                                <span>Keywords</span>
-                            </h5>
+
+                <div class="col-12">
+                    <!-- SEO Section -->
+                    <div class="seo-section">
+                        <div class="seo-header" data-toggle="collapse" data-target="#seoCollapse" aria-expanded="false"
+                            aria-controls="seoCollapse">
+                            <h4><i class="fas fa-search-dollar mr-2"></i> SEO Settings</h4>
+                            <i class="fas fa-chevron-down"></i>
                         </div>
+                        <div class="collapse show" id="seoCollapse">
+                            <div class="pt-3 px-3">
+                                <h4>Placeholders: </h4>
+                                <p><code>{CITY_NAME}</code>, <code>{SERVICE_NAME}</code>, <code>{LOCALITIES}</code>, <code>{SAME_CATEGORY_SERVICES}</p>
+                            </div>
+                            <div class="seo-body">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-file-alt mr-2 text-primary"></i>Common SEO
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="border rounded p-3 mb-3 row">
+                                            <div class="form-group mb-0 col-md-4">
+                                                <label class="form-label">Meta Title</label>
+                                                <input type="text" class="form-control"
+                                                    value="{{ $product->meta_title }}"
+                                                    placeholder="{SERVICE_NAME} in {CITY_NAME} | Trusted Experts"
+                                                    name ="meta_title" id="">
+                                            </div>
+                                            <div class="form-group mb-0 col-md-8">
+                                                <label class="form-label">Meta Description</label>
+                                                <textarea type="text" class="form-control" rows="1"
+                                                    placeholder="Get reliable {SERVICE_NAME} in {CITY_NAME} with fast service, expert technicians, and affordable pricing."
+                                                    name="meta_desc" id="">{{ $product->meta_desc }}</textarea>
+                                            </div>
+                                            <div class="form-group mb-0 col-md-4">
+                                                <label class="form-label">Service Heading <i class="tio-help-outlined"
+                                                        data-toggle="tooltip" data-placement="right"
+                                                        title="Will show on service detail page in website as main service name"></i></label>
+                                                <input type="text" class="form-control"
+                                                    value="{{ $product->seo_heading }}" name="seo_heading"
+                                                    placeholder="{SERVICE_NAME} in {CITY_NAME}" id="">
+                                            </div>
 
-                        <div class="card-body pb-0">
-                            <div class="row g-2">
-                                <div class="col-6">
 
-                                    <img class="avatar avatar-xss avatar-4by3 mr-2"
-                                        src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
-                                        alt="Image Description">
-                                    Import {{ translate('messages.excel') }} <br>
-                                    <input type="file" name="keyword_excel" class="form-control mb-2" id="">
-
-                                </div>
-                                <div class="col-6 d-flex align-items-end mb-3">
-                                    <a href="{{ asset('storage/app/public/export-keywords.xlsx') }}"
-                                        class="btn btn-outline-primary">Download Example Excel</a>
-                                    <button type="button" class="mx-1 btn btn-outline-primary" data-toggle="modal"
-                                        data-target="#exampleModalk">
-                                        View Current Keywords
-                                    </button>
-
-                                    <!-- Modal -->
-                                    <div class="modal fade" id="exampleModalk" tabindex="-1"
-                                        aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="exampleModalLabel">Keywords</h5>
-                                                    <button type="button" class="close" data-dismiss="modal"
-                                                        aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
+                                            <div class="form-group mb-0 col-md-4">
+                                                <div class="d-flex justify-content-between">
+                                                    <label class="form-label">Meta Keywords <img
+                                                            class="avatar avatar-xss avatar-4by3 mr-2"
+                                                            src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
+                                                            alt="Image Description"></label>
+                                                    <a type="button" class="text-underline" data-toggle="modal"
+                                                        data-target="#exampleModalk">
+                                                        View Current
+                                                    </a>
+                                                    <a href="{{ asset('storage/app/public/export-keywords.xlsx') }}"
+                                                        class="text-underline">Download Example Excel</a>
                                                 </div>
-                                                <div class="modal-body">
 
-                                                    @foreach ($keywords as $key => $k)
-                                                        {{ $k->keyword }},
-                                                    @endforeach
+                                                <input type="file" name="keyword_excel" id="import_excel"
+                                                    class="form-control" id="">
+                                            </div>
+                                            <div class="form-group mb-0 col-md-4">
+                                                <div class="d-flex justify-content-between">
+
+                                                    <label class="form-label"><span>Keywords Preview</span></label> <a
+                                                        style="display:none;"
+                                                        class="cursor-pointer text-underline add_more_keywords_btn">Add
+                                                        more</a>
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary"
-                                                        data-dismiss="modal">Close</button>
+
+                                                <div class="">
+                                                    <textarea class="form-control" readonly id="keywords"></textarea>
+                                                    <textarea style="display:none;" name="more_keywords" class="form-control more_keywords_field mt-2"
+                                                        placeholder="More Keywords..." id="keywords"></textarea>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                                <!-- SEO Content Section -->
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-file-alt mr-2 text-primary"></i> SEO Footer
+                                            Content</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="seoContentContainer">
+                                            @if (count($seoContents))
+                                                @foreach ($seoContents as $key => $value)
+                                                    <div class="seo-content-item border rounded p-3 mb-3"
+                                                        data-index="{{ $key + 1 }}">
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label">SEO Content (Option
+                                                                {{ $key + 1 }})</label>
+                                                            <textarea class="form-control ck_editor" id="seo_editor_{{ $key + 1 }}"
+                                                                placeholder="Enter SEO-friendly content for your service">{{ $value->content }}</textarea>
+                                                        </div>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger mt-2 remove-seo-content">
+                                                            <i class="tio-delete"></i>
+                                                        </button>
+                                                    </div>
+                                                @endforeach
+                                            @else
+                                                <div class="seo-content-item border rounded p-3 mb-3" data-index="1">
+                                                    <div class="form-group mb-0">
+                                                        <label class="form-label">SEO Content (Option 1)</label>
+                                                        <textarea class="form-control ck_editor" id="seo_editor_1" placeholder="Enter SEO-friendly content for your service"></textarea>
+                                                    </div>
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger mt-2 remove-seo-content">
+                                                        <i class="tio-delete"></i>
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" id="addSeoContent">
+                                            <i class="fas fa-plus"></i> Add More SEO Content
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- FAQ Section -->
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-question-circle mr-2 text-success"></i>
+                                            FAQ Section</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="faqContainer">
+                                            @if (count($faqContents))
+                                                @foreach ($faqContents as $key => $value)
+                                                    <div class="faq-item border rounded p-3 mb-3"
+                                                        data-index="{{ $key + 1 }}">
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label">FAQ (Option
+                                                                {{ $key + 1 }})</label>
+                                                            <textarea class="form-control ck_editor" id="faq_editor_{{ $key + 1 }}" placeholder="Enter FAQ content">{{ $value->content }}</textarea>
+                                                        </div>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger mt-2 remove-faq">
+                                                            <i class="tio-delete"></i>
+                                                        </button>
+                                                    </div>
+                                                @endforeach
+                                            @else
+                                                <div class="faq-item border rounded p-3 mb-3" data-index="1">
+                                                    <div class="form-group mb-0">
+                                                        <label class="form-label">FAQ (Option 1)</label>
+                                                        <textarea class="form-control ck_editor" id="faq_editor_1" placeholder="Enter FAQ content"></textarea>
+                                                    </div>
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger mt-2 remove-faq">
+                                                        <i class="tio-delete"></i>
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" id="addFaq">
+                                            <i class="fas fa-plus"></i> Add More FAQ
+                                        </button>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- <div class="col-md-12">
-                                                                                                            <div class="card shadow--card-2 border-0">
-                                                                                                                <div class="card-header">
-                                                                                                                    <h5 class="card-title">
-                                                                                                                        <span class="card-header-icon"><i class="tio-label"></i></span>
-                                                                                                                        <span>Keywords</span>
-                                                                                                                    </h5>
-                                                                                                                </div>
-                                                                                                                <div class="card-body pb-0">
-                                                                                                                    <div class="row g-2">
-                                                                                                                        <div class="col-12">
-                                                                                                                            @if (isset($temp_product) && $temp_product == 1)
-    <div class="form-group">
-                                                                                                                                @php($tags = \App\Models\Tag::whereIn('id', json_decode($product?->tag_ids))->get('tag'))
-                                                                                                                                <input type="text" class="form-control" name="tags" placeholder="Keywords" value="@foreach ($tags as $c) {{ $c->tag . ',' }} @endforeach" data-role="tagsinput">
-                                                                                                                            </div>
-@else
-    <div class="form-group">
-                                                                                                                                <input type="text" class="form-control" name="tags" placeholder="Keywords" value="@foreach ($product->tags as $c) {{ $c->tag . ',' }} @endforeach" data-role="tagsinput">
-                                                                                                                            </div>
-    @endif
-                                                                                                                        </div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            </div>
-                                                                                                        </div> -->
                 <div class="col-md-12">
                     <div class="btn--container justify-content-end">
                         <button type="reset" id="reset_btn"
@@ -944,14 +1104,79 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="exampleModalk" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Keywords</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    @foreach ($keywords as $key => $k)
+                        {{ $k->keyword }},
+                    @endforeach
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/tags-input.min.js"></script>
     <script src="{{ asset('public/assets/admin/js/spartan-multi-image-picker.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <script>
         "use strict";
+        $(".add_more_keywords_btn").on('click', function() {
+            $(".more_keywords_field").show()
+            $(".add_more_keywords_btn").hide()
+
+        })
+
+        $("#import_excel").on("change", function(e) {
+            const file = e.target.files[0];
+
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {
+                    type: "array"
+                });
+
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                const rows = XLSX.utils.sheet_to_json(sheet, {
+                    header: 1
+                });
+
+                const keywords = rows
+                    .flat()
+                    .map(k => String(k).trim())
+                    .filter(k => k.length)
+                    .slice(0, 20);
+
+                $("#keywords").val(keywords.join(", ") + '...');
+            };
+
+            $(".add_more_keywords_btn").show()
+
+            reader.readAsArrayBuffer(file);
+        });
+
+
+
         let removedImageKeys = [];
         let element = "";
 
@@ -1680,5 +1905,39 @@
             });
 
         }
+        $('.auto-expand').each(function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        $(document).on('input change', '.auto-expand', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+        $("#zone_id").on('change', function() {
+            var zone_id = $(this).val();
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.post({
+                url: '{{ route('admin.item.get-areas-in-zone') }}',
+                data: {
+                    zone_id: zone_id
+                },
+                beforeSend: function() {
+                    $('#loading').show()
+                },
+                success: function(data) {
+                    console.log(data)
+                    $('#areas_input').val(data).trigger('input');
+                },
+                complete: function() {
+                    $('#loading').hide()
+                }
+            });
+        })
     </script>
+    @include('vendor-views/multiple_ck_editor');
 @endpush

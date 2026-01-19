@@ -45,7 +45,7 @@
 
                                                 <div class="fruite-img" style="height: 200px !important;">
                                                     <a
-                                                        href="{{ route('product.details', [$cat->cat_slug, $pro->slug]) }}">
+                                                        href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                                         <img loading="lazy"
                                                             style="height: 200px !important;object-fit:cover"
                                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
@@ -76,7 +76,7 @@
                                                 <div class="p-2 border border-top-0 rounded-bottom text-start">
 
                                                     <a
-                                                        href="{{ route('product.details', [$cat->cat_slug, $pro->slug]) }}">
+                                                        href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                                         <h4 class="one-line-ellipsis text-start product_name"
                                                             data-id="pr_{{ $pro->id }}"
                                                             title="{{ ucfirst($pro->name) }}" style="font-size: 18px;">

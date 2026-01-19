@@ -93,7 +93,7 @@
                                                             alt="{{ $serRun->store_name }}">
                                                         <div>
                                                             <h6 class="mb-2"><a
-                                                                    href="{{ route('store.details', [$serRun->store_slug]) }}">{{ ucfirst($serRun->store_name) }}</a>
+                                                                    href="{{ route('store.details', [_selectedCity() , $serRun->store_slug]) }}">{{ ucfirst($serRun->store_name) }}</a>
                                                             </h6>
                                                             <p class="address_elem">
                                                                 <i class="fas fa-map-marker-alt"></i>
@@ -215,7 +215,7 @@
                                                         @endif
                                                         <div>
                                                             <h6 class="mb-2"><a
-                                                                    href="{{ route('store.details', [$serRun->store_slug]) }}">{{ ucfirst($serRun->store_name) }}</a>
+                                                                    href="{{ route('store.details', [_selectedCity() , $serRun->store_slug]) }}">{{ ucfirst($serRun->store_name) }}</a>
                                                             </h6>
                                                             <p class="address_elem">
                                                                 <i class="fas fa-map-marker-alt"></i>

@@ -286,12 +286,12 @@
                         @foreach ($data['banners'] as $key => $value)
                             @if ($value['link'])
                                 <a href="{{ $value['link'] }}">
-                                    <img loading="lazy"
-                                        src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
+                                    <img 
+                                        src="{{ asset('storage/app/banner/') . '/' . $value['image'] }}"
                                         alt="">
                                 </a>
                             @else
-                                <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
+                                <img  src="{{ asset('storage/app/banner/') . '/' . $value['image'] }}"
                                     alt="">
                             @endif
                         @endforeach
@@ -310,8 +310,8 @@
                                            @if ($banner->title)
                                           
                                                 @endif
-                                            <img data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($banner->image, asset('storage/app/public/banners/') . '/' . $banner->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'banners/') }}"
+                                            <img loading="lazy" data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($banner->image, asset('storage/app/banners/') . '/' . $banner->image, asset('assets/admin/img/160x160/img1.jpg'), 'banners/') }}"
                                                 alt="offer banner" class="slide-image">
                                         </div>
                                     </a>
@@ -337,10 +337,10 @@
                             @foreach ($data['service_categories'] as $key => $ct)
                                 <div style="">
                                     <a class="nav_cat_card text-center"
-                                        href="{{ route('category.listing', [$ct['slug']]) }}">
-                                        <img loading="lazy"
-                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct['image'], asset('storage/app/public/category/') . '/' . $ct['image'], asset('public/assets/admin/img/160x160/img1.jpg'), 'category/') }}"
+                                        href="{{ route('category.listing', [$ct['slug'], _selectedCity()]) }}">
+                                        <img loading="lazy" loading="lazy"
+                                            data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct['image'], asset('storage/app/category/') . '/' . $ct['image'], asset('assets/admin/img/160x160/img1.jpg'), 'category/') }}"
                                             class=" rounded-circle module_cat_img lazyload" alt="First slide">
 
                                         <p style="font-size: 14px;"
@@ -366,10 +366,10 @@
                     <div class="pop-items-grid">
                         @foreach ($data['popular_services'] as $item)
                             <!-- Sample Item 1 -->
-                            <a href="{{ route('product.details', [$item->cat_slug, $item->slug]) }}" class="pop-item-card">
-                                <img loading="lazy" style="object-fit:cover"
-                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/product/') . '/' . $item->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                            <a href="{{ route('product.details', [_selectedCity(), $item->slug]) }}" class="pop-item-card">
+                                <img loading="lazy" loading="lazy" style="object-fit:cover"
+                                    data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/product/') . '/' . $item->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                     alt="Wireless Headphones" class="pop-item-img">
                                 <div class="pop-item-content">
                                     <h3 class="pop-item-name two-line-ellipsis">{{ $item->name }}</h3>
@@ -407,10 +407,10 @@
                             <div class="rounded position-relative fruite-item">
 
                                 <div class="fruite-img product__img_elem" style=" ">
-                                    <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}"> <img
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                             loading="lazy" style="object-fit:cover"
-                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                            data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                             class="img-fluid w-100 rounded-top product__img" alt=""></a>
                                 </div>
 
@@ -423,7 +423,7 @@
 
                                 <div class="p-2 border border-top-0 rounded-bottom">
 
-                                    <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                         <h4 class="one-line-ellipsis text-start item__name text_dark"
                                             title="{{ ucfirst($pro->name) }}" style="">
                                             {{ ucfirst($pro->name) }}</h4>
@@ -490,10 +490,10 @@
                                     <div class="rounded position-relative fruite-item">
 
                                         <div class="fruite-img product__img_elem" style="">
-                                            <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}"> <img
+                                            <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                                     loading="lazy" style="object-fit:cover"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                                    data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/product/') . '/' . $pro->image, asset('assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                                     class="img-fluid w-100 rounded-top product__img" alt=""></a>
                                         </div>
 
@@ -516,7 +516,7 @@
 
                                         <div class="p-2 border border-top-0 rounded-bottom">
 
-                                            <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}">
+                                            <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                                 <h4 class="one-line-ellipsis text-start"
                                                     title="{{ ucfirst($pro->name) }}" style="font-size: 18px;">
                                                     {{ ucfirst($pro->name) }}</h4>
@@ -595,12 +595,12 @@
         <div class="row g-0">
 
             @foreach ($data['nearby_stores'] as $store)
-                <div class="col-lg-4 col-md-6 p-2 mt-0">
+                <a href="{{ route('store.details', [_selectedCity() , $store->slug]) }}" class="col-lg-4 col-md-6 p-2 mt-0">
                     <div class="card-ui  p-2 rounded shadow d-flex flex-row align-items-start">
                         <div class="card-image me-3">
-                            <img loading="lazy"
-                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store->logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                            <img loading="lazy" loading="lazy"
+                                data-onerror-image="{{ asset('assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/store/') . '/' . $store->logo, asset('assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                 class=" rounded-top" alt="">
                         </div>
 
@@ -630,12 +630,12 @@
                                         {{ strtoupper($store->delivery_time) }}
                                     </span>
                                 </div>
-                                <a href="{{ route('store.details', [$store->slug]) }}"
-                                    class="btn btn-add-to-cart store_btn">Explore</a>
+                                <span
+                                    class="btn btn-add-to-cart store_btn">Explore</span>
                             </div>
                         </div>
                     </div>
-                </div>
+                </a>
             @endforeach
         </div>
     </div>
@@ -648,7 +648,7 @@
         <div class="xyZ998 container my-3"
             style="border-radius: 33px;background: #ffffff;box-shadow:  21px 21px 42px #bfbfbf,-21px -21px 42px #ffffff;">
             <div class="uVw654">
-                <img src="{{ asset('storage/app/public/product') . '/' . $data['special_product']->image }}"
+                <img loading="lazy" src="{{ asset('storage/app/product') . '/' . $data['special_product']->image }}"
                     alt="{{ $data['special_product']->name }}">
             </div>
             <div class="aBc789">
@@ -686,11 +686,11 @@
                         @php $providers = _getServiceProviders($data['special_product']->id); @endphp
                         @foreach ($providers as $key => $value)
                             @if ($key < 5)
-                                <a href="{{ route('store.details', [$value->slug]) }}" style="margin: 0 -7px;"
+                                <a href="{{ route('store.details', [_selectedCity() , $value->slug]) }}" style="margin: 0 -7px;"
                                     class="position-relative">
                                     <div class="bg-circle bg-purple"></div>
                                     <div class="profile-circle border border-3 shadow-sm">
-                                        <img src="{{ asset('storage/app/public/store') . '/' . $value->logo }}"
+                                        <img loading="lazy" src="{{ asset('storage/app/store') . '/' . $value->logo }}"
                                             alt="Profile 1" class="profile-image">
                                     </div>
                                 </a>
@@ -698,12 +698,12 @@
                         @endforeach
 
                         <a class="mx-4 text-dark"
-                            href="{{ route('product.details', [$catSlug, $data['special_product']->slug]) }}"> +
+                            href="{{ route('product.details', [_selectedCity(), $data['special_product']->slug]) }}"> +
                             {{ count($providers) - 5 }} more </a>
                     </div>
                 @endif
 
-                <a href="{{ route('product.details', [$catSlug, $data['special_product']->slug]) }}"
+                <a href="{{ route('product.details', [_selectedCity(), $data['special_product']->slug]) }}"
                     class="btn btn-primary mt-2">Explore</a>
             </div>
 
@@ -712,8 +712,8 @@
     @endif
     @if (!count($data['top_sell_services']) && !count($data['top_sell_products']))
         <div class="unavailable_data">
-            <img style="mix-blend-mode: multiply;" class="img-fluid"
-                src="{{ asset('storage/app/public/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
+            <img loading="lazy" style="mix-blend-mode: multiply;" class="img-fluid"
+                src="{{ asset('storage/app/util/no-result-found-empty-results-popup-design_586724-96.jpg') }}">
             <h2 class="fs-2 eb-garamond-text">
                 {{ \App\Models\BusinessSetting::where(['key' => 'unavailability_heading_homepage'])->first()?->value ?? '' }}
                 <h2>
@@ -736,17 +736,17 @@
                         <div class="d-flex flex-column">
                             @if ($ct1->module_id == 5)
                                 @foreach (_navSubCats($ct1->id, $ct1->module_id) as $key => $ct)
-                                    <a class="text_dark" href="{{ route('category.listing', [$ct->slug]) }}"
+                                    <a class="text_dark" href="{{ route('category.listing', [$ct->slug, _selectedCity()]) }}"
                                         style="font-size: 12px;">{{ $ct->name }}</a>
                                 @endforeach
                             @else
                                 @foreach (_navSubCats($ct1->id, $ct1->module_id) as $key => $ct)
                                     <a class="text_dark"
-                                        href="{{ route('product.details', [$ct->cat_slug, $ct->slug]) }}"
+                                        href="{{ route('product.details', [_selectedCity(), $ct->slug]) }}"
                                         style="font-size: 12px;">{{ $ct->name }}</a>
                                 @endforeach
                             @endif
-                            <a class="text_dark fw-bold" href="{{ route('category.listing', [$ct1->slug]) }}"
+                            <a class="text_dark fw-bold" href="{{ route('category.listing', [$ct1->slug, _selectedCity()]) }}"
                                 style="font-size: 12px;">View All </a>
                         </div>
                     </div>

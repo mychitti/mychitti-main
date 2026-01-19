@@ -171,9 +171,8 @@
                             </td>
                             <td>
                                 <div class="btn--container justify-content-center">
-                                @php $catslug = _getCatSlugByItemId($item['id']); @endphp
                                     <a class="btn btn-sm btn--primary btn-outline-primary"
-                                        href="{{route('product.details',[$catslug, $item['slug']])}}" title="Preview">Preview
+                                        href="{{route('product.details',[_selectedCity(), $item['slug']])}}" title="Preview">Preview
                                     </a>
                                     <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
                                         href="{{route('vendor.item.edit',[$item['id']])}}" title="{{translate('messages.edit_item')}}"><i class="tio-edit"></i>

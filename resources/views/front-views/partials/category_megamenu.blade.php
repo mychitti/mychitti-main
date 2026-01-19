@@ -18,7 +18,7 @@
 
               </div>
               <div class="submenu-content">
-                  <div class="submenu-content__title"><span>{{ $ct['name'] }}</span><a href="{{route("category.listing", [$ct["slug"]])}}" class="p-2">View All</a></div>
+                  <div class="submenu-content__title"><span>{{ $ct['name'] }}</span><a href="{{route("category.listing", [$ct["slug"], _selectedCity()])}}" class="p-2">View All</a></div>
                   <ul class="submenu-content__list events">
                       @foreach ($ct['cat_items'] as $key2 => $ctitem)
                           <li class="submenu-content__list-item">
@@ -32,14 +32,14 @@
                                   <div class="submenu-content__info">
 
                                       <div class="submenu-content__link-title">
-                                          <a href="{{ route('product.details', [$ctitem->cat_slug, $ctitem->slug]) }}">
+                                          <a href="{{ route('product.details', [_selectedCity(), $ctitem->slug]) }}">
                                               {{ $ctitem->name }}</a>
                                       </div>
                                       <div class="submenu-content__link-text">{{ $ctitem->store_count }} Providers in
                                           {{ $ctitem->zone_name }}</div>
                                       <div class="submenu-content__link-address">
 
-                                          <a href="{{ route('product.details', [$ctitem->cat_slug, $ctitem->slug]) }}">
+                                          <a href="{{ route('product.details', [_selectedCity(), $ctitem->slug]) }}">
                                               <span>Explore</span></a>
                                       </div>
 

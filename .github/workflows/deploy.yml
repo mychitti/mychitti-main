@@ -71,6 +71,9 @@ jobs:
         mkdir -p storage/app/mpdf_temp && \
         chown -R apache:apache storage/app/mpdf_temp && \
         chmod -R 775 storage/app/mpdf_temp && \
+        
+        semanage fcontext -a -t httpd_sys_rw_content_t "${{ matrix.path }}/storage/app/tmp(/.*)?"
+        semanage fcontext -a -t httpd_sys_rw_content_t "${{ matrix.path }}/storage/app/mpdf_temp(/.*)?"
 
         restorecon -Rv ${{ matrix.path }}/storage/app/tmp && \
         restorecon -Rv ${{ matrix.path }}/storage/app/mpdf_temp && \

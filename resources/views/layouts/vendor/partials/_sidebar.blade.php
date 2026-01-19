@@ -646,7 +646,7 @@
                                         </li>
                                     @endif
                                 @endif
-                                @if (hasMasterModulePermission('billing'))
+                                @if (hasMasterModulePermission('billing') || hasMasterModulePermission('advanced_billing'))
                                     @if (hasAnyModulePermission(['purchase_bill']))
                                         <li class="nav-item  {{ Request::is('billing/purchase-bills') ? 'active' : '' }}"
                                             style="margin-top:0 !important;">

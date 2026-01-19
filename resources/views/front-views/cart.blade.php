@@ -62,7 +62,7 @@
                                 <tr>
                                     <th scope="row">
                                         <div class="d-flex align-items-center">
-                                        <a href="{{ route('product.details', [$ct->cat_slug, $ct->slug]) }}">    <img data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                        <a href="{{ route('product.details', [_selectedCity(), $ct->slug]) }}">    <img data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct->image, asset('storage/app/public/product/') . '/' . $ct->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                                 class="img-fluid me-5 rounded cart_img" alt="{{ $ct->name }}"> </a> 
                                         </div>
@@ -119,7 +119,7 @@
                     </table>
                 </div>
                 <div class="mt-5">
-                    <a href="{{ route('store.details', [$cart[0]->store_slug]) }}"
+                    <a href="{{ route('store.details', [_selectedCity() , $cart[0]->store_slug]) }}"
                         class="btn border-secondary rounded-pill px-4 py-3 text-primary text-uppercase mb-4 ms-4"
                         type="button">+ Add more items</a>
 

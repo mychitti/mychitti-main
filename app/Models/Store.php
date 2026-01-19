@@ -170,7 +170,7 @@ class Store extends Model
     /**
      * @var string[]
      */
-    protected $appends = ['gst_status', 'gst_code'];
+    // protected $appends = ['gst_status', 'gst_code'];
 
     /**
      * The attributes that should be hidden for arrays.
@@ -476,11 +476,11 @@ class Store extends Model
     {
         static::addGlobalScope(new ZoneScope);
 
-        static::addGlobalScope('translate', function (Builder $builder) {
-            $builder->with(['translations' => function ($query) {
-                return $query->where('locale', app()->getLocale());
-            }]);
-        });
+        // static::addGlobalScope('translate', function (Builder $builder) {
+        //     $builder->with(['translations' => function ($query) {
+        //         return $query->where('locale', app()->getLocale());
+        //     }]);
+        // });
     }
 
     /**

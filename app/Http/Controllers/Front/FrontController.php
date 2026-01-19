@@ -83,57 +83,7 @@ class FrontController extends Controller
             return $next($request);
         });
     }
-    public function ocrTest(Request $request)
-    {
-        return view('front-views.ocr-test');
-
-        // source paddle_env/bin/activate
-        // python app.py
-    }
-    public function ocrTestPost(Request $request)
-    {
-        // 1️⃣ Validate upload
-        $request->validate([
-            'image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        ]);
-
-        // 2️⃣ Get uploaded file (TEMP path)
-        $file = $request->file('image');
-
-        // VERY IMPORTANT: local real path
-        $filePath = $file->getRealPath();
-
-        // 3️⃣ Send to OCR API
-        $ch = curl_init("http://159.65.159.250:5000/ocr");
-
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => [
-                'image' => new \CURLFile(
-                    $filePath,
-                    $file->getMimeType(),
-                    $file->getClientOriginalName()
-                )
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 120, // OCR can take time
-        ]);
-
-        $response = curl_exec($ch);
-
-        if ($response === false) {
-            return response()->json([
-                'error' => curl_error($ch)
-            ], 500);
-        }
-
-        curl_close($ch);
-
-        print_r($response);
-
-        // 4️⃣ Return OCR result
-        return response()->json(json_decode($response, true));
-    }
+ 
     /**  
      * Show the application dashboard.
      *
@@ -312,8 +262,7 @@ class FrontController extends Controller
                 ->get();
         }
 
-        $data['nearby_stores'] = _nearbyStores($this->zone_id, 9);
-
+        $data['nearby_stores'] = _nearbyStoresOptimized($this->zone_id, 9);
         // $data['special_product'] = _getSpecialProduct($zone_id);
 
         $data['popular_services'] = _getPopularService($zone_id) ?? [];
@@ -617,22 +566,22 @@ class FrontController extends Controller
         foreach ($allResults as $result) {
             switch ($result->result_type) {
                 case 'product':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $url = route('product.details', [_selectedCity(), $result->slug]);
                     $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'keyword':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $url = route('product.details', [_selectedCity(), $result->slug]);
                     $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'category':
-                    $url = route('category.listing', [$result->slug]);
+                    $url = route('category.listing', [$result->slug, _selectedCity()]);
                     $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
                     break;
 
                 case 'store':
-                    $url = route('store.details', [$result->slug]);
+                    $url = route('store.details', [_selectedCity() , $result->slug]);
                     $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
                     break;
             }
@@ -642,43 +591,7 @@ class FrontController extends Controller
 
         return response()->json(['status' => true, 'html' => $html]);
     }
-    private function generateSearchResultsHtml($results)
-    {
-        $html = '<ul class="list-group list-group-flush cursor-pointer" id="search_result">';
-
-        foreach ($results as $result) {
-            $linkHtml = '';
-
-            switch ($result->result_type) {
-                case 'product':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
-
-                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
-                    break;
-
-                case 'keyword':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
-                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
-                    break;
-
-                case 'category':
-                    $url = route('category.listing', [$result->slug]);
-                    $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
-                    break;
-
-                case 'store':
-                    $url = route('store.details', [$result->slug]);
-                    $linkHtml = '<li class="d-flex gap-2" ><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
-                    break;
-            }
-
-            $html .= $linkHtml;
-        }
-
-        $html .= '</ul>';
-
-        return $html;
-    }
+   
     public function search_old(Request $request)
     {
         $zone_id = json_decode($this->zone_id, true);
@@ -836,23 +749,23 @@ class FrontController extends Controller
 
             switch ($result->result_type) {
                 case 'product':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $url = route('product.details', [_selectedCity(), $result->slug]);
 
                     $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'keyword':
-                    $url = route('product.details', [$result->cat_slug, $result->slug]);
+                    $url = route('product.details', [_selectedCity(), $result->slug]);
                     $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->keyword_text) . ' - ' . e($result->name) . '</span></a></li>';
                     break;
 
                 case 'category':
-                    $url = route('category.listing', [$result->slug]);
+                    $url = route('category.listing', [$result->slug, _selectedCity()]);
                     $linkHtml = '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Category</small></a></li>';
                     break;
 
                 case 'store':
-                    $url = route('store.details', [$result->slug]);
+                    $url = route('store.details', [_selectedCity() , $result->slug]);
                     $linkHtml = '<li class="d-flex gap-2" ><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
                     break;
             }
@@ -2232,7 +2145,7 @@ class FrontController extends Controller
         // prx($store->galleries);
         return view('front-views.store_gallery', compact('store'));
     }
-    public function store_details(Request $request, $slug)
+    public function store_details(Request $request, $city, $slug)
     {
         $check_module = DB::table('stores')->where('slug', $slug)->first();
         if ($check_module) {

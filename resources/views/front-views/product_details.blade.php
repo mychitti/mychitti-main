@@ -1,17 +1,32 @@
 @extends('front-views.layout')
+@php
+    $service_name = ucwords($item->name);
+    $city_name = session('customer_city') ?? 'Tirupati';
+    $same_category_services = '';
 
-@section('title', $item->name . $module)
+    $title = str_replace(
+        ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
+        [$service_name, $city_name, $item_area_keywords ?? ''],
+        $item->meta_title,
+    );
+    $desc = str_replace(
+        ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
+        [$service_name, $city_name, $item_area_keywords ?? ''],
+        $item->meta_desc,
+    );
+@endphp
 
-@section('metatitle', $item->name)
+@section('title', $title ?? $item->name)
+
 @section('meta_keywords', $keywords)
-@section('meta_description', $item->description)
+@section('meta_description', $desc ?? $item->description)
 
 @push('meta_tags')
     <meta property="og:title" content="{{ $item->name }}">
     <meta property="og:description" content="{{ $item->description }}">
     <meta property="og:image" content="{{ asset('storage/app/public/product/') . '/' . $item->image }}">
     <meta property="og:url" content="{{ asset('storage/app/public/product/') . '/' . $item->image }}">
-    <meta property="og:type" content="product">
+    <meta property="og:type" content="service">
 @endpush
 @push('css_or_js')
     <script type="text/javascript"
@@ -19,6 +34,51 @@
         async="async"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
+        .rating-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stars {
+            position: relative;
+            display: inline-flex;
+            font-size: 20px;
+            gap: 2px;
+        }
+
+        .stars-outer {
+            position: relative;
+            display: inline-flex;
+            gap: 2px;
+        }
+
+        .stars-outer::before {
+            content: "★★★★★";
+            color: #ddd;
+            letter-spacing: 2px;
+        }
+
+        .stars-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            color: #ffd700;
+        }
+
+        .stars-inner::before {
+            content: "★★★★★";
+            letter-spacing: 2px;
+        }
+
+        .rating-value {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
         .owl-carousel .owl-item img {
             border-radius: 10px !important;
         }
@@ -308,7 +368,23 @@
             {{-- padding-left: 15px; --}}
         }
 
+        .one-line-ellipsis {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+            -webkit-line-clamp: 1;
+            text-overflow: ellipsis;
+        }
 
+        .two-line-ellipsis {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+            -webkit-line-clamp: 2;
+            text-overflow: ellipsis;
+        }
 
         @media (max-width: 768px) {
             .rm-content-collapsed {
@@ -328,48 +404,49 @@
     {{-- style="display:none;" --}}
 
     <div class="page_loader" style="display:none;">
-        <img style="width: 300px;filter: hue-rotate(300deg);"
+        <img loading="lazy" style="width: 300px;filter: hue-rotate(300deg);"
             src="{{ asset('storage/app/public/util/charlie-loader.gif') }}">
     </div>
 
     <!-- Single Product Start -->
-    <div class="container-fluid  mt-5">
+    <div class="  mt-5">
         <div class="container ">
             <div class="row g-4 mb-5">
                 <div class="col-12">
                     @if (count($data['banners']))
-                        <div class="owl-carousel banner-carousel " style="  margin: 10px auto;aspect-ratio: 4;">
+                        <div class="owl-carousel banner-carousel " style="  margin: 10px auto;">
                             @foreach ($data['banners'] as $key => $value)
                                 @if ($value['link'])
                                     <a href="{{ $value['link'] }}">
-                                        <img loading="lazy"
+                                        <img loading="lazy" loading="lazy"
                                             src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
-                                            alt="">
+                                            alt="{{ $value['title'] }}">
                                     </a>
                                     {{--  --}}
                                 @else
-                                    <img loading="lazy" style="  aspect-ratio: 4;"
+                                    <img loading="lazy" loading="lazy"
                                         src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
-                                        alt="">
+                                        alt="{{ $value['title'] }}">
                                     {{--  --}}
                                 @endif
                             @endforeach
                         </div>
+                    @endif
                 </div>
-                @endif
                 <div class="{{ $is_inventory_product ? 'col-12' : 'col-12' }} row  mt-5">
                     {{-- banner --}}
 
                     <div class="<?= $module == 5 ? 'col-md-6' : 'col-md-4' ?>">
                         <div class=" rounded mb-3" style="position: sticky;top: 130px;z-index:2;">
                             <div class="owl-carousel banner-carousel22 justify-content-center">
-                                <img src="{{ asset('storage/app/public/product/') . '/' . $item->image }}"
+                                <img loading="lazy" src="{{ asset('storage/app/public/product/') . '/' . $item->image }}"
                                     {{-- --}}
                                     style="<?= $module == 5 ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ; {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
                                     alt="{{ $item->name }}">
+
                                 @if ($item->images)
                                     @foreach (json_decode($item->images, true) as $key => $value)
-                                        <img src="{{ asset('storage/app/public/product/') . '/' . $value }}"
+                                        <img loading="lazy" src="{{ asset('storage/app/public/product/') . '/' . $value }}"
                                             style="<?= $module == 5 ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ;  {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
                                             class="rounded" alt="{{ $item->name }}">
                                     @endforeach
@@ -377,6 +454,7 @@
                             </div>
 
                             @php $variations = json_decode($item->variations); @endphp
+
                             @if (isset($item->suspended) && $item->suspended)
                                 Not Available
                             @else
@@ -406,6 +484,15 @@
                                 @endif
                             @endif
                         </div>
+                        <p class="text-center">
+                            @php
+                                $content = str_replace(
+                                    ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
+                                    [$service_name, $city_name, $item_area_keywords ?? ''],
+                                    $item->short_desc,
+                                );
+                            @endphp
+                            {{ $content }}</p>
                     </div>
                     <div class="<?= $module == 5 ? 'col-md-6' : 'col-md-4' ?> position-relative" style="z-index:2;">
                         <div onclick="wishlist({{ $item->id }}, '{{ _itemExistInWishlist($item->id) ? 'remove' : 'add' }}')"
@@ -419,11 +506,21 @@
                             </div>
                         @endif
                         <div style="position: sticky;top: 130px;">
-                            <h1 style="font-size: 26px;" class="fw-bold mb-2">{{ $item->name }}</h1>
+                            <h1 style="font-size: 26px;" class="fw-bold mb-2">
+                                @if ($item->seo_heading)
+                                    @php
+                                        $content = str_replace(
+                                            ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
+                                            [$service_name, $city_name, $item_area_keywords ?? ''],
+                                            $item->seo_heading,
+                                        );
+                                    @endphp
+                                    {{ $content }}
+                                @else
+                                    {{ $item->name }}
+                                @endif
+                            </h1>
 
-                            <p class="mb-3">Category: <a
-                                    href="{{ route('category.listing', [$item->category_slug]) }}">{{ $item->category_name }}</a>
-                            </p>
                             @php $variations = json_decode($item->variations) ?? []; @endphp
                             @if ($module == 5 || $is_inventory_product)
                                 @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
@@ -499,7 +596,7 @@
                                     </div>
                                 </div>
                                 @if ($module == 5)
-                                    Seller: <a href="{{ route('store.details', [$item->store_slug]) }}"
+                                    Seller: <a href="{{ route('store.details', [_selectedCity() , $item->store_slug]) }}"
                                         class="mb-1">{{ $item->store_name }}</a>
                                 @endif
                             @else
@@ -527,6 +624,8 @@
                             @endif
 
                             <div class="share_buttons_div ">
+                                Know someone who might need this? Share with friends and family!
+
                                 <div class="sharethis-inline-share-buttons"></div>
                             </div>
                         </div>
@@ -536,25 +635,45 @@
                         @if ($module == 6 && !$is_inventory_product)
                             <div class="">
                                 @if (count($stores))
+                                    <h2 style="    font-size: 16px;font-family: revert;">Available {{ $item->name }} Providers <span
+                                            class="location_name_show"></span> ({{ count($stores) }})</h2>
+
                                     @foreach ($stores as $store)
-                                        <div class="d-flex align-items-center justify-content-start my-1">
-                                            <div class=" mx-2" style="width: 100px; height: 100px;">
-                                                <img style="height: 75px; width: 75px; object-fit:cover;"
+                                        <a href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"
+                                            class="d-flex gap-2 position-relative align-items-center justify-content-start my-2 p-2 shadow-sm rounded">
+                                            <div class=" mx-2">
+                                                <img loading="lazy" style="height: 75px; width: 75px; object-fit:cover; font-size: 9px;"
                                                     src="{{ asset('storage/app/public/store/') . '/' . $store->logo }}"
                                                     class="border rounded" alt="{{ $store->name }}">
                                             </div>
                                             <div style=" width: 65%;">
-                                                <h6 class="mb-2"><a
-                                                        href="{{ route('store.details', [$store->slug]) }}">{{ ucfirst($store->name) }}</a>
+
+                                                <h6 class="mb-2 d-flex align-items-center">
+                                                    <span class="two-line-ellipsis">{{ ucfirst($store->name) }}</span>
+                                                    {!! _verifiedStoreBadge($store->id) !!}
                                                 </h6>
-                                                <p class="address_elem"><i
-                                                        class="fas fa-map-marker-alt"></i>{{ $store->address }}</p>
+                                                <p class="address_elem text-dark one-line-ellipsis mb-1"
+                                                    style="font-size: 12px;"><i class="fas fa-map-marker-alt"></i>
+                                                    {{ $store->address }}</p>
+                                                @if ($store->rating_count)
+                                                    <div class="rating-container">
+                                                        <div class="stars-outer">
+                                                            <div class="stars-inner"
+                                                                style="width: {{ ($store->average_rating / 5) * 100 }}%">
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            class="rating-value">{{ number_format($store->average_rating, 1) }}
+                                                            ({{ $store->rating_count }} Reviews)
+                                                        </span>
+                                                    </div>
+                                                @endif
                                             </div>
-                                        </div>
+                                        </a>
                                     @endforeach
                                 @else
                                     <div class="h-100 flex-column justify-content-center d-flex align-items-center">
-                                        <img style=" width: 200px; object-fit:cover;"
+                                        <img loading="lazy" style=" width: 200px; object-fit:cover;"
                                             src="{{ asset('storage/app/public/util/undraw_file-search_cbur (1).png') }}"
                                             class=" rounded" alt="Image">
 
@@ -592,7 +711,7 @@
                                         aria-labelledby="nav-mission-tab">
                                         @foreach ($data['reviews'] as $rev)
                                             <div class="d-flex">
-                                                <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
+                                                <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                                     class="img-fluid rounded-circle p-3"
                                                     style="width: 100px; height: 100px;" alt="user">
                                                 <div class="">
@@ -613,7 +732,7 @@
                                                         @if (!empty($attachments))
                                                             @foreach ($attachments as $img)
                                                                 <a target="_blank"
-                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
                                                                         class="rounded" style="width: 75px;"
                                                                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                         alt="review image"></a>
@@ -637,7 +756,7 @@
 
             </div>
 
-            <h3 class="mt-5">Related {{ $module == 5 ? 'Products' : 'Services' }}</h3>
+            <h2 class="mt-5">Related {{ $module == 5 ? 'Products' : 'Services' }}</h2>
             <div class="">
                 <div class="owl-carousel related-carousel justify-content-center">
                     @foreach ($data['related_products'] as $pro)
@@ -657,7 +776,7 @@
                             <div class="rounded position-relative fruite-item">
 
                                 <div class="fruite-img" style="height: 200px !important;">
-                                    <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}"> <img
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
                                             loading="lazy" style="height: 200px !important;object-fit:cover"
                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
@@ -686,7 +805,7 @@
 
                                 <div class="p-2 border border-top-0 rounded-bottom">
 
-                                    <a href="{{ route('product.details', [$pro->cat_slug, $pro->slug]) }}">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                         <h4 class="two-line-ellipsis text-start" title="{{ ucfirst($pro->name) }}"
                                             style="    height: 57px;font-size: 18px;">
                                             {{ ucfirst($pro->name) }}</h4>
@@ -751,18 +870,18 @@
                     @endforeach
                 </div>
             </div>
-            <h3 class="my-3">Featured {{ $module == 5 ? 'Products' : 'Services' }}</h3>
+            <h2 class="my-3">Featured {{ $module == 5 ? 'Products' : 'Services' }}</h2>
             <div class="owl-carousel featured-carousel justify-content-center">
                 @foreach ($data['featured_products'] as $fPro)
                     <div class="d-flex border rounded align-items-center justify-content-start my-1 p-1">
                         <div class="rounded border  " style="">
-                            <img style="width: 80px; height:80px; object-fit:cover;"
+                            <img loading="lazy" style="width: 80px; height:80px; object-fit:cover;"
                                 src="{{ asset('storage/app/public/product/') . '/' . $fPro->image }}" class="rounded"
                                 alt="Image">
                         </div>
                         <div class="mx-2">
                             <h6 class="mb-2 two-line-ellipsis"><a
-                                    href="{{ route('product.details', [$fPro->cat_slug, $fPro->slug]) }}">{{ ucfirst($fPro->name) }}</a>
+                                    href="{{ route('product.details', [_selectedCity(), $fPro->slug]) }}">{{ ucfirst($fPro->name) }}</a>
                             </h6>
                             @if ($module == 5)
                                 <div class="d-flex mb-2">
@@ -803,8 +922,70 @@
             </div>
         </div>
     </div>
-    <!-- Single Product End -->
+    <style>
+        .area_seo {
+            background-color: white !important;
+            padding: 0 23px;
+        }
 
+        .area_seo>* {
+            color: black !important;
+        }
+    </style>
+    <!-- Single Product End -->
+    <div class="area_seo">
+
+
+        {{-- FOOTER SEO CONTENT ============================ --}}
+        @if (!empty($data['seoContent']) && !empty($data['seoContent']->content))
+            @php
+                $content = $data['seoContent']->content;
+                $content = str_replace(
+                    ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}', '{SAME_CATEGORY_SERVICES}'],
+                    [$service_name, $city_name, $item_area_keywords ?? '', $same_category_services],
+                    $content,
+                );
+            @endphp
+
+            {!! $content !!}
+        @endif
+        {{-- FAQs ================================== --}}
+        <h5>Frequently Asked Questions</h5>
+        @if (!empty($data['faqContent']) && !empty($data['faqContent']->content))
+            @php
+                $content = $data['faqContent']->content;
+
+                $content = str_replace(
+                    ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}', '{SAME_CATEGORY_SERVICES}'],
+                    [$service_name, $city_name, $item_area_keywords ?? '', $same_category_services],
+                    $content,
+                );
+            @endphp
+
+            {!! $content !!}
+        @endif
+
+        {{-- SEO KEYWORDS ========================== --}}
+        @if ($item_area_keywords_arr->isNotEmpty() && !empty(trim($keywords)))
+            <h3 style="    font-size: 16px;">{{ $item->name }} in {{ $city_name }}</h3>
+
+            @php
+                $common_keywords = array_filter(array_map('trim', explode(',', $keywords)));
+                $location_keywords = $item_area_keywords_arr;
+            @endphp
+
+            @foreach (array_slice($common_keywords, 0, 5) as $common_keyword)
+                @foreach ($location_keywords->take(5) as $loc_keyword)
+                    <span>
+                        <a class="text-dark" style="font-size:10px;" href="">
+                            {{ $common_keyword }} in {{ $loc_keyword }}
+                        </a>
+                    </span> |
+                @endforeach
+            @endforeach
+        @endif
+
+    </div>
 @endsection
 
 @push('script_2')
@@ -920,7 +1101,7 @@
                             console.log(images)
                             // Append new images
                             images.forEach(function(image) {
-                                owl.append('<div class="item"><img src="' + path + image +
+                                owl.append('<div class="item"><img loading="lazy" src="' + path + image +
                                     '" alt="Carousel Image"></div>');
                             });
 

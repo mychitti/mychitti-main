@@ -42,7 +42,7 @@
                                     <p>{{ $store->footer_text }}</p>
                                     <div class="d-flex justify-content-between flex-lg-wrap">
                                         <p class="fs-6 fw-bold mb-0"></p>
-                                        <a href="{{ route('store.details', [$store->slug]) }}"
+                                        <a href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"
                                             class="btn border border-secondary rounded p-1 px-2 text-primary"><i
                                                 class="fa fa-shopping-bag me-2 text-primary"></i> Explore </a>
                                     </div>

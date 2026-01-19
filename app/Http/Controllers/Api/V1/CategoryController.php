@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class CategoryController extends Controller
 {
-    public function get_categories(Request $request, $search = null)
+    public function get_categories_bkp(Request $request, $search = null)
     {
         if($request->has('module_id')){
             try {
@@ -56,7 +56,54 @@ class CategoryController extends Controller
       
     }
 
-  
+   public function get_categories(Request $request, $search = null)
+    {
+        $limit  = $request['limit'] ?? 10;
+        $offset  = $request['offset'] ?? 1;
+        if($request->has('module_id')){
+            try {
+                $categories = Category::where(['position' => 0, 'status' => 1])
+                ->module($request->module_id)
+                ->orderBy('priority', 'desc')->get();
+                return response()->json($categories, 200);
+            } catch (\Exception $e) {
+                return response()->json([], 200);
+            }
+        }else{
+
+             try {
+            $key = explode(' ', $search);
+            $featured = $request->query('featured');
+            $categories = Category::withoutGlobalScopes()->
+            // ->with(['childes' => function ($query) {
+            //     $query->where('status', 1)->withCount(['products', 'childes' => function ($query) {
+            //         $query->where('status', 1);
+            //     }]);
+            // }])
+                where(['position' => 0, 'status' => 1])
+                ->when(config('module.current_module_data'), function ($query) {
+                    $query->module(config('module.current_module_data')['id']);
+                })
+                ->when($featured, function ($query) {
+                    $query->featured();
+                })
+                ->when($search, function ($query) use ($key) {
+                    $query->where(function ($q) use ($key) {
+                        foreach ($key as $value) {
+                            $q->orWhere('name', 'like', "%" . $value . "%");
+                        }
+                    });
+                })
+                ->select('id','name', 'image')
+                ->orderBy('priority', 'desc')->paginate($limit, ['*'], 'page', $offset);
+            return response()->json($categories, 200);
+        } catch (\Exception $e) {
+            return response()->json([], 200);
+        } 
+        }
+      
+    }
+    
     public function get_childes($id)
     {
         try {

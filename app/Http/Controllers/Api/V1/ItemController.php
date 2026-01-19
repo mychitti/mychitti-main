@@ -38,9 +38,8 @@ class ItemController extends Controller
         $data['stores'] = Helpers::store_data_formatting($data['stores'], true);
         return response()->json($data, 200);
     }
-    public function fetch_services(Request $request)
+    public function fetch_services_bkp(Request $request)
     {
-
         $validator = Validator::make($request->all(), [
             'cat_id' => 'required',
         ]);
@@ -64,6 +63,77 @@ class ItemController extends Controller
         $categories = DB::table('items')->whereIn('category_id', $allcategories)->get();
 
         return response()->json(['status' => true, 'services' => $categories]);
+    }
+    public function popular_services(Request $request,  $category = null)
+    {
+
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id = $request->header('zoneId');
+        $limit  = $request['limit'] ?? 10;
+        $offset  = $request['offset'] ?? 1;
+
+        $items =  DB::table('service_requests')
+            ->join('items', 'service_requests.item_id', 'items.id')
+            ->join('stores', function ($join) use ($zone_id) {
+                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
+                $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
+            })
+            ->join('categories', 'categories.id', 'items.category_id')
+            ->whereNull('categories.added_by')
+            ->select('items.id','items.name', 'items.image',DB::raw('COUNT(service_requests.item_id) as total_requests'))
+            ->groupBy('items.id')
+           ->orderBy('total_requests', 'desc')
+            ->paginate($limit, ['*'], 'page', $offset);
+
+        return response()->json($items, 200);
+    }
+    public function fetch_services(Request $request,  $category = null)
+    {
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id = $request->header('zoneId');
+        $limit  = $request['limit'] ?? 10;
+        $offset  = $request['offset'] ?? 1;
+        $featured = $request->query('featured');
+        $items = Item::withoutGlobalScopes()
+            ->where('items.status', 1)
+
+            ->join('stores', function ($join) {
+                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids)');
+            })
+
+            ->whereIn('stores.zone_id', json_decode($zone_id, true))
+
+            ->when(config('module.current_module_data'), function ($query) {
+                $query->where('items.module_id', config('module.current_module_data')['id']);
+            })
+
+            ->when($category, function ($query) use ($category) {
+                $query->where('items.category_id', $category);
+            })
+
+            ->when($featured, function ($query) {
+                $query->featured();
+            })
+
+            ->select('items.id', 'items.name', 'items.image')
+            ->groupBy('items.id')
+            ->orderBy('items.id', 'desc')
+            ->paginate($limit, ['*'], 'page', $offset);
+
+        return response()->json($items, 200);
     }
     public function searchbar(Request $request)
     {
@@ -120,7 +190,7 @@ class ItemController extends Controller
         foreach ($keywordsMatch as $result) {
             $catId = $categoryIds[$result] ?? 'Unknown'; // Get category ID or default to 'Unknown'
             $catName = $categoryNames[$result] ?? 'Unknown'; // Get category ID or default to 'Unknown'
-            $resultItems .= '<li><a href="' . route('category.listing', [$catId]) . '">' . $result . ' - in ' . $catName . ' </a></li>';
+            $resultItems .= '<li><a href="' . route('category.listing', [$catId, _selectedCity()]) . '">' . $result . ' - in ' . $catName . ' </a></li>';
         }
         // end keywords ====================
 
@@ -138,10 +208,10 @@ class ItemController extends Controller
             $resultItems .= '<li><a href="' . route('product.details', [$pro->cat_slug, $pro->slug]) . '">' . $pro->name . ' </a></li> ';
         }
         foreach ($matchingCategories as $pro) {
-            $resultItems .= '<li><a href="' . route('category.listing', [$pro->slug]) . '">' . $pro->name . ' - Category </a></li>';
+            $resultItems .= '<li><a href="' . route('category.listing', [$pro->slug, _selectedCity()]) . '">' . $pro->name . ' - Category </a></li>';
         }
         foreach ($matchingStores as $pro) {
-            $resultItems .= '<li><a href="' . route('store.details', [$pro->slug]) . '">' . $pro->name . ' - Store </a></li>';
+            $resultItems .= '<li><a href="' . route('store.details', [_selectedCity() ,$pro->slug]) . '">' . $pro->name . ' - Store </a></li>';
         }
 
         if (count($matchingProducts) || count($matchingCategories) || count($matchingStores) || count($keywordsMatch)) {
@@ -155,9 +225,10 @@ class ItemController extends Controller
             return response()->json(['status' => false, 'html' => $html]);
         }
     }
-    public function keywords_searchbar(Request $request){
+    public function keywords_searchbar(Request $request)
+    {
 
-         $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'keyword' => 'required',
         ]);
         $keyword = $request['keyword'];
@@ -174,8 +245,8 @@ class ItemController extends Controller
         }
 
 
-         $zone_id = json_decode($request->header('zoneId'), true);
- $resultItems = [];
+        $zone_id = json_decode($request->header('zoneId'), true);
+        $resultItems = [];
         $matchingProducts = DB::table('items')->where('items.name', 'like', '%' . $request->keyword . '%')
             ->where('items.is_approved', 1)
             ->where('items.status', 1)
@@ -214,16 +285,16 @@ class ItemController extends Controller
 
 
         foreach ($matchingProducts as $pro) {
-             $r = [];
-                $r['type'] = 'item';
-                $r['image'] = asset('storage/app/public/product/')  . '/' . $service->image;
-                $r['id'] = $serviceId;
-                $r['name'] =  $result->keyword . ' - ' . $service->name;;
-                $r['data'] = Item::find($serviceId);
-                $resultItems[] = $r;
+            $r = [];
+            $r['type'] = 'item';
+            $r['image'] = asset('storage/app/public/product/')  . '/' . $service->image;
+            $r['id'] = $serviceId;
+            $r['name'] =  $result->keyword . ' - ' . $service->name;;
+            $r['data'] = Item::find($serviceId);
+            $resultItems[] = $r;
         }
         foreach ($matchingCategories as $pro) {
-             $r = [];
+            $r = [];
             $r['type'] = 'category';
             $r['id'] = $pro->id;
             $r['image'] = asset('storage/app/public/category/')  . '/' . $pro->image;
@@ -241,7 +312,7 @@ class ItemController extends Controller
             $resultItems[] = $r;
         }
 
-         $total_size = count($matchingStores) + count($matchingCategories) + count($matchingProducts) + count($keywordsMatch);
+        $total_size = count($matchingStores) + count($matchingCategories) + count($matchingProducts) + count($keywordsMatch);
         return response()->json(['total_size' => $total_size, 'limit' => 500, 'offset' => 1, 'products' => $resultItems]);
     }
     public function keywords_searchbar_fhjd(Request $request)

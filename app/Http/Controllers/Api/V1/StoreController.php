@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 
 class StoreController extends Controller
 {
-    public function get_stores(Request $request, $filter_data="all")
+    public function get_stores(Request $request, $filter_data = "all")
     {
         if (!$request->hasHeader('zoneId')) {
             $errors = [];
@@ -31,18 +31,97 @@ class StoreController extends Controller
 
         $type = $request->query('type', 'all');
         $store_type = $request->query('store_type', 'all');
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::get_stores( $zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'),$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::get_stores($zone_id, $filter_data, $type, $store_type, $request['limit'], $request['offset'], $request->query('featured'), $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
     }
-    
- 
 
-    public function get_review(Request $request){
+
+
+    public function get_nearby_stores(Request $request)
+    {
+        $radius = 10;
+        $limit = $request->query('limit', 10);
+        $offset = $request->query('offset', 1);
+
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        if (!$request->hasHeader('latitude')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.latitude_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        if (!$request->hasHeader('longitude')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.longitude_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id = $request->header('zoneId');
+        $userLat = (float)$request->header('latitude');
+        $userLng = (float)$request->header('longitude');
+
+        $zoneIds = json_decode($zone_id, true);
+
+        // Active subscribed store IDs
+        $subscribedStoreIds = DB::table('stores as s')
+            ->join('vendor_subscriptions as vs', 'vs.vendor_id', '=', 's.id')
+            ->where('vs.plan_expiry', '>', now())
+            ->distinct()
+            ->pluck('s.id')
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+
+        // Prevent SQL error if empty
+        $subscribedIdsSql = count($subscribedStoreIds)
+            ? implode(',', $subscribedStoreIds)
+            : '0';
+
+        // Distance + subscription flag
+        $distanceSql = "(6371 * acos(
+        cos(radians(?)) *
+        cos(radians(stores.latitude)) *
+        cos(radians(stores.longitude) - radians(?)) +
+        sin(radians(?)) *
+        sin(radians(stores.latitude))
+    ))";
+
+        $stores = Store::select('stores.*')
+        ->select('stores.id', 'stores.name', 'stores.logo', 'stores.cover_photo')
+            ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
+            ->selectRaw("CASE 
+            WHEN stores.id IN ($subscribedIdsSql) THEN 1 ELSE 0 
+        END AS subscribed")
+            ->where([
+                'stores.active' => 1,
+                'stores.status' => 1,
+                'stores.module_id' => 6
+            ])
+            ->whereIn('stores.zone_id', $zoneIds)
+            ->whereNotNull('stores.latitude')
+            ->whereNotNull('stores.longitude')
+            ->groupBy('stores.id')
+            ->having('distance', '<=', $radius)
+            ->orderByDesc('subscribed')   // subscribed first
+            ->orderBy('distance')         // nearest first
+            ->paginate($limit, ['*'], 'page', $offset);;
+
+        return response()->json($stores, 200);
+    }
+    public function get_review(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'store_id' => 'required',
         ]);
@@ -59,15 +138,15 @@ class StoreController extends Controller
 
         foreach ($multi_review as $key => $value) {
             $attachment = json_decode($value->attachment);
-            if(!empty($attachment)){
-                $multi_review[$key]->attachment = asset('storage/app/public/') . '/'.  $attachment[0];
+            if (!empty($attachment)) {
+                $multi_review[$key]->attachment = asset('storage/app/public/') . '/' .  $attachment[0];
             }
         }
 
         return response()->json(['message' => translate('messages.data_retrieved_successfully'), 'data' => $multi_review], 200);
-
     }
-    public function add_review(Request $request){
+    public function add_review(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'user_id' => 'required',
             'store_id' => 'required',
@@ -79,7 +158,7 @@ class StoreController extends Controller
         $order = AcceptedServiceRequest::find($request->acc_id);
         if (isset($order) == false) {
             $validator->errors()->add('acc_id', translate('messages.service_data_not_found'));
-        }else if($order->current_status != 'Completed'){
+        } else if ($order->current_status != 'Completed') {
             $validator->errors()->add('not_completed', 'Service not completed yet');
         }
 
@@ -90,7 +169,7 @@ class StoreController extends Controller
         }
 
         $multi_review = StoreReview::where(['store_id' => $request->store_id, 'user_id' => $request->user_id, 'order_id' => $request->acc_id])->first();
-        if (isset($multi_review)) { 
+        if (isset($multi_review)) {
             return response()->json([
                 'errors' => [
                     ['code' => 'review', 'message' => translate('messages.already_submitted')]
@@ -126,9 +205,9 @@ class StoreController extends Controller
         $review->save();
 
         $ratingData = DB::table('store_reviews')
-        ->selectRaw('AVG(rating) as avg_rating, COUNT(rating) as rating_count')
-        ->where('store_id', $request->store_id)
-        ->first();
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(rating) as rating_count')
+            ->where('store_id', $request->store_id)
+            ->first();
 
         $store->rating_count = $ratingData->rating_count;
         $store->average_rating = $ratingData->avg_rating;
@@ -139,7 +218,7 @@ class StoreController extends Controller
 
         return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
     }
-    public function get_latest_stores(Request $request, $filter_data="all")
+    public function get_latest_stores(Request $request, $filter_data = "all")
     {
         if (!$request->hasHeader('zoneId')) {
             $errors = [];
@@ -151,10 +230,10 @@ class StoreController extends Controller
 
         $type = $request->query('type', 'all');
 
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::get_latest_stores($zone_id, $request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::get_latest_stores($zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
@@ -170,10 +249,10 @@ class StoreController extends Controller
             ], 403);
         }
         $type = $request->query('type', 'all');
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::get_popular_stores($zone_id, $request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::get_popular_stores($zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
@@ -189,10 +268,10 @@ class StoreController extends Controller
             ], 403);
         }
         $type = $request->query('type', 'all');
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::get_discounted_stores($zone_id, $request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::get_discounted_stores($zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
@@ -208,10 +287,10 @@ class StoreController extends Controller
             ], 403);
         }
         $type = $request->query('type', 'all');
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::get_top_rated_stores($zone_id, $request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::get_top_rated_stores($zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         usort($stores['stores'], function ($a, $b) {
@@ -224,42 +303,40 @@ class StoreController extends Controller
 
     public function get_popular_store_items($id)
     {
-        $items = Item::
-        when(is_numeric($id),function ($qurey) use($id){
+        $items = Item::when(is_numeric($id), function ($qurey) use ($id) {
             $qurey->where('store_id', $id);
         })
-        ->when(!is_numeric($id), function ($query) use ($id) {
-            $query->whereHas('store', function ($q) use ($id) {
-                $q->where('slug', $id);
-            });
-        })
-        ->active()->popular()->limit(10)->get();
+            ->when(!is_numeric($id), function ($query) use ($id) {
+                $query->whereHas('store', function ($q) use ($id) {
+                    $q->where('slug', $id);
+                });
+            })
+            ->active()->popular()->limit(10)->get();
         $items = Helpers::product_data_formatting($items, true, true, app()->getLocale());
 
         return response()->json($items, 200);
     }
 
-    public function get_details(Request $request,$id)
+    public function get_details(Request $request, $id)
     {
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $store = StoreLogic::get_store_details($id,$longitude,$latitude);
-        if($store)
-        {
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $store = StoreLogic::get_store_details($id, $longitude, $latitude);
+        if ($store) {
             $category_ids = DB::table('items')
-            ->join('categories', 'items.category_id', '=', 'categories.id')
-            ->selectRaw('categories.position as positions, IF((categories.position = "0"), categories.id, categories.parent_id) as categories')
-            ->where('items.store_id', $store->id)
-            ->where('categories.status',1)
-            ->groupBy('categories','positions')
-            ->get();
+                ->join('categories', 'items.category_id', '=', 'categories.id')
+                ->selectRaw('categories.position as positions, IF((categories.position = "0"), categories.id, categories.parent_id) as categories')
+                ->where('items.store_id', $store->id)
+                ->where('categories.status', 1)
+                ->groupBy('categories', 'positions')
+                ->get();
 
             $store = Helpers::store_data_formatting($store);
             $store['category_ids'] = array_map('intval', $category_ids->pluck('categories')->toArray());
-            $store['category_details'] = Category::whereIn('id',$store['category_ids'])->get();
+            $store['category_details'] = Category::whereIn('id', $store['category_ids'])->get();
             $store['price_range']  = Item::withoutGlobalScopes()->where('store_id', $store->id)
-            ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
-            ->get(['min_price','max_price']);
+                ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
+                ->get(['min_price', 'max_price']);
         }
         return response()->json($store, 200);
     }
@@ -283,10 +360,10 @@ class StoreController extends Controller
 
         $type = $request->query('type', 'all');
 
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude');
-        $latitude= (float)$request->header('latitude');
-        $stores = StoreLogic::search_stores($request['name'], $zone_id, $request->category_id,$request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $stores = StoreLogic::search_stores($request['name'], $zone_id, $request->category_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
         return response()->json($stores, 200);
     }
@@ -304,10 +381,10 @@ class StoreController extends Controller
 
 
         $reviews = Review::with(['customer', 'item'])
-        ->whereHas('item', function($query)use($id){
-            return $query->where('store_id', $id);
-        })
-        ->active()->latest()->get();
+            ->whereHas('item', function ($query) use ($id) {
+                return $query->where('store_id', $id);
+            })
+            ->active()->latest()->get();
 
         $storage = [];
         foreach ($reviews as $temp) {
@@ -315,19 +392,16 @@ class StoreController extends Controller
             $temp['item_name'] = null;
             $temp['item_image'] = null;
             $temp['customer_name'] = null;
-            if($temp->item)
-            {
+            if ($temp->item) {
                 $temp['item_name'] = $temp->item->name;
                 $temp['item_image'] = $temp->item->image;
-                if(count($temp->item->translations)>0)
-                {
+                if (count($temp->item->translations) > 0) {
                     $translate = array_column($temp->item->translations->toArray(), 'value', 'key');
                     $temp['item_name'] = $translate['name'];
                 }
             }
-            if($temp->customer)
-            {
-                $temp['customer_name'] = $temp->customer->f_name.' '.$temp->customer->l_name;
+            if ($temp->customer) {
+                $temp['customer_name'] = $temp->customer->f_name . ' ' . $temp->customer->l_name;
             }
 
             unset($temp['item']);
@@ -339,7 +413,8 @@ class StoreController extends Controller
     }
 
 
-    public function get_recommended_stores(Request $request){
+    public function get_recommended_stores(Request $request)
+    {
 
 
         if (!$request->hasHeader('zoneId')) {
@@ -350,10 +425,10 @@ class StoreController extends Controller
             ], 403);
         }
         $type = $request->query('type', 'all');
-        $zone_id= $request->header('zoneId');
-        $longitude= (float)$request->header('longitude') ?? 0;
-        $latitude= (float)$request->header('latitude') ?? 0;
-        $stores = StoreLogic::get_recommended_stores($zone_id, $request['limit'], $request['offset'], $type,$longitude,$latitude);
+        $zone_id = $request->header('zoneId');
+        $longitude = (float)$request->header('longitude') ?? 0;
+        $latitude = (float)$request->header('latitude') ?? 0;
+        $stores = StoreLogic::get_recommended_stores($zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
         $stores['stores'] = Helpers::store_data_formatting($stores['stores'], true);
 
         return response()->json($stores, 200);
@@ -374,7 +449,7 @@ class StoreController extends Controller
         $longitude = (float) $request->header('longitude') ?? 0;
         $latitude = (float) $request->header('latitude') ?? 0;
         $filter = $request->query('filter', '');
-        $filter = $filter?(is_array($filter)?$filter:str_getcsv(trim($filter, "[]"), ',')):'';
+        $filter = $filter ? (is_array($filter) ? $filter : str_getcsv(trim($filter, "[]"), ',')) : '';
         $rating_count = $request->query('rating_count');
 
         switch ($data_type) {
@@ -419,5 +494,4 @@ class StoreController extends Controller
         $paginator['stores'] = Helpers::store_data_formatting($paginator['stores'], true);
         return response()->json($paginator, 200);
     }
-
 }

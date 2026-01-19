@@ -173,63 +173,66 @@
             </div>
         @endif
         <!-- Page Heading -->
-        @if (hasPermission('inventory_purchase_return', 'list'))
+        <div class="row">
+            @if (hasPermission('inventory_purchase_return', 'list'))
+                <div class="col-md-6">
+                    <div class="card mx-2 my-2 ">
+                        <div class="d-flex justify-content-between align-items-center px-2 py-1 flex-wrap ">
+                            <h1 class="page-header-title">
+                                <span class="page-header-icon">
+                                    <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26"
+                                        alt="">
+                                </span>
+                                <span>
+                                    Purchased Items
+                                    <span class="badge badge-soft-dark ml-2"
+                                        id="itemCount">{{ count($purchased_order_details) }}</span>
+                                </span>
+                            </h1>
+                            <form action="" class="d-flex date-range-form ">
+                                <button style="width:fit-content; white-space:nowrap"
+                                    class="btn_sm btn btn-outline-warning" type="button" data-toggle="modal"
+                                    data-target="#dateRangeModal">{{ translate($preset) }}</button>
+                                {{-- date range modal --}}
+                                @include('vendor-views/form_modals/date_range')
+                            </form>
+                        </div>
 
-            <div class="card mx-2 my-2">
-                <div class="d-flex justify-content-between align-items-center px-2 py-1 flex-wrap ">
-                    <h1 class="page-header-title">
-                        <span class="page-header-icon">
-                            <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
-                        </span>
-                        <span>
-                            Purchased Items
-                            <span class="badge badge-soft-dark ml-2"
-                                id="itemCount">{{ count($purchased_order_details) }}</span>
-                        </span>
-                    </h1>
-                    <form action="" class="d-flex date-range-form ">
-                        <button style="width:fit-content; white-space:nowrap" class="btn_sm btn btn-outline-warning"
-                            type="button" data-toggle="modal"
-                            data-target="#dateRangeModal">{{ translate($preset) }}</button>
-                        {{-- date range modal --}}
-                        @include('vendor-views/form_modals/date_range')
-                    </form>
-                </div>
+                        <div class="table-responsive datatable-custom" id="table-div">
+                            <table id="datatable"
+                                class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th class="border-0">{{ translate('sl') }}</th>
+                                        <th class="border-0">Item</th>
+                                        <th class="border-0">Stock</th>
+                                        <th class="border-0">Purchase At</th>
+                                        <th class="border-0">Action</th>
+                                    </tr>
+                                </thead>
 
-                <div class="table-responsive datatable-custom" id="table-div">
-                    <table id="datatable"
-                        class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
-                        <thead class="thead-light">
-                            <tr>
-                                <th class="border-0">{{ translate('sl') }}</th>
-                                <th class="border-0">Item</th>
-                                <th class="border-0">Stock</th>
-                                <th class="border-0">Purchase At</th>
-                                <th class="border-0">Action</th>
-                            </tr>
-                        </thead>
+                                <tbody id="set-rows">
+                                    @foreach ($purchased_order_details as $key => $detail)
+                                        <tr>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>
+                                                <div
+                                                    style="width: 300px;text-align: start !important;white-space: normal;">
 
-                        <tbody id="set-rows">
-                            @foreach ($purchased_order_details as $key => $detail)
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>
-                                        <div style="width: 300px;text-align: start !important;white-space: normal;">
+                                                    {{ $detail->item?->item_name }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-soft-danger rounded ml-1">
+                                                    {{ $detail->item?->stock }}</span>
+                                            </td>
+                                            <td>
+                                                {{ $detail->created_at }}
+                                            </td>
+                                            <td>
+                                                <div class="btn--container justify-content-center">
 
-                                            {{ $detail->item?->item_name }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-soft-danger rounded ml-1">
-                                            {{ $detail->item?->stock }}</span>
-                                    </td>
-                                    <td>
-                                        {{ $detail->created_at }}
-                                    </td>
-                                    <td>
-                                        <div class="btn--container justify-content-center">
-                                          
-                                            {{-- <a style="width:fit-content;padding : 0 5px !important;"
+                                                    {{-- <a style="width:fit-content;padding : 0 5px !important;"
                                             data-item-id="{{ $detail->item?->id }}"
                                             data-item-gst="{{ $detail->item?->gst_rate }}"
                                             data-item-price="{{ $detail->item?->selling_price }}"
@@ -251,31 +254,121 @@
                                             @csrf @method('post')
                                         </form> --}}
 
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
 
-                    @if (count($purchased_order_details) === 0)
-                        <div class="empty--data">
-                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                            <h5>
-                                {{ translate('no_data_found') }}
-                            </h5>
+                            @if (count($purchased_order_details) === 0)
+                                <div class="empty--data">
+                                    <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}"
+                                        alt="public">
+                                    <h5>
+                                        {{ translate('no_data_found') }}
+                                    </h5>
+                                </div>
+                            @endif
                         </div>
-                    @endif
+
+                    </div>
                 </div>
 
+            @endif
+            <div class="col-md-6">
+                <div class="card mx-2 my-2 ">
+                    <div class="d-flex justify-content-between align-items-center px-2 py-1 flex-wrap ">
+                        <h1 class="page-header-title">
+                            <span class="page-header-icon">
+                                <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26"
+                                    alt="">
+                            </span>
+                            <span>
+                                Return Slips
+                                <span class="badge badge-soft-dark ml-2"
+                                    id="itemCount">{{ count($purchased_order_details) }}</span>
+                            </span>
+                        </h1>
+                    </div>
+
+                    <div class="table-responsive datatable-custom" id="table-div">
+                        <table id="datatable"
+                            class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th class="border-0">{{ translate('sl') }}</th>
+                                    <th class="border-0">Invoices</th>
+                                    <th class="border-0">Slip PDF</th>
+                                    <th class="border-0">Created At</th>
+                                    <th class="border-0">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="set-rows"> 
+                                @foreach ($return_slip as $key => $slip)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td>
+                                            <div style="text-align: start !important;white-space: normal;">
+                                                @if ($slip->invoice_ids && is_array(json_decode($slip->invoice_ids)))
+                                                    @foreach (json_decode($slip->invoice_ids) as $key => $value)
+                                                        <a
+                                                            href="{{ asset('storage/app/public/invoice/') }}/{{ _manualInvoiceByInvoiceId($value)?->pdf }}">{{ $value }}</a>
+                                                    @endforeach
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a
+                                                href="{{ asset('storage/app/public/purchase-order/') }}/{{ $slip->pdf }}">View</a>
+                                        </td>
+                                        <td>
+                                            {{ $slip->created_at }}
+                                        </td>
+                                        <td>
+                                            <div class="btn--container justify-content-center">
+
+
+                                                <a class="btn action-btn btn--danger btn-outline-danger "
+                                                    href="javascript:" data-id="vendor-{{ $slip['id'] }}"
+                                                    data-message="{{ translate('If you want to remove this purchase order?') }}"
+                                                    title="{{ translate('messages.delete_purchase_order') }}"><i
+                                                        class="tio-delete-outlined"></i>
+                                                </a>
+                                                <form action="" method="post" id="vendor-{{ $slip['id'] }}">
+                                                    @csrf @method('post')
+                                                </form>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+
+                        @if (count($return_slips) === 0)
+                            <div class="empty--data">
+                                <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}"
+                                    alt="public">
+                                <h5>
+                                    {{ translate('no_data_found') }}
+                                </h5>
+                            </div>
+                        @endif
+                    </div>
+
+                </div>
             </div>
-        @endif
+
+        </div>
+
     </div>
 
 @endsection
 @push('script_2')
     <script>
-        $(document).on('click',".add_btn", function() {
+        $(document).on('click', ".add_btn", function() {
             let itemName = $(this).attr('data-item-name')
             let orderId = $(this).attr('data-order-id')
 

@@ -16,7 +16,11 @@ use BeyondCode\LaravelWebSockets\Facades\WebSocketsRouter;
 */
 
 Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function () {
-    Route::post('fetch-services', 'ItemController@fetch_services');
+    Route::get('fetch-services/{category_id?}', 'ItemController@fetch_services');
+    Route::group(['prefix' => 'services'], function () {
+        Route::get('popular', 'ItemController@popular_services');
+    });
+
     Route::post('sendotp', 'CustomerController@sendotp')->name('sendotp');
     Route::get('searchbar', 'ItemController@searchbar')->name('searchbar');
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
@@ -427,6 +431,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
         Route::group(['prefix' => 'stores'], function () {
             Route::get('get-stores/{filter_data}', 'StoreController@get_stores');
+            Route::get('nearby', 'StoreController@get_nearby_stores');
             Route::get('latest', 'StoreController@get_latest_stores');
             Route::get('popular', 'StoreController@get_popular_stores');
             Route::get('recommended', 'StoreController@get_recommended_stores');

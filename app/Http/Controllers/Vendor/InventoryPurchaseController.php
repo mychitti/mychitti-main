@@ -10,6 +10,7 @@ use App\Models\InventoryGatepass;
 use App\Models\ManualInvoice;
 use App\Models\ManualTrial;
 use App\Models\PurchaseOrder;
+use App\Models\ReturnPurchaseSlip;
 use App\Models\StoreCustomer;
 use App\Models\SupplyOrder;
 use App\Models\SupplyOrderItem;
@@ -129,11 +130,19 @@ class InventoryPurchaseController extends Controller
             })
             ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->get();
-        // prx($purchased_order_details);
-        return view('vendor-views.inventory.purchase.return', compact('purchased_order_details', 'preset'));
+        
+        $return_slips = ReturnPurchaseSlip::where('store_id',Helpers::get_store_id())->get();
+
+        return view('vendor-views.inventory.purchase.return', compact('return_slips','purchased_order_details', 'preset'));
     }
     public function return_store(Request $request)
     {
+        $request->validate([
+            'invoice_id'   => 'required|array|min:1',
+            'invoice_id.*' => 'required|string|max:255', // each element must not be empty
+        ], [
+            'invoice_id.required' => 'Please select invoice id'
+        ]);
         $data['vendor_id'] = $request->bill_to;
         $uDetails = StoreCustomer::with('billing_address')->where('id', $request->bill_to)->first();
         $bAddr = $uDetails->billing_address;
@@ -171,8 +180,15 @@ class InventoryPurchaseController extends Controller
         $data['price'] = $request->price;
         $data['notes'] = $request->notes;
         $data = Helpers::_generatePurchaseReturnPDF($data, false);
+
+        $slip = new ReturnPurchaseSlip();
+        $slip->invoice_ids = json_encode($invoiceIds);
+        $slip->pdf = $data['pdf'];
+        $slip->store_id = Helpers::get_store_id();
+        $slip->save();
+
         // $supplyOrder->update(['pdf' => $data['pdf']]);
-        // return redirect($data['url']);
+        return redirect($data['url']);
     }
     public function  items_in_invoice(Request $request)
     {
@@ -221,12 +237,12 @@ class InventoryPurchaseController extends Controller
     {
 
         $preset = request('date_range') ?? 'last_30_days';
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from  = $range['start'];
-            $formatted_to = $range['end'];
-            $search = $request->search ?? '';
-            $ids = $request->invoice_ids ?? null;
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+        $formatted_from  = $range['start'];
+        $formatted_to = $range['end'];
+        $search = $request->search ?? '';
+        $ids = $request->invoice_ids ?? null;
 
         $storeId = Helpers::get_store_id();
         $data['po_number_gst'] = Helpers::generatePoNumber('gst')['po_number'];
@@ -239,13 +255,13 @@ class InventoryPurchaseController extends Controller
         // purchase orders 
         $purchase_orders = SupplyOrder::with(["order_items", 'invoice'])->where('store_id', Helpers::get_store_id())->whereBetween('created_at', [$formatted_from, $formatted_to])->get();
 
-        return view('vendor-views.inventory.purchase.orders', compact('data','preset', 'purchase_orders', 'low_stock_items', 'vendors'));
+        return view('vendor-views.inventory.purchase.orders', compact('data', 'preset', 'purchase_orders', 'low_stock_items', 'vendors'));
     }
-    public function purchase_gatepass(Request $request){
+    public function purchase_gatepass(Request $request)
+    {
         return view('vendor-views.inventory.gatepass.list', compact('data', 'purchase_orders', 'low_stock_items', 'vendors'));
-        
     }
-  
+
     public function export_purchase_orders(Request $request)
     {
         $storeId = Helpers::get_store_id();

@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use App\Models\StoreSchedule;
 use App\CentralLogics\Helpers;
 use App\Models\WithdrawRequest;
+use App\Exports\StoreListExportNew;
 use App\Exports\StoreListExport;
 use App\Models\OrderTransaction;
 use App\CentralLogics\StoreLogic;
@@ -48,8 +49,10 @@ use MatanYadaev\EloquentSpatial\Objects\Point;
 use App\Exports\StoreWithdrawTransactionExport;
 use App\Exports\StoreWiseWithdrawTransactionExport;
 use App\Http\Controllers\Vendor\ProfileController;
+use App\Imports\StoreImport;
 use App\Models\AccountDetail;
 use App\Models\ActionLog;
+use App\Models\Admin;
 use App\Models\BusinessSetting;
 use App\Models\Category;
 use App\Models\InvoiceItem;
@@ -198,6 +201,19 @@ class VendorController extends Controller
             return response()->json(['status' => false]);
         }
     }
+    public function import(Request $request)
+    {
+        $file = $request->file('file');
+        $import = new StoreImport();
+        Excel::import($import, $file);
+        if (!empty($import->failedRows)) {
+            // dd($import->failedRows);
+        } else {
+        }
+
+        Toastr::success('Excel file imported successfully.');
+        return back();
+    }
     public function store(Request $request)
     {
 
@@ -211,7 +227,7 @@ class VendorController extends Controller
             'latitude' => 'required',
             'longitude' => 'required',
             // 'email' => 'required|unique:vendors',
-            'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20|unique:vendors',
+            'phone' => ['required', 'regex:/^\+\d{1,3}\d{10}$/', 'unique:vendors,phone'],
             // 'password' => [
             //     'required',
             //     Password::min(8)->mixedCase()->letters()->numbers()->symbols(),
@@ -642,7 +658,7 @@ class VendorController extends Controller
             $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
             $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
             $invoice->vendor_id = NULL;
-            $invoice->bill_to =  $request->store_id ;
+            $invoice->bill_to =  $request->store_id;
             $invoice->bill_to_type = 'vendor';
             $invoice->module_id =  6;
             $invoice->total_amount =  $invoiceTotalAmount;
@@ -894,8 +910,8 @@ class VendorController extends Controller
         }
         $module_categories = Category::where('module_id', Config::get('module.current_module_id'))->where('position', 0)->get();
         $module_subcategories = Category::where('module_id', Config::get('module.current_module_id'))->where('position', 1)->get();
-$store_data = Store::withoutGlobalScopes()->findOrFail($id);
-// prx($store_data);
+        $store_data = Store::withoutGlobalScopes()->findOrFail($id);
+        // prx($store_data);
         // all items set 1
         $allcategories_1 = [];
         array_push($allcategories_1, $store_data->category_1);
@@ -1573,49 +1589,60 @@ $store_data = Store::withoutGlobalScopes()->findOrFail($id);
 
     public function list(Request $request)
     {
-        // echo 'fsdf'; die;
         if (Helpers::module_permission_check('store')) {
             $store_all_perm = true;
         } else {
             $store_all_perm = false;
         }
         $key = explode(' ', $request['search']);
-        // prx($key);
+        $created_by = ($request['created_by'] === 'all' || empty($request['created_by'])) ? null : $request['created_by'];
 
         $zone_id = $request->query('zone_id', 'all');
         $type = $request->query('type', 'all');
         $module_id = $request->query('module_id', 'all');
         $stores = Store::with(['vendor', 'module'])
-            ->whereHas('vendor', fn($q) => $q->where('status', 1))
+            ->whereHas('vendor', fn($q) => $q->whereNotNull('status'))
             ->when(is_numeric($zone_id), fn($q) => $q->where('zone_id', $zone_id))
             ->when(is_numeric($module_id), fn($q) => $q->module($module_id))
             ->when($key, function ($q) use ($key) {
-                foreach ((array)$key as $value) {
-                    $q->where('name', 'like', "%{$value}%")
-                        ->orWhere('email', 'like', "%{$value}%")
-                        ->orWhere('phone', 'like', "%{$value}%")
-                        ->orWhereHas('vendor', function ($v) use ($value) {
-                            $v->where('f_name', 'like', "%{$value}%")
-                                ->orWhere('l_name', 'like', "%{$value}%")
-                                ->orWhere('email', 'like', "%{$value}%")
-                                ->orWhere('phone', 'like', "%{$value}%");
-                        });
-                }
+                $q->where(function ($query) use ($key) {
+                    foreach ((array)$key as $value) {
+                        $query->where('name', 'like', "%{$value}%")
+                            ->orWhere('email', 'like', "%{$value}%")
+                            ->orWhere('phone', 'like', "%{$value}%")
+                            ->orWhereHas('vendor', function ($v) use ($value) {
+                                $v->whereNotNull('status')
+                                    ->where(function ($vq) use ($value) {
+                                        $vq->where('f_name', 'like', "%{$value}%")
+                                            ->orWhere('l_name', 'like', "%{$value}%")
+                                            ->orWhere('email', 'like', "%{$value}%")
+                                            ->orWhere('phone', 'like', "%{$value}%");
+                                    });
+                            });
+                    }
+                });
             })
+            ->when(is_numeric($created_by), fn($q) =>
+                $q->whereHas(
+                    'vendor',
+                    fn($v) =>
+                    $v->where('created_by', $created_by)
+                )
+            )
             ->module(Config::get('module.current_module_id'));
-
         if (!$store_all_perm) {
-            $stores->whereHas('vendor', fn($v) => $v->where('created_by', auth('admin')->id()));
+            $stores->whereHas('vendor', fn($v) => $v->whereNotNull('status')->where('created_by', auth('admin')->id()));
             $stores->where('status', 0);
         }
 
         $stores = $stores->type($type)->latest()->paginate(config('default_pagination'));
-
+        $service_stores_type = StoreType::where('module_id', 6)->get();
         $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
+        $adminStaff = Admin::all();
         if ($store_all_perm == true) {
-            return view('admin-views.vendor.list', compact('stores', 'zone', 'type'));
+            return view('admin-views.vendor.list', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type'));
         } else {
-            return view('admin-views.vendor.list_res', compact('stores', 'zone', 'type'));
+            return view('admin-views.vendor.list_res', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type'));
         }
     }
 
@@ -1703,6 +1730,7 @@ $store_data = Store::withoutGlobalScopes()->findOrFail($id);
         return view('admin-views.vendor.deny_requests', compact('stores', 'zone', 'type', 'search_by'));
     }
 
+
     public function export(Request $request)
     {
 
@@ -1754,7 +1782,62 @@ $store_data = Store::withoutGlobalScopes()->findOrFail($id);
         if ($request->type == 'csv') {
             return Excel::download(new StoreListExport($data), 'Stores.csv');
         }
-        return Excel::download(new StoreListExport($data), 'Stores.xlsx');
+        $headings = [
+            'ID',
+            'Name',
+            'Phone',
+            'Secondary Phone',
+            'Email',
+            'GST Number',
+            'ID Number',
+            'Business Type',
+            'Google Verification',
+            'Latitude',
+            'Longitude',
+            'Address',
+            'Pincode',
+            'Status',
+            'Zone Id',
+            'Created At',
+            'POS System',
+            'Module Id',
+            'Is Featured',
+            //  'Owner Name',
+            //  'Owner Phone',
+            //  'Owner Secondary Phone',
+            //  'Owner Email',
+            //  'Status',
+            //  'Is Suspended',
+        ];
+        $exportData = [];
+        foreach ($stores as $key => $store) {
+            $exportData[$key] = [
+                $store->id,
+                $store->name,
+                (string) "\t" . ($store->phone ?? ''),
+                (string) "\t" . ($store->secondary_phone ?? ''), // "\t" to prevent numbers converting in scentific notation
+                $store->email,
+                $store->gst_number,
+                $store->id_number,
+                $store->business_type,
+                $store->google_verification,
+                $store->latitude,
+                $store->longitude,
+                $store->address,
+                $store->pin_code,
+                $store->status ? 'Active' : 'Inactive',
+                $store->zone_id,
+                $store->created_at,
+                $store->pos_system ? 'Yes' : 'No',
+                $store->module_id == 6 ? 'My city' : 'Shopping',
+                $store->featured ? 'Yes' : 'No',
+            ];
+        }
+
+        return Excel::download(
+            new StoreListExportNew($exportData, $headings),
+            'Stores.xlsx'
+        );
     }
 
 

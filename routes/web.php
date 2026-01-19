@@ -218,9 +218,9 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('contact', [FrontController::class, 'contact'])->name('contact');
     Route::get('cart', [FrontController::class, 'cart'])->name('cart');
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
-    Route::get('store/{slug}', [FrontController::class, 'store_details'])->name('store.details');
+    Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
-    Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
+    // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');
     Route::post('add-to-cart', [CartController::class, 'add_to_cart'])->name('add-to-cart');
     Route::post('remove-from-cart', [CartController::class, 'remove_from_cart'])->name('remove-from-cart');
@@ -422,5 +422,5 @@ Route::get('location-view', [LocationController::class, 'location_view']);
 Route::get('update-live-location/user/{id}', [LocationController::class, 'update']);
 
 
-// Route::get('{category_slug}/{slug}/{e}', [FrontController::class, 'category_listing'])->name('category.listing');// needs to be later
+Route::get('category/{category_slug}/{city}', [FrontController::class, 'category_listing'])->name('category.listing');// needs to be later
 Route::get('{category_slug}/{slug}', [FrontController::class, 'product_details'])->name('product.details');// needs to be later
