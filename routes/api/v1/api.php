@@ -151,10 +151,13 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
                 Route::post('send', 'ConversationController@dm_messages_store');
             });
         });
-        });
-        Route::group(['prefix' => 'vendor','namespace' => 'Vendor'], function () {
-            Route::post('save-fcm-token', 'VendorController@save_fcm_token');
-            });
+    });
+    Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor'], function () {
+        Route::post('save-fcm-token', 'VendorController@save_fcm_token');
+    });
+    Route::group(['prefix' => 'staff', 'namespace' => 'Vendor'], function () {
+        Route::post('save-fcm-token', 'VendorController@save_staff_fcm_token');
+    });
 
     Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor', 'middleware' => ['vendor.api']], function () {
         Route::get('notifications', 'VendorController@get_notifications');

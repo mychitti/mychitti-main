@@ -556,6 +556,16 @@
         src="{{ asset('public/assets/admin') }}/vendor/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.min.js">
     </script>
     <script>
+        @if (auth('vendor_employee')->check()) {
+            window.ReactNativeWebView?.postMessage(
+                JSON.stringify({
+                    type: 'STAFF_LOGIN',
+                    vendor_id: {{ auth('vendor_employee')->id() }}
+                })
+            );
+        }
+        @endif
+
         $(document).ready(function() {
             let staffDashIsPunchedIn = @json(_clockedInEmployee() ?? 0);
             let staffDashPunchInTime = @json(_inTime('timestamp') ?? null);

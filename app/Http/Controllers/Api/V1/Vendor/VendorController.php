@@ -60,6 +60,29 @@ class VendorController extends Controller
             return response()->json(['message' => 'fcm token already exists'], 200);
         }
     }
+    public function save_staff_fcm_token(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'staff_id' => 'required|exists:vendor_employees,id',
+            'fcm_token' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $staff_id = $request->staff_id;
+        $fcm_token = $request->fcm_token;
+
+
+        $staff = VendorEmployee::find($staff_id);
+        if (!$staff->cm_firebase_token) {
+            $staff->cm_firebase_token = $fcm_token;
+            $staff->save();
+            return response()->json(['message' => 'fcm token saved'], 200);
+        } else {
+            return response()->json(['message' => 'fcm token already exists'], 200);
+        }
+    }
     public function get_profile(Request $request)
     {
         $vendor = $request['vendor'];
