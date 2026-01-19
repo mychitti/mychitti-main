@@ -182,7 +182,7 @@ Route::get('all-stores/{type?}', [FrontController::class, 'all_stores'])->name('
 Route::post('missing-zone-request', [FrontController::class, 'missing_zone_request'])->name('missing-zone-request');
 Route::post('send-test-notification', [FrontController::class, 'send_test_notification'])->name('send-test-notification');
 
-Route::get('testing', [FrontController::class, 'testing'])->name('testing');
+Route::get('testing/{type?}', [FrontController::class, 'testing'])->name('testing');
 Route::get('blog-mc-vendor-hub', [FrontController::class, 'blog_mc_vendor'])->name('blog-mc-vendor-hub');
 Route::get('blog', [FrontController::class, 'blog'])->name('blog');
 Route::get('blog/{slug}', [FrontController::class, 'blog_post'])->name('blog.post');
@@ -422,4 +422,5 @@ Route::get('location-view', [LocationController::class, 'location_view']);
 Route::get('update-live-location/user/{id}', [LocationController::class, 'update']);
 
 
+// Route::get('{category_slug}/{slug}/{e}', [FrontController::class, 'category_listing'])->name('category.listing');// needs to be later
 Route::get('{category_slug}/{slug}', [FrontController::class, 'product_details'])->name('product.details');// needs to be later

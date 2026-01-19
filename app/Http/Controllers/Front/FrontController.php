@@ -2,16 +2,12 @@
 
 namespace App\Http\Controllers\Front;
 
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
-use App\Jobs\SendOrderNotifications;
 use App\CentralLogics\BannerLogic;
 use App\CentralLogics\CouponLogic;
 use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
 use App\Http\Controllers\Controller;
-use App\CentralLogics\StoreLogic;
 use App\Models\User;
 use App\Models\DMVehicle;
 use App\Mail\PlaceOrder;
@@ -20,25 +16,17 @@ use App\Mail\OrderVerificationMail;
 use Illuminate\Support\Facades\Mail;
 use App\CentralLogics\ProductLogic;
 use App\Http\Controllers\Api\V1\CategoryController as V1CategoryController;
-use App\Http\Controllers\Vendor\ProfileController;
-use App\Jobs\ProcessMonthlyDepreciation;
-use App\Models\Account;
-use App\Models\Admin;
-use App\Models\Attendance;
 use App\Models\BlogCategory;
-use App\Models\BlogPost;
 use App\Models\BusinessSetting;
 use App\Models\Cart;
 use Illuminate\Http\Request;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 use App\Models\DataSetting;
-use Illuminate\Support\Facades\Config;
 use App\Models\Module;
 
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
-use App\Models\DayBook;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
 use App\Models\Item;
@@ -49,7 +37,7 @@ use App\Models\OfferBanner;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\ParcelCategory;
-use App\Models\PosToken;
+use App\Models\SeoContent;
 use App\Models\ServiceKeyword;
 use App\Models\ZoneRequest;
 use App\Models\Store;
@@ -61,10 +49,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Zone;
 use Carbon\Carbon;
 use CURLFile;
-use Faker\Extension\Helper;
-use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\View as FacadesView;
-use Illuminate\View\View;
 
 class FrontController extends Controller
 {
@@ -163,21 +148,27 @@ class FrontController extends Controller
     {
         return view('vendor-views.documents.approve_success');
     }
-    public function testing(Request $request)
+    public function testing(Request $request, $type = 'vendor')
     {
 
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
-       
-        return view('front-views.test_view');
+
+        return view('front-views.test_view', compact('type'));
     }
     public function send_test_notification(Request $request)
     {
         $email = $request->email;
-        $vendor = Vendor::where('email', $email)->first();
-        if ($vendor) {
-            $fcm_token = $vendor->cm_firebase_token; 
+        $type = $request->type;
+        if ($type == 'vendor') {
+            $reciever = Vendor::where('email', $email)->first();
+        } else {
+            $reciever = VendorEmployee::where('email', $email)->first();
+        }
+
+        if ($reciever) {
+            $fcm_token = $reciever->cm_firebase_token;
             $data = [
-                'title' => 'Test Notification',
+                'title' => 'Test Notification ' . $type,
                 'description' => 'this is a test notification',
                 'order_id' => 0,
                 'image' => '',
@@ -185,7 +176,7 @@ class FrontController extends Controller
             ];
             echo   Helpers::send_push_notif_to_device($fcm_token, $data);
         } else {
-            echo 'No vendor found';
+            echo $type.' not found';
         }
     }
     public function add_feature_actions(Request $request)
@@ -2459,7 +2450,17 @@ class FrontController extends Controller
             // prx($stores);
         }
 
+
         $keywords = implode(',', ServiceKeyword::where('service_id', $item->id)->whereNotNull('keyword')->pluck('keyword')->toArray());
+
+        $item_area_keywords = Helpers::getAreasByZoneIds(
+            json_decode($this->zone_id, true),
+            21
+        );
+        $item_area_keywords_arr = $item_area_keywords;
+        $item_area_keywords = $item_area_keywords->implode(', ');
+
+        // prx($item_area_keywords_arr);
 
         if (!$item) {
             return redirect()->route('home');
@@ -2521,11 +2522,22 @@ class FrontController extends Controller
                 ->limit(12)
                 ->get();
         }
+        $data['seoContent'] = SeoContent::where('seo_type', 'item')
+            ->where('data', $item->id)
+            ->inRandomOrder()
+            ->first();
+
+        $data['faqContent'] = SeoContent::where('seo_type', 'faq')
+            ->where('data', $item->id)
+            ->inRandomOrder()
+            ->first();
+        // prx( $data['faqContent'] );
+
         $data['reviews'] =  DB::table('reviews')->join('items', 'items.id', 'reviews.item_id')->join('users', 'users.id', 'reviews.user_id')->where('items.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'items.*', 'reviews.comment', 'reviews.attachment', 'reviews.created_at', 'reviews.rating')->where('reviews.status', 1)->get();
-        return view('front-views.product_details', compact('is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
+        return view('front-views.product_details', compact('item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
-    public function category_listing(Request $request, $slug)
+    public function category_listing(Request $request, $slug, $e)
     {
         $zone_id = $this->zone_id;
 

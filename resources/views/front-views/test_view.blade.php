@@ -9,6 +9,7 @@
     <form method="post" action="{{route('send-test-notification')}}">
     @csrf
     <input type="email" name="email" id="">
+    <input type="hidden" name="type" value="{{$type}}">
     <button class="btn">send notification</button>
     </form>
 </body>
