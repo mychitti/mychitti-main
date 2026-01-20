@@ -467,7 +467,7 @@ $log_email_succ = session()->get('log_email_succ');
             <div class="row">
                 <div class="col-lg-6">
                     <div class="innovation-card">
-                        <h2>🚀 Innovation & Regular Updates1</h2>
+                        <h2>🚀 Innovation & Regular Updates</h2>
                         <p class="hero-text">
                             At <strong>MC Vendor Hub</strong>, we believe innovation never stops. That's why our team
                             continuously
