@@ -52,13 +52,13 @@ class VendorController extends Controller
 
 
         $vendor = Vendor::find($vendor_id);
-        if (!$vendor->cm_firebase_token) {
+        // if (!$vendor->cm_firebase_token) {
             $vendor->cm_firebase_token = $fcm_token;
             $vendor->save();
             return response()->json(['message' => 'fcm token saved'], 200);
-        } else {
-            return response()->json(['message' => 'fcm token already exists'], 200);
-        }
+        // } else {
+        //     return response()->json(['message' => 'fcm token already exists'], 200);
+        // }
     }
     public function save_staff_fcm_token(Request $request)
     {
@@ -75,13 +75,13 @@ class VendorController extends Controller
 
 
         $staff = VendorEmployee::find($staff_id);
-        if (!$staff->cm_firebase_token) {
+        // if (!$staff->cm_firebase_token) {
             $staff->cm_firebase_token = $fcm_token;
             $staff->save();
             return response()->json(['message' => 'fcm token saved'], 200);
-        } else {
-            return response()->json(['message' => 'fcm token already exists'], 200);
-        }
+        // } else {
+        //     return response()->json(['message' => 'fcm token already exists'], 200);
+        // }
     }
     public function get_profile(Request $request)
     {
