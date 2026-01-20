@@ -368,7 +368,7 @@ $log_email_succ = session()->get('log_email_succ');
                 <div class="col-12">
                     <div class="w-100 d-flex justify-content-center mb-3">
                         <img style="width:100%; "
-                            src="{{ asset('storage/vendor_login/take_your_business_digital.png') }}" alt="Login">
+                            src="{{ asset('storage/vendor_login/take_your_business_digital.jpeg') }}" alt="Login">
                     </div>
                 </div>
                 <div class="col-12">
@@ -428,7 +428,7 @@ $log_email_succ = session()->get('log_email_succ');
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <img style="width:100%;" src="{{ asset('storage/vendor_login/privacy.png') }}" alt="Login">
+                    <img style="width:100%;" src="{{ asset('storage/vendor_login/privacy.jpeg') }}" alt="Login">
                 </div>
             </div>
         </div>
@@ -753,7 +753,7 @@ $log_email_succ = session()->get('log_email_succ');
     ">
         <div class="">
             <img style="width:100%;max-width: 100% !important; "
-                src="{{ asset('storage/vendor_login/faq_banner.png') }}" alt="Login">
+                src="{{ asset('storage/vendor_login/faq_banner.jpeg') }}" alt="Login">
             {{-- <div class="row g-0 px-5">
                 <div class="col-md-6">
                     <img style="width:100%;"
