@@ -6,6 +6,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
+    Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
+    Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
+    Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
+        ->name('secure.download')->middleware('signed');
+
+    Route::group(['prefix' => 'pr-file', 'as' => 'pr-file.', 'middleware' => ['module:protected_file']], function () {
+        Route::post('upload', 'ProtectedFileController@upload_file')->name('upload');
+    });
+
     Route::post('send-vendor-otp', 'VendorController@send_vendor_otp')->name('send-vendor-otp');
     Route::post('mark-notif-read', 'DashboardController@mark_notif_read')->name('mark-notif-read');
     // Route::get('common-dashboard/google-ads', 'DashboardController@google_ads')->name('common-dashboard.google-ads')->middleware('module:google_ads');
@@ -351,6 +360,13 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('report', 'VendorController@report')->name('store.report');
 
         Route::group(['prefix' => 'store', 'as' => 'store.'], function () {
+
+            // WALLET ================
+            Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
+                Route::get('/', 'VendorWalletController@index')->name('index');
+                Route::post('recharge', 'VendorWalletController@recharge')->name('recharge');
+            });
+
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc');
 
@@ -511,6 +527,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
 
             Route::get('business-setup/{tab?}', 'BusinessSettingsController@business_index')->name('business-setup');
+            Route::get('mcvendor-setup/{tab?}', 'McvendorSettingsController@mcvendor_index')->name('mcvendor-setup');
+            Route::post('mcvendor-setup-update', 'McvendorSettingsController@mcvendor_setup')->name('mcvendor-setup-update');
+            Route::get('app-setup', 'BusinessSettingsController@app_setup')->name('app-setup');
             Route::get('react-setup', 'BusinessSettingsController@react_setup')->name('react-setup');
             Route::post('react-update', 'BusinessSettingsController@react_update')->name('react-update');
             Route::post('update-setup', 'BusinessSettingsController@business_setup')->name('update-setup');
@@ -595,6 +614,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
             Route::get('pages/business-page/privacy-policy', 'BusinessSettingsController@privacy_policy')->name('privacy-policy');
             Route::post('pages/business-page/privacy-policy', 'BusinessSettingsController@privacy_policy_update');
+
+            Route::post('pages/business-page/terms-and-conditions', 'BusinessSettingsController@pages_update')->name('terms-and-conditions');
 
             Route::get('pages/business-page/about-us', 'BusinessSettingsController@about_us')->name('about-us');
             Route::post('pages/business-page/about-us', 'BusinessSettingsController@about_us_update');

@@ -1,5 +1,4 @@
- @php
- $logo = asset('storage/vendor_login/mc_vendor_logo.jpeg'); @endphp
+ @php  $logo = \App\Models\BusinessSetting::where(['key' => 'mcvendor_logo'])->first()->value; @endphp
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
      integrity="sha512-aNSrQdQ1ZqfZC/0kSPSz7jMo1CJz4TqYkz6/yM5cO0u8jPPCZoxg70kC2U6g7q5FdL88Yv3E/8Z0IuB2B+R5GQ=="
      crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -9,7 +8,9 @@
  <nav class="navbar navbar-expand-lg bg-body-tertiary"> 
      <div class="container-fluid">
          <a href="https://mcvendorhub.com/price-calculator" class="">
-             <img class="" style="    width: 135px;margin:0 auto;" src="{{ $logo ?? '' }}">
+             <img class="" style="    width: 135px;margin:0 auto;"  data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($logo, asset('storage/app/public/business/') . '/' . $logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                    alt="MCVendorHub">
              {{-- <h1 class="fs-4 px-3" style="display:inline;">{{ $store['name'] }}</h1> --}}
          </a>
          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"

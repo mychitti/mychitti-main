@@ -21,6 +21,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::get('popular', 'ItemController@popular_services');
     });
 
+    Route::post('otp-verify', 'CustomerController@verify_otp');
     Route::post('sendotp', 'CustomerController@sendotp')->name('sendotp');
     Route::get('searchbar', 'ItemController@searchbar')->name('searchbar');
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
@@ -54,7 +55,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('sign-up', 'CustomerAuthController@register');
         Route::post('otp-login', 'CustomerAuthController@login_with_otp');
         Route::post('login', 'CustomerAuthController@login');
-        // Route::post('delete-account', 'CustomerAuthController@delete_account');
 
         Route::post('verify-phone', 'CustomerAuthController@verify_phone');
 
@@ -64,6 +64,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('forgot-password', 'PasswordResetController@reset_password_request');
         Route::post('verify-token', 'PasswordResetController@verify_token');
         Route::post('reset-password', 'PasswordResetController@reset_password_submit');
+        Route::post('otp-reset-password', 'PasswordResetController@otp_reset_password_submit');
 
         Route::post('guest/request', 'CustomerAuthController@guest_request');
 
@@ -340,6 +341,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             //Remove account
             Route::post('remove-account', 'CustomerController@remove_account');
 
+
             Route::group(['prefix' => 'address'], function () {
                 Route::get('list', 'CustomerController@address_list');
                 Route::post('add', 'CustomerController@add_new_address');
@@ -441,6 +443,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('reviews', 'StoreController@reviews');
             Route::get('search', 'StoreController@get_searched_stores');
             Route::get('get-data', 'StoreController@get_combined_data');
+            Route::get('get-service-list', 'StoreController@get_services_list');
             Route::post('add-review', 'StoreController@add_review');
             Route::post('get-review', 'StoreController@get_review');
         });
@@ -487,6 +490,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
         Route::get('coupon/list', 'CouponController@list');
         Route::group(['prefix' => 'coupon', 'middleware' => 'auth:api'], function () {
+            Route::get('user', 'CouponController@user');
             Route::get('apply', 'CouponController@apply');
         });
 

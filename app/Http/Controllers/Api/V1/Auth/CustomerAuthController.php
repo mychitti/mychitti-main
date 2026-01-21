@@ -83,58 +83,64 @@ class CustomerAuthController extends Controller
                 $max_otp_hit_time = 60; // seconds
                 $temp_block_time = 600; // seconds
 
-                $verification_data= DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+                $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
 
-                if(isset($verification_data)){
+                if (isset($verification_data)) {
 
-                    if(isset($verification_data->temp_block_time ) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time){
-                        $time= $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
+                    if (isset($verification_data->temp_block_time) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time) {
+                        $time = $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
 
                         $errors = [];
-                        array_push($errors, ['code' => 'otp_block_time',
-                        'message' => translate('messages.please_try_again_after_').CarbonInterval::seconds($time)->cascade()->forHumans()
-                         ]);
+                        array_push($errors, [
+                            'code' => 'otp_block_time',
+                            'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($time)->cascade()->forHumans()
+                        ]);
                         return response()->json([
                             'errors' => $errors
                         ], 405);
                     }
 
-                    if($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time){
-                        DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
+                    if ($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time) {
+                        DB::table('phone_verifications')->updateOrInsert(
+                            ['phone' => $request['phone']],
                             [
                                 'otp_hit_count' => 0,
                                 'is_temp_blocked' => 0,
                                 'temp_block_time' => null,
                                 'created_at' => now(),
                                 'updated_at' => now(),
-                            ]);
-                        }
+                            ]
+                        );
+                    }
 
-                    if($verification_data->otp_hit_count >= $max_otp_hit &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time &&  $verification_data->is_temp_blocked == 0){
+                    if ($verification_data->otp_hit_count >= $max_otp_hit &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time &&  $verification_data->is_temp_blocked == 0) {
 
-                        DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
+                        DB::table('phone_verifications')->updateOrInsert(
+                            ['phone' => $request['phone']],
                             [
-                            'is_temp_blocked' => 1,
-                            'temp_block_time' => now(),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                            ]);
+                                'is_temp_blocked' => 1,
+                                'temp_block_time' => now(),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
                         $errors = [];
-                        array_push($errors, ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps') ]);
+                        array_push($errors, ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]);
                         return response()->json([
                             'errors' => $errors
                         ], 405);
                     }
-
                 }
 
 
-                DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
-                [
-                'otp_hit_count' => DB::raw('otp_hit_count + 1'),
-                'updated_at' => now(),
-                'temp_block_time' => null,
-                ]);
+                DB::table('phone_verifications')->updateOrInsert(
+                    ['phone' => $request['phone']],
+                    [
+                        'otp_hit_count' => DB::raw('otp_hit_count + 1'),
+                        'updated_at' => now(),
+                        'temp_block_time' => null,
+                    ]
+                );
 
                 return response()->json([
                     'message' => translate('messages.phone_number_and_otp_not_matched')
@@ -168,7 +174,7 @@ class CustomerAuthController extends Controller
             $mail_status = Helpers::get_mail_status('registration_otp_mail_status_user');
             if (config('mail.status') && $mail_status == '1') {
                 $user = User::where('email', $request['email'])->first();
-                Mail::to($request['email'])->send(new EmailVerification($token,$user->f_name));
+                Mail::to($request['email'])->send(new EmailVerification($token, $user->f_name));
             }
             return response()->json([
                 'message' => 'Email is ready to register',
@@ -208,7 +214,7 @@ class CustomerAuthController extends Controller
             404
         );
     }
-
+   
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -225,34 +231,34 @@ class CustomerAuthController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $ref_by= null ;
+        $ref_by = null;
         $customer_verification = BusinessSetting::where('key', 'customer_verification')->first()->value;
 
-        if($request->ref_code) {
-            $ref_status = BusinessSetting::where('key','ref_earning_status')->first()->value;
+        if ($request->ref_code) {
+            $ref_status = BusinessSetting::where('key', 'ref_earning_status')->first()->value;
             if ($ref_status != '1') {
-                return response()->json(['errors'=>Helpers::error_formater('ref_code', translate('messages.referer_disable'))], 403);
+                return response()->json(['errors' => Helpers::error_formater('ref_code', translate('messages.referer_disable'))], 403);
             }
 
             $referar_user = User::where('ref_code', '=', $request->ref_code)->first();
             if (!$referar_user || !$referar_user->status) {
-                return response()->json(['errors'=>Helpers::error_formater('ref_code',translate('messages.referer_code_not_found'))], 405);
+                return response()->json(['errors' => Helpers::error_formater('ref_code', translate('messages.referer_code_not_found'))], 405);
             }
 
-            if(WalletTransaction::where('reference', $request->phone)->first()) {
-                return response()->json(['errors'=>Helpers::error_formater('phone',translate('Referrer code already used'))], 203);
+            if (WalletTransaction::where('reference', $request->phone)->first()) {
+                return response()->json(['errors' => Helpers::error_formater('phone', translate('Referrer code already used'))], 203);
             }
 
 
             $notification_data = [
-                'title' => translate('messages.Your_referral_code_is_used_by').' '.$request->f_name.' '.$request->l_name,
+                'title' => translate('messages.Your_referral_code_is_used_by') . ' ' . $request->f_name . ' ' . $request->l_name,
                 'description' => translate('Be prepare to receive when they complete there first purchase'),
                 'order_id' => 1,
                 'image' => '',
                 'type' => 'referral_code',
             ];
 
-            if($referar_user?->cm_firebase_token){
+            if ($referar_user?->cm_firebase_token) {
                 Helpers::send_push_notif_to_device($referar_user?->cm_firebase_token, $notification_data);
                 DB::table('user_notifications')->insert([
                     'data' => json_encode($notification_data),
@@ -263,7 +269,7 @@ class CustomerAuthController extends Controller
             }
 
 
-            $ref_by= $referar_user->id;
+            $ref_by = $referar_user->id;
         }
 
         $user = User::create([
@@ -282,32 +288,33 @@ class CustomerAuthController extends Controller
 
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 
-        if($customer_verification && env('APP_MODE') !='demo')
-        {
-            $otp_interval_time= 60; //seconds
-            $verification_data= DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+        if ($customer_verification && env('APP_MODE') != 'demo') {
+            $otp_interval_time = 60; //seconds
+            $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
 
-            if(isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time){
-                $time= $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
+            if (isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time) {
+                $time = $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
                 $errors = [];
-                array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_').$time.' '.translate('messages.seconds')]);
+                array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]);
                 return response()->json([
                     'errors' => $errors
                 ], 405);
             }
 
             $otp = rand(1000, 9999);
-            DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
+            DB::table('phone_verifications')->updateOrInsert(
+                ['phone' => $request['phone']],
                 [
-                'token' => $otp,
-                'otp_hit_count' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-                ]);
-                $mail_status = Helpers::get_mail_status('registration_otp_mail_status_user');
-                if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($request['email'])->send(new EmailVerification($otp,$request->f_name));
-                }
+                    'token' => $otp,
+                    'otp_hit_count' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+            $mail_status = Helpers::get_mail_status('registration_otp_mail_status_user');
+            if (config('mail.status') && $mail_status == '1') {
+                Mail::to($request['email'])->send(new EmailVerification($otp, $request->f_name));
+            }
             //for payment and sms gateway addon
             $published_status = 0;
             $payment_published_status = config('get_payment_publish_status');
@@ -315,13 +322,12 @@ class CustomerAuthController extends Controller
                 $published_status = $payment_published_status[0]['is_published'];
             }
 
-            if($published_status == 1){
-                $response = SmsGateway::send($request['phone'],$otp);
-            }else{
-                $response = SMS_module::send($request['phone'],$otp);
+            if ($published_status == 1) {
+                $response = SmsGateway::send($request['phone'], $otp);
+            } else {
+                $response = SMS_module::send($request['phone'], $otp);
             }
-            if($response != 'success')
-            {
+            if ($response != 'success') {
                 $errors = [];
                 array_push($errors, ['code' => 'otp', 'message' => translate('messages.faield_to_send_sms')]);
                 return response()->json([
@@ -329,18 +335,15 @@ class CustomerAuthController extends Controller
                 ], 405);
             }
         }
-        try
-        {
+        try {
             $mail_status = Helpers::get_mail_status('registration_mail_status_user');
             if (config('mail.status') && $request->email && $mail_status == '1') {
                 Mail::to($request->email)->send(new \App\Mail\CustomerRegistration($request->f_name . ' ' . $request->l_name));
             }
-        }
-        catch(\Exception $ex)
-        {
+        } catch (\Exception $ex) {
             info($ex->getMessage());
         }
-        if($request->guest_id  && isset($user->id)){
+        if ($request->guest_id  && isset($user->id)) {
 
             $userStoreIds = Cart::where('user_id', $request->guest_id)
                 ->join('items', 'carts.item_id', '=', 'items.id')
@@ -353,19 +356,19 @@ class CustomerAuthController extends Controller
                 })
                 ->delete();
 
-            Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id,'is_guest' => 0]);
+            Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id, 'is_guest' => 0]);
         }
         return response()->json(['token' => $token, 'is_phone_verified' => 0, 'phone_verify_end_url' => "api/v1/auth/verify-phone"], 200);
     }
 
 
-  
+
     public function login_with_otp(Request $request)
     {
 
         // print_r($request->post());
         // die;
-        $validator = Validator::make($request->all(), [ 
+        $validator = Validator::make($request->all(), [
             'phone' => 'required',
             'otp' => 'required'
         ]);
@@ -374,23 +377,20 @@ class CustomerAuthController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-          // otp in db 
-          $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
-        if($dbOtp){
+        // otp in db 
+        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
+        if ($dbOtp) {
             if ($dbOtp->otp != $request->otp) {
-                return response()->json(['status' =>false, 'error' => 'Invalid OTP'], 200);
-                // return redirect()->back()->withErrors(['Invalid OTP.']);
+                return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
             }
-        }else{
-            return response()->json(['status' =>false, 'error' => 'Invalid OTP'], 200);
-            // return redirect()->back()->withErrors(['Invalid OTP.']);
-
+        } else {
+            return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
         }
-         
-          $user = User::where('phone', $request->phone)->first();
-          Auth::guard('web')->login($user);
 
-          
+        $user = User::where('phone', $request->phone)->first();
+        Auth::guard('web')->login($user);
+
+
         if (auth('web')->check()) {
             $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
             if (!auth()->user()->status) {
@@ -401,14 +401,20 @@ class CustomerAuthController extends Controller
                 ], 403);
             }
             $user = auth()->user();
-            
-            if($user->ref_code == null && isset($user->id)){
+
+            if ($user->ref_code == null && isset($user->id)) {
                 $ref_code = Helpers::generate_referer_code($user);
                 DB::table('users')->where('phone', $user->phone)->update(['ref_code' => $ref_code]);
             }
-            
-            return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
+            // unset otp
+            DB::table('phone_otp')
+                ->where('phone', $request->phone) // IMPORTANT
+                ->update([
+                    'phone' => $request->phone,
+                    'otp'   => null
+                ]);
 
+            return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
         } else {
             $errors = [];
             array_push($errors, ['code' => 'auth-001', 'message' => translate('messages.Unauthorized')]);
@@ -423,7 +429,7 @@ class CustomerAuthController extends Controller
 
         // print_r($request->post());
         // die;
-        $validator = Validator::make($request->all(), [ 
+        $validator = Validator::make($request->all(), [
             'phone' => 'required',
             'password' => 'required|min:6'
         ]);
@@ -431,13 +437,13 @@ class CustomerAuthController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
- 
+
         $data = [
             'phone' => $request->phone,
             'password' => $request->password
         ];
-       
-          
+
+
         $customer_verification = BusinessSetting::where('key', 'customer_verification')->first()->value;
         if (auth()->attempt($data)) {
             $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
@@ -449,33 +455,34 @@ class CustomerAuthController extends Controller
                 ], 403);
             }
             $user = auth()->user();
-            if($customer_verification && !auth()->user()->is_phone_verified && env('APP_MODE') != 'demo')
-            {
-                $otp_interval_time= 60; //seconds
+            if ($customer_verification && !auth()->user()->is_phone_verified && env('APP_MODE') != 'demo') {
+                $otp_interval_time = 60; //seconds
 
-                $verification_data= DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+                $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
 
-                if(isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time){
+                if (isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time) {
 
-                    $time= $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
+                    $time = $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
                     $errors = [];
-                    array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_').$time.' '.translate('messages.seconds')]);
+                    array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]);
                     return response()->json([
                         'errors' => $errors
                     ], 405);
                 }
 
                 $otp = rand(1000, 9999);
-                DB::table('phone_verifications')->updateOrInsert(['phone' => $request['phone']],
+                DB::table('phone_verifications')->updateOrInsert(
+                    ['phone' => $request['phone']],
                     [
-                    'token' => $otp,
-                    'otp_hit_count' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    ]);
+                        'token' => $otp,
+                        'otp_hit_count' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
                 $mail_status = Helpers::get_mail_status('login_otp_mail_status_user');
                 if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($user['email'])->send(new LoginVerification($otp,$user->f_name));
+                    Mail::to($user['email'])->send(new LoginVerification($otp, $user->f_name));
                 }
                 //for payment and sms gateway addon
                 $published_status = 0;
@@ -484,27 +491,25 @@ class CustomerAuthController extends Controller
                     $published_status = $payment_published_status[0]['is_published'];
                 }
 
-                if($published_status == 1){
-                    $response = SmsGateway::send($request['phone'],$otp);
-                }else{
-                    $response = SMS_module::send($request['phone'],$otp);
+                if ($published_status == 1) {
+                    $response = SmsGateway::send($request['phone'], $otp);
+                } else {
+                    $response = SMS_module::send($request['phone'], $otp);
                 }
 
-                if($response != 'success')
-                {
+                if ($response != 'success') {
                     $errors = [];
                     array_push($errors, ['code' => 'otp', 'message' => translate('messages.faield_to_send_sms')]);
                     return response()->json([
                         'errors' => $errors
                     ], 405);
                 }
-
             }
-            if($user->ref_code == null && isset($user->id)){
+            if ($user->ref_code == null && isset($user->id)) {
                 $ref_code = Helpers::generate_referer_code($user);
                 DB::table('users')->where('phone', $user->phone)->update(['ref_code' => $ref_code]);
             }
-            if($request->guest_id  && isset($user->id)){
+            if ($request->guest_id  && isset($user->id)) {
 
                 $userStoreIds = Cart::where('user_id', $request->guest_id)
                     ->join('items', 'carts.item_id', '=', 'items.id')
@@ -517,10 +522,10 @@ class CustomerAuthController extends Controller
                     })
                     ->delete();
 
-                Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id,'is_guest' => 0]);
+                Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id, 'is_guest' => 0]);
             }
 
-            if(!$user->cm_firebase_token && $request->has('fcm_token')){
+            if (!$user->cm_firebase_token && $request->has('fcm_token')) {
                 $user->cm_firebase_token = $request->has('fcm_token');
                 $user->update();
             }

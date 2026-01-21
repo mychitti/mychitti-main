@@ -240,8 +240,7 @@
                 font-weight: 600;
                 margin: 0 0 6px 0;
                 color: #2c3e50;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                {{-- white-space: nowrap; --}} overflow: hidden;
+                overflow: hidden;
             }
 
             .pop-item-category {

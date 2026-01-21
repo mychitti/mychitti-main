@@ -29,6 +29,8 @@ class ActionLog extends Model
 
             case 'user':
                 return User::withTrashed()->find($id);
+            case 'securefile':
+                return SecureFile::find($id);
 
                 // Add more model types here as needed
 

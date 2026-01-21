@@ -16,6 +16,7 @@ use App\Models\CustomerAddress;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessSetting;
+use App\Models\Coupon;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
 use App\Models\ServiceInvoice;
@@ -73,7 +74,7 @@ class CustomerController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-      
+
         if ($request->type == 'service') {
             $existingInvoice = ServiceInvoice::where('invoice_id', $request->bill_id)->first();
         } else {
@@ -96,13 +97,13 @@ class CustomerController extends Controller
 
                 $vendor_contact_det = Store::find($existingInvoice->vendor_id);
                 $invoice_id = $existingInvoice->invoice_id;
-                 $tempDir = storage_path('app/mpdf_temp');
-    if (!file_exists($tempDir)) {
-        mkdir($tempDir, 0775, true);
-    }
+                $tempDir = storage_path('app/mpdf_temp');
+                if (!file_exists($tempDir)) {
+                    mkdir($tempDir, 0775, true);
+                }
 
-    $mpdf = new Mpdf([
-        'tempDir' => $tempDir,
+                $mpdf = new Mpdf([
+                    'tempDir' => $tempDir,
                     'margin_left' => 0,
                     'margin_right' => 0,
                     'margin_top' => 0,
@@ -118,9 +119,9 @@ class CustomerController extends Controller
                 return response()->json(['pdf' => asset('storage/app/public/invoice') . '/' . $pdfName], 200);
             }
         }
-        if(!$existingInvoice){
+        if (!$existingInvoice) {
             return response()->json(['pdf' => 'null', 'message' => 'Bill not found'], 200);
-        }else{
+        } else {
             return response()->json(['pdf' => asset('storage/app/public/invoice') . '/' . $existingInvoice->pdf], 200);
         }
         // prx($existingInvoice); 
@@ -205,6 +206,29 @@ class CustomerController extends Controller
         }
     }
 
+    public function verify_otp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required',
+            'otp' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        // otp in db 
+        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
+        if ($dbOtp) {
+            if ($dbOtp->otp != $request->otp) {
+                return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
+            }
+        } else {
+            return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
+        }
+        // unset otp
+
+
+        return response()->json(['verified' => true], 200);
+    }
     public function sendotp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -228,7 +252,7 @@ class CustomerController extends Controller
         ]);
 
         if ($insert) {
-            return response()->json(['status' => true, 'message' => 'OTP sent successfully4.', 'action' => 'otp_sent', 'phone' => $request->phone]);
+            return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $request->phone]);
         } else {
             return response()->json(['status' => false, 'message' => 'Some error occured', 'sms_status' => $sendsms, 'action' => '']);
         }
@@ -252,13 +276,13 @@ class CustomerController extends Controller
             $service_det = User::find($existingInvoice->bill_to);
             $vendor_contact_det = Store::find($existingInvoice->vendor_id);
             $invoice_id = $existingInvoice->invoice_id;
-             $tempDir = storage_path('app/mpdf_temp');
-    if (!file_exists($tempDir)) {
-        mkdir($tempDir, 0775, true);
-    }
+            $tempDir = storage_path('app/mpdf_temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0775, true);
+            }
 
-    $mpdf = new Mpdf([
-        'tempDir' => $tempDir,
+            $mpdf = new Mpdf([
+                'tempDir' => $tempDir,
                 'margin_left' => 0,
                 'margin_right' => 0,
                 'margin_top' => 0,
@@ -270,7 +294,7 @@ class CustomerController extends Controller
             $mpdf->WriteHTML($html);
             $pdfName = 'invoice_' . date('YmdHis') . '.pdf';
 
-$fileUrl = Helpers::savePdfToPublic($mpdf, 'invoice', $pdfName);
+            $fileUrl = Helpers::savePdfToPublic($mpdf, 'invoice', $pdfName);
             return response()->json(['pdf' => asset('storage/app/public/invoice') . '/' . $pdfName], 200);
         }
     }
@@ -320,14 +344,14 @@ $fileUrl = Helpers::savePdfToPublic($mpdf, 'invoice', $pdfName);
     {
         $validator = Validator::make($request->all(), [
             'pin_code' => ['required', 'regex:/^[1-9][0-9]{5}$/'],
-        ],[
+        ], [
             'pin_code.regex' => 'The pin code must be a valid 6-digit Indian pincode.',
         ]);
-        
+
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        
+
         DB::table('customer_addresses')->where('id', $id)->update(['pin_code' => $request->pin_code]);
         return response()->json(['message' => translate('messages.updated_successfully')], 200);
     }
@@ -491,6 +515,7 @@ $fileUrl = Helpers::savePdfToPublic($mpdf, 'invoice', $pdfName);
         }
         return response()->json(['message' => translate('messages.successfully_updated')], 200);
     }
+   
     public function update_interest(Request $request)
     {
         $validator = Validator::make($request->all(), [

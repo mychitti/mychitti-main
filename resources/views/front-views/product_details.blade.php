@@ -34,6 +34,33 @@
         async="async"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
+        .rating-stars {
+            position: relative;
+            display: inline-block;
+            font-size: 15px;
+            color: #ccc;
+        }
+
+        .stars-base i {
+            color: #ccc;
+        }
+
+        .stars-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            color: #f7a103;
+            width: 0;
+        }
+
+        h2,
+        h2>* {
+            font-size: 24px !important;
+            font-weight: 600 !important;
+        }
+
         .rating-container {
             display: flex;
             align-items: center;
@@ -596,7 +623,7 @@
                                     </div>
                                 </div>
                                 @if ($module == 5)
-                                    Seller: <a href="{{ route('store.details', [_selectedCity() , $item->store_slug]) }}"
+                                    Seller: <a href="{{ route('store.details', [_selectedCity(), $item->store_slug]) }}"
                                         class="mb-1">{{ $item->store_name }}</a>
                                 @endif
                             @else
@@ -635,14 +662,15 @@
                         @if ($module == 6 && !$is_inventory_product)
                             <div class="">
                                 @if (count($stores))
-                                    <h2 style="    font-size: 16px;font-family: revert;">Available {{ $item->name }} Providers <span
-                                            class="location_name_show"></span> ({{ count($stores) }})</h2>
+                                    <h2 style="    font-size: 16px;font-family: revert;">Available {{ $item->name }}
+                                        Providers <span class="location_name_show"></span> ({{ count($stores) }})</h2>
 
                                     @foreach ($stores as $store)
-                                        <a href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"
+                                        <a href="{{ route('store.details', [_selectedCity(), $store->slug]) }}"
                                             class="d-flex gap-2 position-relative align-items-center justify-content-start my-2 p-2 shadow-sm rounded">
                                             <div class=" mx-2">
-                                                <img loading="lazy" style="height: 75px; width: 75px; object-fit:cover; font-size: 9px;"
+                                                <img loading="lazy"
+                                                    style="height: 75px; width: 75px; object-fit:cover; font-size: 9px;"
                                                     src="{{ asset('storage/app/public/store/') . '/' . $store->logo }}"
                                                     class="border rounded" alt="{{ $store->name }}">
                                             </div>
@@ -711,7 +739,8 @@
                                         aria-labelledby="nav-mission-tab">
                                         @foreach ($data['reviews'] as $rev)
                                             <div class="d-flex">
-                                                <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
+                                                <img loading="lazy"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                                     class="img-fluid rounded-circle p-3"
                                                     style="width: 100px; height: 100px;" alt="user">
                                                 <div class="">
@@ -732,8 +761,9 @@
                                                         @if (!empty($attachments))
                                                             @foreach ($attachments as $img)
                                                                 <a target="_blank"
-                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
-                                                                        class="rounded" style="width: 75px;"
+                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                        loading="lazy" class="rounded"
+                                                                        style="width: 75px;"
                                                                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                         alt="review image"></a>
                                                             @endforeach
@@ -776,8 +806,9 @@
                             <div class="rounded position-relative fruite-item">
 
                                 <div class="fruite-img" style="height: 200px !important;">
-                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img loading="lazy"
-                                            loading="lazy" style="height: 200px !important;object-fit:cover"
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}"> <img
+                                            loading="lazy" loading="lazy"
+                                            style="height: 200px !important;object-fit:cover"
                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                             class="img-fluid w-100 rounded-top" alt=""></a>
@@ -930,7 +961,30 @@
 
         .area_seo>* {
             color: black !important;
+                overflow-wrap: break-word;
         }
+
+        .stores_table th,
+        .stores_table td {
+            border: 1px solid #dedede;
+            width: 138px !important;
+        }
+
+        .stores_table>* {
+            font-size: 12px;
+        }
+        .table-scroll {
+    width: 100%;
+    overflow-x: auto;        /* horizontal scroll */
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.stores_table {
+    width: max-content;      /* table expands only as needed */
+    min-width: 100%;         /* but never smaller than screen */
+    border-collapse: collapse;
+}
     </style>
     <!-- Single Product End -->
     <div class="area_seo">
@@ -949,6 +1003,74 @@
 
             {!! $content !!}
         @endif
+        {{-- REVIEWS =================================== --}}
+        <div class="col-6">
+            <h2>Customer Reviews</h2>
+            @foreach ($data['reviews'] as $rev)
+                <div class="d-flex border rounded my-2  p-2">
+                    <img loading="lazy"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
+                        class="img-fluid rounded m-2 r_profile_img" style=""
+                        alt="{{ $rev->f_name . ' ' . $rev->l_name }}">
+                    <div class="d-flex flex-column w-100">
+                        <div class="d-flex justify-content-between review_info">
+                            <div class="">
+                                <p class="mb-2 date_time" style="">
+                                    {{ _formatted_datetime($rev->created_at) }}</p>
+                                <div class="d-flex ">
+                                    <h5 class="r_name">{{ $rev->f_name . ' ' . $rev->l_name }}
+                                    </h5>
+                                    <div class="d-flex ">
+                                        @for ($i = 1; $i < 6; $i++)
+                                            <i
+                                                class="rating_star fa fa-star {{ $rev->rating >= $i ? 'text-secondary' : '' }}"></i>
+                                        @endfor
+                                    </div>
+                                </div>
+                                <p class="text-dark">{{ $rev->comment }}</p>
+                            </div>
+
+                            @if ($rev->attachment)
+                                @php $attachments = json_decode($rev->attachment); @endphp
+                                @if (!empty($attachments))
+                                    <div class="d-flex">
+                                        @foreach ($attachments as $img)
+                                            <a target="_blank" class="mx-1"
+                                                href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                    loading="lazy" class="rounded" style="width: 55px;"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                    alt="review"></a>
+                                            <a target="_blank"
+                                                href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                    loading="lazy" class="rounded" style="width: 55px;"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                    alt="review"></a>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            @endif
+                        </div>
+                        @if ($rev->reply)
+                            <div class="d-flex border rounded  p-2">
+                                <img loading="lazy"
+                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->store_logo, asset('storage/app/public/store/') . '/' . $rev->store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                                    class="img-fluid rounded m-2 reply_img" style=""
+                                    alt="{{ $rev->store_name }}">
+                                <div class="">
+                                    <p class="mb-0 date_time" style="">
+                                        {{ _formatted_datetime($rev->replied_at) }}</p>
+
+                                    <p class="text-dark">{{ $rev->reply }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+
+                </div>
+            @endforeach
+        </div>
+
         {{-- FAQs ================================== --}}
         <h5>Frequently Asked Questions</h5>
         @if (!empty($data['faqContent']) && !empty($data['faqContent']->content))
@@ -986,10 +1108,85 @@
         @endif
 
     </div>
+
+    <div class="top_stores_section">
+    <h2 class="mx-3">Top Rated Stores</h2>
+    <div class="table-scroll">
+        <table class="table table-responsive stores_table mx-3">
+            <tr>
+                <th style="width: 98px !important;">Name</th>
+                @foreach ($data['top_stores'] as $store)
+                    <th><a href="{{ route('store.details', [_selectedCity(), $store->slug]) }}">{{ $store->name }}</a>
+                    </th>
+                @endforeach
+            </tr>
+            <tr>
+                <th style="width: 98px !important;">Rating</th>
+
+                @foreach ($data['top_stores'] as $store)
+                    <td>
+                        @php $store_rating = number_format($store->average_rating, 1); @endphp
+                        <div class="rating-stars" data-rating="{{ $store_rating }}">
+                            <div class="stars-base">
+                                <i class="far fa-star"></i>
+                                <i class="far fa-star"></i>
+                                <i class="far fa-star"></i>
+                                <i class="far fa-star"></i>
+                                <i class="far fa-star"></i>
+                            </div>
+                            <div class="stars-fill">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>&nbsp;{{ $store_rating }} <br>({{$store->rating_count}} reviews)
+                    </td>
+                @endforeach
+            </tr>
+            <tr>
+                <th style="width: 98px !important;">Offered Services</th>
+                @foreach ($data['top_stores'] as $store)
+                    <td>
+                        @if (!empty($store->item_names_array))
+                            @foreach ($store->item_names_array as $i => $name)
+                                <a href="{{ route('product.details', [_selectedCity(), $store->item_slugs_array[$i] ?? '']) }}"
+                                    target="_blank">
+                                    {{ $name }}
+                                </a>
+                                @if ($i < count($store->item_names_array) - 1)
+                                    ,
+                                @endif
+                            @endforeach
+                        @else
+                            -
+                        @endif
+                    </td>
+                @endforeach
+            </tr>
+        
+            
+           
+             <tr>
+                <th style="width: 98px !important;">Address</th>
+                @foreach ($data['top_stores'] as $store)
+                    <td><span class="two-line-ellipsis">{{ $store->address }}</span></td>
+                @endforeach
+            </tr>
+        </table>
+    </div>
+    </div>
 @endsection
 
 @push('script_2')
     <script>
+        document.querySelectorAll('.rating-stars').forEach(el => {
+            const rating = parseFloat(el.getAttribute('data-rating'));
+            const percentage = (Math.min(rating, 5) / 5) * 100;
+            el.querySelector('.stars-fill').style.width = `${percentage}%`;
+        });
+
         function toggleDescription() {
             const description = document.querySelector('.random-description');
             const content = document.querySelector('.random-description-content');
@@ -1101,7 +1298,8 @@
                             console.log(images)
                             // Append new images
                             images.forEach(function(image) {
-                                owl.append('<div class="item"><img loading="lazy" src="' + path + image +
+                                owl.append('<div class="item"><img loading="lazy" src="' +
+                                    path + image +
                                     '" alt="Carousel Image"></div>');
                             });
 

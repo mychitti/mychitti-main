@@ -75,8 +75,6 @@
 
     <script>
         $(".billing_status").on('change', function() {
-            console.log('fsd')
-            console.log($(this).val())
             if ($(this).val() == '1') {
                 $(".invoice_date_inp").show();
             } else {

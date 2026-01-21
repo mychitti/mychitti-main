@@ -569,12 +569,11 @@ class Helpers
 
         return $subLedger;
     }
-    public static function ensurePurchaseAccount($category)
+    public static function ensurePurchaseAccount($category, $store_id = null)
     {
-        $storeId = self::get_store_id();
+        $storeId = $store_id ?? self::get_store_id();
 
         $expenseTypeId = LedgerAccountType::where('name', 'Expense')->first()->id ?? 1;
-
         $topLedger = StoreAccount::firstOrCreate(
             [
                 'store_id' => $storeId,
@@ -583,7 +582,7 @@ class Helpers
             [
                 'ledger_account_type_id' => $expenseTypeId,
                 'parent_id' => null,
-                'code' => _accountCode($expenseTypeId, null),
+                'code' => _accountCode($expenseTypeId, null , $store_id),
                 'description' => 'All Purchase Accounts',
                 'entity_type' => 'store',
                 'level' => 1,
@@ -599,7 +598,7 @@ class Helpers
                 ],
                 [
                     'ledger_account_type_id' => $topLedger->ledger_account_type_id,
-                    'code' => _accountCode($topLedger->ledger_account_type_id, $topLedger->id),
+                    'code' => _accountCode($topLedger->ledger_account_type_id, $topLedger->id, $store_id),
                     'description' => "Purchases - {$category}",
                     'entity_type' => 'store',
                     'level' => 2,
@@ -716,8 +715,6 @@ class Helpers
     }
     public static function ensureWalletRevenueAccount()
     {
-        $storeId = self::get_store_id();
-
         $revenueLedgerType = LedgerAccountType::where('name', 'Revenue')->first();
         $ledgerTypeId = $revenueLedgerType->id ?? 1;
 
@@ -4954,6 +4951,20 @@ class Helpers
                 Storage::disk('public')->makeDirectory($dir);
             }
             Storage::disk('public')->putFileAs($dir, $image, $imageName);
+        } else {
+            $imageName = 'def.png';
+        }
+
+        return $imageName;
+    }
+    public static function upload_to_secure(string $dir, string $format, $image = null, $imageName = null)
+    {
+        if ($image != null) {
+            $imageName = $imageName ?? \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
+            if (!Storage::disk('secure')->exists($dir)) {
+                Storage::disk('secure')->makeDirectory($dir);
+            }
+            Storage::disk('secure')->putFileAs($dir, $image, $imageName);
         } else {
             $imageName = 'def.png';
         }

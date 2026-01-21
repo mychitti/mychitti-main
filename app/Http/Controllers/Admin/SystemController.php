@@ -9,11 +9,15 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Models\Order;
+use App\Models\SecureFile;
 use App\Models\ServiceRequest;
 use App\Models\StoreDocument;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Random\Engine\Secure;
 
 class SystemController extends Controller
 {
@@ -25,7 +29,7 @@ class SystemController extends Controller
         $new_parcel_order_count = Order::ParcelOrder()->where(['checked' => 0])->count();
         $new_parcel_order = Order::ParcelOrder()->where(['checked' => 0])->latest()->first();
         $new_enquiry_count = ServiceRequest::where('checked', 0)->count();
-        $new_document_count = Helpers::module_permission_check('store_documents') ? StoreDocument::where('verified', 0)->where('checked' , 0)->count() : 0;
+        $new_document_count = Helpers::module_permission_check('store_documents') ? StoreDocument::where('verified', 0)->where('checked', 0)->count() : 0;
         $doc = Helpers::module_permission_check('store_documents') ? StoreDocument::where('verified', 0)->first() : null;
         if ($doc) {
             $new_document_url = route('admin.store.view', ['store' =>  $doc->store_id, 'tab' => 'documents']);
@@ -38,6 +42,78 @@ class SystemController extends Controller
         ]);
     }
 
+    public function verify_otp(Request $request) // common
+    {
+        $otp = implode('', $request->otp);
+        $phone = BusinessSetting::where('key', 'phone')->first()->value ?? '8777966552';
+        $verify = _verify_otp($phone, $otp);
+        $verify = 1;
+        $file = SecureFile::find($request->file);
+        if ($verify) {
+            if ($request->has('file')) {
+                if($file->file_type == 'api'){
+                    $dir = 'app/apis/';
+                }
+                $filePath = $dir . $file->name;
+                // prx($filePath);
+                if (Storage::disk('secure')->exists($filePath)) {
+                    $url = URL::temporarySignedRoute(
+                        'admin.secure.download',
+                        now()->addMinutes(1),
+                        ['file' => $file->name]
+                    );
+                    $data = [
+                        'user_id' => auth('admin')->id(),
+                        'user_type' => 'admin',
+                        'action' => 'downloaded file',
+                        'description' => 'Downloaded secure file : ' . $filePath,
+                    ];
+                    _actionLog($data);
+                    return response()->json([
+                        'status' => true,
+                        'download_url' => $url
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'File not found'
+                    ]);
+                }
+            }
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid OTP'
+            ]);
+        }
+    }
+
+    public function send_otp(Request $request) // common
+    {
+        if ($request->type == 'file_auth') {
+            $phone = BusinessSetting::where('key', 'phone')->first()->value ?? '8777966552';
+        }
+        $fileId = $request->id ?? '';
+        $otp  = rand(1000, 9999);
+        $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
+        $insert  = DB::table('phone_otp')->insert([
+            'phone' =>  $phone,
+            'otp' => $otp,
+            'created_at' => now()
+        ]);
+        $data = [
+            'user_id' => auth('admin')->id(),
+            'user_type' => 'admin',
+            'action' => 'requested file',
+            'description' => 'Requested to download secure file (Id: ' . $fileId . ')',
+        ];
+        _actionLog($data);
+        if ($insert) {
+            return response()->json(['status' => true]);
+        } else {
+            return response()->json(['status' => false]);
+        }
+    }
     public function settings()
     {
         return view('admin-views.settings');

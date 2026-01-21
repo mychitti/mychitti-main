@@ -51,13 +51,7 @@ class ServiceRequestController extends Controller
                 'errors' => $errors
             ], 403);
         }
-        if (!$request->hasHeader('moduleId')) {
-            $errors = [];
-            array_push($errors, ['code' => 'moduleId', 'message' => 'Module id is required']);
-            return response()->json([
-                'errors' => $errors
-            ], 403);
-        }
+    
         if (!$request->hasHeader('latitude') || !$request->hasHeader('longitude')) {
             $errors = [];
             array_push($errors, ['code' => 'coordinates', 'message' => 'Coordinates required']);
@@ -69,7 +63,7 @@ class ServiceRequestController extends Controller
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'item_id' => 'required|integer',
-            'qty' => 'required|integer',
+            // 'qty' => 'required|integer',
             // 'city' => 'required',
             'address_id' => 'required|integer'
         ]);
@@ -110,9 +104,9 @@ class ServiceRequestController extends Controller
         $serviceReq->user_id = $request->user_id;
         $serviceReq->item_id = $request->item_id;
         $serviceReq->sent_to = implode(',', $storesChunk);
-        $serviceReq->qty = $request->qty;
+        $serviceReq->qty = 1;
         $serviceReq->requirements = $request->requirements;
-        $serviceReq->module_id = $request->header('moduleId');
+        $serviceReq->module_id = 6;
         $serviceReq->zone_id = $request->header('zoneId');
         $serviceReq->latitude = (float)$request->header('latitude');
         $serviceReq->longitude = (float)$request->header('longitude');

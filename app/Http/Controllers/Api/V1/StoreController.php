@@ -99,11 +99,13 @@ class StoreController extends Controller
     ))";
 
         $stores = Store::select('stores.*')
-        ->select('stores.id', 'stores.name', 'stores.logo', 'stores.cover_photo')
+            ->leftJoin('categories as c1', 'c1.id', '=', 'stores.category_1')
+            ->leftJoin('categories as c2', 'c2.id', '=', 'stores.category_2')
+            ->select('stores.id', 'stores.name', 'stores.logo', 'stores.cover_photo',  'c1.name as category_1_name',  'c2.name as category_2_name')
             ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
             ->selectRaw("CASE 
             WHEN stores.id IN ($subscribedIdsSql) THEN 1 ELSE 0 
-        END AS subscribed")
+            END AS subscribed")
             ->where([
                 'stores.active' => 1,
                 'stores.status' => 1,
@@ -434,6 +436,60 @@ class StoreController extends Controller
         return response()->json($stores, 200);
     }
 
+    public function get_services_list(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]];
+            return response()->json(['errors' => $errors], 403);
+        }
+        $serviceData1 = DB::table('items')
+            ->join('categories', 'items.category_id', 'categories.id')
+            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
+            ->whereNull('items.inventory_item_id')
+            ->where('categories.status', 1)
+            ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
+            ->distinct()
+            ->get();
+
+        foreach ($serviceData1 as $cat) {
+            $cat->items = DB::table('items')
+                ->whereRaw('FIND_IN_SET(?, store_ids)', [$request->store_id])
+                ->whereNull('items.inventory_item_id')
+                ->where('category_id', $cat->id)
+                ->where('status', 1)
+                ->select('items.id', 'items.name', 'items.description', 'items.image')
+                ->get();
+        }
+
+        //INVENTORY ITEMS
+        $invItemdata = DB::table('items')
+            ->join('categories', 'items.category_id', 'categories.id')
+            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
+            ->whereNotNull('items.inventory_item_id')
+            ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
+            ->distinct()
+            ->get();
+
+        foreach ($invItemdata as $cat) {
+            $cat->items = DB::table('items')
+                ->whereRaw('FIND_IN_SET(?, store_ids)', [$request->store_id])
+                ->whereNotNull('items.inventory_item_id')
+                ->where('category_id', $cat->id)
+                ->where('status', 1)
+                ->select('items.id', 'items.name', 'items.description', 'items.image')
+                ->get();
+        }
+        $productdata = $serviceData1->merge($invItemdata); // paginate this 
+
+        return response()->json($productdata, 200);
+    }
     public function get_combined_data(Request $request)
     {
         if (!$request->hasHeader('zoneId')) {

@@ -50,6 +50,7 @@ use App\Models\Zone;
 use Carbon\Carbon;
 use CURLFile;
 use Illuminate\Support\Facades\View as FacadesView;
+use Illuminate\Support\Facades\Storage;
 
 class FrontController extends Controller
 {
@@ -150,10 +151,14 @@ class FrontController extends Controller
     }
     public function testing(Request $request, $type = 'vendor')
     {
-
+  
+        $filePath = 'apis.json';
+        if (Storage::disk('secure')->exists($filePath)) {
+            return Storage::disk('secure')->download($filePath);
+        }
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
 
-        return view('front-views.test_view', compact('type'));
+        // return view('front-views.test_view', compact('type'));
     }
     public function send_test_notification(Request $request)
     {
@@ -176,7 +181,7 @@ class FrontController extends Controller
             ];
             echo   Helpers::send_push_notif_to_device($fcm_token, $data);
         } else {
-            echo $type.' not found';
+            echo $type . ' not found';
         }
     }
     public function add_feature_actions(Request $request)
@@ -631,7 +636,7 @@ class FrontController extends Controller
                     break;
 
                 case 'store':
-                    $url = route('store.details', [_selectedCity() , $result->slug]);
+                    $url = route('store.details', [_selectedCity(), $result->slug]);
                     $html .= '<li class="d-flex gap-2"><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
                     break;
             }
@@ -641,7 +646,7 @@ class FrontController extends Controller
 
         return response()->json(['status' => true, 'html' => $html]);
     }
-   
+
     public function search_old(Request $request)
     {
         $zone_id = json_decode($this->zone_id, true);
@@ -815,7 +820,7 @@ class FrontController extends Controller
                     break;
 
                 case 'store':
-                    $url = route('store.details', [_selectedCity() , $result->slug]);
+                    $url = route('store.details', [_selectedCity(), $result->slug]);
                     $linkHtml = '<li class="d-flex gap-2" ><i class="fa fa-search"></i><a class="d-flex flex-column" href="' . $url . '"><span class="fw-bold">' . e($result->name) . '</span><small class="text-muted">Store</small></a></li>';
                     break;
             }
@@ -2286,10 +2291,6 @@ class FrontController extends Controller
                         ->get();
                 }
 
-                //                 echo '==========================';
-                // echo '============ productdata ==============';
-                // echo '==========================';
-                //                 print_r($productdata );
                 //INVENTORY ITEMS
                 $invItemdata = DB::table('items')
                     ->join('categories', 'items.category_id', 'categories.id')
@@ -2458,6 +2459,8 @@ class FrontController extends Controller
                 ->limit(12)
                 ->groupBy('items.id')
                 ->get();
+
+            $data['reviews'] = DB::table('store_reviews')->join('service_requests', 'service_requests.id', 'store_reviews.order_id')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'stores.logo as store_logo', 'stores.name as store_name', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->take(3)->get();
         } else {
             $data['featured_products'] = DB::table('items')
                 ->where('items.is_approved', 1)
@@ -2484,6 +2487,7 @@ class FrontController extends Controller
                 ->distinct()
                 ->limit(12)
                 ->get();
+            $data['reviews'] =  DB::table('reviews')->join('items', 'items.id', 'reviews.item_id')->join('users', 'users.id', 'reviews.user_id')->where('items.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'items.*', 'reviews.comment', 'reviews.attachment', 'reviews.created_at', 'reviews.rating')->where('reviews.status', 1)->get();
         }
         $data['seoContent'] = SeoContent::where('seo_type', 'item')
             ->where('data', $item->id)
@@ -2494,9 +2498,53 @@ class FrontController extends Controller
             ->where('data', $item->id)
             ->inRandomOrder()
             ->first();
-        // prx( $data['faqContent'] );
 
-        $data['reviews'] =  DB::table('reviews')->join('items', 'items.id', 'reviews.item_id')->join('users', 'users.id', 'reviews.user_id')->where('items.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'items.*', 'reviews.comment', 'reviews.attachment', 'reviews.created_at', 'reviews.rating')->where('reviews.status', 1)->get();
+        // 1️⃣ Get top 12 stores by review count, then pick 8 random
+        $topStores = Store::leftJoin('store_reviews', 'stores.id', '=', 'store_reviews.store_id')
+            ->whereIn('stores.zone_id', json_decode($this->zone_id, true))
+            ->select(
+                'stores.id',
+                'stores.name',
+                'stores.slug',
+                'stores.address',
+                'stores.average_rating',
+                'stores.rating_count',
+                // DB::raw('COUNT(store_reviews.id) as review_count')  
+            )
+            ->groupBy('stores.id', 'stores.name', 'stores.slug', 'stores.address', 'stores.average_rating', 'stores.rating_count')
+            ->where('stores.module_id', 6)
+            ->where('stores.status', 1)
+            ->orderByDesc('stores.rating_count')
+            ->take(12)
+            ->get()
+            ->shuffle()
+            ->take(8); // final 8 stores
+
+        // 2️⃣ Fetch up to 4 items per store separately
+        $storeIds = $topStores->pluck('id')->toArray();
+
+        // Get items for all top stores at once
+        $items = DB::table('items')
+            ->select('items.id', 'items.name', 'items.slug', 'stores.id as store_id')
+            ->join('stores', function ($join) {
+                $join->whereRaw("FIND_IN_SET(items.id, stores.services_1)")
+                    ->orWhereRaw("FIND_IN_SET(items.id, stores.services_2)");
+            })
+            ->whereIn('stores.id', $storeIds)
+            ->orderBy('items.id') // pick top items
+            ->get()
+            ->groupBy('store_id'); // group by store
+
+        // Attach top 4 items to each store
+        $topStores->each(function ($store) use ($items) {
+            $storeItems = $items->get($store->id, collect())->take(4); // max 4 items
+            $store->item_names_array = $storeItems->pluck('name')->toArray();
+            $store->item_slugs_array = $storeItems->pluck('slug')->toArray();
+        });
+
+        $data['top_stores'] = $topStores;
+        // prx(count($data['top_stores']));
+
         return view('front-views.product_details', compact('item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 

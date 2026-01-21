@@ -1,13 +1,15 @@
  
- @php
-    $logo = asset('storage/vendor_login/mc_vendor_hub_logo.png'); @endphp
+  @php  $logo = \App\Models\BusinessSetting::where(['key' => 'mcvendor_footer_logo'])->first()->value; @endphp
+
     <div class="container-fluid bg-dark text-white-50 footer pt-5 ">
         <div class="container p-2">
             <div class="pb-4 mb-2" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">
                 <div class="row">
                     <div class="col-lg-6">
                         <div class="">
-                            <img class="" style="width: 130px; margin:0 auto;" src="{{ $logo ?? '' }}">
+                            <img class="" style="width: 130px; margin:0 auto;"  data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($logo, asset('storage/app/public/business/') . '/' . $logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                    alt="MCVendorHub">
 
                         </div>
                     </div> 

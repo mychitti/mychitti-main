@@ -525,6 +525,16 @@
                     </ul>
                 </li>
                 @endif
+                {{-- STORE WALLET  =========================== --}}
+                  @if (\App\CentralLogics\Helpers::module_permission_check('store_wallet'))
+                  <li class="navbar-vertical-aside-has-menu {{ Request::is('store/wallet*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.wallet.index') }}" title="Store Wallet">
+                            <i class="tio-incognito nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Store Wallet</span>
+                        </a>
+                    </li>
+                    @endif
+                {{-- STORE WALLET END =========================== --}}
 
                   
                      @if (\App\CentralLogics\Helpers::module_permission_check('quotaiton_manage'))

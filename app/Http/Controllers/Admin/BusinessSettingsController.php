@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use App\Models\AdminPromotionalBanner;
 use App\Models\FlutterSpecialCriteria;
+use App\Models\SecureFile;
 use App\Models\StoreTnc;
 use App\Models\TaxRate;
 use App\Models\VendorModuleInstruction;
@@ -513,6 +514,7 @@ class BusinessSettingsController extends Controller
             'storeCronCommand' =>  $storeCronCommand
         ];
     }
+
 
     public function business_setup2(Request $request)
     {
@@ -1841,21 +1843,23 @@ class BusinessSettingsController extends Controller
                 'value' => $data
             ]);
             Toastr::success(translate('App section image updated'));
-        } else if ($tab == 'footer_logo') {
-            $data = null;
-            $image = BusinessSetting::where('key', 'footer_logo')->first();
-            if ($image) {
-                $data = $image->value;
-            }
-            $image_name = $data ?? \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . ".png";
-            if ($request->has('footer_logo')) {
-                $data = Helpers::update('react_landing/', $image_name, 'png', $request->file('footer_logo')) ?? null;
-            }
-            DB::table('business_settings')->updateOrInsert(['key' => 'footer_logo'], [
-                'value' => $data
-            ]);
-            Toastr::success(translate('Footer logo updated'));
-        } else if ($tab == 'react-feature') {
+        }
+        //  else if ($tab == 'footer_logo') {
+        //     $data = null;
+        //     $image = BusinessSetting::where('key', 'footer_logo')->first();
+        //     if ($image) {
+        //         $data = $image->value;
+        //     }
+        //     $image_name = $data ?? \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . ".png";
+        //     if ($request->has('footer_logo')) {
+        //         $data = Helpers::update('react_landing/', $image_name, 'png', $request->file('footer_logo')) ?? null;
+        //     }
+        //     DB::table('business_settings')->updateOrInsert(['key' => 'footer_logo'], [
+        //         'value' => $data
+        //     ]);
+        //     Toastr::success(translate('Footer logo updated'));
+        // } 
+        else if ($tab == 'react-feature') {
             $data = [];
             $imageName = null;
             $feature = BusinessSetting::where('key', 'react_feature')->first();
@@ -2103,10 +2107,10 @@ class BusinessSettingsController extends Controller
     }
     public function homepage_config_update(Request $request)
     {
-       
-           DB::table('business_settings')->updateOrInsert(['key' => 'unavailability_heading_homepage'], [
-                    'value' => $request['unavailability_heading_homepage']
-                ]);
+
+        DB::table('business_settings')->updateOrInsert(['key' => 'unavailability_heading_homepage'], [
+            'value' => $request['unavailability_heading_homepage']
+        ]);
         Toastr::success('Updated Successfully');
         return back();
     }
@@ -2126,21 +2130,36 @@ class BusinessSettingsController extends Controller
     }
 
 
+    public function pages_update(Request $request)
+    {
+        // Decode safely
+        if ($request->has('vendorhub_terms_and_conditions')) {
+            $data_setting = DataSetting::where('type', 'admin_landing_page')->where('key', 'vendorhub_terms_and_conditions')->first();
+            if (!$data_setting) {
+                $data_setting = new DataSetting();
+                $data_setting->type = 'admin_landing_page';
+                $data_setting->key = 'vendorhub_terms_and_conditions';
+            }
+            $data_setting->value = $request->vendorhub_terms_and_conditions;
+            $data_setting->save();
+            return response()->json(['status' => true, 'message' => 'Updated Successfully']);
+        }
+    }
     public function privacy_policy_update(Request $request)
     {
         $type = $request->type ?? '';
 
         // Decode safely
-
-
         if ($type == 'for_mc_vendor') {
             $encoded = $request->input('privacy_policy_for_mc_vendor');
             $decoded[0] = is_array($encoded)
-                ? self::base64UrlDecode($encoded[0])
-                : self::base64UrlDecode($encoded);
+                ? $this->base64UrlDecode($encoded[0])
+                :  $this->base64UrlDecode($encoded);
 
             $request->merge(['privacy_policy_for_mc_vendor' => $decoded]);
             $this->update_data($request, 'privacy_policy_for_mc_vendor');
+
+            return response()->json(['status' => true, 'message' => 'Updated Successfully']);
         } else {
             $encoded = $request->input('privacy_policy');
             $decoded[0] = is_array($encoded)
@@ -6571,6 +6590,11 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
+    public function app_setup()
+    {
+        $sFiles = SecureFile::where('file_type', 'api')->get();
+        return view('admin-views.business-settings.app-setup', compact('sFiles'));
+    }
     public function react_setup()
     {
         Helpers::react_domain_status_check();

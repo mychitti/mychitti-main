@@ -178,6 +178,10 @@
                         window.location.href = data.url
                     }, 1000)
                 }
+                if (data.status) { 
+                                   toastr.success(data.message);
+
+                }
             },
             error: function(xhr) {
                 $('#formSubmitButton').attr('disabled', false);

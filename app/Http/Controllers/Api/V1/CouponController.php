@@ -82,6 +82,20 @@ class CouponController extends Controller
 
             return response()->json($data, 200);
     }
+     public function user(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required',
+        ]);
+        $user_id = $request->user_id;
+        $coupons = Coupon::withoutGlobalScopes()
+            ->with('store:id,name')
+            ->active()
+            ->whereDate('expire_date', '>=', now()->toDateString())
+            ->whereJsonContains('customer_id', (string) $user_id) // ✅ MUST be string
+            ->get();
+        return response()->json(['data' =>  $coupons], 200);
+    }
 
     public function apply(Request $request)
     {

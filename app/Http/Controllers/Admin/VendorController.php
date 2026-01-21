@@ -186,6 +186,7 @@ class VendorController extends Controller
             return response()->json(['status' => false, 'message' => 'Some error occured']);
         }
     }
+ 
     public function send_vendor_otp(Request $request)
     {
         $otp  = rand(1000, 9999);
@@ -201,6 +202,7 @@ class VendorController extends Controller
             return response()->json(['status' => false]);
         }
     }
+
     public function import(Request $request)
     {
         $file = $request->file('file');

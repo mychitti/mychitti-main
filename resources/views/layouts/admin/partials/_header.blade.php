@@ -79,6 +79,22 @@
                                     @endif
                                     @if (\App\CentralLogics\Helpers::module_permission_check('settings'))
                                     <li>
+                                        <a href="{{ route('admin.business-settings.mcvendor-setup') }}" class="next-tour">
+                                            <img src="{{asset('/public/assets/admin/img/navbar-setting-icon/business.svg')}}" alt="">
+                                            <span>{{translate('MC Vendor Hub Settings')}}</span>
+                                        </a>
+                                    </li>
+                                    @endif
+                                    @if (\App\CentralLogics\Helpers::module_permission_check('settings'))
+                                    <li>
+                                        <a href="{{ route('admin.business-settings.app-setup') }}" class="next-tour">
+                                            <img src="{{asset('/public/assets/admin/img/navbar-setting-icon/business.svg')}}" alt="">
+                                            <span>{{translate('App Settings')}}</span>
+                                        </a>
+                                    </li>
+                                    @endif
+                                    @if (\App\CentralLogics\Helpers::module_permission_check('settings'))
+                                    <li>
                                         <a href="{{ route('admin.business-settings.third-party.payment-method') }}" class="next-tour">
                                             <img src="{{asset('/public/assets/admin/img/navbar-setting-icon/third-party.svg')}}" alt="">
                                             <span>{{translate('3rd Party')}}</span>

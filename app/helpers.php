@@ -95,6 +95,7 @@ use Mpdf\Mpdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\ActionLog;
 
 if (!function_exists('translate')) {
     function translate($key, $replace = [])
@@ -220,6 +221,7 @@ function _accountCode($ledgerTypeId, $parentId = null, $storeId = null)
     if ($parentId) {
         $parent = StoreAccount::where('store_id', $storeId)->findOrFail($parentId);
         return $parent->code . '-' . $newSegment;
+
     }
 
     return $ledgerTypeId . '-' . $newSegment;
@@ -3169,7 +3171,7 @@ if (!function_exists('hasPermission')) {
 function _verifiedStoreBadge($storeId)
 {
     $verifiedDoc = StoreDocument::where('store_id', $storeId)->where("verified", 1)->exists();
-    return 1 ? '<img src="' . asset('storage/app/public/util/verified_badge.jpeg') . '" style="width:32px;    position: absolute2;left: 3px;top: -3px; aspect-ratio:1;" alt="">' : '';
+    return $verifiedDoc ? '<img src="' . asset('storage/app/public/util/verified_badge.jpeg') . '" style="width:32px;    position: absolute2;left: 3px;top: -3px; aspect-ratio:1;" alt="">' : '';
 }
 function _manualInvoice($id)
 {
@@ -4271,27 +4273,27 @@ if (!function_exists('_isSubscription')) {
 }
 if (!function_exists('_nearbyStoresOptimized')) {
     function _nearbyStoresOptimized($zone_id, $limit = 9, $offset = 1)
-{
-    $zoneIds = json_decode($zone_id, true);
-    if (!is_array($zoneIds)) {
-        $zoneIds = [$zoneIds];
-    }
+    {
+        $zoneIds = json_decode($zone_id, true);
+        if (!is_array($zoneIds)) {
+            $zoneIds = [$zoneIds];
+        }
 
-    $userLat = session('latitude');
-    $userLng = session('longitude');
+        $userLat = session('latitude');
+        $userLng = session('longitude');
 
-    if (!$userLat || !$userLng) {
-        return collect();
-    }
+        if (!$userLat || !$userLng) {
+            return collect();
+        }
 
-    // Subscribed store IDs
-    $subscribedStoreIds = DB::table('vendor_subscriptions')
-        ->where('plan_expiry', '>', now())
-        ->pluck('vendor_id')
-        ->toArray();
+        // Subscribed store IDs
+        $subscribedStoreIds = DB::table('vendor_subscriptions')
+            ->where('plan_expiry', '>', now())
+            ->pluck('vendor_id')
+            ->toArray();
 
-    // Distance SQL (safe acos)
-    $distanceSql = "
+        // Distance SQL (safe acos)
+        $distanceSql = "
         (6371 * acos(
             LEAST(1, GREATEST(-1,
                 cos(radians(?)) *
@@ -4303,28 +4305,28 @@ if (!function_exists('_nearbyStoresOptimized')) {
         ))
     ";
 
-    return Store::select('stores.*')
-        ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
-        ->selectRaw("
+        return Store::select('stores.*')
+            ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
+            ->selectRaw("
             CASE 
                 WHEN stores.id IN (" . implode(',', $subscribedStoreIds ?: [0]) . ")
                 THEN 1 ELSE 0 
             END AS subscribed
         ")
-        ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', '=', 'stores.id')
-        ->where([
-            'stores.active' => 1,
-            'stores.status' => 1,
-            'stores.module_id' => 6
-        ])
-        ->whereIn('stores.zone_id', $zoneIds)
-        ->whereNotNull('stores.latitude')
-        ->whereNotNull('stores.longitude')
-        ->groupBy('stores.id')
-        ->orderByDesc('subscribed') // subscribed first
-        ->orderBy('distance')       // nearest first
-        ->paginate($limit, ['*'], 'page', $offset);
-}
+            ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', '=', 'stores.id')
+            ->where([
+                'stores.active' => 1,
+                'stores.status' => 1,
+                'stores.module_id' => 6
+            ])
+            ->whereIn('stores.zone_id', $zoneIds)
+            ->whereNotNull('stores.latitude')
+            ->whereNotNull('stores.longitude')
+            ->groupBy('stores.id')
+            ->orderByDesc('subscribed') // subscribed first
+            ->orderBy('distance')       // nearest first
+            ->paginate($limit, ['*'], 'page', $offset);
+    }
 }
 
 if (!function_exists('_nearbyStoresOld')) {
@@ -4792,6 +4794,25 @@ if (!function_exists('_verify_otp')) {
 }
 
 
+if (!function_exists('_actionLog')) {
+    function _actionLog($data)
+    {
+      
+        try {
+            ActionLog::create([
+                'user_id' => $data['user_id'],
+                'user_type' => $data['user_type'],
+                'action' => $data['action'],
+                'model_type' => $data['model_type'] ?? null, 
+                'model_id' =>  $data['model_id'] ?? 0,
+                'description' =>  $data['description'],
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $th) {
+            // throw $th;
+        }
+    }
+}
 if (!function_exists('_send_notif_to_user')) {
     function _send_notif_to_user($action, $fcm_token) {}
 }
