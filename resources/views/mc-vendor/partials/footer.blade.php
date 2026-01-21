@@ -1,5 +1,5 @@
  
-  @php  $logo = \App\Models\BusinessSetting::where(['key' => 'mcvendor_footer_logo'])->first()->value; @endphp
+  @php  $logo = \App\Models\BusinessSetting::where(['key' => 'mcvendor_footer_logo'])->first()?->value; @endphp
 
     <div class="container-fluid bg-dark text-white-50 footer pt-5 ">
         <div class="container p-2">
