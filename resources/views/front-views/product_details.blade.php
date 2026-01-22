@@ -678,7 +678,7 @@
 
                                                 <h6 class="mb-2 d-flex align-items-center">
                                                     <span class="two-line-ellipsis">{{ ucfirst($store->name) }}</span>
-                                                    {!! _verifiedStoreBadge($store->id) !!}
+                                                    {!! _verifiedStoreBadge($store) !!}
                                                 </h6>
                                                 <p class="address_elem text-dark one-line-ellipsis mb-1"
                                                     style="font-size: 12px;"><i class="fas fa-map-marker-alt"></i>

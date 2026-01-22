@@ -1642,7 +1642,7 @@
                     @endif
 
                     {{-- =============================== HR Management=========================== --}}
-                   @if (
+                    @if (
                         (selected_menu('staff_manage') ||
                             selected_menu('attendance_manage') ||
                             selected_menu('leave_manage') ||

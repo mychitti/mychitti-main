@@ -3168,9 +3168,9 @@ if (!function_exists('hasPermission')) {
     }
 }
 
-function _verifiedStoreBadge($storeId)
+function _verifiedStoreBadge($store)
 {
-    $verifiedDoc = StoreDocument::where('store_id', $storeId)->where("verified", 1)->exists();
+    $verifiedDoc = $store->id_doc || $store->gst_doc;
     return $verifiedDoc ? '<img src="' . asset('storage/app/public/util/verified_badge.jpeg') . '" style="width:32px;    position: absolute2;left: 3px;top: -3px; aspect-ratio:1;" alt="">' : '';
 }
 function _manualInvoice($id)
