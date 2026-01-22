@@ -139,7 +139,7 @@ class ServiceController extends Controller
 
         $leadChargeInfo =  LeadCharge::where('category_id', $cat_id)->where('zone_id',  $zoneId)->first();
         // prx($leadChargeInfo);
-        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
+        $balanceInfo  = StoreWallet::where('store_id', $vendor_id)->first();
         // prx($balanceInfo);
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');
@@ -195,7 +195,7 @@ class ServiceController extends Controller
             }
 
             //deduct amount from wallet
-            $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
+            $wallet = StoreWallet::where('store_id', $vendor_id)->first();
             // prx($wallet);
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);

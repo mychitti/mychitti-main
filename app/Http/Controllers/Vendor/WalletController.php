@@ -251,7 +251,7 @@ class WalletController extends Controller
             })
             ->where('type', 'collected')
             ->where('created_by', 'store')
-            ->where('from_id', Helpers::get_vendor_id())
+            ->where('from_id', Helpers::get_store_id())
             ->where('from_type', 'store')
             ->latest()->paginate(config('default_pagination'));
         return view('vendor-views.wallet.payment_list', compact('account_transaction', 'withdrawal_methods', 'data'));
