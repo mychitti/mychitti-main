@@ -24,14 +24,14 @@
         </div>
         <!-- End Page Header -->
         <?php
-        $wallet = \App\Models\StoreWallet::where('vendor_id', \App\CentralLogics\Helpers::get_vendor_id())->first();
+        $wallet = \App\Models\StoreWallet::where('vendor_id', \App\CentralLogics\Helpers::get_store_id())->first();
         if (isset($wallet) == false) {
             \Illuminate\Support\Facades\DB::table('store_wallets')->insert([
-                'vendor_id' => \App\CentralLogics\Helpers::get_vendor_id(),
+                'vendor_id' => \App\CentralLogics\Helpers::get_store_id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            $wallet = \App\Models\StoreWallet::where('vendor_id', \App\CentralLogics\Helpers::get_vendor_id())->first();
+            $wallet = \App\Models\StoreWallet::where('vendor_id', \App\CentralLogics\Helpers::get_store_id())->first();
         }
         ?>
         @include('vendor-views.wallet.partials._balance_data', ['wallet' => $wallet])
