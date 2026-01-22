@@ -556,7 +556,7 @@
         src="{{ asset('public/assets/admin') }}/vendor/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.min.js">
     </script>
     <script>
-        @if (auth('vendor_employee')->check()) 
+        @if (auth('vendor_employee')->check())
             window.ReactNativeWebView?.postMessage(
                 JSON.stringify({
                     type: 'STAFF_LOGIN',
@@ -629,7 +629,9 @@
                     $('#staffDashPunchIcon').text('▶');
                     $('#staffDashPunchText').text('Punch In');
                     $('#staffDashPunchTimeDisplay').removeClass('staff-dash-hidden');
-                    staffDashUpdateDateTime();
+                    if (typeof staffDashUpdateDateTime === 'function') {
+                        staffDashUpdateDateTime();
+                    }
                 }
 
                 // Update display immediately
