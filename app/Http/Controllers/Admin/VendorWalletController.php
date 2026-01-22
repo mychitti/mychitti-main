@@ -20,76 +20,98 @@ class VendorWalletController extends Controller
     {
         return view('admin-views.vendor.wallet');
     }
-    public function recharge(Request $request)
-    {
-        $request->validate([
-            'store_id' => 'required|exists:stores,id',
-            'amount' => 'required|integer|min:1',
-        ]);
-        $store_id = $request->store_id;
-        $store = Store::find($store_id);
-        $wallet = $store->vendor->wallet;
-        $amount = $request->amount;
+  public function recharge(Request $request)
+{
+    $request->validate([
+        'store_id' => 'required|exists:stores,id',
+        'amount'   => 'required|numeric|min:1',
+    ]);
 
+    $store   = Store::findOrFail($request->store_id);
+    $store_id = $request->store_id;
+    $amount  = round($request->amount, 2); // amount paid
 
-        $wallet =  StoreWallet::where('vendor_id', $store_id)->first();
-        if ($wallet) {
-            $wallet->increment('total_earning', $amount);
-            $wallet->save();
-        } else {
-            $store = Store::find($store_id);
-            $wallet = new StoreWallet();
-            $wallet->vendor_id = $store->vendor->id;
-            $wallet->total_earning = $amount;
-            $wallet->total_withdrawn = 0.0;
-            $wallet->pending_withdraw = 0.0;
-            $wallet->created_at = now();
-            $wallet->updated_at = now();
-            $wallet->save();
-        }
+    /* ================= WALLET ================= */
+    $wallet = StoreWallet::firstOrCreate(
+        ['vendor_id' => $store->id],
+        [
+            'total_earning'    => 0,
+            'total_withdrawn'  => 0,
+            'pending_withdraw' => 0,
+        ]
+    );
 
-        if ($request->billing) {
+    $wallet->increment('total_earning', $amount);
 
-            //insert into transactions 
-            $account_transaction = new AccountTransaction();
-            $account_transaction->current_balance = $wallet->sum('total_earning') + $amount;
-            $account_transaction->from_type = 'store';
-            $account_transaction->amount = $amount;
-            $account_transaction->from_id = $store_id;
-            $account_transaction->method = 'wallet';
-            $account_transaction->action = 'credit';
-            $account_transaction->reason = 'Wallet Recharge';
-            $account_transaction->created_by = 'admin';
-            $account_transaction->save();
+    /* ================= TRANSACTION ================= */
+    if ($request->billing) {
 
-            $wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first();
-            $wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first();
-            $wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first()?->value ?? 'included';
+        $accountTransaction = new AccountTransaction();
+        $accountTransaction->current_balance = $wallet->total_earning;
+        $accountTransaction->from_type = 'store';
+        $accountTransaction->from_id = $store->id;
+        $accountTransaction->amount = $amount;
+        $accountTransaction->method = 'wallet';
+        $accountTransaction->action = 'credit';
+        $accountTransaction->reason = 'Wallet Recharge';
+        $accountTransaction->created_by = 'admin';
+        $accountTransaction->save();
 
-            // generate bill 
-            $invoice = new ManualInvoice();
-            $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
-            $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
-            $invoice->vendor_id = NULL;
-            $invoice->bill_to = $store_id;
-            $invoice->bill_to_type = 'vendor';
-            $invoice->module_id =  $store->module_id;
-            $invoice->total_amount =  $wallet_recharge_gst_status == 'included' ? $amount :  floor(_taxIncludedPrice($amount, $wallet_recharge_gst_percent->value, 'actual'));
-            $invoice->payment_method = 'Cash';
-            $invoice->tax_type =  'gst';
-            $invoice->payment_status =  'Paid';
-            $invoice->payment_date =  date('Y-m-d');
-            $invoice->generated_by =  'admin';
-            $invoice->save();
+        /* ================= GST SETTINGS ================= */
+        $gstPercent = BusinessSetting::where('key', 'wallet_recharge_gst_percent')->value('value'); // 15
+        $hsn        = BusinessSetting::where('key', 'wallet_recharge_hsn')->value('value');
 
-            $InvoiceItem = new InvoiceItem();
-            $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
-            $InvoiceItem->name = 'Wallet Recharge';
-            $InvoiceItem->qty = 1;
-            $InvoiceItem->price = $amount;
-            $InvoiceItem->tax =  $wallet_recharge_gst_percent->value;
-            $InvoiceItem->hsn =  $wallet_recharge_hsn->value;
-            $InvoiceItem->save();
+        $halfGst = $gstPercent / 2;
+
+        /* ================= GST CALCULATION ================= */
+
+        // Example rule: derive taxable from business logic
+        $taxable = round($amount / (1 + ($gstPercent / 100)), 2);
+
+        $cgst = round($taxable * ($halfGst / 100), 2);
+        $sgst = round($taxable * ($halfGst / 100), 2);
+
+        $taxTotal = round($cgst + $sgst, 2);
+        $computedTotal = round($taxable + $taxTotal, 2);
+        $roundOff = round($amount - $computedTotal, 2);
+
+        /* ================= INVOICE ================= */
+        $invoice = new ManualInvoice();
+        $invoice->invoice_id      = Helpers::generateInvoiceIdAdmin();
+        $invoice->invoice_serial  = BusinessSetting::where('key', 'admin_bill_serial_number')->value('value') - 1;
+        $invoice->vendor_id       = null;
+        $invoice->bill_to         = $store->id;
+        $invoice->bill_to_type    = 'vendor';
+        $invoice->module_id       = $store->module_id;
+        $invoice->subtotal_amount = $taxable;
+        $invoice->cgst            = $cgst;
+        $invoice->sgst            = $sgst;
+        $invoice->igst            = $sgst + $cgst;
+        $invoice->final_tax       = $taxTotal;
+        $invoice->taxable_amount  = $taxable;
+        $invoice->round_off       = $roundOff;
+        $invoice->total_amount    = $amount;
+        $invoice->payment_method  = 'Cash';
+        $invoice->tax_type        = 'gst';
+        $invoice->payment_status  = 'Paid';
+        $invoice->payment_date    = now()->toDateString();
+        $invoice->generated_by    = 'admin';
+        $invoice->save();
+
+        // prx($invoice->final_tax);
+        /* ================= INVOICE ITEM ================= */
+        $item = new InvoiceItem();
+        $item->rand_invoice_id = $invoice->invoice_id;
+        $item->name            = 'Wallet Recharge';
+        $item->qty             = 1;
+        $item->price           = $taxable;
+        $item->cgst_rate       = $halfGst;
+        $item->cgst_amount     = $cgst;
+        $item->sgst_rate       = $halfGst;
+        $item->sgst_amount     = $sgst;
+        $item->hsn             = $hsn;
+        $item->total           = $amount;
+        $item->save();
 
             // ledger entry 
             $credit_account = Helpers::ensureWalletRevenueAccount();
@@ -106,7 +128,7 @@ class VendorWalletController extends Controller
             try {
                 $data = _createBillPdf($invoice, 'admin');
                 $invoice->update(['pdf' => $data['pdf']]);
-                    return redirect($data['url']);
+                return redirect($data['url']);
             } catch (\Throwable $th) {
                 //
             }
@@ -114,5 +136,23 @@ class VendorWalletController extends Controller
             Toastr::success('Wallet Recharged Successfully');
             return back();
         }
+    }
+    private function calculateGst(float $amount, float $gstPercent, string $status = 'included'): array
+    {
+        if ($status === 'included') {
+            $subtotal = round(($amount * 100) / (100 + $gstPercent), 2);
+            $gstAmount = round($amount - $subtotal, 2);
+            $total = round($amount, 2);
+        } else {
+            $subtotal = round($amount, 2);
+            $gstAmount = round(($amount * $gstPercent) / 100, 2);
+            $total = round($subtotal + $gstAmount, 2);
+        }
+
+        return [
+            'subtotal' => $subtotal,
+            'gst'      => $gstAmount,
+            'total'    => $total,
+        ];
     }
 }

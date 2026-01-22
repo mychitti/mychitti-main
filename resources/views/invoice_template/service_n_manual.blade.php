@@ -334,21 +334,25 @@
                     @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)
                         <td class="no-border">{{ $qt->price * $qt->qty }}</td>
                         @if ($bill_gst_type == 'cgst_sgst')
-                            <td class="no-border">{{ $qt->tax / 2 }}%</td><!-- CGST percent -->
-                            <td class="no-border">{{ _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
+                            <td class="no-border">{{ ($qt->cgst_rate ?? $qt->tax / 2) }}%</td><!-- CGST percent -->
+                            <td class="no-border">{{ $qt->cgst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
                             <!-- CGST amount -->
-                            <td class="no-border">{{ $qt->tax / 2 }}%</td> <!-- SGST percent -->
-                            <td class="no-border">{{ _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
+                            <td class="no-border">{{ $qt->sgst_rate ?? $qt->tax / 2 }}%</td> <!-- SGST percent -->
+                            <td class="no-border">{{$qt->sgst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
                             <!-- SGST amount -->
                         @else
-                            <td class="no-border">{{ $qt->tax }}%</td> <!-- SGST percent -->
-                            <td class="no-border">{{ _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}</td>
-                            <!-- SGST amount -->
+                            <td class="no-border">{{ $qt->igst_rate ?? $qt->tax }}%</td> <!-- IGST percent -->
+                            <td class="no-border">{{ $qt->igst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}</td>
+                            <!-- IGST amount -->
                         @endif
                         <td class="no-border">{{ _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}</td>
                     @endif
                     <td class="no-border">
+                    @if($qt->total)
+                    {{round($qt->total)}}
+                    @else
                         {{ $qt->price * $qt->qty + _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}
+                        @endif
                     </td>
                 </tr>
             @endforeach
@@ -448,7 +452,8 @@
                     <tr>
                         <td class="borderless_td" style="text-align: right;">Sub Total:</td>
                         <td class="borderless_td" style="text-align: right;">
-                            {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($subTotalPrice, 3) }}
+                     
+                            {{ \App\CentralLogics\Helpers::currency_symbol() . number_format(($invoice->subtotal_amount ?? $subTotalPrice), 3) }}
                         </td>
                     </tr>
                     @if ($invoice->additional_charges)
@@ -471,13 +476,13 @@
                         <tr>
                             <td class="borderless_td" style="text-align: right;">Total Taxable Amount:</td>
                             <td class="borderless_td" style="text-align: right;">
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($totalPrice - $totalTaxAmount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format(($invoice->subtotal_amount  ?? $totalPrice - $totalTaxAmount), 3) }}
                             </td>
                         </tr>
                         <tr>
                             <td class="borderless_td" style="text-align: right;">Total Tax Amount</td>
                             <td class="borderless_td" style="text-align: right;">
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($totalTaxAmount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format(($invoice->final_tax ?? $totalTaxAmount), 3) }}
                             </td>
                         </tr>
                     @endif
@@ -500,7 +505,7 @@
                     <tr>
                         <td class="borderless_td" style="text-align: right;">Rounded Off:</td>
                         <td class="borderless_td" style="text-align: right;">
-                            0
+                          {{$invoice->round_off ?? 0}}  
                         </td>
                     </tr>
 

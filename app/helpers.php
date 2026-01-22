@@ -893,7 +893,7 @@ function _createBillPdfOld($invoice, $from, $shipping_address_id = null, $render
     }
 
     $invoice->bill_gst_type = $bill_gst_type;
-    $invoice->final_tax = $totalTaxAmount;
+    $invoice->final_tax = $invoice->final_tax ??  $totalTaxAmount;
     $invoice->save();
 
     // day book entry end
@@ -1260,7 +1260,7 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
 
     $invoice->additional_charges;
     if ($invoice->tax_type == 'gst') {
-        $dataToUpdate['final_tax'] = $tax['total_tax'];
+        $dataToUpdate['final_tax'] = $invoice->final_tax ?? $tax['total_tax'];
         $dataToUpdate['cgst'] = $bill_gst_type == 'cgst_sgst' ? ($tax['total_tax'] / 2) : 0;
         $dataToUpdate['sgst'] = $bill_gst_type == 'cgst_sgst' ? ($tax['total_tax'] / 2) : 0;
         $dataToUpdate['igst'] = $bill_gst_type == 'igst' ? $tax['total_tax'] : 0;
@@ -2156,7 +2156,6 @@ function wallet_recharge($data)
     $wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first();
     $wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first();
     $wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first()?->value ?? 'included';
-
 
     // generate bill 
     $invoice = new ManualInvoice();
