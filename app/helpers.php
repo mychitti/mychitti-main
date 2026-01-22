@@ -2155,6 +2155,7 @@ function wallet_recharge($data)
 
     $wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first();
     $wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first();
+    $wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first()?->value ?? 'included';
 
 
     // generate bill 
@@ -2165,7 +2166,7 @@ function wallet_recharge($data)
     $invoice->bill_to = Helpers::get_store_id();
     $invoice->bill_to_type = 'vendor';
     $invoice->module_id =  Helpers::get_store_data()->module_id;
-    $invoice->total_amount = floor(_taxIncludedPrice($info->amount, $wallet_recharge_gst_percent->value, 'actual'));
+    $invoice->total_amount = $wallet_recharge_gst_status == 'included' ? $info->amount :  floor(_taxIncludedPrice($info->amount, $wallet_recharge_gst_percent->value, 'actual'));
     $invoice->payment_method = 'Cash';
     $invoice->tax_type =  'gst';
     $invoice->payment_status =  'Paid';

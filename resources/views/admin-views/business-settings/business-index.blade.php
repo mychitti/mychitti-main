@@ -1192,6 +1192,18 @@
                                             </div>
                                         </div>
                                         <div class="col-sm-6 col-lg-4">
+                                            @php($wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first())
+                                            <div class="form-group mb-0">
+                                                <label class="form-label text-capitalize"
+                                                    for="wallet_recharge_gst_status">{{ translate('messages.wallet_recharge_gst_status') }}
+                                                    </label>
+                                                    <select  id="wallet_recharge_gst_status" name="wallet_recharge_gst_status" id="" class="form-control">
+                                                    <option {{ $wallet_recharge_gst_status && $wallet_recharge_gst_status->value == 'included' ? 'selected' : '' }} value="included">Included</option>
+                                                    <option {{ $wallet_recharge_gst_status && $wallet_recharge_gst_status->value == 'excluded' ? 'selected' : '' }} value="excluded">Excluded</option>
+                                                    </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6 col-lg-4">
                                             @php($wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first())
                                             <div class="form-group mb-0">
                                                 <label class="form-label text-capitalize"

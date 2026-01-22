@@ -64,6 +64,7 @@ class VendorWalletController extends Controller
 
             $wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first();
             $wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first();
+            $wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first()?->value ?? 'included';
 
             // generate bill 
             $invoice = new ManualInvoice();
@@ -73,7 +74,7 @@ class VendorWalletController extends Controller
             $invoice->bill_to = $store_id;
             $invoice->bill_to_type = 'vendor';
             $invoice->module_id =  $store->module_id;
-            $invoice->total_amount = floor(_taxIncludedPrice($amount, $wallet_recharge_gst_percent->value, 'actual'));
+            $invoice->total_amount =  $wallet_recharge_gst_status == 'included' ? $amount :  floor(_taxIncludedPrice($amount, $wallet_recharge_gst_percent->value, 'actual'));
             $invoice->payment_method = 'Cash';
             $invoice->tax_type =  'gst';
             $invoice->payment_status =  'Paid';
