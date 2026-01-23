@@ -68,8 +68,8 @@
                                     {{translate('messages.image')}}
                                     <small class="text-danger">* ( {{translate('messages.ratio')}} 1080x1350 )</small>
                                 </label>
-                                <div class="text-center py-3 my-auto">
-                                    <img class="img--vertical onerror-image" id="viewer"
+                                <div class="text-center py-3 my-auto" style="width: 200px;margin: 0 auto;">
+                                    <img class="img--vertical onerror-image" style="width: 100%;" id="viewer"
                                     src="{{\App\CentralLogics\Helpers::onerror_image_helper($notification['image'], asset('storage/app/public/notification/').'/'.$notification['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'notification/') }}"
                                     data-onerror-image="{{asset('public/assets/admin/img/900x400/1080x1350_img1.jpg')}}" alt="image"/>
                                 </div>

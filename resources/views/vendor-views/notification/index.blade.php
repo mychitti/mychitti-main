@@ -81,8 +81,8 @@
                                             <small class="text-danger">* ( {{ translate('messages.ratio') }} 1080x1350
                                                 )</small>
                                         </label>
-                                        <div class="text-center py-3 my-auto">
-                                            <img class="" id="viewer" 
+                                        <div class="text-center py-3 my-auto" style="width: 200px;margin: 0 auto;">
+                                            <img class="" id="viewer" style="width: 100%;" 
                                                 src="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}"
                                                 alt="image" />
                                         </div>
