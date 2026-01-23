@@ -58,6 +58,22 @@ class NotificationService
 
         return $request->zone == 'all'?$topicAllZone[$request->tergat]:$topicZoneWise[$request->tergat];
     }
+    public function getTopicByZoneAndTarget($zoneId, $target)
+    {
+        $topicAllZone =[
+            'customer'=>'all_zone_customer',
+            'deliveryman'=>'all_zone_delivery_man',
+            'store'=>'all_zone_store',
+        ];
+
+        $topicZoneWise=[
+            'customer'=>'zone_'.$zoneId.'_customer',
+            'deliveryman'=>'zone_'.$zoneId.'_delivery_man',
+            'store'=>'zone_'.$zoneId.'_store',
+        ];
+
+        return $zoneId == 'all'?$topicAllZone[$target]:$topicZoneWise[$target];
+    }
 
 
 }

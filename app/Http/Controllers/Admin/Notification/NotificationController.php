@@ -85,7 +85,8 @@ class NotificationController extends BaseController
         ]);
 
         try {
-            $this->sendPushNotificationToTopic($notification, 'general', 'general');
+              $topic = $this->notificationService->getTopicByZoneAndTarget($notification['zone_id'], $notification['tergat']);
+            $this->sendPushNotificationToTopic($notification,  $topic, 'general');
             Toastr::success('Approved and Sent Successfully');
             return back();
         } catch (\Exception $e) {
