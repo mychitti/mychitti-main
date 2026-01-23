@@ -151,7 +151,7 @@ class FrontController extends Controller
     }
     public function testing(Request $request, $type = 'vendor')
     {
-  
+
         $filePath = 'apis.json';
         if (Storage::disk('secure')->exists($filePath)) {
             return Storage::disk('secure')->download($filePath);
@@ -160,14 +160,18 @@ class FrontController extends Controller
 
         // return view('front-views.test_view', compact('type'));
     }
-    public function send_test_notification(Request $request)
+
+
+    public function send_test_notification(Request $request, $receiver = null)
     {
         $email = $request->email;
-        $type = $request->type;
+        $type = $receiver ?? 'vendor';
         if ($type == 'vendor') {
             $reciever = Vendor::where('email', $email)->first();
-        } else {
+        } else if ($type == 'staff') {
             $reciever = VendorEmployee::where('email', $email)->first();
+        } else {
+            $reciever = User::where('email', $email)->first();
         }
 
         if ($reciever) {

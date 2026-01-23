@@ -180,9 +180,9 @@ Route::post('update-location', [FrontController::class, 'update_location'])->nam
 Route::post('change-module', [FrontController::class, 'change_module'])->name('change-module');
 Route::get('all-stores/{type?}', [FrontController::class, 'all_stores'])->name('all-stores');
 Route::post('missing-zone-request', [FrontController::class, 'missing_zone_request'])->name('missing-zone-request');
-Route::post('send-test-notification', [FrontController::class, 'send_test_notification'])->name('send-test-notification');
+Route::post('test-notification/{type?}', [FrontController::class, 'send_test_notification'])->name('send-test-notification');
 
-Route::get('testing/{type?}', [FrontController::class, 'testing'])->name('testing');
+Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::get('blog-mc-vendor-hub', [FrontController::class, 'blog_mc_vendor'])->name('blog-mc-vendor-hub');
 Route::get('blog', [FrontController::class, 'blog'])->name('blog');
 Route::get('blog/{slug}', [FrontController::class, 'blog_post'])->name('blog.post');
