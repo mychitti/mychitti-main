@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -30,9 +31,7 @@ class NotificationController extends BaseController
         protected NotificationRepositoryInterface $notificationRepo,
         protected NotificationService $notificationService,
         protected ZoneRepositoryInterface $zoneRepo
-    )
-    {
-    }
+    ) {}
 
     public function index(?Request $request): View|Collection|LengthAwarePaginator|null
     {
@@ -46,14 +45,14 @@ class NotificationController extends BaseController
             dataLimit: config('default_pagination'),
         );
         $zones = $this->zoneRepo->getList();
-        return view(NotificationViewPath::INDEX[VIEW], compact('notifications','zones'));
+        return view(NotificationViewPath::INDEX[VIEW], compact('notifications', 'zones'));
     }
 
     public function add(NotificationAddRequest $request): JsonResponse
     {
         $notification = $this->notificationRepo->add(data: $this->notificationService->getAddData(request: $request));
         $topic = $this->notificationService->getTopic(request: $request);
-        $notification->image = $notification->image ? url('/').'/storage/app/public/notification/'.$notification->image: null;
+        $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
 
         try {
             $this->sendPushNotificationToTopic($notification, $topic, 'general');
@@ -68,17 +67,40 @@ class NotificationController extends BaseController
     {
         $notification = $this->notificationRepo->getFirstWhere(params: ['id' => $id]);
         $zones = $this->zoneRepo->getList();
-        return view(NotificationViewPath::UPDATE[VIEW], compact('notification','zones'));
+        return view(NotificationViewPath::UPDATE[VIEW], compact('notification', 'zones'));
+    }
+
+    public function approval(Request $request, $id)
+    {
+        $notification = (array) DB::table('notifications')->where('id', $id)->first();
+
+        if (!$notification) {
+            Toastr::error('Notification not found');
+            return back();
+        }
+
+        DB::table('notifications')->where('id', $id)->update([
+            'approval' => 1,
+            'status'   => 1,
+        ]);
+
+        try {
+           prx( $this->sendPushNotificationToTopic($notification, 'general', 'general'));
+            Toastr::success('Approved and Sent Successfully');
+            return back();
+        } catch (\Exception $e) {
+            Toastr::warning(translate('messages.push_notification_failed'));
+        }
     }
 
     public function update(NotificationUpdateRequest $request, $id): RedirectResponse
     {
         $notification = $this->notificationRepo->getFirstWhere(params: ['id' => $id]);
-        $notification = $this->notificationRepo->update(id: $id ,data: $this->notificationService->getUpdateData(request: $request,notification: $notification));
+        $notification = $this->notificationRepo->update(id: $id, data: $this->notificationService->getUpdateData(request: $request, notification: $notification));
 
         $topic = $this->notificationService->getTopic(request: $request);
 
-        $notification->image = $notification->image ? url('/').'/storage/app/public/notification/'.$notification->image: null;
+        $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
 
         try {
             $this->sendPushNotificationToTopic($notification, $topic, 'general');
@@ -92,7 +114,7 @@ class NotificationController extends BaseController
 
     public function updateStatus(Request $request): RedirectResponse
     {
-        $this->notificationRepo->update(id: $request['id'] ,data: ['status'=>$request['status']]);
+        $this->notificationRepo->update(id: $request['id'], data: ['status' => $request['status']]);
         Toastr::success(translate('messages.notification_status_updated'));
         return back();
     }
@@ -107,11 +129,11 @@ class NotificationController extends BaseController
     public function exportList(Request $request): BinaryFileResponse
     {
         $notifications = $this->notificationRepo->getExportList($request);
-        $data=[
-            'data' =>$notifications,
-            'search' =>$request['search'] ?? null
+        $data = [
+            'data' => $notifications,
+            'search' => $request['search'] ?? null
         ];
-        if($request['type'] == 'csv'){
+        if ($request['type'] == 'csv') {
             return Excel::download(new PushNotificationExport($data), Notification::EXPORT_CSV);
         }
         return Excel::download(new PushNotificationExport($data), Notification::EXPORT_XLSX);

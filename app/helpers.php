@@ -1163,6 +1163,9 @@ function _masterLedgerEntry($data,   $credit_account, $debit_account, $debit_ent
     }
     return $voucher;
 }
+function _storeName($storeId){
+  return  Store::withoutGlobalScopes()->where('id', $storeId)->first()?->name ?? 'Store Deleted';
+}
 function _userByLedgerAccountId($ledger_account_id)
 {
     $user = StoreCustomer::where('ledger_account_id', $ledger_account_id)->where('store_id', Helpers::get_store_id())->first();
@@ -5047,7 +5050,7 @@ if (!function_exists('_getAccessToken')) {
     function _getAccessToken()
     {
         // Load the service account key JSON file
-        $serviceAccountKeyPath = 'service-account-key.json';
+        $serviceAccountKeyPath = dirname(__DIR__, 1) . '/service-account-key.json';
         $serviceAccount = json_decode(file_get_contents($serviceAccountKeyPath), true);
 
         // Create a JWT token

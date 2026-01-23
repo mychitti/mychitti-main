@@ -346,6 +346,22 @@ class StoreLogic
             })
             ->first();
     }
+    public static function get_store_details_limited($store_id,$longitude=0,$latitude=0)
+    {
+        return Store::withOpen($longitude??0,$latitude??0)
+            ->when(config('module.current_module_data'), function($query){
+                $query->module(config('module.current_module_data')['id']);
+            })
+            ->when(is_numeric($store_id),function ($qurey) use($store_id){
+                $qurey->where('id', $store_id);
+            })
+            ->when(!is_numeric($store_id),function ($qurey) use($store_id){
+                $qurey->where('slug', $store_id);
+            })
+            ->select('stores.id', 'stores.name',  'stores.phone', 'stores.email', 'stores.address', 'stores.secondary_phone', 
+                'stores.logo', 'stores.cover_photo' )
+            ->first();
+    }
 
     public static function calculate_store_rating($ratings)
     {

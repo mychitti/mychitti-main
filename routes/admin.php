@@ -31,6 +31,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('action-logs', 'DashboardController@action_logs')->name('action-logs');
         });
 
+     
         Route::group(['prefix' => 'requirement', 'as' => 'requirement.'], function () {
             Route::get('delete/{id}', 'RequirementController@delete')->name('delete');
         });

@@ -633,19 +633,7 @@
                         staffDashUpdateDateTime();
                     }
                 }
-
-                // Update display immediately
-
-                // Here you would make an AJAX call to save punch in/out to backend
                 clock(staffDashIsPunchedIn ? 'in' : 'out')
-                // $.ajax({
-                //     url: '/api/punch',
-                //     method: 'POST',
-                //     data: { action: staffDashIsPunchedIn ? 'in' : 'out', time: currentTime },
-                //     success: function(response) {
-                //         console.log('Punch recorded');
-                //     }
-                // });
             });
 
         });

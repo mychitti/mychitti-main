@@ -129,7 +129,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::delete(Notification::DELETE[URI].'/{id}', [NotificationController::class, 'delete'])->name('delete');
             Route::get(Notification::STATUS[URI].'/{id}/{status}', [NotificationController::class,'updateStatus'])->name('status');
             Route::get(Notification::EXPORT[URI], [NotificationController::class, 'exportList'])->name('export');
+            Route::post('approval/{id}/{action}', [NotificationController::class,'approval'])->name('approval');
         });
+       
 
         Route::group(['prefix' => 'common-condition', 'as' => 'common-condition.'], function () {
             Route::get(CommonCondition::DROPDOWN[URI], [CommonConditionController::class, 'getDropdownList'])->name('get-all');

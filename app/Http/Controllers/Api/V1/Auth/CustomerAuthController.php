@@ -214,7 +214,7 @@ class CustomerAuthController extends Controller
             404
         );
     }
-   
+
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -406,6 +406,12 @@ class CustomerAuthController extends Controller
                 $ref_code = Helpers::generate_referer_code($user);
                 DB::table('users')->where('phone', $user->phone)->update(['ref_code' => $ref_code]);
             }
+
+            if (!$user->cm_firebase_token && $request->has('fcm_token')) {
+                $user->cm_firebase_token = $request->has('fcm_token');
+                $user->update();
+            }
+            
             // unset otp
             DB::table('phone_otp')
                 ->where('phone', $request->phone) // IMPORTANT
@@ -529,8 +535,6 @@ class CustomerAuthController extends Controller
                 $user->cm_firebase_token = $request->has('fcm_token');
                 $user->update();
             }
-
-
 
             return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
         } else {

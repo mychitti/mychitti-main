@@ -34,8 +34,8 @@ class ItemController extends Controller
         $latitude = $request->header('latitude');
         $type = $request->query('type', 'all');
 
-        $data = ProductLogic::stores($id, $zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
-        $data['stores'] = Helpers::store_data_formatting($data['stores'], true);
+        $data = ProductLogic::stores_limited_columns($id, $zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
+        $data['stores'] = Helpers::store_data_formatting_limited($data['stores'], true);
         return response()->json($data, 200);
     }
     public function fetch_services_bkp(Request $request)

@@ -2,118 +2,173 @@
 
 namespace App\Http\Controllers\Vendor;
 
-use App\Contracts\Repositories\NotificationRepositoryInterface;
-use App\Contracts\Repositories\ZoneRepositoryInterface;
-use App\Enums\ExportFileNames\Admin\Notification;
-use App\Enums\ViewPaths\Admin\Notification as NotificationViewPath;
-use App\Exports\PushNotificationExport;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\NotificationAddRequest;
 use App\Http\Requests\Admin\NotificationUpdateRequest;
-use App\Services\NotificationService;
-use App\Traits\NotificationTrait;
+use App\Models\Notification;
+use App\Models\Zone;
+use App\CentralLogics\Helpers;
+use Brian2694\Toastr\Facades\Toastr;
 use Exception;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Brian2694\Toastr\Facades\Toastr;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PushNotificationExport;
+use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Illuminate\Support\Facades\DB;
 
-class NotificationController extends BaseController
+class NotificationController extends Controller
 {
-    use NotificationTrait;
-    public function __construct(
-        protected NotificationRepositoryInterface $notificationRepo,
-        protected NotificationService $notificationService,
-        protected ZoneRepositoryInterface $zoneRepo
-    )
+
+    /* ================= LIST ================= */
+    public function index(Request $request)
     {
+        $storeId = Helpers::get_store_id();
+
+        $notifications = Notification::where('added_by', 'vendor')
+            ->where('vendor_id', $storeId)
+            ->latest()
+            ->paginate();
+
+        $zones = Zone::all();
+
+        return view('vendor-views.notification.index', compact('notifications', 'zones'));
     }
 
-    public function index(?Request $request): View|Collection|LengthAwarePaginator|null
+    /* ================= STORE ================= */
+    public function store(Request $request)
     {
-        return $this->getAddView($request);
-    }
+        $storeId = Helpers::get_store_id();
 
-    private function getAddView($request): View
-    {
-        $notifications = $this->notificationRepo->getListWhere(
-            searchValue: $request['search'],
-            dataLimit: config('default_pagination'),
-        );
-        $zones = $this->zoneRepo->getList();
-        return view(NotificationViewPath::INDEX[VIEW], compact('notifications','zones'));
-    }
-
-    public function add(NotificationAddRequest $request): JsonResponse
-    {
-        $notification = $this->notificationRepo->add(data: $this->notificationService->getAddData(request: $request));
-        $topic = $this->notificationService->getTopic(request: $request);
-        $notification->image = $notification->image ? url('/').'/storage/app/public/notification/'.$notification->image: null;
-
-        try {
-            $this->sendPushNotificationToTopic($notification, $topic, 'general');
-        } catch (Exception) {
-            Toastr::warning(translate('messages.push_notification_failed'));
+        $image = null;
+        if ($request->hasFile('image')) {
+            $image = Helpers::upload('notification/', 'png', $request->file('image'));
         }
+        DB::table('notifications')->insert([
+            'title'       => $request->notification_title,
+            'description' => $request->description,
+            'image'       => $image,
+            'zone_id'     => $request->zone,
+            'vendor_id'   => $storeId,
+            'added_by'    => 'vendor',
+            'tergat'    => $request->tergat,
+            'status'      => 0,
+            'approval'      => 0,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
 
-        return response()->json();
+        // try {
+        //     $this->sendPushNotificationToTopic($notification, 'general', 'general');
+        // } catch (Exception $e) {
+        //     Toastr::warning(translate('messages.push_notification_failed'));
+        // }
+
+        return response()->json([
+            'success' => true,
+            'message' => translate('messages.notification_submitted_successfully'),
+        ]);
     }
 
-    public function getUpdateView(string|int $id): View
+    /* ================= EDIT ================= */
+    public function edit(int $id): View
     {
-        $notification = $this->notificationRepo->getFirstWhere(params: ['id' => $id]);
-        $zones = $this->zoneRepo->getList();
-        return view(NotificationViewPath::UPDATE[VIEW], compact('notification','zones'));
+        $storeId = Helpers::get_store_id();
+
+        $notification = Notification::where('id', $id)
+            ->where('vendor_id', $storeId)
+            ->firstOrFail();
+
+        $zones = Zone::all();
+
+        return view('vendor-views.notification.edit', compact('notification', 'zones'));
     }
 
-    public function update(NotificationUpdateRequest $request, $id): RedirectResponse
+    /* ================= UPDATE ================= */
+    public function update(NotificationUpdateRequest $request, int $id): RedirectResponse
     {
-        $notification = $this->notificationRepo->getFirstWhere(params: ['id' => $id]);
-        $notification = $this->notificationRepo->update(id: $id ,data: $this->notificationService->getUpdateData(request: $request,notification: $notification));
+        $storeId = Helpers::get_store_id();
 
-        $topic = $this->notificationService->getTopic(request: $request);
+        // Ensure notification belongs to vendor
+        $notification = Notification::where('id', $id)
+            ->where('vendor_id', $storeId)
+            ->firstOrFail();
 
-        $notification->image = $notification->image ? url('/').'/storage/app/public/notification/'.$notification->image: null;
+        DB::transaction(function () use ($request, $notification, $storeId, $id) {
 
-        try {
-            $this->sendPushNotificationToTopic($notification, $topic, 'general');
-        } catch (Exception) {
-            Toastr::warning(translate('messages.push_notification_failed'));
-        }
+            $image = $notification->image;
+
+            if ($request->hasFile('image')) {
+                $image = Helpers::upload('notification/', 'png', $request->file('image'));
+            }
+
+            DB::table('notifications')
+                ->where('id', $id)
+                ->where('vendor_id', $storeId)
+                ->update([
+                    'title'       => $request->notification_title,
+                    'description' => $request->description,
+                    'zone_id'     => $request->zone,
+                    'tergat'      => $request->tergat,
+                    'image'       => $image,
+                    'status'      => 0,
+                    'approval'    => 0,
+                    'updated_at'  => now(),
+                ]);
+        });
+
+        // $notification->image = $notification->image
+        //     ? url('/') . '/storage/app/public/notification/' . $notification->image
+        //     : null;
+
+        // try {
+        //     $this->sendPushNotificationToTopic($notification, 'general', 'general');
+        // } catch (Exception) {
+        //     Toastr::warning(translate('messages.push_notification_failed'));
+        // }
 
         Toastr::success(translate('messages.notification_updated_successfully'));
         return back();
     }
 
+    /* ================= STATUS ================= */
     public function updateStatus(Request $request): RedirectResponse
     {
-        $this->notificationRepo->update(id: $request['id'] ,data: ['status'=>$request['status']]);
+        Notification::where('id', $request->id)
+            ->update(['status' => $request->status]);
+
         Toastr::success(translate('messages.notification_status_updated'));
         return back();
     }
 
+    /* ================= DELETE ================= */
     public function delete(Request $request): RedirectResponse
     {
-        $this->notificationRepo->delete(id: $request['id']);
+        Notification::where('id', $request->id)->where('vendor_id', Helpers::get_store_id())->delete();
+
         Toastr::success(translate('messages.notification_deleted_successfully'));
         return back();
     }
 
+    /* ================= EXPORT ================= */
     public function exportList(Request $request): BinaryFileResponse
     {
-        $notifications = $this->notificationRepo->getExportList($request);
-        $data=[
-            'data' =>$notifications,
-            'search' =>$request['search'] ?? null
+        $storeId = Helpers::get_store_id();
+
+        $notifications = Notification::where('vendor_id', $storeId)->get();
+
+        $data = [
+            'data'   => $notifications,
+            'search' => $request->search ?? null,
         ];
-        if($request['type'] == 'csv'){
-            return Excel::download(new PushNotificationExport($data), Notification::EXPORT_CSV);
+
+        if ($request->type === 'csv') {
+            return Excel::download(new PushNotificationExport($data), 'notifications.csv');
         }
-        return Excel::download(new PushNotificationExport($data), Notification::EXPORT_XLSX);
+
+        return Excel::download(new PushNotificationExport($data), 'notifications.xlsx');
     }
 }

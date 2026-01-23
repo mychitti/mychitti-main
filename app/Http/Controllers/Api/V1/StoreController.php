@@ -342,6 +342,16 @@ class StoreController extends Controller
         }
         return response()->json($store, 200);
     }
+    public function get_details_limited(Request $request, $id)
+    {
+        $longitude = (float)$request->header('longitude');
+        $latitude = (float)$request->header('latitude');
+        $store = StoreLogic::get_store_details_limited($id, $longitude, $latitude);
+        if ($store) {
+            $store = Helpers::store_data_formatting_limited($store);
+        }
+        return response()->json($store, 200);
+    }
 
     public function get_searched_stores(Request $request)
     {

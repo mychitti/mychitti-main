@@ -319,6 +319,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('customer/order/parcel-instructions', 'OrderController@parcel_instructions');
     Route::get('most-tips', 'OrderController@most_tips');
     Route::get('stores/details/{id}', 'StoreController@get_details');
+    Route::get('stores/details-limited/{id}', 'StoreController@get_details_limited');
     Route::group(['prefix' => 'banners'], function () {
         Route::get('category-banner/{id}', 'BannerController@category_banners');
         Route::get('paid-banners', 'BannerController@get_paid_banners');

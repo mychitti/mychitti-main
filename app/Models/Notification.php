@@ -34,6 +34,8 @@ class Notification extends Model
         'status',
         'tergat',
         'zone_id',
+        'added_by',
+        'vendor_id',
     ];
 
     /**
@@ -55,7 +57,8 @@ class Notification extends Model
             "description"=> $this->description,
             "order_id"=> "",
             "image"=> $this->image,
-            "type"=> "order_status"
+            "type"=> "order_status",
+            
         ];
     }
 

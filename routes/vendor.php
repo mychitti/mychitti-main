@@ -12,7 +12,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     // mc vendorhub routes 
-    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () { 
+    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
@@ -23,7 +23,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
-    }); 
+    });
 
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
@@ -49,6 +49,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('submit-reply', 'ReviewController@submit_reply')->name('submit-reply');
         Route::get('site_direction', 'BusinessSettingsController@site_direction_vendor')->name('site_direction');
 
+        Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
+            Route::get('/', 'NotificationController@index')->name('add-new');
+            Route::post('store', 'NotificationController@store')->name('store');
+            Route::get('edit/{id}', 'NotificationController@edit')->name('edit');
+            Route::post('update/{id}', 'NotificationController@update')->name('update');
+            Route::delete('/delete{id}', 'NotificationController@delete')->name('delete');
+            Route::get('status/{id}/{status}', 'NotificationController@updateStatus')->name('status');
+            Route::get('export', 'NotificationController@exportList')->name('export');
+        });
         Route::group(['prefix' => 'task', 'as' => 'task.'], function () {
             Route::get('assigned-tasks', 'TaskController@assigned_tasks')->name('assigned_tasks');
             Route::post('otp-send', 'TaskController@task_otp_send')->name('job-otp-verify');
@@ -482,8 +491,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('select-template', 'LibraryController@select_template')->name('select-template');
             Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
                 // Route::group(['prefix' => 'purchase', 'as' => 'purchase.'], function () {
-                    Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
-                    Route::post('store', 'DocumentsController@store_gatepass')->name('store');
+                Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
+                Route::post('store', 'DocumentsController@store_gatepass')->name('store');
                 // });
                 // Route::group(['prefix' => 'sale', 'as' => 'sale.'], function () {
                 //     Route::get('add', 'DocumentsController@add_sale_gatepass')->name('add');

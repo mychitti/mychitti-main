@@ -245,6 +245,163 @@
                     @endif
                 </div>
             </div>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header py-2">
+                        <div class="search--button-wrapper">
+                            <h5 class="card-title">{{ translate('Vendor Notification list') }}<span class="badge badge-soft-dark ml-2">{{$notifications->total()}}</span></h5>
+                            <form class="search-form" >
+                                <!-- Search -->
+                                <div class="input-group input--group min--270">
+                                    <input type="vsearch" name="vsearch"  class="form-control"
+                                    value="{{ request()?->search ?? null }}"  placeholder="{{translate('messages.search_notification')}}">
+                                    <button type="submit" class="btn btn--secondary">
+                                    <i class="tio-search"></i>
+                                    </button>
+                                </div>
+                                <!-- End Search -->
+                            </form>
+                            @if(request()->get('vsearch'))
+                            <button type="reset" class="btn btn--primary ml-2 location-reload-to-base" data-url="{{url()->full()}}">{{translate('messages.reset')}}</button>
+                            @endif
+
+
+                            <!-- Unfold -->
+                            <div class="hs-unfold mr-2">
+                                <a class="js-hs-unfold-invoker btn btn-sm btn-white dropdown-toggle min-height-40" href="javascript:;"
+                                    data-hs-unfold-options='{
+                                            "target": "#usersExportDropdown",
+                                            "type": "css-animation"
+                                        }'>
+                                    <i class="tio-download-to mr-1"></i> {{ translate('messages.export') }}
+                                </a>
+
+                                <div id="usersExportDropdown"
+                                    class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-sm-right">
+
+                                    <span class="dropdown-header">{{ translate('messages.download_options') }}</span>
+
+
+                                    <a id="export-excel" class="dropdown-item" href="{{route('admin.notification.export', ['type'=>'excel' , request()->getQueryString()])}}">
+                                        <img class="avatar avatar-xss avatar-4by3 mr-2"
+                                            src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
+                                            alt="Image Description">
+                                        {{ translate('messages.excel') }}
+                                    </a>
+                                    <a id="export-csv" class="dropdown-item" href="{{route('admin.notification.export', ['type'=>'csv', request()->getQueryString()])}}">
+                                        <img class="avatar avatar-xss avatar-4by3 mr-2"
+                                            src="{{ asset('public/assets/admin') }}/svg/components/placeholder-csv-format.svg"
+                                            alt="Image Description">
+                                        .{{ translate('messages.csv') }}
+                                    </a>
+
+                                </div>
+                            </div>
+                            <!-- End Unfold -->
+                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div class="table-responsive datatable-custom">
+                        <table id="columnSearchDatatable"
+                               class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                               data-hs-datatables-options='{
+                                 "order": [],
+                                 "orderCellsTop": true,
+                                 "paging": false
+                               }'>
+                            <thead class="thead-light">
+                                <tr>
+                                    <th class="border-0">{{ translate('messages.SL') }}</th>
+                                    <th class="border-0">{{translate('messages.Vendor')}}</th>
+                                    <th class="border-0">{{translate('messages.title')}}</th>
+                                    <th class="border-0">{{translate('messages.description')}}</th>
+                                    <th class="border-0">{{translate('messages.image')}}</th>
+                                    <th class="border-0">{{translate('messages.zone')}}</th>
+                                    <th class="border-0">{{translate('messages.tergat')}}</th>
+                                    <th class="text-center border-0">{{translate('messages.status')}}</th>
+                                    <th class="text-center border-0">{{translate('messages.action')}}</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                            @foreach($notifications as $key=>$notification)
+                                <tr>
+                                    <td>{{$key+$notifications->firstItem()}}</td>
+                                    <td>
+                                    @if($notification->vendor_id)
+                                    <a href="{{route('admin.store.view', [$notification->vendor_id])}}">{{_storeName($notification->vendor_id)}}</a>
+                                    @endif
+                                    </td>
+                                    <td>
+                                    <span title="{{ $notification['title'] }}" class="d-block font-size-sm text-body">
+                                        {{substr($notification['title'],0,25)}} {{strlen($notification['title'])>25?'...':''}}
+                                    </span>
+                                    </td>
+                                    <td title="{{ $notification['description'] }}">
+                                        {{substr($notification['description'],0,25)}} {{strlen($notification['description'])>25?'...':''}}
+                                    </td>
+                                    <td>
+                                        @if($notification['image']!=null)
+                                            <img class="h--50px onerror-image"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                $notification['image'] ?? '',
+                                                asset('storage/app/public/notification').'/'.$notification['image'],
+                                                asset('public/assets/admin/img/160x160/img2.jpg'),
+                                                'notification/'
+                                            ) }}"
+                                                data-onerror-image="{{asset('public/assets/admin/img/160x160/img2.jpg')}}">
+                                        @else
+                                            <label class="badge badge-soft-warning">{{translate('No Image')}}</label>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{$notification->zone_id==null?translate('messages.all'):($notification->zone?$notification->zone->name:translate('messages.zone_deleted'))}}
+                                    </td>
+                                    <td class="text-uppercase">
+                                        {{translate($notification->tergat)}}
+                                    </td>
+                                  <td>
+                                            @if ($notification->approval == 1)
+                                                <label class="badge badge-soft-success">Approved</label>
+                                            @elseif($notification->approval == 2)
+                                                <label class="badge badge-soft-danger">Rejected</label>
+                                            @else
+                                                <label class="badge badge-soft-warning">Pending</label>
+                                            @endif
+                                        </td>
+                                    <td>
+                                        <div class="btn--container justify-content-center">
+                                        @if($notification->status == 0)
+                                            <a class="btn action-btn  btn-outline-success form-alert" href="javascript:" style="    width: fit-content !important;padding: 0 8px !important;"
+                                               data-id="notification_approve-{{$notification['id']}}" data-message="{{ translate('Want to approve and release this notification ?') }}" title="{{translate('messages.approve_notification')}}"><i class="tio-checkmark-square-outlined"></i> Approve
+                                            </a>
+                                            <form action="{{route('admin.notification.approval',[$notification['id'], 'approve'])}}" method="post" id="notification_approve-{{$notification['id']}}">
+                                                @csrf 
+                                            </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(count($notifications) !== 0)
+                    <hr>
+                    @endif
+                    <div class="page-area">
+                        {!! $notifications->links() !!}
+                    </div>
+                    @if(count($notifications) === 0)
+                    <div class="empty--data">
+                        <img src="{{asset('/public/assets/admin/svg/illustrations/sorry.svg')}}" alt="public">
+                        <h5>
+                            {{translate('no_data_found')}}
+                        </h5>
+                    </div>
+                    @endif
+                </div>
+            </div>
             <!-- End Table -->
         </div>
     </div>

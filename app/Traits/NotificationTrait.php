@@ -127,15 +127,15 @@ trait NotificationTrait
                 'message' => [
                     'topic' => $topic,
                     'data' => [
-                        'title' => $data['title'],
-                        'body' => $data['description'],
+                        'title' => (string) $data['title'],
+                        'body' => (string) $data['description'],
                         'image' => $data['image'],
-                        'type' => $type,
+                        'type' => (string) $type,
                         'is_read' => '0'
                     ],
                     'notification' => [
-                        'title' => $data['title'],
-                        'body' => $data['description'],
+                        'title' => (string) $data['title'],
+                        'body' => (string) $data['description'],
                         'image' => $data['image']
                     ],
                     'android' => [
@@ -160,7 +160,7 @@ trait NotificationTrait
                 $message['message']['data']['order_type'] = $data['order_type'];
             }
             if (isset($data['zone_id'])) {
-                $message['message']['data']['zone_id'] = $data['zone_id'];
+                $message['message']['data']['zone_id'] = (string) $data['zone_id'];
             }
             if ($web_push_link) {
                 $message['message']['webpush'] = [
