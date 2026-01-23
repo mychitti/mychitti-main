@@ -85,7 +85,7 @@ class NotificationController extends BaseController
         ]);
 
         try {
-           prx( $this->sendPushNotificationToTopic($notification, 'general', 'general'));
+            $this->sendPushNotificationToTopic($notification, 'general', 'general');
             Toastr::success('Approved and Sent Successfully');
             return back();
         } catch (\Exception $e) {
