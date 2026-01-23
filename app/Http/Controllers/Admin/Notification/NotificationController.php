@@ -85,7 +85,9 @@ class NotificationController extends BaseController
         ]);
 
         try {
-              $topic = $this->notificationService->getTopicByZoneAndTarget($notification['zone_id'], $notification['tergat']);
+            $topic = $this->notificationService->getTopicByZoneAndTarget($notification['zone_id'], $notification['tergat']);
+            $notification['image'] = $notification['image'] ? url('/') . '/storage/app/public/notification/' . $notification['image'] : null;
+
             $this->sendPushNotificationToTopic($notification,  $topic, 'general');
             Toastr::success('Approved and Sent Successfully');
             return back();

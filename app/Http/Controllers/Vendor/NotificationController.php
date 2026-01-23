@@ -45,16 +45,12 @@ class NotificationController extends Controller
         $storeId = Helpers::get_store_id();
 
         $image = null;
-        // if ($request->hasFile('image')) {
-        //     $image = Helpers::upload('notification/', 'png', $request->file('image'));
-        // }
 
         if ($request->has('image')) {
             $image = $this->upload('notification/', 'png', $request->file('image'));
         } else {
             $image = null;
         }
-
         DB::table('notifications')->insert([
             'title'       => $request->notification_title,
             'description' => $request->description,
@@ -109,8 +105,8 @@ class NotificationController extends Controller
 
             $image = $notification->image;
 
-            if ($request->hasFile('image')) {
-                $image = Helpers::upload('notification/', 'png', $request->file('image'));
+            if ($request->has('image')) {
+                $image = $this->upload('notification/', 'png', $request->file('image'));
             }
 
             DB::table('notifications')

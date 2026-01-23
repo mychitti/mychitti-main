@@ -454,7 +454,7 @@
                                     ProgressBar: true
                                 });
                                 setTimeout(function () {
-                                    location.href = '{{route('admin.notification.add-new')}}';
+                                    {{-- location.href = '{{route('admin.notification.add-new')}}'; --}}
                                 }, 2000);
                             }
                         }

@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title',translate('messages.update_notification'))
+@section('title',translate('messages.update_ad'))
 
 @push('css_or_js')
 
@@ -15,7 +15,7 @@
                     <img src="{{asset('public/assets/admin/img/notification.png')}}" class="w--26" alt="">
                 </span>
                 <span>
-                    {{translate('messages.notification_update')}}
+                    {{translate('messages.ad_update')}}
                 </span>
             </h1>
         </div>
@@ -30,7 +30,7 @@
                                 <div class="col-12">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.title')}}</label>
-                                        <input type="text" value="{{$notification['title']}}" name="notification_title" class="form-control" placeholder="{{translate('messages.new_notification')}}" required maxlength="191">
+                                        <input type="text" value="{{$notification['title']}}" name="notification_title" class="form-control" placeholder="{{translate('messages.new_ad')}}" required maxlength="191">
                                     </div>
                                 </div>
                                 <div class="col-12">
@@ -47,7 +47,6 @@
                                 <div class="col-12">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="tergat">{{translate('messages.send_to')}}</label>
-
                                         <select name="tergat" class="form-control" id="tergat" data-placeholder="{{translate('messages.select_tergat')}}" required>
                                             <option value="customer" {{$notification->tergat=='customer'?'selected':''}}>{{translate('messages.customer')}}</option>
                                             <option value="deliveryman" {{$notification->tergat=='deliveryman'?'selected':''}}>{{translate('messages.deliveryman')}}</option>
@@ -67,12 +66,12 @@
                             <div class="h-100 d-flex flex-column">
                                 <label class="d-block text-center mt-auto mb-0">
                                     {{translate('messages.image')}}
-                                    <small class="text-danger">* ( {{translate('messages.ratio')}} 900x300 )</small>
+                                    <small class="text-danger">* ( {{translate('messages.ratio')}} 1080x1350 )</small>
                                 </label>
                                 <div class="text-center py-3 my-auto">
                                     <img class="img--vertical onerror-image" id="viewer"
                                     src="{{\App\CentralLogics\Helpers::onerror_image_helper($notification['image'], asset('storage/app/public/notification/').'/'.$notification['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'notification/') }}"
-                                    data-onerror-image="{{asset('public/assets/admin/img/900x400/img1.jpg')}}" alt="image"/>
+                                    data-onerror-image="{{asset('public/assets/admin/img/1080x1350_img1.jpg')}}" alt="image"/>
                                 </div>
                                 <div class="custom-file">
                                     <input type="file" name="image" id="customFileEg1" class="custom-file-input"

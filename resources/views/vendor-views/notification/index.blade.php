@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', translate('messages.notification'))
+@section('title', translate('messages.ad'))
 
 @push('css_or_js')
 @endpush
@@ -14,7 +14,7 @@
                     <img src="{{ asset('public/assets/admin/img/notification.png') }}" class="w--26" alt="">
                 </span>
                 <span>
-                    {{ translate('messages.notification') }}
+                    {{ translate('messages.ad') }}
                 </span>
             </h1>
         </div>
@@ -34,7 +34,7 @@
                                                 <label class="input-label"
                                                     for="exampleFormControlInput1">{{ translate('messages.title') }}</label>
                                                 <input type="text" name="notification_title" class="form-control"
-                                                    placeholder="{{ translate('messages.new_notification') }}" required
+                                                    placeholder="{{ translate('messages.new_ad') }}" required
                                                     maxlength="191">
                                             </div>
                                         </div>
@@ -78,12 +78,12 @@
                                     <div class="h-100 d-flex flex-column">
                                         <label class="d-block text-center mt-auto mb-0">
                                             {{ translate('messages.image') }}
-                                            <small class="text-danger">* ( {{ translate('messages.ratio') }} 900x300
+                                            <small class="text-danger">* ( {{ translate('messages.ratio') }} 1080x1350
                                                 )</small>
                                         </label>
                                         <div class="text-center py-3 my-auto">
-                                            <img class="img--vertical" id="viewer"
-                                                src="{{ asset('public/assets/admin/img/900x400/img1.jpg') }}"
+                                            <img class="" id="viewer" 
+                                                src="{{ asset('public/assets/admin/img/1080x1350_img1.jpg') }}"
                                                 alt="image" />
                                         </div>
                                         <div class="custom-file">
@@ -100,7 +100,7 @@
                                         <button type="reset" id="reset_btn"
                                             class="btn btn--reset">{{ translate('messages.reset') }}</button>
                                         <button type="submit" id="submit"
-                                            class="btn btn--primary">{{ translate('messages.send_notification') }}</button>
+                                            class="btn btn--primary">{{ translate('messages.submit_ad') }}</button>
                                     </div>
                                 </div>
                             </div>
@@ -113,14 +113,14 @@
                 <div class="card">
                     <div class="card-header py-2">
                         <div class="search--button-wrapper">
-                            <h5 class="card-title">{{ translate('Notification list') }}<span
+                            <h5 class="card-title">{{ translate('Ad list') }}<span
                                     class="badge badge-soft-dark ml-2">{{ $notifications->total() }}</span></h5>
                             <form class="search-form">
                                 <!-- Search -->
                                 <div class="input-group input--group min--270">
                                     <input type="search" name="search" class="form-control"
                                         value="{{ request()?->search ?? null }}"
-                                        placeholder="{{ translate('messages.search_notification') }}">
+                                        placeholder="{{ translate('messages.search_ad') }}">
                                     <button type="submit" class="btn btn--secondary">
                                         <i class="tio-search"></i>
                                     </button>
@@ -172,11 +172,11 @@
                                         </td>
                                         <td>
                                             @if ($notification['image'] != null)
-                                                <img class="h--50px onerror-image"
+                                                <img class=" onerror-image" style="aspect-ratio: 5 / 6;width: 49px;    border-radius: 3px; object-fit:cover;"
                                                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
                                                         $notification['image'] ?? '',
                                                         asset('storage/app/public/notification') . '/' . $notification['image'],
-                                                        asset('public/assets/admin/img/160x160/img2.jpg'),
+                                                        asset('public/assets/admin/img/1080x1350_img1.jpg') ,
                                                         'notification/',
                                                     ) }}"
                                                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
@@ -258,7 +258,7 @@
 
             Swal.fire({
                 title: '{{ translate('messages.Info') }}',
-                text: '{{ translate('messages.the notification will first be approved by admin then it will be released') }}.',
+                text: '{{ translate('messages.the ad will first be approved by admin then it will be released') }}.',
                 type: 'info',
                 showCancelButton: true,
                 cancelButtonColor: 'default',
@@ -293,7 +293,7 @@
                                     ProgressBar: true
                                 });
                                 setTimeout(function() {
-                                    location.href = '{{route('vendor.notification.add-new')}}';
+                                    {{-- location.href = '{{route('vendor.notification.add-new')}}'; --}}
                                 }, 2000);
                             }
                         }
