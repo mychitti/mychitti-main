@@ -71,7 +71,7 @@
                                 <div class="text-center py-3 my-auto">
                                     <img class="img--vertical onerror-image" id="viewer"
                                     src="{{\App\CentralLogics\Helpers::onerror_image_helper($notification['image'], asset('storage/app/public/notification/').'/'.$notification['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'notification/') }}"
-                                    data-onerror-image="{{asset('public/assets/admin/img/1080x1350_img1.jpg')}}" alt="image"/>
+                                    data-onerror-image="{{asset('public/assets/admin/img/900x400/1080x1350_img1.jpg')}}" alt="image"/>
                                 </div>
                                 <div class="custom-file">
                                     <input type="file" name="image" id="customFileEg1" class="custom-file-input"

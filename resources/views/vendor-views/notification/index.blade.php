@@ -83,7 +83,7 @@
                                         </label>
                                         <div class="text-center py-3 my-auto">
                                             <img class="" id="viewer" 
-                                                src="{{ asset('public/assets/admin/img/1080x1350_img1.jpg') }}"
+                                                src="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}"
                                                 alt="image" />
                                         </div>
                                         <div class="custom-file">
@@ -176,7 +176,7 @@
                                                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
                                                         $notification['image'] ?? '',
                                                         asset('storage/app/public/notification') . '/' . $notification['image'],
-                                                        asset('public/assets/admin/img/1080x1350_img1.jpg') ,
+                                                        asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') ,
                                                         'notification/',
                                                     ) }}"
                                                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
