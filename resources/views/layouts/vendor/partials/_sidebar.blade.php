@@ -2544,6 +2544,15 @@
                             </ul>
                         </li>
                     @endif
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link "
+                                href="{{ route('vendor.notification.add-new') }}" title="push notifications">
+                                <img src="{{ asset('storage/app/public/nav/ringing.png') }}" alt=""
+                                    class="nav-link-icon">
+                                <span class="text-truncate">Push Notifications</span>
+                            </a>
+                        </li>
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('subscriptions') ? 'active' : '' }}">
