@@ -2550,7 +2550,7 @@
                                 href="{{ route('vendor.notification.add-new') }}" title="push notifications">
                                 <img src="{{ asset('storage/app/public/nav/ringing.png') }}" alt=""
                                     class="nav-link-icon">
-                                <span class="text-truncate">Push Notifications</span>
+                                <span class="text-truncate">Post Ads</span>
                             </a>
                         </li>
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))

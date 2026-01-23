@@ -17,12 +17,13 @@ use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\PushNotificationExport;
 use App\Http\Controllers\Controller;
+use App\Traits\FileManagerTrait;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
-
+    use FileManagerTrait;
     /* ================= LIST ================= */
     public function index(Request $request)
     {
@@ -44,9 +45,16 @@ class NotificationController extends Controller
         $storeId = Helpers::get_store_id();
 
         $image = null;
-        if ($request->hasFile('image')) {
-            $image = Helpers::upload('notification/', 'png', $request->file('image'));
+        // if ($request->hasFile('image')) {
+        //     $image = Helpers::upload('notification/', 'png', $request->file('image'));
+        // }
+
+        if ($request->has('image')) {
+            $image = $this->upload('notification/', 'png', $request->file('image'));
+        } else {
+            $image = null;
         }
+
         DB::table('notifications')->insert([
             'title'       => $request->notification_title,
             'description' => $request->description,
