@@ -2478,11 +2478,12 @@ if (!function_exists('_inTime')) {
         $clockIn =  EmployeeTimeCard::where('emp_id', $empId)->orderBy('id', 'desc')
             ->limit(1)
             ->first();
+
         if ($type = 'timestamp') {
             return $clockIn?->in_time;
         }
         if (_clockedInEmployee()) {
-            return 'Clock started at ' . explode(' ', $clockIn->in_time)[1];
+            return 'Clock started at ' . explode(' ', $clockIn?->in_time)[1];
         } else {
             return 'You are currently clocked out';
         }
