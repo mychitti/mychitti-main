@@ -30,8 +30,16 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
 
     Route::group(['prefix' => 'banners'], function () {
-        Route::get('{store_id}/', 'BannerController@get_store_banners');
         Route::get('offer/{store_id}', 'BannerController@get_offer_banners');
+        Route::get('default', 'BannerController@get_default_banners');
+        Route::get('category-banner/{id}', 'BannerController@category_banners');
+        Route::get('paid-banners', 'BannerController@get_paid_banners');
+        Route::get('{store_id}/', 'BannerController@get_store_banners');
+    });
+
+    Route::group(['prefix' => 'banners2'], function () {
+        Route::get('module-banner', 'BannerController@get_module_banners');
+        Route::get('item-banner', 'BannerController@get_item_banners');
     });
 
     Route::get('faqs', 'ConfigController@faqs');
@@ -310,20 +318,14 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::group(['prefix' => 'testimonial'], function () {
         Route::get('/', 'TestimonialController@get_tetimonial_lists');
     });
-    Route::group(['prefix' => 'banners2'], function () {
-        Route::get('module-banner', 'BannerController@get_module_banners');
-        Route::get('item-banner', 'BannerController@get_item_banners');
-    });
+
 
     Route::get('customer/order/cancellation-reasons', 'OrderController@cancellation_reason');
     Route::get('customer/order/parcel-instructions', 'OrderController@parcel_instructions');
     Route::get('most-tips', 'OrderController@most_tips');
     Route::get('stores/details/{id}', 'StoreController@get_details');
     Route::get('stores/details-limited/{id}', 'StoreController@get_details_limited');
-    Route::group(['prefix' => 'banners'], function () {
-        Route::get('category-banner/{id}', 'BannerController@category_banners');
-        Route::get('paid-banners', 'BannerController@get_paid_banners');
-    });
+
     Route::group(['prefix' => 'customer'], function () {
         Route::post('get-bills', 'CustomerController@get_bills');
         Route::post('download-bill', 'CustomerController@download_bill');

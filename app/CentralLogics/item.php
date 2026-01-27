@@ -40,7 +40,7 @@ class ProductLogic
         })
         ->whereIn('id', explode(',', $store_ids))
         ->active()->type($type)
-        ->select('id', 'name', 'address', 'logo')
+        ->select('id', 'name', 'address', 'logo', 'meta_description')
         ->latest()->paginate($limit, ['*'], 'page', $offset);
 
         return [

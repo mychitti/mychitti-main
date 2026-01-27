@@ -51,7 +51,7 @@ class BannerController extends Controller
     {
         // prx($request->all());
         if (!$request->hasHeader('zoneId')) {
-            $errors = []; 
+            $errors = [];
             array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
             return response()->json([
                 'errors' => $errors
@@ -89,12 +89,33 @@ class BannerController extends Controller
         }
         return response()->json($banners, 200);
     }
+    public function get_default_banners(Request $request)
+    {
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_ids = json_decode($request->header('zoneId'), true);
+
+        $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'default')
+            ->select("title", "image", "default_link", 'created_at')
+            ->get();
+
+        foreach ($banners as $key => $value) {
+            $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
+        }
+        return response()->json($banners, 200);
+    }
     public function category_banners(Request $request, $ctId)
     {
         $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('data', $ctId)
+            ->select("title", "image", "default_link", 'created_at')
             ->get();
         foreach ($banners as $key => $value) {
-            $banners[$key]->image =  asset('storage/app/public/banner/') . '/' . $value->image;
+            $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
         }
         return response()->json($banners, 200);
     }
@@ -103,7 +124,7 @@ class BannerController extends Controller
         $banners = DB::table('banners')->where('status', 1)->where('paid', 1)->where('expiry_date', '>', date('Y-m-d H:i:s'))
             ->get();
         foreach ($banners as $key => $value) {
-            $banners[$key]->image =  asset('storage/app/public/banner/') . '/' . $value->image;
+            $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
         }
         return response()->json($banners, 200);
     }
@@ -151,19 +172,20 @@ class BannerController extends Controller
         }
         $zone_id = $request->header('zoneId');
         $banners = Banner::active();
-        if (config('module.current_module_data')) {
-            $banners = $banners->whereHas('zone.modules', function ($query) {
-                $query->where('modules.id', config('module.current_module_data')['id']);
-            })
-                ->module(config('module.current_module_data')['id'])
-                ->when(!config('module.current_module_data')['all_zone_service'], function ($query) use ($zone_id) {
-                    $query->whereIn('zone_id', json_decode($zone_id, true));
-                });
-        }
+        // if (config('module.current_module_data')) {
+        //     $banners = $banners->whereHas('zone.modules', function ($query) {
+        //         $query->where('modules.id', config('module.current_module_data')['id']);
+        //     })
+        //         ->module(config('module.current_module_data')['id'])
+        //         ->when(!config('module.current_module_data')['all_zone_service'], function ($query) use ($zone_id) {
+        //             $query->whereIn('zone_id', json_decode($zone_id, true));
+        //         });
+        // }
 
         $banners = $banners->whereIn('zone_id', json_decode($zone_id, true))->whereHas('module', function ($query) {
             $query->active();
         })->where('data', $store_id)
+            ->select("title", "image", "default_link", 'created_at')
             ->get();
 
         return response()->json($banners, 200);
