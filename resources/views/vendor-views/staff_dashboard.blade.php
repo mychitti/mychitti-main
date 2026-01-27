@@ -564,7 +564,7 @@
                 })
             );
         @endif
-
+ 
         $(document).ready(function() {
             let staffDashIsPunchedIn = @json(_clockedInEmployee() ?? 0);
             let staffDashPunchInTime = @json(_inTime('timestamp') ?? null);

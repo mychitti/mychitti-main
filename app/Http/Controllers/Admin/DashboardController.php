@@ -296,7 +296,7 @@ class DashboardController extends Controller
         $delivery_commission = $data['delivery_commission'];
         $label = $data['label'];
         $module_type = Config::get('module.current_module_type');
-
+ 
         if ($module_type == 'settings') {
             return redirect()->route('admin.business-settings.business-setup');
         }

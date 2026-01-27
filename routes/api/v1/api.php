@@ -25,7 +25,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::post('sendotp', 'CustomerController@sendotp')->name('sendotp');
     Route::get('searchbar', 'ItemController@searchbar')->name('searchbar');
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
-    Route::get('zone/list', 'ZoneController@get_zones');
+    Route::get('zone/list', 'ZoneController@get_zones'); 
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 
 

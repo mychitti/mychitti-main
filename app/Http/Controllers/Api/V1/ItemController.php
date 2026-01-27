@@ -18,7 +18,7 @@ use App\Models\Store;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
-class ItemController extends Controller
+class ItemController extends Controller 
 {
     public function get_stores(Request $request, $id)
     {

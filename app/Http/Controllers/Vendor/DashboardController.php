@@ -46,7 +46,7 @@ class DashboardController extends Controller
     {
         echo 'hiiii';
         $storeId = Helpers::get_store_id();
-        if (auth('vendor')->check()) {
+        if (auth('vendor')->check()) { 
 
             $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
             if ($request->has('date_range')) {
@@ -56,7 +56,7 @@ class DashboardController extends Controller
             $range = Helpers::calculatePresetDates($preset, $custom);
             $formatted_from  = $range['start'];
             $formatted_to = $range['end'];
-            $from = $range['start']->toDateString();
+            $from = $range['start']->toDateString(); 
             $to  = $range['end']->toDateString();
 
             $earning = [];

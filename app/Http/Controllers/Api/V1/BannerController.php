@@ -168,7 +168,7 @@ class BannerController extends Controller
             array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
             return response()->json([
                 'errors' => $errors
-            ], 403);
+            ], 403); 
         }
         $zone_id = $request->header('zoneId');
         $banners = Banner::active();

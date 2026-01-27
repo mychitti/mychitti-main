@@ -7,7 +7,7 @@
 @section('meta_keywords', \App\CentralLogics\Helpers::get_settings('meta_keywords') != 'null' ?
     \App\CentralLogics\Helpers::get_settings('meta_keywords') : '')
 
-    @push('css_or_js')
+    @push('css_or_js') 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
