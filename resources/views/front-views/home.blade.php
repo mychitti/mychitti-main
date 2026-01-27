@@ -57,12 +57,12 @@
                 height: 50px;
                 border-radius: 50%;
                 overflow: hidden;
-                position: relative;
+                position: relative; 
             }
-
+ 
             .profile-image {
                 width: 100%;
-                height: 100%;
+                height: 100%; 
                 object-fit: cover;
             }  
   
