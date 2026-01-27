@@ -65,9 +65,9 @@
                 height: 100%;
                 object-fit: cover;
             } 
-
+ 
             .bg-circle {
-                position: absolute;
+                position: absolute; 
                 width: 170px;
                 height: 170px;
                 border-radius: 50%;
