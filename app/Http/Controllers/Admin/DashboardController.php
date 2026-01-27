@@ -277,7 +277,6 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-
         if (_onlyStoreAddEdit()) {
             return redirect()->route('admin.store.list');
         }
@@ -296,11 +295,12 @@ class DashboardController extends Controller
         $delivery_commission = $data['delivery_commission'];
         $label = $data['label'];
         $module_type = Config::get('module.current_module_type');
- 
+
         if ($module_type == 'settings') {
             return redirect()->route('admin.business-settings.business-setup');
         }
 
+        //   dd(session()->all());
         return view("admin-views.dashboard-{$module_type}", compact('data', 'total_sell', 'commission', 'delivery_commission', 'label', 'params', 'module_type'));
     }
 

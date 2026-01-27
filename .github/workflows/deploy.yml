@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: admin
+          - name: admin 
             host: 64.227.158.127
             path: /var/www/html/admin
 

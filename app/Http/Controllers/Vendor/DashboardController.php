@@ -44,9 +44,8 @@ class DashboardController extends Controller
     
     public function dashboard(Request $request)
     {
-        echo 'hiiii';
         $storeId = Helpers::get_store_id();
-        if (auth('vendor')->check()) { 
+        if (auth('vendor')->check()) {  
 
             $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
             if ($request->has('date_range')) {

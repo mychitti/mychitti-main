@@ -2420,7 +2420,7 @@ if (!function_exists('_clockedInEmployee')) {
                     FROM employee_time_cards 
                     WHERE DATE(in_time) = '$today'
                     GROUP BY emp_id
-                )") 
+                )")  
                 ->where('vendor_id', Helpers::get_store_id())
                 ->where(function ($q) {
                     $q->whereNull('out_time')

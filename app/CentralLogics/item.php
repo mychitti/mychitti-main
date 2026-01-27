@@ -28,7 +28,7 @@ class ProductLogic
     }
     public static function stores_limited_columns($id, $zone_id, $limit, $offset, $type, $longitude, $latitude)
     { 
-        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids;
+        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids; 
         $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0) 
         ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
             $query->whereHas('zone.modules', function ($query) {

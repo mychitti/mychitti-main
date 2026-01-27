@@ -23,7 +23,7 @@ class ItemController extends Controller
     public function get_stores(Request $request, $id)
     {
         if (!$request->hasHeader('zoneId')) {
-            $errors = [];
+            $errors = []; 
             array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
             return response()->json([
                 'errors' => $errors

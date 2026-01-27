@@ -169,7 +169,7 @@ class BannerController extends Controller
             return response()->json([
                 'errors' => $errors
             ], 403); 
-        }
+        } 
         $zone_id = $request->header('zoneId');
         $banners = Banner::active();
         // if (config('module.current_module_data')) {
