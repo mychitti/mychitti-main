@@ -219,7 +219,6 @@ class DashboardController extends Controller
 
             // prx($assigned_projects);
 
-            prx(_clockedInEmployee());
             return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assigned_projects', 'employee_id'));
         }
     }
