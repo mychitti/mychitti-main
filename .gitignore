@@ -19,3 +19,5 @@ installation/database.sql
 resources/lang
 /app/Providers/RouteServiceProvider.php
 /vendor
+app/CentralLogics/service-account-key.json
+service-account-key.json
