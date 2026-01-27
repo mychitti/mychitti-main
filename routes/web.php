@@ -137,6 +137,17 @@ Route::domain('staging.mychitti.net')
         Route::post('login', [FrontUserController::class, 'login_post'])->name('staging.login.post');
     });
 
+
+
+Route::get('/test-mail', function () {
+    Mail::raw('Test mail body', function ($message) {
+        $message->to('imafreenansari1998@gmail.com')
+            ->subject('Laravel Mail Test');
+    });
+
+    return 'Mail sent';
+});
+
 // Other domains
 
 Route::post('signup', [FrontUserController::class, 'signup_post'])->name('signup.post');
@@ -422,5 +433,5 @@ Route::get('location-view', [LocationController::class, 'location_view']);
 Route::get('update-live-location/user/{id}', [LocationController::class, 'update']);
 
 
-Route::get('category/{category_slug}/{city}', [FrontController::class, 'category_listing'])->name('category.listing');// needs to be later
+Route::get('category/{category_slug}/{city}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be later
 Route::get('{category_slug}/{slug}', [FrontController::class, 'product_details'])->name('product.details');// needs to be later

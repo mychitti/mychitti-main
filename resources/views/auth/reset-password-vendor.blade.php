@@ -1038,14 +1038,19 @@ $log_email_succ = session()->get('log_email_succ');
             padding: 5px;
         }
     </style>
+    <style>
+        .input-group-merge .input-group-append .input-group-text:last-child {
+            padding: 0.875rem !important;
+        }
+    </style>
 </head>
 
 <body>
 
-    @if (isset($role) && $role == 'vendor')
-        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_logo.jpeg'); @endphp
-    @else
+    @if (isset($role) && $role == 'vendor_employee')
         @php $logo = asset('storage/app/public/vendor_login/mc_vendor_staff_logo.jpeg'); @endphp
+    @else
+        @php $logo = asset('storage/app/public/vendor_login/mc_vendor_logo.jpeg'); @endphp
     @endif
 
     {{-- <div id="toast" class="toast">This is a toaster notification!</div> --}}
@@ -1061,121 +1066,82 @@ $log_email_succ = session()->get('log_email_succ');
                     </a>
                 </div>
 
-
-
-                <form class="login-form login_with_password_screen" {{ isset($role) && $role == 'vendor' ? '' : '' }}
-                    action="{{ route('login_post') }}" method="post" id="form-id">
-                    @csrf
-                    <div class="login-title">
-                        <div class="lock-box" aria-hidden>
-                            <img style="width: 50px;"
-                                src="{{ asset('storage/app/public/vendor_login/login_icon.jpeg') }}" alt="">
-                        </div>
-                        <div>
-                            <h2>Login {{ isset($role) && $role == 'vendor' ? 'Vendor' : 'Staff' }}</h2>
-                            <div style="font-size:13px;color:var(--login-muted);margin-top:6px">
-                                Secure access to My Chitti
-                                {{ isset($role) && $role == 'vendor' ? 'Vendor' : 'Staff' }}
-                                Dashboard
-                            </div>
-                        </div>
-                    </div>
-                    <input type="hidden" name="role" value="{{ $role ?? null }}">
-                    <label for="signinSrEmail">Email</label>
-                    <input type="email" name="email" id="signinSrEmail" tabindex="1" class="login-input"
-                        placeholder="email@address.com" value="{{ $email ?? '' }}"
-                        data-msg="{{ translate('Please_enter_a_valid_email_address.') }}">
-
-                    <div class="js-form-message input-wrapper">
-                        <label class="" for="signupSrPassword" tabindex="0">
-                            <span class="d-flex justify-content-between align-items-center">
-                                {{ translate('messages.password') }}
-                            </span>
-                        </label>
-
-                        <div class="input-group input-group-merge flex-nowrap">
-                            <input type="password" class="js-toggle-password login-input" name="password"
-                                id="signupSrPassword"
-                                placeholder="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
-                                value="{{ $password ?? '' }}"
-                                aria-label="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
-                                required data-msg="{{ translate('messages.invalid_password_warning') }}"
-                                data-hs-toggle-password-options='{
-                                                "target": "#changePassTarget",
-                                    "defaultClass": "tio-hidden-outlined",
-                                    "showClass": "tio-visible-outlined",
-                                    "classChangeTarget": "#changePassIcon"
-                                    }'>
-                            <div id="changePassTarget" class="input-group-append">
-                                <a class="input-group-text" href="javascript:"
-                                    style="    padding: 14px;border-radius: 0px 23px 23px 0px;">
-                                    <i id="changePassIcon" class="tio-visible-outlined"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group d-flex justify-content-between">
-                        <div class="d-flex gap-2">
-                            <input type="checkbox" class="" id="termsCheckbox" {{ $password ? 'checked' : '' }}
-                                name="remember" checked>
-                            <label class="text-muted" for="termsCheckbox">
-                                {{ translate('messages.remember_me') }}
-                            </label>
-                        </div>
-                        <div class="">
-                            <div class="form-group" id="forget-password"
-                                style="display: {{ $role == 'admin' ? '' : 'none' }};">
-                                <div class="custom-control">
-                                    <span type="button" data-toggle="modal" class=" forgot"
-                                        data-target="#forgetPassModal">{{ translate('Forgot Password') }}?</span>
+                <div class="reset-password">
+                    {{-- <div class="mb-3 text-center">
+                        <img src="{{ asset('/public/assets/admin/img/lock.svg') }}" alt="">
+                    </div> --}}
+                    <div class="mt-4">
+                        <form action="{{ route('reset-password-submit') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="reset_token" value="{{ $token }}">
+                            <!-- Form Group -->
+                            <div class="js-form-message form-group mb-4">
+                                <label class="input-label">
+                                    {{ translate('New Password') }}
+                                    <span class="form-label-secondary" data-toggle="tooltip" data-placement="right"
+                                        data-original-title="{{ translate('messages.Must_contain_at_least_one_number_and_one_uppercase_and_lowercase_letter_and_symbol,_and_at_least_8_or_more_characters') }}"><img
+                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                            alt="{{ translate('messages.Must_contain_at_least_one_number_and_one_uppercase_and_lowercase_letter_and_symbol,_and_at_least_8_or_more_characters') }}"></span>
+                                </label>
+                                <div class="input-group input-group-merge">
+                                    <input type="password" class="js-toggle-password form-control form-control-lg"
+                                        name="password" id="signupSrPassword"
+                                        placeholder="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
+                                        aria-label="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
+                                        required data-msg="{{ translate('messages.invalid_password_warning') }}"
+                                        data-hs-toggle-password-options='{
+                                                    "target": "#new-pass",
+                                        "defaultClass": "tio-hidden-outlined",
+                                        "showClass": "tio-visible-outlined",
+                                        "classChangeTarget": "#new-pass-icon"
+                                        }'>
+                                    <div id="new-pass" class="input-group-append">
+                                        <a class="input-group-text" href="javascript:">
+                                            <i id="new-pass-icon" class="tio-visible-outlined"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="form-group" id="forget-password1"
-                                style="display: {{ $role == 'vendor' ? '' : 'none' }};">
-                                <div class="custom-control">
-                                    <span type="button" data-toggle="modal" class="text-primary forgot"
-                                        data-target="#forgetPassModal1">{{ translate('messages.Forgot Password') }}?</span>
+                            <!-- End Form Group -->
+                            <!-- Form Group -->
+                            <div class="js-form-message form-group mb-4">
+                                <label class="input-label">
+                                    <span class="d-flex justify-content-between align-items-center">
+                                        {{ translate('Confirm Password') }}
+                                    </span>
+                                </label>
+                                <div class="input-group input-group-merge">
+                                    <input type="password" class="js-toggle-password form-control form-control-lg"
+                                        name="confirm_password" id="signupSrPassword"
+                                        placeholder="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
+                                        aria-label="{{ translate('messages.password_length_placeholder', ['length' => '6+']) }}"
+                                        required data-msg="{{ translate('messages.invalid_password_warning') }}"
+                                        data-hs-toggle-password-options='{
+                                                    "target": "#conf-pass",
+                                        "defaultClass": "tio-hidden-outlined",
+                                        "showClass": "tio-visible-outlined",
+                                        "classChangeTarget": "#conf-pass-icon"
+                                        }'>
+                                    <div id="conf-pass" class="input-group-append">
+                                        <a class="input-group-text" href="javascript:">
+                                            <i id="conf-pass-icon" class="tio-visible-outlined"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            <!-- End Form Group -->
+                            <button type="submit" class="btn login-btn">{{ translate('Change Password') }}</button>
+                        </form>
                     </div>
-                    <!-- forgot password -->
+                </div>
 
 
-                    <button type="submit" class="btn login-btn">Login</button>
-                    @if (isset($role) && $role == 'vendor')
-                        <div class="or-text">OR</div>
-                        <div class="d-flex gap-2 mb-2">
-                            @if (isset($role) && $role == 'vendor')
-                                <div class="google-login-button" style="width: 100%;" id="switch_login_with_otp">
-                                    <button type="button" class="btn login-btn">Login with OTP</button>
-
-                                    {{-- <img src="{{ asset('storage/app/public/util/OTP-1024.webp') }}" alt="OTP"> --}}
-                                </div>
-                            @endif
-                            {{-- {{ route('vendor.google.login') }} --}}
-                            @php $platform = request()->header('X-Platform'); @endphp
-                            @if ($platform !== 'app')
-                                {{-- <a href="{{ route('vendor.google.login') }}"
-                                class="google-btn text-decoration-none text-dark" style="width: 48%;" type="button">
-                                <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
-                                    alt="Google">
-                                Login with Google
-                            </a> --}}
-                            @endif
-                        </div>
-                        <p class="mb-0 text-center">Don't have an account?</p>
-                        <a class="btn signup-btn" href="https://mychitti.net/list-your-business">SIGN UP NOW</a>
-                    @endif
-
-                </form>
 
                 @if (isset($role) && $role == 'vendor')
                     <div id="login_with_otp_screen" class=" " style="display:none;">
 
-                        <form class="send_login_otp login-form" action="{{ route('send-vendor-otp') }}"
-                            method="post" id="form-id">
+                        <form class="send_login_otp login-form" action="{{ route('send-vendor-otp') }}" method="post"
+                            id="form-id">
                             @csrf
                             <div class="login-title">
                                 <div class="lock-box" aria-hidden>

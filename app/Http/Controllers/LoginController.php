@@ -540,23 +540,22 @@ class LoginController extends Controller
                 'created_at' => now(),
             ]);
             $url = url('/') . '/password-reset?token=' . $token;
-            echo 'fsd3 ';
             try {
-                // if(config('mail.status') && $vendor['email'] ){
+                if(config('mail.status') && $vendor['email'] ){
                 Mail::to($vendor['email'])->send(new PasswordResetRequestMail($url, $vendor['f_name']));
                 session()->put('log_email_succ', 1);
-                // }else{
-                //     Toastr::error(translate('messages.Failed_to_send_mail'));
-                // }
+                }else{
+                    Toastr::error(translate('messages.Failed_to_send_mail'));
+                }
             } catch (\Throwable $th) {
                 print_r($th);
                 info($th->getMessage());
                 Toastr::error(translate('messages.Failed_to_send_mail'));
             }
-            // return back();
+            return back();
         }
         Toastr::error(translate('messages.Email_does_not_exists'));
-        // return back();
+        return back();
     }
     public function reset_password(Request $request)
     {
@@ -611,7 +610,7 @@ class LoginController extends Controller
             $site_direction = session()?->get('vendor_site_direction') ?? $direction ?? 'ltr';
             $locale = session()?->get('vendor_local') ??  $lang ?? 'en';
             App::setLocale($locale);
-            return view('auth.reset-password', compact('token', 'site_direction', 'locale'));
+            return view('auth.reset-password-vendor', compact('token', 'site_direction', 'locale'));
         }
     }
 
@@ -654,7 +653,7 @@ class LoginController extends Controller
     {
         $request->validate([
             'reset_token' => 'required',
-            'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()],
+            'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()],
             'confirm_password' => 'required|same:password',
         ]);
         $data = DB::table('password_resets')->where(['token' => $request['reset_token']])->first();

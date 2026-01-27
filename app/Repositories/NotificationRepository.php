@@ -47,6 +47,22 @@ class NotificationRepository implements NotificationRepositoryInterface
                     }
                 });
             })
+            ->whereNot('added_by', 'vendor')
+            ->latest()
+            ->paginate($dataLimit);
+    }
+    public function getVendorListWhere(string $searchValue = null, array $filters = [], array $relations = [], int|string $dataLimit = DEFAULT_DATA_LIMIT, int $offset = null): Collection|LengthAwarePaginator
+    {
+        $key = explode(' ', $searchValue);
+        return $this->notification->with($relations)->where($filters)
+            ->when(isset($key ), function ($q) use ($key){
+                $q->where(function ($q) use ($key) {
+                    foreach ($key as $value) {
+                        $q->orWhere('title', 'like', "%{$value}%");
+                    }
+                });
+            })
+            ->where('added_by', 'vendor')
             ->latest()
             ->paginate($dataLimit);
     }

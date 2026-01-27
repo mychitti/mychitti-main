@@ -42,6 +42,44 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             left: auto !important;
             top: auto !important;
         }
+
+        .otp-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 300px;
+        }
+
+        .otp-container h2 {
+            margin-bottom: 20px;
+        }
+
+        .otp-container p {
+            margin-bottom: 20px;
+            color: #666;
+        }
+
+        .otp-form {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .otp-input {
+            width: 55px;
+            height: 55px;
+            margin: 3px;
+            text-align: center;
+            font-size: 26px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .otp-input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
     </style>
     <script
         src="{{ asset('public/assets/admin/vendor/hs-navbar-vertical-aside/hs-navbar-vertical-aside-mini-cache.js') }}">
@@ -284,7 +322,41 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
-
+        <div class="modal fade" id="action_verify_modal" tabindex="-1" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="container py-5">
+                            <h2 class="text-center">Enter OTP</h2>
+                            <div class="p-5 bg-light rounded" style="max-width: 550px; margin: 0 auto;">
+                                <div class="row ">
+                                    <form style="margin: 0 auto;" action="{{ route('admin.proceed-action') }}"
+                                        class="verify_action_otp" method="post">
+                                        <p>OTP has been sent to master admin. Please verify.</p>
+                                        @csrf
+                                        <input type="hidden" class="action_type" name="action_type" value="">
+                                        <div class="d-flex justify-content-center w-100">
+                                            <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                            <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                            <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                            <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                        </div>
+                                        <button type="submit"
+                                            class="btn btn-lg btn-block btn--primary mt-3">Submit</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- ========== END MAIN CONTENT ========== -->
 
@@ -333,7 +405,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         <audio id="myAudio">
             <source src="{{ asset('public/assets/admin/sound/notification.mp3') }}" type="audio/mpeg">
         </audio>
-     
+
         <script>
             var audio = document.getElementById("myAudio");
 
@@ -360,6 +432,76 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                     tour.restart();
                     $('body').css('overflow', 'hidden')
                 @endif
+            });
+
+            $(document).on('input', '.otp-input', function(e) {
+                const $inputs = $('.otp-input');
+                const index = $inputs.index(this);
+
+                if (this.value.length === this.maxLength && index < $inputs.length - 1) {
+                    $inputs.eq(index + 1).focus();
+                }
+            });
+
+            $(".verify_action_otp").on('submit', function(e) {
+                e.preventDefault();
+
+                let formData = new FormData(this);
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        toastr.success(res.msg);
+                        $("#action_verify_modal").modal('hide')
+                        $('.action_type').val('');
+                        $(".verify_action_otp").trigger('reset')
+
+
+
+                    },
+                    error: function(xhr) {
+                        toastr.error(xhr.responseJSON?.message || 'OTP verification failed');
+                    }
+                });
+            });
+
+
+            $(".formSubmitVerify").on('submit', function(e) {
+                e.preventDefault();
+
+                let form = this;
+                let formData = new FormData(form);
+
+                $.ajax({
+                    url: $(form).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(data) {
+                        console.log(data);
+
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        } else {
+                            $('#action_verify_modal').modal('show');
+                            $('.action_type').val(data.actionType);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error(xhr.responseText);
+                    }
+                });
             });
 
 

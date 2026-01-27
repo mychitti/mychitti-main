@@ -1259,6 +1259,7 @@ class ItemController extends Controller
         $charge->ven_3_charges = $request->third_ven_charge;
         $charge->ven_other_charges = $request->other_ven_charge;
         $charge->ven_same_charges = $request->same_charge;
+        $charge->confirmation_charge = $request->confirmation_charge;
         $charge->created_at = date('Y-m-d H:i:s');
         if ($charge->save()) {
             Toastr::success('Lead charges saved successfully');
@@ -1296,6 +1297,7 @@ class ItemController extends Controller
         $charge->ven_3_charges = $request->third_ven_charge;
         $charge->ven_other_charges = $request->other_ven_charge;
         $charge->ven_same_charges = $request->same_charge;
+        $charge->confirmation_charge = $request->confirmation_charge;
 
         if ($charge->update()) {
             Toastr::success('Lead charges updated successfully');

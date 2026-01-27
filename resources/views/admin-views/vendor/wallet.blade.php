@@ -21,7 +21,7 @@
                 </span>
             </h1>
         </div>
-        <form action="{{ route('admin.store.wallet.recharge') }}" method="post">
+        <form action="{{ route('admin.store.wallet.recharge') }}" class="formSubmitVerify" method="post">
             @csrf
             <div class="row g-2">
                 <div class="col-md-4">

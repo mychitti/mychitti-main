@@ -7,6 +7,9 @@
 
 @section('content')
     <div class="content container-fluid">
+@include('admin-views/partials/_action-nav')
+        
+
         <!-- Page Header -->
         <div class="page-header d-flex flex-wrap align-items-center justify-content-between">
             <h1 class="page-header-title">
@@ -59,7 +62,7 @@
                                             {{ Str::limit(translate($action['description']), 100, '...') }}
                                         </span>
                                     </td>
-                                    <td>{{$action->created_at}}</td>
+                                    <td>{{ $action->created_at }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

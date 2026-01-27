@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\AcceptedServiceRequest;
 use App\Models\ActionLog;
+use App\Models\AdminAction;
 use App\Models\GoogleAd;
 use App\Models\InAppNotification;
 use App\Models\ServiceInvoice;
@@ -63,12 +64,17 @@ class DashboardController extends Controller
         Toastr::success('Updated successfully');
         return back();
     }
-    public function action_logs(Request $request)
+    public function action_logs(Request $request, $tab = 'common')
     {
-        $actions = ActionLog::with('admin')->latest()->paginate(10);
-
-        return view("admin-views.logs.action-logs", compact('actions'));
+        if ($tab == 'common') {
+            $actions = ActionLog::with('admin')->latest()->paginate(10);
+            return view("admin-views.logs.action-logs", compact('actions'));
+        } else {
+            $actions = AdminAction::with('admin')->latest()->paginate(10);
+            return view("admin-views.logs.admin-action", compact('actions'));
+        }
     }
+
     public function user_dashboard(Request $request)
     {
         $params = [
@@ -271,7 +277,7 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-        if(_onlyStoreAddEdit()){
+        if (_onlyStoreAddEdit()) {
             return redirect()->route('admin.store.list');
         }
         $params = [

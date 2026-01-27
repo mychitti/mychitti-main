@@ -427,6 +427,14 @@
                                                     <span class="badge badge-{{ $class }}">Cancelled</span>
                                                     @php addStatus($statusCounts, 'cancelled'); @endphp
                                                 @endif
+                                            @elseif ($lead->current_status != 'Confirmed' && $isAcceptedReq)
+                                                <a class="btn btn-primary btn_sm" data-toggle="modal"
+                                                    data-target="#exampleModal33-{{ $lead->id }}"
+                                                    title="Contact Details">
+                                                    <i class="Send Confirmation Request"></i>
+                                                    Send Confirmation Request
+                                                </a>
+                                                @php addStatus($statusCounts, 'accepted'); @endphp
                                             @elseif (
                                                 $lead->current_status == 'Confirmed' ||
                                                     $lead->assigned_status == 'Assigned' ||
@@ -608,83 +616,222 @@
                             <!--modal -->
                             <div class="modal fade" id="exampleModal33-{{ $lead->id }}" tabindex="-1"
                                 role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="exampleModalLabel">
-                                                Requested
-                                                for : {{ $lead->item_name }} </h5>
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content lead-modal">
+                                        <!-- Header -->
+                                        <div class="modal-header border-bottom-0">
+                                            <div>
+                                                <small class="text-muted d-block">Service Request</small>
+                                                <h5 class="modal-title mb-0 font-weight-bold" id="exampleModalLabel">
+                                                    {{ $lead->item_name }}
+                                                </h5>
+                                            </div>
                                             <button type="button" class="close" data-dismiss="modal"
                                                 aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
-
                                         </div>
-                                        <div class="modal-body">
-                                            <div class="form-group">
 
+                                        <div class="modal-body p-4">
+                                            <!-- Customer Info -->
+                                            <div class="customer-info-box mb-4">
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="customer-avatar mr-3">
+                                                        {{ strtoupper(substr($user_details->f_name, 0, 1)) }}
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-0 font-weight-bold">
+                                                            {{ $user_details->f_name . ' ' . $user_details->l_name }}</h6>
+                                                        <small class="text-muted">Customer Details</small>
+                                                    </div>
+                                                </div>
 
-                                                <ul class="list-unstyled">
+                                                <div class="contact-list">
 
-                                                    <li>
-                                                        <strong>Name:</strong>
-                                                        <span>{{ $user_details->f_name . ' ' . $user_details->l_name }}</span>
-                                                    </li>
+                                                    <div class="contact-item">
+                                                        <i class="tio-email"></i>
+                                                        <div class="flex-grow-1">
+                                                            <small class="text-muted">Email</small>
+                                                            <a
+                                                                href="mailto:{{ $user_details->email }}">{{ $user_details->email }}</a>
+                                                        </div>
+                                                    </div>
 
-                                                    <li>
-                                                        <strong>Email:</strong>
-                                                        <a
-                                                            href="mailto:{{ $user_details->email }}">{{ $user_details->email }}</a>
-                                                    </li>
-
-                                                    <li>
-                                                        <strong>Mobile:</strong>
-                                                        <a href="javascript:;" style="cursor:default;"
-                                                            class="textToCopy">{{ $user_details->phone }}</a>
-                                                        <button class="copy-btn bg-transparent outline-none border-0">
+                                                    <div class="contact-item">
+                                                        <i class="tio-call"></i>
+                                                        <div class="flex-grow-1">
+                                                            <small class="text-muted">Mobile</small>
+                                                            <span class="textToCopy">{{ $user_details->phone }}</span>
+                                                        </div>
+                                                        <button class="copy-btn" title="Copy">
                                                             <i class="tio-copy"></i>
                                                         </button>
-                                                    </li>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                                    <li>
-                                                        @if (!_getCurrentServiceStatus($lead->id))
-                                                            @if (hasPermission('leads_manage', 'send_confirmation_request'))
-                                                                <form
-                                                                    action="{{ route('vendor.service.send-confirmation-notification', ['id' => $lead->id]) }}">
-                                                                    @csrf
-                                                                    <input type="hidden" name="id"
-                                                                        value="{{ $lead->id }}">
-                                                                    <label for="lead_price" class="form-label">Visiting
-                                                                        Charges</label>
-                                                                    <input type="number" name="price" id="lead_price"
-                                                                        class="form-control mb-1"
-                                                                        placeholder="Visiting Charges">
-                                                                    <button type="submit" class="btn btn--primary">Send
-                                                                        Confirmation Request</button>
-                                                                </form>
-                                                            @endif
-                                                        @else
-                                                            <h4 class="text--primary">
-                                                                {{ _getCurrentServiceStatus($lead->id) }}
-                                                            </h4>
-                                                        @endif
+                                            <!-- Action Section -->
+                                            @if (!_getCurrentServiceStatus($lead->id))
+                                                @if (hasPermission('leads_manage', 'send_confirmation_request'))
+                                                    <form
+                                                        action="{{ route('vendor.service.send-confirmation-notification', ['id' => $lead->id]) }}"
+                                                        class="action-form">
+                                                        @csrf
+                                                        <input type="hidden" name="id"
+                                                            value="{{ $lead->id }}">
+
+                                                        <div class="form-group">
+                                                            <label for="lead_price" class="font-weight-600">Visiting
+                                                                Charges</label>
+                                                            <div class="input-group">
+                                                                <div class="input-group-prepend">
+                                                                    <span class="input-group-text"><i
+                                                                            class="tio-money"></i></span>
+                                                                </div>
+                                                                <input type="number" name="price" id="lead_price"
+                                                                    class="form-control" placeholder="Enter amount"
+                                                                    required>
+                                                            </div>
+                                                        </div>
+
+                                                        <button type="submit" class="btn btn--primary btn-block">
+                                                            <i class="tio-checkmark-circle mr-1"></i>
+                                                            Send Confirmation Request
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @else
+                                                <div class="status-box">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="tio-checkmark-circle-outlined"></i>
+                                                            <div class="ml-3">
+                                                                <small class="text-muted d-block">Status</small>
+                                                                <h6 class="mb-0 font-weight-bold">
+                                                                    {{ _getCurrentServiceStatus($lead->id) }}</h6>
+                                                            </div>
+                                                        </div>
 
                                                         @if (_getCurrentServiceStatus($lead->id) == 'Confirmed')
                                                             <a href="{{ route('vendor.service.cancel', [$lead->id]) }}"
-                                                                class="btn btn-outline-danger">Cancel</a>
+                                                                class="btn btn-outline-danger btn-sm">
+                                                                <i class="tio-clear"></i> Cancel
+                                                            </a>
                                                         @endif
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
-                                        <div class="modal-footer">
-                                            <button id="reset_btn" type="reset" data-dismiss="modal"
-                                                class="btn btn-secondary">{{ translate('Close') }}
+
+                                        <div class="modal-footer border-top-0">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                                {{ translate('Close') }}
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            <style>
+                                .lead-modal .modal-body {
+                                    background: #f8f9fa;
+                                }
+
+                                .customer-info-box {
+                                    background: white;
+                                    padding: 1.25rem;
+                                    border-radius: 8px;
+                                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                                }
+
+                                .customer-avatar {
+                                    width: 48px;
+                                    height: 48px;
+                                    background: var(--primary);
+                                    color: white;
+                                    border-radius: 50%;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-weight: bold;
+                                    font-size: 18px;
+                                }
+
+                                .contact-list {
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 0.75rem;
+                                }
+
+                                .contact-item {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 0.75rem;
+                                    padding: 0.5rem;
+                                    border-radius: 6px;
+                                    transition: background 0.2s;
+                                }
+
+                                .contact-item:hover {
+                                    background: #f8f9fa;
+                                }
+
+                                .contact-item i {
+                                    font-size: 20px;
+                                    color: var(--primary);
+                                }
+
+                                .contact-item small {
+                                    display: block;
+                                    font-size: 11px;
+                                }
+
+                                .contact-item a,
+                                .contact-item span {
+                                    display: block;
+                                    font-weight: 500;
+                                    color: #333;
+                                }
+
+                                .copy-btn {
+                                    border: 1px solid #ddd;
+                                    background: white;
+                                    padding: 6px 10px;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                }
+
+                                .copy-btn:hover {
+                                    background: var(--primary);
+                                    color: white;
+                                    border-color: var(--primary);
+                                }
+
+                                .action-form {
+                                    background: white;
+                                    padding: 1.5rem;
+                                    border-radius: 8px;
+                                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                                }
+
+                                .status-box {
+                                    background: white;
+                                    padding: 1.25rem;
+                                    border-radius: 8px;
+                                    border-left: 4px solid var(--bs-success, #28a745);
+                                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                                }
+
+                                .status-box i {
+                                    font-size: 32px;
+                                    color: var(--bs-success, #28a745);
+                                }
+
+                                .font-weight-600 {
+                                    font-weight: 600;
+                                }
+                            </style>
                         @endif
                     @endforeach
                 </div>
@@ -752,11 +899,23 @@
         }
 
         let statusCounts = @json($statusCounts);
+        let leadCounts = @json($product).length;
         console.log(statusCounts); // check values
-
+function capitalize(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
         $(document).ready(function() {
 
             let container = $("#statusCards");
+            let card = `
+            <a href="{{ route('vendor.service.leads_list') }}?type=All" class="d-flex p-2 flex-column col-md-1 card shadow text-center stat_card-all">
+                <span>All</span>
+                <h1>${leadCounts}</h1>
+            </a>
+        `;
+            container.append(card);
+
 
             $.each(statusCounts, function(status, count) {
 
@@ -764,15 +923,13 @@
                 let statusText = status.toUpperCase();
 
                 let card = `
-            <div class="d-flex p-2 flex-column col-md-1 card shadow text-center stat_card-${classname}">
+            <a href="{{ route('vendor.service.leads_list') }}?type=${capitalize(status)}" class="d-flex p-2 flex-column col-md-1 card shadow text-center stat_card-${classname}">
                 <span>${statusText}</span>
                 <h1>${count}</h1>
-            </div>
+            </a>
         `;
-
                 container.append(card);
             });
-
         });
     </script>
 

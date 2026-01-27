@@ -28,6 +28,7 @@ use App\Models\BusinessSetting;
 use App\CentralLogics\StoreLogic;
 use Illuminate\Support\Facades\DB;
 use App\Mail\OrderVerificationMail;
+use App\Models\AdminAction;
 use App\Models\DayBook;
 use App\Models\FreeTrialHistory;
 use App\Models\InventoryGatepass;
@@ -86,6 +87,23 @@ class Helpers
     }
 
 
+    public static function createPendingAction(array $data)
+    {
+        $otp = rand(1000, 9999);
+
+        AdminAction::create([
+            'action_type' => $data['actionType'],
+            'action_payload' => json_encode($data['payload']),
+            'requested_by' => $data['requestedBy'],
+            'otp' => $otp,
+            'status' => 'pending',
+            'otp_expires_at' => now()->addMinutes(10),
+        ]);
+
+        // Send OTP to master admin
+        $admin_phone = BusinessSetting::where('key', 'phone')->first()->value ?? '8777966552';
+        _send_confirmation_sms('otp', $admin_phone, $otp);
+    }
     public static function generateInventoryReturnGatepass($gatepass)
     {
         $gatepass_items = InventoryGatepassItem::where('gatepass_id', $gatepass->id)->get();
@@ -582,7 +600,7 @@ class Helpers
             [
                 'ledger_account_type_id' => $expenseTypeId,
                 'parent_id' => null,
-                'code' => _accountCode($expenseTypeId, null , $store_id),
+                'code' => _accountCode($expenseTypeId, null, $store_id),
                 'description' => 'All Purchase Accounts',
                 'entity_type' => 'store',
                 'level' => 1,
@@ -2515,7 +2533,7 @@ class Helpers
             }
             return true;
         } catch (\Throwable $th) {
-            // throw $th;
+            throw $th;
             return true;
         }
     }
@@ -2832,7 +2850,7 @@ class Helpers
             ->toArray();
     }
 
- 
+
     // ZONE HELPER ===========================================
 
 
@@ -3554,12 +3572,12 @@ class Helpers
             foreach ($data as $item) {
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 $item['positive_rating'] = $ratings['positive_rating'];
-              
+
                 array_push($storage, $item);
             }
             $data = $storage;
         } else {
-           
+
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
             unset($data['rating']);
             // $data['avg_rating'] = $ratings['rating'];
@@ -3984,7 +4002,7 @@ class Helpers
         // Get OAuth 2.0 access token
         $accessToken = self::getAccessToken();
         // prx($accessToken);
-        $url = "https://fcm.googleapis.com/v1/projects/fcm-3-e0206/messages:send"; 
+        $url = "https://fcm.googleapis.com/v1/projects/fcm-3-e0206/messages:send";
 
         // Set headers for cURL request
         $header = array(

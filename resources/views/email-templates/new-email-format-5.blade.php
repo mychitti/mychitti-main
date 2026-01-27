@@ -90,7 +90,10 @@ font-weight: 700
 .social img {
 width: 24px;
 }
+
     </style>
+    @include('theme-colors')
+
 </head>
 
 <body style="background-color: #e9ecef;padding:15px">
@@ -114,10 +117,13 @@ width: 24px;
                 {{-- <span style="display:block;margin-bottom:14px">
                     Please click <a href="" style="font-weight:500;color:#0177CD">Here</a>  or click the link below to change your password
                 </span> --}}
+                
                 @if (isset($url))
                 <span style="display:block;margin-bottom:14px">
                     {{-- <span style="display:block" id="mail-button">{{ $data['button_name']??'Click Here' }}</span> --}}
-                    <a href="{{ $url }}" style="color: #0177CD">{{ $url }}</a>
+                    <a href="{{ $url }}" style="padding: 10px ; border-radius: 10px;border : #fd0d3d;
+    background-color: #fd0d3d;
+    color: white; ">Reset Password</a>
                 </span>
                 @endif
                 @if ($data?->button_url)
@@ -156,7 +162,7 @@ width: 24px;
                     @endif
                 </span>
                 <span class="copyright" id="mail-copyright">
-                    {{ $copyright_text?? translate('Copyright 2023 6ammart. All right reserved') }}
+                    {{ $copyright_text?? translate('Copyright 2026 Mychitti. All right reserved') }}
                 </span>
             </td>
         </tr>

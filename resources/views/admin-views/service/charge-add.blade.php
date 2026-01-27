@@ -35,7 +35,7 @@
                         <div class="card h-100">
                             <small>All fields are mandatory</small>
                             <div class="card-body row">
-                                 <div class="form-row col-6">
+                                 <div class="form-row col-3">
                                     <label for="exampleInputEmail1">Category <span class="text-danger">*</span></label>
                                     <select name="category" class="form-control js-select2-custom">
                                         <option value=""></option>
@@ -45,7 +45,7 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="form-row col-6">
+                                <div class="form-row col-3">
                                     <label for="exampleInputEmail1">Zone <span class="text-danger">*</span></label>
                                     <select required name="zone" class="form-control js-select2-custom">
                                            <!--<option value="" selected disabled>Zone</option>-->
@@ -55,6 +55,11 @@
                                            @endforeach
                                     </select>
                                 </div>
+                                <div class="form-row col-2">
+                                    <label for="exampleInputEmail1">Confirmation Charges</i> </label>
+                                    <input type="text" name="confirmation_charge" required placeholder="Amount"
+                                        class="form-control">
+                                </div>
                               
                             
                                 
@@ -63,35 +68,36 @@
                                        <small> <i>If more than <span class="ven_count">30</span> vendors available in particular zone and category, below mentioned charges will be applied</i></small>
                                 </div>
                                
-                                <div class="form-row col-3">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">First Vendor<span class="text-danger">*</span></label>
                                     <input type="number" name="first_ven_charge" required placeholder="Amount"
                                         class="form-control">
                                 </div>
-                                <div class="form-row col-3">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Second Vendor <span class="text-danger">*</span></label>
                                     <input type="number" name="sec_ven_charge" required placeholder="Amount"
                                         class="form-control">
                                 </div>
-                                <div class="form-row col-3">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Third Vendor<span class="text-danger">*</span></label>
                                     <input type="number" name="third_ven_charge" required placeholder="Amount"
                                         class="form-control">
                                 </div>
-                                <div class="form-row col-3">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Other Vendors</i> <span class="text-danger">*</span></label>
                                     <input type="text" name="other_ven_charge" required placeholder="Amount"
                                         class="form-control">
                                 </div>
+                                
                                   <div class="section-header  col-12 my-5">
                                  <h4>Same Charges</h4>
                                <small> <i>If <span class="ven_count">30</span> or less vendors available in particular zone and category, below mentioned charges will be applied</i></small>
                                   </div>
-                                <div class="form-row col-4">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Amount <span class="text-danger">*</span></label>
                                     <input type="number" name="same_charge" required placeholder="Amount" class="form-control">
                                 </div>
-                                <div class="form-row col-4">
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Vendors Count<span class="text-danger">*</span></label>
                                     <input type="number" value="30" id="vendor_count" name="vendor_count" required placeholder="Count"
                                         class="form-control">

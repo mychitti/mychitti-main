@@ -138,22 +138,12 @@ class ServiceController extends Controller
 
 
         $leadChargeInfo =  LeadCharge::where('category_id', $cat_id)->where('zone_id',  $zoneId)->first();
-        // prx($leadChargeInfo);
         $balanceInfo  = StoreWallet::where('vendor_id', $store_id)->first();
-        // prx($balanceInfo);
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
         }
         $avlblBalance = $balanceInfo->total_earning - $balanceInfo->pending_withdraw;
-
-        // calculate charges to be applied=============================
-
-        // COUNT VENDORS WHO OFFERS THIS SERVICE, ALSO ARE IN THIS ZONE
-        // $totalVendors = DB::table('stores')
-        // ->join('items', DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'))
-        // ->select('stores.*', 'items.item_id', 'items.name as item_name')
-        // ->count();
 
         $totalVendors = DB::table('stores')
             ->join('items', function ($join) {
@@ -165,7 +155,6 @@ class ServiceController extends Controller
             ->groupBy('stores.id', 'items.category_id')
             ->count();
 
-        // print_r($leadChargeInfo);
         if (!$leadChargeInfo) {
             $chargesToBeApplied = 0;
         } else {
@@ -184,19 +173,16 @@ class ServiceController extends Controller
                 }
             }
         }
-
-
-        // echo $chargesToBeApplied ; die;
+        $minimumBalanceRequired = $chargesToBeApplied > 100 ? $chargesToBeApplied : 100;
         // check balance
         if ($chargesToBeApplied) {
-            if ($avlblBalance < $chargesToBeApplied) {
-                Toastr::error('Insufficient wallet balance to accept leads');
+            if ($avlblBalance < $minimumBalanceRequired) {
+                Toastr::error('Insufficient wallet balance to accept leads. Minimum '._price($minimumBalanceRequired).' required');
                 return back();
             }
 
             //deduct amount from wallet
-            $wallet = StoreWallet::where('store_id', $vendor_id)->first();
-            // prx($wallet);
+            $wallet = StoreWallet::where('vendor_id', $store_id)->first();
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);
             $wallet->save();
@@ -754,7 +740,7 @@ class ServiceController extends Controller
                 ->where('accepted_service_requests.assigned_to', Helpers::get_store_id())
                 ->select('accepted_service_requests.*', 'service_statuses.status as job_status', 'vendor_emp_jobs.ended_at', 'items.name', 'items.image')->get();
         } else {
-$assigned_services =null;
+            $assigned_services = null;
             $staff = VendorEmployee::find($id);
             $staff->assigned_services = DB::table('accepted_service_requests')
                 ->join('service_requests', 'service_requests.id', 'accepted_service_requests.service_request_id')
@@ -1520,6 +1506,7 @@ $assigned_services =null;
 
         $query->groupBy('service_requests.id');
         $product = $query->get();
+        
 
         if ($action == 'export') {
             return $this->export_leads($product);

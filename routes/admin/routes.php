@@ -130,6 +130,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get(Notification::STATUS[URI].'/{id}/{status}', [NotificationController::class,'updateStatus'])->name('status');
             Route::get(Notification::EXPORT[URI], [NotificationController::class, 'exportList'])->name('export');
             Route::post('approval/{id}/{action}', [NotificationController::class,'approval'])->name('approval');
+            Route::get('detail/{id}', [NotificationController::class,'detail'])->name('detail');
         });
        
 

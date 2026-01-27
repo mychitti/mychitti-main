@@ -8,6 +8,18 @@
     <!-- CLAIM ALERT CSS -->
 
     <style>
+        #currentLocationBtn {
+            position: absolute;
+            right: 24px;
+            bottom: 161px;
+            background: #fff;
+            border-radius: 50%;
+            padding: 8px 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 7%);
+            z-index: 99999;
+        }
+
         .claim-modal-icon {
             width: 48px;
             height: 48px;
@@ -370,11 +382,15 @@
 
                             <h5> Select your shop / business location</h5>
 
-                            <div class="p-3 border border-success-light rounded mb-3">
+                            <div class="p-3 border border-success-light rounded mb-3 position-relative">
                                 <input id="pac-input" class="controls rounded" style="height: 3em;width:fit-content;"
                                     title="{{ translate('messages.search_your_location_here') }}" type="text"
                                     placeholder="{{ translate('messages.search_here') }}" />
-                                <div class="h-255" id="map"></div>
+                                <div id="currentLocationBtn" title="Use current location">
+                                    📍
+                                </div>
+                                <div class="h-255" id="map">
+                                </div>
                             </div>
 
                         </div>
@@ -1059,6 +1075,10 @@
                 alert("Geolocation is not supported by this browser.");
             }
         }
+        document.getElementById('currentLocationBtn')
+            .addEventListener('click', function() {
+                getUserLocation();
+            });
 
         // Call function to get user location on page load
         getUserLocation();

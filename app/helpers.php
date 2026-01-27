@@ -221,7 +221,6 @@ function _accountCode($ledgerTypeId, $parentId = null, $storeId = null)
     if ($parentId) {
         $parent = StoreAccount::where('store_id', $storeId)->findOrFail($parentId);
         return $parent->code . '-' . $newSegment;
-
     }
 
     return $ledgerTypeId . '-' . $newSegment;
@@ -1163,8 +1162,9 @@ function _masterLedgerEntry($data,   $credit_account, $debit_account, $debit_ent
     }
     return $voucher;
 }
-function _storeName($storeId){
-  return  Store::withoutGlobalScopes()->where('id', $storeId)->first()?->name ?? 'Store Deleted';
+function _storeName($storeId)
+{
+    return  Store::withoutGlobalScopes()->where('id', $storeId)->first()?->name ?? 'Store Deleted';
 }
 function _userByLedgerAccountId($ledger_account_id)
 {
@@ -4720,11 +4720,17 @@ if (!function_exists('_sendSMS')) {
         // $phone = substr($phone, 3);
         // 2407145545136643741
         $apikey = "PH73e7LuzUGqwSWbO8ta5A";
-        $apisender = "MCHITI";
+        $apisender = "MCHITI"; 
         $num =  $phone;
+
+        // clean phone 
+        $num = preg_replace('/\D/', '', $num);
+        $num = preg_replace('/^(0|91)/', '', $num);
+
         $ms = rawurlencode($msg); //This for encode your message content
         $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey . '&senderid=' . $apisender .
             '&channel=2&DCS=0&flashsms=0&number=' . $num . '&text=' . $ms . '&route=1';
+            
         // return $url; 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -4800,13 +4806,13 @@ if (!function_exists('_verify_otp')) {
 if (!function_exists('_actionLog')) {
     function _actionLog($data)
     {
-      
+
         try {
             ActionLog::create([
                 'user_id' => $data['user_id'],
                 'user_type' => $data['user_type'],
                 'action' => $data['action'],
-                'model_type' => $data['model_type'] ?? null, 
+                'model_type' => $data['model_type'] ?? null,
                 'model_id' =>  $data['model_id'] ?? 0,
                 'description' =>  $data['description'],
                 'created_at' => now(),

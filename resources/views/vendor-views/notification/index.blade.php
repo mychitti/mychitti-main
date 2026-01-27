@@ -258,7 +258,7 @@
 
             Swal.fire({
                 title: '{{ translate('messages.Info') }}',
-                text: '{{ translate('messages.the ad will first be approved by admin then it will be released') }}.',
+                text: '{{ translate('messages.the ad will first be verified then it will be released') }}.',
                 type: 'info',
                 showCancelButton: true,
                 cancelButtonColor: 'default',

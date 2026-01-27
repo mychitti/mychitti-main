@@ -152,10 +152,13 @@ class FrontController extends Controller
     public function testing(Request $request, $type = 'vendor')
     {
 
-        $filePath = 'apis.json';
-        if (Storage::disk('secure')->exists($filePath)) {
-            return Storage::disk('secure')->download($filePath);
-        }
+    $store = Store::withoutGlobalScopes()->find(26);
+    echo   Helpers::_addWelcomeCouponsIfExist($store);
+die;
+        // $filePath = 'apis.json';
+        // if (Storage::disk('secure')->exists($filePath)) {
+        //     return Storage::disk('secure')->download($filePath);
+        // }
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
 
         // return view('front-views.test_view', compact('type'));

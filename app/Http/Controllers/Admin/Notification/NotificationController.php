@@ -10,6 +10,7 @@ use App\Exports\PushNotificationExport;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\NotificationAddRequest;
 use App\Http\Requests\Admin\NotificationUpdateRequest;
+use App\Models\Notification as ModelsNotification;
 use App\Services\NotificationService;
 use App\Traits\NotificationTrait;
 use Exception;
@@ -44,8 +45,12 @@ class NotificationController extends BaseController
             searchValue: $request['search'],
             dataLimit: config('default_pagination'),
         );
+        $vendor_ads = $this->notificationRepo->getVendorListWhere(
+            searchValue: $request['search'],
+            dataLimit: config('default_pagination'),
+        );
         $zones = $this->zoneRepo->getList();
-        return view(NotificationViewPath::INDEX[VIEW], compact('notifications', 'zones'));
+        return view(NotificationViewPath::INDEX[VIEW], compact('notifications', 'zones', 'vendor_ads'));
     }
 
     public function add(NotificationAddRequest $request): JsonResponse
@@ -70,6 +75,12 @@ class NotificationController extends BaseController
         return view(NotificationViewPath::UPDATE[VIEW], compact('notification', 'zones'));
     }
 
+    public function detail(Request $request, $id)
+    {
+
+        $notification = ModelsNotification::find($id);
+        return view('admin-views.notification.detail', compact('notification'));
+    }
     public function approval(Request $request, $id)
     {
         $notification = (array) DB::table('notifications')->where('id', $id)->first();

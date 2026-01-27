@@ -19,11 +19,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Review;
 use App\Events\ServiceNotification;
+use App\Models\AccountTransaction;
 use App\Models\CustomerAddress;
 use App\Models\GatePassItem;
+use App\Models\LeadCharge;
 use App\Models\LeadsDistribution;
 use App\Models\ServiceQuoteItem;
 use App\Models\StoreReview;
+use App\Models\StoreWallet;
 use App\Models\User;
 use Faker\Extension\Helper;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +54,7 @@ class ServiceRequestController extends Controller
                 'errors' => $errors
             ], 403);
         }
-    
+
         if (!$request->hasHeader('latitude') || !$request->hasHeader('longitude')) {
             $errors = [];
             array_push($errors, ['code' => 'coordinates', 'message' => 'Coordinates required']);
@@ -140,7 +143,7 @@ class ServiceRequestController extends Controller
                     $msg = "Hello! , You have received a new ENQUIRY from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
                     foreach ($storesChunk as $store) {
                         $store2 = DB::table('stores')->where('id', $store)->first();
-                        $url =  route('vendor.service.leads_list') ;
+                        $url =  route('vendor.service.leads_list');
                         if ($store2) {
                             _sendSMS($store2->phone, $msg);
                             _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
@@ -395,6 +398,8 @@ class ServiceRequestController extends Controller
             'user_id' => 'required',
         ]);
 
+
+
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
@@ -404,6 +409,23 @@ class ServiceRequestController extends Controller
             return response()->json(['status' => false, 'message' => 'Already Confirmed']);
         } else {
             $acceptedReq = AcceptedServiceRequest::where('id', $request->acceptance_id)->first();
+            $applyCharges = false;
+            $confirmationCharges = 0;
+            try {
+                $zoneId = Store::withoutGlobalScopes()->where('id', $acceptedReq->vendor_id)->value('zone_id');
+                $catId = ServiceRequest::where('service_requests.id', $request->service_id)
+                    ->join('items', 'items.id', '=', 'service_requests.item_id')
+                    ->value('items.category_id');
+
+                $leadChargeInfo =  LeadCharge::where('category_id', $catId)->where('zone_id',  $zoneId)->first();
+                $confirmationCharges = $leadChargeInfo->confirmation_charge;
+
+                // apply charges 
+                $applyCharges = true;
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+
             if ($acceptedReq->current_status == null) {
                 return response()->json(['status' => false, 'message' => 'No quotation available from store yet']);
             }
@@ -413,6 +435,33 @@ class ServiceRequestController extends Controller
             $upd = AcceptedServiceRequest::where('service_request_id', $request->service_id)->update(['tieup' => 1]);
 
             if ($acceptedReq->update()) {
+
+                // apply charges ============================
+                if ($applyCharges) {
+                    try {
+                        //code...
+
+                        $wallet = StoreWallet::where('vendor_id', $acceptedReq->vendor_id)->first();
+                        $wallet->decrement('total_earning', $confirmationCharges);
+                        $wallet->increment('total_withdrawn', $confirmationCharges);
+                        $wallet->save();
+
+                        //insert into transactions 
+                        $account_transaction = new AccountTransaction();
+                        $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');
+                        $account_transaction->from_type = 'store';
+                        $account_transaction->amount = $confirmationCharges;
+                        $account_transaction->from_id = $acceptedReq->vendor_id;
+                        $account_transaction->method = 'wallet';
+                        $account_transaction->action = 'debit';
+                        $account_transaction->reason = 'Lead Confirmation Charges';
+                        $account_transaction->created_by = 'store';
+                        $account_transaction->save();
+                    } catch (\Throwable $th) {
+                        //throw $th;
+                    }
+                }
+
 
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $request->service_id,

@@ -54,6 +54,18 @@
 
     @stack('css_or_js')
     <style>
+        .current-loc-btn {
+            position: absolute;
+            right: 25px;
+            bottom: 160px;
+            background: #fff;
+            border-radius: 50%;
+            padding: 10px 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            z-index: 999;
+        }
+
         /* otp element styling  */
         .otp-container {
             background-color: #fff;
@@ -496,6 +508,9 @@
                 </div>
                 <div class="modal-body">
                     <input type="text" id="searchInput" class="form-control">
+                    <div class="current-loc-btn" onclick="useCurrentLocation()" title="Use current location">
+                        📍
+                    </div>
                     <div id="map2"></div>
                     <input type="hidden" id="user_city" class="form-control">
                     <input type="hidden" id="user_address" class="form-control">
@@ -1093,6 +1108,8 @@
         !request()->is('edit-address/*'))
 
     <script>
+        let map, marker, geocoder;
+
         function saveLocation() {
             console.log('save location');
             $('#user_city2').text($('#user_city').val());
@@ -1135,27 +1152,26 @@
         }
 
         function initMap(latitude, longitude) {
-            {{-- console.log("🗺️ Initializing map with:", latitude, longitude); --}}
 
             const initialLocation = {
                 lat: latitude,
                 lng: longitude
             };
-            const map = new google.maps.Map(document.getElementById('map2'), {
-                zoom: 10,
+
+            map = new google.maps.Map(document.getElementById('map2'), {
+                zoom: 15,
                 center: initialLocation
             });
 
-            const marker = new google.maps.Marker({
+            marker = new google.maps.Marker({
                 position: initialLocation,
                 map: map,
                 draggable: true
             });
 
-            const geocoder = new google.maps.Geocoder();
+            geocoder = new google.maps.Geocoder();
 
             function geocodeLatLng(lat, lng) {
-                console.log('📍 Geocoding:', lat, lng);
                 geocoder.geocode({
                     location: {
                         lat,
@@ -1163,6 +1179,7 @@
                     }
                 }, function(results, status) {
                     if (status === 'OK' && results[0]) {
+
                         let locality = null;
                         for (const comp of results[0].address_components) {
                             if (comp.types.includes('locality')) {
@@ -1173,14 +1190,12 @@
 
                         const address = results[0].formatted_address;
 
-                        $('#user_city').val(locality).attr('title', locality);
-                        $(".location_name_show").text('in ' + locality); // store details page provider heading
-                        $('#user_location').text(address).attr('title', address);
+                        $('#user_city').val(locality);
+                        $(".location_name_show").text('in ' + locality);
+                        $('#user_location').text(address);
                         $('#user_address, #searchInput').val(address);
                         $('#user_latitude').val(lat);
                         $('#user_longitude').val(lng);
-                    } else {
-                        console.warn('Geocoder failed due to:', status);
                     }
                 });
             }
@@ -1191,19 +1206,68 @@
                 geocodeLatLng(event.latLng.lat(), event.latLng.lng());
             });
 
-            const input = document.getElementById('searchInput');
-            const autocomplete = new google.maps.places.Autocomplete(input);
+            const autocomplete = new google.maps.places.Autocomplete(
+                document.getElementById('searchInput')
+            );
             autocomplete.bindTo('bounds', map);
 
             autocomplete.addListener('place_changed', function() {
                 const place = autocomplete.getPlace();
-                if (!place.geometry) return alert("No details available for input: " + place.name);
+                if (!place.geometry) return;
                 map.setCenter(place.geometry.location);
-                map.setZoom(17);
                 marker.setPosition(place.geometry.location);
                 geocodeLatLng(place.geometry.location.lat(), place.geometry.location.lng());
             });
         }
+        function useCurrentLocation() {
+
+    if (!navigator.geolocation) {
+        alert('Geolocation not supported');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function (position) {
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
+
+            console.log('📍 Current location:', lat, lng);
+
+            map.setHelpText?.('');
+            map.setCenter({ lat, lng });
+            map.setZoom(16);
+            marker.setPosition({ lat, lng });
+
+            // reverse geocode
+            geocoder.geocode(
+                { location: { lat, lng } },
+                function (results, status) {
+                    if (status === 'OK' && results[0]) {
+
+                        let locality = null;
+                        for (const comp of results[0].address_components) {
+                            if (comp.types.includes('locality')) {
+                                locality = comp.long_name;
+                                break;
+                            }
+                        }
+
+                        $('#user_city').val(locality);
+                        $('#user_address, #searchInput').val(results[0].formatted_address);
+                        $('#user_latitude').val(lat);
+                        $('#user_longitude').val(lng);
+                        $(".location_name_show").text('in ' + locality);
+                    }
+                }
+            );
+        },
+        function (error) {
+            alert('Please allow location permission');
+        }
+    );
+}
+
+
 
         function getCurrentLocation() {
             var defaultLat = 13.6287557;

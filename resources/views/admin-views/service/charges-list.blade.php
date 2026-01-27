@@ -100,9 +100,9 @@
                                     <b>1st : </b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_1_charges}}, &nbsp;
                                     <b>2nd : </b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_2_charges}}, &nbsp;
                                     <b>3rd : </b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_3_charges}}, &nbsp;
-                                    <b>Others :</b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_other_charges}}
+                                    <b>Others :</b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_other_charges}}, &nbsp;
+                                    <b>Confirmation :</b>{{\App\CentralLogics\Helpers::currency_symbol() . ($lead->confirmation_charge ?? 0)}}
                                     </div>
-                                 
                                 </div>
                             </td>
                             <td>

@@ -8,6 +8,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
     Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
+    Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
         ->name('secure.download')->middleware('signed');
 
@@ -28,7 +29,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::group(['middleware' => ['admin', 'current-module']], function () {
 
         Route::group(['prefix' => 'logs', 'as' => 'logs.'], function () {
-            Route::get('action-logs', 'DashboardController@action_logs')->name('action-logs');
+            Route::get('action-logs/{tab?}', 'DashboardController@action_logs')->name('action-logs');
         });
 
      

@@ -36,7 +36,7 @@ $company_name = App\Models\BusinessSetting::where('key', 'business_name')->first
                                             <td>
                                                 <h3 class="subtitle">{{ translate('Order_Summary') }}</h3>
                                                 <span class="d-block">{{ translate('Order') }}{{ translate('#_48573') }}</span>
-                                                <span class="d-block">{{ translate('23 Jul, 2023 4:30 am') }}</span>
+                                                <span class="d-block">{{ translate('23 Jul, 2026 4:30 am') }}</span>
                                             </td>
                                             <td class="email-template-table-td-max-width">
                                                 <h3 class="subtitle">{{ translate('Delivery_Address') }}</h3>
@@ -171,7 +171,7 @@ $company_name = App\Models\BusinessSetting::where('key', 'business_name')->first
                     </a>
                 </span>
                 <span class="copyright" id="mail-copyright">
-                    {{ $data['copyright_text']?? translate('Copyright 2023 MyChitti. All right reserved') }}
+                    {{ $data['copyright_text']?? 'Copyright '.date('Y').' MyChitti. All right reserved' }}
                 </span>
             </td>
         </tr>
