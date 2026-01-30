@@ -58,6 +58,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('/confirm-return', 'ServiceRequestController@confirm_return');
         Route::post('/quotations', 'ServiceRequestController@quotations');
         Route::post('/quotaion-approval', 'ServiceRequestController@quotaion_approval');
+        Route::get('/timeline', 'ServiceRequestController@timeline');
     });
     Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
         Route::post('sign-up', 'CustomerAuthController@register');

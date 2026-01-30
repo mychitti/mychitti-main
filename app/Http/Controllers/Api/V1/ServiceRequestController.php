@@ -22,8 +22,10 @@ use App\Events\ServiceNotification;
 use App\Models\AccountTransaction;
 use App\Models\CustomerAddress;
 use App\Models\GatePassItem;
+use App\Models\Lead;
 use App\Models\LeadCharge;
 use App\Models\LeadsDistribution;
+use App\Models\LeadStatus;
 use App\Models\ServiceQuoteItem;
 use App\Models\StoreReview;
 use App\Models\StoreWallet;
@@ -371,9 +373,20 @@ class ServiceRequestController extends Controller
         }
 
         $uid = $request->post('user_id');
-        $confirmationReq = _serviceRunning($uid);
+        $confirmationReq = _serviceRunning($uid, true);
 
         return response()->json(['status' => true, 'data' => $confirmationReq]);
+    }
+    public function timeline(Request $request){
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $statuses = LeadStatus::where('service_request_id',$request->id)->get();
+        return response()->json(['status' => true, 'data' => $statuses], 200);
     }
     public function service_history(Request $request)
     {
