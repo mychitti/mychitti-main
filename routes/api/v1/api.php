@@ -47,6 +47,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::post('get-tems-n-conditions', 'ServiceRequestController@get_termsnconditions');
     Route::group(['prefix' => 'service-request'], function () {
         Route::post('/add', 'ServiceRequestController@add');
+        Route::post('/details', 'ServiceRequestController@details');
         Route::post('/confirmations', 'ServiceRequestController@get_confirmations');
         Route::post('/history', 'ServiceRequestController@service_history');
         Route::post('/confirm', 'ServiceRequestController@confirm');

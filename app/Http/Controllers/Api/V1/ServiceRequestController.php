@@ -4,33 +4,22 @@ namespace App\Http\Controllers\Api\V1;
 
 
 use App\CentralLogics\Helpers;
-use App\CentralLogics\StoreLogic;
-use App\CentralLogics\CategoryLogic;
 use App\Http\Controllers\Controller;
-use App\Models\Category;
-use App\Models\Item;
 use App\Models\InServiceQuotation;
 use App\Models\GatePass;
 use App\Models\AcceptedServiceRequest;
-
 use App\Models\ServiceRequest;
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use App\Models\Review;
-use App\Events\ServiceNotification;
 use App\Models\AccountTransaction;
 use App\Models\CustomerAddress;
 use App\Models\GatePassItem;
-use App\Models\Lead;
 use App\Models\LeadCharge;
-use App\Models\LeadsDistribution;
 use App\Models\LeadStatus;
 use App\Models\ServiceQuoteItem;
-use App\Models\StoreReview;
 use App\Models\StoreWallet;
 use App\Models\User;
-use Faker\Extension\Helper;
 use Illuminate\Support\Facades\DB;
 
 class ServiceRequestController extends Controller
@@ -234,6 +223,27 @@ class ServiceRequestController extends Controller
     }
 
 
+    public function details(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'service_id' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $serviceRequest = ServiceRequest::with([
+            'accepted:quoted_price,current_status,service_request_id,vendor_id',
+            'accepted.store:id,name,address,logo,phone,email',
+            'item:id,name,image,images',
+        ])
+            ->select('id', 'item_id', 'status', 'created_at')
+            ->where('id', $request->service_id)
+            ->first();
+
+        return response()->json(['status' => true, 'data' => $serviceRequest]);
+    }
+
     public function gatepass_approval(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -377,7 +387,8 @@ class ServiceRequestController extends Controller
 
         return response()->json(['status' => true, 'data' => $confirmationReq]);
     }
-    public function timeline(Request $request){
+    public function timeline(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'id' => 'required',
         ]);
@@ -385,7 +396,7 @@ class ServiceRequestController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $statuses = LeadStatus::where('service_request_id',$request->id)->get();
+        $statuses = LeadStatus::where('service_request_id', $request->id)->get();
         return response()->json(['status' => true, 'data' => $statuses], 200);
     }
     public function service_history(Request $request)
@@ -410,7 +421,6 @@ class ServiceRequestController extends Controller
             'service_id' => 'required',
             'user_id' => 'required',
         ]);
-
 
 
         if ($validator->fails()) {
