@@ -227,19 +227,21 @@ class ServiceRequestController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'service_id' => 'required',
+            'user_id' => 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $serviceRequest = ServiceRequest::with([
-            'accepted:quoted_price,current_status,service_request_id,vendor_id',
-            'accepted.store:id,name,address,logo,phone,email',
-            'item:id,name,image,images',
-        ])
-            ->select('id', 'item_id', 'status', 'created_at')
-            ->where('id', $request->service_id)
-            ->first();
+          $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
+        // $serviceRequest = ServiceRequest::with([
+        //     'accepted:quoted_price,current_status,service_request_id,vendor_id',
+        //     'accepted.store:id,name,address,logo,phone,email',
+        //     'item:id,name,image,images',
+        // ])
+        //     ->select('id', 'item_id', 'status', 'created_at')
+        //     ->where('id', $request->service_id)
+        //     ->first();
 
         return response()->json(['status' => true, 'data' => $serviceRequest]);
     }

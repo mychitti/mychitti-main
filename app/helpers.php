@@ -2420,7 +2420,7 @@ if (!function_exists('_clockedInEmployee')) {
                     FROM employee_time_cards 
                     WHERE DATE(in_time) = '$today'
                     GROUP BY emp_id
-                )")  
+                )")
                 ->where('vendor_id', Helpers::get_store_id())
                 ->where(function ($q) {
                     $q->whereNull('out_time')
@@ -2751,17 +2751,30 @@ if (!function_exists('_serviceHistory')) {
     }
 }
 if (!function_exists('_serviceRunning')) {
-    function _serviceRunning($uid)
+    function _serviceRunning($uid, $paginate = false, $perPage = 10, $service_id = null)
     {
-        $confirmationReq = DB::table('service_requests')
-            ->leftJoin('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->leftJoin('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-            ->join('items', 'items.id', 'service_requests.item_id')
+        $query = DB::table('service_requests')
+            ->leftJoin(
+                'accepted_service_requests',
+                'accepted_service_requests.service_request_id',
+                'service_requests.id'
+            )
+            ->leftJoin(
+                'stores',
+                'stores.id',
+                'accepted_service_requests.vendor_id'
+            )
+
+            ->join(
+                'items',
+                'items.id',
+                'service_requests.item_id'
+            )
             ->where('service_requests.user_id', $uid)
             ->where('service_requests.expired', 0)
             ->where(function ($query) {
                 $query->where('accepted_service_requests.current_status', '!=', 'Completed')
-                    ->orWhereNull('accepted_service_requests.current_status'); // Include rows where there is no accepted request
+                    ->orWhereNull('accepted_service_requests.current_status');
             })
             ->select(
                 'accepted_service_requests.*',
@@ -2776,105 +2789,103 @@ if (!function_exists('_serviceRunning')) {
                 'stores.logo as store_logo',
                 'stores.phone as store_phone',
             )
-            ->orderBy('service_requests.created_at', 'desc')
-            ->get();
+            ->orderBy('service_requests.created_at', 'desc');
 
-        foreach ($confirmationReq as $key => $req) {
-            // Constructing item_image and store_logo paths
-            $confirmationReq[$key]->item_image = asset('storage/app/public/product') . '/' . ($req->item_image ?? 'default_image.png');
-            $confirmationReq[$key]->store_logo = asset('storage/app/public/store') . '/' . ($req->store_logo ?? 'default_logo.png');
+        if ($service_id) {
+            $confirmationReq =  $query->where('service_requests.id', $service_id)->first();
+        } else {
+            //  Apply pagination conditionally
+            $confirmationReq = $paginate
+                ? $query->paginate($perPage)
+                : $query->get();
 
-            // Fetching reviews for the store
-            $reviews = StoreReview::where('store_id', $req->store_id)->get();
-            $confirmationReq[$key]->reviews = $reviews;
+            // We must loop over items (important for paginator)
+            $items = $paginate ? $confirmationReq->items() : $confirmationReq;
 
-            // Checking and processing reviews
-            if ($reviews->isNotEmpty()) {
-                foreach ($reviews as $reviewKey => $review) {
-                    if (!empty($review->attachment)) {
-                        // Decode JSON attachments
-                        $attachments = json_decode($review->attachment, true);
+            foreach ($items as $key => $req) {
 
-                        if (is_array($attachments)) {
-                            foreach ($attachments as $attachmentKey => $attachmentValue) {
-                                $attachments[$attachmentKey] = asset('storage/app/public/review') . '/' . $attachmentValue;
+                // Images
+                $req->item_image  = asset('storage/product') . '/' . ($req->item_image ?? 'default_image.png');
+                $req->store_logo  = asset('storage/store') . '/' . ($req->store_logo ?? 'default_logo.png');
+
+                // Reviews
+                $reviews = StoreReview::where('store_id', $req->store_id)->get();
+                $req->reviews = $reviews;
+
+                if ($reviews->isNotEmpty()) {
+                    foreach ($reviews as $reviewKey => $review) {
+                        if (!empty($review->attachment)) {
+                            $attachments = json_decode($review->attachment, true);
+                            if (is_array($attachments)) {
+                                foreach ($attachments as $k => $v) {
+                                    $attachments[$k] = asset('storage/app/public/review') . '/' . $v;
+                                }
                             }
+                            $reviews[$reviewKey]->attachment = $attachments;
                         }
-
-                        // Update the attachment in the review
-                        $reviews[$reviewKey]->attachment = $attachments;
                     }
                 }
-            }
-            if (isset($req->id)) {
-                if ($req->assigned_status == 'Assigned' && $req->assigned_to != NULL) {
-                    if ($req->assigned_type == 'vendor') {
-                        // self assigned 
-                        $vendorInfo = DB::table('vendors')->join('stores', 'stores.vendor_id', 'vendors.id')->where('stores.id',  $req->assigned_to)
-                            ->select('vendors.*')
-                            ->first();
-                        // echo $req->id . ' - '; 
-                        $confirmationReq[$key]->staff_name =  $vendorInfo  ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : null;
-                        $confirmationReq[$key]->staff_role = 'Vendor';
-                        $confirmationReq[$key]->staff_image = $vendorInfo  ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : null;
-                        $confirmationReq[$key]->staff_contact = $vendorInfo  ? $vendorInfo->phone : null;
-                    } else {
-                        //staff
-                        $staffInfo = DB::table('vendor_employees')->where('vendor_employees.id', $req->assigned_to)
-                            ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
-                            ->select('vendor_employees.*', 'employee_roles.name')
-                            ->first();
-                        if ($staffInfo) {
-                            $confirmationReq[$key]->staff_name = $staffInfo->f_name . ' ' . $staffInfo->l_name;
-                            $confirmationReq[$key]->staff_role = $staffInfo->name;
-                            $confirmationReq[$key]->staff_image = asset('storage/app/public/vendor') . '/' . $staffInfo->image;
-                            $confirmationReq[$key]->staff_contact = $staffInfo->phone;
+
+                // Assignment logic
+                if (isset($req->id)) {
+
+                    if ($req->assigned_status == 'Assigned' && $req->assigned_to) {
+
+                        if ($req->assigned_type == 'vendor') {
+
+                            $vendorInfo = DB::table('vendors')
+                                ->join('stores', 'stores.vendor_id', 'vendors.id')
+                                ->where('stores.id', $req->assigned_to)
+                                ->select('vendors.*')
+                                ->first();
+
+                            $req->staff_name    = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : null;
+                            $req->staff_role    = 'Vendor';
+                            $req->staff_image   = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : null;
+                            $req->staff_contact = $vendorInfo ? $vendorInfo->phone : null;
                         } else {
-                            $confirmationReq[$key]->staff_name = '';
-                            $confirmationReq[$key]->staff_role = '';
-                            $confirmationReq[$key]->staff_image = '';
-                            $confirmationReq[$key]->staff_contact = '';
+
+                            $staffInfo = DB::table('vendor_employees')
+                                ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
+                                ->where('vendor_employees.id', $req->assigned_to)
+                                ->select('vendor_employees.*', 'employee_roles.name')
+                                ->first();
+
+                            if ($staffInfo) {
+                                $req->staff_name    = $staffInfo->f_name . ' ' . $staffInfo->l_name;
+                                $req->staff_role    = $staffInfo->name;
+                                $req->staff_image   = asset('storage/app/public/vendor') . '/' . $staffInfo->image;
+                                $req->staff_contact = $staffInfo->phone;
+                            } else {
+                                $req->staff_name = $req->staff_role = $req->staff_image = $req->staff_contact = '';
+                            }
                         }
                     }
                 } else {
+                    // Defaults
+                    $req->id = 0;
+                    $req->current_status = 'Enquiry Sent';
+                    $req->assigned_status = 'Not Assigned';
+                    $req->assigned_type = 'N/A';
+                    $req->staff_name = $req->staff_role = $req->staff_image = $req->staff_contact = '';
                 }
-            } else {
-                $confirmationReq[$key]->id = 0;
-                $confirmationReq[$key]->vendor_id = 0;
-                $confirmationReq[$key]->quoted_price = 0;
-                $confirmationReq[$key]->qty = 1;
-                $confirmationReq[$key]->status = 1;
-                $confirmationReq[$key]->current_status = "Enquiry Sent";
-                $confirmationReq[$key]->cancelled_by = null;
-                $confirmationReq[$key]->cancel_reason = null;
-                $confirmationReq[$key]->assigned_status = "Not Assigned";
-                $confirmationReq[$key]->assigned_at = null;
-                $confirmationReq[$key]->assigned_to = null;
-                $confirmationReq[$key]->assigned_type = "N/A";
-                $confirmationReq[$key]->confirmed_at = null;
-                $confirmationReq[$key]->completed_at = null;
-                $confirmationReq[$key]->tieup = 0;
-                $confirmationReq[$key]->accepted_by_staff = 0;
-                $confirmationReq[$key]->sales_commission = 0;
-                // $confirmationReq[$key]->created_at = null;
-                $confirmationReq[$key]->updated_at = null;
-                $confirmationReq[$key]->staff_name = "";
-                $confirmationReq[$key]->staff_role = "";
-                $confirmationReq[$key]->staff_image = "";
-                $confirmationReq[$key]->staff_contact = "";
-            }
-            if (isset($req->id)) {
-                $confirmationReq[$key]->gatepass_exists  = GatePass::where('accepted_service_id', $req->id)->exists();
-                $confirmationReq[$key]->quotation_exists = InServiceQuotation::where('service_id', $req->service_request_id)->exists();
-            } else {
-                $confirmationReq[$key]->gatepass_exists  = 0;
-                $confirmationReq[$key]->quotation_exists = 0;
+
+                // Exists checks
+                $req->gatepass_exists  = isset($req->id)
+                    ? GatePass::where('accepted_service_id', $req->id)->exists()
+                    : 0;
+
+                $req->quotation_exists = isset($req->service_request_id)
+                    ? InServiceQuotation::where('service_id', $req->service_request_id)->exists()
+                    : 0;
             }
         }
-        // prx($confirmationReq);
+
+
         return $confirmationReq;
     }
 }
+
 if (!function_exists('_states')) {
     function _states()
     {
@@ -4721,7 +4732,7 @@ if (!function_exists('_sendSMS')) {
         // $phone = substr($phone, 3);
         // 2407145545136643741
         $apikey = "PH73e7LuzUGqwSWbO8ta5A";
-        $apisender = "MCHITI"; 
+        $apisender = "MCHITI";
         $num =  $phone;
 
         // clean phone 
@@ -4731,7 +4742,7 @@ if (!function_exists('_sendSMS')) {
         $ms = rawurlencode($msg); //This for encode your message content
         $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey . '&senderid=' . $apisender .
             '&channel=2&DCS=0&flashsms=0&number=' . $num . '&text=' . $ms . '&route=1';
-            
+
         // return $url; 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
