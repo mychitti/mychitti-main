@@ -92,7 +92,7 @@
                             <li>
                                 {{translate('messages.Add')}}
                                 <b>{{translate('messages.domain')}}</b>
-                                {{translate('messages.(For ex: demo.6amtech.com)')}}
+                                {{translate('messages.(For ex: mychitti.net)')}}
                             </li>
                             <li>
                                 {{translate('messages.Check in ')}}

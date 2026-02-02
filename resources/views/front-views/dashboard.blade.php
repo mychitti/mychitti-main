@@ -9,12 +9,13 @@
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-    .btn-grey{
-        background-color: #b8b8b8;
-    }
-    .spacer {
-        height: 70px;
-    }
+        .btn-grey {
+            background-color: #b8b8b8;
+        }
+
+        .spacer {
+            height: 70px;
+        }
     </style>
 @endpush
 
@@ -27,40 +28,44 @@
                 <img class="profile_img"
                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($user_details->image, asset('storage/app/public/profile/') . '/' . $user_details->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                     alt="profile">
-                <button class="nav-link active" id="v-pills-profile-tab" data-bs-toggle="pill"
-                    data-bs-target="#v-pills-profile" type="button" role="tab" aria-controls="v-pills-profile"
-                    aria-selected="false">Profile</button>
+                {{-- <button class="nav-link " id="v-pills-profile-tab" data-bs-toggle="pill" data-bs-target="#v-pills-profile"
+                    type="button" role="tab" aria-controls="v-pills-profile" aria-selected="false">Profile</button>
                 <button class="nav-link " id="v-pills-home-tab" data-bs-toggle="pill" data-bs-target="#v-pills-home"
                     type="button" role="tab" aria-controls="v-pills-home" aria-selected="true">Address</button>
-                {{-- @if (Config::get('module.current_module_id') == 5) --}}
-                    {{-- <button class="nav-link " id="v-pills-order-tab" data-bs-toggle="pill" data-bs-target="#v-pills-order"
-                        type="button" role="tab" aria-controls="v-pills-order" aria-selected="true">Orders</button> --}}
-
-                    <button class="nav-link " id="v-pills-service-tab" data-bs-toggle="pill"
-                        data-bs-target="#v-pills-service" type="button" role="tab" aria-controls="v-pills-service"
-                        aria-selected="true">Services</button>
-                {{-- @endif --}}
+                <button class="nav-link active" id="v-pills-service-tab" data-bs-toggle="pill"
+                    data-bs-target="#v-pills-service" type="button" role="tab" aria-controls="v-pills-service"
+                    aria-selected="true">Bookings</button>
                 <button class="nav-link" id="v-pills-coupons-tab" data-bs-toggle="pill" data-bs-target="#v-pills-coupons"
                     type="button" role="tab" aria-controls="v-pills-coupons" aria-selected="false">Coupons</button>
                 <button class="nav-link" id="v-pills-messages-tab" data-bs-toggle="pill" data-bs-target="#v-pills-messages"
                     type="button" role="tab" aria-controls="v-pills-messages" aria-selected="false">Favourite</button>
                 <button class="nav-link" type="button" data-bs-toggle="modal"
+                    data-bs-target="#exampleModalLogout">Logout</button> --}}
+                <a href="{{route('dashboard', ['profile'])}}" class=" text-center nav-link  {{Request::is('dashboard/profile') ? 'active' : ''}}">Profile</a>
+                <a href="{{route('dashboard', ['address'])}}" class=" text-center nav-link  {{Request::is('dashboard/address') ? 'active' : ''}}">Address</a>
+                <a href="{{route('dashboard', ['bookings'])}}" class=" text-center nav-link  {{Request::is('dashboard/bookings') ? 'active' : ''}}">Bookings</a>
+                <a href="{{route('dashboard', ['coupons'])}}" class=" text-center nav-link  {{Request::is('dashboard/coupons') ? 'active' : ''}}">Coupons</a>
+                <a href="{{route('dashboard', ['favourites'])}}" class=" text-center nav-link  {{Request::is('dashboard/favourites') ? 'active' : ''}}">Favourites</a>
+                  <button class="nav-link" type="button" data-bs-toggle="modal"
                     data-bs-target="#exampleModalLogout">Logout</button>
+               
             </div>
             <div class="tab-content " id="v-pills-tabContent" style="width:100% ;min-height: 300px;">
-            
-                @include('front-views.partials.dashboard._profile-tab')
-                @include('front-views.partials.dashboard._address-tab')
+                @if (request()->tab == 'profile')
+                    @include('front-views.partials.dashboard._profile-tab')
+                @elseif(request()->tab == 'address')
+                    @include('front-views.partials.dashboard._address-tab')
+                @elseif(request()->tab == 'favourites')
+                    @include('front-views.partials.dashboard._favourites-tab')
+                @elseif(request()->tab == 'bookings')
+                    @include('front-views.partials.dashboard._service-tab')
+                @elseif(request()->tab == 'coupons')
+                    @include('front-views.partials.dashboard._coupons-tab')
+                @endif
                 {{-- @include('front-views.partials.dashboard._orders-tab') --}}
-                @include('front-views.partials.dashboard._service-tab')
-                @include('front-views.partials.dashboard._coupons-tab')
-                @include('front-views.partials.dashboard._favourites-tab')
             </div>
         </div>
     </div>
-
-    <!-- Button trigger modal -->
-
 
     <!-- Modal -->
     <div class="modal fade" id="exampleModalLogout" tabindex="-1" aria-labelledby="exampleModalLogoutLabel"
@@ -126,11 +131,225 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="serviceReviewModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Review</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="service_det"></div>
+                    <form action="{{ route('submit-service-review') }}" class="reviewformSubmit">
+                        <div class="star-rating">
+                            <input type="hidden" name="service_id" id="service_id_inp">
+
+                            <input type="radio" id="2star5" name="rating" value="5" />
+                            <label for="2star5" title="5 stars">★</label>
+
+                            <input type="radio" id="2star4" name="rating" value="4" />
+                            <label for="2star4" title="4 stars">★</label>
+
+                            <input type="radio" id="2star3" name="rating" value="3" />
+                            <label for="2star3" title="3 stars">★</label>
+
+                            <input type="radio" id="2star2" name="rating" value="2" />
+                            <label for="2star2" title="2 stars">★</label>
+
+                            <input type="radio" id="2star1" name="rating" value="1" />
+                            <label for="2star1" title="1 star">★</label>
+
+                            <p style="font-size: 18px;line-height: 33px">: *Rating </p>
+                        </div>
+
+                        <label for="revie" title="">Review*</label>
+                        <textarea name="review" class="form-control mb-2" id="revie"placeholder="Start typing..."></textarea>
+
+                        <label for="revie" title="">Image (optionl)</label>
+                        <input type="file" name="attachment[]" class="form-control mb-2">
+
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 @endsection
 
 @push('script_2')
     <script>
+        $(document).on('click', '.service_review_btn', function() {
+            var service_id = $(this).data('id')
+            $('#service_det').html($('.service_info_' + service_id).html());
+            $('#service_id_inp').val(service_id);
+        })
+        $(document).on("click", ".updateStatus", function(e) {
+
+            e.preventDefault();
+
+            let data = {};
+            let action = $(this).data('action');
+            let gatepass_id = $(this).data('gatepass_id');
+            let service_id = $(this).data('service_id');
+            let acceptance_id = $(this).data('acceptance_id');
+
+            if (action == 'confirm_service') {
+
+                data = {
+                    acceptance_id: acceptance_id,
+                    service_id: service_id
+                };
+
+            } else if (action == 'gatepass_approval') {
+
+                data = {
+                    gatepass_id: gatepass_id,
+                    action: $(this).data('action1')
+                };
+            } else if (action == 'gatepass_return_approval') {
+                data = {
+                    gatepass_id: gatepass_id,
+                };
+            } else if (action == 'quotation_approval') {
+                data = {
+                    quote_id: $(this).data('quotation_id'),
+                    action: $(this).data('action1')
+                };
+            }
+            console.log(action)
+
+            let url = $(this).data('url');
+
+            $.ajaxSetup({
+                headers: {
+                    "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content")
+                }
+            });
+
+            $.post({
+                url: url,
+                data: data,
+                success: function(res) {
+
+                    if (res.errors && res.errors.length > 0) {
+
+                        toasterNotification(res.errors[0].message);
+
+                    } else {
+                        toasterNotification(res.message);
+
+                        if (action == 'confirm_service') {
+                            $(".action_outer_" + acceptance_id).html(res.html);
+                        } else if (action == 'gatepass_approval' || action ==
+                            'gatepass_return_approval') {
+                            $('.gatepass-cta_' + gatepass_id).html(res.html);
+                        } else if (action == 'quotation_approval') {
+                            $('.quotation-cta_' + res.quotation_id).html(res.html);
+                        } else {
+                            console.log('no action')
+                        }
+                    }
+                },
+                error: function() {
+                    toasterNotification('Something went wrong');
+                }
+            });
+
+        });
+
+        // Gatepass Modal Handler
+        $(document).on('click', '.gatepass-modal-btn', function() {
+
+            var serviceId = $(this).data('id');
+            var modalContent = $('#gatepass-modal-content');
+
+            // loader
+            modalContent.html(`
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading gatepass details...</p>
+                </div>
+            `);
+
+            $.ajaxSetup({
+                headers: {
+                    "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                },
+            });
+            $.post({
+                url: '{{ route('service.gatepass.details') }}', // change to your route
+                type: 'GET',
+                data: {
+                    service_id: serviceId
+                },
+                success: function(response) {
+
+                    // response should be HTML
+                    modalContent.html(response.html);
+
+                },
+                error: function() {
+
+                    modalContent.html(`
+                <div class="text-center text-danger py-4">
+                    Failed to load gatepass details.
+                </div>
+            `);
+
+                }
+            });
+
+        });
+        // Quotation Modal Handler
+        $(document).on('click', '.quotation-modal-btn', function() {
+
+            var serviceId = $(this).data('id');
+            var modalContent = $('#quotation-modal-content');
+
+            // loader
+            modalContent.html(`
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading quotation details...</p>
+                </div>
+            `);
+
+            $.ajaxSetup({
+                headers: {
+                    "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                },
+            });
+            $.post({
+                url: '{{ route('service.quotation.details') }}', // change to your route
+                type: 'GET',
+                data: {
+                    service_id: serviceId
+                },
+                success: function(response) {
+
+                    // response should be HTML
+                    modalContent.html(response.html);
+
+                },
+                error: function() {
+
+                    modalContent.html(`
+                <div class="text-center text-danger py-4">
+                    Failed to load quotation details.
+                </div>
+            `);
+
+                }
+            });
+
+        });
         $(".reviewformSubmit").on("submit", function(e) {
             e.preventDefault();
 

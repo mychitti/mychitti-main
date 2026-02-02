@@ -828,20 +828,7 @@
                                     </ul>
                                 </div>
                             </div>
-                            <div class="item">
-                                <div class="mb-20">
-                                    <div class="text-center">
-                                        <img src="{{asset('/public/assets/admin/img/firebase/slide-4.png')}}" alt="" class="mb-20">
-                                        <h5 class="modal-title">{{translate('Please Visit the Docs to Set FCM on Mobile Apps')}}</h5>
-                                    </div>
-                                    <div class="text-center">
-                                        <p>
-                                            {{translate('Please check the documentation below for detailed instructions on setting up your mobile app to receive Firebase Cloud Messaging (FCM) notifications.')}}
-                                        </p>
-                                        <a href="https://docs.6amtech.com/docs-six-am-mart/mobile-apps/mandatory-setup" target="_blank">{{translate('Click Here')}}</a>
-                                    </div>
-                                </div>
-                            </div>
+                          
                         </div>
                         <div class="d-flex justify-content-center">
                             <div class="slide-counter"></div>

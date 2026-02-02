@@ -74,10 +74,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.dashboard') }}" title="{{ translate('messages.dashboard') }}">
-                                <img src="{{ asset('storage/app/public/nav/menu.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}" alt=""
                                     class="nav-link-icon">
-                                {{-- <img src="{{ asset('storage/app/public/util/new_icons/Dashboard.png') }}" alt=""
-                                class="nav-link-icon"> --}}
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     {{ translate('messages.dashboard') }}
                                 </span>
@@ -130,7 +128,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Leads Management">
-                                <img src="{{ asset('storage/app/public/nav/lead-generation.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Leads Management</span>
@@ -181,7 +179,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('task*') && !Request::is('task-salary-categories') && !Request::is('task/assigned-tasks') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Task Management">
-                                <img src="{{ asset('storage/app/public/nav/task (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Tasks_management_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Task
@@ -232,7 +230,10 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('project*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Project Management">
-                                <i class="tio-money nav-icon"></i>
+                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Project%20_management_color.png') }}" alt=""
+                                    class="nav-link-icon">
+
+                                
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Project
                                     Management</span>
                             </a>
@@ -501,7 +502,7 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Client Management">
-                                <img src="{{ asset('storage/app/public/nav/client (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Client
                                     Management
@@ -595,7 +596,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/settings') || Request::is('billing*') || Request::is('invoice-list') || Request::is('invoices') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Billing">
-                                <img src="{{ asset('storage/app/public/nav/bill (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Billing</span>
@@ -698,7 +699,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('quotation*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Quotation Management">
-                                <i class="tio-money nav-icon"></i>
+                              <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Quotations_management_color.png') }}" alt=""
+                                    class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Quotation
                                     Management</span>
                             </a>
@@ -753,7 +755,7 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('pos*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="POS">
-                                <img src="{{ asset('storage/app/public/nav/pos.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/POS_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">POS</span>
@@ -835,7 +837,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('account*') || Request::is('asset*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title=" Account Management">
-                                <img src="{{ asset('storage/app/public/nav/budget.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
@@ -1314,7 +1316,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('inventory*') || Request::is('item/entry') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title=" Inventory Management">
-                                <img src="{{ asset('storage/app/public/nav/inventory-management.png') }}"
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Inventory_management_color.png') }}"
                                     alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
@@ -1652,7 +1654,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('hr*') || Request::is('task-salary-categories') || Request::is('shifts*') || Request::is('custom-role*') || Request::is('staff*') || Request::is('salary*') || Request::is('leave*') || Request::is('attendance*') ? 'active' : '' }} ">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="HR Management">
-                                <img src="{{ asset('storage/app/public/nav/hr-manager (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
@@ -1871,7 +1873,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('menu-preference') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.menu_preference') }}" title="Menu Preference">
-                                <img src="{{ asset('storage/app/public/util/app.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Menu%20Preference_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="text-truncate"> Menu Preferences</span>
                             </a>
@@ -1884,7 +1886,7 @@
                             class="navbar-vertical-aside-has-menu {{ (Request::is('business-settings*') || Request::is('withdraw-method*') || Request::is('wallet/wallet-payment-list') || Request::is('settings/general*')) && !Request::is('business-settings/settings') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="My Business">
-                                <img src="{{ asset('storage/app/public/nav/business-model.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Business_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
@@ -1930,15 +1932,7 @@
                                             </a>
                                         </li>
                                         @if (\App\CentralLogics\Helpers::employee_module_permission_check('store_setup'))
-                                            {{-- <li
-                                            class="nav-item {{ Request::is('business-settings/my-documents') ? 'active' : '' }}">
-                                            <a class="nav-link "
-                                                href="{{ route('vendor.business-settings.my-documents') }}"
-                                                title="My Documents">
-                                                <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">My Documents</span>
-                                            </a>
-                                        </li> --}}
+                                     
                                             <li
                                                 class="nav-item {{ Request::is('business-settings/store-setup') ? 'active' : '' }}">
                                                 <a class="nav-link "
@@ -2024,7 +2018,7 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.wallet.wallet_payment_list') }}"
                                 title="{{ translate('messages.my_wallet') }}">
-                                <img src="{{ asset('storage/app/public/nav/wallet (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Wallet_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class=" text-truncate">{{ translate('messages.my_wallet') }}</span>
                             </a>
@@ -2050,7 +2044,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('terms-and-conditions') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.terms-and-conditions.view') }}" title="My Chitti T&C">
-                                <img src="{{ asset('storage/app/public/nav/file.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="text-truncate">My Chitti T&C</span>
@@ -2062,7 +2056,7 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.staff.terms-n-conditions') }}"
                                 title="{{ $store_data->name }} T&C">
-                                <img src="{{ asset('storage/app/public/nav/file.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="text-truncate">{{ $store_data->name }} T&C</span>
@@ -2074,7 +2068,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('notifications*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.notifications') }}" title="notifications">
-                                <img src="{{ asset('storage/app/public/nav/ringing.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Notifications_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
@@ -2083,19 +2077,6 @@
                             </a>
                         </li>
                     @endif
-
-                    {{-- @if (selected_menu('client_manage') && \App\CentralLogics\Helpers::employee_module_permission_check('client_manage'))
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('customer') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.customer.list') }}"
-                                title="{{ translate('messages.clients') }} Management">
-                                <img src="{{ asset('storage/app/public/nav/client (1).png') }}" alt=""
-                                    class="nav-link-icon">
-
-                                <span class=" text-truncate">{{ translate('messages.clients') }} Management</span>
-                            </a>
-                        </li>
-                    @endif --}}
 
                     @if (0 && selected_menu('smart_calendar'))
                         <li
@@ -2485,7 +2466,7 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('library*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.library.all') }}" title="Library">
-                                <img src="{{ asset('storage/app/public/nav/contract.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Library_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class=" text-truncate">Library</span>
                             </a>
@@ -2498,7 +2479,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('documents*') || Request::is('business-settings/settings/receivable-receipts') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                 href="javascript:;" title="Documents">
-                                <img src="{{ asset('storage/app/public/nav/task (1).png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Documents_color.png') }}" alt=""
                                     class="nav-link-icon">
 
                                 <span
@@ -2548,7 +2529,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.notification.add-new') }}" title="push notifications">
-                                <img src="{{ asset('storage/app/public/nav/ringing.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Advertisements_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="text-truncate">Post Ads</span>
                             </a>
@@ -2558,7 +2539,7 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('subscriptions') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.subscriptions') }}" title="Subscriptions">
-                                <img src="{{ asset('storage/app/public/nav/subscription.png') }}" alt=""
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Subscriptions_color.png') }}" alt=""
                                     class="nav-link-icon">
                                 <span class="text-truncate">Subscriptions</span>
                             </a>

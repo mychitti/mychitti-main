@@ -158,76 +158,7 @@
 
 
 
-        {{-- $('#product_form').on('submit', function(e) {
-            console.log('working');
-            let formData = new FormData(this);
-            e.preventDefault();
-
-            if (editorInstance) {
-                let encodedData = btoa(unescape(encodeURIComponent(editorInstance.getData())));
-                formData.append('specifications', encodedData);
-            }
-            document.querySelectorAll('.editor').forEach(editorElement => {
-                if (variatonEditors[editorElement.id]) {
-                    let encodedData = btoa(unescape(encodeURIComponent(variatonEditors[editorElement.id]
-                        .getData())));
-                    formData.append(editorElement.id, encodedData);
-                }
-            });
-
-            let editors2 = window.ckeditorInstances || {};
-            document.querySelectorAll('.editor2').forEach(editorElement => {
-                if (editors2[editorElement.id]) {
-                    let encodedData = btoa(unescape(encodeURIComponent(editors2[editorElement.id]
-                        .getData())));
-                    formData.append(editorElement.id, encodedData);
-                }
-            });
-            $.ajaxSetup({
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            });
-            $.ajax({
-                url: $('.route_url').val(),
-                method: 'post',
-                // data: $('#product_form').serialize(),
-                data: formData,
-                cache: false,
-                contentType: false,
-                processData: false,
-                beforeSend: function() {
-                    $('#loading').show();
-                },
-                success: function(data) {
-                    console.log(data);
-                    $('#loading').hide();
-                    if (data.errors) {
-                        for (let i = 0; i < data.errors.length; i++) {
-                            toastr.error(data.errors[i].message, {
-                                CloseButton: true,
-                                ProgressBar: true
-                            });
-                        }
-                    }
-                    if (data.product_approval) {
-                        toastr.success(data.product_approval, {
-                            CloseButton: true,
-                            ProgressBar: true
-                        });
-                    }
-                    if (data.success) {
-                        toastr.success(data.success, {
-                            CloseButton: true,
-                            ProgressBar: true
-                        });
-                        setTimeout(function() {
-                            {{-- location.href = '{{ route('admin.item.list') }}'; --}}
-                        }, 2000);
-                    }
-                }
-            });
-        }); --}}
+       
     </script>
 @endpush
 
@@ -1069,41 +1000,9 @@
         </form>
     </div>
 
-    <div class="modal" id="food-modal">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <button type="button" class="close foodModalClose" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <div class="embed-responsive embed-responsive-16by9">
-                        <iframe class="embed-responsive-item" src="https://www.youtube.com/embed/xG8fO7TXPbk"
-                            title="YouTube video player" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen></iframe>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 
-    <div class="modal" id="attribute-modal">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <button type="button" class="close attributeModalClose" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <div class="embed-responsive embed-responsive-16by9">
-                        <iframe class="embed-responsive-item" src="https://www.youtube.com/embed/xG8fO7TXPbk"
-                            title="YouTube video player" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen></iframe>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+   
     <div class="modal fade" id="exampleModalk" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1542,21 +1441,7 @@
                 '<option value="" selected>{{ translate('messages.select_sub_category') }}</option>');
         });
 
-        $('.foodModalClose').on('click', function() {
-            $('#food-modal').hide();
-        })
-
-        $('.foodModalShow').on('click', function() {
-            $('#food-modal').show();
-        })
-
-        $('.attributeModalClose').on('click', function() {
-            $('#attribute-modal').hide();
-        })
-
-        $('.attributeModalShow').on('click', function() {
-            $('#attribute-modal').show();
-        })
+   
 
         $(document).on('ready', function() {
             $('.js-select2-custom').each(function() {

@@ -127,28 +127,30 @@
                                         @elseif($conf->current_status == 'Cancelled')
                                             <span class='text-danger'>Cancelled</span>
                                         @else
-                                            <select name="module_id" data-value="{{ $conf->id }}"
-                                                class="form-control js-select2-custom"
-                                                onchange="changeStatus(this.value, {{ $conf->service_id }})"
-                                                title="Change Status">
-                                                <option></option>
-                                                @foreach ($default_statuses as $st)
-                                                    @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id'=> $conf->service_id])[0] @endphp
-                                                    <option value="{{ $st->id }}"
-                                                        {{ $jobInfo->status == $st->id ? 'selected' : '' }}>
-                                                        {{ $st->status }}</option>
-                                                @endforeach
-                                                @foreach ($statuses as $st)
-                                                    @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id'=> $conf->service_id])[0] @endphp
-                                                    <option value="{{ $st->id }}"
-                                                        {{ $jobInfo->status == $st->id ? 'selected' : '' }}>
-                                                        {{ $st->status }}</option>
-                                                @endforeach
-                                            </select>
+                                            @if (hasPermission('leads_manage', 'change_status'))
+                                                <select name="module_id" data-value="{{ $conf->id }}"
+                                                    class="form-control js-select2-custom"
+                                                    onchange="changeStatus(this.value, {{ $conf->service_id }})"
+                                                    title="Change Status">
+                                                    <option></option>
+                                                    @foreach ($default_statuses as $st)
+                                                        @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id'=> $conf->service_id])[0] @endphp
+                                                        <option value="{{ $st->id }}"
+                                                            {{ $jobInfo->status == $st->id ? 'selected' : '' }}>
+                                                            {{ $st->status }}</option>
+                                                    @endforeach
+                                                    @foreach ($statuses as $st)
+                                                        @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id'=> $conf->service_id])[0] @endphp
+                                                        <option value="{{ $st->id }}"
+                                                            {{ $jobInfo->status == $st->id ? 'selected' : '' }}>
+                                                            {{ $st->status }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @endif
+                                            @endif
+                                        @else
+                                            -
                                         @endif
-                                    @else
-                                        -
-                                    @endif
                                 </td>
 
                                 <td>
@@ -185,7 +187,8 @@
                                     @endif
                                 </td>
                             </tr>
-                            <button type="button" class="invisible btn btn-primary start_job_btn start btn_{{ $conf->service_id }}"
+                            <button type="button"
+                                class="invisible btn btn-primary start_job_btn start btn_{{ $conf->service_id }}"
                                 data-value="{{ $conf->id }}" data-toggle="modal"
                                 data-target="#jobModal_{{ $conf->id }}">Start Job</button>
 
@@ -208,8 +211,8 @@
                                                             method="post">
                                                             <p>OTP has been sent to customer. Please verify.</p>
                                                             @csrf
-                                                             <input type="hidden" name="status" id="sttas_{{ $conf->service_id }}"
-                                                                value="">
+                                                            <input type="hidden" name="status"
+                                                                id="sttas_{{ $conf->service_id }}" value="">
                                                             <input type="hidden" name="acc_id" id=""
                                                                 value="{{ $conf ? $conf->id : 0 }}">
                                                             <input type="hidden" name="phone" id="ver_phone"
@@ -237,7 +240,6 @@
                                     </div>
                                 </div>
                             </div>
-
                         @endforeach
                     </tbody>
                 </table>

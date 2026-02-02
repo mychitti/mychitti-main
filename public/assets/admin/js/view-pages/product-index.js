@@ -70,21 +70,7 @@ $(document).on('keyup', '.new_option_name', function () {
     new_option_name(value, data);
 });
 
-$('.foodModalClose').on('click',function (){
-    $('#food-modal').hide();
-})
 
-$('.foodModalShow').on('click',function (){
-    $('#food-modal').show();
-})
-
-$('.attributeModalClose').on('click',function (){
-    $('#attribute-modal').hide();
-})
-
-$('.attributeModalShow').on('click',function (){
-    $('#attribute-modal').show();
-})
 
 $('#store_id').on('change', function () {
     let route = '{{url('/')}}/store/get-addons?data[]=0&store_id='+$(this).val();

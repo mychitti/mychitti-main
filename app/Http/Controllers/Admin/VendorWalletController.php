@@ -29,9 +29,9 @@ class VendorWalletController extends Controller
 
         $store_id = $request->store_id;
         $amount  = round($request->amount, 2); // amount paid
-
+$vendor_id = Store::where('id', $store_id)->value('vendor_id');
         $actionType = 'retail_recharge_wallet';
-        $payload = ['store_id' => $store_id, 'amount' => $amount, 'billing' => $request->billing];
+        $payload = ['store_id' => $store_id, 'vendor_id' => $vendor_id, 'amount' => $amount, 'billing' => $request->billing];
         $data = [
             'actionType' =>  $actionType,
             'payload' => $payload,
@@ -48,12 +48,13 @@ class VendorWalletController extends Controller
     public static function recharge_proceed($data)
     {
         $store_id   = $data['store_id'];
+        $vendor_id   = $data['vendor_id'];
         $amount  = round($data['amount'], 2); // amount paid
         $store   = Store::findOrFail($store_id);
 
         /* ================= WALLET ================= */
         $wallet = StoreWallet::firstOrCreate(
-            ['vendor_id' => $store_id],
+            ['vendor_id' => $vendor_id],
             [
                 'total_earning'    => 0,
                 'total_withdrawn'  => 0,
@@ -71,7 +72,7 @@ class VendorWalletController extends Controller
             $accountTransaction = new AccountTransaction();
             $accountTransaction->current_balance = $wallet->total_earning;
             $accountTransaction->from_type = 'store';
-            $accountTransaction->from_id = $store_id;
+            $accountTransaction->from_id = $vendor_id;
             $accountTransaction->amount = $amount;
             $accountTransaction->method = 'wallet';
             $accountTransaction->action = 'credit';

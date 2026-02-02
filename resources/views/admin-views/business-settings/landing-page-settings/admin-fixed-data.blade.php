@@ -14,12 +14,7 @@
                     {{ translate('messages.admin_landing_pages') }}
                 </span>
             </h1>
-            <div class="text--primary-2 py-1 d-flex flex-wrap align-items-center" type="button" data-toggle="modal" data-target="#how-it-works">
-                <strong class="mr-2">{{translate('See_how_it_works!')}}</strong>
-                <div>
-                    <i class="tio-info-outined"></i>
-                </div>
-            </div>
+            
         </div>
     </div>
     <div class="mb-4 mt-2">
@@ -167,7 +162,7 @@
                                     <label for="fixed_footer_article_title" class="form-label">{{translate('Title')}}<span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('Write_the_title_within_180_characters') }}">
                                                 <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
                                             </span></label>
-                                    <input id="fixed_footer_article_title" type="text"  maxlength="180" name="fixed_footer_article_title[]" value="{{$fixed_footer_article_title?->getRawOriginal('value')}}" class="form-control" placeholder="{{translate('Ex_:_6amMart_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
+                                    <input id="fixed_footer_article_title" type="text"  maxlength="180" name="fixed_footer_article_title[]" value="{{$fixed_footer_article_title?->getRawOriginal('value')}}" class="form-control" placeholder="{{translate('Ex_:_MyChitti_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
                                 </div>
                             </div>
                         </div>
@@ -371,7 +366,7 @@
                                             <label for="fixed_footer_article_title{{$lang}}" class="form-label">{{translate('Title')}}<span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('Write_the_title_within_180_characters') }}">
                                                         <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
                                                     </span></label>
-                                            <input id="fixed_footer_article_title{{$lang}}" type="text"  maxlength="180" name="fixed_footer_article_title[]" value="{{$fixed_footer_article_title_translate[$lang]['value']??''}}" class="form-control" placeholder="{{translate('Ex_:_6amMart_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
+                                            <input id="fixed_footer_article_title{{$lang}}" type="text"  maxlength="180" name="fixed_footer_article_title[]" value="{{$fixed_footer_article_title_translate[$lang]['value']??''}}" class="form-control" placeholder="{{translate('Ex_:_MyChitti_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
                                         </div>
                                     </div>
                                 </div>
@@ -485,7 +480,7 @@
                                         <label for="fixed_footer_article_title" class="form-label">{{translate('Title')}}<span class="form-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{ translate('Write_the_title_within_50_characters') }}">
                                                     <img src="{{asset('public/assets/admin/img/info-circle.svg')}}" alt="">
                                                 </span></label>
-                                        <input id="fixed_footer_article_title" type="text"  maxlength="50" name="fixed_footer_article_title[]"  class="form-control" placeholder="{{translate('Ex_:_6amMart_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
+                                        <input id="fixed_footer_article_title" type="text"  maxlength="50" name="fixed_footer_article_title[]"  class="form-control" placeholder="{{translate('Ex_:_MyChitti_is_a_complete_package!__It`s_time_to_empower_your_multivendor_online_business_with__powerful_features!')}}">
                                     </div>
                                 </div>
                             </div>

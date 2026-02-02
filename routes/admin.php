@@ -6,6 +6,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
+    Route::group(['prefix' => 'file', 'as' => 'file.'], function () {
+        Route::get('add', 'FileController@add')->name('add');
+        Route::post('store', 'FileController@store')->name('store');
+    });
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
     Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
@@ -32,7 +36,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('action-logs/{tab?}', 'DashboardController@action_logs')->name('action-logs');
         });
 
-     
+
         Route::group(['prefix' => 'requirement', 'as' => 'requirement.'], function () {
             Route::get('delete/{id}', 'RequirementController@delete')->name('delete');
         });
@@ -260,6 +264,10 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('bulk-export', 'ItemController@bulk_export_data')->name('bulk-export');
 
             Route::get('trash', 'ItemController@trash')->name('trash.view');
+            Route::group(['prefix' => 'terms-and-conditions', 'as' => 'terms-and-conditions.', 'middleware' => ['module:item']], function () {
+                Route::get('/', 'ItemController@terms_and_condtions')->name('index');
+                Route::post('/', 'ItemController@terms_and_condtions_store')->name('store');
+            });
             Route::group(['prefix' => 'trash', 'as' => 'trash.', 'middleware' => ['module:item']], function () {
                 Route::get('restore-item/{id}', 'ItemController@restore_item')->name('restore-item');
                 Route::get('delete-item/{id}', 'ItemController@permanent_delete_item')->name('delete-item');

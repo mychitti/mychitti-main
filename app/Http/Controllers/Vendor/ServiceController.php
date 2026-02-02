@@ -138,7 +138,7 @@ class ServiceController extends Controller
 
 
         $leadChargeInfo =  LeadCharge::where('category_id', $cat_id)->where('zone_id',  $zoneId)->first();
-        $balanceInfo  = StoreWallet::where('vendor_id', $store_id)->first();
+        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
@@ -177,12 +177,12 @@ class ServiceController extends Controller
         // check balance
         if ($chargesToBeApplied) {
             if ($avlblBalance < $minimumBalanceRequired) {
-                Toastr::error('Insufficient wallet balance to accept leads. Minimum '._price($minimumBalanceRequired).' required');
+                Toastr::error('Insufficient wallet balance to accept leads. Minimum ' . _price($minimumBalanceRequired) . ' required');
                 return back();
             }
 
             //deduct amount from wallet
-            $wallet = StoreWallet::where('vendor_id', $store_id)->first();
+            $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);
             $wallet->save();
@@ -1506,7 +1506,7 @@ class ServiceController extends Controller
 
         $query->groupBy('service_requests.id');
         $product = $query->get();
-        
+
 
         if ($action == 'export') {
             return $this->export_leads($product);
@@ -1632,8 +1632,14 @@ class ServiceController extends Controller
             // get user mobile 
             $userPhone = User::find($serviceReq->user_id);
             if ($userPhone) {
-
-                _send_confirmation_sms('mobile_verification', $userPhone->phone);
+                $otp  = rand(1000, 9999);
+                $insert  = DB::table('phone_otp')->updateOrInsert([
+                    'phone' =>  $userPhone,
+                ], [
+                    'otp' => $otp,
+                    'created_at' => now()
+                ]);
+                _send_confirmation_sms('mobile_verification', $userPhone->phone, $otp);
             }
 
             $empJob = VendorEmpJob::where('service_id', $service_id)->first();
@@ -1848,8 +1854,6 @@ class ServiceController extends Controller
 
     public function gatepass_add(Request $request)
     {
-
-
         $request->validate([
             'desc' => 'max:500',
             'title.*' => 'required|max:500',
@@ -1941,48 +1945,73 @@ class ServiceController extends Controller
     }
     public function quotation_update(Request $request)
     {
-
         $request->validate([
-            'item_name.*' => 'required|max:500',
+            'item_name.*'  => 'required|max:500',
             'item_price.*' => 'required|integer',
-            'item_tax.*' =>  'required|integer',
+            'item_tax.*'   => 'required|integer',
         ]);
-
 
         $saved = false;
 
         $quotation = InServiceQuotation::where('service_id', $request->service_id)->first();
+
+        // delete old items
         ServiceQuoteItem::where('quote_id', $quotation->id)->delete();
 
-        $quotation =  InServiceQuotation::find($quotation->id);
+        // reset approval
         $quotation->approved = 0;
-        $quotation->update();
+        $quotation->save();
+
+        // ✅ totals
+        $subTotal = 0;
+        $taxTotal = 0;
 
         foreach ($request->item_name as $key => $item) {
+
+            $price = $request->item_price[$key];
+            $qty   = $request->item_qty[$key] ?? 1;
+            $tax   = $request->item_tax[$key];
+
+            // calculations
+            $lineSubTotal = $price * $qty;
+            $lineTax      = ($lineSubTotal * $tax) / 100;
+
+            $subTotal += $lineSubTotal;
+            $taxTotal += $lineTax;
+
             $quotationItem  = new ServiceQuoteItem;
             $quotationItem->quote_id = $quotation->id;
-            $quotationItem->price = $request->item_price[$key];
+            $quotationItem->price = $price;
             $quotationItem->name = $item;
-            $quotationItem->qty = $request->item_qty[$key] ?? 1;
-            $quotationItem->tax = $request->item_tax[$key];
+            $quotationItem->qty = $qty;
+            $quotationItem->tax = $tax;
+            $quotationItem->total = $lineTax + $lineSubTotal;
             $quotationItem->created_at = date('Y-m-d H:i:s');
+
             if ($quotationItem->save()) {
                 $saved = true;
             }
         }
+
+        // ✅ update totals in quotation
+        $grandTotal = $subTotal + $taxTotal;
+
+        $quotation->sub_total    = $subTotal;
+        $quotation->tax_total   = $taxTotal;
+        $quotation->total = $grandTotal;
+        $quotation->save();
 
         if ($saved) {
             Toastr::success('Quotations updated successfully!');
         } else {
             Toastr::error('Some Error Occured');
         }
+
         return back();
     }
 
     public function quotation_add(Request $request)
     {
-
-
         $request->validate([
             'item_name.*' => 'required|max:500',
             'item_price.*' => 'required|integer',
@@ -2009,18 +2038,38 @@ class ServiceController extends Controller
 
         if ($quotation->save()) {
             $saved = true;
+            $subTotal  = 0;
+            $taxTotal  = 0;
+
             foreach ($request->item_name as $key => $item) {
+
+                $price = $request->item_price[$key];
+                $qty   = $request->item_qty[$key] ?? 1;
+                $tax   = $request->item_tax[$key];
+
+                $lineSubTotal = $price * $qty;
+                $lineTax      = ($lineSubTotal * $tax) / 100;
+
+                $subTotal += $lineSubTotal;
+                $taxTotal += $lineTax;
+
                 $quotationItem  = new ServiceQuoteItem;
                 $quotationItem->quote_id = $quotation->id;
-                $quotationItem->price = $request->item_price[$key];
+                $quotationItem->price = $price;
                 $quotationItem->name = $item;
-                $quotationItem->qty = $request->item_qty[$key] ?? 1;
-                $quotationItem->tax = $request->item_tax[$key];
+                $quotationItem->qty = $qty;
+                $quotationItem->tax = $tax;
+                $quotationItem->total = $lineTax + $lineSubTotal;
+
                 $quotationItem->created_at = date('Y-m-d H:i:s');
-                if ($quotationItem->save()) {
-                    $saved = true;
-                }
+                $quotationItem->save();
             }
+
+            $grandTotal = $subTotal + $taxTotal;
+            $quotation->total = $grandTotal;
+            $quotation->sub_total = $subTotal;
+            $quotation->tax_total = $taxTotal;
+            $quotation->update();
 
             DB::table('lead_statuses')->insert([
                 'service_request_id' => $request->service_id,
@@ -2052,8 +2101,6 @@ class ServiceController extends Controller
                 ]);
             }
         }
-
-
 
 
         if ($saved) {

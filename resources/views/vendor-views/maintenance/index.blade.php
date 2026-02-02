@@ -22,22 +22,8 @@
                 </h1>
                 <div class="d-flex gap-1 flex-wrap flex-md-nowrap ">
                     <button class="btn btn--primary" data-toggle="modal" type="button" data-target="#howItWorksModal"
-                        style="font-size: 21px !important;
-    padding: 3px;"><i class="tio-info-outined"></i></button>
-                    <form action="" class=" date-range-form">
-                        @include('vendor-views/form_modals/date_range')
-                        <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
-                            data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
-                    </form>
-                    <form action="" class="input-group" style="max-width: 270px;">
-                        <input type="text" value="{{ request('search') ?? '' }}" name="search" class="form-control"
-                            placeholder="Type, Payment Day or Title" aria-label="Search">
-                        <div class="input-group-append">
-                            <button class="btn btn-secondary" type="submit">
-                                <i class="tio-search"></i>
-                            </button>
-                        </div>
-                    </form>
+                        style="font-size: 21px !important;padding: 3px;"><i class="tio-info-outined"></i></button>
+
                     @if (hasPermission('boa_monthly_maintenance', 'add'))
                         <a type="button" style="    white-space: nowrap;" data-toggle="modal"
                             data-target="#addExpenseModal" class="btn_sm btn btn-primary mb-0">
@@ -92,6 +78,8 @@
                                     <th>Title</th>
                                     <th>Amount</th>
                                     <th>Payment Day</th>
+                                    <th>Duration Type</th>
+                                    <th>Start Month</th>
                                     <th>Status</th>
                                     <th>Notes</th>
                                     <th>Action</th>
@@ -110,6 +98,8 @@
                                             {{ _price($e['amount']) }}
                                         </td>
                                         <td>{{ $e['payment_day'] }}</td>
+                                        <td>{{ $e['duration_type'] }}</td>
+                                        <td>{{ $e['start_month'] }}</td>
                                         <td>
                                             @if ($e['stts'] == 'No dues')
                                                 <span class="badge badge-soft-success">No dues</span>
@@ -187,6 +177,33 @@
                         <span class="badge badge-soft-dark ml-2" id="itemCount">{{ $records->total() }}</span>
                     </span>
                 </h1>
+                <div class="d-flex gap-1 flex-wrap flex-md-nowrap ">
+                    <form action="">
+                        <select onchange="this.form.submit()" name="status" id="status"
+                            class="form-control js-select2-custom">
+                            <option {{ request('status') == '' ? 'selected' : '' }} value="">All</option>
+                            <option {{ request('status') == 'due' ? 'selected' : '' }} value="due">Due</option>
+                            <option {{ request('status') == 'clear' ? 'selected' : '' }} value="clear">Clear</option>
+                            <option {{ request('status') == 'hold' ? 'selected' : '' }} value="hold">Hold</option>
+                            <option {{ request('status') == 'cancel' ? 'selected' : '' }} value="cancel">Cancel</option>
+                        </select>
+                    </form>
+                    <form action="" class=" date-range-form">
+                        @include('vendor-views/form_modals/date_range')
+                        <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning"
+                            type="button" data-toggle="modal"
+                            data-target="#dateRangeModal">{{ translate($preset) }}</button>
+                    </form>
+                    <form action="" class="input-group" style="max-width: 270px;">
+                        <input type="text" value="{{ request('search') ?? '' }}" name="search" class="form-control"
+                            placeholder="Type, Payment Day or Title" aria-label="Search">
+                        <div class="input-group-append">
+                            <button class="btn btn-secondary" type="submit">
+                                <i class="tio-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
             <div class="card">
                 <div class="card-header py-2 justify-content-end border-0">
@@ -228,13 +245,34 @@
                                         </td>
 
                                         <td>
-                                            {{ _price($e['amount']) }}
+                                            @if ($e['due'])
+                                                <div class="price-container d-flex align-items-center"
+                                                    data-id="{{ $e['id'] }}">
+                                                    <span class="price-text">{{ _price($e['amount']) }}</span>
+                                                    <input type="text" class="price-input form-control"
+                                                        value="{{ $e['amount'] }}" style="display:none; width:100px;">
+                                                    <a href="javascript:void(0);" class="edit-price"><i
+                                                            class="tio-edit"></i></a>
+                                                    <a href="javascript:void(0);" class="save-price"
+                                                        style="    font-size: 17px;
+display:none;"><i
+                                                            class="tio-checkmark-square-outlined"></i></a>
+                                                </div>
+                                            @else
+                                                {{ _price($e['amount']) }}
+                                            @endif
                                         </td>
                                         <td>
                                             @if ($e['due'])
                                                 <span class="badge badge-soft-danger">Due</span>
                                             @else
-                                                <span class="badge badge-soft-success">Clear</span>
+                                                @if ($e['status'] == 'hold')
+                                                    <span class="badge badge-soft-warning">Hold</span>
+                                                @elseif ($e['status'] == 'cancel')
+                                                    <span class="badge badge-soft-danger">Cancelled</span>
+                                                @else
+                                                    <span class="badge badge-soft-success">Clear</span>
+                                                @endif
                                             @endif
                                         </td>
                                         <td>{{ $e['paid_for'] }}</td>
@@ -242,15 +280,33 @@
                                         <td>
                                             @if (hasPermission('boa_monthly_maintenance', 'mark_paid'))
                                                 @if (auth('vendor_employee')->id() != $e['id'])
-                                                    <div class="btn--container ">
-                                                        @if ($e['due'])
-                                                            <a href="{{ route('vendor.account.maintenance.mark-paid', [$e['id']]) }}"
-                                                                style="width:fit-content; padding: 0.5rem 1rem !important;"
-                                                                class="btn action-btn btn--primary btn-outline-primary "
-                                                                title="Mark Paid">Mark Paid
-                                                            </a>
-                                                        @endif
+                                                    <div class="dropdown">
+                                                        <button class="btn p-1 dropdown-toggle" type="button"
+                                                            data-toggle="dropdown" aria-expanded="false">
+                                                            <img style="width: 24px; filter: contrast(0)"
+                                                                src="{{ asset('storage/app/public/util/10025520.png') }}"
+                                                                alt="action" />
+                                                        </button>
+                                                        <div class="dropdown-menu">
+                                                            @if ($e['due'])
+                                                                @if (hasPermission('boa_monthly_maintenance', 'edit'))
+                                                                    <a class="dropdown-item text-primary"
+                                                                        href="{{ route('vendor.account.maintenance.mark-paid', [$e['id']]) }}"
+                                                                        title="Mark Paid"><i class="tio-edit"></i> Mark
+                                                                        Paid
+                                                                    </a>
+                                                                    <a class="dropdown-item text-warning"
+                                                                        href="{{ route('vendor.account.maintenance.status', [$e['id'], 'hold']) }}"
+                                                                        title="Hold"><i class="tio-pause"></i> Hold
+                                                                    </a>
+                                                                    <a class="dropdown-item text-danger"
+                                                                        href="{{ route('vendor.account.maintenance.status', [$e['id'], 'cancel']) }}"
+                                                                        title="Cancel"><i class="tio-clear"></i> Cancel
+                                                                    </a>
+                                                                @endif
+                                                            @endif
 
+                                                        </div>
                                                     </div>
                                                 @endif
                                             @endif
@@ -381,6 +437,32 @@
                     <form method="POST" action="{{ route('vendor.account.maintenance.store') }}">
                         @csrf
                         <div class="modal-body">
+                            <div class="pos--payment-options mb-3 ">
+                                <ul style="flex-wrap: nowrap;">
+                                    <li>
+                                        <label>
+                                            <input type="radio" name="duration_type" class="duration_type"
+                                                value="monthly" hidden checked>
+                                            <span class="size_span">Monthly</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label>
+                                            <input type="radio" name="duration_type" class="duration_type"
+                                                value="quarterly" hidden>
+                                            <span class="size_span">Quarterly</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label>
+                                            <input type="radio" name="duration_type" class="duration_type"
+                                                value="yearly" hidden>
+                                            <span class="size_span">Yearly</span>
+                                        </label>
+                                    </li>
+                                </ul>
+                            </div>
+
                             <label for="expense_type1">Expense Type <a
                                     href="{{ route('vendor.account.setting.common-settings') }}"
                                     class="text-primary text-underline">Edit options <i class="tio-edit"></i></a></label>
@@ -392,18 +474,25 @@
                                 @endforeach
                             </select>
 
-                            <label for="title">Title</label>
+                            <label for="title">Narration</label>
                             <input class="form-control" name="title" placeholder="Title" required>
 
                             <label for="amount">Amount</label>
                             <input class="form-control" type="number" step="0.001" name="amount"
                                 placeholder="Amount" required>
 
+
                             <label for="payment_day">Payment Day <i class="tio-info-outlined"
                                     title="Select the day of the month for payment"></i></label>
                             <input type="number" name="payment_day" class="form-control" min="1" max="31"
                                 required placeholder="Day (1-31)"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value > 31) this.value = 31; if(this.value < 1) this.value = '';">
+
+                            <div class="start_month" style="display: none;">
+                                <label for="start_month">Start Month</label>
+                                <input type="number" name="start_month" class="form-control" id="start_month"
+                                    placeholder="Start Month" min="1" max="12">
+                            </div>
 
                             <label for="notes">Notes</label>
                             <textarea class="form-control" name="notes" placeholder="Notes"></textarea>
@@ -479,7 +568,7 @@
                                 @endforeach
                             </select>
 
-                            <label for="title">Title</label>
+                            <label for="title">Narration</label>
                             <input class="form-control edit_title" name="title" placeholder="Title" required>
 
                             <label for="amount">Amount</label>
@@ -510,6 +599,14 @@
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
     <script>
+        $(".duration_type").on('change', function() {
+            var selectedType = $(this).val();
+            if (selectedType === 'monthly') {
+                $('.start_month').hide();
+            } else  {
+                $('.start_month').show();
+            } 
+        })
         $(".edit_btn").on('click', function() {
             var id = $(this).attr('data-id')
             var title = $(this).attr('data-title')
@@ -532,5 +629,50 @@
 
         })
     </script>
+    <script>
+        $(document).ready(function() {
+
+            // Click edit icon
+            $('.edit-price').click(function() {
+                var parent = $(this).closest('.price-container');
+                parent.find('.price-text').hide();
+                parent.find('.edit-price').hide();
+                parent.find('.price-input').show().focus();
+                parent.find('.save-price').show();
+            });
+
+            // Click save icon
+            $('.save-price').click(function() {
+                var parent = $(this).closest('.price-container');
+                var newPrice = parent.find('.price-input').val();
+                var id = parent.data('id');
+
+                $.ajax({
+                    url: "{{ route('vendor.account.maintenance.update-entry-price') }}", // your route
+                    method: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        id: id,
+                        amount: newPrice
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            parent.find('.price-text').text('₹' + parseFloat(newPrice)
+                                .toLocaleString());
+                        }
+                        parent.find('.price-text').show();
+                        parent.find('.edit-price').show();
+                        parent.find('.price-input').hide();
+                        parent.find('.save-price').hide();
+                    },
+                    error: function(err) {
+                        alert('Error saving price!');
+                    }
+                });
+            });
+
+        });
+    </script>
+
     @include('vendor-views/js/date_range')
 @endpush

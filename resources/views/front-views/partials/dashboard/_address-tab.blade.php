@@ -1,4 +1,4 @@
-    <div class="tab-pane fade" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
+    <div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
                     <div class="container tab_inner">
                         <h3 class="text-primary  my-2">Address <a href="{{ route('add-address') }}"
                                 class="btn btn-primary text-light">+ Add New Address</a></h3>

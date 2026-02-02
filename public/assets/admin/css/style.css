@@ -5804,7 +5804,7 @@ div.scroll-down {
 .navbar-vertical-aside-has-menu.active
     .js-navbar-vertical-aside-menu-link.nav-link
     img {
-    filter: invert(1);
+    /* filter: invert(1); */
 }
 .js-navbar-vertical-aside-menu-link.nav-link:hover span,
 .navbar-vertical-aside-has-menu.active

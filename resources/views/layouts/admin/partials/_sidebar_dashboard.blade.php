@@ -362,6 +362,17 @@
                             </ul>
                         </li>
                     @endif
+                    {{-- file  --}}
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('file/add') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.file.add') }}" title="Upload Files">
+                            <i class="tio-file-add-outlined"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                               Upload Files
+                            </span>
+                        </a>
+                    </li>
+
 
                     <li class="__sidebar-hs-unfold px-2" id="tourb-9">
                         <div class="hs-unfold w-100">

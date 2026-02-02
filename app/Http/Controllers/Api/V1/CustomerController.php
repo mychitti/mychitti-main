@@ -245,8 +245,9 @@ class CustomerController extends Controller
 
         $otp  = rand(1000, 9999);
         $sendsms = _send_confirmation_sms('mobile_verification', $request->phone, $otp);
-        $insert  = DB::table('phone_otp')->insert([
+        $insert  = DB::table('phone_otp')->updateOrInsert([
             'phone' =>  $request->phone,
+        ], [
             'otp' => $otp,
             'created_at' => now()
         ]);

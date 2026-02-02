@@ -5,12 +5,5 @@
         <option value="dm" {{ Request::is('admin/business-settings/email-setup/dm*') ? 'selected' : '' }}><a href="https://mychitti.net/">{{ translate('Delivery_Man_Mail_Templates') }}</a></option>
         <option value="user" {{ Request::is('admin/business-settings/email-setup/user*') ? 'selected' : '' }}><a href="https://mychitti.net/">{{ translate('Customer_Mail_Templates') }}</a></option>
     </select>
-    <div class="d-flex justify-content-end mt-2">
-        <div class="text--primary-2 py-1 d-flex flex-wrap align-items-center" type="button"   id="see-how-it-works"  >
-            <strong class="mr-2">{{translate('See_how_it_works!')}}</strong>
-            <div>
-                <i class="tio-info-outined"></i>
-            </div>
-        </div>
-    </div>
+    
 </div>

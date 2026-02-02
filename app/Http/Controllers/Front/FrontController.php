@@ -151,17 +151,13 @@ class FrontController extends Controller
     }
     public function testing(Request $request, $type = 'vendor')
     {
-
-    $store = Store::withoutGlobalScopes()->find(26);
-    echo   Helpers::_addWelcomeCouponsIfExist($store);
-die;
         // $filePath = 'apis.json';
         // if (Storage::disk('secure')->exists($filePath)) {
         //     return Storage::disk('secure')->download($filePath);
         // }
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
 
-        // return view('front-views.test_view', compact('type'));
+        return view('front-views.test_view');
     }
 
 
@@ -383,8 +379,9 @@ die;
 
         $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
 
-        $insert  = DB::table('phone_otp')->insert([
+        $insert  = DB::table('phone_otp')->updateOrInsert([
             'phone' =>  $phone,
+        ], [
             'otp' => $otp,
             'created_at' => now()
         ]);
@@ -982,8 +979,9 @@ die;
         //  **Insert or Update OTP in the Database**
         if (!$lastOtp) {
             // Insert new OTP
-            $insert = DB::table('phone_otp')->insert([
+            $insert = DB::table('phone_otp')->updateOrInsert([
                 'phone' => $phone,
+            ], [
                 'otp' => $otp,
                 'attempts' => 1,
                 'created_at' => now()

@@ -44,13 +44,13 @@ class WalletController extends Controller
         // used_count
         ServiceCoupon::where('id', $request->coupon)->increment('used_count');
 
-        $wallet =  StoreWallet::where('store_id', $store->id)->first();
+        $wallet =  StoreWallet::where('vendor_id', $store->vendor->id)->first();
         if ($wallet) {
             $wallet->increment('total_earning', $request->amount);
             $wallet->save();
         } else {
             $wallet = new StoreWallet();
-            $wallet->vendor_id = $store->id;
+            $wallet->vendor_id = $store->vendor->id;
             $wallet->total_earning = $request->amount;
             $wallet->total_withdrawn = 0.0;
             $wallet->pending_withdraw = 0.0;

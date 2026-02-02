@@ -1,9 +1,5 @@
 <?php
 
-use App\Events\LocationUpdated;
-use App\Http\Controllers\Admin\VendorController;
-use App\Http\Controllers\Api\V1\Auth\CustomerAuthController;
-use App\Http\Controllers\Api\V1\CustomerController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaytmController;
 use App\Http\Controllers\LiqPayController;
@@ -20,8 +16,8 @@ use App\Http\Controllers\Front\CartController;
 use App\Http\Controllers\PaypalPaymentController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\SslCommerzPaymentController;
-use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Front\FrontController;
+use App\Http\Controllers\Front\ServiceController;
 use App\Http\Controllers\Front\GoogleController;
 use App\Http\Controllers\Front\McVendorController;
 use App\Http\Controllers\Front\ModuleInfoController;
@@ -32,11 +28,8 @@ use App\Http\Controllers\Front\SitemapController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\VendorController as ControllersVendorController;
 use App\Jobs\PunchInReminder;
-use Pusher\Pusher;
 use Illuminate\Support\Facades\Mail;
 
-use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\URL;
 
 /*
 |--------------------------------------------------------------------------
@@ -223,6 +216,20 @@ Route::group(['middleware' => ['loginuser']], function () {
 });
 Route::get('delete-account/{id}', [FrontUserController::class, 'delete_account'])->name('delete-account');
 
+Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
+    Route::post('confirm', [ServiceController::class, 'confirm'])->name('confirm');
+    Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+        Route::post('approval', [ServiceController::class, 'gatepass_approval'])->name('approval');
+        Route::post('return-approval', [ServiceController::class, 'gatepass_return_approval'])->name('return-approval');
+        Route::get('details', [ServiceController::class, 'gatepass_details'])->name('details');
+    });
+    Route::group(['prefix' => 'quotation', 'as' => 'quotation.'], function () {
+        Route::post('approval', [ServiceController::class, 'quotation_approval'])->name('approval');
+        Route::post('return-approval', [ServiceController::class, 'quotation_return_approval'])->name('return-approval');
+        Route::get('details', [ServiceController::class, 'quotation_details'])->name('details');
+    });
+   
+});
 Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home');
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
@@ -238,7 +245,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::post('get-delivery-charges', [CartController::class, 'get_delivery_charges'])->name('get-delivery-charges');
     Route::post('change-cart-quantity', [CartController::class, 'change_cart_quantity'])->name('change-cart-quantity');
     Route::post('update-wishlist', [WishlistController::class, 'update_wishlist'])->name('update-wishlist');
-    Route::get('dashboard', [FrontUserController::class, 'dashboard'])->name('dashboard');
+    Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
     Route::post('update-profile', [FrontUserController::class, 'update_profile'])->name('update-profile');
     Route::post('update-address/{id}', [FrontUserController::class, 'update_address'])->name('update-address');
     Route::get('delete-address/{id}', [FrontUserController::class, 'delete_address'])->name('delete-address');

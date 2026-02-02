@@ -56,6 +56,7 @@ class VendorEmployeeController extends Controller
             return response()->json(['status' => false]);
         };
     }
+    
     public function clock_out()
     {
         $emp_id = Helpers::get_loggedin_user()->id;

@@ -100,7 +100,7 @@
                                     <div class="col-md-4">
                                         <div class="form-group mb-0">
                                             <label for="host" class="form-label">{{ translate('messages.host') }}</label><br>
-                                            <input id="host" type="text" class="form-control" name="host" placeholder="{{translate('messages.Ex_:_mail.6am.one')}}"
+                                            <input id="host" type="text" class="form-control" name="host" placeholder="{{translate('messages.Ex_:_smtp.gmail.com')}}"
                                                 value="{{ env('APP_MODE') != 'demo' ? $data['host'] ?? '' : '' }}" required>
                                         </div>
                                     </div>

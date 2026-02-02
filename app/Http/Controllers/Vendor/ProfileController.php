@@ -24,6 +24,7 @@ use App\Models\Store;
 use App\Models\StoreConfig;
 use App\Models\SubModule;
 use App\Models\TempModulePurchase;
+use App\Models\VendorEmployee;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +34,11 @@ class ProfileController extends Controller
    
     public function view()
     {
+        if(auth('vendor_employee')->check()){
+            $employee  = VendorEmployee::with('role', 'department', 'branch')->where('id', Helpers::get_loggedin_user()->id)->first();
+        return view('vendor-views.profile.staff_profile', compact('employee'));
+
+        }else{
         $allPlans = Plan::where('status', 1)
             ->where(function ($q) {
                 $q->whereNull('store_id')
@@ -66,6 +72,7 @@ class ProfileController extends Controller
         }
 
         return view('vendor-views.profile.index', compact('data', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
+        }
     }
 
     public function bank_view()

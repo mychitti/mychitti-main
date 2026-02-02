@@ -105,7 +105,35 @@ class ItemController extends Controller
         }
     }
 
+ public function terms_and_condtions_store (Request $request){
+        $request->validate([
+            'gatepass_tnc' => 'required',
+            'quotation_tnc' => 'required',
+            ], [
+                'gatepass_tnc.required' => translate('messages.gatepass_terms_and_conditions_required'),
+                'quotation_tnc.required' => translate('messages.quotation_terms_and_conditions_required'),
+                ]);
+                $gatepass_tnc =  $this->base64UrlDecode($request->gatepass_tnc);   
+                $quotation_tnc =  $this->base64UrlDecode($request->quotation_tnc);
 
+        BusinessSetting::updateOrInsert(
+            ['key' => 'gatepass_terms_and_conditions'],
+            ['value' => $gatepass_tnc]
+        );
+        BusinessSetting::updateOrInsert(
+            ['key' => 'quotation_terms_and_conditions'],
+            ['value' => $quotation_tnc]
+        );
+return response()->json(['status' => true, 'message' => translate('messages.terms_and_conditions_updated_successfully')]);
+      
+    }
+   public function terms_and_condtions (Request $request){
+    
+        $quotattion_tnc = BusinessSetting::where('key', 'quotation_terms_and_conditions')->first()?->value ?? '';
+        $gatepass_tnc = BusinessSetting::where('key', 'gatepass_terms_and_conditions')->first()?->value ?? '';
+          
+        return view('admin-views.product.terms-and-conditions', compact('quotattion_tnc', 'gatepass_tnc'));
+    }
     function base64UrlDecode($data)
     {
         $remainder = strlen($data) % 4;

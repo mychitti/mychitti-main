@@ -2123,17 +2123,16 @@ function _accessibleModules()
 
 function wallet_recharge($data)
 {
-
     $store_id = $data->attribute_id;
+    $store = Store::find($store_id);
     $info = TmpWallet::where('store_id', $store_id)->latest()->first();
     $amount = $data->payment_amount;
 
-    $wallet =  StoreWallet::where('vendor_id', $store_id)->first();
+    $wallet =  StoreWallet::where('vendor_id', $store->vendor->id)->first();
     if ($wallet) {
         $wallet->increment('total_earning', $info->amount);
         $wallet->save();
     } else {
-        $store = Store::find($store_id);
         $wallet = new StoreWallet();
         $wallet->vendor_id = $store->vendor->id;
         $wallet->total_earning = $info->amount;
@@ -2528,7 +2527,7 @@ if (!function_exists('_reviewStatus')) {
     {
         $service = AcceptedServiceRequest::find($acc_id);
         if (isset($service) == false || $service->current_status != 'Completed') {
-            return  false;
+           return ['status' => false];
         }
         $store_id = $service->vendor_id;
         $user_id = DB::table('service_requests')->where('id', $service->service_request_id)->first();
@@ -2539,13 +2538,14 @@ if (!function_exists('_reviewStatus')) {
         }
         $store = Store::find($store_id);
         if (isset($store) == false) {
-            return false;
+            return ['status' => false];
         }
-        $multi_review = StoreReview::where(['store_id' => $store_id, 'user_id' => $user_id, 'order_id' => $acc_id])->first();
-        if (isset($multi_review)) {
-            return false;
+        $review = StoreReview::where(['store_id' => $store_id, 'user_id' => $user_id, 'order_id' => $acc_id])->first();
+      
+        if ($review) {
+            return ['status'=>'exists' , 'review'=> $review];
         }
-        return true;
+        return ['status' => true];
     }
 }
 if (!function_exists('_newServiceRequestsCount')) {
@@ -2764,7 +2764,11 @@ if (!function_exists('_serviceRunning')) {
                 'stores.id',
                 'accepted_service_requests.vendor_id'
             )
-
+            ->leftJoin(
+                'gate_passes',
+                'gate_passes.service_id',
+                'service_requests.id'
+            )
             ->join(
                 'items',
                 'items.id',
@@ -2788,6 +2792,7 @@ if (!function_exists('_serviceRunning')) {
                 'stores.slug as store_slug',
                 'stores.logo as store_logo',
                 'stores.phone as store_phone',
+                'gate_passes.id as gatepass_id',
             )
             ->orderBy('service_requests.created_at', 'desc');
 

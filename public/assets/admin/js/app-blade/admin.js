@@ -226,11 +226,6 @@ let tour = new Tour({
         $('body').css('overflow','hidden')
     }
 });
-$(document).on('click', '.instruction-Modal-Close', function () {
-    $('#instruction-modal').hide();
-        tour.init();
-        tour.start();
-});
 
 $(document).on('click', '.email-Modal-Close', function () {
     $('#email-modal').hide();

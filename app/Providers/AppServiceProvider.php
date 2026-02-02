@@ -18,6 +18,7 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,9 +38,9 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot() 
+    public function boot()
     {
-         Paginator::useBootstrap();
+        Paginator::useBootstrap();
         // View::composer('*', function ($view) {
         //     $zone_id = Session::get('zone_ids', json_encode([])); // stored by _setLocation()
 
@@ -78,7 +79,10 @@ class AppServiceProvider extends ServiceProvider
 
         //     $view->with('service_categories2', $service_categories2);
         // });
-
+    Relation::morphMap([
+        'staff' => \App\Models\VendorEmployee::class,
+        'vendor' => \App\Models\Store::class,
+    ]);
 
         $host = request()->getHost();
 

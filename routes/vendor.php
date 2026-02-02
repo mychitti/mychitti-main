@@ -443,7 +443,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store', 'MaintananceController@store')->name('store')->middleware('permission:boa_monthly_maintenance,add');
                 Route::get('edit/{id}', 'MaintananceController@edit')->name('edit')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::post('update', 'MaintananceController@update')->name('update')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::post('update-entry-price', 'MaintananceController@update_entry_price')->name('update-entry-price')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::delete('delete/{id}', 'MaintananceController@destroy')->name('delete')->middleware('permission:boa_monthly_maintenance,delete');
+                Route::get('status/{id}/{status}', 'MaintananceController@status')->name('status')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::get('mark-paid/{id}', 'MaintananceController@mark_paid')->name('mark-paid')->middleware('permission:boa_monthly_maintenance,mark_paid');
                 Route::get('export', 'MaintananceController@export')->name('export')->middleware('permission:boa_monthly_maintenance,export');
                 Route::post('import', 'MaintananceController@import')->name('import')->middleware('permission:boa_monthly_maintenance,import');
@@ -859,6 +861,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('view/{id}', 'EmployeeController@view')->name('view')->middleware('permission:staff_manage,view');
             Route::get('view-id-card/{id}', 'EmployeeController@view_id_card')->name('view-id-card')->middleware('permission:staff_manage,view');
             Route::get('terminate/{id}', 'EmployeeController@terminate')->name('terminate')->middleware('permission:staff_manage,terminate');
+         
         });
 
 
@@ -1088,6 +1091,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
 
         Route::get('profile/view', 'ProfileController@view')->name('profile.view');
+        Route::get('profile/edit', 'ProfileController@edit')->name('profile.edit');
         Route::post('profile/update', 'ProfileController@update')->name('profile.update');
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:bank_info']], function () {
             Route::post('settings-password', 'ProfileController@settings_password_update')->name('settings-password');

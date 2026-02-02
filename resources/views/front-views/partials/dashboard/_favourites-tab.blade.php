@@ -1,4 +1,4 @@
-  <div class="tab-pane fade" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
+  <div class="tab-pane fade show active" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
                     <div class="container tab_inner">
                         <h3 class="text-primary  my-2">Favourites</h3>
                         <nav>

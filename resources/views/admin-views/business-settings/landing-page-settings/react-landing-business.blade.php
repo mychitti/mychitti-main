@@ -14,12 +14,7 @@
                     {{ translate('messages.react_landing_page') }}
                 </span>
             </h1>
-            <div class="text--primary-2 py-1 d-flex flex-wrap align-items-center" type="button" data-toggle="modal" data-target="#how-it-works">
-                <strong class="mr-2">{{translate('See_how_it_works!')}}</strong>
-                <div>
-                    <i class="tio-info-outined"></i>
-                </div>
-            </div>
+            
         </div>
     </div>
     <div class="mb-4 mt-2">

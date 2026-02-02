@@ -191,8 +191,9 @@ class VendorController extends Controller
     {
         $otp  = rand(1000, 9999);
         $sendsms = _send_confirmation_sms('mobile_verification', $request->store_phone, $otp);
-        $insert  = DB::table('phone_otp')->insert([
+        $insert  = DB::table('phone_otp')->updateOrInsert([
             'phone' =>  $request->store_phone,
+        ], [
             'otp' => $otp,
             'created_at' => now()
         ]);
@@ -2279,7 +2280,6 @@ class VendorController extends Controller
             Toastr::error(translate('messages.Blalnce_mismatched_total_earning_is_too_low'));
             return redirect()->route('admin.restaurant.withdraw_list');
         }
-
 
         if ($request->approved == 1) {
             $wallet->increment('total_withdrawn', $withdraw->amount);

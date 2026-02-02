@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class InServiceQuotation extends Model
 {
     use HasFactory;
+
+    public function items()
+    {
+        return $this->hasMany(ServiceQuoteItem::class, 'quote_id');
+    }
   
 }
   

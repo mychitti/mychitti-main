@@ -312,8 +312,9 @@ class UserController extends Controller
             exit;
         }
         $otp  = rand(1000, 9999);
-        $insert  = DB::table('phone_otp')->insert([
+        $insert  = DB::table('phone_otp')->updateOrInsert([
             'phone' =>  $phone,
+        ], [
             'otp' => $otp,
             'created_at' => now()
         ]);
@@ -401,7 +402,7 @@ class UserController extends Controller
                         $url =  route('vendor.service.leads_list');
                         if ($store2) {
                             _sendSMS($store2->phone, $msg);
-                             _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
+                            _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
                         }
                     }
                 }
@@ -774,77 +775,79 @@ class UserController extends Controller
 
     public function login_attempt(Request $request) {}
 
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, $tab = 'profile')
     {
         $user_id = auth('web')->user() ? auth('web')->user()->id : session()->get('guest_id');
         $is_guest = auth('web')->user() ? 0 : 1;
 
-        // user details =================
+        $coupons = $user_details = $user_addresses = $orders = $p_orders = $wishlists = $services = null;
+
         $user_details = User::where('id', $user_id)->first();
-        $user_addresses = CustomerAddress::where('user_id', $user_id)->get();
-
-        // current orders ================
-        $orders = Order::with(['store', 'delivery_man.rating', 'parcel_category'])->where('is_guest', $is_guest)
-            ->withCount('details')->where(['user_id' => $user_id])->whereNotIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->Notpos()->get();
-        foreach ($orders as $key => $value) {
-            $orders[$key]['items'] = DB::table('order_details')
-                ->where('order_details.order_id', $value->id)
+        // prx($tab);
+        if ($tab == 'profile') {
+            // user details =================
+        } else if ($tab == 'address') {
+            // user address ================
+            $user_addresses = CustomerAddress::where('user_id', $user_id)->get();
+        } else if ($tab == 'bookings') {
+            // user services ================
+            $services['history'] = _serviceHistory($user_id);
+            $services['running'] = _serviceRunning($user_id);
+        } else if ($tab == 'favourites') {
+            // wishlist ================
+            $wishlists['items'] = DB::table('wishlists')
+                ->where('user_id', $user_id)
+                ->join('items', 'items.id', '=', 'wishlists.item_id')
+                ->when(config('module.current_module_data'), function ($query) {
+                    $query->where('module_id', config('module.current_module_data')['id']);
+                })
+                ->whereNotNull('wishlists.item_id')
+                ->select('items.*', 'wishlists.id')
+                ->get();
+            $wishlists['stores'] =  DB::table('wishlists')->where('user_id', $user_id)
+                ->join('stores', 'stores.id', 'wishlists.store_id')
+                ->select('stores.*', 'wishlists.id')
+                ->whereNotNull('wishlists.store_id')->get();
+        } else if ($tab == 'coupons') {
+            // coupons ======================
+            $coupons = Coupon::withoutGlobalScopes()
+                ->with('store:id,name')
+                ->active()
+                ->whereDate('expire_date', '>=', now()->toDateString())
+                ->whereJsonContains('customer_id', (string) $user_id) // ✅ MUST be string
                 ->get();
         }
-        // prx($user_id);
-        // previous orders =================
-        $p_orders = Order::with(['store', 'delivery_man.rating', 'parcel_category', 'refund:order_id,admin_note,customer_note'])->withCount('details')->where(['user_id' => $user_id])->whereIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->where(['user_id' => $user_id])
-            ->Notpos()->get();
+
+        // // current orders ================
+        // $orders = Order::with(['store', 'delivery_man.rating', 'parcel_category'])->where('is_guest', $is_guest)
+        //     ->withCount('details')->where(['user_id' => $user_id])->whereNotIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->Notpos()->get();
+        // foreach ($orders as $key => $value) {
+        //     $orders[$key]['items'] = DB::table('order_details')
+        //         ->where('order_details.order_id', $value->id)
+        //         ->get();
+        // }
+
+        // // previous orders =================
+        // $p_orders = Order::with(['store', 'delivery_man.rating', 'parcel_category', 'refund:order_id,admin_note,customer_note'])->withCount('details')->where(['user_id' => $user_id])->whereIn('order_status', ['delivered', 'canceled', 'refund_requested', 'refund_request_canceled', 'refunded', 'failed'])->where(['user_id' => $user_id])
+        //     ->Notpos()->get();
 
 
-        foreach ($p_orders as $key => $value) {
-            $p_orders[$key]['items'] = DB::table('order_details')
-                ->where('order_details.order_id', $value->id)
-                ->get();
-        }
+        // foreach ($p_orders as $key => $value) {
+        //     $p_orders[$key]['items'] = DB::table('order_details')
+        //         ->where('order_details.order_id', $value->id)
+        //         ->get();
+        // }
 
-        // user services ================================================
-        $services['history'] = _serviceHistory($user_id);
-        $services['running'] = _serviceRunning($user_id);
-        // prx($services['history']);
         // user services end ================================================
 
-        // prx($services['history'] );
-
-        // wishlist ================
-        $wishlists['items'] = DB::table('wishlists')
-            ->where('user_id', $user_id)
-            ->join('items', 'items.id', '=', 'wishlists.item_id')
-            ->when(config('module.current_module_data'), function ($query) {
-                $query->where('module_id', config('module.current_module_data')['id']);
-            })
-            ->whereNotNull('wishlists.item_id')
-            ->select('items.*', 'wishlists.id')
-            ->get();
-
-        // prx( $wishlists['items'][0]);    
-
-        $wishlists['stores'] =  DB::table('wishlists')->where('user_id', $user_id)
-            ->join('stores', 'stores.id', 'wishlists.store_id')
-            ->select('stores.*', 'wishlists.id')
-            ->whereNotNull('wishlists.store_id')->get();
-
         // echo '<pre>';
-        foreach ($orders as $key => $order) {
-            if (count($orders)) {
-                foreach ($order['items'] as $key => $o_item) {
-                    // print_r(json_decode($o_item->item_details)?->image);
-                }
-            }
-        }
-
-        // prx($user_id);
-        $coupons = Coupon::withoutGlobalScopes()
-            ->with('store:id,name')
-            ->active()
-            ->whereDate('expire_date', '>=', now()->toDateString())
-            ->whereJsonContains('customer_id', (string) $user_id) // ✅ MUST be string
-            ->get();
+        // foreach ($orders as $key => $order) {
+        //     if (count($orders)) {
+        //         foreach ($order['items'] as $key => $o_item) {
+        //             // print_r(json_decode($o_item->item_details)?->image);
+        //         }
+        //     }
+        // }
 
         return view('front-views.dashboard', compact('coupons', 'user_details', 'user_addresses', 'orders', 'p_orders', 'wishlists', 'services'));
     }

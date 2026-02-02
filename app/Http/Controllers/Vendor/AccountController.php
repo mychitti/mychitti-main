@@ -225,8 +225,9 @@ class AccountController extends Controller
 
         $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
 
-        $insert  = DB::table('phone_otp')->insert([
+        $insert  = DB::table('phone_otp')->updateOrInsert([
             'phone' =>  $phone,
+        ], [
             'otp' => $otp,
             'created_at' => now()
         ]);

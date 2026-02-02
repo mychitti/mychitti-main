@@ -119,7 +119,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     @include('layouts.admin.partials._header')
     @if (Request::is('payment/configuration*') || Request::is('sms/configuration*'))
         @php($module_type = 'settings')
-    @elseif(_isCommonDashboard())
+    @elseif(_isCommonDashboard()|| Request::is('file*')|| Request::is('admin/file*'))
         @php($module_type = 'dashboard')
     @endif
 
@@ -286,42 +286,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
-        <div class="modal" id="instruction-modal">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-body">
-                        <button type="button" class="close instruction-Modal-Close" data-dismiss="modal"
-                            aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <div class="embed-responsive embed-responsive-16by9">
-                            <iframe class="embed-responsive-item" src="https://www.youtube.com/embed/0sus46BflpU"
-                                title="YouTube video player" frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen></iframe>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal" id="email-modal">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-body">
-                        <button type="button" class="close email-Modal-Close" data-dismiss="modal"
-                            aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <div class="embed-responsive embed-responsive-16by9">
-                            <iframe class="embed-responsive-item" src="https://www.youtube.com/embed/_BIHsClZtOE"
-                                title="YouTube video player" frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen></iframe>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+       
         <div class="modal fade" id="action_verify_modal" tabindex="-1" aria-labelledby="exampleModalLabel"
             aria-hidden="true">
             <div class="modal-dialog">
@@ -420,11 +385,6 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
 
             @php($modules = \App\Models\Module::Active()->get())
-
-            @if (isset($modules) && $modules->count() < 1)
-                $('#instruction-modal').show();
-            @endif
-
 
 
             $('.restart-Tour').on('click', function() {

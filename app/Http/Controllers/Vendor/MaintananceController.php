@@ -22,8 +22,10 @@ class MaintananceController extends Controller
     {
         $store_id = Helpers::get_store_id();
         $search = request('search') ?? '';
+        $status = request('status');
+
         $preset = request('date_range') ?? 'this_year';
-        $custom = request('custom_date_range') ?? null; 
+        $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
         $formatted_from  = $range['start'];
         $formatted_to = $range['end'];
@@ -32,8 +34,15 @@ class MaintananceController extends Controller
         $storeConfig = StoreConfig::where('store_id', $store_id)->first();
         $data['day_before'] = $storeConfig && $storeConfig->reminder_day_before ? $storeConfig->reminder_day_before : 2;
 
-        $expense_types = AccountOption::where('type', 'expense_type')->where('store_id' , $store_id)->get();
+        $expense_types = AccountOption::where('type', 'expense_type')->where('store_id', $store_id)->get();
         $masters = MonthlyMaintanance::where('store_id', $store_id)
+
+            ->where('master', 1)
+            ->get();
+
+        $masterIds = $masters->pluck('id')->toArray();
+ 
+        $records = MonthlyMaintanance::where('store_id', $store_id)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('expense_type', 'like', '%' . $search . '%')
@@ -41,19 +50,16 @@ class MaintananceController extends Controller
                         ->orWhere('title', 'like', '%' . $search . '%');
                 });
             })
+            ->when($status, function ($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->whereBetween('created_at', [$formatted_from, $formatted_to])
-            ->where('master', 1)
-            ->get();
-
-        $masterIds = $masters->pluck('id')->toArray();
-
-        $records = MonthlyMaintanance::where('store_id', $store_id)
             ->where('master', 0)
             ->whereIn('parent', $masterIds)
             ->orderBy('due', 'desc')
             ->paginate(10);
             // prx($records)
-;
+        ;
         foreach ($masters as $master) {
             $dues = MonthlyMaintanance::where('store_id', $store_id)
                 ->where('master', 0)
@@ -74,7 +80,7 @@ class MaintananceController extends Controller
         }
 
 
-        return view('vendor-views.maintenance.index', compact('data','preset','records', 'masters', 'expense_types'));
+        return view('vendor-views.maintenance.index', compact('data', 'preset', 'records', 'masters', 'expense_types'));
     }
 
     public function import(Request $request)
@@ -147,6 +153,7 @@ class MaintananceController extends Controller
     {
         $record = MonthlyMaintanance::findOrFail($id);
         $record->due = 0; // Mark as paid
+        $record->status = 'clear' ; // Mark as paid
         $record->paid_for = now(); // Set last paid date to now
         $record->save();
 
@@ -166,7 +173,7 @@ class MaintananceController extends Controller
                 $value->save();
             }
         }
-        _auditLogs('Monthly Maintanance ('.$record->title.') Marked Paid');
+        _auditLogs('Monthly Maintanance (' . $record->title . ') Marked Paid');
 
         _saveDayBookEntry($record->amount, 'debit', $record->store_id, $record->expense_type, null, $voucher?->id);
         Toastr::success('Maintenance record marked as paid successfully.');
@@ -179,6 +186,8 @@ class MaintananceController extends Controller
 
     public function store(Request $request)
     {
+
+    // prx($request->all());
         $request->validate([
             'expense_type' => 'required',
             'title' => 'required',
@@ -203,7 +212,11 @@ class MaintananceController extends Controller
         $maintenance->title = $request->title;
         $maintenance->amount = $request->amount;
         $maintenance->notes = $request->notes;
+        $maintenance->status = 'clear';
+
         $maintenance->payment_day = $request->payment_day;
+        $maintenance->duration_type = $request->duration_type;
+        $maintenance->start_month = $request->start_month;
         $maintenance->master = 1;
         $maintenance->save();
 
@@ -219,6 +232,44 @@ class MaintananceController extends Controller
         return view('vendor-views.maintenance.edit', compact('record'));
     }
 
+    public function update_entry_price(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+            'amount' => 'required|numeric',
+        ]);
+        $record = MonthlyMaintanance::findOrFail($request->id);
+        $record->amount = $request->amount;
+        $record->save();
+
+        _auditLogs("Updated Monthly Maintanance Price: " . $record->title);
+
+        return response()->json(['success' => true, 'message' => 'Price updated successfully.']);
+    }
+    public function status($id, $status)
+    {
+        $record = MonthlyMaintanance::findOrFail($id);
+        $record->due = 0;
+        $record->status = $status;
+        $record->save();
+
+        // DELETE VOUCHER AND LEDGER ENTRIES IF CANCELLED
+        if ($status == 'cancel') {
+            $voucher = StoreVoucher::where('maintanace_id', $record->id)->first();
+            if ($voucher) {
+                // delete ledger entries
+                StoreLedgerEntry::where('voucher_id', $voucher->id)->delete();
+                // delete voucher
+                $voucher->delete();
+            }
+            _auditLogs("Cancelled Monthly Maintanance (" . $record->title . ")");
+        }
+
+        _auditLogs("Updated Monthly Maintanance (" . $record->title . ") Status to " . $status);
+
+        Toastr::success('Maintenance record status updated successfully.');
+        return redirect()->back();
+    }
     public function update(Request $request)
     {
         $record = MonthlyMaintanance::findOrFail($request->id);

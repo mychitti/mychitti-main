@@ -175,6 +175,19 @@
                             <div id="accountNavbarDropdown"
                                  class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-right navbar-dropdown-menu navbar-dropdown-account min--240">
                                 <div class="dropdown-item-text">
+                                @if(auth('vendor_employee')->check())
+                                <a href="{{route('vendor.profile.view')}}" class="media align-items-center">
+                                        <div class="avatar avatar-sm avatar-circle mr-2">
+                                            <img class="avatar-img  onerror-image"  data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
+                                            src="{{\App\CentralLogics\Helpers::onerror_image_helper(\App\CentralLogics\Helpers::get_loggedin_user()->image, asset('storage/app/public/vendor/').'/'.\App\CentralLogics\Helpers::get_loggedin_user()->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'vendor/') }}"
+                                                 alt="Owner image">
+                                        </div>
+                                        <div class="media-body">
+                                            <span class="card-title h5">{{\App\CentralLogics\Helpers::get_loggedin_user()->f_name}}</span>
+                                            <span class="card-text">{{\App\CentralLogics\Helpers::get_loggedin_user()->email}}</span>
+                                        </div>
+                                    </a>
+                                @else
                                     <div class="media align-items-center">
                                         <div class="avatar avatar-sm avatar-circle mr-2">
                                             <img class="avatar-img  onerror-image"  data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
@@ -187,6 +200,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @endif
 
                                 <div class="dropdown-divider"></div>
 

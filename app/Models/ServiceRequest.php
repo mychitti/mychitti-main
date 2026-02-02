@@ -24,4 +24,12 @@ class ServiceRequest extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+    public function gatePass()
+    {
+        return $this->hasOne(GatePass::class, 'service_id', 'id');
+    }
+    public function quotation()
+    {
+        return $this->hasOne(InServiceQuotation::class, 'service_id');
+    }
 }

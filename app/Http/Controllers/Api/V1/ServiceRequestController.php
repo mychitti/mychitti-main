@@ -14,12 +14,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\AccountTransaction;
 use App\Models\CustomerAddress;
+use App\Models\EmployeeRole;
 use App\Models\GatePassItem;
 use App\Models\LeadCharge;
 use App\Models\LeadStatus;
+use App\Models\ServiceInvoice;
 use App\Models\ServiceQuoteItem;
 use App\Models\StoreWallet;
 use App\Models\User;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\DB;
 
 class ServiceRequestController extends Controller
@@ -233,15 +236,41 @@ class ServiceRequestController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-          $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
-        // $serviceRequest = ServiceRequest::with([
-        //     'accepted:quoted_price,current_status,service_request_id,vendor_id',
-        //     'accepted.store:id,name,address,logo,phone,email',
-        //     'item:id,name,image,images',
-        // ])
-        //     ->select('id', 'item_id', 'status', 'created_at')
-        //     ->where('id', $request->service_id)
-        //     ->first();
+        //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
+        $serviceRequest = ServiceRequest::with([
+            'accepted:quoted_price,current_status,service_request_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,cancel_reason,cancelled_by',
+
+            'accepted.staff:id,phone,email,image,employee_role_id,f_name,l_name',
+
+            'item:id,name,image,images',
+
+            'gatePass:id,service_id,approved,returned,return_approved,created_at,updated_at',
+            'gatePass.items:id,gatepass_id,title,image,description',
+
+            'quotation:id,service_id,approved,created_at,updated_at',
+            'quotation.items:id,quote_id,name,price,qty,tax,total',
+        ])
+            ->select('id', 'item_id', 'status', 'created_at')
+            ->where('id', $request->service_id)
+            ->first();
+
+        
+        if ($serviceRequest && $serviceRequest->accepted && $serviceRequest->accepted->staff) {
+            $serviceRequest->accepted->staff->makeHidden(['f_name', 'l_name']);
+        }
+        // add role
+        if ($serviceRequest && $serviceRequest->accepted) {
+            if ($serviceRequest->accepted->assigned_type == 'vendor') {
+                $serviceRequest->accepted->staff->role = 'Vendor';
+            } elseif ($serviceRequest->accepted->staff && $serviceRequest->accepted->staff->employee_role_id) {
+                $role = EmployeeRole::where('id', $serviceRequest->accepted->staff->employee_role_id)->first();
+                $serviceRequest->accepted->staff->role = $role ? $role->name : null;
+            }
+        }
+
+        $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
+        $serviceRequest->invoice_url = $invoice ? asset('storage/invoice/' . $invoice->invoice_file) : null;
+
 
         return response()->json(['status' => true, 'data' => $serviceRequest]);
     }
@@ -465,8 +494,9 @@ class ServiceRequestController extends Controller
                 if ($applyCharges) {
                     try {
                         //code...
+                        $vendor_id = Store::where('id', $acceptedReq->vendor_id)->value('vendor_id');
 
-                        $wallet = StoreWallet::where('vendor_id', $acceptedReq->vendor_id)->first();
+                        $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
                         $wallet->decrement('total_earning', $confirmationCharges);
                         $wallet->increment('total_withdrawn', $confirmationCharges);
                         $wallet->save();
@@ -476,7 +506,7 @@ class ServiceRequestController extends Controller
                         $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');
                         $account_transaction->from_type = 'store';
                         $account_transaction->amount = $confirmationCharges;
-                        $account_transaction->from_id = $acceptedReq->vendor_id;
+                        $account_transaction->from_id = $vendor_id;
                         $account_transaction->method = 'wallet';
                         $account_transaction->action = 'debit';
                         $account_transaction->reason = 'Lead Confirmation Charges';

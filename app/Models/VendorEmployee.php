@@ -25,6 +25,14 @@ class VendorEmployee extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return trim(($this->f_name ?? '') . ' ' . ($this->l_name ?? ''));
+    }
+
+
     public function store()
     {
         return $this->belongsTo(Store::class);

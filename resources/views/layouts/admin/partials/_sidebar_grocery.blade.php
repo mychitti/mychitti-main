@@ -280,6 +280,12 @@
                                 <span class="text-truncate"> Trash</span>
                             </a>
                         </li>
+                        <li class="nav-item {{  (Request::is('item/terms-and-conditions/*') )  ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.item.terms-and-conditions.index') }}" title="Terms and Conditions">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">Terms and Conditions</span>
+                            </a>
+                        </li>
                         @if (0 && \App\CentralLogics\Helpers::get_mail_status('product_gallery'))
                         <li class="nav-item {{  Request::is('item/product-gallery') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.item.product_gallery') }}" title="{{ translate('messages.Service_Gallery') }}">
