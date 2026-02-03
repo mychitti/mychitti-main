@@ -63,7 +63,7 @@
                                     <input class="form-control edit_end_date" type="date" name="expiry_date"
                                         id="">
 <input type="hidden" name="store_id" class="edit_store_id" value="">
-                                    <button class="btn btn-primary">Add</button>
+                                    <button class="btn btn-primary">Update</button>
                                 </form>
                             </div>
                         </div>
