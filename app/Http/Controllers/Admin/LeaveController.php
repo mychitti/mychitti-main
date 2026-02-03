@@ -142,6 +142,7 @@ class LeaveController extends Controller
             $leave->added_by = 'admin';
             $leave->month = $request->post('month');
             $leave->year = $request->post('year');
+           
             $leave->leave_type = $request->post('leaveType');
             $leave->reason = $request->post('reason');
             $leave->created_at = date('Y-m-d H:i:s');
@@ -149,9 +150,9 @@ class LeaveController extends Controller
             $leave->save();
 
             // attendance 
-            if($request->post('leaveType') == 'HDS' || $request->post('leaveType') == 'HDF'  ){
+            if ($request->post('leaveType') == 'HDS' || $request->post('leaveType') == 'HDF') {
                 $leaveType = 'HD';
-            }else{
+            } else {
                 $leaveType = $request->post('leaveType');
             }
             $att = new Attendance;

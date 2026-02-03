@@ -251,7 +251,7 @@
                 <div class="activity-card">
                     <div class="d-card-header">
                         <i class="fas fa-box"></i>
-                        <h2 class="d-card-title">Leads Activity</h2>
+                        <h2 class="d-card-title">Leads Activity</h2> 
 
                     </div>
                     <div class="card-content">
@@ -276,7 +276,7 @@
                     <div class="d-card-header">
                         <i class="fas fa-clipboard-list"></i>
                         <h2 class="d-card-title">Task Activity</h2>
-                    </div>
+                    </div> 
                     <div class="card-content">
                         <a href="{{ route('vendor.task.list') }}?status=Completed" class="stat-badge badge-purple">
                             <span class="stat-value">{{ $taskStats['completed'] }}</span>
@@ -417,7 +417,7 @@
             @endif
 
 
-
+ 
             <!-- End Row -->
         @else
             <!-- Page Header -->

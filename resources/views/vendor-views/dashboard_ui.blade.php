@@ -4,6 +4,8 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
+
     <title>Business Dashboard</title>
     <style>
         .app_dwnld_div img {
@@ -497,6 +499,21 @@
 @section('content')
     <div class="content container-fluid">
         @if (auth('vendor')->check())
+            <div class="row align-items-center mb-2">
+
+                <div class="col-sm mb-2 mb-sm-0">
+                    <h1 class="page-header-title">{{ translate('messages.welcome') }},
+                        {{ auth('vendor')->user()->f_name }}.</h1>
+                    <p class="page-header-text">{{ translate('messages.employee_welcome_message') }}</p>
+                </div>
+                <form action="" class="d-flex date-range-form">
+                    @include('vendor-views/form_modals/date_range')
+                    <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
+                        data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
+
+
+                </form>
+            </div>
             <div class="dashboard-container">
                 <!-- Stats Cards -->
                 <div class="stats-grid">
@@ -506,58 +523,67 @@
                                 alt="my wallet" class="dashboard-icon">
                         </div>
                         <div class="stat-label">Wallet Balance</div>
-                        <div class="stat-value">₹10,000</div>
+                        <div class="stat-value">{{ _price($data['wallet_balance']) }}</div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon icon-revenue">
-                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Salary_color.png') }}"
-                                alt="my wallet" class="dashboard-icon">
-                        </div>
-                        <div class="stat-label">Today's Revenue</div>
-                        <div class="stat-value">₹10,000</div>
-                        <div class="stat-change">
-                            <i class="bi bi-arrow-up"></i>
-                            <span>2,200 since morning</span>
-                        </div>
-                    </div>
-
                     <div class="stat-card">
                         <div class="stat-icon icon-leads">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
                                 alt="my wallet" class="dashboard-icon">
                         </div>
-                        <div class="stat-label">Today's Leads</div>
-                        <div class="stat-value">12 <span style="font-size: 1rem; color: var(--text-muted);">Leads</span>
+                        <div class="stat-label">Leads</div>
+                        <div class="stat-value">{{ $data['total_leads_count'] }} <span
+                                style="font-size: 1rem; color: var(--text-muted);">Leads</span>
                         </div>
                         <div class="stat-change">
                             <i class="bi bi-arrow-up"></i>
-                            <span>15% vs. yesterday</span>
+                            <span>{{ $data['completed_leads_count'] }} completed</span>
                         </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon icon-customers">
-                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
-                                alt="my wallet" class="dashboard-icon">
+                    @if (selected_menu('account_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-revenue">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Salary_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
+                            </div>
+                            <div class="stat-label">Revenue</div>
+                            <div class="stat-value">{{ _price($data['revenue'] ) }}</div>
+                            <div class="stat-change">
+                                <i class="bi bi-arrow-up"></i>
+                            </div>
                         </div>
-                        <div class="stat-label">My Customers</div>
-                        <div class="stat-value">3,088 <span style="font-size: 1rem; color: var(--text-muted);">+88</span>
-                        </div>
-                        <div class="stat-change">
+                    @endif
+                    @if (selected_menu('client_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-customers">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
+                            </div>
+                            <div class="stat-label">My Customers</div>
+                            <div class="stat-value">{{ $data['my_customers'] }}
+                                {{-- <span style="font-size: 1rem; color: var(--text-muted);">+88</span> --}}
+                            </div>
+                            {{-- <div class="stat-change">
                             <i class="bi bi-arrow-up"></i>
                             <span>88 new</span>
+                        </div> --}}
                         </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon icon-employees">
-                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Accounts_management_color.png') }}"
-                                alt="my wallet" class="dashboard-icon">
+                    @endif
+                    @if (selected_menu('leave_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-employees">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Accounts_management_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
+                            </div>
+                            <div class="stat-label">On-duty Employs</div>
+                            <div class="stat-value">4 <span style="font-size: 1rem; color: var(--text-muted);">👥</span>
+                            </div>
+                            <div class="stat-change">
+                                <i class="bi bi-arrow-up"></i>
+                                <span>{{ $data['leave_requests'] }} Leave Requests</span>
+                            </div>
                         </div>
-                        <div class="stat-label">On-duty Employs</div>
-                        <div class="stat-value">4 <span style="font-size: 1rem; color: var(--text-muted);">👥</span></div>
-                    </div>
+                    @endif
                 </div>
 
                 <!-- Main Content -->
@@ -567,31 +593,39 @@
                         <div class="activity-section">
                             <div class="section-header">
                                 <h2 class="section-title">Recent Activity</h2>
-                                {{-- <button class="view-all-btn">
-                                    View All
-                                    <i class="bi bi-chevron-right"></i>
-                                </button> --}}
-                            </div>
 
-                            <!-- Custom Tabs -->
-                            <div class="custom-tabs">
-                                {{-- <button class="tab-btn nav-link active" id="home-tab" data-toggle="tab" data-target="#home"
-                                    type="button" role="tab" aria-controls="home" aria-selected="true"
-                                    data-tab="all">All</button> --}}
-                                <button class="tab-btn nav-link " id="lead-tab" data-toggle="tab" data-target="#lead"
-                                    type="button" role="tab" aria-controls="lead" aria-selected="true"
-                                    data-tab="lead">Leads</button>
-                              
-                                {{-- <button class="tab-btn nav-link" data-tab="leads">Leads</button> --}}
-                                <button class="tab-btn nav-link" data-tab="sales">Sales</button>
-                                <button class="tab-btn nav-link" data-tab="expenses">Expenses</button>
-                                <button class="tab-btn nav-link" data-tab="pending">Pending Payments</button>
                             </div>
+                            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link active" id="leads-tab" data-toggle="tab"
+                                        data-target="#leads" type="button" role="tab" aria-controls="leads"
+                                        aria-selected="true">Leads</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="sales-tab" data-toggle="tab" data-target="#sales"
+                                        type="button" role="tab" aria-controls="sales"
+                                        aria-selected="false">Sales</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="expenses-tab" data-toggle="tab"
+                                        data-target="#expenses" type="button" role="tab" aria-controls="expenses"
+                                        aria-selected="false">Expenses</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="pending-tab" data-toggle="tab"
+                                        data-target="#pending" type="button" role="tab" aria-controls="pending"
+                                        aria-selected="false">Pending Payments</button>
+                                </li>
+                            </ul> 
+
                             <div class="tab-content" id="myTabContent">
-                                <div class="tab-pane fade show active" id="home" role="tabpanel"
-                                    aria-labelledby="home-tab">
-                                    all
-                                    <!-- Table -->
+                                <div class="tab-pane fade show active" id="leads" role="tabpanel"
+                                    aria-labelledby="leads-tab">
+                                    @include('vendor-views.dashboard.leads_list', ['leads' => $leads])
+                                   
+                                </div>
+                                <div class="tab-pane fade " id="sales" role="tabpanel" aria-labelledby="sales-tab">
+                                    sales
                                     <table class="table table-striped">
                                         <thead>
                                             <tr>
@@ -633,9 +667,53 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <div class="tab-pane fade " id="lead" role="tabpanel" aria-labelledby="lead-tab">
-                                    <!-- Table -->
-                                    lead
+                                <div class="tab-pane fade " id="expenses" role="tabpanel"
+                                    aria-labelledby="expenses-tab">
+                                    expenses
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="pending" role="tabpanel"
+                                    aria-labelledby="pending-tab">
+                                    pending
                                     <table class="table table-striped">
                                         <thead>
                                             <tr>
@@ -680,57 +758,214 @@
                             </div>
                         </div>
 
-                            <!-- Smart Table Section -->
-                            <div class="activity-section smart-table">
-                                <div class="section-header">
-                                    <h2 class="section-title">Smart Table</h2>
-                                    {{-- <button class="view-all-btn">
-                                    View All
-                                    <i class="bi bi-chevron-right"></i>
-                                </button> --}}
-                                </div>
 
-                                <!-- Custom Tabs -->
-                                <div class="custom-tabs">
-                                    <button class="tab-btn active" data-tab="leads">Leads</button>
-                                    <button class="tab-btn" data-tab="sales">Sales</button>
-                                    <button class="tab-btn" data-tab="expenses">Expenses</button>
-                                    <button class="tab-btn" data-tab="pending">Pending Payments</button>
-                                </div>
-
-                                <!-- Table -->
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>S No</th>
-                                            <th>Date</th>
-                                            <th>Description</th>
-                                            <th>Type</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>1</td>
-                                            <td>01-10-2025</td>
-                                            <td>Office Rent</td>
-                                            <td class="type-expense">Expense</td>
-                                            <td>₹5,000</td>
-                                            <td><span class="status-badge status-pending">Pending</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td>2</td>
-                                            <td>02-10-2025</td>
-                                            <td>Sale</td>
-                                            <td class="type-income">Income</td>
-                                            <td>₹5,000</td>
-                                            <td><span class="status-badge status-pending">Pending</span></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <div class="activity-section mt-2">
+                            <div class="section-header">
+                                <h2 class="section-title">Smart Table </h2>
 
                             </div>
+                            <ul class="nav nav-tabs" id="myTab2" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link active" id="leads2-tab" data-toggle="tab"
+                                        data-target="#leads2" type="button" role="tab" aria-controls="leads"
+                                        aria-selected="true">Leads</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="sales2-tab" data-toggle="tab"
+                                        data-target="#sales2" type="button" role="tab" aria-controls="sales"
+                                        aria-selected="false">Sales</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="expenses2-tab" data-toggle="tab"
+                                        data-target="#expenses2" type="button" role="tab" aria-controls="expenses"
+                                        aria-selected="false">Expenses</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="pending2-tab" data-toggle="tab"
+                                        data-target="#pending2" type="button" role="tab" aria-controls="pending"
+                                        aria-selected="false">Pending Payments</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="myTabContent">
+                                <div class="tab-pane fade show active" id="leads2" role="tabpanel"
+                                    aria-labelledby="leads-tab">
+                                    leads
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="sales2" role="tabpanel" aria-labelledby="sales-tab">
+                                    sales
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="expenses2" role="tabpanel"
+                                    aria-labelledby="expenses-tab">
+                                    expenses
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="pending2" role="tabpanel"
+                                    aria-labelledby="pending-tab">
+                                    pending
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
 
                     </div>
 
@@ -766,7 +1001,7 @@
                         <!-- Chart -->
                         <div class="chart-section">
                             <div class="chart-header">
-                                <h3 class="section-title">Profit & Loss Report</h3>
+                                <h3 class="section-title">chart</h3>
                                 <span class="chart-period">Weekly</span>
                             </div>
 
@@ -1086,4 +1321,5 @@
             });
         }
     </script>
+    @include('vendor-views/js/date_range')
 @endpush

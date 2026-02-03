@@ -350,7 +350,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::group(['prefix' => 'address'], function () {
                 Route::get('list', 'CustomerController@address_list');
                 Route::post('add', 'CustomerController@add_new_address');
-                Route::put('update/{id}', 'CustomerController@update_address');
+                Route::post('update/{id}', 'CustomerController@update_address');
                 Route::put('update-pincode/{id}', 'CustomerController@update_pincode');
                 Route::delete('delete', 'CustomerController@delete_address');
             });

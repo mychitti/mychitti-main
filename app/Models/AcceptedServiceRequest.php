@@ -16,6 +16,10 @@ class AcceptedServiceRequest extends Model
     {
         return $this->morphTo(null, 'assigned_type', 'assigned_to');
     }
+    public function serviceRequest()
+    {
+        return $this->belongsTo(ServiceRequest::class, 'service_request_id');
+    }
  
     public function getAssignedDetailsAttribute()
     {

@@ -238,7 +238,7 @@ class ServiceRequestController extends Controller
         }
         //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
         $serviceRequest = ServiceRequest::with([
-            'accepted:quoted_price,current_status,service_request_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,cancel_reason,cancelled_by',
+            'accepted:id,service_request_id,quoted_price,current_status,service_request_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,cancel_reason,cancelled_by',
 
             'accepted.staff:id,phone,email,image,employee_role_id,f_name,l_name',
 
@@ -269,7 +269,7 @@ class ServiceRequestController extends Controller
         }
 
         $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
-        $serviceRequest->invoice_url = $invoice ? asset('storage/invoice/' . $invoice->invoice_file) : null;
+        $serviceRequest->invoice_url = $invoice ? asset('storage/invoice/' . $invoice->pdf) : null;
 
 
         return response()->json(['status' => true, 'data' => $serviceRequest]);

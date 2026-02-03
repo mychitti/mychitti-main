@@ -41,7 +41,7 @@
                     type="button" role="tab" aria-controls="v-pills-messages" aria-selected="false">Favourite</button>
                 <button class="nav-link" type="button" data-bs-toggle="modal"
                     data-bs-target="#exampleModalLogout">Logout</button> --}}
-                <a href="{{route('dashboard', ['profile'])}}" class=" text-center nav-link  {{Request::is('dashboard/profile') ? 'active' : ''}}">Profile</a>
+                <a href="{{route('dashboard', ['profile'])}}" class=" text-center nav-link  {{Request::is('dashboard/profile') || Request::is('dashboard') ? 'active' : ''}}">Profile</a>
                 <a href="{{route('dashboard', ['address'])}}" class=" text-center nav-link  {{Request::is('dashboard/address') ? 'active' : ''}}">Address</a>
                 <a href="{{route('dashboard', ['bookings'])}}" class=" text-center nav-link  {{Request::is('dashboard/bookings') ? 'active' : ''}}">Bookings</a>
                 <a href="{{route('dashboard', ['coupons'])}}" class=" text-center nav-link  {{Request::is('dashboard/coupons') ? 'active' : ''}}">Coupons</a>
@@ -51,7 +51,7 @@
                
             </div>
             <div class="tab-content " id="v-pills-tabContent" style="width:100% ;min-height: 300px;">
-                @if (request()->tab == 'profile')
+                @if (request()->tab == 'profile' || Request::is('dashboard') )
                     @include('front-views.partials.dashboard._profile-tab')
                 @elseif(request()->tab == 'address')
                     @include('front-views.partials.dashboard._address-tab')

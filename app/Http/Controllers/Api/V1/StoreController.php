@@ -152,12 +152,12 @@ class StoreController extends Controller
         $validator = Validator::make($request->all(), [
             'user_id' => 'required',
             'store_id' => 'required',
-            'acc_id' => 'required',
+            'acceptance_id' => 'required',
             'comment' => 'required',
             'rating' => 'required|numeric|max:5',
         ]);
 
-        $order = AcceptedServiceRequest::find($request->acc_id);
+        $order = AcceptedServiceRequest::find($request->acceptance_id);
         if (isset($order) == false) {
             $validator->errors()->add('acc_id', translate('messages.service_data_not_found'));
         } else if ($order->current_status != 'Completed') {
@@ -170,7 +170,7 @@ class StoreController extends Controller
             $validator->errors()->add('store_id', translate('messages.store_not_found'));
         }
 
-        $multi_review = StoreReview::where(['store_id' => $request->store_id, 'user_id' => $request->user_id, 'order_id' => $request->acc_id])->first();
+        $multi_review = StoreReview::where(['store_id' => $request->store_id, 'user_id' => $request->user_id, 'order_id' => $request->acceptance_id])->first();
         if (isset($multi_review)) {
             return response()->json([
                 'errors' => [

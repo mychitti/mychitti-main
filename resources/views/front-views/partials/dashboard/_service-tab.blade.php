@@ -406,15 +406,16 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                                 @if ( _reviewStatus($serRun->id)['status'] === 'exists')
+
                                                             <div class="detail-card">
                                                                 <div class="detail-card-header">
                                                                     <i class="fas fa-store me-2"></i>
                                                                     <span>Rating & Review</span>
                                                                 </div>
                                                                 <div class="detail-card-content">
-                                                                 @if (_reviewStatus($serRun->id)['status'] == 'exists')
                                                                     @php
-                                                                        $rev = _reviewStatus($serRun->id)['review'];
+                                                                        $rev = isset(_reviewStatus($serRun->id)['review']) ? _reviewStatus($serRun->id)['review'] : null;
                                                                         $store = App\Models\Store::find(
                                                                             $serRun->store_id,
                                                                         );
@@ -490,9 +491,10 @@
 
 
                                                                     </div>
-                                                                    @endif
                                                                 </div>
                                                             </div>
+                                                                    @endif
+
                                                         @endif
                                                     </div>
                                                 </div>

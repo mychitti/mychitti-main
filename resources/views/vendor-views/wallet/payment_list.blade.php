@@ -25,7 +25,7 @@
         <!-- End Page Header -->
         <?php
         $wallet = \App\Models\StoreWallet::where('vendor_id', \App\CentralLogics\Helpers::get_vendor_id())->first();
-        if (isset($wallet) == false) {
+        if (!isset($wallet)) {
             \Illuminate\Support\Facades\DB::table('store_wallets')->insert([
                 'vendor_id' => \App\CentralLogics\Helpers::get_vendor_id(),
                 'created_at' => now(),

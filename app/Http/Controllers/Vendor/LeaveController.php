@@ -17,92 +17,104 @@ use App\Models\VendorEmployee;
 
 class LeaveController extends Controller
 {
-   
+
     public function index(Request $request)
     {
-        $v_id = Helpers::get_store_id();  
-      
-        $store_config = StoreConfig::where('store_id' , $v_id)->first();
+        $v_id = Helpers::get_store_id();
+
+        $store_config = StoreConfig::where('store_id', $v_id)->first();
 
         $staff = VendorEmployee::where('store_id', Helpers::get_store_id())->get();
         return view('vendor-views.leave.index', compact('staff', 'store_config'));
-    } 
+    }
     public function manage(Request $request, $id)
     {
         $totalLeaveBalance = 0;
-       
-        $v_id = \App\CentralLogics\Helpers::get_store_id(); 
-        if(isset($request->year)){
-         $filter_year =   $request->year; 
-        }else{
-           $filter_year = date('Y');
+
+        $v_id = \App\CentralLogics\Helpers::get_store_id();
+        if (isset($request->year)) {
+            $filter_year =   $request->year;
+        } else {
+            $filter_year = date('Y');
         }
-        if(isset($request->month)){
-            $filter_month =  $request->month; 
-        }else{
+        if (isset($request->month)) {
+            $filter_month =  $request->month;
+        } else {
             $filter_month = date('m');
         }
         $staff = VendorEmployee::find($id);
-        $departments = Department::where('status', 1)->where('vendor_id', $v_id )->get();
-        $attendance = Attendance::where(['vendor_id'=> $v_id,  'employee_type' => 'vendor_employee', 'employee_id' => $id, 'month' => $filter_month, 'year' =>$filter_year])->get()->toArray();
-        $leaves = Leave::where(['vendor_id'=> $v_id, 'emp_id' => $id,'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' =>$filter_year])->get()->toArray();
-        $pendingleaves = Leave::where(['vendor_id'=> $v_id, 'emp_id' => $id,'employee_type' => 'vendor_employee',  'status'=> 'pending'])->get()->toArray();
+        $departments = Department::where('status', 1)->where('vendor_id', $v_id)->get();
+        $attendance = Attendance::where(['vendor_id' => $v_id,  'employee_type' => 'vendor_employee', 'employee_id' => $id, 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
+        $leaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
+        $pendingleaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee',  'status' => 'pending'])->get()->toArray();
         $day_data['absent'] = 0;
         $day_data['present'] = 0;
         $day_data['holiday'] = 0;
         $day_data['cl'] = 0;
         $day_data['halfday'] = 0;
-        $day_data['sunday'] = 0;    
+        $day_data['sunday'] = 0;
         $labelArr = [];
         $daArr = [];
 
         //leaves balance
-        $clLeavesTaken = Leave::where(['vendor_id'=> $v_id, 'emp_id' => $id,'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' =>$filter_year,'leave_type' => 'CL', 'status' => 'approved'])->get()->toArray();
-        $slLeavesTaken = Leave::where(['vendor_id'=> $v_id, 'emp_id' => $id,'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' =>$filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->get()->toArray();  
+        $clLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'CL', 'status' => 'approved'])->get()->toArray();
+        $slLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->get()->toArray();
         $store_config = StoreConfig::where('store_id', $v_id)->first();
-        $monthlyClleaveBalance = ($store_config ? $store_config->cl_for_employees : 0 ) - count($clLeavesTaken);
-        $monthlySlleaveBalance = ($store_config ? $store_config->sl_for_employees : 0 ) - count($slLeavesTaken);
-       
-        
-        foreach($attendance as $att){
+        $monthlyClleaveBalance = ($store_config ? $store_config->cl_for_employees : 0) - count($clLeavesTaken);
+        $monthlySlleaveBalance = ($store_config ? $store_config->sl_for_employees : 0) - count($slLeavesTaken);
+
+
+        foreach ($attendance as $att) {
             // print_r($att);
             array_push($daArr, $att['day']);
             array_push($labelArr, $att['label']);
-            if($att['label'] == 'Sun'){$day_data['sunday'] ++;}
-           if($att['label'] == 'A'){$day_data['absent'] ++;}
-           if($att['label'] == 'P'){$day_data['present'] ++;}
-           if($att['label'] == 'CL'){$day_data['cl'] ++;}
-           if($att['label'] == 'HD'){$day_data['halfday'] ++;}
-           if($att['label'] == 'HL'){$day_data['holiday'] ++;}
-        }
-        
-        // print_r($day_data);
-        // die;
-        
-        $days_in_month = cal_days_in_month(CAL_GREGORIAN, $filter_month, $filter_year);
-
-        $firstDayOfMonth = date('N', strtotime(date($filter_year. '-'. $filter_month.'-01')));
-        
-        $sundays_in_month = 0;
-        
-        for ($t=1; $t <=  $days_in_month  ; $t++){
-            if(date('l', strtotime(date('Y-'.$filter_month.'-'. $t))) == 'Sunday'){
-             $sundays_in_month++;
+            if ($att['label'] == 'Sun') {
+                $day_data['sunday']++;
+            }
+            if ($att['label'] == 'A') {
+                $day_data['absent']++;
+            }
+            if ($att['label'] == 'P') {
+                $day_data['present']++;
+            }
+            if ($att['label'] == 'CL') {
+                $day_data['cl']++;
+            }
+            if ($att['label'] == 'HD') {
+                $day_data['halfday']++;
+            }
+            if ($att['label'] == 'HL') {
+                $day_data['holiday']++;
             }
         }
-        
-        if(!empty($attendance)){
+
+        // print_r($day_data);
+        // die;
+
+        $days_in_month = cal_days_in_month(CAL_GREGORIAN, $filter_month, $filter_year);
+
+        $firstDayOfMonth = date('N', strtotime(date($filter_year . '-' . $filter_month . '-01')));
+
+        $sundays_in_month = 0;
+
+        for ($t = 1; $t <=  $days_in_month; $t++) {
+            if (date('l', strtotime(date('Y-' . $filter_month . '-' . $t))) == 'Sunday') {
+                $sundays_in_month++;
+            }
+        }
+
+        if (!empty($attendance)) {
             $sundays_in_month = $day_data['sunday'];
         }
-        
-        
+
+
         // die;
         // print_r($attendance);die;
         return view('vendor-views.leave.manage', compact(
             'staff',
-            'departments', 
-            'filter_year', 
-            'filter_month', 
+            'departments',
+            'filter_year',
+            'filter_month',
             'attendance',
             'day_data',
             'days_in_month',
@@ -115,57 +127,59 @@ class LeaveController extends Controller
             'monthlyClleaveBalance',
             'monthlySlleaveBalance',
             'id'
-            ));
+        ));
     }
-    
-    public function save_leave(Request $request){
-      
-        $v_id = \App\CentralLogics\Helpers::get_store_id(); 
-        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day') , 'month' =>$request->post('month'), 'year' => $request->post('year')])->exists();
-            if(!$leave){
 
-                $leave = new Leave;
-                $leave->vendor_id = $v_id;
-                $leave->emp_id = $request->post('emp_id');
-                $leave->day = $request->post('day');
-                $leave->status = 'approved';
-                $leave->added_by = 'vendor';
-                $leave->month = $request->post('month');
-                $leave->year = $request->post('year');
-                $leave->leave_type = $request->post('leaveType');
-                $leave->reason = $request->post('reason');
-                $leave->created_at = date('Y-m-d H:i:s');
-                $leave->leave_date = $request->post('year'). '-' . $request->post('month') . '-' . $request->post('day');
-                $leave->save();
+    public function save_leave(Request $request)
+    {
 
-                // attendance 
-                if($request->post('leaveType') == 'HDS' || $request->post('leaveType') == 'HDF'  ){
-                    $leaveType = 'HD';
-                }else{
-                    $leaveType = $request->post('leaveType');
-                }
-                $att = new Attendance;
-                $att->vendor_id = $v_id;
-                $att->employee_id = $request->post('emp_id');
-                $att->date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('day');
-                $att->label = $leaveType;
-                $att->day =  $request->post('day');
-                $att->month = $request->post('month');
-                $att->year = $request->post('year');
-                $att->created_at = date('Y-m-d H:i:s');
-                $att->save();
-                Toastr::success('Leave saved successfully');
-            }else{
-                Toastr::warning('Leave already exists for this date');
-                
+        $v_id = \App\CentralLogics\Helpers::get_store_id();
+        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->exists();
+        if (!$leave) {
+
+            $leave_date = sprintf('%04d-%02d-%02d',$request->post('year'),$request->post('month'),$request->post('day'));
+
+            $leave = new Leave;
+            $leave->vendor_id = $v_id;
+            $leave->emp_id = $request->post('emp_id');
+            $leave->day = $request->post('day');
+            $leave->status = 'approved';
+            $leave->added_by = 'vendor';
+            $leave->month = $request->post('month');
+            $leave->year = $request->post('year');
+            $leave->leave_date = $leave_date;
+            $leave->leave_type = $request->post('leaveType');
+            $leave->reason = $request->post('reason');
+            $leave->created_at = date('Y-m-d H:i:s');
+            $leave->save();
+
+            // attendance 
+            if ($request->post('leaveType') == 'HDS' || $request->post('leaveType') == 'HDF') {
+                $leaveType = 'HD';
+            } else {
+                $leaveType = $request->post('leaveType');
             }
+            $att = new Attendance;
+            $att->vendor_id = $v_id;
+            $att->employee_id = $request->post('emp_id');
+            $att->date = $leave_date;
+            $att->label = $leaveType;
+            $att->day =  $request->post('day');
+            $att->month = $request->post('month');
+            $att->year = $request->post('year');
+            $att->created_at = date('Y-m-d H:i:s');
+            $att->save();
+            Toastr::success('Leave saved successfully');
+        } else {
+            Toastr::warning('Leave already exists for this date');
+        }
 
-      
-      
-         $data['status']= true;
-         $data['msg'] = 'Updated Successfully';
-         
-         echo json_encode($data);
+
+
+        $data['status'] = true;
+        $data['msg'] = 'Updated Successfully';
+
+        echo json_encode($data);
     }
 
     public function status_change(Request $request)
@@ -194,14 +208,14 @@ class LeaveController extends Controller
     {
         $query =  Department::find($id)
             ->delete();
-            Toastr::success('Department Deleted Successfully');
+        Toastr::success('Department Deleted Successfully');
         return back();
     }
     public function delete(Request $request, $id)
     {
         $query =  Staff::find($id)
             ->delete();
-            Toastr::success('Staff Deleted Successfully');
+        Toastr::success('Staff Deleted Successfully');
         return back();
     }
 
@@ -209,36 +223,36 @@ class LeaveController extends Controller
     public function save_info(Request $request)
     {
         $id = $request->post('staff_id');
-        
-            $validator = Validator::make($request->all(), [
-                'username' => 'required|max:100',
-                'name' => 'required|max:100',
-                'city' => 'required|max:100',
-                'pincode' => 'required',
-                'department_id' => 'required',
-                'salary_per_month' => 'required',
-                'email' => 'required|email|unique:staff,email,'.$id,
-                'mobile' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20',
-            ], [
-                'name.required' => 'Please Enter Name',
-                'username.required' => 'Please Enter Username',
-                'city.required' => 'Please Enter city',
-                'email.required' => 'Please Enter Email',
-                'pincode.required' => 'Please Enter Pincode',
-                'department_id.required' => 'Please Select Department',
-                'salary_per_month.required' => 'Please Enter Salary',
-                'mobile.required' => 'Please Enter Mobile',
-            ]);
-             if ($validator->fails()) {
-                return back()->withErrors($validator)->withInput();
-            }
+
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|max:100',
+            'name' => 'required|max:100',
+            'city' => 'required|max:100',
+            'pincode' => 'required',
+            'department_id' => 'required',
+            'salary_per_month' => 'required',
+            'email' => 'required|email|unique:staff,email,' . $id,
+            'mobile' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20',
+        ], [
+            'name.required' => 'Please Enter Name',
+            'username.required' => 'Please Enter Username',
+            'city.required' => 'Please Enter city',
+            'email.required' => 'Please Enter Email',
+            'pincode.required' => 'Please Enter Pincode',
+            'department_id.required' => 'Please Select Department',
+            'salary_per_month.required' => 'Please Enter Salary',
+            'mobile.required' => 'Please Enter Mobile',
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
 
         if ($id == '') { // for new lead  
             $staff = new Staff;
         } else {
             $staff = Staff::find($id);
         }
-        $v_id = \App\CentralLogics\Helpers::get_store_id(); 
+        $v_id = \App\CentralLogics\Helpers::get_store_id();
         // echo $v_id;die;
 
         $staff->vendor_id = $v_id;
@@ -253,11 +267,11 @@ class LeaveController extends Controller
         $staff->salary_per_month = $request->post('salary_per_month');
         $staff->dob = $request->post('dob');
         $staff->created_at = date('Y-m-d H:i:s');
-        
+
         if ($id == '') { // for new lead
             $staff->save();
             Toastr::success('Staff Information saved successfully');
-        }else{
+        } else {
             $staff->update();
             Toastr::success('Staff Information updated successfully');
         }

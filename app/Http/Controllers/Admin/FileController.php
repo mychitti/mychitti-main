@@ -53,19 +53,19 @@ class FileController extends Controller
         $folderList = array_map('basename', $folders);
         return view('admin-views.file.add', compact('folders', 'folderList', 'data'));
     }
-public function clearUploadedFolder()
-{
-    $baseDir = 'uploaded';
+    public function clearUploadedFolder()
+    {
+        $baseDir = 'uploaded';
 
-    if (Storage::disk('public')->exists($baseDir)) {
+        if (Storage::disk('public')->exists($baseDir)) {
 
-        Storage::disk('public')->deleteDirectory($baseDir);
+            Storage::disk('public')->deleteDirectory($baseDir);
 
-        Storage::disk('public')->makeDirectory($baseDir);
+            Storage::disk('public')->makeDirectory($baseDir);
+        }
+
+        return true;
     }
-
-    return true;
-}
     public function store(Request $request)
     {
         $baseDir = 'uploaded';

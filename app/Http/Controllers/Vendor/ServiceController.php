@@ -104,6 +104,7 @@ class ServiceController extends Controller
 
     public function accept(Request $request, $serviceRequestId)
     {
+        
         // check if already tiedup with any other vendor
         $acExists = DB::table('accepted_service_requests')->where('service_request_id', $serviceRequestId)->where('tieup', 1)->exists();
         if ($acExists) {
@@ -136,7 +137,7 @@ class ServiceController extends Controller
         $store_id = \App\CentralLogics\Helpers::get_store_id();
         $vendor_id = \App\CentralLogics\Helpers::get_vendor_id();
 
-
+        
         $leadChargeInfo =  LeadCharge::where('category_id', $cat_id)->where('zone_id',  $zoneId)->first();
         $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
@@ -180,13 +181,13 @@ class ServiceController extends Controller
                 Toastr::error('Insufficient wallet balance to accept leads. Minimum ' . _price($minimumBalanceRequired) . ' required');
                 return back();
             }
-
+            
             //deduct amount from wallet
             $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);
             $wallet->save();
-
+            
             //insert into transactions 
             $account_transaction = new AccountTransaction();
             $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');

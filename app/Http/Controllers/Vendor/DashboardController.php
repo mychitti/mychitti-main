@@ -25,6 +25,7 @@ use App\Models\StoreGallery;
 use App\Models\StoreLedgerEntry;
 use App\Models\StoreTask;
 use App\Models\StoreVoucher;
+use App\Models\StoreWallet;
 use App\Models\SubscriptionPlanRequest;
 use App\Models\User;
 use App\Models\VendorEmployee;
@@ -41,11 +42,11 @@ use Soap\Url;
 
 class DashboardController extends Controller
 {
-    
+
     public function dashboard(Request $request)
     {
         $storeId = Helpers::get_store_id();
-        if (auth('vendor')->check()) {  
+        if (auth('vendor')->check()) {
 
             $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
             if ($request->has('date_range')) {
@@ -55,7 +56,7 @@ class DashboardController extends Controller
             $range = Helpers::calculatePresetDates($preset, $custom);
             $formatted_from  = $range['start'];
             $formatted_to = $range['end'];
-            $from = $range['start']->toDateString(); 
+            $from = $range['start']->toDateString();
             $to  = $range['end']->toDateString();
 
             $earning = [];
@@ -76,15 +77,7 @@ class DashboardController extends Controller
                 ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
                 ->distinct('service_requests.id')
                 ->count();
-            // $leadStatistics['in_progress'] = (clone $baseQuery)
-            //     ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            //     ->where(function ($q) {
-            //         $q->whereNull('accepted_service_requests.tieup')
-            //             ->orWhere('accepted_service_requests.current_status', 'Confirmed');
-            //     })
-            //     ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-            //     ->distinct('service_requests.id')
-            //     ->count();
+
             $leadStatistics['in_progress'] = (clone $baseQuery)
                 ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
                 ->where('accepted_service_requests.current_status', 9)
@@ -156,7 +149,51 @@ class DashboardController extends Controller
             $empStats['total_employees'] = (clone $empBaseQ)->count();
             $empStats['present_employees'] = _clockedInEmployee(true);
 
-            return view('vendor-views.dashboard', compact('empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
+
+            // ==================== NEW DATA =======================
+
+            $preset = request('date_range') ?? 'today';
+            $custom = request('custom_date_range') ?? null;
+            $range = Helpers::calculatePresetDates($preset, $custom);
+            $formatted_from  = $range['start'];
+            $formatted_to = $range['end'];
+            $from = $range['start']->toDateString();
+            $to  = $range['end']->toDateString();
+
+            $vendorId = Helpers::get_vendor_id();
+            $storeId = Helpers::get_store_id();
+
+            $data['wallet_balance'] = StoreWallet::where('vendor_id', $vendorId)->value('total_earning');
+            $leadsQuery = AcceptedServiceRequest::where('vendor_id', $storeId)
+                ->whereBetween('created_at', [$formatted_from, $formatted_to]);
+
+            $data['total_leads_count'] = (clone $leadsQuery)->count();
+
+            $data['completed_leads_count'] = (clone $leadsQuery)
+                ->where('current_status', 'Completed')
+                ->count();
+
+            $data['revenue'] = StoreVoucher::where('store_id', $storeId)
+                ->whereBetween('voucher_date', [$from, $to])
+                ->where('credit_entity_type', 'store')
+                ->where('status', 'approved')
+                ->sum('total_amount');
+
+            $data['leave_requests'] = Leave::where('vendor_id', $storeId)
+                ->whereBetween('leave_date', [$from, $to])->count();
+
+            $data['my_customers'] = StoreCustomer::where('store_id', $storeId)->where('user_type', 'customer')->count();
+
+// $data['leads'] = AcceptedServiceRequest::where('vendor_id', $storeId)
+//     ->with([
+//         'serviceRequest.user:id,name,phone',
+//         'serviceRequest.item:id,name,image'
+//     ])
+//     ->take(15)
+//     ->get();   
+            //  prx( $data['leads'] );
+
+            return view('vendor-views.dashboard', compact('data', 'preset', 'empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
         } else {
             $employee_id = Helpers::get_loggedin_user()->id;
             $month = (int) date('n');

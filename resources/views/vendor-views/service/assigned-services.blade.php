@@ -127,7 +127,7 @@
                                         @elseif($conf->current_status == 'Cancelled')
                                             <span class='text-danger'>Cancelled</span>
                                         @else
-                                            @if (hasPermission('leads_manage', 'change_status'))
+                                            {{-- @if (hasPermission('leads_manage', 'change_status')) --}}
                                                 <select name="module_id" data-value="{{ $conf->id }}"
                                                     class="form-control js-select2-custom"
                                                     onchange="changeStatus(this.value, {{ $conf->service_id }})"
@@ -146,7 +146,7 @@
                                                             {{ $st->status }}</option>
                                                     @endforeach
                                                 </select>
-                                            @endif
+                                            {{-- @endif --}}
                                             @endif
                                         @else
                                             -
