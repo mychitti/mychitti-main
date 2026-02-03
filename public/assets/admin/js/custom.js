@@ -8,6 +8,7 @@ function HSDemo() {
     sidebarCompact: document.getElementById("sidebarCompact").innerHTML
   }
 
+
   // Layouts
   var body = document.getElementsByTagName('body')[0],
     header = document.getElementsByClassName('navbar')[0],

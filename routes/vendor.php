@@ -803,6 +803,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function () {
             Route::post('order-stats', 'DashboardController@order_stats')->name('order-stats');
             Route::post('filter-pnl', 'DashboardController@filter_pnl')->name('filter-pnl');
+
+            Route::get('leads', 'DashboardController@leads_list')->name('leads');
+            Route::get('sales/{type?}', 'DashboardController@sales_list')->name('sales');
+            Route::get('pending', 'DashboardController@pending_list')->name('pending');
+            Route::get('expense', 'DashboardController@expense_list')->name('expense');
         });
 
         Route::group(['prefix' => 'category', 'as' => 'category.', 'middleware' => ['module:item']], function () {

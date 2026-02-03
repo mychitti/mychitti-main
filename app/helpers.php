@@ -2231,6 +2231,7 @@ function _getInvoicePrefix($tax_type, $store = null)
     }
     return $prefixe;
 }
+
 function is_serial_number_used($number, $prefix, $tax_type)
 {
     $today = now();
@@ -2527,7 +2528,7 @@ if (!function_exists('_reviewStatus')) {
     {
         $service = AcceptedServiceRequest::find($acc_id);
         if (isset($service) == false || $service->current_status != 'Completed') {
-           return ['status' => false];
+            return ['status' => false];
         }
         $store_id = $service->vendor_id;
         $user_id = DB::table('service_requests')->where('id', $service->service_request_id)->first();
@@ -2541,9 +2542,9 @@ if (!function_exists('_reviewStatus')) {
             return ['status' => false];
         }
         $review = StoreReview::where(['store_id' => $store_id, 'user_id' => $user_id, 'order_id' => $acc_id])->first();
-      
+
         if ($review) {
-            return ['status'=>'exists' , 'review'=> $review];
+            return ['status' => 'exists', 'review' => $review];
         }
         return ['status' => true];
     }

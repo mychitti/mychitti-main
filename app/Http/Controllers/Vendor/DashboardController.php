@@ -184,16 +184,22 @@ class DashboardController extends Controller
 
             $data['my_customers'] = StoreCustomer::where('store_id', $storeId)->where('user_type', 'customer')->count();
 
-// $data['leads'] = AcceptedServiceRequest::where('vendor_id', $storeId)
-//     ->with([
-//         'serviceRequest.user:id,name,phone',
-//         'serviceRequest.item:id,name,image'
-//     ])
-//     ->take(15)
-//     ->get();   
-            //  prx( $data['leads'] );
+            $data['leads'] = AcceptedServiceRequest::where('vendor_id', $storeId)
+                ->with([
+                    'serviceRequest.user:id,f_name,l_name,phone',
+                    'serviceRequest.item:id,name,image'
+                ])
+                ->whereBetween('created_at', [$formatted_from, $formatted_to])
+                // ->take(15)
+                ->get();
+            
+                // chart js
+                $rangeType = Helpers::getRangeTypeFromPreset($preset, $formatted_from, $formatted_to);
+                $chart_data = Helpers::getChartData($preset, $formatted_from, $formatted_to);
 
-            return view('vendor-views.dashboard', compact('data', 'preset', 'empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
+        
+
+            return view('vendor-views.dashboard', compact('data','chart_data', 'preset', 'empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
         } else {
             $employee_id = Helpers::get_loggedin_user()->id;
             $month = (int) date('n');
@@ -260,6 +266,87 @@ class DashboardController extends Controller
         }
     }
 
+
+    public function sales_list(Request $request, $payment_status = 'Paid')
+    {
+        $preset = request('date_range') ?? 'today';
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+        $formatted_from  = $range['start'];
+        $formatted_to = $range['end'];
+
+        $invoices1 = ServiceInvoice::where('vendor_id', Helpers::get_store_id())
+            ->whereBetween('created_at', [$formatted_from, $formatted_to])
+            ->whereNotNull('pdf')
+            ->where('payment_status', $payment_status)
+            ->get()
+            ->map(function ($row) {
+                $row->type = 'service';
+                return $row;
+            });
+
+        $invoices2 = ManualInvoice::where('vendor_id', Helpers::get_store_id())
+            ->whereBetween('created_at', [$formatted_from, $formatted_to])
+            ->where('payment_status', $payment_status)
+            ->get()
+            ->map(function ($row) {
+                $row->type = 'manual';
+                return $row;
+            });
+
+        $invoices = $invoices1->merge($invoices2)->sortByDesc('created_at')
+            // ->take(15)
+            ->values();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.sales_list', compact('invoices'))->render()
+        ]);
+    }
+    public function leads_list()
+    {
+        $preset = request('date_range') ?? 'today';
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+        $formatted_from  = $range['start'];
+        $formatted_to = $range['end'];
+        $storeId = Helpers::get_store_id();
+
+        $data['leads'] = AcceptedServiceRequest::where('vendor_id', $storeId)
+            ->with([
+                'serviceRequest.user:id,f_name,l_name,phone',
+                'serviceRequest.item:id,name,image'
+            ])
+            ->whereBetween('created_at', [$formatted_from, $formatted_to])
+            // ->take(15)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.leads_list', compact($data))->render()
+        ]);
+    }
+
+    public function expense_list()
+    {
+        $preset = request('date_range') ?? 'today';
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+        $formatted_from  = $range['start'];
+        $formatted_to = $range['end'];
+        $from = $range['start']->toDateString();
+        $to  = $range['end']->toDateString();
+
+        $storeId = Helpers::get_store_id();
+        $expenses = StoreVoucher::where('store_id', $storeId)->where('debit_entity_type', 'store')
+            ->whereBetween('voucher_date', [$from, $to])
+            // ->take(15)
+            ->get();
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.expense_list', compact('expenses'))->render()
+        ]);
+    }
     public function lastNotification()
     {
         if (auth('vendor')->check()) {

@@ -52,8 +52,8 @@ class BankTransactionImport implements ToCollection, WithHeadingRow
                     }
                 }
 
-                $deposit  = isset($row['deposit_amt']) ? trim($row['deposit_amt']) : '';
-                $withdraw = isset($row['withdrawal_amt']) ? trim($row['withdrawal_amt']) : '';
+                $deposit  = isset($row['deposit_amt']) && $row['deposit_amt'] > 0  ? trim($row['deposit_amt']) : '';
+                $withdraw = isset($row['withdrawal_amt']) && $row['withdrawal_amt'] > 0 ? trim($row['withdrawal_amt']) : '';
 
                 if ($deposit !== '' && $deposit !== null) {
                     $type   = 'credit';

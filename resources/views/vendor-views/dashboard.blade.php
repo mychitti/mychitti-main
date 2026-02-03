@@ -4,7 +4,15 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
+
+    <title>Business Dashboard</title>
     <style>
+        .tab-scrolling {
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+
         .app_dwnld_div img {
             width: 150px;
         }
@@ -19,204 +27,495 @@
             margin: 0 2px;
 
         }
-
-        .card-box {
-            background-color: #ffffff;
-            border-radius: 1rem;
-            padding: 1.5rem 19px;
-            text-align: center;
-            height: 100%;
-            box-shadow: 0 6px 12px rgb(140 152 164 / 18%) !important;
-        }
-
-        .metric-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-top: 0.5rem;
-        }
-
-        .metric-value {
-            font-size: 1.6rem;
-            font-weight: bold;
-            background-color: #dcdaed4a;
-            border-radius: 10px;
-            margin-top: 6px;
-            width: 100%;
-            display: block;
-        }
-
-        .small-text {
-            font-size: 0.85rem;
-            color: #666;
-        }
-
-        .text-green {
-            color: #28a745;
-        }
-
-        .text-red {
-            color: #dc3545;
-        }
-
-        .btn-analysis {
-            border-radius: 999px;
-            padding: 0.4rem 1rem;
-            width: 100%;
-        }
     </style>
     <style>
-        .dashboard-grid {
+        :root {
+            --accent-orange: #F97316;
+            --accent-blue: #3B82F6;
+            --accent-pink: #EC4899;
+            --bg-light: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --text-dark: #0F172A;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .inner_loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            ;
+            margin-bottom: 1rem;
         }
 
-        .activity-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-        }
-
-        .d-card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .d-card-header i {
-            color: #666;
-            font-size: 1.2rem;
-        }
-
-        .d-card-title {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .card-content {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .stat-badge {
-            min-width: 135px;
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 16px;
             padding: 10px;
-            border-radius: 8px;
-            font-weight: 600;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            text-align: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
         }
 
-        .stat-badge:hover {
-            color: white;
+        .icon-wallet {
+            background: linear-gradient(135deg, #FEF3C7, #FDE047);
+            color: #CA8A04;
         }
 
-        .stat-value {
-            font-size: 1.75rem;
-            margin-bottom: 0.25rem;
+        .icon-revenue {
+            background: linear-gradient(135deg, #DCFCE7, #86EFAC);
+            color: var(--primary);
+        }
+
+        .icon-leads {
+            background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+            color: var(--accent-blue);
+        }
+
+        .icon-customers {
+            background: linear-gradient(135deg, #FCE7F3, #FBCFE8);
+            color: var(--accent-pink);
+        }
+
+        .icon-employees {
+            background: linear-gradient(135deg, #DDD6FE, #C4B5FD);
+            color: var(--primary-light-theme);
         }
 
         .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 19px;
+
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .stat-change {
+            font-size: 0.813rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Main Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Activity Section */
+        .activity-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            min-height: 250px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* Custom Tabs */
+        .custom-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .custom-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.938rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            white-space: nowrap;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .tab-btn.active::after {
+            transform: scaleX(1);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text-dark);
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+
+
+        .sno-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sno-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        .status-badge {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.813rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-pending {
+            background: #FEF3C7;
+            color: #CA8A04;
+        }
+
+        .status-completed {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .status-cancelled {
+            background: #fad1d1;
+            color: #960505;
+        }
+
+        .type-expense {
+            color: var(--accent-orange);
+            font-weight: 600;
+        }
+
+        .type-income {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Pagination */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .pagination-controls button {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pagination-controls button:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .pagination-controls button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
             font-size: 0.875rem;
+            color: var(--text-muted);
         }
 
-        /* Color Variants */
-        .badge-green {
-            background-color: #10b981;
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .action2-btn {
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            border: none;
             color: white;
+            font-weight: 600;
+            font-size: 0.938rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
         }
 
-        .badge-blue {
-            background-color: #3b82f6;
-            color: white;
+        .action2-btn:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
         }
 
-        .badge-purple {
-            background-color: #7d10b9;
-            color: white;
+        .action2-btn i {
+            font-size: 1.25rem;
         }
 
-        .badge-blue2 {
-            background-color: #4f3cfb;
-            color: white;
+        .btn-expense {
+            background: linear-gradient(135deg, var(--primary), #b10909);
         }
 
-        .badge-orange2 {
-            background-color: #f6683b;
-            color: white;
+        .btn-task {
+            background: linear-gradient(135deg, var(--accent-blue), #2563EB);
         }
 
-        .badge-green2 {
-            background-color: #10b924;
-            color: white;
+        .btn-bill {
+            background: linear-gradient(135deg, var(--primary-light-theme), #7C3AED);
         }
 
-        .badge-pink {
-            background-color: #f63b89;
-            color: white;
+        .btn-client {
+            background: linear-gradient(135deg, var(--accent-orange), #EA580C);
         }
 
-        .badge-aqua {
-            background-color: #10a8b9;
-            color: white;
+        .btn-project {
+            background: linear-gradient(135deg, var(--accent-pink), #DB2777);
         }
 
-        .badge-darkblue {
-            background-color: #103eb9;
-            color: white;
+        /* Chart Section */
+        .chart-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
         }
 
-        .badge-voilet {
-            background-color: #863bf6;
-            color: white;
+        .smart-table {
+            margin-top: 1rem;
+
         }
 
-        .badge-yellow {
-            background-color: #fbd03c;
-            color: white;
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
         }
 
-        .badge-orange {
-            background-color: #fb923c;
-            color: white;
+        .chart-period {
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            font-size: 0.813rem;
+            color: var(--primary);
+            font-weight: 600;
         }
 
-        .badge-red {
-            background-color: #ef4444;
-            color: white;
+        .chart-canvas {
+            height: 250px;
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            padding: 1rem 0;
         }
 
-        .badge-light-blue {
-            background-color: #60a5fa;
-            color: white;
+        .chart-bar-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .badge-gray {
-            background-color: #f3f4f6;
-            color: #333;
-            border: 2px solid #d1d5db;
+        .chart-bars {
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+            height: 200px;
+            width: 100%;
+            justify-content: center;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .dashboard-grid {
+        .chart-bar {
+            width: 20px;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+            transform: translateY(-4px);
+        }
+
+        .bar-income {
+            background: linear-gradient(180deg, #FDE047, #F59E0B);
+        }
+
+        .bar-expense {
+            background: linear-gradient(180deg, #C4B5FD, var(--primary-light-theme));
+        }
+
+        .chart-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.813rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
                 grid-template-columns: 1fr;
             }
 
-            .stat-badge {
-                min-width: 100px;
-                padding: 0.75rem 1rem;
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+
+
+            .stat-card {
+                padding: 1rem;
             }
 
             .stat-value {
                 font-size: 1.5rem;
             }
+
+        }
+
+        .dashboard-icon {
+            width: 33px;
+        }
+
+        #myChart {
+            height: 250px;
+        }
+
+        .chart_wrapper {
+            position: relative;
+            width: 100%;
         }
     </style>
 @endpush
@@ -224,278 +523,448 @@
 @section('content')
     <div class="content container-fluid">
         @if (auth('vendor')->check())
-            <!-- Page Header -->
-            <div class="page-header">
-                <div class="row align-items-center w-100">
-                    <div class="d-flex align-items-center justify-content-between w-100">
-                        <h1 class="page-header-title">
-                            <span class="page-header-icon">
-                                <img src="{{ asset('public/assets/admin/img/category.png') }}" class="w--20" alt="">
-                            </span>
-                            <span>{{ translate('messages.dashboard') }}</span>
-                        </h1>
-                        <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal"
-                            data-target="#exampleModal">Apply
-                            Coupon for Customer</button>
-                        <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal"
-                            data-target="#exampleModal">Apply
-                            Coupon</button>
-                    </div>
+            <div class="row align-items-center mb-2">
 
+                <div class="col-sm mb-2 mb-sm-0">
+                    <h1 class="page-header-title">{{ translate('messages.welcome') }},
+                        {{ auth('vendor')->user()->f_name }}.</h1>
+                    <p class="page-header-text">{{ translate('messages.employee_welcome_message') }}</p>
                 </div>
+                <form action="" class="d-flex date-range-form">
+                    @include('vendor-views/form_modals/date_range')
+                    <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
+                        data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
+
+
+                </form>
             </div>
-            <!-- End Page Header -->
-            <div class="dashboard-grid">
-
-                <!-- Leads Activity -->
-                <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-box"></i>
-                        <h2 class="d-card-title">Leads Activity</h2> 
-
-                    </div>
-                    <div class="card-content">
-                        <a href="{{ route('vendor.service.leads_list') }}?type=Completed" class="stat-badge badge-green">
-                            <span class="stat-value">{{ $leadStatistics['completed'] }}</span>
-                            <span class="stat-label">Completed Leads</span>
-                        </a>
-                        <a href="{{ route('vendor.service.leads_list') }}?type={{ urlencode('In Progress') }}"
-                            class="stat-badge badge-blue">
-                            <span class="stat-value">{{ $leadStatistics['in_progress'] }}</span>
-                            <span class="stat-label">Inprogress Leads</span>
-                        </a>
-                        <a href="{{ route('vendor.service.leads_list') }}?type=New" class="stat-badge badge-orange">
-                            <span class="stat-value">{{ $leadStatistics['new'] }}</span>
-                            <span class="stat-label">New Leads</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Task Activity -->
-                <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h2 class="d-card-title">Task Activity</h2>
-                    </div> 
-                    <div class="card-content">
-                        <a href="{{ route('vendor.task.list') }}?status=Completed" class="stat-badge badge-purple">
-                            <span class="stat-value">{{ $taskStats['completed'] }}</span>
-                            <span class="stat-label">Completed Tasks</span>
-                        </a>
-                        <a href="{{ route('vendor.task.list') }}?status={{ urlencode('In Progress') }}"
-                            class="stat-badge badge-aqua">
-                            <span class="stat-value">{{ $taskStats['in_progress'] }}</span>
-                            <span class="stat-label">Inprogress Tasks</span>
-                        </a>
-                        <a href="{{ route('vendor.task.list') }}?status=New" class="stat-badge badge-pink">
-                            <span class="stat-value">{{ $taskStats['new'] }}</span>
-                            <span class="stat-label">New Tasks</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Inventory Activity -->
-                <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-warehouse"></i>
-                        <h2 class="d-card-title">Inventory Activity</h2>
-                    </div>
-                    <div class="card-content">
-                        <a href="{{ route('vendor.inventory.index') }}" class="stat-badge badge-darkblue">
-                            <span class="stat-value">{{ $inventoryStats['total'] }}</span>
-                            <span class="stat-label">Total Items</span>
-                        </a>
-                        <a href="{{ route('vendor.inventory.index') }}?type=product" class="stat-badge badge-yellow">
-                            <span class="stat-value">{{ $inventoryStats['products'] }}</span>
-                            <span class="stat-label">Products</span>
-                        </a>
-                        <a href="{{ route('vendor.inventory.index') }}?type=service" class="stat-badge badge-voilet">
-                            <span class="stat-value">{{ $inventoryStats['services'] }}</span>
-                            <span class="stat-label">Service</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Order Activity -->
-                {{-- <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-shopping-cart"></i>
-                        <h2 class="d-card-title">Order Activity</h2>
-                    </div>
-                    <div class="card-content">
-                        <div class="stat-badge badge-green2">
-                            <span class="stat-value">0</span>
-                            <span class="stat-label">Completed Orders</span>
+            <div class="dashboard-container">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-wallet">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Wallet_color.png') }}"
+                                alt="my wallet" class="dashboard-icon">
                         </div>
-                        <div class="stat-badge badge-orange2">
-                            <span class="stat-value">0</span>
-                            <span class="stat-label">In Progress Orders</span>
+                        <div class="stat-label">Wallet Balance</div>
+                        <div class="stat-value">{{ _price($data['wallet_balance']) }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-leads">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
+                                alt="my wallet" class="dashboard-icon">
                         </div>
-                        <div class="stat-badge badge-blue2">
-                            <span class="stat-value">0</span>
-                            <span class="stat-label">New Orders</span>
+                        <div class="stat-label">Leads</div>
+                        <div class="stat-value">{{ $data['total_leads_count'] }} <span
+                                style="font-size: 1rem; color: var(--text-muted);">Leads</span>
+                        </div>
+                        <div class="stat-change">
+                            <i class="bi bi-arrow-up"></i>
+                            <span>{{ $data['completed_leads_count'] }} completed</span>
                         </div>
                     </div>
-                </div> --}}
 
-                <!-- Accounts Summary -->
-                <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-dollar-sign"></i>
-                        <h2 class="d-card-title">Accounts Summary</h2>
-                    </div>
-                    <div class="card-content">
-                        <a href="{{ route('vendor.account.dashboard') }}" class="stat-badge badge-green">
-                            <span class="stat-value">{{ _price($accountstats['income'], 'round', 3) }}</span>
-                            <span class="stat-label">Total Income</span>
-                        </a>
-                        <a href="{{ route('vendor.account.dashboard') }}" class="stat-badge badge-orange">
-                            <span class="stat-value">{{ _price($accountstats['expense'], 'round', 3) }}</span>
-                            <span class="stat-label">Total Expenses</span>
-                        </a>
-                        <a href="{{ route('vendor.account.dashboard') }}" class="stat-badge badge-red">
-                            <span class="stat-value">{{ _price($accountstats['pending_payments'], 'round', 3) }}</span>
-                            <span class="stat-label">Pending Payments</span>
-                        </a>
-                        <a href="{{ route('vendor.account.dashboard') }}" class="stat-badge badge-light-blue">
-                            <span
-                                class="stat-value">{{ _price($accountstats['income'] - $accountstats['expense'], 'round', 3) }}</span>
-                            <span class="stat-label">Net Profit</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Employees Activity -->
-                <div class="activity-card">
-                    <div class="d-card-header">
-                        <i class="fas fa-users"></i>
-                        <h2 class="d-card-title">Employees Activity</h2>
-                    </div>
-                    <div class="card-content">
-                        <a href="{{ route('vendor.staff.list') }}" class="stat-badge badge-green">
-                            <span class="stat-value">{{ $empStats['total_employees'] }}</span>
-                            <span class="stat-label">Total Employees</span>
-                        </a>
-                        <a href="{{ route('vendor.staff.list') }}?status=on_duty" class="stat-badge badge-light-blue">
-                            <span class="stat-value">{{ $empStats['present_employees'] }}</span>
-                            <span class="stat-label">On Duty Emp.</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            @if (0 && \App\CentralLogics\Helpers::get_store_data()['module_id'] == 5)
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="row gx-2 gx-lg-3 mb-2">
-                            <div class="col-md-9">
-                                <h4><i
-                                        class="tio-chart-bar-4 fz-30px"></i>{{ translate('messages.dashboard_order_statistics') }}
-                                </h4>
+                    @if (selected_menu('account_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-revenue">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Salary_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
                             </div>
-                            <div class="col-md-3">
-                                <select class="custom-select order_stats_update" name="statistics_type">
-                                    <option value="overall"
-                                        {{ $params['statistics_type'] == 'overall' ? 'selected' : '' }}>
-                                        {{ translate('messages.Overall Statistics') }}
-                                    </option>
-                                    <option value="today" {{ $params['statistics_type'] == 'today' ? 'selected' : '' }}>
-                                        {{ translate("messages.Today's Statistics") }}
-                                    </option>
-                                    <option value="this_month"
-                                        {{ $params['statistics_type'] == 'this_month' ? 'selected' : '' }}>
-                                        {{ translate("messages.This Month's Statistics") }}
-                                    </option>
-                                </select>
+                            <div class="stat-label">Revenue</div>
+                            <div class="stat-value">{{ _price($data['revenue']) }}</div>
+                            <div class="stat-change">
+                                <i class="bi bi-arrow-up"></i>
                             </div>
                         </div>
-                        <div class="row g-2" id="order_stats">
-                            @include('vendor-views.partials._dashboard-order-stats', ['data' => $data])
+                    @endif
+                    @if (selected_menu('client_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-customers">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
+                            </div>
+                            <div class="stat-label">My Customers</div>
+                            <div class="stat-value">{{ $data['my_customers'] }}
+                                {{-- <span style="font-size: 1rem; color: var(--text-muted);">+88</span> --}}
+                            </div>
+                            {{-- <div class="stat-change">
+                            <i class="bi bi-arrow-up"></i>
+                            <span>88 new</span>
+                        </div> --}}
                         </div>
-                    </div>
+                    @endif
+                    @if (selected_menu('leave_manage'))
+                        <div class="stat-card">
+                            <div class="stat-icon icon-employees">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Accounts_management_color.png') }}"
+                                    alt="my wallet" class="dashboard-icon">
+                            </div>
+                            <div class="stat-label">On-duty Employs</div>
+                            <div class="stat-value">4 <span style="font-size: 1rem; color: var(--text-muted);">👥</span>
+                            </div>
+                            <div class="stat-change">
+                                <i class="bi bi-arrow-up"></i>
+                                <span>{{ $data['leave_requests'] }} Leave Requests</span>
+                            </div>
+                        </div>
+                    @endif
                 </div>
-            @endif
 
+                <!-- Main Content -->
+                <div class="content-grid">
+                    <!-- Activity Section -->
+                    <div>
+                        <div class="activity-section">
+                            <div class="section-header">
+                                <h2 class="section-title">Recent Activity</h2>
 
- 
-            <!-- End Row -->
-        @else
-            <!-- Page Header -->
-            <div class="page-header">
-                <div class="row align-items-center">
-                    <div class="col-sm mb-2 mb-sm-0">
-                        <h1 class="page-header-title">{{ translate('messages.welcome') }},
-                            {{ auth('vendor_employee')->user()->f_name }}.</h1>
-                        <p class="page-header-text">{{ translate('messages.employee_welcome_message') }}</p>
-                    </div>
+                            </div>
+                            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link active"
+                                        data-url="{{ route('vendor.dashboard.leads') }}" id="leads-tab" data-toggle="tab"
+                                        data-target="#leads" type="button" role="tab" aria-controls="leads"
+                                        aria-selected="true">Leads</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link"
+                                        data-url="{{ route('vendor.dashboard.sales', ['Paid']) }}" id="sales-tab"
+                                        data-toggle="tab" data-target="#sales" type="button" role="tab"
+                                        aria-controls="sales" aria-selected="false">Sales</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="expenses-tab"
+                                        data-url="{{ route('vendor.dashboard.expense') }}" data-toggle="tab"
+                                        data-target="#expenses" type="button" role="tab" aria-controls="expenses"
+                                        aria-selected="false">Expenses</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link"
+                                        data-url="{{ route('vendor.dashboard.sales', ['Unpaid']) }}" id="pending-tab"
+                                        data-toggle="tab" data-target="#pending" type="button" role="tab"
+                                        aria-controls="pending" aria-selected="false">Pending Payments</button>
+                                </li>
+                            </ul>
 
-
-                </div>
-                <div class="row">
-                    <div class="widget-container col-md-4">
-                        <div id="js-clock-in-out" class="card dashboard-icon-widget clock-in-out-card time_det_outer">
-                            <div class="card-body d-flex justify-content-between  timing_det">
-                                <div class="widget-icon {{ _clockedInEmployee() ? 'bg-info' : 'bg-danger' }}  "
-                                    style="    display: flex;align-items: center;padding: 10px 13px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock icon"
-                                        style="color:white;">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <polyline points="12 6 12 12 16 14"></polyline>
-                                    </svg>
+                            <div class="tab-content tab-scrolling" id="myTabContent">
+                                <div class="tab-pane fade show active" id="leads" role="tabpanel"
+                                    aria-labelledby="leads-tab">
+                                    @include('vendor-views.dashboard.leads_list', [
+                                        'leads' => $data['leads'],
+                                    ])
                                 </div>
-                                <div class="widget-details ">
-                                    @if (_clockedInEmployee())
-                                        <button type="button" class="btn btn-default text-primary"
-                                            id="timecard-clock-btn" onclick="clock('out')" style="float:right">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-log-out icon-16">
-                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                                <polyline points="16 17 21 12 16 7"></polyline>
-                                                <line x1="21" y1="12" x2="9" y2="12">
-                                                </line>
-                                            </svg> Clock Out
-                                        </button>
-                                    @else
-                                        <button type="button" class="btn btn-default text-danger"
-                                            id="timecard-clock-btn" onclick="clock('in')" style="float:right">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-log-out icon-16">
-                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                                <polyline points="16 17 21 12 16 7"></polyline>
-                                                <line x1="21" y1="12" x2="9" y2="12">
-                                                </line>
-                                            </svg> Clock In
-                                        </button>
-                                    @endif
-                                    <div class="mt5 bg-transparent-white" title="24-05-2024 10:08:27 am"
-                                        style="float:right;width: 100%; text-align: right;"><?= _inTime() ?></div>
+                                <div class="tab-pane fade position-relative" id="sales" role="tabpanel"
+                                    aria-labelledby="sales-tab">
+                                    <div id="content_sales"></div>
+                                </div>
+                                <div class="tab-pane fade " id="expenses" role="tabpanel"
+                                    aria-labelledby="expenses-tab">
+                                    <div id="content_expenses"></div>
+                                </div>
+                                <div class="tab-pane fade " id="pending" role="tabpanel"
+                                    aria-labelledby="pending-tab">
+                                    {{-- <img style="display:none;" class="inner_loader"
+                                        src="{{ asset('storage/app/public/uploaded/util/giphy.gif') }}" width="100px"
+                                        alt=""> --}}
+                                    <div id="content_pending"></div>
                                 </div>
                             </div>
                         </div>
+
+
+                        {{-- <div class="activity-section mt-2">
+                            <div class="section-header">
+                                <h2 class="section-title">Smart Table </h2>
+
+                            </div>
+                            <ul class="nav nav-tabs" id="myTab2" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link active" id="leads2-tab" data-toggle="tab"
+                                        data-target="#leads2" type="button" role="tab" aria-controls="leads"
+                                        aria-selected="true">Leads</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="sales2-tab" data-toggle="tab"
+                                        data-target="#sales2" type="button" role="tab" aria-controls="sales"
+                                        aria-selected="false">Sales</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="expenses2-tab" data-toggle="tab"
+                                        data-target="#expenses2" type="button" role="tab" aria-controls="expenses"
+                                        aria-selected="false">Expenses</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" id="pending2-tab" data-toggle="tab"
+                                        data-target="#pending2" type="button" role="tab" aria-controls="pending"
+                                        aria-selected="false">Pending Payments</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content tab-scrolling" id="myTabContent">
+                                <div class="tab-pane fade show active" id="leads2" role="tabpanel"
+                                    aria-labelledby="leads-tab">
+                                    leads
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="sales2" role="tabpanel" aria-labelledby="sales-tab">
+                                    sales
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="expenses2" role="tabpanel"
+                                    aria-labelledby="expenses-tab">
+                                    expenses
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade " id="pending2" role="tabpanel"
+                                    aria-labelledby="pending-tab">
+                                    pending
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>S No</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="activityTableBody">
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        1
+                                                    </div>
+                                                </td>
+                                                <td>01-10-2025</td>
+                                                <td>Office Rent</td>
+                                                <td class="type-expense">Expense</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="sno-cell">
+                                                        <span class="sno-indicator"></span>
+                                                        2
+                                                    </div>
+                                                </td>
+                                                <td>02-10-2025</td>
+                                                <td>Sale</td>
+                                                <td class="type-income">Income</td>
+                                                <td>₹5,000</td>
+                                                <td><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div> --}}
+
+
                     </div>
 
-                    <div class="widget-container col-md-4">
-                        <div id="js-clock-in-out" class="card dashboard-icon-widget clock-in-out-card ">
-                            <div class="card-body d-flex justify-content-between ">
 
-                                <div class="widget-details d-flex flex-column align-items-center w-100">
-                                    My Attendance
-                                    <a href="{{ route('vendor.employee-attendance') }}"
-                                        class="btn btn--primary mb-0">View Attendance</a>
+                    <!-- Quick Actions -->
+                    <div>
 
+                        <style>
+                            .legend-color {
+                                width: 14px;
+                                height: 14px;
+                                border-radius: 4px;
+                                margin-right: 8px;
+                            }
+
+                            .bar-leads {
+                                background: rgba(218, 200, 98, 1);
+                            }
+
+                            .bar-tasks {
+                                background: rgba(202, 82, 82, 1);
+                            }
+
+                            .bar-projects {
+                                background: rgba(82, 82, 202, 1);
+                            }
+                        </style>
+                        <!-- Chart -->
+                        <div class="chart-section">
+                            <div class="chart-header">
+                                <h3 class="section-title">chart</h3>
+                            </div>
+
+                            <div class="chart-canvas" id="chartCanvas">
+                                <div class="chart_wrapper">
+                                    <canvas id="myChart"></canvas>
                                 </div>
+                            </div>
+
+                            <div class="chart-legend">
+                                <div class="legend-item">
+                                    <div class="legend-color bar-leads"></div>
+                                    <span>Leads Comp.</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bar-tasks"></div>
+                                    <span>Tasks Comp.</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bar-projects"></div>
+                                    <span>Projects Comp.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-section mt-2">
+                            <h3 class="section-title" style="margin-bottom: 1rem;">Quick Actions</h3>
+                            <div class="quick-actions">
+                                @if (hasPermission('boa_master_ledger', 'add'))
+                                    <a href="{{ route('vendor.account.add', ['add']) }}" class="action2-btn btn-expense">
+                                        <span>Add Expense</span>
+                                        <i class="bi bi-plus-circle"></i>
+                                    </a>
+                                @endif
+                                <a href="{{ route('vendor.task.add') }}" class="action2-btn btn-task">
+                                    <span>Add Task</span>
+                                    <i class="bi bi-list-check"></i>
+                                </a>
+                                <a href ="{{ route('vendor.invoice.manual-bill') }}" class="action2-btn btn-bill">
+                                    <span>Add Bill</span>
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                <a href="{{ route('vendor.customer.add') }}" class="action2-btn btn-client">
+                                    <span>Add Client</span>
+                                    <i class="bi bi-person-plus"></i>
+                                </a>
+                                <a href="{{ route('vendor.project.add') }}" class="action2-btn btn-project">
+                                    <span>Add Project</span>
+                                    <i class="bi bi-folder-plus"></i>
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
+
+
             </div>
-            <!-- End Page Header -->
         @endif
     </div>
 
@@ -576,7 +1045,83 @@
 
 
 @push('script_2')
-    <script> 
+    <script>
+        const canvas = document.getElementById('myChart');
+        const ctx = canvas.getContext('2d');
+
+        // Wait for DOM/canvas to layout first
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+        gradient.addColorStop(0, 'rgba(215, 202, 98, 0.4)'); // green top
+        gradient.addColorStop(1, 'rgba(192, 187, 85, 0)'); // transparent bottom
+
+        const gradient2 = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+        gradient2.addColorStop(0, 'rgba(222, 94, 94, 0.4)'); // green top
+        gradient2.addColorStop(1, 'rgba(175, 76, 76, 0)'); // transparent bottom
+
+        const gradient3 = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 200);
+        gradient3.addColorStop(0, 'rgba(105, 94, 222, 0.4)'); // green top
+        gradient3.addColorStop(1, 'rgba(76, 78, 175, 0)'); // transparent bottom
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @json($chart_data['months']),
+                datasets: [{
+                    label: 'Leads Comp.',
+                    data: @json($chart_data['leads']),
+                    fill: true,
+                    backgroundColor: gradient,
+                    borderColor: 'rgba(218, 200, 98, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                }, {
+                    label: 'Tasks Comp.',
+                    data: @json($chart_data['tasks']),
+                    fill: true,
+                    backgroundColor: gradient2,
+                    borderColor: 'rgba(202, 82, 82, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                }, {
+                    label: 'Projects Comp.',
+                    data: @json($chart_data['projects']),
+                    fill: true,
+                    backgroundColor: gradient3,
+                    borderColor: 'rgba(82, 82, 202, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                   legend: false, 
+                    title: {
+                        display: true,
+                        text: 'Performance This Year'
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#000',
+                        font: {
+                            weight: 'bold'
+                        },
+                        formatter: value => value > 0 ? value : ''
+                    }
+
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    </script>
+    <script>
         @if (auth('vendor')->check())
             window.ReactNativeWebView?.postMessage(
                 JSON.stringify({
@@ -587,6 +1132,47 @@
         @endif
     </script>
     <script>
+        $(document).on('click', '.tab-btn', function() {
+
+            var id = $(this).attr('data-target').replace(/^#/, '');
+            var url = $(this).attr('data-url');
+
+            const params = new URLSearchParams(window.location.search);
+
+            var date_range = params.get('date_range');
+            var custom_date_range = params.get('custom_date_range');
+
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: {
+                    date_range: date_range,
+                    custom_date_range: custom_date_range
+                },
+                beforeSend: function() {
+                    $('.inner_loader').show();
+                },
+                success: function(data) {
+                    if (data.status) {
+                        setTimeout(() => {
+                            $("#content_" + id).html(data.html);
+                        }, 500);
+                    }
+                },
+                complete: function() {
+                    $('.inner_loader').hide();
+                }
+            });
+
+
+        });
+
         $(document).on('click', '.applyCouponBtn', function(e) {
             console.log('fsdf')
             e.preventDefault();
@@ -792,4 +1378,5 @@
             });
         }
     </script>
+    @include('vendor-views/js/date_range')
 @endpush

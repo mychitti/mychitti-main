@@ -28,6 +28,7 @@ use App\Models\BusinessSetting;
 use App\CentralLogics\StoreLogic;
 use Illuminate\Support\Facades\DB;
 use App\Mail\OrderVerificationMail;
+use App\Models\AcceptedServiceRequest;
 use App\Models\AdminAction;
 use App\Models\DayBook;
 use App\Models\FreeTrialHistory;
@@ -43,6 +44,7 @@ use App\Models\LedgerAccountType;
 use App\Models\ManualInvoice;
 use App\Models\NotificationMessage;
 use App\Models\PosToken;
+use App\Models\Project;
 use App\Models\Quotation;
 use App\Models\ServiceCoupon;
 use App\Models\StoreAccount;
@@ -4996,6 +4998,201 @@ class Helpers
         }
 
         return $imageName;
+    }
+     public static function get_financial_year($year = null)
+    {
+        $today = now();
+
+        $year = $year ?? $today->year;
+
+        $financialYearStart = Carbon::createFromDate($year, 4, 1);
+
+        if ($today->lt($financialYearStart)) {
+            $financialYearStart->subYear();
+        }
+
+        $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March
+
+        $fyear = $financialYearStart->format('y') . '-' . $financialYearEnd->format('y');
+
+        return $fyear;
+    }
+    public static function getChartData(string $preset, \Carbon\Carbon $from, \Carbon\Carbon $to)
+    {
+        $rangeType = Helpers::getRangeTypeFromPreset($preset, $from, $to);
+
+        $stepConfig = Helpers::getChartStepByRangeType($rangeType, $from, $to);
+
+        $groupByFormat = match ($stepConfig['unit']) {
+            'hour'  => '%Y-%m-%d %H:00:00',
+            'day'   => '%Y-%m-%d',
+            'week'  => '%Y-%u',
+            'month' => '%Y-%m',
+        };
+
+        $labels = [];
+
+        $cursor = $from->copy();
+
+        while ($cursor <= $to) {
+
+            $labels[] = $cursor->format($stepConfig['label_format']);
+
+            switch ($stepConfig['unit']) {
+                case 'hour':
+                    $cursor->addHours($stepConfig['step']);
+                    break;
+                case 'day':
+                    $cursor->addDays($stepConfig['step']);
+                    break;
+                case 'week':
+                    $cursor->addWeeks($stepConfig['step']);
+                    break;
+                case 'month':
+                    $cursor->addMonths($stepConfig['step']);
+                    break;
+            }
+        }
+
+        $leadsRaw = AcceptedServiceRequest::where('vendor_id', Helpers::get_store_id())
+            ->where('current_status', 'Completed')
+            ->whereBetween('assigned_at', [$from, $to])
+            ->selectRaw("
+            DATE_FORMAT(assigned_at, '{$groupByFormat}') as bucket,
+            COUNT(*) as c
+        ")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->pluck('c', 'bucket');
+
+        $tasksRaw = StoreTask::where('store_id', Helpers::get_store_id())
+            ->where('status', 'Completed')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw("
+            DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+            COUNT(*) as c
+        ")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->pluck('c', 'bucket');
+
+        $projectsRaw = Project::where('vendor_id', Helpers::get_store_id())
+            ->where('progress_status', 'Completed')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw("
+            DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+            COUNT(*) as c
+        ")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->pluck('c', 'bucket');
+
+        $leadsData    = [];
+        $tasksData    = [];
+        $projectsData = [];
+
+        $cursor = $from->copy();
+
+        while ($cursor <= $to) {
+
+            $bucket = match ($stepConfig['unit']) {
+                'hour'  => $cursor->format('Y-m-d H:00:00'),
+                'day'   => $cursor->format('Y-m-d'),
+                'week'  => $cursor->format('Y-W'),
+                'month' => $cursor->format('Y-m'),
+            };
+
+            $leadsData[]    = $leadsRaw->get($bucket, 0);
+            $tasksData[]    = $tasksRaw->get($bucket, 0);
+            $projectsData[] = $projectsRaw->get($bucket, 0);
+
+            switch ($stepConfig['unit']) {
+                case 'hour':
+                    $cursor->addHours($stepConfig['step']);
+                    break;
+                case 'day':
+                    $cursor->addDays($stepConfig['step']);
+                    break;
+                case 'week':
+                    $cursor->addWeeks($stepConfig['step']);
+                    break;
+                case 'month':
+                    $cursor->addMonths($stepConfig['step']);
+                    break;
+            }
+        }
+
+        return [
+            'months'   => $labels,
+            'leads'    => $leadsData,
+            'tasks'    => $tasksData,
+            'projects' => $projectsData,
+        ];
+    }
+
+    public static function getChartStepByRangeType(string $rangeType): array
+    {
+        switch ($rangeType) {
+
+            case 'day':       // today / single day
+                return ['unit' => 'hour', 'step' => 3, 'label_format' => 'H'];
+
+            case 'week':
+                return ['unit' => 'day', 'step' => 1, 'label_format' => 'd M'];
+
+            case 'month':
+                return ['unit' => 'day', 'step' => 2, 'label_format' => 'd M'];
+
+            case 'quarter':   // last 3 months
+                return ['unit' => 'week', 'step' => 1, 'label_format' => 'd M'];
+
+            case 'year':
+                return ['unit' => 'month', 'step' => 1, 'label_format' => 'M Y'];
+
+            default:          // custom ranges
+                return ['unit' => 'day', 'step' => 1, 'label_format' => 'd M'];
+        }
+    }
+
+    public static function getRangeTypeFromPreset(string $preset, \Carbon\Carbon $from, \Carbon\Carbon $to): string
+    {
+        switch ($preset) {
+
+            case 'today':
+            case 'yesterday':
+                return 'day';      // hours
+
+            case 'this_week':
+            case 'last_week':
+                return 'week';     // days
+
+            case 'this_month':
+            case 'last_month':
+                return 'month';    // days
+
+            case 'last_3_month':
+                return 'multi_month'; // months
+
+            default:
+                // custom range
+                if ($from->isSameDay($to)) {
+                    return 'day';
+                }
+
+                if ($from->isSameWeek($to)) {
+                    return 'week';
+                }
+
+                if ($from->isSameMonth($to)) {
+                    return 'month';
+                }
+
+                if ($from->isSameYear($to)) {
+                    return 'year';
+                }
+
+                return 'multi_year';
+        }
     }
     public static function upload_to_secure(string $dir, string $format, $image = null, $imageName = null)
     {

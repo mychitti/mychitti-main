@@ -129,11 +129,10 @@ class BankingController extends Controller
     public function bank_account_detail(Request $request, $id)
     {
 
-        $year = $request->year ?? date('Y') . '-' . (date('Y') + 1);
+        $year = $request->year ?? Helpers::get_financial_year();
         list($startYear, $endYear) = explode('-', $year);
         $fyStart = $startYear . '-04-01';
         $fyEnd = $endYear . '-03-31';
-
 
         $storeId = Helpers::get_store_id();
         $formatted_from  =  $fyStart;
@@ -143,8 +142,6 @@ class BankingController extends Controller
             'id' => $id,
             'store_id' => Helpers::get_store_id()
         ])->firstOrFail();
-
-
 
         $data['credit'] = $account->transactions()->whereBetween('txn_date', [$formatted_from, $formatted_to])->where('type', 'credit')->sum('amount');
         $data['debit'] = $account->transactions()->whereBetween('txn_date', [$formatted_from, $formatted_to])->where('type', 'debit')->sum('amount');
@@ -157,7 +154,6 @@ class BankingController extends Controller
         } else {
             $transactions = $account->transactions()->whereBetween('txn_date', [$formatted_from, $formatted_to])->paginate(50);
         }
-        // prx($transactions);
 
         $sales = Helpers::bank_transactions_calendar($id);
         $files  = StoreBankTransactionFile::where(['store_id' => $storeId, 'bank_id' => $id])->get();
