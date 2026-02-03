@@ -35,7 +35,7 @@
                     </h1>
                 </div>
                 <!-- Button trigger modal -->
-                <a href="{{route('admin.plan.module-store')}}" class="btn btn-primary">
+                <a href="{{ route('admin.plan.module-store') }}" class="btn btn-primary">
                     Add Plan for Store
                 </a>
                 {{-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#planModal">
@@ -43,6 +43,32 @@
                 </button> --}}
 
                 <!-- Modal -->
+                <div class="modal fade" id="editDateModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Edit Date</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <form action ="{{ route('admin.plan.edit-plan-store') }}" method="post">
+                                    @csrf
+                                    <label class="form-check-label" for="flexRadioDefault2">Start Date</label>
+                                    <input class="form-control edit_start_date" type="date" name="start_date"
+                                        id="">
+                                    <label class="form-check-label" for="flexRadioDefault3">Expiry Date</label>
+                                    <input class="form-control edit_end_date" type="date" name="expiry_date"
+                                        id="">
+<input type="hidden" name="store_id" class="edit_store_id" value="">
+                                    <button class="btn btn-primary">Add</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {{-- <div class="modal fade" id="planModal" tabindex="-1" aria-labelledby="exampleModalLabel"
                     aria-hidden="true">
                     <div class="modal-dialog">
@@ -119,13 +145,13 @@
                             <th class="border-0">Store Information</th>
                             <th class="border-0">Modules</th>
                             <th class="border-0 ">Last Purchased At</th>
-                            <th class="border-0 text-center">Expiry</th>
+                            <th class="border-0 ">Expiry</th>
+                            <th class="border-0 ">Action</th>
                         </tr>
                     </thead>
 
                     <tbody id="set-rows">
                         @foreach ($stores as $store)
-
                             <tr>
                                 <td>{{ $loop->iteration + $stores->firstItem() - 1 }}</td>
 
@@ -148,22 +174,33 @@
 
                                 {{-- All Plan Details --}}
                                 <td style="white-space: normal;">
-                                    <span class="badge badge-outline-secondary">{{ count($store->subscriptions) }}</span> <a href="{{route('admin.plan.store-modules', [$store->id])}}" class="badge badge-primary">View Modules</a>
+                                    <span class="badge badge-outline-secondary">{{ count($store->subscriptions) }}</span>
+                                    <a href="{{ route('admin.plan.store-modules', [$store->id]) }}"
+                                        class="badge badge-primary">View Modules</a>
                                 </td>
 
                                 {{-- First subscription created date --}}
-<td>{{ $store->subscriptions->sortByDesc('created_at')->first()->created_at }}</td>
+                                <td>{{ $store->subscriptions->sortByDesc('created_at')->first()->created_at }}</td>
 
                                 {{-- Latest expiry among all plans --}}
                                 <td>
-                                  @php $latestExpiry = $store->subscriptions->max('plan_expiry'); @endphp
+                                    @php $firstStartDate = $store->subscriptions->min('created_at'); @endphp
+                                    @php $latestExpiry = $store->subscriptions->max('plan_expiry'); @endphp
 
-@if (strtotime($latestExpiry) < time())
-    <span class="badge badge-danger">Expired</span>
-@else
-    {{ $latestExpiry }}
-@endif
+                                    @if (strtotime($latestExpiry) < time())
+                                        <span class="badge badge-danger">Expired</span>
+                                    @else
+                                        {{ $latestExpiry }}
+                                    @endif
 
+                                </td>
+                                <td>
+                                    <div class="btn--container">
+                                        <a data-toggle="modal" data-target="#editDateModal" type="button"
+                                            class="action-btn btn btn--primary btn-outline-primary edit_btn"
+                                            data-id="{{ $store->id }}" data-sdate="{{ $firstStartDate }}"
+                                            data-edate="{{ $latestExpiry }}"><i class="tio-edit"></i></a>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -192,6 +229,18 @@
 
 @push('script_2')
     <script>
+        $(".edit_btn").on('click', function() {
+            var store_id = $(this).attr('data-id')
+            var start_date = $(this).attr('data-sdate')
+            var end_date = $(this).attr('data-edate')
+
+            let startDateValue = start_date.split(' ')[0];
+            let endDateValue = end_date.split(' ')[0];
+
+            $(".edit_start_date").val(startDateValue)
+            $(".edit_end_date").val(endDateValue)
+            $('.edit_store_id').val(store_id)
+        })
         $(".billing_status").on('change', function() {
             console.log('fsd')
             console.log($(this).val())

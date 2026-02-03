@@ -122,6 +122,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('store-modules/{store_id}', 'VendorController@store_enabled_modules')->name('store-modules');
             Route::post('buy-module', 'VendorController@buyModule')->name('buy-module');
             Route::post('buy-plan-store', 'VendorController@buy_plan_for_store')->name('buy-plan-store');
+            Route::post('edit-plan-store', 'VendorController@edit_plan_for_store')->name('edit-plan-store');
             Route::get('buy-module-store', 'VendorController@buy_module_for_store')->name('module-store');
             Route::get('all-plans', 'VendorController@allPlans')->name('all-plans');
             // ===============================

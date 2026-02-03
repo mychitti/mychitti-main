@@ -491,6 +491,17 @@ class VendorController extends Controller
         Toastr::success(Config::get('module.vendor_role') . ' ' .  translate('messages.added_successfully'));
         return redirect()->route('admin.store.list');
     }
+    public function edit_plan_for_store (Request $request){
+        $plans = VendorSubscription::where('vendor_id', $request->store_id )->get();
+        foreach ($plans as $key => $plan) {
+            $plan->plan_expiry = $request->expiry_date;
+            $plan->created_at = $request->start_date;
+            $plan->update();
+        }
+
+        Toastr::success('Updated Successfully');
+        return back();
+    }
     public function buy_plan_for_store(Request $request)
     {
 
