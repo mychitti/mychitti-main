@@ -20,6 +20,10 @@ class AcceptedServiceRequest extends Model
     {
         return $this->belongsTo(ServiceRequest::class, 'service_request_id');
     }
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class, 'coupon_id');
+    }
  
     public function getAssignedDetailsAttribute()
     {

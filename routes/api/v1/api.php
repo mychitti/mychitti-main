@@ -60,6 +60,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('/quotations', 'ServiceRequestController@quotations');
         Route::post('/quotaion-approval', 'ServiceRequestController@quotaion_approval');
         Route::get('/timeline', 'ServiceRequestController@timeline');
+        Route::post('/delete', 'ServiceRequestController@delete'); // for development purpose only
     });
     Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
         Route::post('sign-up', 'CustomerAuthController@register');
@@ -346,7 +347,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             //Remove account
             Route::post('remove-account', 'CustomerController@remove_account');
 
-
             Route::group(['prefix' => 'address'], function () {
                 Route::get('list', 'CustomerController@address_list');
                 Route::post('add', 'CustomerController@add_new_address');
@@ -497,6 +497,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::group(['prefix' => 'coupon', 'middleware' => 'auth:api'], function () {
             Route::get('user', 'CouponController@user');
             Route::get('apply', 'CouponController@apply');
+            Route::post('scratch', 'CouponController@scratch');
         });
 
         Route::get('parcel-category', 'ParcelCategoryController@index');

@@ -406,95 +406,171 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                                 @if ( _reviewStatus($serRun->id)['status'] === 'exists')
+                                                            @if (_reviewStatus($serRun->id)['status'] === 'exists')
+                                                                <div class="detail-card">
+                                                                    <div class="detail-card-header">
+                                                                        <i class="fas fa-store me-2"></i>
+                                                                        <span>Rating & Review</span>
+                                                                    </div>
+                                                                    <div class="detail-card-content">
+                                                                        @php
+                                                                            $rev = isset(
+                                                                                _reviewStatus($serRun->id)['review'],
+                                                                            )
+                                                                                ? _reviewStatus($serRun->id)['review']
+                                                                                : null;
+                                                                            $store = App\Models\Store::find(
+                                                                                $serRun->store_id,
+                                                                            );
+                                                                        @endphp
+                                                                        <div class="d-flex border rounded my-2  p-2">
 
-                                                            <div class="detail-card">
-                                                                <div class="detail-card-header">
-                                                                    <i class="fas fa-store me-2"></i>
-                                                                    <span>Rating & Review</span>
-                                                                </div>
-                                                                <div class="detail-card-content">
-                                                                    @php
-                                                                        $rev = isset(_reviewStatus($serRun->id)['review']) ? _reviewStatus($serRun->id)['review'] : null;
-                                                                        $store = App\Models\Store::find(
-                                                                            $serRun->store_id,
-                                                                        );
-                                                                    @endphp
-                                                                    <div class="d-flex border rounded my-2  p-2">
-                                                                       
-                                                                        <div class="d-flex flex-column w-100">
-                                                                            <div
-                                                                                class="d-flex justify-content-between review_info">
-                                                                                <div class="">
-                                                                                    <p class="mb-2 date_time"
-                                                                                        style="">
-                                                                                        {{ _formatted_datetime($rev->created_at) }}
-                                                                                    </p>
-                                                                                    <div class="d-flex ">
-                                                                                       
+                                                                            <div class="d-flex flex-column w-100">
+                                                                                <div
+                                                                                    class="d-flex justify-content-between review_info">
+                                                                                    <div class="">
+                                                                                        <p class="mb-2 date_time"
+                                                                                            style="">
+                                                                                            {{ _formatted_datetime($rev->created_at) }}
+                                                                                        </p>
                                                                                         <div class="d-flex ">
-                                                                                            @for ($i = 1; $i < 6; $i++)
-                                                                                                <i
-                                                                                                    class="rating_star fa fa-star {{ $rev->rating >= $i ? 'text-secondary' : '' }}"></i>
-                                                                                            @endfor
+
+                                                                                            <div class="d-flex ">
+                                                                                                @for ($i = 1; $i < 6; $i++)
+                                                                                                    <i
+                                                                                                        class="rating_star fa fa-star {{ $rev->rating >= $i ? 'text-secondary' : '' }}"></i>
+                                                                                                @endfor
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <p class="text-dark">
+                                                                                            {{ $rev->comment }}</p>
+                                                                                    </div>
+
+                                                                                    @if ($rev->attachment)
+                                                                                        @php $attachments = json_decode($rev->attachment); @endphp
+                                                                                        @if (!empty($attachments))
+                                                                                            <div class="d-flex">
+                                                                                                @foreach ($attachments as $img)
+                                                                                                    <a target="_blank"
+                                                                                                        class="mx-1"
+                                                                                                        href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                                                            loading="lazy"
+                                                                                                            class="rounded"
+                                                                                                            style="width: 55px;"
+                                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                                                                            alt="review"></a>
+                                                                                                    <a target="_blank"
+                                                                                                        href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                                                            loading="lazy"
+                                                                                                            class="rounded"
+                                                                                                            style="width: 55px;"
+                                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                                                                            alt="review"></a>
+                                                                                                @endforeach
+                                                                                            </div>
+                                                                                        @endif
+                                                                                    @endif
+                                                                                </div>
+                                                                                @if ($rev->reply)
+                                                                                    <div
+                                                                                        class="d-flex border rounded  p-2">
+                                                                                        <img loading="lazy"
+                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                                                                                            class="img-fluid rounded m-2 reply_img"
+                                                                                            style=""
+                                                                                            alt="{{ $store->name }}">
+                                                                                        <div class="">
+                                                                                            <p class="mb-0 date_time"
+                                                                                                style="">
+                                                                                                {{ _formatted_datetime($rev->replied_at) }}
+                                                                                            </p>
+
+                                                                                            <p class="text-dark">
+                                                                                                {{ $rev->reply }}</p>
                                                                                         </div>
                                                                                     </div>
-                                                                                    <p class="text-dark">
-                                                                                        {{ $rev->comment }}</p>
-                                                                                </div>
-
-                                                                                @if ($rev->attachment)
-                                                                                    @php $attachments = json_decode($rev->attachment); @endphp
-                                                                                    @if (!empty($attachments))
-                                                                                        <div class="d-flex">
-                                                                                            @foreach ($attachments as $img)
-                                                                                                <a target="_blank"
-                                                                                                    class="mx-1"
-                                                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
-                                                                                                        loading="lazy"
-                                                                                                        class="rounded"
-                                                                                                        style="width: 55px;"
-                                                                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                                                                        alt="review"></a>
-                                                                                                <a target="_blank"
-                                                                                                    href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
-                                                                                                        loading="lazy"
-                                                                                                        class="rounded"
-                                                                                                        style="width: 55px;"
-                                                                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                                                                        alt="review"></a>
-                                                                                            @endforeach
-                                                                                        </div>
-                                                                                    @endif
                                                                                 @endif
                                                                             </div>
-                                                                            @if ($rev->reply)
-                                                                                <div
-                                                                                    class="d-flex border rounded  p-2">
-                                                                                    <img loading="lazy"
-                                                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                                                                                        class="img-fluid rounded m-2 reply_img"
-                                                                                        style=""
-                                                                                        alt="{{ $store->name }}">
-                                                                                    <div class="">
-                                                                                        <p class="mb-0 date_time"
-                                                                                            style="">
-                                                                                            {{ _formatted_datetime($rev->replied_at) }}
-                                                                                        </p>
 
-                                                                                        <p class="text-dark">
-                                                                                            {{ $rev->reply }}</p>
-                                                                                    </div>
-                                                                                </div>
-                                                                            @endif
+
                                                                         </div>
-
-
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                                    @endif
+                                                            @endif
 
+                                                            @php $coupon = _serviceCoupon($serRun->id) @endphp
+                                                            @if ($coupon)
+                                                                <div class="detail-card">
+                                                                    <div class="detail-card-header">
+                                                                        <i class="fas fa-store me-2"></i>
+                                                                        <span>Coupon</span>
+                                                                    </div>
+                                                                    <div class="detail-card-content">
+                                                                     
+                                                                        <div class="">
+
+                                                                            <div class="d-flex flex-column w-100">
+                                                                                <div class="coupon-card p-0">
+                                                                                    <div class="coupon-top">
+                                                                                        <div class="coupon-name">
+                                                                                            {{ ucfirst($coupon->title) }}
+                                                                                        </div>
+                                                                                        <div class="coupon-code-box">
+                                                                                            {{ $coupon->code }}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div class="coupon-bottom">
+                                                                                        <div class="coupon-info">
+                                                                                            <div class="info-item">
+                                                                                                <div
+                                                                                                    class="info-label">
+                                                                                                    Discount
+                                                                                                </div>
+                                                                                                <div
+                                                                                                    class="info-value discount-value">
+                                                                                                    {{ $coupon->discount_type == 'amount' ? \App\CentralLogics\Helpers::currency_symbol() : '' }}{{ $coupon->discount }}{{ $coupon->discount_type == 'percent' ? '%' : '' }}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div class="info-item">
+                                                                                                <div
+                                                                                                    class="info-label">
+                                                                                                    Minimum
+                                                                                                    Purchase
+                                                                                                </div>
+                                                                                                <div
+                                                                                                    class="info-value">
+                                                                                                    {{ $coupon->min_purchase }}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            @if ($coupon->discount_type == 'percent')
+                                                                                                <div class="info-item">
+                                                                                                    <div
+                                                                                                        class="info-label">
+                                                                                                        Max Off
+                                                                                                    </div>
+                                                                                                    <div
+                                                                                                        class="info-value">
+                                                                                                        {{ $coupon->max_discount }}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            @endif
+                                                                                        </div>
+
+                                                                                        <div class="coupon-meta">
+                                                                                            <span>{{ date('M d', strtotime($coupon->start_date)) }}
+                                                                                                -
+                                                                                                {{ date('M d', strtotime($coupon->expire_date)) }}</span>
+                                                                                            <span>{{ $coupon->total_uses }}/{{ $coupon->limit }}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+                                                            
                                                         @endif
                                                     </div>
                                                 </div>
@@ -865,9 +941,9 @@
         background: #ffffff;
         border-radius: 10px;
         border: 1px solid #e9ecef;
-        overflow: hidden;
-        height: 50%;
-            margin: 10px 0;
+        {{-- overflow: hidden;
+        height: 50%; --}}
+        margin: 10px 0;
     }
 
     .detail-card-header {

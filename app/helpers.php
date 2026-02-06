@@ -129,6 +129,14 @@ if (!function_exists('translate')) {
         return $result;
     }
 }
+function _isCouponScratched($user_id, $coupon_id)
+{
+    $exists =  Coupon::where('id', $coupon_id)
+        ->whereJsonContains('scratched_by', $user_id)
+        ->exists();
+
+    return $exists ? 1 : 0;
+}
 function _accountLastTxn($account_id, $fyStart, $fyEnd)
 {
 
@@ -2523,6 +2531,15 @@ if (!function_exists('_pendingLeavesCount')) {
     }
 }
 
+if (!function_exists('_serviceCoupon')) {
+    function _serviceCoupon($acc_id) {
+        $acceptnce = AcceptedServiceRequest::find($acc_id);
+        if($acceptnce && $acceptnce->coupon_id){
+            $coupon = Coupon::find( $acceptnce->coupon_id);
+        }
+        return $coupon ?? null;
+    }
+}
 if (!function_exists('_reviewStatus')) {
     function _reviewStatus($acc_id)
     {
@@ -2684,9 +2701,6 @@ if (!function_exists('_serviceHistory')) {
     function _serviceHistory($uid)
     {
         try {
-            //code...
-
-
             $confirmationReq1 =
                 DB::table('accepted_service_requests')
                 ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
@@ -2706,6 +2720,8 @@ if (!function_exists('_serviceHistory')) {
             $confirmationReq = $confirmationReq1
                 ->union($confirmationReq2)
                 ->get();
+
+
             foreach ($confirmationReq as $key => $req) {
                 $confirmationReq[$key]->item_image =  asset('storage/app/public/product') . '/' . $req->item_image;
 

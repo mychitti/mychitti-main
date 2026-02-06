@@ -280,8 +280,8 @@
 @endpush
 
 @section('content')
+    @if($reqDetails)
     <div class="content container-fluid">
-
 
         <!-- Resturent Card Wrapper -->
         <div class="row">
@@ -755,6 +755,9 @@
             </div>
         </div>
     </div>
+    @else
+    Not Found
+    @endif
 
 @endsection
 

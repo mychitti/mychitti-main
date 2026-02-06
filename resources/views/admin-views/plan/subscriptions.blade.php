@@ -62,7 +62,7 @@
                                     <label class="form-check-label" for="flexRadioDefault3">Expiry Date</label>
                                     <input class="form-control edit_end_date" type="date" name="expiry_date"
                                         id="">
-<input type="hidden" name="store_id" class="edit_store_id" value="">
+                                    <input type="hidden" name="store_id" class="edit_store_id" value="">
                                     <button class="btn btn-primary">Update</button>
                                 </form>
                             </div>

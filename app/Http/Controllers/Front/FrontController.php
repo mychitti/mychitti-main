@@ -2140,7 +2140,7 @@ class FrontController extends Controller
             // _sendMailToVendor($title, $msg, $to, $url); 
             $smsTemplate = "Hello! Your order NO " . $order->id . " is received. Please review the details on My Chitti Vendor Dashboard and confirm accuracy.";
             _sendSMS($store->phone, $smsTemplate);
-            _sendOrderSMSToAdmins($order, $user, $store); 
+            _sendOrderSMSToAdmins($order, $user, $store);
 
             // SendOrderNotifications::dispatch( 
             //     $title, 

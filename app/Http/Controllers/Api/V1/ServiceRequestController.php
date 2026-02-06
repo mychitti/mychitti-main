@@ -24,6 +24,7 @@ use App\Models\StoreWallet;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ServiceRequestController extends Controller
 {
@@ -224,7 +225,47 @@ class ServiceRequestController extends Controller
             return response()->json(['status' => false, 'message' => 'Some error occured']);
         }
     }
+    public function delete(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'service_id' => ['required', function ($attr, $value, $fail) {
+                if ($value !== 'all' && !ctype_digit((string)$value)) {
+                    $fail('The service id must be a number or "all".');
+                }
+            }],
+            'user_id' => 'required',
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $id = $request->service_id;
+
+        if ($id === 'all') {
+
+            $services = ServiceRequest::where('user_id', $request->user_id)->get();
+
+            foreach ($services as $ser) {
+                AcceptedServiceRequest::where('service_request_id', $ser->id)->delete();
+                $ser->delete();
+            }
+        } else {
+
+            $ser = ServiceRequest::where('user_id', $request->user_id)
+                ->where('id', $id)
+                ->first();
+
+            if (!$ser) {
+                return response()->json(['message' => 'Service request not found'], 404);
+            }
+
+            AcceptedServiceRequest::where('service_request_id', $ser->id)->delete();
+            $ser->delete();
+        }
+
+        return response()->json(['status' => true, 'message' => 'Deleted Successfully']);
+    }
 
     public function details(Request $request)
     {
@@ -238,10 +279,42 @@ class ServiceRequestController extends Controller
         }
         //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
         $serviceRequest = ServiceRequest::with([
-            'accepted:id,service_request_id,quoted_price,current_status,service_request_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,cancel_reason,cancelled_by',
+            'accepted:id,service_request_id,quoted_price,current_status,service_request_id,coupon_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,assigned_status,cancel_reason,cancelled_by',
+            'accepted.store:id,name,phone,email,logo,address',
+            'accepted.coupon:id,title,code,start_date,expire_date,min_purchase,discount,limit',
 
-            'accepted.staff:id,phone,email,image,employee_role_id,f_name,l_name',
+            'accepted.staff' => function (MorphTo $morphTo) {
 
+                $morphTo->constrain([
+
+                    \App\Models\VendorEmployee::class => function ($q) {
+                        $q->select(
+                            'id',
+                            'f_name',
+                            'l_name',
+                            'phone',
+                            'email',
+                            'image',
+                            'employee_role_id'
+                        );
+                    },
+
+                    \App\Models\Store::class => function ($q) {
+                        $q->select(
+                            'id',
+                            'phone',
+                            'email',
+                            'logo as image',
+                            'name',
+                            'name as f_name',
+                        )
+                            ->selectRaw('NULL as l_name')
+                            ->selectRaw("'Vendor' as role");
+                    },
+
+
+                ]);
+            },
             'item:id,name,image,images',
 
             'gatePass:id,service_id,approved,returned,return_approved,created_at,updated_at',
@@ -249,14 +322,14 @@ class ServiceRequestController extends Controller
 
             'quotation:id,service_id,approved,created_at,updated_at',
             'quotation.items:id,quote_id,name,price,qty,tax,total',
+
         ])
-            ->select('id', 'item_id', 'status', 'created_at')
+            ->select('id', 'item_id', 'user_id', 'status', 'created_at')
             ->where('id', $request->service_id)
             ->first();
 
-        
-        if ($serviceRequest && $serviceRequest->accepted && $serviceRequest->accepted->staff) {
-            $serviceRequest->accepted->staff->makeHidden(['f_name', 'l_name']);
+        if (!$serviceRequest) {
+            return response()->json(['status' => false, 'message' => 'Service not found'], 404);
         }
         // add role
         if ($serviceRequest && $serviceRequest->accepted) {
@@ -266,11 +339,44 @@ class ServiceRequestController extends Controller
                 $role = EmployeeRole::where('id', $serviceRequest->accepted->staff->employee_role_id)->first();
                 $serviceRequest->accepted->staff->role = $role ? $role->name : null;
             }
+
+            if (_reviewStatus($serviceRequest->accepted->id)['status'] === 'exists') {
+                $serviceRequest->accepted->review_status = 'Completed';
+            } else {
+                $serviceRequest->accepted->review_status = null;
+            }
         }
 
-        $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
-        $serviceRequest->invoice_url = $invoice ? asset('storage/invoice/' . $invoice->pdf) : null;
+        // accepted 
+        if (!$serviceRequest->accepted) {
+            $fakeAccepted = new AcceptedServiceRequest();
+            $fakeAccepted->id = 0;
+            $fakeAccepted->current_status  = 'Enquiry Sent';
+            $fakeAccepted->assigned_status = 'Not Assigned';
+            $fakeAccepted->assigned_type   = 'N/A';
+            $fakeAccepted->staff_name      = '';
+            $fakeAccepted->staff_role      = '';
+            $fakeAccepted->staff_image     = '';
+            $fakeAccepted->staff_contact   = '';
+            $fakeAccepted->review_status   = null;
 
+            $serviceRequest->setRelation('accepted', $fakeAccepted);
+        }
+
+        // invoice 
+        $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
+        if ($invoice) {
+            $host = request()->getHost();
+            if ($host == 'staging.mychitti.net') {
+                $serviceRequest->invoice_url = $invoice ? asset('storage/app/public/invoice/' . $invoice->pdf) : null;
+            } else {
+                $serviceRequest->invoice_url = $invoice ? asset('storage/invoice/' . $invoice->pdf) : null;
+            }
+            $serviceRequest->invoice_created_at = $invoice->created_at;
+        }
+        if($serviceRequest->accepted->coupon){
+            $serviceRequest->accepted->coupon->is_scratched = _isCouponScratched((string)$serviceRequest->user_id, $serviceRequest->accepted->coupon->id);
+        }
 
         return response()->json(['status' => true, 'data' => $serviceRequest]);
     }
@@ -452,7 +558,6 @@ class ServiceRequestController extends Controller
             'service_id' => 'required',
             'user_id' => 'required',
         ]);
-
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);

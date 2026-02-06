@@ -9,7 +9,7 @@
     <title>Business Dashboard</title>
     <style>
         .tab-scrolling {
-            max-height: 300px;
+            height: 300px;
             overflow-y: scroll;
         }
 
@@ -58,7 +58,7 @@
         /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
             gap: 10px;
             ;
             margin-bottom: 1rem;
@@ -73,6 +73,26 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+        }
+
+        .soft-yellow {
+            background-color: #fbff2314;
+        }
+
+        .soft-green {
+            background-color: #23ffa014;
+        }
+
+        .soft-blue {
+            background-color: #6c23ff14;
+        }
+
+        .soft-red {
+            background-color: #ff239c14;
+        }
+
+        .soft-purple {
+            background-color: #c823ff14;
         }
 
         .stat-card::before {
@@ -105,7 +125,7 @@
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 2px;
         }
 
         .icon-wallet {
@@ -149,36 +169,49 @@
         }
 
         .stat-change {
-            font-size: 0.813rem;
+            font-size: 11px;
             color: var(--primary);
             display: flex;
             align-items: center;
             gap: 0.25rem;
+            display: inline;
         }
 
         /* Main Content Grid */
         .content-grid {
             display: grid;
             grid-template-columns: 1fr 400px;
-            gap: 2rem;
+            gap: 1rem;
             margin-bottom: 1rem;
         }
+
+        .content-grid2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            /* equal width */
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .content-grid2>* {
+            min-width: 0;
+        }
+
 
         /* Activity Section */
         .activity-section {
             background: var(--bg-card);
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 13px;
             box-shadow: var(--shadow-md);
             border: 1px solid var(--border-color);
-            min-height: 250px;
+            margin-bottom: 1rem;
         }
 
         .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
         }
 
         .section-title {
@@ -270,6 +303,11 @@
             color: #CA8A04;
         }
 
+        .status-new {
+            background: #d1e5fa;
+            color: #055596;
+        }
+
         .status-completed {
             background: #D1FAE5;
             color: #059669;
@@ -329,35 +367,125 @@
             color: var(--text-muted);
         }
 
-        /* Quick Actions */
-        .quick-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .action2-btn {
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            border: none;
-            color: white;
-            font-weight: 600;
-            font-size: 0.938rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        /* Quick Actions - Minimal Style */
+        .quick-actions-container {
+            padding: 12px !important;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: var(--shadow-sm);
+            gap: 10px;
         }
 
-        .action2-btn:hover {
-            transform: translateX(4px);
-            box-shadow: var(--shadow-md);
+        .quick-actions-grid {
+            padding: 12px !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .action2-btn i {
-            font-size: 1.25rem;
+        .quick-actions-title {
+            font-size: 13px;
+
+            font-weight: 700;
+            color: var(--text-dark);
+            letter-spacing: 0.05em;
+            margin-bottom: 0;
+        }
+
+        {{-- .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 5px;
+        } --}} .quick-action-btn {
+            padding: 6px 15px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-dark);
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            line-height: 1.3;
+        }
+
+        .btn-soft-yellow {
+            background-color: #ffbc141e;
+            border: 1px solid #ffc445;
+        }
+
+        .btn-soft-yellow i {
+            color: #ffbc14;
+            font-size: 25px;
+        }
+
+        .btn-soft-blue {
+            background-color: #1420ff17;
+            border: 1px solid #6468ee;
+        }
+
+        .btn-soft-blue i {
+            color: #6468ee;
+            font-size: 25px;
+        }
+
+        .btn-soft-green {
+            background-color: #24ff141d;
+            border: 1px solid #40c545;
+        }
+
+        .btn-soft-green i {
+            color: #40c545;
+            font-size: 25px;
+        }
+
+        .btn-soft-purple {
+            background-color: #b814ff17;
+            border: 1px solid #bb45ff;
+        }
+
+        .btn-soft-purple i {
+            color: #bb45ff;
+            font-size: 25px;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-color: #D1D5DB;
+            color: black;
+        }
+
+        .quick-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        .quick-icon-blue {
+            background: #BFDBFE;
+        }
+
+        .quick-icon-yellow {
+            background: #FDE047;
+        }
+
+        .quick-icon-purple {
+            background: #DDD6FE;
+        }
+
+        .quick-icon-green {
+            background: #86EFAC;
+        }
+
+        @media (max-width: 480px) {
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .btn-expense {
@@ -384,7 +512,7 @@
         .chart-section {
             background: var(--bg-card);
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 13px;
             box-shadow: var(--shadow-md);
             border: 1px solid var(--border-color);
         }
@@ -398,7 +526,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
         }
 
         .chart-period {
@@ -409,6 +536,10 @@
             font-size: 0.813rem;
             color: var(--primary);
             font-weight: 600;
+        }
+
+        .chart-container {
+            height: 200px;
         }
 
         .chart-canvas {
@@ -483,7 +614,9 @@
         }
 
         @media (max-width: 1024px) {
-            .content-grid {
+
+            .content-grid,
+            .content-grid2 {
                 grid-template-columns: 1fr;
             }
 
@@ -517,6 +650,120 @@
             position: relative;
             width: 100%;
         }
+
+        /* Action Summary Section */
+        {{-- .action-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 10px;
+            margin-bottom: 1rem;
+        } --}} .action-summary-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .summary-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .summary-card {
+            border-radius: 12px;
+            padding: 13px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .card1 {
+            background: linear-gradient(45deg, #e2feff, #00ff8721);
+        }
+
+        .card2 {
+            background: linear-gradient(45deg, #fff9e2, #ff002621);
+        }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--border-color);
+        }
+
+        .summary-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .summary-content {
+            flex: 1;
+        }
+
+        .summary-count {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-link {
+            font-size: 0.813rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s ease;
+            justify-content: center;
+
+            width: 100%;
+            background: white;
+            padding: 5px;
+            border-radius: 6px;
+            border: 1px solid #c9c9c9;
+        }
+
+        .summary-link:hover {
+            gap: 0.5rem;
+        }
+
+        .summary-link i {
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            .action-summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 @endpush
 
@@ -526,7 +773,7 @@
             <div class="row align-items-center mb-2">
 
                 <div class="col-sm mb-2 mb-sm-0">
-                    <h1 class="page-header-title">{{ translate('messages.welcome') }},
+                    <h1 class="page-header-title d-block d-md-none">{{ translate('messages.welcome') }},
                         {{ auth('vendor')->user()->f_name }}.</h1>
                     <p class="page-header-text">{{ translate('messages.employee_welcome_message') }}</p>
                 </div>
@@ -541,15 +788,15 @@
             <div class="dashboard-container">
                 <!-- Stats Cards -->
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <a href="{{ route('vendor.wallet.wallet_payment_list') }}" class="stat-card soft-yellow">
                         <div class="stat-icon icon-wallet">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Wallet_color.png') }}"
                                 alt="my wallet" class="dashboard-icon">
                         </div>
                         <div class="stat-label">Wallet Balance</div>
                         <div class="stat-value">{{ _price($data['wallet_balance']) }}</div>
-                    </div>
-                    <div class="stat-card">
+                    </a>
+                    <a href="{{route('vendor.service.leads_list')}}" class="stat-card soft-blue">
                         <div class="stat-icon icon-leads">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
                                 alt="my wallet" class="dashboard-icon">
@@ -557,15 +804,15 @@
                         <div class="stat-label">Leads</div>
                         <div class="stat-value">{{ $data['total_leads_count'] }} <span
                                 style="font-size: 1rem; color: var(--text-muted);">Leads</span>
+                            <div class="stat-change">
+                                <i class="bi bi-arrow-up"></i>
+                                <span>{{ $data['completed_leads_count'] }} completed</span>
+                            </div>
                         </div>
-                        <div class="stat-change">
-                            <i class="bi bi-arrow-up"></i>
-                            <span>{{ $data['completed_leads_count'] }} completed</span>
-                        </div>
-                    </div>
+                    </a>
 
                     @if (selected_menu('account_manage'))
-                        <div class="stat-card">
+                        <a href="{{route('vendor.account.add')}}" class="stat-card soft-green">
                             <div class="stat-icon icon-revenue">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Salary_color.png') }}"
                                     alt="my wallet" class="dashboard-icon">
@@ -575,10 +822,10 @@
                             <div class="stat-change">
                                 <i class="bi bi-arrow-up"></i>
                             </div>
-                        </div>
+                        </a>
                     @endif
                     @if (selected_menu('client_manage'))
-                        <div class="stat-card">
+                        <a href="{{route('vendor.customer.list')}}" class="stat-card soft-red">
                             <div class="stat-icon icon-customers">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
                                     alt="my wallet" class="dashboard-icon">
@@ -591,27 +838,185 @@
                             <i class="bi bi-arrow-up"></i>
                             <span>88 new</span>
                         </div> --}}
-                        </div>
+                        </a>
                     @endif
                     @if (selected_menu('leave_manage'))
-                        <div class="stat-card">
+                        <a href="{{route('vendor.staff.list')}}" class="stat-card soft-purple">
                             <div class="stat-icon icon-employees">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Accounts_management_color.png') }}"
                                     alt="my wallet" class="dashboard-icon">
                             </div>
-                            <div class="stat-label">On-duty Employs</div>
-                            <div class="stat-value">4 <span style="font-size: 1rem; color: var(--text-muted);">👥</span>
+                            <div class="stat-label">On-duty Employees</div>
+                            <div class="stat-value">{{ $data['on_duty_emp'] }}/{{ $data['total_emp'] }} <span
+                                    style="font-size: 1rem; color: var(--text-muted);">👥</span>
+                              @if($data['leave_requests'])  <div class="stat-change">
+                                    <span>{{ $data['leave_requests'] }} Leave Requests</span>
+                                </div>
+                                @endif
                             </div>
-                            <div class="stat-change">
-                                <i class="bi bi-arrow-up"></i>
-                                <span>{{ $data['leave_requests'] }} Leave Requests</span>
+
+                        </a>
+                    @endif
+
+                </div>
+                <div class="activity-section quick-actions-container mt-2">
+                    <h3 class="quick-actions-title">QUICK ACTIONS</h3>
+                    {{-- <div class="quick-actions-grid"> --}}
+                    <a href ="{{ route('vendor.invoice.manual-bill') }}" class="quick-action-btn btn-soft-blue">
+                        <i class="tio-receipt-outlined"></i>
+                        <span>Add Bill</span>
+                    </a>
+                    <a href="{{ route('vendor.account.add', ['add']) }}" class="quick-action-btn btn-soft-yellow">
+                        <i class="tio-wallet-outlined"></i>
+                        <span>Add Expense</span>
+                    </a>
+                    <a href="{{ route('vendor.customer.add') }}" class="quick-action-btn  btn-soft-green">
+                        <i class="tio-user-add"></i>
+                        <span>Add Client</span>
+                    </a>
+                    <a href="{{ route('vendor.project.add') }}" class="quick-action-btn  btn-soft-purple">
+                        <i class="tio-briefcase-outlined"></i>
+                        <span>Add Project</span>
+                    </a>
+                    {{-- </div> --}}
+                </div>
+                <div class="content-grid2">
+                    <!-- Action Summary Section - Add this after the stats-grid and before content-grid -->
+                    <div class="action-summary-grid">
+                        <div class="summary-section">
+                            <h3 class="summary-title">What happened today?</h3>
+                            <div class="summary-cards">
+                                <div class="summary-card card1">
+                                    {{-- <div class="summary-icon" style="background: linear-gradient(135deg, #FEF3C7, #FDE047);"> --}}
+
+                                    {{-- </div> --}}
+                                    <div class="summary-content">
+                                        <div class="summary-count"> <span style="font-size: 23px !important;">🔥</span>
+                                            {{ $data['new_leads_count'] }} New
+                                            Leads</div>
+                                        <a href="{{ route('vendor.service.leads_list', array_merge(request()->query(), ['type' => 'New'])) }}"class="summary-link"
+                                            style="color: #DC2626;">
+                                            New Leads
+                                            <i class="tio-arrow-forward"></i>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="summary-card card2 ">
+
+                                    <div class="summary-content">
+                                        <div class="summary-count"> <span style="font-size: 23px !important;"> 📄</span>
+                                            {{ $data['total_invoices_count'] }}
+                                            Invoices</div>
+                                        <a href="{{ route('vendor.invoice.list', array_merge(request()->query())) }}"
+                                            class="summary-link" style="color: var(--accent-blue);">
+                                            Sales
+                                            <i class="tio-arrow-forward"></i>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    @endif
-                </div>
 
-                <!-- Main Content -->
-                <div class="content-grid">
+                        <div class="summary-section">
+                            <h3 class="summary-title">What needs my action now?</h3>
+                            <div class="summary-cards">
+                                <div class="summary-card card1">
+
+                                    <div class="summary-content">
+                                        <div class="summary-count"><span style="font-size: 23px !important;"> 💰</span>
+                                            {{ $data['pending_payments'] }}
+                                            Pending Payment</div>
+                                        <a href="{{ route('vendor.invoice.list', array_merge(request()->query(), ['status' => 'Unpaid'])) }}"
+                                            class="summary-link" style="color: #CA8A04;">
+                                            Review
+                                            <i class="tio-arrow-forward"></i>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="summary-card card2">
+
+                                    <div class="summary-content">
+                                        <div class="summary-count"><span style="font-size: 23px !important;"> 📋</span> {{$data['pending_leaves']}}
+                                            Leaves to Approve (all)</div>
+                                        <a href="{{route('vendor.leave.all')}}" class="summary-link" style="color: var(--accent-blue);">
+                                            Review
+                                            <i class="tio-arrow-forward"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-section">
+                        <!-- Bootstrap 4 Nav Tabs -->
+                        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="leads-chart-tab" data-toggle="tab" href="#leads-chart"
+                                    role="tab">
+                                    <i class="bi bi-graph-up"></i>Leads
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="projects-chart-tab" data-toggle="tab" href="#projects-chart"
+                                    role="tab">
+                                    <i class="bi bi-folder"></i>Projects
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="sales-chart-tab" data-toggle="tab" href="#sales-chart"
+                                    role="tab">
+                                    <i class="bi bi-receipt"></i>Sales
+                                </a>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="dashboardTabContent">
+                            <!-- Leads Tab -->
+                            <div class="tab-pane fade show active" id="leads-chart" role="tabpanel">
+                                <div class="chart-card">
+                                    <div class="chart-header">
+                                        <h3>Leads Overview</h3>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="leadsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Projects Tab -->
+                            <div class="tab-pane fade" id="projects-chart" role="tabpanel">
+                                <div class="chart-card">
+                                    <div class="chart-header">
+                                        <h3>Projects Overview</h3>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="projectsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bills Tab -->
+                            <div class="tab-pane fade" id="sales-chart" role="tabpanel">
+                                <div class="chart-card">
+                                    <div class="chart-header">
+                                        <h3>Sales Overview</h3>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="billsChart"></canvas>
+                                        <div class="bills-total">
+                                            {{-- <div class="label">Total Bills</div> --}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Main Content class="content-grid" -->
+                <div>
                     <!-- Activity Section -->
                     <div>
                         <div class="activity-section">
@@ -622,9 +1027,9 @@
                             <ul class="nav nav-tabs" id="myTab" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button class="tab-btn nav-link active"
-                                        data-url="{{ route('vendor.dashboard.leads') }}" id="leads-tab" data-toggle="tab"
-                                        data-target="#leads" type="button" role="tab" aria-controls="leads"
-                                        aria-selected="true">Leads</button>
+                                        data-url="{{ route('vendor.dashboard.leads') }}" id="leads-tab"
+                                        data-toggle="tab" data-target="#leads" type="button" role="tab"
+                                        aria-controls="leads" aria-selected="true">Leads</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="tab-btn nav-link"
@@ -644,14 +1049,31 @@
                                         data-toggle="tab" data-target="#pending" type="button" role="tab"
                                         aria-controls="pending" aria-selected="false">Pending Payments</button>
                                 </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" data-url="{{ route('vendor.dashboard.tasks') }}"
+                                        id="task-tab" data-toggle="tab" data-target="#task" type="button"
+                                        role="tab" aria-controls="task" aria-selected="false">Tasks</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" data-url="{{ route('vendor.dashboard.projects') }}"
+                                        id="project-tab" data-toggle="tab" data-target="#project" type="button"
+                                        role="tab" aria-controls="project" aria-selected="false">Projects</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="tab-btn nav-link" data-url="{{ route('vendor.dashboard.inventory-sales') }}"
+                                        id="inventory-sales-tab" data-toggle="tab" data-target="#inventory-sales" type="button"
+                                        role="tab" aria-controls="inventory-sales" aria-selected="false">Inventory Sales</button>
+                                </li>
                             </ul>
 
                             <div class="tab-content tab-scrolling" id="myTabContent">
                                 <div class="tab-pane fade show active" id="leads" role="tabpanel"
                                     aria-labelledby="leads-tab">
+                                    {{-- <div class="table-responsive datatable-custom"> --}}
                                     @include('vendor-views.dashboard.leads_list', [
                                         'leads' => $data['leads'],
                                     ])
+                                    {{-- </div> --}}
                                 </div>
                                 <div class="tab-pane fade position-relative" id="sales" role="tabpanel"
                                     aria-labelledby="sales-tab">
@@ -663,303 +1085,24 @@
                                 </div>
                                 <div class="tab-pane fade " id="pending" role="tabpanel"
                                     aria-labelledby="pending-tab">
-                                    {{-- <img style="display:none;" class="inner_loader"
-                                        src="{{ asset('storage/app/public/uploaded/util/giphy.gif') }}" width="100px"
-                                        alt=""> --}}
                                     <div id="content_pending"></div>
                                 </div>
+                                <div class="tab-pane fade " id="task" role="tabpanel" aria-labelledby="task-tab">
+                                    <div id="content_task"></div>
+                                </div>
+                                <div class="tab-pane fade " id="project" role="tabpanel"
+                                    aria-labelledby="project-tab">
+                                    <div id="content_project"></div>
+                                </div>
+                                <div class="tab-pane fade" id="inventory-sales" role="tabpanel"
+                                    aria-labelledby="inventory-sales-tab">
+                                    <div id="content_inventory-sales"></div>
+                                </div>
                             </div>
                         </div>
-
-
-                        {{-- <div class="activity-section mt-2">
-                            <div class="section-header">
-                                <h2 class="section-title">Smart Table </h2>
-
-                            </div>
-                            <ul class="nav nav-tabs" id="myTab2" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="tab-btn nav-link active" id="leads2-tab" data-toggle="tab"
-                                        data-target="#leads2" type="button" role="tab" aria-controls="leads"
-                                        aria-selected="true">Leads</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="tab-btn nav-link" id="sales2-tab" data-toggle="tab"
-                                        data-target="#sales2" type="button" role="tab" aria-controls="sales"
-                                        aria-selected="false">Sales</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="tab-btn nav-link" id="expenses2-tab" data-toggle="tab"
-                                        data-target="#expenses2" type="button" role="tab" aria-controls="expenses"
-                                        aria-selected="false">Expenses</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="tab-btn nav-link" id="pending2-tab" data-toggle="tab"
-                                        data-target="#pending2" type="button" role="tab" aria-controls="pending"
-                                        aria-selected="false">Pending Payments</button>
-                                </li>
-                            </ul>
-
-                            <div class="tab-content tab-scrolling" id="myTabContent">
-                                <div class="tab-pane fade show active" id="leads2" role="tabpanel"
-                                    aria-labelledby="leads-tab">
-                                    leads
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>S No</th>
-                                                <th>Date</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="activityTableBody">
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        1
-                                                    </div>
-                                                </td>
-                                                <td>01-10-2025</td>
-                                                <td>Office Rent</td>
-                                                <td class="type-expense">Expense</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        2
-                                                    </div>
-                                                </td>
-                                                <td>02-10-2025</td>
-                                                <td>Sale</td>
-                                                <td class="type-income">Income</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="tab-pane fade " id="sales2" role="tabpanel" aria-labelledby="sales-tab">
-                                    sales
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>S No</th>
-                                                <th>Date</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="activityTableBody">
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        1
-                                                    </div>
-                                                </td>
-                                                <td>01-10-2025</td>
-                                                <td>Office Rent</td>
-                                                <td class="type-expense">Expense</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        2
-                                                    </div>
-                                                </td>
-                                                <td>02-10-2025</td>
-                                                <td>Sale</td>
-                                                <td class="type-income">Income</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="tab-pane fade " id="expenses2" role="tabpanel"
-                                    aria-labelledby="expenses-tab">
-                                    expenses
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>S No</th>
-                                                <th>Date</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="activityTableBody">
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        1
-                                                    </div>
-                                                </td>
-                                                <td>01-10-2025</td>
-                                                <td>Office Rent</td>
-                                                <td class="type-expense">Expense</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        2
-                                                    </div>
-                                                </td>
-                                                <td>02-10-2025</td>
-                                                <td>Sale</td>
-                                                <td class="type-income">Income</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="tab-pane fade " id="pending2" role="tabpanel"
-                                    aria-labelledby="pending-tab">
-                                    pending
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>S No</th>
-                                                <th>Date</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="activityTableBody">
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        1
-                                                    </div>
-                                                </td>
-                                                <td>01-10-2025</td>
-                                                <td>Office Rent</td>
-                                                <td class="type-expense">Expense</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="sno-cell">
-                                                        <span class="sno-indicator"></span>
-                                                        2
-                                                    </div>
-                                                </td>
-                                                <td>02-10-2025</td>
-                                                <td>Sale</td>
-                                                <td class="type-income">Income</td>
-                                                <td>₹5,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div> --}}
-
-
                     </div>
 
-
-                    <!-- Quick Actions -->
                     <div>
-
-                        <style>
-                            .legend-color {
-                                width: 14px;
-                                height: 14px;
-                                border-radius: 4px;
-                                margin-right: 8px;
-                            }
-
-                            .bar-leads {
-                                background: rgba(218, 200, 98, 1);
-                            }
-
-                            .bar-tasks {
-                                background: rgba(202, 82, 82, 1);
-                            }
-
-                            .bar-projects {
-                                background: rgba(82, 82, 202, 1);
-                            }
-                        </style>
-                        <!-- Chart -->
-                        <div class="chart-section">
-                            <div class="chart-header">
-                                <h3 class="section-title">chart</h3>
-                            </div>
-
-                            <div class="chart-canvas" id="chartCanvas">
-                                <div class="chart_wrapper">
-                                    <canvas id="myChart"></canvas>
-                                </div>
-                            </div>
-
-                            <div class="chart-legend">
-                                <div class="legend-item">
-                                    <div class="legend-color bar-leads"></div>
-                                    <span>Leads Comp.</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color bar-tasks"></div>
-                                    <span>Tasks Comp.</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color bar-projects"></div>
-                                    <span>Projects Comp.</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="activity-section mt-2">
-                            <h3 class="section-title" style="margin-bottom: 1rem;">Quick Actions</h3>
-                            <div class="quick-actions">
-                                @if (hasPermission('boa_master_ledger', 'add'))
-                                    <a href="{{ route('vendor.account.add', ['add']) }}" class="action2-btn btn-expense">
-                                        <span>Add Expense</span>
-                                        <i class="bi bi-plus-circle"></i>
-                                    </a>
-                                @endif
-                                <a href="{{ route('vendor.task.add') }}" class="action2-btn btn-task">
-                                    <span>Add Task</span>
-                                    <i class="bi bi-list-check"></i>
-                                </a>
-                                <a href ="{{ route('vendor.invoice.manual-bill') }}" class="action2-btn btn-bill">
-                                    <span>Add Bill</span>
-                                    <i class="bi bi-receipt"></i>
-                                </a>
-                                <a href="{{ route('vendor.customer.add') }}" class="action2-btn btn-client">
-                                    <span>Add Client</span>
-                                    <i class="bi bi-person-plus"></i>
-                                </a>
-                                <a href="{{ route('vendor.project.add') }}" class="action2-btn btn-project">
-                                    <span>Add Project</span>
-                                    <i class="bi bi-folder-plus"></i>
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -1041,11 +1184,208 @@
     <script
         src="{{ asset('public/assets/admin') }}/vendor/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.min.js">
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 @endpush
 
 
 @push('script_2')
     <script>
+        // Common tooltip config
+        const tooltipConfig = {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#1e293b',
+            bodyColor: '#64748b',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            cornerRadius: 8,
+            padding: 12,
+            boxPadding: 6,
+            usePointStyle: true
+        };
+
+        // Leads Chart - Line Chart
+        const leadsCtx = document.getElementById('leadsChart').getContext('2d');
+        new Chart(leadsCtx, {
+            type: 'line',
+            data: {
+                labels: @json($chart_data['months']),
+                datasets: [{
+                        label: 'Completed Leads',
+                        data: @json($chart_data['completed_leads']),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'New Leads',
+                        data: @json($chart_data['new_leads']),
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 13,
+                                weight: 500
+                            }
+                        }
+                    },
+                    tooltip: tooltipConfig
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#64748b'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            color: '#64748b'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Projects Chart - Bar Chart
+        const projectsCtx = document.getElementById('projectsChart').getContext('2d');
+        new Chart(projectsCtx, {
+            type: 'bar',
+            data: {
+                labels: @json($chart_data['months']),
+                datasets: [{
+                        label: 'Completed Projects',
+                        data: @json($chart_data['completed_projects']),
+                        backgroundColor: '#c52222',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Active Projects',
+                        data: @json($chart_data['active_projects']),
+                        backgroundColor: '#f89191',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 13,
+                                weight: 500
+                            }
+                        }
+                    },
+                    tooltip: tooltipConfig
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#64748b'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            color: '#64748b'
+                        }
+                    }
+                },
+                barPercentage: 0.7,
+                categoryPercentage: 0.8
+            }
+        });
+
+        // Bills Chart - Doughnut Chart
+        const billsCtx = document.getElementById('billsChart').getContext('2d');
+        new Chart(billsCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Unpaid'],
+                datasets: [{
+                    data: @json($chart_data['bills']),
+                    backgroundColor: ['#97ebb6', '#ffa1a1'],
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 13,
+                                weight: 500
+                            },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                return data.labels.map((label, i) => ({
+                                    text: `${label}: ₹${data.datasets[0].data[i].toLocaleString()}`,
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    strokeStyle: data.datasets[0].backgroundColor[i],
+                                    pointStyle: 'circle',
+                                    index: i
+                                }));
+                            }
+                        }
+                    },
+                    tooltip: {
+                        ...tooltipConfig,
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = ((value / total) * 100).toFixed(1);
+                                return ` $${value.toLocaleString()} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+    {{-- <script>
         const canvas = document.getElementById('myChart');
         const ctx = canvas.getContext('2d');
 
@@ -1096,7 +1436,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                   legend: false, 
+                    legend: false,
                     title: {
                         display: true,
                         text: 'Performance This Year'
@@ -1120,7 +1460,7 @@
             },
             plugins: [ChartDataLabels]
         });
-    </script>
+    </script> --}}
     <script>
         @if (auth('vendor')->check())
             window.ReactNativeWebView?.postMessage(
@@ -1156,17 +1496,15 @@
                     custom_date_range: custom_date_range
                 },
                 beforeSend: function() {
-                    $('.inner_loader').show();
+                    // $('.inner_loader').show();
                 },
                 success: function(data) {
                     if (data.status) {
-                        setTimeout(() => {
-                            $("#content_" + id).html(data.html);
-                        }, 500);
+                        $("#content_" + id).html(data.html);
                     }
                 },
                 complete: function() {
-                    $('.inner_loader').hide();
+                    // $('.inner_loader').hide();
                 }
             });
 

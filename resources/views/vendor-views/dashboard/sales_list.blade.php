@@ -1,5 +1,5 @@
-<table class="table table-striped">
-    <thead>
+<table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table  table-striped">
+    <thead class="bg-white">
         <tr>
             <th>S No</th>
             <th>Date</th>

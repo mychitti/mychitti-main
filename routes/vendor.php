@@ -808,6 +808,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('sales/{type?}', 'DashboardController@sales_list')->name('sales');
             Route::get('pending', 'DashboardController@pending_list')->name('pending');
             Route::get('expense', 'DashboardController@expense_list')->name('expense');
+            Route::get('tasks', 'DashboardController@tasks_list')->name('tasks');
+            Route::get('projects', 'DashboardController@projects_list')->name('projects');
+            Route::get('inventory-sales', 'DashboardController@inventory_sale_list')->name('inventory-sales');
         });
 
         Route::group(['prefix' => 'category', 'as' => 'category.', 'middleware' => ['module:item']], function () {

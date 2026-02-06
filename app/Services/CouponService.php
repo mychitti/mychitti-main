@@ -8,7 +8,11 @@ class CouponService
     public function getAddData(Object $request, int|string $moduleId): array
     {
         $data  = '';
-        $customerId  = $request->customer_ids ?? ['all'];
+        if($request->coupon_condition){
+             $customerId  = [];
+        }else{
+            $customerId  = $request->customer_ids ?? ['all'];
+        }
         if($request->coupon_type == 'zone_wise')
         {
             $data = $request->zone_ids;
@@ -33,6 +37,7 @@ class CouponService
             'data' =>  json_encode($data),
             'customer_id' =>  json_encode($customerId),
             'module_id' => $moduleId,
+            'coupon_condition_id' => $request->coupon_condition,
         ];
     }
 

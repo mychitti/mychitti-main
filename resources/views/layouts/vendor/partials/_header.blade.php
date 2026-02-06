@@ -41,28 +41,35 @@
                 </button>
                 <!-- End Navbar Vertical Toggle -->
             </div>
-            <div class="desktop_linke">
-            <div class="d-flex gap-2  ">
-                @if (count(_quickActions()))
-                    @foreach (_quickActions() as $key => $value)
-                        @if ($value->route == 'vendor.customer.list')
-                            <button type="button" class="badge badge-soft-primary quick_action add-customer-btn " 
-                                data-toggle="modal" data-target="#addCustomerModal">
-                                {{ $value->name }}
-                            </button>
-                        @else
-                            <a href="{{ route($value->route, ['add']) }}" class="badge badge-soft-primary quick_action"
-                               >{{ $value->name }}</a>
+            @if(Route::currentRouteName() == 'vendor.dashboard')
+            @if(auth('vendor')->check()) <h1 class="page-header-title d-none d-md-block">{{ translate('messages.welcome') }},
+                        {{ auth('vendor')->user()->f_name }}.</h1>
                         @endif
-                    @endforeach
-                    <a href="{{ route('vendor.menu_preference') }}"><i
-                            class="tio-edit"></i></a>
-                @else
-                    <a class="btn btn--primary"
-                        href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
-                @endif
+            @else
+            <div class="desktop_linke">
+                <div class="d-flex gap-2  ">
+                    @if (count(_quickActions()))
+                        @foreach (_quickActions() as $key => $value)
+                            @if ($value->route == 'vendor.customer.list')
+                                <button type="button" class="badge badge-soft-primary quick_action add-customer-btn " 
+                                    data-toggle="modal" data-target="#addCustomerModal">
+                                    {{ $value->name }}
+                                </button>
+                            @else
+                                <a href="{{ route($value->route, ['add']) }}" class="badge badge-soft-primary quick_action"
+                                >{{ $value->name }}</a>
+                            @endif
+                        @endforeach
+                        <a href="{{ route('vendor.menu_preference') }}"><i
+                                class="tio-edit"></i></a>
+                    @else
+                        <a class="btn btn--primary"
+                            href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
+                    @endif
+                </div>
             </div>
-            </div>
+            
+            @endif
             
             <div class="navbar-nav-wrap-content-right">
                 <!-- Navbar -->

@@ -19,7 +19,6 @@ use App\Models\Item;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\Relation;
-
 class AppServiceProvider extends ServiceProvider
 {
     use AddonHelper;
@@ -79,10 +78,17 @@ class AppServiceProvider extends ServiceProvider
 
         //     $view->with('service_categories2', $service_categories2);
         // });
-    Relation::morphMap([
-        'staff' => \App\Models\VendorEmployee::class,
-        'vendor' => \App\Models\Store::class,
-    ]);
+        Relation::morphMap([
+            'staff' => \App\Models\VendorEmployee::class,
+            'vendor' => \App\Models\Store::class,
+        ]);
+
+         Carbon::serializeUsing(function ($carbon) {
+        return $carbon
+            ->timezone(config('app.timezone'))
+            ->format('Y-m-d H:i:s');
+    });
+   
 
         $host = request()->getHost();
 

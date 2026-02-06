@@ -170,17 +170,17 @@ class LeadController extends Controller
 
             $serviceReq->accepted_by_staff = 1;
         } else if ($stts_id == 12) { // completed
+        
+        $serviceReq->current_status = 'Completed';
+        $serviceReq->completed_at = NOW();
+        $serviceReq->update();
 
-
-            $serviceReq->current_status = 'Completed';
-            $serviceReq->completed_at = NOW();
-            $serviceReq->update();
-
+        $serviceReq->coupon_id = Helpers::alotServiceCoupon($serviceReq->service_request_id);
+        $serviceReq->update();
             // send sms here
             // get user mobile 
             $userPhone = User::find($serviceReq->user_id);
             if ($userPhone) {
-
                 _send_confirmation_sms('mobile_verification', $userPhone->phone);
             }
 

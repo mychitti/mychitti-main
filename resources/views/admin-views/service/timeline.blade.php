@@ -280,6 +280,8 @@
 @endpush
 
 @section('content')
+    @if($reqDetails)
+
     <div class="content container-fluid">
 
 
@@ -465,7 +467,9 @@
     <!-- End Card -->
     </div>
 
-
+@else 
+Not Found
+@endif
 @endsection
 
 @push('script_2')

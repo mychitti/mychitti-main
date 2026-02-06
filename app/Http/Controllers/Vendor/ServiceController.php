@@ -654,7 +654,7 @@ class ServiceController extends Controller
 
         $invoices = collect();
 
-        if (in_array($status, ['overdue', 'pending', 'credit'])) {
+        if (in_array($status, ['overdue', 'pending', 'credit', 'Unpaid'])) {
             if ($status === 'overdue') {
                 $invoices = fetchInvoices(ServiceInvoice::class, 'service', 'Unpaid', '<', $today, 'overdue', $formatted_from, $formatted_to, $search)
                     ->merge(fetchInvoices(ManualInvoice::class, 'manual', 'Unpaid', '<', $today, 'overdue', $formatted_from, $formatted_to, $search));
@@ -664,6 +664,10 @@ class ServiceController extends Controller
             } elseif ($status === 'credit') {
                 $invoices = fetchInvoices(ServiceInvoice::class, 'service', 'Paid', null, null, 'credit', $formatted_from, $formatted_to, $search)
                     ->merge(fetchInvoices(ManualInvoice::class, 'manual', 'Paid', null, null, 'credit', $formatted_from, $formatted_to, $search));
+            
+            } elseif ($status === 'Unpaid') {
+                $invoices = fetchInvoices(ServiceInvoice::class, 'service', 'Unpaid', null, null, 'pending', $formatted_from, $formatted_to, $search)
+                    ->merge(fetchInvoices(ManualInvoice::class, 'manual', 'Unpaid', null, null, 'pending', $formatted_from, $formatted_to, $search));
             }
         } else {
             $overdue = fetchInvoices(ServiceInvoice::class, 'service', 'Unpaid', '<', $today, 'overdue', $formatted_from, $formatted_to, $search)
@@ -1625,9 +1629,10 @@ class ServiceController extends Controller
         } else if ($stts_id == 12) { // completed
 
             $service_id = $request->service_id;
-            $serviceReq->current_status = 'Completed';
+            // $serviceReq->current_status = 'Completed';
             $serviceReq->completed_at = NOW();
             $serviceReq->update();
+
 
             // send sms here
             // get user mobile 

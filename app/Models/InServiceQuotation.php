@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-class InServiceQuotation extends Model
+use App\Models\BaseModel;
+class InServiceQuotation extends BaseModel
 {
     use HasFactory;
 

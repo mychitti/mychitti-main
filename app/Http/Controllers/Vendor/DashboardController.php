@@ -11,6 +11,7 @@ use App\Models\BusinessSetting;
 use App\Models\Coupon;
 use App\Models\InAppNotification;
 use App\Models\InventoryItem;
+use App\Models\InventoryOrderDetail;
 use App\Models\Item;
 use App\Models\Leave;
 use App\Models\ManualInvoice;
@@ -48,111 +49,114 @@ class DashboardController extends Controller
         $storeId = Helpers::get_store_id();
         if (auth('vendor')->check()) {
 
-            $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
-            if ($request->has('date_range')) {
-                Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
-            }
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from  = $range['start'];
-            $formatted_to = $range['end'];
-            $from = $range['start']->toDateString();
-            $to  = $range['end']->toDateString();
+            // $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
+            // if ($request->has('date_range')) {
+            //     Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
+            // }
+            // $custom = request('custom_date_range') ?? null;
+            // $range = Helpers::calculatePresetDates($preset, $custom);
+            // $formatted_from  = $range['start'];
+            // $formatted_to = $range['end'];
+            // $from = $range['start']->toDateString();
+            // $to  = $range['end']->toDateString();
 
-            $earning = [];
-            $commission = [];
-            $expenses = [];
-
-
-            // ===================== LEADS =============================
-            $baseQuery = DB::table('service_requests')
-                ->join('items', 'service_requests.item_id', '=', 'items.id')
-                ->join('categories', 'items.category_id', '=', 'categories.id')
-                ->join('users', 'service_requests.user_id', '=', 'users.id')
-                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-                ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
-                ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
-
-            $leadStatistics['new'] = (clone $baseQuery)
-                ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
-                ->distinct('service_requests.id')
-                ->count();
-
-            $leadStatistics['in_progress'] = (clone $baseQuery)
-                ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-                ->where('accepted_service_requests.current_status', 9)
-                ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-                ->distinct('service_requests.id')
-                ->count();
-
-            $completedBase = DB::table('accepted_service_requests')
-                ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-                ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-                ->join('items', 'items.id', 'service_requests.item_id')
-                ->where('stores.id', Helpers::get_store_id())
-                ->where('accepted_service_requests.current_status', 'Completed')
-                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-                ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
-
-            $leadStatistics['completed'] = (clone $completedBase)->count();
-
-            // =================== TASKS ==================================
-            $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
-            $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
-            $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
-            $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
-                'in progress',
-                'in_progress',
-                'inprogress',
-            ])->count();
-
-            // ====================== INVENTORY =====================
-            $inventory_items = InventoryItem::where('store_id', $storeId);
-            $inventoryStats['total'] = (clone $inventory_items)->count();
-            $inventoryStats['products'] = (clone $inventory_items)->where('item_type', 'product')->count();
-            $inventoryStats['services'] = (clone $inventory_items)->where('item_type', 'service')->count();
-
-            // ================ ACCOUNT SUMMARY ==================
-            // $accountBaseQ = StoreVoucher::where('store_id', $storeId)
-            //     ->whereBetween("voucher_date", [$formatted_from, $formatted_to]);
-            // $accountstats['expense'] = (clone $accountBaseQ)->where('status', 'approved')->where('debit_entity_type', 'store')->sum('total_amount');
-            // $accountstats['income'] = (clone $accountBaseQ)->where('status', 'approved')->where('credit_entity_type', 'store')->sum('total_amount');
-            // $accountstats['pending_payments'] = (clone $accountBaseQ)->where('status', 'pending')->sum('total_amount');
+            // $earning = [];
+            // $commission = [];
+            // $expenses = [];
 
 
-            $baseQuery = StoreLedgerEntry::where('store_id', $storeId)
-                ->whereHas('voucher', function ($q) {
-                    $q->where(function ($q2) {
-                        $q2->where('debit_entity_type', 'store')
-                            ->orWhere('credit_entity_type', 'store');
-                    });
-                });
-            $accountstats['income'] = (clone $baseQuery)
-                ->whereHas('voucher', function ($q) {
-                    $q->where('credit_entity_type', 'store');
-                })
-                ->where('credit', '>', 0)
-                ->sum('credit');
-            $accountstats['expense'] = (clone $baseQuery)
-                ->whereHas('voucher', function ($q) {
-                    $q->where('debit_entity_type', 'store');
-                })
-                ->where('debit', '>', 0)
-                ->sum('debit');
+            // // ===================== LEADS =============================
+            // $baseQuery = DB::table('service_requests')
+            //     ->join('items', 'service_requests.item_id', '=', 'items.id')
+            //     ->join('categories', 'items.category_id', '=', 'categories.id')
+            //     ->join('users', 'service_requests.user_id', '=', 'users.id')
+            //     ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
+            //     ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+            //     ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
 
-            $accountstats['pending_payments'] = (clone $baseQuery)
-                ->where('status', 'pending')
-                ->sum(DB::raw('credit - debit'));
+            // $leadStatistics['new'] = (clone $baseQuery)
+            //     ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
+            //     ->distinct('service_requests.id')
+            //     ->count();
 
-            // ================= EMPLOYEE ACTIVITY ===================
-            $empBaseQ = VendorEmployee::where('store_id', $storeId);
-            $empStats['total_employees'] = (clone $empBaseQ)->count();
-            $empStats['present_employees'] = _clockedInEmployee(true);
+            // $leadStatistics['in_progress'] = (clone $baseQuery)
+            //     ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
+            //     ->where('accepted_service_requests.current_status', 9)
+            //     ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
+            //     ->distinct('service_requests.id')
+            //     ->count();
+
+            // $completedBase = DB::table('accepted_service_requests')
+            //     ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
+            //     ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
+            //     ->join('items', 'items.id', 'service_requests.item_id')
+            //     ->where('stores.id', Helpers::get_store_id())
+            //     ->where('accepted_service_requests.current_status', 'Completed')
+            //     ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
+            //     ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
+
+            // $leadStatistics['completed'] = (clone $completedBase)->count();
+
+            // // =================== TASKS ==================================
+            // $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
+            // $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
+            // $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
+            // $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
+            //     'in progress',
+            //     'in_progress',
+            //     'inprogress',
+            // ])->count();
+
+            // // ====================== INVENTORY =====================
+            // $inventory_items = InventoryItem::where('store_id', $storeId);
+            // $inventoryStats['total'] = (clone $inventory_items)->count();
+            // $inventoryStats['products'] = (clone $inventory_items)->where('item_type', 'product')->count();
+            // $inventoryStats['services'] = (clone $inventory_items)->where('item_type', 'service')->count();
+
+            // // ================ ACCOUNT SUMMARY ==================
+            // // $accountBaseQ = StoreVoucher::where('store_id', $storeId)
+            // //     ->whereBetween("voucher_date", [$formatted_from, $formatted_to]);
+            // // $accountstats['expense'] = (clone $accountBaseQ)->where('status', 'approved')->where('debit_entity_type', 'store')->sum('total_amount');
+            // // $accountstats['income'] = (clone $accountBaseQ)->where('status', 'approved')->where('credit_entity_type', 'store')->sum('total_amount');
+            // // $accountstats['pending_payments'] = (clone $accountBaseQ)->where('status', 'pending')->sum('total_amount');
+
+
+            // $baseQuery = StoreLedgerEntry::where('store_id', $storeId)
+            //     ->whereHas('voucher', function ($q) {
+            //         $q->where(function ($q2) {
+            //             $q2->where('debit_entity_type', 'store')
+            //                 ->orWhere('credit_entity_type', 'store');
+            //         });
+            //     });
+            // $accountstats['income'] = (clone $baseQuery)
+            //     ->whereHas('voucher', function ($q) {
+            //         $q->where('credit_entity_type', 'store');
+            //     })
+            //     ->where('credit', '>', 0)
+            //     ->sum('credit');
+            // $accountstats['expense'] = (clone $baseQuery)
+            //     ->whereHas('voucher', function ($q) {
+            //         $q->where('debit_entity_type', 'store');
+            //     })
+            //     ->where('debit', '>', 0)
+            //     ->sum('debit');
+
+            // $accountstats['pending_payments'] = (clone $baseQuery)
+            //     ->where('status', 'pending')
+            //     ->sum(DB::raw('credit - debit'));
+
+            // // ================= EMPLOYEE ACTIVITY ===================
+            // $empBaseQ = VendorEmployee::where('store_id', $storeId);
+            // $empStats['total_employees'] = (clone $empBaseQ)->count();
+            // $empStats['present_employees'] = _clockedInEmployee(true);
 
 
             // ==================== NEW DATA =======================
 
-            $preset = request('date_range') ?? 'today';
+            $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
+            if ($request->has('date_range')) {
+                Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
+            }
             $custom = request('custom_date_range') ?? null;
             $range = Helpers::calculatePresetDates($preset, $custom);
             $formatted_from  = $range['start'];
@@ -173,6 +177,31 @@ class DashboardController extends Controller
                 ->where('current_status', 'Completed')
                 ->count();
 
+            $data['new_leads_count'] = DB::table('service_requests')
+                ->whereNull('service_requests.accepted_by')
+                ->whereBetween('created_at', [$formatted_from, $formatted_to])
+                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))->count();
+
+            $data['manual_invoices_count'] = ManualInvoice::where('vendor_id', $storeId)->whereBetween(\DB::raw('COALESCE(invoice_date, created_at)'), [$formatted_from, $formatted_to])->count();
+            $data['service_invoices_count'] = ServiceInvoice::where('vendor_id', $storeId)->whereBetween(\DB::raw('COALESCE(invoice_date, created_at)'), [$formatted_from, $formatted_to])->count();
+            $data['total_invoices_count'] = $data['manual_invoices_count'] +  $data['service_invoices_count'];
+
+            $payment_status = 'Unpaid';
+
+            $serviceCount = ServiceInvoice::where('vendor_id', $storeId)
+                ->whereBetween('created_at', [$formatted_from, $formatted_to])
+                ->whereNotNull('pdf')
+                ->where('payment_status', $payment_status)
+                ->count();
+
+            $manualCount = ManualInvoice::where('vendor_id', $storeId)
+                ->whereBetween('created_at', [$formatted_from, $formatted_to])
+                ->where('payment_status', $payment_status)
+                ->count();
+
+            $data['pending_payments'] = $serviceCount + $manualCount;
+
+
             $data['revenue'] = StoreVoucher::where('store_id', $storeId)
                 ->whereBetween('voucher_date', [$from, $to])
                 ->where('credit_entity_type', 'store')
@@ -192,14 +221,17 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$formatted_from, $formatted_to])
                 // ->take(15)
                 ->get();
-            
-                // chart js
-                $rangeType = Helpers::getRangeTypeFromPreset($preset, $formatted_from, $formatted_to);
-                $chart_data = Helpers::getChartData($preset, $formatted_from, $formatted_to);
 
-        
+            $data['on_duty_emp'] = Attendance::where('vendor_id', $storeId)->where('date', now()->toDateString())->count();
 
-            return view('vendor-views.dashboard', compact('data','chart_data', 'preset', 'empStats', 'inventoryStats', 'taskStats', 'accountstats', 'leadStatistics'));
+            $data['total_emp'] = VendorEmployee::where('store_id', $storeId)->where('status', 1)->count();
+            $data['pending_leaves'] = Leave::where('vendor_id', $storeId)->where('status', 'pending')->count();
+
+            // chart js
+            $rangeType = Helpers::getRangeTypeFromPreset($preset, $formatted_from, $formatted_to);
+            $chart_data = Helpers::getChartData($preset, $formatted_from, $formatted_to);
+
+            return view('vendor-views.dashboard', compact('data', 'chart_data', 'preset'));
         } else {
             $employee_id = Helpers::get_loggedin_user()->id;
             $month = (int) date('n');
@@ -267,16 +299,45 @@ class DashboardController extends Controller
     }
 
 
-    public function sales_list(Request $request, $payment_status = 'Paid')
+    public function inventory_sale_list(Request $request, $payment_status = 'Paid')
     {
-        $preset = request('date_range') ?? 'today';
+        $preset = request('date_range') ?? 'last_30_days';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
         $formatted_from  = $range['start'];
         $formatted_to = $range['end'];
 
+        $search = $request->search ?? '';
+        $storeId = Helpers::get_store_id();
+        $query = InventoryOrderDetail::with(['order', 'item', 'order.invoice'])->whereHas('order', function ($q) use ($storeId) {
+            $q->where('store_id', $storeId);
+        })->whereBetween('created_at', [$formatted_from, $formatted_to]);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                // Match item name
+                $q->whereHas('item', function ($q2) use ($search) {
+                    $q2->where('item_name', 'like', '%' . $search . '%');
+                })
+                    // OR match order_id
+                    ->orWhereHas('order', function ($q3) use ($search) {
+                        $q3->where('invoice_id', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $sale_order_items = $query->get();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.inventory_sales_list', compact('sale_order_items'))->render()
+        ]);
+    }
+    public function sales_list(Request $request, $payment_status = 'Paid')
+    {
+        $range = Helpers::getDateRangeFromRequest();
+
         $invoices1 = ServiceInvoice::where('vendor_id', Helpers::get_store_id())
-            ->whereBetween('created_at', [$formatted_from, $formatted_to])
+            ->whereBetween('created_at', [$range['start'], $range['end']])
             ->whereNotNull('pdf')
             ->where('payment_status', $payment_status)
             ->get()
@@ -286,7 +347,7 @@ class DashboardController extends Controller
             });
 
         $invoices2 = ManualInvoice::where('vendor_id', Helpers::get_store_id())
-            ->whereBetween('created_at', [$formatted_from, $formatted_to])
+            ->whereBetween('created_at', [$range['start'], $range['end']])
             ->where('payment_status', $payment_status)
             ->get()
             ->map(function ($row) {
@@ -294,8 +355,8 @@ class DashboardController extends Controller
                 return $row;
             });
 
-        $invoices = $invoices1->merge($invoices2)->sortByDesc('created_at')
-            // ->take(15)
+        $invoices = $invoices1->merge($invoices2)
+            ->sortByDesc('created_at')
             ->values();
 
         return response()->json([
@@ -303,13 +364,10 @@ class DashboardController extends Controller
             'html' => view('vendor-views.dashboard.sales_list', compact('invoices'))->render()
         ]);
     }
+
     public function leads_list()
     {
-        $preset = request('date_range') ?? 'today';
-        $custom = request('custom_date_range') ?? null;
-        $range = Helpers::calculatePresetDates($preset, $custom);
-        $formatted_from  = $range['start'];
-        $formatted_to = $range['end'];
+        $range = Helpers::getDateRangeFromRequest();
         $storeId = Helpers::get_store_id();
 
         $data['leads'] = AcceptedServiceRequest::where('vendor_id', $storeId)
@@ -317,36 +375,64 @@ class DashboardController extends Controller
                 'serviceRequest.user:id,f_name,l_name,phone',
                 'serviceRequest.item:id,name,image'
             ])
-            ->whereBetween('created_at', [$formatted_from, $formatted_to])
-            // ->take(15)
+            ->whereBetween('created_at', [$range['start'], $range['end']])
             ->get();
 
         return response()->json([
             'status' => true,
-            'html' => view('vendor-views.dashboard.leads_list', compact($data))->render()
+            'html' => view('vendor-views.dashboard.leads_list', $data)->render()
         ]);
     }
 
+
     public function expense_list()
     {
-        $preset = request('date_range') ?? 'today';
-        $custom = request('custom_date_range') ?? null;
-        $range = Helpers::calculatePresetDates($preset, $custom);
-        $formatted_from  = $range['start'];
-        $formatted_to = $range['end'];
-        $from = $range['start']->toDateString();
-        $to  = $range['end']->toDateString();
-
+        $range = Helpers::getDateRangeFromRequest();
         $storeId = Helpers::get_store_id();
-        $expenses = StoreVoucher::where('store_id', $storeId)->where('debit_entity_type', 'store')
+
+        $from = $range['start']->toDateString();
+        $to   = $range['end']->toDateString();
+
+        $expenses = StoreVoucher::where('store_id', $storeId)
+            ->where('debit_entity_type', 'store')
             ->whereBetween('voucher_date', [$from, $to])
-            // ->take(15)
             ->get();
+
         return response()->json([
             'status' => true,
             'html' => view('vendor-views.dashboard.expense_list', compact('expenses'))->render()
         ]);
     }
+    public function tasks_list()
+    {
+        $range = Helpers::getDateRangeFromRequest();
+        $storeId = Helpers::get_store_id();
+
+        $tasks = StoreTask::where('store_id', $storeId)
+            ->whereBetween('created_at', [$range['start'], $range['end']])
+            ->where('task_type', 'common')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.tasks_list', compact('tasks'))->render()
+        ]);
+    }
+    public function projects_list()
+    {
+        $range = Helpers::getDateRangeFromRequest();
+        $storeId = Helpers::get_store_id();
+
+        $projects = Project::with('projectManager')->where('vendor_id', $storeId)
+            ->whereBetween('created_at', [$range['start'], $range['end']])
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('vendor-views.dashboard.projects_list', compact('projects'))->render()
+        ]);
+    }
+
     public function lastNotification()
     {
         if (auth('vendor')->check()) {

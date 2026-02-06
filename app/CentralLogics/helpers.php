@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 use App\Mail\OrderVerificationMail;
 use App\Models\AcceptedServiceRequest;
 use App\Models\AdminAction;
+use App\Models\CouponCondition;
 use App\Models\DayBook;
 use App\Models\FreeTrialHistory;
 use App\Models\InventoryGatepass;
@@ -47,6 +48,8 @@ use App\Models\PosToken;
 use App\Models\Project;
 use App\Models\Quotation;
 use App\Models\ServiceCoupon;
+use App\Models\ServiceInvoice;
+use App\Models\ServiceRequest;
 use App\Models\StoreAccount;
 use App\Models\StoreBankTransaction;
 use App\Models\StoreConfig;
@@ -87,6 +90,65 @@ class Helpers
 
         return asset('storage/app/public/' . trim($relativePath, '/') . '/' . $fileName);
     }
+
+    public static function alotServiceCoupon($service_id)
+    {
+        $service = ServiceRequest::with('acceptance')->find($service_id);
+
+        if (
+            !$service ||
+            !$service->acceptance ||
+            $service->acceptance->current_status !== 'Completed'
+        ) {
+            return false;
+        }
+
+        $completedCount = ServiceRequest::where('user_id', $service->user_id)
+            ->whereHas('acceptance', function ($q) {
+                $q->where('current_status', 'Completed');
+            })
+            ->count();
+
+        // map booking count => coupon_key
+        $couponMap = [
+            1      => 'first_booking_completion',
+            10     => '10_booking_completion',
+            20     => '20_booking_completion',
+            100000 => '100000_booking_completion',
+        ];
+
+        if (!isset($couponMap[$completedCount])) {
+            return false;
+        }
+
+        $couponCondition = CouponCondition::with('coupon')
+            ->where('coupon_key', $couponMap[$completedCount])
+            ->first();
+
+        if (!$couponCondition || !$couponCondition->coupon) {
+            return false;
+        }
+
+        $coupon = $couponCondition->coupon;
+
+        $customerIds = json_decode($coupon->customer_id, true);
+
+        if (!is_array($customerIds)) {
+            $customerIds = [];
+        }
+
+        if (in_array((string)$service->user_id, $customerIds, true)) {
+            return false;
+        }
+
+        $customerIds[] = (string)$service->user_id;
+
+        $coupon->customer_id = json_encode(array_values($customerIds));
+        $coupon->save();
+
+        return $coupon->id;
+    }
+
 
 
     public static function createPendingAction(array $data)
@@ -4999,7 +5061,20 @@ class Helpers
 
         return $imageName;
     }
-     public static function get_financial_year($year = null)
+    public static function getDateRangeFromRequest()
+    {
+        $preset = request('date_range') ?? 'today';
+        $custom = request('custom_date_range') ?? null;
+
+        $range = self::calculatePresetDates($preset, $custom);
+
+        return [
+            'start' => $range['start'],
+            'end'   => $range['end'],
+        ];
+    }
+
+    public static function get_financial_year($year = null)
     {
         $today = now();
 
@@ -5020,7 +5095,6 @@ class Helpers
     public static function getChartData(string $preset, \Carbon\Carbon $from, \Carbon\Carbon $to)
     {
         $rangeType = Helpers::getRangeTypeFromPreset($preset, $from, $to);
-
         $stepConfig = Helpers::getChartStepByRangeType($rangeType, $from, $to);
 
         $groupByFormat = match ($stepConfig['unit']) {
@@ -5054,7 +5128,10 @@ class Helpers
             }
         }
 
-        $leadsRaw = AcceptedServiceRequest::where('vendor_id', Helpers::get_store_id())
+        $storeId = Helpers::get_store_id();
+
+        /* ---------------- Completed leads ---------------- */
+        $completedLeadsRaw = AcceptedServiceRequest::where('vendor_id', $storeId)
             ->where('current_status', 'Completed')
             ->whereBetween('assigned_at', [$from, $to])
             ->selectRaw("
@@ -5065,7 +5142,20 @@ class Helpers
             ->orderBy('bucket')
             ->pluck('c', 'bucket');
 
-        $tasksRaw = StoreTask::where('store_id', Helpers::get_store_id())
+        /* ---------------- New leads ---------------- */
+        $newLeadsRaw = AcceptedServiceRequest::where('vendor_id', $storeId)
+            ->where('current_status', 'New')
+            ->whereBetween('assigned_at', [$from, $to])
+            ->selectRaw("
+            DATE_FORMAT(assigned_at, '{$groupByFormat}') as bucket,
+            COUNT(*) as c
+        ")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->pluck('c', 'bucket');
+
+        /* ---------------- Tasks (completed) ---------------- */
+        $tasksRaw = StoreTask::where('store_id', $storeId)
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw("
@@ -5076,7 +5166,8 @@ class Helpers
             ->orderBy('bucket')
             ->pluck('c', 'bucket');
 
-        $projectsRaw = Project::where('vendor_id', Helpers::get_store_id())
+        /* ---------------- Projects completed ---------------- */
+        $completedProjectsRaw = Project::where('vendor_id', $storeId)
             ->where('progress_status', 'Completed')
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw("
@@ -5087,9 +5178,88 @@ class Helpers
             ->orderBy('bucket')
             ->pluck('c', 'bucket');
 
-        $leadsData    = [];
-        $tasksData    = [];
-        $projectsData = [];
+        /* ---------------- Projects active ---------------- */
+        $activeProjectsRaw = Project::where('vendor_id', $storeId)
+            ->whereNotIn('progress_status', ['Completed', 'Cancelled'])
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw("
+            DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+            COUNT(*) as c
+        ")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->pluck('c', 'bucket');
+
+        /* ---------------- Paid bills ---------------- */
+        // $paidServiceBillsRaw = ServiceInvoice::where('vendor_id', $storeId)
+        //     ->where('payment_status', 'Paid')
+        //     ->whereBetween('created_at', [$from, $to])
+        //     ->selectRaw("
+        //     DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+        //     COUNT(*) as c
+        // ")
+        //     ->groupBy('bucket')
+        //     ->orderBy('bucket')
+        //     ->pluck('c', 'bucket');
+
+        // $paidManualBillsRaw = ManualInvoice::where('vendor_id', $storeId)
+        //     ->where('payment_status', 'Paid')
+        //     ->whereBetween('created_at', [$from, $to])
+        //     ->selectRaw("
+        //     DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+        //     COUNT(*) as c
+        // ")
+        //     ->groupBy('bucket')
+        //     ->orderBy('bucket')
+        //     ->pluck('c', 'bucket');
+
+        /* ---------------- Unpaid bills ---------------- */
+        // $unpaidServiceBillsRaw = ServiceInvoice::where('vendor_id', $storeId)
+        //     ->where('payment_status', 'Unpaid')
+        //     ->whereBetween('created_at', [$from, $to])
+        //     ->selectRaw("
+        //     DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+        //     COUNT(*) as c
+        // ")
+        //     ->groupBy('bucket')
+        //     ->orderBy('bucket')
+        //     ->pluck('c', 'bucket');
+
+        // $unpaidManualBillsRaw = ManualInvoice::where('vendor_id', $storeId)
+        //     ->where('payment_status', 'Unpaid')
+        //     ->whereBetween('created_at', [$from, $to])
+        //     ->selectRaw("
+        //     DATE_FORMAT(created_at, '{$groupByFormat}') as bucket,
+        //     COUNT(*) as c
+        // ")
+        //     ->groupBy('bucket')
+        //     ->orderBy('bucket')
+        //     ->pluck('c', 'bucket');
+        // paid bills
+        $paidBillsCount = ManualInvoice::where('vendor_id', $storeId)
+            ->where('payment_status', 'Paid')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('total_amount') +  ServiceInvoice::where('vendor_id', $storeId)
+            ->where('payment_status', 'Paid')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('total_amount');
+
+        // unpaid bills
+        $unpaidBillsCount = ManualInvoice::where('vendor_id', $storeId)
+            ->where('payment_status', 'Unpaid')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('total_amount') + ServiceInvoice::where('vendor_id', $storeId)
+            ->where('payment_status', 'Unpaid')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('total_amount');
+
+        $completedLeadsData   = [];
+        $newLeadsData         = [];
+        $tasksData            = [];
+        $completedProjectsData = [];
+        $activeProjectsData   = [];
+        // $paidBillsData        = [];
+        // $unpaidBillsData      = [];
 
         $cursor = $from->copy();
 
@@ -5102,9 +5272,19 @@ class Helpers
                 'month' => $cursor->format('Y-m'),
             };
 
-            $leadsData[]    = $leadsRaw->get($bucket, 0);
-            $tasksData[]    = $tasksRaw->get($bucket, 0);
-            $projectsData[] = $projectsRaw->get($bucket, 0);
+            $completedLeadsData[]   = $completedLeadsRaw->get($bucket, 0);
+            $newLeadsData[]         = $newLeadsRaw->get($bucket, 0);
+            $tasksData[]            = $tasksRaw->get($bucket, 0);
+            $completedProjectsData[] = $completedProjectsRaw->get($bucket, 0);
+            $activeProjectsData[]   = $activeProjectsRaw->get($bucket, 0);
+
+            // $paidBillsData[] =
+            //     $paidServiceBillsRaw->get($bucket, 0)
+            //     + $paidManualBillsRaw->get($bucket, 0);
+
+            // $unpaidBillsData[] =
+            //     $unpaidServiceBillsRaw->get($bucket, 0)
+            //     + $unpaidManualBillsRaw->get($bucket, 0);
 
             switch ($stepConfig['unit']) {
                 case 'hour':
@@ -5123,10 +5303,16 @@ class Helpers
         }
 
         return [
-            'months'   => $labels,
-            'leads'    => $leadsData,
-            'tasks'    => $tasksData,
-            'projects' => $projectsData,
+            'months' => $labels,
+
+            'completed_leads'   => $completedLeadsData,
+            'new_leads'         => $newLeadsData,
+            'tasks'             => $tasksData,
+            'completed_projects' => $completedProjectsData,
+            'active_projects'   => $activeProjectsData,
+            // 'paid_bills'        => $paidBillsData,
+            // 'unpaid_bills'      => $unpaidBillsData,
+            'bills'             => [$paidBillsCount, $unpaidBillsCount]
         ];
     }
 

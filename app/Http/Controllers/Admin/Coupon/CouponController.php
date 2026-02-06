@@ -11,6 +11,7 @@ use App\Exports\CouponExport;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\CouponAddRequest;
 use App\Http\Requests\Admin\CouponUpdateRequest;
+use App\Models\CouponCondition;
 use App\Models\ServiceCoupon;
 use App\Models\Store;
 use App\Services\CouponService;
@@ -117,11 +118,12 @@ class CouponController extends BaseController
             relations: ['module'],
             dataLimit: config('default_pagination'),
         );
+        $coupon_conditions = CouponCondition::where('status', 1)->get();
         $customer = $request['customer'];
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
-        return view(CouponViewPath::INDEX[VIEW], compact('coupons', 'language', 'defaultLang', 'zones', 'customer'));
+        return view(CouponViewPath::INDEX[VIEW], compact('coupons', 'language', 'coupon_conditions', 'defaultLang', 'zones', 'customer'));
     }
 
     public function add(CouponAddRequest $request): RedirectResponse
@@ -138,7 +140,9 @@ class CouponController extends BaseController
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
-        return view(CouponViewPath::UPDATE[VIEW], compact('coupon', 'language', 'defaultLang', 'zones'));
+        $coupon_conditions = CouponCondition::where('status', 1)->get();
+
+        return view(CouponViewPath::UPDATE[VIEW], compact('coupon', 'language', 'coupon_conditions','defaultLang', 'zones'));
     }
 
     public function update(CouponUpdateRequest $request, $id): RedirectResponse

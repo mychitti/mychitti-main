@@ -164,7 +164,6 @@ class StoreController extends Controller
             $validator->errors()->add('not_completed', 'Service not completed yet');
         }
 
-
         $store = Store::find($request->store_id);
         if (isset($store) == false) {
             $validator->errors()->add('store_id', translate('messages.store_not_found'));
@@ -200,7 +199,7 @@ class StoreController extends Controller
 
         $review->user_id = $request->user_id;
         $review->store_id = $request->store_id;
-        $review->order_id = $request->acc_id;
+        $review->order_id = $request->acceptance_id;
         $review->comment = $request->comment;
         $review->rating = $request->rating;
         $review->attachment = json_encode($image_array);

@@ -16,6 +16,99 @@
         .spacer {
             height: 70px;
         }
+          .coupon-card {
+        position: relative;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.2s;
+    }
+
+    .coupon-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .coupon-top {
+        background: linear-gradient(135deg, #81c408 0%, #a6d54eff 100%);
+        padding: 16px;
+        position: relative;
+    }
+
+    .coupon-top::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 0;
+        right: 0;
+        height: 12px;
+        background: radial-gradient(circle at 6px, transparent 6px, white 6px);
+        background-size: 12px 12px;
+        background-position: 0 0;
+    }
+
+    .coupon-name {
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+    }
+
+    .coupon-code-box {
+        background: white;
+        color: #81c408;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 16px;
+        font-weight: 700;
+        display: inline-block;
+        letter-spacing: 1px;
+    }
+
+    .coupon-bottom {
+        padding: 16px;
+    }
+
+    .coupon-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .info-item {
+        text-align: center;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .info-value {
+        font-size: 14px;
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .discount-value {
+        font-size: 20px;
+        color: #81c408;
+    }
+
+    .coupon-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: #393e46ff;
+        padding-top: 12px;
+        border-top: 1px dashed #e5e7eb;
+    }
+
     </style>
 @endpush
 
