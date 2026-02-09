@@ -13,6 +13,7 @@ use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\AccountTransaction;
+use App\Models\BusinessSetting;
 use App\Models\CustomerAddress;
 use App\Models\EmployeeRole;
 use App\Models\GatePassItem;
@@ -327,18 +328,32 @@ class ServiceRequestController extends Controller
             ->select('id', 'item_id', 'user_id', 'status', 'created_at')
             ->where('id', $request->service_id)
             ->first();
-
+        $host = request()->getHost();
+        $filesPath =  asset('storage/');
         if (!$serviceRequest) {
             return response()->json(['status' => false, 'message' => 'Service not found'], 404);
         }
-        // add role
-        if ($serviceRequest && $serviceRequest->accepted) {
+        //last status 
+        $serviceRequest->recent_status = LeadStatus::where('service_request_id', $serviceRequest->id)->latest()->value('status');
+
+        if ($serviceRequest->item?->image) {
+            $serviceRequest->item->image = $filesPath . '/product/' .   $serviceRequest->item->image;
+
+            }
+            // add role
+        if ( $serviceRequest->accepted) {
             if ($serviceRequest->accepted->assigned_type == 'vendor') {
                 $serviceRequest->accepted->staff->role = 'Vendor';
-            } elseif ($serviceRequest->accepted->staff && $serviceRequest->accepted->staff->employee_role_id) {
-                $role = EmployeeRole::where('id', $serviceRequest->accepted->staff->employee_role_id)->first();
-                $serviceRequest->accepted->staff->role = $role ? $role->name : null;
+            } elseif ($serviceRequest->accepted->staff) {
+                if ($serviceRequest->accepted->staff->employee_role_id) {
+                    $role = EmployeeRole::where('id', $serviceRequest->accepted->staff->employee_role_id)->first();
+                    $serviceRequest->accepted->staff->role = $role ? $role->name : null;
+                }
             }
+            if ($serviceRequest->accepted->staff->image) {
+                $serviceRequest->accepted->staff->image = $filesPath . '/vendor/' .  $serviceRequest->accepted->staff->image;
+            }
+           
 
             if (_reviewStatus($serviceRequest->accepted->id)['status'] === 'exists') {
                 $serviceRequest->accepted->review_status = 'Completed';
@@ -346,6 +361,10 @@ class ServiceRequestController extends Controller
                 $serviceRequest->accepted->review_status = null;
             }
         }
+
+         if ($serviceRequest->gatePass) {
+                $serviceRequest->gatePass->images_path = $filesPath . '/gatepass/';
+            } 
 
         // accepted 
         if (!$serviceRequest->accepted) {
@@ -363,10 +382,10 @@ class ServiceRequestController extends Controller
             $serviceRequest->setRelation('accepted', $fakeAccepted);
         }
 
+        
         // invoice 
         $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
         if ($invoice) {
-            $host = request()->getHost();
             if ($host == 'staging.mychitti.net') {
                 $serviceRequest->invoice_url = $invoice ? asset('storage/app/public/invoice/' . $invoice->pdf) : null;
             } else {
@@ -374,13 +393,26 @@ class ServiceRequestController extends Controller
             }
             $serviceRequest->invoice_created_at = $invoice->created_at;
         }
-        if($serviceRequest->accepted->coupon){
+        if ($serviceRequest->accepted->coupon) {
             $serviceRequest->accepted->coupon->is_scratched = _isCouponScratched((string)$serviceRequest->user_id, $serviceRequest->accepted->coupon->id);
+        }
+        if ($serviceRequest->accepted->store?->logo) {
+            $serviceRequest->accepted->store->logo = $filesPath . '/store/' . $serviceRequest->accepted->store->logo;
         }
 
         return response()->json(['status' => true, 'data' => $serviceRequest]);
     }
 
+    public function quotation_terms_and_conditions(Request $request)
+    {
+        $tnc = BusinessSetting::where('key', 'quotation_terms_and_conditions')->value('value');
+        return response()->json([$tnc], 200);
+    }
+    public function gatepass_terms_and_conditions(Request $request)
+    {
+        $tnc = BusinessSetting::where('key', 'gatepass_terms_and_conditions')->value('value');
+        return response()->json([$tnc], 200);
+    }
     public function gatepass_approval(Request $request)
     {
         $validator = Validator::make($request->all(), [

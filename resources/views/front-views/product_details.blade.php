@@ -1040,11 +1040,11 @@
                                                     loading="lazy" class="rounded" style="width: 55px;"
                                                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                     alt="review"></a>
-                                            <a target="_blank"
+                                            {{-- <a target="_blank"
                                                 href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
                                                     loading="lazy" class="rounded" style="width: 55px;"
                                                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                    alt="review"></a>
+                                                    alt="review"></a> --}}
                                         @endforeach
                                     </div>
                                 @endif

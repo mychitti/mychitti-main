@@ -61,12 +61,13 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::post('/quotaion-approval', 'ServiceRequestController@quotaion_approval');
         Route::get('/timeline', 'ServiceRequestController@timeline');
         Route::post('/delete', 'ServiceRequestController@delete'); // for development purpose only
+        Route::get('/quotation/terms-and-conditions', 'ServiceRequestController@quotation_terms_and_conditions'); // for development purpose only
+        Route::get('/gatepass/terms-and-conditions', 'ServiceRequestController@gatepass_terms_and_conditions'); // for development purpose only
     });
     Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
         Route::post('sign-up', 'CustomerAuthController@register');
         Route::post('otp-login', 'CustomerAuthController@login_with_otp');
         Route::post('login', 'CustomerAuthController@login');
-
         Route::post('verify-phone', 'CustomerAuthController@verify_phone');
 
         Route::post('check-email', 'CustomerAuthController@check_email');
@@ -338,6 +339,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::group(['middleware' => ['module-check']], function () {
         Route::group(['prefix' => 'customer', 'middleware' => 'auth:api'], function () {
             Route::get('notifications', 'NotificationController@get_notifications');
+            Route::get('ads', 'NotificationController@get_ads');
             Route::get('info', 'CustomerController@info');
             Route::get('update-zone', 'CustomerController@update_zone');
             Route::post('update-profile', 'CustomerController@update_profile');
@@ -353,6 +355,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
                 Route::post('update/{id}', 'CustomerController@update_address');
                 Route::put('update-pincode/{id}', 'CustomerController@update_pincode');
                 Route::delete('delete', 'CustomerController@delete_address');
+                Route::get('set-default/{id}', 'CustomerController@set_default_address');
             });
 
             // Chatting

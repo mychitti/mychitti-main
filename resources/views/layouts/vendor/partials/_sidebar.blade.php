@@ -1501,7 +1501,7 @@
                                             @endif
                                             @if (hasPermission('purchase_bill', 'list'))
                                                 <li
-                                                    class="nav-item {{ Request::is('inventory/purchase/orders') ? 'active' : '' }}">
+                                                    class="nav-item {{ Request::is('billing/purchase-bills') ? 'active' : '' }}">
                                                     <a class="nav-link"
                                                         href="{{ route('vendor.invoice.my-bills') }}"
                                                         title="Purchase Bills">

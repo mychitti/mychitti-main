@@ -364,7 +364,7 @@ class CustomerController extends Controller
             'contact_person_number' => 'required|max:10',
             'address' => 'required',
             'longitude' => 'required',
-            'latitude' => 'required'
+            'latitude' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -398,6 +398,23 @@ class CustomerController extends Controller
         return response()->json(['message' => translate('messages.updated_successfully'), 'zone_id' => $zone[0]->id], 200);
     }
 
+    public function set_default_address(Request $request, $id)
+    {
+        $user_id = $request->user()->id;
+        DB::transaction(function () use ($user_id, $id) {
+
+            DB::table('customer_addresses')
+                ->where('user_id', $user_id)
+                ->update(['is_default' => 0]);
+
+            DB::table('customer_addresses')
+                ->where('id', $id)
+                ->where('user_id', $user_id)
+                ->update(['is_default' => 1]);
+        });
+        return response()->json(['message' => translate('messages.updated_successfully')], 200);
+
+    }
     public function delete_address(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -517,7 +534,7 @@ class CustomerController extends Controller
         }
         return response()->json(['message' => translate('messages.successfully_updated')], 200);
     }
-   
+
     public function update_interest(Request $request)
     {
         $validator = Validator::make($request->all(), [

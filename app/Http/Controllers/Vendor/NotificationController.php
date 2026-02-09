@@ -69,7 +69,7 @@ class NotificationController extends Controller
         //     $this->sendPushNotificationToTopic($notification, 'general', 'general');
         // } catch (Exception $e) {
         //     Toastr::warning(translate('messages.push_notification_failed'));
-        // }
+        // } 
 
         return response()->json([
             'success' => true,

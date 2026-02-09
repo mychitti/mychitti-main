@@ -208,7 +208,7 @@
                                         href="{{ route('admin.store.view', [$notification->vendor_id]) }}">{{ _storeName($notification->vendor_id) }}</a>
                                 </div>
                                 <div class="category-tag">
-                                    {{ $notification->zone_id == null ? translate('messages.all') zones : ($notification->zone ? $notification->zone->name : translate('messages.zone_deleted')) }}</a>
+                                    {{ $notification->zone_id == null ? translate('messages.all') . ' zones' : ($notification->zone ? $notification->zone->name : translate('messages.zone_deleted')) }}</a>
                                 </div>
                                 <h3 class="ad-title">{{ $notification->title }}</h3>
                                 <p class="ad-description">

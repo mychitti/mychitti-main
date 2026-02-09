@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
-
-<head> 
-    <meta charset="utf-8"> 
+<html lang="en"> 
+  
+<head>  
+    <meta charset="utf-8">   
     <title>@yield('title', 'My Chitti')</title> 
     <meta name="csrf-token" id="csrf-token" content="{{ csrf_token() }}">
     <meta name="google-site-verification" content="GKuvdu8PAKO0h9zq-kyGkm1OjAuHY44lWi01iSL40Sk" />

@@ -85,7 +85,7 @@ class CouponController extends Controller
             ->whereJsonContains('customer_id', (string) $user_id) // ✅ MUST be string
             ->get();
         return response()->json(['data' =>  $coupons], 200);
-    }
+    } 
 
     public function scratch(Request $request)
     {

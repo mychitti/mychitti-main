@@ -7,7 +7,6 @@ use App\Models\Notification;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
-
 class NotificationController extends Controller
 {
     public function get_notifications(Request $request){
@@ -21,13 +20,42 @@ class NotificationController extends Controller
         }
         $zone_id= $request->header('zoneId');
         try {
-            $notifications = Notification::active()->where('tergat', 'customer')->where(function($q)use($zone_id){
-                $q->whereNull('zone_id')->orWhere('zone_id', $zone_id);
-            })->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->get();
+            $notifications = Notification::active()
+            ->where('tergat', 'customer')
+            ->where(function($q)use($zone_id){
+                $q->whereNull('zone_id')->orWhereIn('zone_id', json_decode($zone_id))->orWhere('zone_id', 0);
+            })
+            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by' ,'!=' ,'vendor')
+            ->get();
             $notifications->append('data');
 
             $user_notifications = UserNotification::where('user_id', $request->user()->id)->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->get();
             $notifications =  $notifications->merge($user_notifications);
+            return response()->json($notifications, 200);
+        } catch (\Exception $e) {
+            return response()->json([], 200);
+        }
+    }
+    public function get_ads(Request $request){
+
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => 'Zone id is required!']);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id = $request->header('zoneId');
+        try {
+            $notifications = Notification::active()
+            ->where('tergat', 'customer')
+            ->where(function($q)use($zone_id){
+                $q->whereNull('zone_id')->orWhereIn('zone_id', json_decode($zone_id))->orWhere('zone_id', 0);
+            })
+            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by','vendor')
+            ->get();
+            $notifications->append('data');
+
             return response()->json($notifications, 200);
         } catch (\Exception $e) {
             return response()->json([], 200);
