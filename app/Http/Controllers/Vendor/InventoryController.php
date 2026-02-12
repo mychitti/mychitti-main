@@ -174,7 +174,7 @@ class InventoryController extends Controller
         $import = new InvItemImport(Helpers::get_store_id());
         Excel::import($import, $file);
         if (!empty($import->failedRows)) {
-            dd($import->failedRows);
+            // dd($import->failedRows);
         } else {
         }
 
