@@ -794,6 +794,7 @@
          }
      </script>
      <script>
+
          $('.order-btn').on('click', function() {
              console.log('fd')
              let orderType = $('input[class="order_type"]:checked').val();
@@ -814,12 +815,10 @@
              }
 
              if ($('.price-display').length) {
-                 $('.order_type[value="take_away"]').prop('checked', true);
-                 resetCart()
+                 {{-- $('.order_type[value="take_away"]').prop('checked', true); --}}
                  $("#cartForm").submit();
              } else {
-                 console.log('fd4')
-
+            
                  toastr.error('Please add atleast one item');
              }
 
