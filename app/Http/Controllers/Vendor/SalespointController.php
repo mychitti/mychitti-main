@@ -1097,7 +1097,7 @@ class SalespointController extends Controller
     {
         $file = $request->file('file');
         // $import = new POSInvItemImport(Helpers::get_store_id());
-        $import = new POSItemImport(Helpers::get_store_id());
+        $import = new POSInvItemImport(Helpers::get_store_id());
         Excel::import($import, $file);
         if (!empty($import->failedRows)) {
             // dd($import->failedRows);
