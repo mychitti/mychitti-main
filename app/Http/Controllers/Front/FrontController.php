@@ -2337,8 +2337,7 @@ class FrontController extends Controller
                     }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
-        $templateId = 14
-        ;
+ 
         // return view('front-views.store_details', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         // return view('front-views.store_webpage.template-2', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         // return view('front-views.store_webpage.template-3', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
