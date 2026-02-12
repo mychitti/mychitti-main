@@ -3455,7 +3455,7 @@ if (!function_exists('_auditLogs')) {
     }
 }
 if (!function_exists('_price')) {
-    function _price($rawPrice, $method = '', $decimal = 3)
+    function _price($rawPrice, $method = '', $decimal = 2)
     {
         // ✅ Force correct types
         $rawPrice = (float) str_replace(',', '', $rawPrice);
@@ -3476,6 +3476,8 @@ if (!function_exists('_price')) {
         return \App\CentralLogics\Helpers::currency_symbol() . $formattedPrice;
     }
 }
+
+ 
 
 if (!function_exists('_quotationExist')) {
     function _quotationExist($serviceId)

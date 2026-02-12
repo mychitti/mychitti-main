@@ -8,7 +8,11 @@ use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\BannerLogic;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
+use App\Models\Item;
 use App\Models\OfferBanner;
+use App\Models\Store;
+use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -68,6 +72,54 @@ class BannerController extends Controller
         }
         return response()->json($banners, 200);
     }
+    public function id_by_slug(Request $request)
+    {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'type' => 'required|in:store,category,item',
+                'slug' => 'required',
+                'zone_name' => 'nullable',
+            ],
+            [
+                'type.in' => 'Only store, category or item are accepted.',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $zoneId = null;
+
+        if ($request->filled('zone_name')) {
+            $zoneId = Zone::where('name', $request->zone_name)->value('id');
+        }
+
+        $slug = $request->slug;
+
+        $id = match ($request->type) {
+
+            'store' => Store::withoutGlobalScopes()
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->where('slug', $slug)
+                ->value('id'),
+
+            'category' => Category::when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->where('slug', $slug)
+                ->value('id'),
+
+            'item' => Item::when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->where('slug', $slug)
+                ->value('id'),
+        };
+
+        return response()->json([
+            'id' => $id,
+            'zone_id' => $zoneId
+        ], 200);
+    }
+
     public function get_module_banners(Request $request)
     {
 
@@ -168,8 +220,8 @@ class BannerController extends Controller
             array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
             return response()->json([
                 'errors' => $errors
-            ], 403); 
-        } 
+            ], 403);
+        }
         $zone_id = $request->header('zoneId');
         $banners = Banner::active();
         // if (config('module.current_module_data')) {

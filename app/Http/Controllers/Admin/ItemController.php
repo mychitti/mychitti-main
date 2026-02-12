@@ -32,6 +32,7 @@ use App\Models\ActionLog;
 use App\Models\BusinessSetting;
 use App\Models\FeeCategory;
 use App\Models\ItemAreaKeyword;
+use App\Models\ItemFaq;
 use App\Models\ItemVariationDetail;
 use App\Models\LocationKeyword;
 use App\Models\ProductKeyword;
@@ -105,16 +106,17 @@ class ItemController extends Controller
         }
     }
 
- public function terms_and_condtions_store (Request $request){
+    public function terms_and_condtions_store(Request $request)
+    {
         $request->validate([
             'gatepass_tnc' => 'required',
             'quotation_tnc' => 'required',
-            ], [
-                'gatepass_tnc.required' => translate('messages.gatepass_terms_and_conditions_required'),
-                'quotation_tnc.required' => translate('messages.quotation_terms_and_conditions_required'),
-                ]);
-                $gatepass_tnc =  $this->base64UrlDecode($request->gatepass_tnc);   
-                $quotation_tnc =  $this->base64UrlDecode($request->quotation_tnc);
+        ], [
+            'gatepass_tnc.required' => translate('messages.gatepass_terms_and_conditions_required'),
+            'quotation_tnc.required' => translate('messages.quotation_terms_and_conditions_required'),
+        ]);
+        $gatepass_tnc =  $this->base64UrlDecode($request->gatepass_tnc);
+        $quotation_tnc =  $this->base64UrlDecode($request->quotation_tnc);
 
         BusinessSetting::updateOrInsert(
             ['key' => 'gatepass_terms_and_conditions'],
@@ -124,14 +126,14 @@ class ItemController extends Controller
             ['key' => 'quotation_terms_and_conditions'],
             ['value' => $quotation_tnc]
         );
-return response()->json(['status' => true, 'message' => translate('messages.terms_and_conditions_updated_successfully')]);
-      
+        return response()->json(['status' => true, 'message' => translate('messages.terms_and_conditions_updated_successfully')]);
     }
-   public function terms_and_condtions (Request $request){
-    
+    public function terms_and_condtions(Request $request)
+    {
+
         $quotattion_tnc = BusinessSetting::where('key', 'quotation_terms_and_conditions')->first()?->value ?? '';
         $gatepass_tnc = BusinessSetting::where('key', 'gatepass_terms_and_conditions')->first()?->value ?? '';
-          
+
         return view('admin-views.product.terms-and-conditions', compact('quotattion_tnc', 'gatepass_tnc'));
     }
     function base64UrlDecode($data)
@@ -155,6 +157,8 @@ return response()->json(['status' => true, 'message' => translate('messages.term
                     return (Config::get('module.current_module_type') != 'food' && $request?->product_gellary == null);
                 })
             ],
+            'faqs.*.question' => 'nullable|string|max:500',
+            'faqs.*.answer'   => 'nullable|string',
             'mrp_price' => 'required|numeric|between:.01,999999999999.99',
             'price' => 'required|numeric',
             'asking_price' => 'required|numeric|between:.01,999999999999.99',
@@ -366,6 +370,30 @@ return response()->json(['status' => true, 'message' => translate('messages.term
 
         $item->save();
 
+        // faq for google 
+        DB::transaction(function () use ($request, $item) {
+
+            $faqs = $request->faqs ?? [];
+
+            foreach ($faqs as $index => $row) {
+
+                if (
+                    empty(trim($row['question'] ?? '')) &&
+                    empty(trim($row['answer'] ?? ''))
+                ) {
+                    continue;
+                }
+
+                ItemFaq::create([
+                    'item_id'   => $item->id,
+                    'question'  => $row['question'],
+                    'answer'    => $row['answer'],
+                    'sort_order' => $index
+                ]);
+            }
+        });
+
+
         try {
             ActionLog::create([
                 'user_id' => auth('admin')->id(),
@@ -449,7 +477,7 @@ return response()->json(['status' => true, 'message' => translate('messages.term
         }
         // additional keywords 
         if ($request->has('more_keywords') && $request->more_keywords != '') {
-            $rows = explode(',',$request->more_keywords);
+            $rows = explode(',', $request->more_keywords);
             foreach ($rows as $kw) {
                 ServiceKeyword::create([
                     'service_id' => $item->id,
@@ -613,9 +641,12 @@ return response()->json(['status' => true, 'message' => translate('messages.term
         $keywords = ServiceKeyword::where('service_id', $id)->get();
         $seoContents = SeoContent::where('data', $id)->where('seo_type', 'item')->get();
         $faqContents  = SeoContent::where('data', $id)->where('seo_type', 'faq')->get();
+        $faqs = ItemFaq::where('item_id', $id)
+            ->orderBy('sort_order')
+            ->get();
 
         // prx($item_area_keywords->keyword);
-        return view('admin-views.product.edit', compact('seoContents', 'faqContents', 'product', 'item_area_keywords', 'zones', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
+        return view('admin-views.product.edit', compact('faqs', 'seoContents', 'faqContents', 'product', 'item_area_keywords', 'zones', 'sub_category', 'category', 'temp_product', 'keywords', 'fee_categories'));
     }
 
     public function status(Request $request)
@@ -657,6 +688,8 @@ return response()->json(['status' => true, 'message' => translate('messages.term
             'hsn_code' => 'required',
             'keyword_excel' => 'nullable|mimes:xlsx,xls',
             'description.0' => 'required',
+            'faqs.*.question' => 'nullable|string|max:500',
+            'faqs.*.answer'   => 'nullable|string',
         ], [
             'description.*.max' => translate('messages.description_length_warning'),
             'category_id.required' => translate('messages.category_required'),
@@ -900,13 +933,39 @@ return response()->json(['status' => true, 'message' => translate('messages.term
             }
         }
 
-         //SEO 
+        //SEO 
         $item->meta_title = $request->meta_title;
         $item->seo_heading = $request->seo_heading;
         $item->meta_desc = $request->meta_desc;
         $item->short_desc = $request->short_desc;
 
         $item->save();
+
+        // FAQ (FORMATTED)
+        DB::transaction(function () use ($request, $item) {
+
+            $faqs = $request->faqs ?? [];
+
+            // delete all old FAQs of this item
+            ItemFaq::where('item_id', $item->id)->delete();
+
+            foreach ($faqs as $index => $row) {
+
+                if (
+                    empty(trim($row['question'] ?? '')) &&
+                    empty(trim($row['answer'] ?? ''))
+                ) {
+                    continue;
+                }
+
+                ItemFaq::create([
+                    'item_id'    => $item->id,
+                    'question'   => $row['question'],
+                    'answer'     => $row['answer'],
+                    'sort_order' => $index
+                ]);
+            }
+        });
 
         try {
             ActionLog::create([
@@ -928,9 +987,9 @@ return response()->json(['status' => true, 'message' => translate('messages.term
             ServiceKeyword::where('service_id', $item->id)->delete();
             Excel::import(new KeywordsImport($item->id), $request->file('keyword_excel'));
         }
-         // additional keywords 
+        // additional keywords 
         if ($request->has('more_keywords') && $request->more_keywords != '') {
-            $rows = explode(',',$request->more_keywords);
+            $rows = explode(',', $request->more_keywords);
             foreach ($rows as $kw) {
                 ServiceKeyword::create([
                     'service_id' => $item->id,

@@ -103,11 +103,11 @@
             </h1>
             <div class="d-flex align-items-end flex-wrap">
                 <!-- <div class="text--primary-2 d-flex flex-wrap align-items-center mr-2">
-                                                                                                                    <a href="{{ route('admin.item.product_gallery') }}" class="btn btn-outline-primary btn--primary d-flex align-items-center bg-not-hover-primary-ash rounded-8 gap-2">
-                                                                                                                        <img src="{{ asset('public/assets/admin/img/product-gallery.png') }}" class="w--22" alt="">
-                                                                                                                        <span>{{ translate('Add Info From Gallery') }}</span>
-                                                                                                                    </a>
-                                                                                                                </div> -->
+                                                                                                                        <a href="{{ route('admin.item.product_gallery') }}" class="btn btn-outline-primary btn--primary d-flex align-items-center bg-not-hover-primary-ash rounded-8 gap-2">
+                                                                                                                            <img src="{{ asset('public/assets/admin/img/product-gallery.png') }}" class="w--22" alt="">
+                                                                                                                            <span>{{ translate('Add Info From Gallery') }}</span>
+                                                                                                                        </a>
+                                                                                                                    </div> -->
 
             </div>
         </div>
@@ -148,8 +148,7 @@
                                         class="form-label-secondary text-danger" data-toggle="tooltip"
                                         data-placement="right" data-original-title="{{ translate('messages.Required.') }}">
                                         *
-                                    </span><span class="input-label-secondary"
-                                        title=""><img
+                                    </span><span class="input-label-secondary" title=""><img
                                             src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
                                             alt=""></span></label>
                                 <select name="category_id" id="category_id"
@@ -158,8 +157,10 @@
                                 </select>
                             </div>
                             <div class="form-group mb-0 col-md-6">
-                                <label class="input-label" for="short_desc">{{ translate('messages.short_description') }}</label>
-                                <input type="text" name="short_desc" placeholder="Professional {SERVICE_NAME} Experts" class="form-control" id="short_desc">
+                                <label class="input-label"
+                                    for="short_desc">{{ translate('messages.short_description') }}</label>
+                                <input type="text" name="short_desc" placeholder="Professional {SERVICE_NAME} Experts"
+                                    class="form-control" id="short_desc">
                             </div>
 
                         </div>
@@ -536,7 +537,8 @@
                         <div class="collapse show" id="seoCollapse">
                             <div class="pt-3 px-3">
                                 <h4>Placeholders: </h4>
-                                <p><code>{CITY_NAME}</code>, <code>{SERVICE_NAME}</code>, <code>{LOCALITIES}</code>, <code>{SAME_CATEGORY_SERVICES}</code></p>
+                                <p><code>{CITY_NAME}</code>, <code>{SERVICE_NAME}</code>, <code>{LOCALITIES}</code>,
+                                    <code>{SAME_CATEGORY_SERVICES}</code></p>
                             </div>
                             <div class="seo-body">
 
@@ -549,47 +551,51 @@
                                         <div class="border rounded p-3 mb-3 row">
                                             <div class="form-group mb-0 col-md-4">
                                                 <label class="form-label">Meta Title</label>
-                                                <input type="text"  class="form-control"
+                                                <input type="text" class="form-control"
                                                     placeholder="{SERVICE_NAME} in {CITY_NAME} | Trusted Experts"
-                                                   name ="meta_title" id="">
+                                                    name ="meta_title" id="">
                                             </div>
                                             <div class="form-group mb-0 col-md-8">
                                                 <label class="form-label">Meta Description</label>
                                                 <textarea type="text" class="form-control" rows="1"
                                                     placeholder="Get reliable {SERVICE_NAME} in {CITY_NAME} with fast service, expert technicians, and affordable pricing."
-                                                   name="meta_desc" id=""></textarea>
+                                                    name="meta_desc" id=""></textarea>
                                             </div>
                                             <div class="form-group mb-0 col-md-4">
                                                 <label class="form-label">Service Heading <i class="tio-help-outlined"
                                                         data-toggle="tooltip" data-placement="right"
                                                         title="Will show on service detail page in website as main service name"></i></label>
-                                                <input type="text"  class="form-control"
-                                                  name="seo_heading"  placeholder="{SERVICE_NAME} in {CITY_NAME}" id="">
+                                                <input type="text" class="form-control" name="seo_heading"
+                                                    placeholder="{SERVICE_NAME} in {CITY_NAME}" id="">
                                             </div>
 
 
                                             <div class="form-group mb-0 col-md-4">
-                                            <div class="d-flex justify-content-between">
-                                                <label class="form-label">Meta Keywords <img
-                                                        class="avatar avatar-xss avatar-4by3 mr-2"
-                                                        src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
-                                                        alt="Image Description"></label>
+                                                <div class="d-flex justify-content-between">
+                                                    <label class="form-label">Meta Keywords <img
+                                                            class="avatar avatar-xss avatar-4by3 mr-2"
+                                                            src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
+                                                            alt="Image Description"></label>
                                                     <a href="{{ asset('storage/app/public/export-keywords.xlsx') }}"
                                                         class="text-underline">Download Example Excel</a>
-                                            </div>
+                                                </div>
 
                                                 <input type="file" name="keyword_excel" id="import_excel"
                                                     class="form-control" id="">
                                             </div>
                                             <div class="form-group mb-0 col-md-4">
-                                            <div class="d-flex justify-content-between">
+                                                <div class="d-flex justify-content-between">
 
-                                                <label class="form-label"><span>Keywords Preview</span></label> <a style="display:none;" class="cursor-pointer text-underline add_more_keywords_btn">Add more</a>
-                                            </div>
+                                                    <label class="form-label"><span>Keywords Preview</span></label> <a
+                                                        style="display:none;"
+                                                        class="cursor-pointer text-underline add_more_keywords_btn">Add
+                                                        more</a>
+                                                </div>
 
                                                 <div class="">
-                                                    <textarea class="form-control"  readonly id="keywords" ></textarea>
-                                                    <textarea style="display:none;" name="more_keywords" class="form-control more_keywords_field mt-2" placeholder="More Keywords..."  id="keywords" ></textarea>
+                                                    <textarea class="form-control" readonly id="keywords"></textarea>
+                                                    <textarea style="display:none;" name="more_keywords" class="form-control more_keywords_field mt-2"
+                                                        placeholder="More Keywords..." id="keywords"></textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -648,6 +654,54 @@
                                         <button type="button" class="btn btn-primary btn-sm" id="addFaq">
                                             <i class="fas fa-plus"></i> Add More FAQ
                                         </button>
+                                    </div>
+                                </div>
+                                <!-- FAQ Section -->
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-question-circle mr-2 text-success"></i>
+                                            FAQs (For Google Schema)</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="faqGoogleContainer">
+                                            <div id="item-faq-wrapper">
+
+                                                @forelse($itemFaqs ?? [] as $i => $faq)
+                                                    <div class="item-faq-row card mb-2">
+                                                        <div class="card-body p-3">
+
+                                                            <div class="form-group mb-2">
+                                                                <label>Question</label>
+                                                                <input type="text"
+                                                                    name="faqs[{{ $i }}][question]"
+                                                                    class="form-control"
+                                                                    value="{{ old('faqs.' . $i . '.question', $faq->question) }}">
+                                                            </div>
+
+                                                            <div class="form-group mb-2">
+                                                                <label>Answer</label>
+                                                                <textarea name="faqs[{{ $i }}][answer]" class="form-control" rows="2">{{ old('faqs.' . $i . '.answer', $faq->answer) }}</textarea>
+                                                            </div>
+
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-danger remove-item-faq">
+                                                                Remove
+                                                            </button>
+
+                                                        </div>
+                                                    </div>
+
+                                                @empty
+                                                    {{-- start with one empty row if needed --}}
+                                                @endforelse
+
+                                            </div>
+
+                                            <button type="button" class="btn btn-sm btn-primary" id="add-item-faq">
+                                                + Add FAQ
+                                            </button>
+                                        </div>
+                                    
                                     </div>
                                 </div>
                             </div>
@@ -761,7 +815,7 @@
     </div>
 
 
-    
+
 @endsection
 
 
@@ -774,7 +828,7 @@
     <script>
         "use strict";
 
-        $(".add_more_keywords_btn").on('click', function (){
+        $(".add_more_keywords_btn").on('click', function() {
             $(".more_keywords_field").show()
             $(".add_more_keywords_btn").hide()
         })
@@ -1426,5 +1480,49 @@
             });
         })
     </script>
+    <script>
+let itemFaqIndex = {{ isset($itemFaqs) ? $itemFaqs->count() : 0 }};
+
+document.getElementById('add-item-faq').addEventListener('click', function () {
+
+    let html = `
+    <div class="item-faq-row card mb-2">
+        <div class="card-body p-3">
+
+            <div class="form-group mb-2">
+                <label>Question</label>
+                <input type="text"
+                       name="faqs[${itemFaqIndex}][question]"
+                       class="form-control">
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Answer</label>
+                <textarea name="faqs[${itemFaqIndex}][answer]"
+                          class="form-control"
+                          rows="2"></textarea>
+            </div>
+
+            <button type="button" class="btn btn-sm btn-danger remove-item-faq">
+                Remove
+            </button>
+
+        </div>
+    </div>
+    `;
+
+    document.getElementById('item-faq-wrapper')
+        .insertAdjacentHTML('beforeend', html);
+
+    itemFaqIndex++;
+});
+
+document.addEventListener('click', function(e){
+    if(e.target.classList.contains('remove-item-faq')){
+        e.target.closest('.item-faq-row').remove();
+    }
+});
+</script>
+
     @include('vendor-views/multiple_ck_editor');
 @endpush

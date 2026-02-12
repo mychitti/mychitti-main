@@ -5556,8 +5556,8 @@ class Helpers
                 return auth('vendor')->user()->stores[0]->reviews_section;
             } else if ($mod_name == 'deliveryman') {
                 return auth('vendor')->user()->stores[0]->self_delivery_system;
-            } else if ($mod_name == 'pos') {
-                return auth('vendor')->user()->stores[0]->pos_system;
+            // } else if ($mod_name == 'pos') {
+                // return auth('vendor')->user()->stores[0]->pos_system;
             } else if ($mod_name == 'addon') {
                 return config('module.' . auth('vendor')->user()->stores[0]->module->module_type)['add_on'];
             }
@@ -5569,8 +5569,8 @@ class Helpers
                     return auth('vendor_employee')->user()->store->reviews_section;
                 } else if ($mod_name == 'deliveryman') {
                     return auth('vendor_employee')->user()->store->self_delivery_system;
-                } else if ($mod_name == 'pos') {
-                    return auth('vendor_employee')->user()->store->pos_system;
+                // } else if ($mod_name == 'pos') {
+                //     return auth('vendor_employee')->user()->store->pos_system;
                 } else if ($mod_name == 'addon') {
                     return config('module.' . auth('vendor_employee')->user()->store->module->module_type)['add_on'];
                 }
@@ -6105,7 +6105,7 @@ class Helpers
                 'TakeAway' => $item->take_away == 1 ? 'yes' : 'no',
                 'Delivery' => $item->delivery == 1 ? 'yes' : 'no',
                 'ReviewsSection' => $item->reviews_section == 1 ? 'active' : 'inactive',
-                'PosSystem' => $item->pos_system == 1 ? 'active' : 'inactive',
+                // 'PosSystem' => $item->pos_system == 1 ? 'active' : 'inactive',
                 'storeOpen' => $item->active == 1 ? 'yes' : 'no',
                 'FeaturedStore' => $item->featured == 1 ? 'yes' : 'no',
             ];

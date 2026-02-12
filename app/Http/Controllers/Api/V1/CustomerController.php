@@ -322,7 +322,9 @@ class CustomerController extends Controller
                 'errors' => $errors
             ], 403);
         }
-
+        $hasAddress = DB::table('customer_addresses')
+            ->where('user_id', $request->user()->id)
+            ->exists();
         $address = [
             'user_id' => $request->user()->id,
             'contact_person_name' => $request->contact_person_name,
@@ -335,11 +337,12 @@ class CustomerController extends Controller
             'longitude' => $request->longitude,
             'latitude' => $request->latitude,
             'zone_id' => $zone[0]->id,
+            'is_default' => $hasAddress ? 0 : 1,
             'created_at' => now(),
             'updated_at' => now()
         ];
-        DB::table('customer_addresses')->insert($address);
-        return response()->json(['message' => translate('messages.successfully_added'), 'zone_ids' => array_column($zone->toArray(), 'id')], 200);
+        $addressId = DB::table('customer_addresses')->insertGetId($address);
+        return response()->json(['message' => translate('messages.successfully_added'), 'id' => $addressId, 'zone_ids' => array_column($zone->toArray(), 'id')], 200);
     }
     public function update_pincode(Request $request, $id)
     {
@@ -398,6 +401,13 @@ class CustomerController extends Controller
         return response()->json(['message' => translate('messages.updated_successfully'), 'zone_id' => $zone[0]->id], 200);
     }
 
+    public function get_default_address(Request $request)
+    {
+
+        $address = CustomerAddress::where('user_id', $request->user()->id)->where('is_default', 1)->first();
+
+        return response()->json($address, 200);
+    }
     public function set_default_address(Request $request, $id)
     {
         $user_id = $request->user()->id;
@@ -413,7 +423,6 @@ class CustomerController extends Controller
                 ->update(['is_default' => 1]);
         });
         return response()->json(['message' => translate('messages.updated_successfully')], 200);
-
     }
     public function delete_address(Request $request)
     {

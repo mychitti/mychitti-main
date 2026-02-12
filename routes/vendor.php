@@ -730,13 +730,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
         //
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
+
+            // restaurent table 
+            Route::resource('restaurant-tables', \App\Http\Controllers\Vendor\RestaurantTableController::class);
+
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
             Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
             Route::get('calendar', 'SalespointController@calendar')->name('calendar');
 
             // POS TOKEN 
-            Route::get('token', 'SalespointController@token')->name('token')->middleware('permission:pos_token,generate');
+            Route::get('token/{id?}', 'SalespointController@token')->name('token')->middleware('permission:pos_token,generate');
             Route::get('token-list', 'SalespointController@token_list')->name('token.list')->middleware('permission:pos_token,list');
             Route::get('token-export', 'SalespointController@token_export')->name('token.export')->middleware('permission:pos_token,export');
             Route::get('convert-to-bill/{id}', 'SalespointController@convert_to_bill')->name('token.convert-to-bill')->middleware('permission:pos_token,convert to invoice');
@@ -745,6 +749,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('token-generate', 'SalespointController@token_generate')->name('token-generate')->middleware('permission:pos_token,generate');
             Route::get('mark-paid/{id}', 'SalespointController@mark_paid')->name('token.mark-paid')->middleware('permission:pos_token,mark_paid');
             Route::post('payment-method', 'SalespointController@payment_method')->name('token.payment-method')->middleware('permission:pos_token,edit');
+
+            // DINE IN //
+            // Route::get('open-table', 'SalespointController@open_table')->name('open-table');
+            // Route::get('pos/{order}', 'SalespointController@order_show')->name('order.show');
+            
+            
+            Route::post('dine-in/open-table', 'SalespointController@openTable')->name('dinein.open');
+            Route::get('pos/dine-in/table-state', 'SalespointController@tableState')->name('dinein.table-state');
+            Route::post('pos/dine-in/update','SalespointController@updateDineOrder')->name('dinein.update');
 
             // POS ITEMS 
             Route::post('items-import', 'SalespointController@items_import')->name('items_import');
@@ -869,7 +882,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('view/{id}', 'EmployeeController@view')->name('view')->middleware('permission:staff_manage,view');
             Route::get('view-id-card/{id}', 'EmployeeController@view_id_card')->name('view-id-card')->middleware('permission:staff_manage,view');
             Route::get('terminate/{id}', 'EmployeeController@terminate')->name('terminate')->middleware('permission:staff_manage,terminate');
-         
         });
 
 
@@ -1078,8 +1090,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
 
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
-            Route::get('webpage', 'SettingsController@webpage_settings')->name('webpage');
+            Route::get('webpage/{tab?}', 'SettingsController@webpage_settings')->name('webpage');
             Route::post('webpage-update', 'SettingsController@webpage_settings_update')->name('webpage-update');
+            Route::post('webpage-template', 'SettingsController@webpage_template_update')->name('webpage-template');
+
+
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
                 Route::get('profile', 'SettingsController@profile_settings')->name('profile');
                 Route::get('store', 'SettingsController@store_settings')->name('store');

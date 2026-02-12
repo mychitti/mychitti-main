@@ -555,7 +555,7 @@ class StoreLogic
                 'TakeAway'=> $item->stores[0]->take_away == 1 ? 'yes' : 'no',
                 'Delivery'=> $item->stores[0]->delivery == 1 ? 'yes' : 'no',
                 'ReviewsSection'=> $item->stores[0]->reviews_section == 1 ? 'active' : 'inactive',
-                'PosSystem'=> $item->stores[0]->pos_system == 1 ? 'active' : 'inactive',
+                // 'PosSystem'=> $item->stores[0]->pos_system == 1 ? 'active' : 'inactive',
                 'storeOpen'=> $item->stores[0]->active == 1 ? 'yes' : 'no',
                 'FeaturedStore'=> $item->stores[0]->featured == 1 ? 'yes' : 'no',
             ];

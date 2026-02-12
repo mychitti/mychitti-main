@@ -356,6 +356,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
                 Route::put('update-pincode/{id}', 'CustomerController@update_pincode');
                 Route::delete('delete', 'CustomerController@delete_address');
                 Route::get('set-default/{id}', 'CustomerController@set_default_address');
+                Route::get('get-default', 'CustomerController@get_default_address');
             });
 
             // Chatting
@@ -459,6 +460,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
         Route::group(['prefix' => 'banners'], function () {
             Route::get('/', 'BannerController@get_banners');
+            Route::post('/get-id-by-slug', 'BannerController@id_by_slug');
         });
 
         Route::group(['prefix' => 'other-banners'], function () {

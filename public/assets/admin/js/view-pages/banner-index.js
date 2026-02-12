@@ -13,6 +13,20 @@ function readURL(input) {
 $("#customFileEg1").change(function () {
     readURL(this);
 });
+function readURL2(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+            $('#viewer2').attr('src', e.target.result);
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+$("#customFileEg12").change(function () {
+    readURL2(this);
+});
 
 var zone_id = [];
 

@@ -5,6 +5,19 @@
  @push('css_or_js')
      <meta name="csrf-token" content="{{ csrf_token() }}">
      <style>
+         .dine-table-card {
+             cursor: pointer;
+             border-width: 1px;
+             border-radius: 6px !important;
+         }
+
+         .dine-table-card.active {
+             background-color: var(--primary-orange);
+             border-color: var(--primary-orange) !important;
+             color: white !important;
+             box-shadow: 0 0 0 2px var(--primary-orange);
+         }
+
          .desk_p2 {
              padding: 0.5rem !important;
          }
@@ -305,6 +318,7 @@
  @section('content')
 
      {{-- @include('vendor-views/sub-module/partials/salary') --}}
+     <input type="hidden" id="current_order_from" value="{{ $token->order_from ?? '' }}">
 
      <div class="content container-fluid px-2">
          <div class="coffee-container">
@@ -344,6 +358,78 @@
 
                          </div>
                      </div>
+
+                     <div class="pos--payment-options mt-3 mb-3">
+                         <ul>
+                             <li>
+                                 <label>
+                                     <input type="radio" name="type" value="take_away" class="order_type" hidden
+                                         checked>
+                                     <span>Take away</span>
+                                 </label>
+                             </li>
+                             <li>
+                                 <label>
+                                     <input type="radio" name="type" value="dine_in" class="order_type" hidden>
+                                     <span>Dine-in </span>
+                                 </label>
+                             </li>
+                         </ul>
+                     </div>
+                     {{-- ================= DINE IN PANEL ================= --}}
+                     <div id="dineInPanel" class="card mb-3" style="display:none;">
+                         <div class="card-body p-2">
+
+                             <h6 class="mb-2">Select Table</h6>
+
+                             <input type="hidden" name="table_id" form="cartForm" id="dine_table_id">
+                             <input type="hidden" name="waiter_id" form="cartForm" id="dine_waiter_id">
+
+                             <div class="row g-0">
+
+                                 @foreach ($data['tables'] as $table)
+                                     @php
+                                         $isOccupied = $table->openOrder ? true : false;
+                                     @endphp
+
+                                     <div class="col-md-2 col-4 mb-2 p-2">
+
+                                         <div class="card dine-table-card p-2 text-center
+    {{ $table->status == 'occupied' ? 'border-danger' : 'border-success' }}"
+                                             data-id="{{ $table->id }}" data-status="{{ $table->status }}">
+
+                                             <strong>{{ $table->name }}</strong>
+                                             <small>{{ strtoupper($table->room_type) }} |
+                                                 {{ $table->capacity }}</small>
+
+                                             <span
+                                                 class="badge
+        {{ $table->status == 'free' ? 'badge-success' : 'badge-danger' }}">
+                                                 {{ ucfirst($table->status) }}
+                                             </span>
+
+                                         </div>
+                                     </div>
+                                 @endforeach
+
+
+                             </div>
+
+                             <div class="form-group mt-3 mb-0">
+                                 <label class="mb-1">Select Waiter</label>
+
+                                 <select class="form-control" id="dine_waiter_select">
+                                     <option value="">-- Select waiter --</option>
+                                     @foreach ($data['waiters'] as $w)
+                                         <option value="{{ $w->id }}">{{ $w->name }}</option>
+                                     @endforeach
+                                 </select>
+                             </div>
+
+                         </div>
+                     </div>
+
+
 
                      <div class="coffee-tab-content active" id="tab_">
                          @foreach ($data['branchWiseItems'] as $branchName => $items)
@@ -535,134 +621,148 @@
 
                              <!-- Totals -->
                              <div class="cart-totals">
-                                 <div class="pos--payment-options mt-3 mb-3">
-                                     <p class="mb-3">{{ translate('paid_By') }}</p>
-                                     <ul>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="payment_method" value="cash" hidden
-                                                     checked>
-                                                 <span>Cash</span>
-                                             </label>
-                                         </li>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="payment_method" value="card" hidden>
-                                                 <span>Card</span>
-                                             </label>
-                                         </li>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="payment_method" value="upi" hidden>
-                                                 <span>Upi</span>
-                                             </label>
-                                         </li>
-                                     </ul>
-                                 </div>
 
-                                 <div class="total-row">
-                                     <span class="total-label">Subtotal:</span>
-                                     <span class="total-amount">₹<span class="subtotal_show">0</span></span>
-                                 </div>
 
-                                 <div class="total-row">
-                                     <span class="total-label">Coupon:</span>
-                                     <span class="total-amount">
-                                         <div class="input-group ">
-                                             <input onkeyup="calculateTotals()"
-                                                 class="small_field coupon_show coupon_inp form-control" type="number"
-                                                 name="coupon" placeholder="Ex: 12">
-                                             <select onchange="calculateTotals()" name="coupon_type"
-                                                 class="form-control small_field coupon_type" id="">
-                                                 <option value="amount">₹</option>
-                                                 <option value="percent">%</option>
-                                             </select>
-                                         </div>
-                                     </span>
-                                 </div>
-                                 <div class="total-row">
-                                     <span class="total-label">Discount:</span>
-                                     <span class="total-amount">
-                                         <div class="input-group ">
-                                             <input onkeyup="calculateTotals()"
-                                                 class="small_field discount_show discount_inp form-control"
-                                                 type="number" name="discount" placeholder="Ex: 12">
-                                             <select onchange="calculateTotals()" name="discount_type"
-                                                 class="form-control small_field discount_type" id="">
-                                                 <option value="percent">%</option>
-                                                 <option value="amount">₹</option>
-                                             </select>
-                                         </div>
-                                     </span>
-                                 </div>
-                                 <div class="total-row">
-                                     <span class="total-label">Delivery:</span>
-                                     <span class="total-amount">₹<input name="delivery" type="text"
-                                             onkeyup="calculateTotals()" class="delivery_show delivery_inp"
-                                             value="0"></span>
-                                 </div>
-                                 @if ($delivery_gst['status'] ?? 0)
-                                     <div class="total-row">
-                                         <span class="total-label">Delivery GST Amount:</span>
-                                         <input type="hidden" name="delivery_gst_percent" class="delivery_gst_percent"
-                                             value = "{{ $delivery_gst['percent'] }}">
-                                         <span class="gst-amount">₹<span class="delivery_gst_amount">0</span>
+
+
+                                 <div id="checkout-section">
+                                     <div class="pos--payment-options mt-3 mb-3">
+                                         <p class="mb-3">{{ translate('paid_By') }}</p>
+                                         <ul>
+                                             <li>
+                                                 <label>
+                                                     <input type="radio" name="payment_method" value="cash" hidden
+                                                         checked>
+                                                     <span>Cash</span>
+                                                 </label>
+                                             </li>
+                                             <li>
+                                                 <label>
+                                                     <input type="radio" name="payment_method" value="card" hidden>
+                                                     <span>Card</span>
+                                                 </label>
+                                             </li>
+                                             <li>
+                                                 <label>
+                                                     <input type="radio" name="payment_method" value="upi" hidden>
+                                                     <span>Upi</span>
+                                                 </label>
+                                             </li>
+                                         </ul>
                                      </div>
-                                 @endif
-                                 <div class="total-row final-total">
-                                     <span class="total-label">Total:</span>
-                                     <span class="total-amount">₹<span class="total_show">0</span></span>
+
+                                     <div class="total-row ">
+                                         <span class="total-label">Coupon:</span>
+                                         <span class="total-amount">
+                                             <div class="input-group ">
+                                                 <input onkeyup="calculateTotals()"
+                                                     class="small_field coupon_show coupon_inp form-control"
+                                                     type="number" name="coupon" placeholder="Ex: 12">
+                                                 <select onchange="calculateTotals()" name="coupon_type"
+                                                     class="form-control small_field coupon_type" id="">
+                                                     <option value="amount">₹</option>
+                                                     <option value="percent">%</option>
+                                                 </select>
+                                             </div>
+                                         </span>
+                                     </div>
+                                     <div class="total-row ">
+                                         <span class="total-label">Discount:</span>
+                                         <span class="total-amount">
+                                             <div class="input-group ">
+                                                 <input onkeyup="calculateTotals()"
+                                                     class="small_field discount_show discount_inp form-control"
+                                                     type="number" name="discount" placeholder="Ex: 12">
+                                                 <select onchange="calculateTotals()" name="discount_type"
+                                                     class="form-control small_field discount_type" id="">
+                                                     <option value="percent">%</option>
+                                                     <option value="amount">₹</option>
+                                                 </select>
+                                             </div>
+                                         </span>
+                                     </div>
+                                     <div class="total-row ">
+                                         <span class="total-label">Delivery:</span>
+                                         <span class="total-amount">₹<input name="delivery" type="text"
+                                                 onkeyup="calculateTotals()" class="delivery_show delivery_inp"
+                                                 value="0"></span>
+                                     </div>
+                                     @if ($delivery_gst['status'] ?? 0)
+                                         <div class="total-row ">
+                                             <span class="total-label">Delivery GST Amount:</span>
+                                             <input type="hidden" name="delivery_gst_percent"
+                                                 class="delivery_gst_percent" value = "{{ $delivery_gst['percent'] }}">
+                                             <span class="gst-amount">₹<span class="delivery_gst_amount">0</span>
+                                         </div>
+                                     @endif
+
+                                     <div class="pos--payment-options mt-3 mb-3 ">
+                                         <ul>
+                                             <li>
+                                                 <label>
+                                                     <input type="radio" name="payment_status" value="paid" hidden
+                                                         checked>
+                                                     <span>Paid</span>
+                                                 </label>
+                                             </li>
+                                             <li>
+                                                 <label>
+                                                     <input type="radio" name="payment_status" value="unpaid" hidden>
+                                                     <span>Unpaid</span>
+                                                 </label>
+                                             </li>
+                                         </ul>
+                                     </div>
+                                     <input type="hidden" name="token_id" id="current_token_id">
+                                     <button type="button" id="btn-print-bill" class="order-btn">Print Bill</button>
+                                     {{-- <button type="button" onclick="printInvoice()">Print Invoice</button> --}}
+                                     <div class="token_type ">
+                                         <div class="pos--payment-options mt-3 mb-3">
+                                             <ul>
+                                                 <li>
+                                                     <label>
+                                                         <input type="radio" name="token_type" value="token" hidden
+                                                             checked>
+                                                         <span>Token</span>
+                                                     </label>
+                                                 </li>
+                                                 <li>
+                                                     <label>
+                                                         <input type="radio" name="token_type" value="kitchen" hidden>
+                                                         <span>Kitchen Token</span>
+                                                     </label>
+                                                 </li>
+                                                 <li>
+                                                     <label>
+                                                         <input type="radio" name="token_type" value="both" hidden>
+                                                         <span>Both</span>
+                                                     </label>
+                                                 </li>
+                                             </ul>
+                                         </div>
+                                     </div>
                                  </div>
-                                 <div class="pos--payment-options mt-3 mb-3">
-                                     <ul>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="payment_status" value="paid" hidden
-                                                     checked>
-                                                 <span>Paid</span>
-                                             </label>
-                                         </li>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="payment_status" value="unpaid" hidden>
-                                                 <span>Unpaid</span>
-                                             </label>
-                                         </li>
-                                     </ul>
-                                 </div>
+
+
+
                              </div>
-                             <style>
-
-                             </style>
-
-                             <button type="button" class="order-btn">Print Bill</button>
-                             {{-- <button type="button" onclick="printInvoice()">Print Invoice</button> --}}
-                             <div class="token_type">
-                                 <div class="pos--payment-options mt-3 mb-3">
-                                     <ul>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="token_type" value="token" hidden checked>
-                                                 <span>Token</span>
-                                             </label>
-                                         </li>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="token_type" value="kitchen" hidden>
-                                                 <span>Kitchen Token</span>
-                                             </label>
-                                         </li>
-                                         <li>
-                                             <label>
-                                                 <input type="radio" name="token_type" value="both" hidden>
-                                                 <span>Both</span>
-                                             </label>
-                                         </li>
-                                     </ul>
-                                 </div>
+                             <div class="total-row">
+                                 <span class="total-label">Subtotal:</span>
+                                 <span class="total-amount">₹<span class="subtotal_show">0</span></span>
+                             </div>
+                             <div class="total-row final-total">
+                                 <span class="total-label">Total:</span>
+                                 <span class="total-amount">₹<span class="total_show">0</span></span>
                              </div>
 
-
+                             <button type="button" class="btn btn-primary" id="btn-start-dine-order"
+                                 style="display:none">
+                                 Start order
+                             </button>
+                             <button type="button" class="btn btn-primary" id="btn-close-dine-order"
+                                 style="display:none">
+                                 Close & Checkout
+                             </button>
                          </div>
                      </form>
                  </div>
@@ -695,12 +795,36 @@
      </script>
      <script>
          $('.order-btn').on('click', function() {
+             console.log('fd')
+             let orderType = $('input[class="order_type"]:checked').val();
+
+             if (orderType === 'dine_in') {
+
+                 if (!$('#dine_table_id').val()) {
+                     toastr.error('Please select table');
+                     return false;
+                 }
+                 console.log('fd2')
+
+                 console.log($('#dine_waiter_id').val())
+                 if (!$('#dine_waiter_id').val()) {
+                     toastr.error('Please select waiter');
+                     return false;
+                 }
+             }
+
              if ($('.price-display').length) {
+                 console.log('fd3')
+
                  $("#cartForm").submit();
              } else {
+                 console.log('fd4')
+
                  toastr.error('Please add atleast one item');
              }
-         })
+
+         });
+
          document.addEventListener('click', function(e) {
              if (e.target.classList.contains('coffee-nav-link')) {
                  e.preventDefault();
@@ -918,7 +1042,7 @@
              $(".delivery_inp").val(0)
              $('#customer_id').val('walk_in').trigger('change');
              $('#itemSelect').val('Walk-in Order').trigger('change');
-             $("#branch_id").val(null).trigger('change');
+             {{-- $("#branch_id").val(null).trigger('change'); --}}
          }
      </script>
      <script>
@@ -962,11 +1086,264 @@
          $(".pos_search").on('focus', function() {
              $(".add_item").show()
          });
-         $(document).on('click', function(e) {
+         {{-- $(document).on('click', function(e) {
              // if the clicked element is NOT inside .search_inp
              if (!$(e.target).closest('.search_inp').length) {
                  $(".add_item").hide();
              }
+         }); --}}
+         window.selectedTableId = null;
+         window.currentDineTokenId = null;
+
+
+         $('#btn-close-dine-order').on('click', function() {
+             $("#checkout-section").show();
+             $('#btn-start-dine-order').hide();
+             $('#btn-close-dine-order').hide();
+
+             $('#token_id').val()
+
+         });
+
+         $('#btn-start-dine-order').on('click', function() {
+             let waiterId = $('#dine_waiter_id').val();
+             let table_id = window.selectedTableId;
+
+             if (!table_id) {
+                 toastr.error('Please select table');
+                 return;
+             }
+
+             if (!waiterId) {
+                 toastr.error('Please select waiter');
+                 return;
+             }
+
+             // Check if at least one item is selected
+             let items = $('input[name="item_id[]"]').map(function() {
+                 return $(this).val();
+             }).get();
+
+             if (items.length === 0) {
+                 toastr.error('Please select at least one item');
+                 return;
+             }
+
+             let form = $('#cartForm');
+             let formDataArray = form.serializeArray(); // all form data
+
+             // Add table, waiter, and CSRF manually
+             formDataArray.push({
+                 name: 'table_id',
+                 value: table_id
+             });
+             formDataArray.push({
+                 name: 'waiter_id',
+                 value: waiterId
+             });
+             formDataArray.push({
+                 name: '_token',
+                 value: '{{ csrf_token() }}'
+             });
+
+             // Start new order
+             $.ajax({
+                 url: "{{ route('vendor.pos.dinein.open') }}",
+                 type: "POST",
+                 data: $.param(formDataArray),
+                 success: function(res) {
+                     console.log(res);
+                     $('#btn-start-dine-order').text('Update Order');
+                     $("#btn-close-dine-order").show();
+                     $("#current_token_id").val(res.order_id)
+
+                     toastr.success('Order started successfully');
+                 },
+                 error: function(xhr) {
+                     console.log(xhr.responseText);
+                     toastr.error('Something went wrong');
+                 }
+             });
+         });
+
+
+         function updateDineOrder(tokenId) {
+
+             let form = $('#cartForm');
+             let data = form.serialize();
+             data += '&token_id=' + tokenId;
+
+             $.post("{{ route('vendor.pos.dinein.update') }}", data, function(res) {
+
+                 if (res.status) {
+                     toastr.success('Order updated');
+                 } else {
+                     toastr.error('Failed to update order');
+                 }
+
+             });
+         }
+
+
+
+         function handleOrderTypeUI() {
+
+             let val = $('input[class="order_type"]:checked').val();
+
+             if (val === 'dine_in') {
+                 $('#dineInPanel').slideDown();
+
+                 $('#checkout-section').hide();
+                 $('#btn-start-dine-order').show();
+
+
+             } else {
+                 $('#checkout-section').show();
+                 $('#btn-start-dine-order').hide();
+                 $('#dineInPanel').slideUp();
+
+                 $('#dine_table_id').val('');
+                 $('#dine_waiter_id').val('');
+                 $('.dine-table-card').removeClass('active');
+                 $('#dine_waiter_select').val('');
+
+             }
+         }
+
+
+         $(document).on('change', 'input[class="order_type"]', handleOrderTypeUI);
+
+         $(document).ready(handleOrderTypeUI);
+
+
+         // toggle dine in panel
+         $('input[class="order_type"]').on('change', function() {
+
+             if ($(this).val() === 'dine_in') {
+
+
+
+             } else {
+
+             }
+
+         });
+         $(function() {
+
+             let val = $('input[class="order_type"]:checked').val();
+
+             if (val === 'dine_in') {
+                 $('#btn-start-dine-order').show();
+                 $('#btn-close-dine-order').show();
+                 $('#dine-table-section').show();
+             } else {
+                 $('#btn-start-dine-order').hide();
+                 $('#btn-close-dine-order').hide();
+                 $('#dine-table-section').hide();
+             }
+
+         });
+
+         // table select
+         $(document).on('click', '.dine-table-card', function(e) {
+
+             e.preventDefault();
+             e.stopPropagation();
+             e.stopImmediatePropagation();
+
+             let tableId = $(this).data('id');
+
+             window.selectedTableId = tableId;
+
+             $('.dine-table-card').removeClass('active');
+             $(this).addClass('active');
+
+             $("#checkout-section").hide();
+
+             $('#dine_table_id').val(tableId);
+             loadDineInTable(tableId);
+
+             return false;
+         });
+
+
+
+         function loadDineInTable(tableId) {
+             $.get("{{ route('vendor.pos.dinein.table-state') }}", {
+                 table_id: tableId
+             }, function(res) {
+
+                 if (res.has_order) {
+
+                     fillCartFromOrder(res.order);
+                     $("#dine_waiter_select").val(res.order.waiter_id)
+                     $("#dine_waiter_id").val(res.order.waiter_id)
+
+                     //  VERY IMPORTANT
+                     window.currentDineTokenId = res.order.id;
+                     $("#current_token_id").val(currentDineTokenId)
+
+                     $('#btn-start-dine-order').text('Update Order');
+                     $('#btn-close-dine-order').show();
+
+                 } else {
+
+                     resetCart();
+                     $("#dine_waiter_select").val('')
+                     $("#dine_waiter_id").val('')
+
+
+                     //  clear token
+                     window.currentDineTokenId = null;
+                     $('#btn-close-dine-order').hide();
+                     $('#btn-start-dine-order').text('Start Order');
+                 }
+
+             });
+         }
+
+
+
+         function fillCartFromOrder(order) {
+             console.log('fd');
+             $('.inner_cart').html('');
+
+             order.token_items.forEach(function(item) {
+
+                 let html = `
+        <div class="cart-item cart-item_${item.item_id}" data-item-id="${item.item_id}">
+            <input type="hidden" name="item_id[]" value="${item.item_id}">
+            <input type="hidden" name="item_type[]" value="item">
+            <input type="hidden" name="unit_price[]" class="item_price" value="${item.unit_price}">
+            <img src="${item.image}" class="cart-item-image">
+
+            <div class="cart-item-details">
+                <div class="cart-item-name">${item.item_name}</div>
+                <div class="cart-item-price">₹
+                    <span class="price-display">${(item.unit_price*item.qty).toFixed(3)}</span>
+                </div>
+            </div>
+
+            <div class="cart-item-controls">
+                <button type="button" class="cart-quantity-btn" data-id="${item.item_id}" data-action="decrease">-</button>
+                <input type="number" class="quantity-display cart_qty_${item.item_id} item_qty"
+                       name="item_qty[]" value="${item.qty}">
+                <button type="button" class="cart-quantity-btn" data-id="${item.item_id}" data-action="increase">+</button>
+            </div>
+        </div>
+        `;
+
+                 $('.inner_cart').append(html);
+             });
+
+             calculateTotals();
+         }
+
+
+
+         // waiter select
+         $('#dine_waiter_select').on('change', function() {
+             $('#dine_waiter_id').val($(this).val());
          });
      </script>
      @include('vendor-views/js/pos_items_js')

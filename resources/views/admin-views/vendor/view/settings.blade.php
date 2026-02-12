@@ -48,7 +48,7 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-sm-6 col-lg-4">
+                        {{-- <div class="col-sm-6 col-lg-4">
                             <div class="form-group mb-0">
                                 <label class="toggle-switch toggle-switch-sm d-flex justify-content-between border border-secondary rounded px-4 form-control" for="pos_system">
                                 <span class="pr-2 text-capitalize">{{translate('messages.include_POS_in_store_panel')}}<span class="input-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{translate('Enable_or_Disable_Point_of_Sale_(POS)_in_the_store_panel.')}}"><img src="{{asset('/public/assets/admin/img/info-circle.svg')}}" alt="{{translate('messages.pos_system_hint')}}"></span></span>
@@ -58,7 +58,7 @@
                                     </span>
                                 </label>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <div class="col-sm-6 col-lg-4">
                             <div class="form-group mb-0">
@@ -127,7 +127,7 @@
                             enctype="multipart/form-data" class="col-12">
                             @csrf
                             <div class="row">
-                                @if ($toggle_veg_non_veg && config('module.'.$store->module->module_type)['veg_non_veg'])
+                                @if (isset($toggle_veg_non_veg) && config('module.'.$store->module->module_type)['veg_non_veg'])
                                     <div class="col-sm-6 col-lg-4">
                                         <div class="form-group">
                                             <label class="form-label">{{translate('store_type')}}<span class="input-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{translate('Define_the_food_type_this_store_can_sell.')}}"><img src="{{asset('/public/assets/admin/img/info-circle.svg')}}" alt="{{translate('messages.scheduled_order_hint')}}"></span></label>
@@ -165,6 +165,7 @@
                                     <input type="text" name="order_place_to_schedule_interval" class="form-control" value="{{$store->order_place_to_schedule_interval}}">
                                 </div>
                                 @endif
+                                @if(0)
                                 <div class="form-group col-sm-6 col-lg-4">
                                     <label class="input-label text-capitalize" for="maximum_delivery_time">{{translate('messages.approx_delivery_time')}}<span class="input-label-secondary" data-toggle="tooltip" data-placement="right" data-original-title="{{translate('Set_the_total_time_to_deliver_products.')}}"><img src="{{asset('/public/assets/admin/img/info-circle.svg')}}" alt="{{translate('Set_the_total_time_to_deliver_products.')}}"></span></label>
                                     <div class="input-group">
@@ -177,6 +178,7 @@
                                         </select>
                                     </div>
                                 </div>
+                                @endif
                                 <div class="form-group col-sm-6 col-lg-4">
                                     <div class="form-group">
                                         <label class="d-flex justify-content-between switch toggle-switch-sm text-dark" for="tax">
@@ -208,7 +210,7 @@
                     </div>
                 </div>
             </div>
-            @if (!config('module.'.$store->module->module_type)['always_open'])
+            @if (0 && !config('module.'.$store->module->module_type)['always_open'])
             <div class="card mt-3">
                 <div class="card-header">
                     <h5 class="card-title">

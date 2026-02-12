@@ -1,0 +1,83 @@
+/* =========================
+   TEMPLATE 2 – TRUST / PRO
+========================= */
+
+.template-2 {
+    background: #f8fbff;
+    color: #212529;
+}
+
+/* HERO */
+.trust-hero {
+    padding: 80px 0;
+    background: linear-gradient(135deg, #0d6efd, #20c997);
+    color: #fff;
+}
+
+.trust-title {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.trust-tagline {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.trust-hero-img {
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+}
+
+/* INFO BAR */
+.trust-info-bar {
+    background: #fff;
+    padding: 20px 0;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+}
+
+.trust-info-bar p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* SECTIONS */
+.section-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 30px;
+}
+
+/* SERVICES */
+.trust-services .product_card {
+    transition: all 0.3s ease;
+}
+
+.trust-services .product_card:hover {
+    transform: translateY(-5px);
+}
+
+/* BUTTONS */
+.template-2 .btn-primary {
+    background: #0d6efd;
+    border: none;
+}
+
+.template-2 .btn-outline-primary {
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+/* REVIEWS */
+.template-2 .rating_star {
+    color: #f7a103;
+}
+
+/* CONTACT */
+.template-2 .contact-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}

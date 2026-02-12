@@ -1,9 +1,6 @@
-@if (!Request::is('store*') && !Request::is('store-terms-and-conditions'))
+@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions'))
     <!-- Navbar start -->
-    <style>
-
-    </style>
-    <div class=" fixed-top ">
+    <div class="fixed-top">
         <nav
             class="nav-wrapper navbar navbar-light bg-white navbar-expand-xl mx-md-5 mx-0 justify-content-between p-0 pt-2">
             <a href="{{ route('home') }}" class="navbar-brand   nav-link " style=" width: 150px;">
@@ -155,7 +152,7 @@
         </nav>
     </div>
 @elseif(isset($store) && $store)
-    <div class=" fixed-top ">
+    {{-- <div class=" fixed-top ">
         <nav
             class="nav-wrapper navbar navbar-light bg-white navbar-expand-xl mx-md-5 mx-0 justify-content-between p-0 pt-2">
             <img class="store_logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
@@ -211,7 +208,7 @@
 
 
         </nav>
-    </div>
+    </div> --}}
 @endif
 
 <div class="container-fluid secondary_nav">

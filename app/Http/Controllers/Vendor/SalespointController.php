@@ -22,9 +22,11 @@ use App\Models\ManualInvoice;
 use App\Models\OrderType;
 use App\Models\PosToken;
 use App\Models\PosTokenItem;
+use App\Models\RestaurantTable;
 use App\Models\Store;
 use App\Models\StoreConfig;
 use App\Models\StoreCustomer;
+use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
 use Faker\Extension\Helper;
 use Illuminate\Http\Request;
@@ -289,6 +291,13 @@ class SalespointController extends Controller
         $data['order_from'] = OrderType::where('store_id', Helpers::get_store_id())->get();
         $data['upcoming_number'] = Helpers::_nextTokenNumber();
         $data['branchWiseItems'] = $branchWiseItems;
+        $data['tables'] = RestaurantTable::where('store_id', $store_id)->with('openOrder')
+            ->orderBy('name')
+            ->get();
+
+        $data['waiters'] = VendorEmployee::where('store_id', $store_id)
+            ->get();
+
         return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id'));
     }
 
@@ -334,30 +343,56 @@ class SalespointController extends Controller
                 $gst_type = 'gst';
             }
         }
-
+        $token_id = $request->token_id ?? null;
         $tkn = $request->token_prefix ?? null;
-        $pos_token = new PosToken();
+
+        if ($token_id) {
+            $pos_token = PosToken::with('tokenItems')->findOrFail($token_id);
+        } else {
+            $pos_token = new PosToken();
+            $pos_token->token_number =  Helpers::generatePOSTokenNumber($tkn);
+            $pos_token->serial_number =  Helpers::_nextTokenNumber();
+        }
+
         $pos_token->store_id = $store_id;
         $pos_token->branch_id = $branch_id;
         $pos_token->customer_id = $request->customer_id;
-        $pos_token->token_number =  Helpers::generatePOSTokenNumber($tkn);
-        $pos_token->serial_number =  Helpers::_nextTokenNumber();
+
         $pos_token->payment_method = $request->payment_method;
         $pos_token->payment_status = $request->payment_status;
         $pos_token->order_from = $request->order_from;
+        $pos_token->order_type = $request->order_type ?? 'take_away';
         $pos_token->gst_type = $gst_type ?? 'non-gst';
         $pos_token->paid_at = $request->payment_status == 'paid' ? NOW() : null;
         $pos_token->token_type = $request->token_type ?? 'both';
+
+        $pos_token->order_status = 'close';
+
         $pos_token->address = $addr ?? '';
         $pos_token->seller_name = $seller_name ?? '';
         $pos_token->address_type = $addr_type ?? '';
         $pos_token->gst_number = $GST ?? '';
         $pos_token->save();
 
+        // ================= DINE IN ===================
+
+        if ($request->has('token_id')) {
+            RestaurantTable::where('id', $pos_token->table_id)
+                ->where('store_id', $store_id)
+                ->update([
+                    'status' => 'free'
+                ]);
+        }
+
         // get pricing 
         $subtotal = 0;
         $total = 0;
         $gstAmountTotal = 0;
+
+        if ($request->token_id) {
+            PosTokenItem::where('token_id', $request->token_id)->delete();
+        }
+        // prx($request->all());
 
         foreach ($request->item_id as $key => $item_id) {
             $type = $request->item_type[$key];
@@ -369,14 +404,16 @@ class SalespointController extends Controller
                 ->where('bi.inventory_item_id', $item_id);
 
             if (auth('vendor')->check()) {
+                $branch_id = $request->branch_id ?? null;
             } else {
                 $branch_id = Helpers::get_loggedin_user()->branch_id;
             }
             $itemQuery->where('b.id', $branch_id);
-
+            // prx(                $branch_id);
             $itemRow = (clone $itemQuery)
                 ->select('bi.*')
                 ->first();
+
 
             $priceRow = $itemRow->price;        // GST inclusive price
             $gst_percent = $itemRow->gst_percent;
@@ -408,15 +445,18 @@ class SalespointController extends Controller
             $token_item->gst_amount = $gstAmount;
             $token_item->save();
 
-            // Calculate new stock
-            $qty_left = $itemRow->qty_left - $token_item->qty;
+            if (!$request->token_id) { // stock already updated for dine-in orders
 
-            if ($qty_left >= 0) {
-                // Update using the original query builder
-                $itemQuery->update(['bi.qty_left' => $qty_left]);
-            }
-            if ($qty_left < 5) {
-                _notifLowStock($itemRow, $qty_left); // send notification of low stock
+                // Calculate new stock
+                $qty_left = $itemRow->qty_left - $token_item->qty;
+
+                if ($qty_left >= 0) {
+                    // Update using the original query builder
+                    $itemQuery->update(['bi.qty_left' => $qty_left]);
+                }
+                if ($qty_left < 5) {
+                    _notifLowStock($itemRow, $qty_left); // send notification of low stock
+                }
             }
         }
         // + $gstAmountTotal
@@ -530,6 +570,7 @@ class SalespointController extends Controller
                 }
             }
         }
+
         // prx($data); 
         if (isset($data['success']) && $data['success']) {
             $isApp = request()->header('X-Client') === 'app';
@@ -537,13 +578,322 @@ class SalespointController extends Controller
             if ($isApp) {
                 return redirect()->to($data['url']);
             } else {
-                return redirect()->back()->with('pdf_url', $data['url']);
+                // return redirect()->back()->with('pdf_url', $data['url']);
+                return redirect()->to($data['url']);
             }
         } else {
             Toastr::error("Failed to generate POS token");
             return back();
         }
     }
+    public function openTable(Request $request)
+    {
+        $request->validate([
+            'table_id' => 'required',
+            'item_id' => 'required|array',
+            'item_qty' => 'required|array',
+            'item_type' => 'required|array',
+        ]);
+
+        $store_id  = Helpers::get_store_id();
+        if (auth('vendor')->check()) {
+            $branch_id  = $request->branch_id ?? null;
+        } else {
+
+            $branch_id =  Helpers::get_loggedin_user()->branch_id ?? 0;
+        }
+
+        $table = RestaurantTable::where('id', $request->table_id)
+            ->where('store_id', $store_id)
+            ->firstOrFail();
+
+        // 1. check already open order for this table
+        $token = PosToken::where('store_id', $store_id)
+            ->where('branch_id', $branch_id)
+            ->where('table_id', $table->id)
+            ->where('order_type', 'dine_in')
+            ->where('order_status', 'open')
+            ->first();
+
+        if ($token) {
+            return response()->json([
+                'status'   => 'open',
+                'order_id' => $token->id
+            ]);
+        }
+
+        // occupy table 
+        $table->status = 'occupied';
+        $table->save();
+
+        // 2. create new open dine-in order
+        $token = new PosToken();
+        $token->store_id      = $store_id;
+        $token->branch_id     = $branch_id;
+        $token->table_id      = $table->id;
+        $token->waiter_id     = $request->waiter_id ?? null;
+        $token->order_type    = 'dine_in';
+        $token->order_from    = $request->order_from ?? 'pos';
+        $token->order_status  = 'open';
+        $token->payment_status = 'unpaid';
+        $token->token_number  = Helpers::generatePOSTokenNumber(null);
+        $token->serial_number = Helpers::_nextTokenNumber();
+        $token->save();
+
+        // Initialize totals
+        $subtotal = 0;
+        $gstAmountTotal = 0;
+
+        foreach ($request->item_id as $key => $item_id) {
+
+            $type = $request->item_type[$key];
+            $qty  = (float) $request->item_qty[$key];
+
+            $itemQuery  = DB::table('inventory_items as ii')
+                ->join('branch_inventory_item as bi', 'ii.id', '=', 'bi.inventory_item_id')
+                ->join('branches as b', 'bi.branch_id', '=', 'b.id')
+                ->where('bi.inventory_item_id', $item_id);
+
+            $current_branch_id = auth('vendor')->check() ? ($request->branch_id ?? $branch_id) : $branch_id;
+            $itemQuery->where('b.id', $current_branch_id);
+
+            $itemRow = (clone $itemQuery)
+                ->select('bi.*')
+                ->first();
+
+            if (!$itemRow) continue; // skip if item not found in branch
+
+            $priceRow    = $itemRow->price;        // GST inclusive
+            $gst_percent = $itemRow->gst_percent;
+
+            $gstAmount  = ($priceRow * $gst_percent) / (100 + $gst_percent);
+            $basePrice  = $priceRow - $gstAmount;
+
+            $item_det   = InventoryItem::find($item_id);
+            $item_name  = $item_det ? $item_det->item_name : '';
+
+            $unit_price  = (float) $basePrice;
+            $item_total  = $qty * $unit_price;
+            $subtotal   += $item_total;
+            $gstAmountTotal += $gstAmount * $qty;
+
+            // Save token item
+            $token_item = new PosTokenItem();
+            $token_item->token_id     = $token->id;
+            $token_item->item_id      = $item_id;
+            $token_item->item_name    = $item_name;
+            $token_item->item_total   = $item_total;
+            $token_item->unit_price   = $unit_price;
+            $token_item->qty          = $qty;
+            $token_item->gst_percent  = $gst_percent;
+            $token_item->gst_status   = 'included';
+            $token_item->gst_amount   = $gstAmount;
+            $token_item->save();
+
+            // Update stock
+            $qty_left = $itemRow->qty_left - $qty;
+            if ($qty_left >= 0) {
+                $itemQuery->update(['bi.qty_left' => $qty_left]);
+            }
+            if ($qty_left < 5) {
+                _notifLowStock($itemRow, $qty_left);
+            }
+        }
+
+        // Update order totals
+        $token->subtotal   = $subtotal;
+        $token->gst_amount = $gstAmountTotal;
+        $token->total      = $subtotal + $gstAmountTotal;
+        $token->save();
+
+        return response()->json([
+            'status'   => 'open',
+            'order_id' => $token->id
+        ]);
+    }
+
+    public function tableState(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+
+        $table = RestaurantTable::where('id', $request->table_id)
+            ->where('store_id', $store_id)
+            ->firstOrFail();
+
+        $token = PosToken::with('tokenItems')
+            ->where('store_id', $store_id)
+            ->where('table_id', $table->id)
+            ->where('order_type', 'dine_in')   // or your correct column
+            ->where('order_status', 'open')
+            ->first();
+
+        if (!$token) {
+            return response()->json([
+                'has_order' => false
+            ]);
+        }
+
+        return response()->json([
+            'has_order' => true,
+            'order'     => $token,
+        ]);
+    }
+    public function updateDineOrder(Request $request)
+    {
+        // prx($request->all());
+        $store_id = Helpers::get_store_id();
+
+        $token = PosToken::where('id', $request->token_id)
+            ->where('store_id', $store_id)
+            ->where('order_status', 'open')
+            ->firstOrFail();
+
+        DB::beginTransaction();
+
+        try {
+
+            // restore stock first (optional but correct)
+            $oldItems = PosTokenItem::where('token_id', $token->id)->get();
+
+            foreach ($oldItems as $old) {
+
+                DB::table('branch_inventory_item')
+                    ->where('inventory_item_id', $old->item_id)
+                    ->where('branch_id', $token->branch_id)
+                    ->increment('qty_left', $old->qty);
+            }
+
+            PosTokenItem::where('token_id', $token->id)->delete();
+
+            // now reinsert like token_generate
+            $subtotal = 0;
+            $gstAmountTotal = 0;
+
+            foreach ($request->item_id as $key => $item_id) {
+
+                $type = $request->item_type[$key];
+                $qty = (float) $request->item_qty[$key];
+
+                $itemQuery  = DB::table('inventory_items as ii')
+                    ->join('branch_inventory_item as bi', 'ii.id', '=', 'bi.inventory_item_id')
+                    ->join('branches as b', 'bi.branch_id', '=', 'b.id')
+                    ->where('bi.inventory_item_id', $item_id);
+
+                if (auth('vendor')->check()) {
+                    $branch_id = $request->branch_id ?? null;
+                } else {
+                    $branch_id = Helpers::get_loggedin_user()->branch_id;
+                }
+                $itemQuery->where('b.id', $branch_id);
+
+                $itemRow = (clone $itemQuery)
+                    ->select('bi.*')
+                    ->first();
+
+                $priceRow = $itemRow->price;        // GST inclusive price
+                $gst_percent = $itemRow->gst_percent;
+
+                $gstAmount = ($priceRow * $gst_percent) / (100 + $gst_percent);
+                $basePrice = $priceRow - $gstAmount; // Price without GST
+
+                $item_det = InventoryItem::where('id', $item_id)->first();
+                $item_name = $item_det ? $item_det->item_name : '';
+
+
+                $unit_price = (float) $basePrice;
+                $item_total = $qty * $unit_price;
+                $subtotal += $item_total;
+
+                $gstAmount = ($priceRow * $gst_percent) / (100 + $gst_percent);
+                $gstAmountTotal += $gstAmount * $qty; // For display only, not added to total
+
+                // Save token item
+                $token_item = new PosTokenItem();
+                $token_item->token_id = $token->id;
+                $token_item->item_id = $item_id;
+                $token_item->item_name = $item_name;
+                $token_item->item_total = $item_total;
+                $token_item->unit_price = $unit_price;
+                $token_item->qty = $qty;
+                $token_item->gst_percent = $gst_percent;
+                $token_item->gst_status = 'included';
+                $token_item->gst_amount = $gstAmount;
+                $token_item->save();
+
+                // Calculate new stock
+                $qty_left = $itemRow->qty_left - $token_item->qty;
+
+                if ($qty_left >= 0) {
+                    // Update using the original query builder
+                    $itemQuery->update(['bi.qty_left' => $qty_left]);
+                }
+                if ($qty_left < 5) {
+                    _notifLowStock($itemRow, $qty_left); // send notification of low stock
+                }
+            }
+
+            // update totals
+            $token->subtotal   = $subtotal;
+            $token->gst_amount = $gstAmountTotal;
+            $token->total      = $subtotal + $gstAmountTotal;
+            $token->waiter_id  = $request->waiter_id;
+            $token->save();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false
+            ], 500);
+        }
+    }
+
+    // public function openDineIn(Request $request)
+    // {
+    //     $store_id = Helpers::get_store_id();
+
+    //     $request->validate([
+    //         'table_id'  => 'required',
+    //         'waiter_id' => 'required'
+    //     ]);
+
+    //     $table = RestaurantTable::where('id', $request->table_id)
+    //         ->where('store_id', $store_id)
+    //         ->where('status', 'free')
+    //         ->lockForUpdate()
+    //         ->first();
+
+    //     if (!$table) {
+    //         Toastr::error('Table already occupied');
+    //         return back();
+    //     }
+
+    //     $pos = new PosToken();
+    //     $pos->store_id   = $store_id;
+    //     $pos->branch_id  = $request->branch_id ?? 0;
+    //     $pos->order_type = 'dine_in';
+    //     $pos->order_from  = $request->order_from;
+    //     $pos->order_status = 'open';
+    //     $pos->table_id  = $table->id;
+    //     $pos->waiter_id = $request->waiter_id;
+    //     $pos->room_type = $table->room_type;
+    //     $pos->token_number = Helpers::generatePOSTokenNumber(null);
+    //     $pos->serial_number = Helpers::_nextTokenNumber();
+    //     $pos->save();
+
+    //     RestaurantTable::where('id', $table->id)
+    //         ->update(['status' => 'occupied']);
+
+    //     return redirect()->route('admin.pos.index', [
+    //         'open_token' => $pos->id
+    //     ]);
+    // }
+
     public function payment_method(Request $request)
     {
         $token = PosToken::findOrFail($request->token_id);

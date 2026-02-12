@@ -983,6 +983,75 @@
                                         </button>
                                     </div>
                                 </div>
+                                {{-- faq google  --}}
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-question-circle mr-2 text-success"></i>
+                                            FAQ For Google</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="faqGoogleContainer">
+                                             <div id="faq-wrapper">
+
+            @if($faqs->count())
+                @foreach($faqs as $i => $faq)
+                    <div class="faq-row border p-2 mb-2">
+
+                        <div class="form-group">
+                            <label>Question</label>
+                            <input type="text"
+                                   name="faqs[{{ $i }}][question]"
+                                   class="form-control"
+                                   value="{{ old('faqs.'.$i.'.question', $faq->question) }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Answer</label>
+                            <textarea name="faqs[{{ $i }}][answer]"
+                                      class="form-control"
+                                      rows="2">{{ old('faqs.'.$i.'.answer', $faq->answer) }}</textarea>
+                        </div>
+
+                        <button type="button"
+                                class="btn btn-sm btn-danger remove-faq">
+                            Remove
+                        </button>
+
+                    </div>
+                @endforeach
+            @else
+                {{-- one empty row if no faq --}}
+                <div class="faq-row border p-2 mb-2">
+
+                    <div class="form-group">
+                        <label>Question</label>
+                        <input type="text"
+                               name="faqs[0][question]"
+                               class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Answer</label>
+                        <textarea name="faqs[0][answer]"
+                                  class="form-control"
+                                  rows="2"></textarea>
+                    </div>
+
+                    <button type="button"
+                            class="btn btn-sm btn-danger remove-faq">
+                        Remove
+                    </button>
+                </div>
+            @endif
+
+        </div>
+
+        <button type="button" id="add-faq" class="btn btn-sm btn-primary">
+            + Add FAQ
+        </button>
+                                        </div>
+                                    </div>
+                                </div>
 
                             </div>
                         </div>
@@ -1824,5 +1893,54 @@
             });
         })
     </script>
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    let faqIndex = {{ $faqs->count() ? $faqs->count() : 1 }};
+
+    document.getElementById('add-faq').addEventListener('click', function () {
+
+        let wrapper = document.getElementById('faq-wrapper');
+
+        let html = `
+            <div class="faq-row border p-2 mb-2">
+
+                <div class="form-group">
+                    <label>Question</label>
+                    <input type="text"
+                           name="faqs[${faqIndex}][question]"
+                           class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Answer</label>
+                    <textarea name="faqs[${faqIndex}][answer]"
+                              class="form-control"
+                              rows="2"></textarea>
+                </div>
+
+                <button type="button"
+                        class="btn btn-sm btn-danger remove-faq">
+                    Remove
+                </button>
+
+            </div>
+        `;
+
+        wrapper.insertAdjacentHTML('beforeend', html);
+        faqIndex++;
+    });
+
+    document.getElementById('faq-wrapper').addEventListener('click', function (e) {
+
+        if (e.target.classList.contains('remove-faq')) {
+            e.target.closest('.faq-row').remove();
+        }
+
+    });
+
+});
+</script>
+
     @include('vendor-views/multiple_ck_editor');
 @endpush

@@ -31,6 +31,7 @@ use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
 use App\Models\Item;
 use App\Models\ItemCampaign;
+use App\Models\ItemFaq;
 use App\Models\ItemVariationDetail;
 use App\Models\ManualInvoice;
 use App\Models\OfferBanner;
@@ -2331,8 +2332,21 @@ class FrontController extends Controller
             ->where('stores.slug', $slug)
             ->where('store_reviews.status', 1)
             ->count();
+                    if($request->has('template') && $request->template){
+        return view('front-views.store_webpage.template-'.$request->template.'', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+                    }
         // prx($store);
-        return view('front-views.store_details', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        $templateId = $data['store_config']?->template_id ?? 1;
+        $templateId = 10;
+        // return view('front-views.store_details', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-2', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-3', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-4', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-5', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-6', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-7', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // return view('front-views.store_webpage.template-8', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
     }
 
     public function product_details(Request $request, $category_slug, $slug)
@@ -2415,10 +2429,8 @@ class FrontController extends Controller
                 });
 
             $stores = $subscribedStores->merge($nonSubscribedStores)->values();
-
             // prx($stores);
         }
-
 
         $keywords = implode(',', ServiceKeyword::where('service_id', $item->id)->whereNotNull('keyword')->pluck('keyword')->toArray());
 
@@ -2548,9 +2560,14 @@ class FrontController extends Controller
         });
 
         $data['top_stores'] = $topStores;
+
+    $itemFaqs = ItemFaq::where('item_id', $item->id)
+    ->where('status', 1)
+            ->orderBy('sort_order')
+            ->get();
         // prx(count($data['top_stores']));
 
-        return view('front-views.product_details', compact('item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
+        return view('front-views.product_details', compact('itemFaqs','item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
     public function category_listing(Request $request, $slug)

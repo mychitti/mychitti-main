@@ -186,7 +186,7 @@ class VendorController extends Controller
             return response()->json(['status' => false, 'message' => 'Some error occured']);
         }
     }
- 
+
     public function send_vendor_otp(Request $request)
     {
         $otp  = rand(1000, 9999);
@@ -355,6 +355,7 @@ class VendorController extends Controller
         $store->longitude = $request->longitude;
         $store->vendor_id = $vendor->id;
         $store->zone_id = $request->zone_id;
+
         if (Config::get('module.current_module_id') == 5) {
             $store->shop_categories = isset($request->shop_categories) ? implode(',', $request->shop_categories) : null;
         } else {
@@ -362,6 +363,10 @@ class VendorController extends Controller
             $store->category_2 = $request->category_2;
             $store->services_1 = isset($request->services_1) ? implode(',', $request->services_1) : '';
             $store->services_2 =   isset($request->services_2) ? implode(',', $request->services_2) : '';
+
+            // // Add store ID to new services
+            self::updateStoreItems($store, $request->services_1 ?? [], 'add');
+            self::updateStoreItems($store, $request->services_2 ?? [], 'add');
         }
 
         if (Config::get('module.current_module_id') != 6) {
@@ -371,6 +376,14 @@ class VendorController extends Controller
         $store->module_id = Config::get('module.current_module_id');
         try {
             $store->save();
+
+            if (Config::get('module.current_module_id') == 6) {
+
+                // // Add store ID to new services
+                self::updateStoreItems($store, $request->services_1 ?? [], 'add');
+                self::updateStoreItems($store, $request->services_2 ?? [], 'add');
+            }
+
             Helpers::_addWelcomeCouponsIfExist($store);
             Helpers::_addWelcomeCouponsIfExist($store);
             //account details
@@ -491,8 +504,9 @@ class VendorController extends Controller
         Toastr::success(Config::get('module.vendor_role') . ' ' .  translate('messages.added_successfully'));
         return redirect()->route('admin.store.list');
     }
-    public function edit_plan_for_store (Request $request){
-        $plans = VendorSubscription::where('vendor_id', $request->store_id )->get();
+    public function edit_plan_for_store(Request $request)
+    {
+        $plans = VendorSubscription::where('vendor_id', $request->store_id)->get();
         foreach ($plans as $key => $plan) {
             $plan->plan_expiry = $request->expiry_date;
             $plan->created_at = $request->start_date;
@@ -1636,7 +1650,9 @@ class VendorController extends Controller
                     }
                 });
             })
-            ->when(is_numeric($created_by), fn($q) =>
+            ->when(
+                is_numeric($created_by),
+                fn($q) =>
                 $q->whereHas(
                     'vendor',
                     fn($v) =>
@@ -1813,7 +1829,7 @@ class VendorController extends Controller
             'Status',
             'Zone Id',
             'Created At',
-            'POS System',
+            // 'POS System',
             'Module Id',
             'Is Featured',
             //  'Owner Name',
@@ -1842,7 +1858,7 @@ class VendorController extends Controller
                 $store->status ? 'Active' : 'Inactive',
                 $store->zone_id,
                 $store->created_at,
-                $store->pos_system ? 'Yes' : 'No',
+                // $store->pos_system ? 'Yes' : 'No',
                 $store->module_id == 6 ? 'My city' : 'Shopping',
                 $store->featured ? 'Yes' : 'No',
             ];
@@ -2508,7 +2524,7 @@ class VendorController extends Controller
                     'take_away' => $collection['TakeAway'] == 'yes' ? 1 : 0,
                     'delivery' => $collection['Delivery'] == 'yes' ? 1 : 0,
                     'reviews_section' => $collection['ReviewsSection'] == 'active' ? 1 : 0,
-                    'pos_system' => $collection['PosSystem'] == 'active' ? 1 : 0,
+                    // 'pos_system' => $collection['PosSystem'] == 'active' ? 1 : 0,
                     'active' => $collection['storeOpen'] == 'yes' ? 1 : 0,
                     'featured' => $collection['FeaturedStore'] == 'yes' ? 1 : 0,
                     'vendor_id' => $vendor_id + $key + 1,
@@ -2652,7 +2668,7 @@ class VendorController extends Controller
                 'take_away' => $collection['TakeAway'] == 'yes' ? 1 : 0,
                 'delivery' => $collection['Delivery'] == 'yes' ? 1 : 0,
                 'reviews_section' => $collection['ReviewsSection'] == 'active' ? 1 : 0,
-                'pos_system' => $collection['PosSystem'] == 'active' ? 1 : 0,
+                // 'pos_system' => $collection['PosSystem'] == 'active' ? 1 : 0,
                 'active' => $collection['storeOpen'] == 'yes' ? 1 : 0,
                 'featured' => $collection['FeaturedStore'] == 'yes' ? 1 : 0,
                 'vendor_id' => $collection['id'],
@@ -2670,7 +2686,7 @@ class VendorController extends Controller
 
             foreach ($chunk_stores as $key => $chunk_store) {
                 DB::table('vendors')->upsert($chunk_vendors[$key], ['id', 'email', 'phone'], ['f_name', 'l_name', 'password']);
-                DB::table('stores')->upsert($chunk_store, ['id', 'email', 'phone', 'vendor_id'], ['name', 'logo', 'cover_photo', 'latitude', 'longitude', 'address', 'zone_id', 'module_id', 'minimum_order', 'comission', 'tax', 'delivery_time', 'minimum_shipping_charge', 'per_km_shipping_charge', 'maximum_shipping_charge', 'schedule_order', 'status', 'self_delivery_system', 'veg', 'non_veg', 'free_delivery', 'take_away', 'delivery', 'reviews_section', 'pos_system', 'active', 'featured']);
+                DB::table('stores')->upsert($chunk_store, ['id', 'email', 'phone', 'vendor_id'], ['name', 'logo', 'cover_photo', 'latitude', 'longitude', 'address', 'zone_id', 'module_id', 'minimum_order', 'comission', 'tax', 'delivery_time', 'minimum_shipping_charge', 'per_km_shipping_charge', 'maximum_shipping_charge', 'schedule_order', 'status', 'self_delivery_system', 'veg', 'non_veg', 'free_delivery', 'take_away', 'delivery', 'reviews_section', 'active', 'featured']);
             }
             DB::commit();
         } catch (\Exception $e) {

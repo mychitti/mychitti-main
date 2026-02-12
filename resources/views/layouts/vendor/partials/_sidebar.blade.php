@@ -74,8 +74,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.dashboard') }}" title="{{ translate('messages.dashboard') }}">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     {{ translate('messages.dashboard') }}
                                 </span>
@@ -128,8 +128,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Leads Management">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Leads Management</span>
                             </a>
@@ -179,8 +179,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('task*') && !Request::is('task-salary-categories') && !Request::is('task/assigned-tasks') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Task Management">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Tasks_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Tasks_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Task
                                     Management</span>
@@ -230,10 +230,10 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('project*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Project Management">
-                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Project%20_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Project%20_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
-                                
+
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Project
                                     Management</span>
                             </a>
@@ -502,8 +502,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Client Management">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Client
                                     Management
                                 </span>
@@ -596,8 +596,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/settings') || Request::is('billing*') || Request::is('invoice-list') || Request::is('invoices') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Billing">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Billing</span>
                             </a>
@@ -699,8 +699,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('quotation*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Quotation Management">
-                              <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Quotations_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Quotations_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Quotation
                                     Management</span>
                             </a>
@@ -755,8 +755,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('pos*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="POS">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/POS_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/POS_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">POS</span>
                             </a>
@@ -780,6 +780,36 @@
                                         </a>
                                     </li>
                                 @endif
+                                <li
+                                    class="navbar-vertical-aside-has-menu {{ Request::is('pos/restaurant-tables*') ? 'active' : '' }}">
+                                    <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                                        href="javascript:;" title="Restaurant Tables">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate ">
+                                            Restaurant Tables</span>
+                                    </a>
+
+                                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
+                                        <li
+                                            class="nav-item {{ Request::is('pos/restaurant-tables/index') ? 'active' : '' }}">
+                                            <a class="nav-link "
+                                                href="{{ route('vendor.pos.restaurant-tables.index') }}"
+                                                title="{{ translate('messages.List') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">List</span>
+                                            </a>
+                                        </li>
+                                        <li
+                                            class="nav-item {{ Request::is('pos/restaurant-tables/create') ? 'active' : '' }}">
+                                            <a class="nav-link "
+                                                href="{{ route('vendor.pos.restaurant-tables.create') }}"
+                                                title="{{ translate('messages.Add New') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Add new</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
                                 @if (hasPermission('pos_token', 'list'))
                                     <li class="nav-item {{ Request::is('pos/token-list') ? 'active' : '' }}">
                                         <a class="nav-link " href="{{ route('vendor.pos.token.list') }}"
@@ -837,8 +867,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('account*') || Request::is('asset*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title=" Account Management">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Billing_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Account Management</span>
@@ -1654,8 +1684,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('hr*') || Request::is('task-salary-categories') || Request::is('shifts*') || Request::is('custom-role*') || Request::is('staff*') || Request::is('salary*') || Request::is('leave*') || Request::is('attendance*') ? 'active' : '' }} ">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="HR Management">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     HR Management</span>
@@ -1873,8 +1903,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('menu-preference') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.menu_preference') }}" title="Menu Preference">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Menu%20Preference_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Menu%20Preference_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="text-truncate"> Menu Preferences</span>
                             </a>
                         </li>
@@ -1886,23 +1916,47 @@
                             class="navbar-vertical-aside-has-menu {{ (Request::is('business-settings*') || Request::is('withdraw-method*') || Request::is('wallet/wallet-payment-list') || Request::is('settings/general*')) && !Request::is('business-settings/settings') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="My Business">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Business_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Business_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     My Business</span>
                             </a>
 
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
-                                <li
-                                    class="navbar-vertical-aside-has-menu  {{ Request::is('settings/general/profile') ? 'active' : '' }}">
+                                <li class="nav-item  {{ Request::is('settings/settings/webpage') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.settings.webpage') }}"
                                         title="Webpage Settings">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Webpage Settings</span>
                                     </a>
                                 </li>
+                                <li class="nav-item {{ Request::is('service/reviews*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.service.reviews') }}"
+                                        title="Reviews">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+
+                                        <span class="text-truncate">
+                                            Reviews
+                                        </span>
+                                    </a>
+                                </li>
                                 <li
+                                    class="nav-item {{ Request::is('business-settings/store-setup') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.business-settings.store-setup') }}"
+                                        title="Store Settings">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Store Settings</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.settings.general.profile') }}"
+                                        title="Profile Settings">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Profile Settings</span>
+                                    </a>
+                                </li>
+                                {{-- <li
                                     class="navbar-vertical-aside-has-menu  {{ Request::is('business-settings/terms-and-conditions') ? 'active' : '' }}">
                                     <a class="nav-link "
                                         href="{{ route('vendor.business-settings.common-terms-and-conditions') }}"
@@ -1910,9 +1964,9 @@
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Terms and Conditions</span>
                                     </a>
-                                </li>
+                                </li> --}}
 
-                                <li
+                                {{-- <li
                                     class="navbar-vertical-aside-has-menu  {{ Request::is('business-settings*') || Request::is('withdraw-method*') || Request::is('wallet/wallet-payment-list') || Request::is('settings/general*') ? 'active' : '' }}">
                                     <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                         href="javascript:;" title="Business Section">
@@ -1922,27 +1976,8 @@
                                             Business Section</span>
                                     </a>
                                     <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
-                                        <li
-                                            class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
-                                            <a class="nav-link "
-                                                href="{{ route('vendor.settings.general.profile') }}"
-                                                title="Profile Settings">
-                                                <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">Profile Settings</span>
-                                            </a>
-                                        </li>
-                                        @if (\App\CentralLogics\Helpers::employee_module_permission_check('store_setup'))
-                                     
-                                            <li
-                                                class="nav-item {{ Request::is('business-settings/store-setup') ? 'active' : '' }}">
-                                                <a class="nav-link "
-                                                    href="{{ route('vendor.business-settings.store-setup') }}"
-                                                    title="Store Settings">
-                                                    <span class="tio-circle nav-indicator-icon"></span>
-                                                    <span class="text-truncate">Store Settings</span>
-                                                </a>
-                                            </li>
 
+                                        @if (\App\CentralLogics\Helpers::employee_module_permission_check('store_setup'))
                                             <li class="nav-item {{ Request::is('business-settings/about-us') ? 'active' : '' }}"
                                                 style="margin-top:0 !important;">
                                                 <a class="nav-link "
@@ -1963,8 +1998,8 @@
                                             </li>
                                         @endif
                                     </ul>
-                                </li>
-                                @if (auth('vendor')->check())
+                                </li> --}}
+                                @if (0 && auth('vendor')->check())
                                     <li
                                         class="navbar-vertical-aside-has-menu {{ Request::is('offer-banner') ? 'active' : '' }}">
                                         <a class="sub-link js-navbar-vertical-aside-menu-link nav-link"
@@ -1998,16 +2033,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                <li class="nav-item {{ Request::is('service/reviews*') ? 'active' : '' }}">
-                                    <a class="sub-link js-navbar-vertical-aside-menu-link nav-link"
-                                        href="{{ route('vendor.service.reviews') }}" title="Reviews">
-                                        <span class="tio-circle nav-indicator-icon"></span>
 
-                                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                            Reviews
-                                        </span>
-                                    </a>
-                                </li>
                             </ul>
                         </li>
                     @endif
@@ -2018,8 +2044,8 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.wallet.wallet_payment_list') }}"
                                 title="{{ translate('messages.my_wallet') }}">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Wallet_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/My%20Wallet_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class=" text-truncate">{{ translate('messages.my_wallet') }}</span>
                             </a>
                         </li>
@@ -2044,8 +2070,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('terms-and-conditions') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.terms-and-conditions.view') }}" title="My Chitti T&C">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="text-truncate">My Chitti T&C</span>
                             </a>
@@ -2056,8 +2082,8 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.staff.terms-n-conditions') }}"
                                 title="{{ $store_data->name }} T&C">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Terms_and_Conditions_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="text-truncate">{{ $store_data->name }} T&C</span>
                             </a>
@@ -2068,8 +2094,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('notifications*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.notifications') }}" title="notifications">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Notifications_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Notifications_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     Notifications
@@ -2466,8 +2492,8 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('library*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.library.all') }}" title="Library">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Library_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Library_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class=" text-truncate">Library</span>
                             </a>
                         </li>
@@ -2479,8 +2505,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('documents*') || Request::is('business-settings/settings/receivable-receipts') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                 href="javascript:;" title="Documents">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Documents_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Documents_color.png') }}"
+                                    alt="" class="nav-link-icon">
 
                                 <span
                                     class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Documents</span>
@@ -2525,22 +2551,22 @@
                             </ul>
                         </li>
                     @endif
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link "
-                                href="{{ route('vendor.notification.add-new') }}" title="push notifications">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Advertisements_color.png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class="text-truncate">Post Ads</span>
-                            </a>
-                        </li>
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link "
+                            href="{{ route('vendor.notification.add-new') }}" title="push notifications">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Advertisements_color.png') }}"
+                                alt="" class="nav-link-icon">
+                            <span class="text-truncate">Post Ads</span>
+                        </a>
+                    </li>
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('subscriptions') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
                                 href="{{ route('vendor.subscriptions') }}" title="Subscriptions">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Subscriptions_color.png') }}" alt=""
-                                    class="nav-link-icon">
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Subscriptions_color.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="text-truncate">Subscriptions</span>
                             </a>
                         </li>

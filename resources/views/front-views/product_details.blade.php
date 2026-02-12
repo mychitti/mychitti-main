@@ -650,6 +650,10 @@
                                 @endif
                             @endif
 
+                            <p class="desc">
+                                {{ $item->description }}
+                            </p>
+
                             <div class="share_buttons_div ">
                                 Know someone who might need this? Share with friends and family!
 
@@ -961,7 +965,7 @@
 
         .area_seo>* {
             color: black !important;
-                overflow-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .stores_table th,
@@ -973,18 +977,22 @@
         .stores_table>* {
             font-size: 12px;
         }
-        .table-scroll {
-    width: 100%;
-    overflow-x: auto;        /* horizontal scroll */
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
 
-.stores_table {
-    width: max-content;      /* table expands only as needed */
-    min-width: 100%;         /* but never smaller than screen */
-    border-collapse: collapse;
-}
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            /* horizontal scroll */
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stores_table {
+            width: max-content;
+            /* table expands only as needed */
+            min-width: 100%;
+            /* but never smaller than screen */
+            border-collapse: collapse;
+        }
     </style>
     <!-- Single Product End -->
     <div class="area_seo">
@@ -1110,72 +1118,73 @@
     </div>
 
     <div class="top_stores_section">
-    <h2 class="mx-3">Top Rated Stores</h2>
-    <div class="table-scroll">
-        <table class="table table-responsive stores_table mx-3">
-            <tr>
-                <th style="width: 98px !important;">Name</th>
-                @foreach ($data['top_stores'] as $store)
-                    <th><a href="{{ route('store.details', [_selectedCity(), $store->slug]) }}">{{ $store->name }}</a>
-                    </th>
-                @endforeach
-            </tr>
-            <tr>
-                <th style="width: 98px !important;">Rating</th>
+        <h2 class="mx-3">Top Rated Stores</h2>
+        <div class="table-scroll">
+            <table class="table table-responsive stores_table mx-3">
+                <tr>
+                    <th style="width: 98px !important;">Name</th>
+                    @foreach ($data['top_stores'] as $store)
+                        <th><a
+                                href="{{ route('store.details', [_selectedCity(), $store->slug]) }}">{{ $store->name }}</a>
+                        </th>
+                    @endforeach
+                </tr>
+                <tr>
+                    <th style="width: 98px !important;">Rating</th>
 
-                @foreach ($data['top_stores'] as $store)
-                    <td>
-                        @php $store_rating = number_format($store->average_rating, 1); @endphp
-                        <div class="rating-stars" data-rating="{{ $store_rating }}">
-                            <div class="stars-base">
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                            </div>
-                            <div class="stars-fill">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                            </div>
-                        </div>&nbsp;{{ $store_rating }} <br>({{$store->rating_count}} reviews)
-                    </td>
-                @endforeach
-            </tr>
-            <tr>
-                <th style="width: 98px !important;">Offered Services</th>
-                @foreach ($data['top_stores'] as $store)
-                    <td>
-                        @if (!empty($store->item_names_array))
-                            @foreach ($store->item_names_array as $i => $name)
-                                <a href="{{ route('product.details', [_selectedCity(), $store->item_slugs_array[$i] ?? '']) }}"
-                                    target="_blank">
-                                    {{ $name }}
-                                </a>
-                                @if ($i < count($store->item_names_array) - 1)
-                                    ,
-                                @endif
-                            @endforeach
-                        @else
-                            -
-                        @endif
-                    </td>
-                @endforeach
-            </tr>
-        
-            
-           
-             <tr>
-                <th style="width: 98px !important;">Address</th>
-                @foreach ($data['top_stores'] as $store)
-                    <td><span class="two-line-ellipsis">{{ $store->address }}</span></td>
-                @endforeach
-            </tr>
-        </table>
-    </div>
+                    @foreach ($data['top_stores'] as $store)
+                        <td>
+                            @php $store_rating = number_format($store->average_rating, 1); @endphp
+                            <div class="rating-stars" data-rating="{{ $store_rating }}">
+                                <div class="stars-base">
+                                    <i class="far fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <div class="stars-fill">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>&nbsp;{{ $store_rating }} <br>({{ $store->rating_count }} reviews)
+                        </td>
+                    @endforeach
+                </tr>
+                <tr>
+                    <th style="width: 98px !important;">Offered Services</th>
+                    @foreach ($data['top_stores'] as $store)
+                        <td>
+                            @if (!empty($store->item_names_array))
+                                @foreach ($store->item_names_array as $i => $name)
+                                    <a href="{{ route('product.details', [_selectedCity(), $store->item_slugs_array[$i] ?? '']) }}"
+                                        target="_blank">
+                                        {{ $name }}
+                                    </a>
+                                    @if ($i < count($store->item_names_array) - 1)
+                                        ,
+                                    @endif
+                                @endforeach
+                            @else
+                                -
+                            @endif
+                        </td>
+                    @endforeach
+                </tr>
+
+
+
+                <tr>
+                    <th style="width: 98px !important;">Address</th>
+                    @foreach ($data['top_stores'] as $store)
+                        <td><span class="two-line-ellipsis">{{ $store->address }}</span></td>
+                    @endforeach
+                </tr>
+            </table>
+        </div>
     </div>
 @endsection
 
@@ -1398,4 +1407,24 @@
             });
         });
     </script>
+    @if ($itemFaqs->count())
+        <script type="application/ld+json">
+{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+            @foreach($itemFaqs as $faq)
+                {
+                "@type": "Question",
+                "name": {!! json_encode($faq->question) !!},
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": {!! json_encode(strip_tags($faq->answer)) !!}
+                }
+                }@if(!$loop->last),@endif
+            @endforeach
+            ]
+            }
+        </script>
+    @endif
 @endpush

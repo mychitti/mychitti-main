@@ -19,6 +19,7 @@ class NotificationController extends Controller
             ], 403);
         }
         $zone_id= $request->header('zoneId');
+        
         try {
             $notifications = Notification::active()
             ->where('tergat', 'customer')

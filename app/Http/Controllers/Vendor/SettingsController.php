@@ -12,12 +12,15 @@ use App\Models\StoreSchedule;
 use Brian2694\Toastr\Facades\Toastr;
 use App\CentralLogics\Helpers;
 use App\Models\AccountDetail;
+use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Holiday;
 use App\Models\HolidayOverride;
+use App\Models\OfferBanner;
 use App\Models\OrderType;
 use App\Models\Plan;
 use App\Models\StoreConfig;
+use App\Models\StoreGallery;
 use App\Models\StoreSignature;
 use App\Models\StoreTnc;
 use App\Models\TempStoreStatus;
@@ -38,9 +41,18 @@ class SettingsController extends Controller
         $store = Store::where('id',  $store_id)->first();
         return view('vendor-views.settings.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts',  'store'));
     }
+    public function webpage_template_update(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        StoreConfig::updateOrInsert(['store_id' => $storeId], [
+            'template_id' => $request->template_id,
+        ]);
+        Toastr::success('Updated Successfully');
+        return back();
+    }
     public function webpage_settings_update(Request $request)
     {
-        // prx($request->all());
         $storeId = Helpers::get_store_id();
 
         StoreConfig::updateOrInsert(['store_id' => $storeId], [
@@ -56,12 +68,45 @@ class SettingsController extends Controller
 
         return back();
     }
-    public function webpage_settings(Request $request)
+    public function webpage_settings(Request $request, $tab = 'basic-info')
     {
         $store_id = Helpers::get_store_id();
         $store = Store::where('id',  $store_id)->first();
-        $storeConfig = StoreConfig::firstOrNew(['store_id' => Helpers::get_store_id()]);
-        return view('vendor-views.settings.webpage', compact('store', 'storeConfig'));
+        if ($tab == 'basic-info') {
+            $storeConfig = StoreConfig::firstOrNew(['store_id' => Helpers::get_store_id()]);
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'storeConfig'));
+        } else if ($tab == 'gallery') {
+            $galleries = StoreGallery::where('store_id', Helpers::get_store_id())->paginate(40);
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'galleries'));
+        } else if ($tab == 'banners') {
+            $key = explode(' ', $request['search']);
+            $banners = Banner::where('data', Helpers::get_store_id())->where('created_by', 'store')
+                ->when($key, function ($query) use ($key) {
+                    $query->where(function ($q) use ($key) {
+                        foreach ($key as $value) {
+                            $q->orWhere('title', 'like', "%" . $value . "%");
+                        }
+                    });
+                })
+                ->latest()->paginate(config('default_pagination'));
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'banners'));
+        } else if ($tab == 'privacy-policy') {
+        } else if ($tab == 'tnc') {
+            $tAndCContent = DB::table('vendor_terms_conditions')->where('type', 'for_customer')->where('vendor_id',  $store_id)->first();
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'tAndCContent'));
+        } else if ($tab == 'offer-banners') {
+            $banners  = OfferBanner::where('store_id', Helpers::get_store_id())->paginate(10);
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'banners'));
+        } else if ($tab == 'about-us') {
+            $about_us = StoreConfig::where('store_id', Helpers::get_store_id())
+                ->value('about_us') ?? '';
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'about_us'));
+        } else if ($tab == 'webpage-templates') {
+            // prx($store);
+            $store_template_id = StoreConfig::where('store_id', $store_id)->value('template_id') ?: 1;
+            $templates = DB::table("store_webpage_templates")->where('status', 1)->get();
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates'));
+        }
     }
     public function common_setting_save(Request $request)
     {
