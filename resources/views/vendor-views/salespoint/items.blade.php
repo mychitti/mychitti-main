@@ -172,7 +172,7 @@
                 <div class="modal-body">
                     <form action="{{ route('vendor.pos.items_import') }}" method="post" enctype="multipart/form-data">
                         @csrf
-                        <a href="{{ asset('storage/app/public/util/pos_item_example.xlsx') }}" download
+                        <a href="{{ asset('storage/app/public/uploaded/excel/pos_item_example.xlsx') }}" download
                             class="btn btn-outline-primary mb-2">View Example</a>
                         <div class="form-group">
                             <label for="file">Upload Excel File</label>
