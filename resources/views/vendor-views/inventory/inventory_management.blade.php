@@ -596,7 +596,7 @@
                                     Selling, Purchase), and Variation Stock</strong> in <strong>every row</strong>
                                 corresponding to each variation of the item. </li>
                             <li><strong>Mandatory Fields</strong><br> Every item (each Temp Group) must have:<br> -
-                                <strong>Item Name</strong><br> - <strong>MRP</strong><br>
+                                <code>Item Name</code><br> - <code>MRP</code><br>- <code>SKU</code><br>
                             </li>
                             <li><strong>Item Type</strong><br> Specify the type of item, e.g., <code>Product</code> or
                                 <code>Service</code>.
