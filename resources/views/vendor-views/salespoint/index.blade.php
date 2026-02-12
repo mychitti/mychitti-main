@@ -814,8 +814,8 @@
              }
 
              if ($('.price-display').length) {
-                 console.log('fd3')
-
+                 $('.order_type[value="take_away"]').prop('checked', true);
+                 resetCart()
                  $("#cartForm").submit();
              } else {
                  console.log('fd4')
