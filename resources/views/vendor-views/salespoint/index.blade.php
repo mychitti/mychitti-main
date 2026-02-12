@@ -779,6 +779,18 @@
 
  @push('script_2')
      <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
+     <script>
+         window.addEventListener('pageshow', function(event) {
+
+             // fired even when coming back using browser back button
+             if (event.persisted || performance.getEntriesByType("navigation")[0].type === "back_forward") {
+
+                 // clear cart
+                 resetCart();
+             }
+
+         });
+     </script>
 
      <script>
          @if (session('pdf_url'))
@@ -794,7 +806,6 @@
          }
      </script>
      <script>
-
          $('.order-btn').on('click', function() {
              console.log('fd')
              let orderType = $('input[class="order_type"]:checked').val();
@@ -815,14 +826,16 @@
              }
 
              if ($('.price-display').length) {
-                 {{-- $('.order_type[value="take_away"]').prop('checked', true); --}}
+                 $('.order_type[value="take_away"]').prop('checked', true);
+                 $("#dineInPanel").hide();
+                 {{-- $(".inner_cart").hide(); --}}
                  $("#cartForm").submit();
              } else {
-            
                  toastr.error('Please add atleast one item');
              }
 
          });
+
 
          document.addEventListener('click', function(e) {
              if (e.target.classList.contains('coffee-nav-link')) {
@@ -886,6 +899,7 @@
          });
 
          function addToCart(type, item_id, item_name, item_price) {
+             {{-- $(".inner_cart").show(); --}}
              var qty = $('.card_qty_' + item_id).val();
              var length = $('[data-item-id="' + item_id + '"]').length;
              if (length) {
@@ -1032,6 +1046,7 @@
                  }
              });
          });
+
 
          function resetCart() {
              $(".inner_cart").html('');

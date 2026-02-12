@@ -392,7 +392,6 @@ class SalespointController extends Controller
         if ($request->token_id) {
             PosTokenItem::where('token_id', $request->token_id)->delete();
         }
-        // prx($request->all());
 
         foreach ($request->item_id as $key => $item_id) {
             $type = $request->item_type[$key];
@@ -570,16 +569,16 @@ class SalespointController extends Controller
                 }
             }
         }
-
+        session()->flash('clear_cart', true);
         // prx($data); 
         if (isset($data['success']) && $data['success']) {
             $isApp = request()->header('X-Client') === 'app';
 
             if ($isApp) {
-                return redirect()->to($data['url']);
+                return redirect()->back()->with('pdf_url', $data['url']);
             } else {
-                // return redirect()->back()->with('pdf_url', $data['url']);
                 return redirect()->to($data['url']);
+                // return redirect()->to($data['url']);
             }
         } else {
             Toastr::error("Failed to generate POS token");
