@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
 class POSItemImport implements ToCollection
-{
+{ 
     public $failedRows = [];
     protected $storeId;
 
