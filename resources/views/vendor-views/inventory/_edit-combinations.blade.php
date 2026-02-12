@@ -1,4 +1,4 @@
-@if (count($combinations) > 0)
+@if ($combinations && count($combinations) > 0)
     <table class="table table-borderless table-responsive table--vertical-middle">
         <thead class="thead-light __bg-7">
             <tr>
