@@ -54,7 +54,7 @@
                         Value : 167.71.233.92</pre>
                         </li>
                         <li>
-                            If you are using a sub-domain (like <b> shop.myshop.com.com</b>), add:
+                            If you are using a sub-domain (like <b> shop.myshop.com</b>), add:
                     <pre class="mb-2">
                         Type  : A
                         Name  : shop
