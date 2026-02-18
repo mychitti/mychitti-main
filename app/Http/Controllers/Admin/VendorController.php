@@ -1613,7 +1613,7 @@ class VendorController extends Controller
 
         Toastr::error(translate('messages.unknown_tab'));
         return back();
-    }
+    } 
 
     public function list(Request $request)
     {
@@ -1666,14 +1666,134 @@ class VendorController extends Controller
         }
 
         $stores = $stores->type($type)->latest()->paginate(config('default_pagination'));
+
+        // Count duplicates based on phone or name matching within current module
+        $currentModuleId = Config::get('module.current_module_id');
+        $duplicateCount = Store::query()->where('module_id', $currentModuleId)
+            ->when(is_numeric($created_by), fn($q) => $q->whereHas('vendor', fn($v) => $v->where('created_by', $created_by)))
+            ->where(function ($q) use ($currentModuleId, $created_by) {
+                $q->whereIn('phone', function ($sub) use ($currentModuleId, $created_by) {
+                    $sub->select('stores.phone')
+                        ->from('stores')
+                        ->whereNotNull('stores.phone')
+                        ->where('stores.phone', '!=', '')
+                        ->where('stores.module_id', $currentModuleId)
+                        ->when(is_numeric($created_by), function ($s) use ($created_by) {
+                            $s->join('vendors', 'stores.vendor_id', '=', 'vendors.id')
+                              ->where('vendors.created_by', $created_by);
+                        })
+                        ->groupBy('stores.phone')
+                        ->havingRaw('COUNT(*) > 1');
+                })->orWhereIn('name', function ($sub) use ($currentModuleId, $created_by) {
+                    $sub->select('stores.name')
+                        ->from('stores')
+                        ->whereNotNull('stores.name')
+                        ->where('stores.name', '!=', '')
+                        ->where('stores.module_id', $currentModuleId)
+                        ->when(is_numeric($created_by), function ($s) use ($created_by) {
+                            $s->join('vendors', 'stores.vendor_id', '=', 'vendors.id')
+                              ->where('vendors.created_by', $created_by);
+                        })
+                        ->groupBy('stores.name')
+                        ->havingRaw('COUNT(*) > 1');
+                });
+            })
+            ->count();
+
         $service_stores_type = StoreType::where('module_id', 6)->get();
         $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
         $adminStaff = Admin::all();
         if ($store_all_perm == true) {
-            return view('admin-views.vendor.list', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type'));
+            return view('admin-views.vendor.list', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type', 'duplicateCount'));
         } else {
-            return view('admin-views.vendor.list_res', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type'));
+            return view('admin-views.vendor.list_res', compact('adminStaff', 'stores', 'zone', 'type', 'service_stores_type', 'duplicateCount'));
         }
+    }
+
+    public function duplicates(Request $request)
+    {
+        $currentModuleId = Config::get('module.current_module_id');
+        $created_by = ($request['created_by'] === 'all' || empty($request['created_by'])) ? null : $request['created_by'];
+
+        // Get phones that appear more than once
+        $dupPhones = Store::select('stores.phone')
+            ->whereNotNull('stores.phone')->where('stores.phone', '!=', '')
+            ->where('stores.module_id', $currentModuleId)
+            ->when(is_numeric($created_by), function ($q) use ($created_by) {
+                $q->join('vendors', 'stores.vendor_id', '=', 'vendors.id')
+                  ->where('vendors.created_by', $created_by);
+            })
+            ->groupBy('stores.phone')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('stores.phone');
+
+        // Get names that appear more than once
+        $dupNames = Store::select('stores.name')
+            ->whereNotNull('stores.name')->where('stores.name', '!=', '')
+            ->where('stores.module_id', $currentModuleId)
+            ->when(is_numeric($created_by), function ($q) use ($created_by) {
+                $q->join('vendors', 'stores.vendor_id', '=', 'vendors.id')
+                  ->where('vendors.created_by', $created_by);
+            })
+            ->groupBy('stores.name')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('stores.name');
+
+        $stores = Store::with(['vendor'])
+            ->where('module_id', $currentModuleId)
+            ->when(is_numeric($created_by), fn($q) => $q->whereHas('vendor', fn($v) => $v->where('created_by', $created_by)))
+            ->where(function ($q) use ($dupPhones, $dupNames) {
+                $q->whereIn('phone', $dupPhones)
+                    ->orWhereIn('name', $dupNames);
+            })
+            ->orderBy('phone')
+            ->orderBy('name')
+            ->get();
+
+        // Group stores by their duplicate key (phone or name)
+        $groups = [];
+        foreach ($stores as $store) {
+            // Group by duplicate phone
+            if ($dupPhones->contains($store->phone) && $store->phone) {
+                $key = 'phone:' . $store->phone;
+                if (!isset($groups[$key])) {
+                    $groups[$key] = ['reason' => 'Phone: ' . $store->phone, 'stores' => []];
+                }
+                $groups[$key]['stores'][$store->id] = $store;
+            }
+
+            // Group by duplicate name
+            if ($dupNames->contains($store->name) && $store->name) {
+                $key = 'name:' . $store->name;
+                if (!isset($groups[$key])) {
+                    $groups[$key] = ['reason' => 'Name: ' . $store->name, 'stores' => []];
+                }
+                $groups[$key]['stores'][$store->id] = $store;
+            }
+        } 
+
+        // Format grouped response
+        $result = [];
+        foreach ($groups as $key => $group) {
+            $groupStores = [];
+            foreach ($group['stores'] as $store) {
+                $groupStores[] = [
+                    'id' => $store->id,
+                    'name' => $store->name,
+                    'phone' => $store->phone,
+                    'created_by' =>  $store->vendor?->createdBy?->f_name . ' ' . $store->vendor?->createdBy?->l_name .' #'. $store->vendor?->created_by,
+                    'owner' => ($store->vendor?->f_name ?? '') . ' ' . ($store->vendor?->l_name ?? ''),
+                    'status' => $store->status ? 'Active' : 'Inactive',
+                    'view_url' => route('admin.store.view', $store->id),
+                ];
+            }
+            $result[] = [
+                'reason' => $group['reason'],
+                'stores' => $groupStores,
+            ];
+        }
+
+        return response()->json(['data' => $result]);
     }
 
     public function pending_requests(Request $request)

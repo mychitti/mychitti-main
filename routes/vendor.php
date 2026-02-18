@@ -753,11 +753,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             // DINE IN //
             // Route::get('open-table', 'SalespointController@open_table')->name('open-table');
             // Route::get('pos/{order}', 'SalespointController@order_show')->name('order.show');
-            
-            
+
+
             Route::post('dine-in/open-table', 'SalespointController@openTable')->name('dinein.open');
             Route::get('pos/dine-in/table-state', 'SalespointController@tableState')->name('dinein.table-state');
-            Route::post('pos/dine-in/update','SalespointController@updateDineOrder')->name('dinein.update');
+            Route::post('pos/dine-in/update', 'SalespointController@updateDineOrder')->name('dinein.update');
 
             // POS ITEMS 
             Route::post('items-import', 'SalespointController@items_import')->name('items_import');
@@ -1063,6 +1063,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('about-us-save', 'BusinessSettingsController@about_us_save')->name('about-us.save');
             Route::get('terms-and-conditions', 'BusinessSettingsController@common_terms_and_conditions')->name('common-terms-and-conditions');
             Route::post('common-tnc-save', 'BusinessSettingsController@common_tnc_save')->name('common-tnc-save');
+            Route::post('common-pp-save', 'BusinessSettingsController@common_pp_save')->name('common-pp-save');
             Route::get('settings', 'BusinessSettingsController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('settings-save', 'BusinessSettingsController@terms_and_conditions_save')->name('terms-and-conditions.save');
 
@@ -1111,6 +1112,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('buy-module', 'ProfileController@buy_module')->name('buy-module');
             Route::post('buy-plan', 'ProfileController@buy_plan')->name('buy-plan');
             Route::post('settings-plans', 'ProfileController@settings_plans')->name('settings-plans');
+            Route::post('about/update', 'ProfileController@about_update')->name('about.update');
         });
 
         Route::get('profile/view', 'ProfileController@view')->name('profile.view');
@@ -1130,7 +1132,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('update', 'RestaurantController@update')->name('update');
             Route::post('update-message', 'RestaurantController@update_message')->name('update-message');
         });
-
+ 
         Route::group(['prefix' => 'message', 'as' => 'message.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}/{user_type}', 'ConversationController@store')->name('store');
@@ -1146,7 +1148,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('disbursement-report-export/{type}', 'ReportController@disbursement_report_export')->name('disbursement-report-export');
         });
     });
-
+    Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
+        Route::get('/', 'AIChatController@index')->name('index');
+        Route::post('send', 'AIChatController@chat')->name('send');
+        Route::get('history', 'AIChatController@history')->name('history');
+        Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+    });
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {

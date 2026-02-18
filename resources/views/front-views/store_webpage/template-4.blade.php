@@ -81,7 +81,7 @@
 
         .btn-gallery {
             background: var(--accent);
-            color: white;
+            color: white !important;
             padding: 0.5rem 1.25rem;
             border-radius: 6px;
             font-size: 13px;
@@ -95,15 +95,24 @@
             transform: translateY(-1px);
         }
 
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none; 
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text);
+            padding: 5px;
+        }
+
         /* Compact Hero */
         .hero-compact {
-            margin-top: 60px;
             padding: 2rem 0;
             background: linear-gradient(180deg, var(--light) 0%, #fff 100%);
         }
 
         .hero-container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 0 1.5rem;
         }
@@ -122,7 +131,6 @@
 
         .cover-image {
             width: 100%;
-            height: 240px;
             object-fit: cover;
             border-radius: 12px;
             margin-bottom: 1rem;
@@ -215,10 +223,12 @@
         /* Main Content */
         .main-content {
             background: white;
+            width: 100%;
+    overflow: hidden;
         }
 
         .content-section {
-            padding: 1.5rem 0;
+            padding: 1.5rem 10px;
         }
 
         .section-title-mini {
@@ -460,7 +470,7 @@
         /* Gallery Minimal */
         .gallery-minimal {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(121px, 1fr));
             gap: 0.75rem;
             margin-top: 1rem;
         }
@@ -696,9 +706,24 @@
                 grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             }
 
+            .mobile-menu-toggle { display: block; }
             .header-nav {
                 display: none;
+                position: absolute;
+                top: 100%;
+                    gap: 1rem;
+                left: 0;
+                right: 0;
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(20px);
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                z-index: 10;
             }
+            .header-nav.show { display: flex; }
+            .header-nav a { padding: 10px 20px; display: block; }
+            .header-content { position: relative; }
         }
 
         @media (max-width: 640px) {
@@ -846,6 +871,9 @@
     <header class="minimal-header">
         <div class="header-content">
             <img loading="lazy" class="logo-mini" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.header-nav').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <nav class="header-nav">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -1119,7 +1147,13 @@
                                         href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                                         class="gallery-thumb lightgallery-item">
                                         <img loading="lazy" 
-                                            src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                              data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                             alt="Gallery">
                                     </a>
                                 @endforeach

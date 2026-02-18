@@ -239,7 +239,54 @@
             height: 78px;
         }
 
-        @media (max-width: 500px) {
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+            padding: 5px;
+        }
+
+        .mobile-only-gallery {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            .my-nav {
+                display: none !important;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #fff;
+                flex-direction: column; 
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                z-index: 10;
+            } 
+            .my-nav.show { 
+                display: flex !important;
+            }
+            .my-nav li {
+                margin: 0 !important;
+                padding: 8px 20px;
+            }
+            .mobile-only-gallery {
+                display: list-item;
+            }
+            .gallery-desktop {
+                display: none !important;
+            }
+            .store-nav {
+                padding-left: 15px !important;
+                padding-right: 15px !important;
+                position: relative;
+            }
             .spacer {
                 height: 12px;
             }
@@ -257,10 +304,10 @@
                 <img loading="lazy" class="store_logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
 
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.my-nav').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <ul class="my-nav mb-0 justify-content-center d-flex list-unstyled">
-                {{-- <li class="mx-2">
-                    <a href="#home" class="my-nav-link active">Home</a>
-                </li> --}}
                 <li class="mx-4">
                     <a href="#services" class="my-nav-link ">Services</a>
                 </li>
@@ -270,15 +317,15 @@
                 <li class="mx-4">
                     <a href="#contact" class="my-nav-link">Contact</a>
                 </li>
-                {{-- <li class="mx-2">
-                    <a href="#phone-number" class="my-nav-link">Phone Number</a>
-                </li> --}}
                 <li class="mx-4">
                     <a href="#about" class="my-nav-link">About</a>
                 </li>
+                <li class="mx-4 mobile-only-gallery">
+                    <a href="{{ route('store.gallery', [$store['slug']]) }}" class="my-nav-link">Gallery</a>
+                </li>
             </ul>
 
-            <div class="d-flex">
+            <div class="d-flex gallery-desktop">
                 <a href="{{ route('store.gallery', [$store['slug']]) }}" class="btn btn-primary mx-3 text-light">Gallery</a>
             </div>
         </nav>

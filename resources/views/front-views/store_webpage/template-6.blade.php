@@ -8,185 +8,370 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
- <style>
-:root{
-  /* BRAND COLORS */
-  --primary:#0d9488;        /* Teal (main brand) */
-  --primary-dark:#0f766e;
-  --secondary:#4338ca;      /* Indigo accent */
+     <style>
+        @media (max-width: 992px) {
 
-  /* UI COLORS */
-  --bg:#f8fafc;
-  --card:#ffffff;
-  --text:#0f172a;
-  --muted:#64748b;
-  --border:#e2e8f0;
+            .secondary_nav,
+            .page-header {
+                margin-top: 0px !important;
+            }
+        }
 
-  /* STATUS */
-  --success:#16a34a;
-  --danger:#dc2626;
-  --warning:#f59e0b;
+        .store-hero {
+            position: relative;
+        }
 
-  /* SHAPE */
-  --radius:14px;
-}
+        .store_cover {
+            height: 500px;
+            width: 100%;
+            object-fit: cover;
+        }
 
-/* Reset feel */
-body{
-  background:var(--bg);
-}
-body{ color:var(--text); background:var(--bg); }
+        .utility_div {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-/* LINKS */
-a{ color:var(--primary); }
-a:hover{ color:var(--primary-dark); }
+        .gallery-carousel img {
+            object-fit: cover;
+            {{-- height: 210px; --}} aspect-ratio: 1/1;
+        }
 
-/* BUTTONS */
-.btn-primary{
-  background:var(--primary);
-  border-color:var(--primary);
-}
-.btn-primary:hover{
-  background:var(--primary-dark);
-  border-color:var(--primary-dark);
-}
+        .store_logo {
+            height: 75px;
+            {{-- aspect-ratio: 1; --}} padding: 15px 5px;
+            {{-- object-fit: cover; --}}
+        }
 
-.btn-outline-primary{
-  color:var(--primary);
-  border-color:var(--primary);
-}
-.btn-outline-primary:hover{
-  background:var(--primary);
-  color:#fff;
-}
+        .spacer {
+            height: 78px;
+        }
 
-/* NAV */
-.my-nav-link{
-  color:#334155;
-}
-.my-nav-link.active{
-  color:var(--primary);
-  border-bottom:2px solid var(--primary);
-}
+        @media (max-width: 500px) {
+            .spacer {
+                height: 12px;
+            }
+        }
 
-/* SECTION HEADING */
-.sec_heading::after{
-  background:var(--secondary);
-}
+        .header-main {
+            padding: 1rem 0;
+        }
 
-/* BADGES */
-.discount_badge{
-  background:var(--danger);
-}
+        .header-main-content {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-/* CARDS */
-.fruite-item,
-.store-hero-card,
-.contact-box{
-  background:var(--card);
-  border-radius:var(--radius);
-  border:1px solid var(--border);
-}
+        .medical-logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
 
-/* PRICE */
-.price,
-.text-price{
-  color:var(--primary);
-}
+        .medical-logo {
+            height: 60px;
+            width: 60px;
+            border-radius: 12px;
+            background: white;
+            padding: 8px;
+            object-fit: contain;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .medical-nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .medical-nav a {
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+        }
+
+        .medical-nav a:hover {
+            border-bottom-color: white;
+        }
+    </style>
+    <style>
+        :root {
+            /* BRAND COLORS */
+            --primary: #0d9488;
+            /* Teal (main brand) */
+            --primary-dark: #0f766e;
+            --secondary: #4338ca;
+            /* Indigo accent */
+
+            /* UI COLORS */
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+
+            /* STATUS */
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+
+            /* SHAPE */
+            --radius: 14px;
+        }
+
+        /* Reset feel */
+        body {
+            background: var(--bg);
+        }
+
+        body {
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        /* LINKS */
+        a {
+            color: var(--primary);
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* BUTTONS */
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* NAV */
+        .my-nav-link {
+            color: #334155;
+        }
+
+        .my-nav-link.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        /* SECTION HEADING */
+        .sec_heading::after {
+            background: var(--secondary);
+        }
+
+        /* BADGES */
+        .discount_badge {
+            background: var(--danger);
+        }
+
+        /* CARDS */
+        .fruite-item,
+        .store-hero-card,
+        .contact-box {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        /* PRICE */
+        .price,
+        .text-price {
+            color: var(--primary);
+        }
 
 
-/* Utility */
-.shadow-soft{
-  box-shadow:0 10px 25px rgba(0,0,0,.06);
-}
-.rounded-xl{border-radius:var(--radius);}
-.text-muted{color:var(--muted);}
-.section{padding:60px 0}
+        /* Utility */
+        .shadow-soft {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, .06);
+        }
 
-/* NAV */
-.store-nav{
-  backdrop-filter:blur(12px);
-  background:rgba(255,255,255,.9)!important;
-}
-.my-nav-link{
-  font-weight:500;
-  color:#334155;
-  text-decoration:none;
-}
-.my-nav-link.active{
-  color:var(--primary);
-  border-bottom:2px solid var(--primary);
-}
+        .rounded-xl {
+            border-radius: var(--radius);
+        }
 
-/* HERO */
-.store-hero-wrap{
-  background:linear-gradient(120deg,#eef2ff,#f8fafc);
-  padding-top:90px;
-}
-.store-hero-card{
-  background:var(--card);
-  border-radius:20px;
-  padding:24px;
-}
+        .text-muted {
+            color: var(--muted);
+        }
 
-/* PRODUCT CARD */
-.product_card{
-  transition:.25s ease;
-}
-.product_card:hover{
-  transform:translateY(-4px);
-}
-.fruite-item{
-  background:var(--card);
-  border-radius:16px;
-  overflow:hidden;
-}
-.product_name{
-  font-size:15px;
-  font-weight:600;
-}
+        .section {
+            padding: 60px 20px
+        }
 
-/* BADGES */
-.discount_badge{
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:#dc2626;
-  color:#fff;
-  padding:4px 8px;
-  font-size:12px;
-  border-radius:20px;
-}
+        /* NAV */
+        .store-nav {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, .9) !important;
+        }
 
-/* CONTACT */
-.contact-container{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-  gap:16px;
-}
-.contact-box{
-  background:var(--card);
-  padding:16px;
-  border-radius:16px;
-  text-align:center;
-}
+        .my-nav-link {
+            font-weight: 500;
+            color: #334155;
+            text-decoration: none;
+        }
 
-/* SECTION HEADINGS */
-.sec_heading{
-  font-size:22px;
-  font-weight:700;
-  margin-bottom:20px;
-  position:relative;
-}
-.sec_heading::after{
-  content:'';
-  width:40px;
-  height:3px;
-  background:var(--primary);
-  display:block;
-  margin-top:8px;
-}
-</style>
+        .my-nav-link.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        /* HERO */
+        .store-hero-wrap {
+            background: linear-gradient(120deg, #eef2ff, #f8fafc);
+            padding-top: 30px;
+        }
+
+        .store-hero-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 24px;
+        }
+
+        /* PRODUCT CARD */
+        .product_card {
+            transition: .25s ease;
+        }
+
+        .product_card:hover {
+            transform: translateY(-4px);
+        }
+
+        .fruite-item {
+            background: var(--card);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .product_name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* BADGES */
+        .discount_badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #dc2626;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 20px;
+        }
+
+        /* CONTACT */
+        .contact-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .contact-box {
+            background: var(--card);
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+            width: 100% !important;
+        }
+
+        /* SECTION HEADINGS */
+        .sec_heading {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+            padding: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .medical-nav {
+                display: none ;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                    gap: 1rem;
+                background: #fff;
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                z-index: 10;
+            }
+
+            .medical-nav.show {
+                display: flex;
+            }
+
+            .medical-nav a {
+                padding: 10px 20px;
+                display: block;
+            }
+
+            .header-main-content {
+                position: relative;
+            }
+
+            .logo-text p {
+                display: none;
+            }
+
+            .header-main-content {
+                padding: 0 10px
+            }
+            .logo-text h1{
+                font-size: 15px;    
+            }
+            .store-hero-wrap{
+                padding-top: 0px;
+            }
+        }
+    </style>
 
     <!-- LightGallery CSS -->
 
@@ -289,93 +474,77 @@ a:hover{ color:var(--primary-dark); }
         window.onload = init;
     </script>
 
-    <style>
-        .store-hero {
-            position: relative;
-        }
-
-        .store_cover {
-            height: 500px;
-            width: 100%;
-            object-fit: cover;
-        }
-
-        .utility_div {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .gallery-carousel img {
-            object-fit: cover;
-            {{-- height: 210px; --}} aspect-ratio: 1/1;
-        }
-
-        .store_logo {
-            height: 75px;
-            {{-- aspect-ratio: 1; --}} padding: 15px 5px;
-            {{-- object-fit: cover; --}}
-        }
-
-        .spacer {
-            height: 78px;
-        }
-
-        @media (max-width: 500px) {
-            .spacer {
-                height: 12px;
-            }
-        }
-    </style>
+   
 @endpush
 
 @section('content')
-    <div class="spacer"></div>
-
-<div class="store-hero-wrap">
-  <div class="container section">
-    <div class="row g-4 align-items-center">
-      
-      <div class="col-md-5">
-        <img class="rounded-xl shadow-soft w-100"
-          src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}">
-      </div>
-
-      <div class="col-md-7">
-        <div class="store-hero-card shadow-soft">
-          <div class="d-flex align-items-center gap-3 mb-2">
-            <img class="rounded-circle" width="60"
-              src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
-            <div>
-              <h1 class="fs-4 mb-0">
-                {{ $data['store_config']?->webpage_name ?? $store['name'] }}
-              </h1>
-              <small class="text-muted">{{ $store['meta_title'] }}</small>
+    {{-- <div class="spacer"></div> --}}
+    <div class="header-main">
+        <div class="header-main-content">
+            <div class="medical-logo-section">
+                <img loading="lazy" class="medical-logo"
+                    src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
+                <div class="logo-text">
+                    <h1>{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h1>
+                    <p>{{ $store['meta_title'] }}</p>
+                </div>
             </div>
-          </div>
-
-          {{-- Description (UNCHANGED LOGIC) --}}
-          <p class="mt-3">
-            {!! Str::limit($store['meta_description'],120) !!}
-          </p>
-
-          <div class="d-flex align-items-center gap-3 mt-3">
-            <strong>{{ number_format($store->average_rating,1) }}</strong>
-            <div class="rating-stars" data-rating="{{ $store->average_rating }}"></div>
-            <small class="text-muted">({{ $store->rating_count }} reviews)</small>
-          </div>
-
-          <div class="mt-4 d-flex gap-2 flex-wrap">
-            <a href="#services" class="btn btn-primary px-4">View Services</a>
-            <a href="{{ route('store.gallery',[$store['slug']]) }}"
-               class="btn btn-outline-secondary">Gallery</a>
-          </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.medical-nav').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
+            <nav class="medical-nav">
+                <a href="#services">Services</a>
+                <a href="#reviews">Reviews</a>
+                <a href="#contact">Contact</a>
+                <a href="#about">About</a>
+                <a href="{{ route('store.gallery', [$store['slug']]) }}" class="appointment-btn">View Gallery</a>
+            </nav>
         </div>
-      </div>
-
     </div>
-  </div>
-</div>
+    <div class="store-hero-wrap">
+        <div class="container section">
+            <div class="row g-4 align-items-center">
+
+                <div class="col-md-5">
+                    <img class="rounded-xl shadow-soft w-100"
+                        src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}">
+                </div>
+
+                <div class="col-md-7">
+                    <div class="store-hero-card shadow-soft">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <img class="rounded-circle" width="60"
+                                src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}">
+                            <div>
+                                <h1 class="fs-4 mb-0">
+                                    {{ $data['store_config']?->webpage_name ?? $store['name'] }}
+                                </h1>
+                                <small class="text-muted">{{ $store['meta_title'] }}</small>
+                            </div>
+                        </div>
+
+                        {{-- Description (UNCHANGED LOGIC) --}}
+                        <p class="mt-3">
+                            {!! Str::limit($store['meta_description'], 120) !!}
+                        </p>
+
+                        <div class="d-flex align-items-center gap-3 mt-3">
+                            <strong>{{ number_format($store->average_rating, 1) }}</strong>
+                            <div class="rating-stars" data-rating="{{ $store->average_rating }}"></div>
+                            <small class="text-muted">({{ $store->rating_count }} reviews)</small>
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2 flex-wrap">
+                            <a href="#services" class="btn btn-primary px-4">View Services</a>
+                            <a href="{{ route('store.gallery', [$store['slug']]) }}"
+                                class="btn btn-outline-secondary">Gallery</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 
     <div class="owl-carousel 3banner-carousel justify-content-center mt-2 store_banner">
@@ -440,63 +609,63 @@ a:hover{ color:var(--primary-dark); }
                     @if ($data['store_config']?->inventory_items_position == 'above')
                         @include('front-views.partials._inventoryItemsSection')
                     @endif
-                 <div class="section bg-white" id="services">
-  <div class="container">
+                    <div class="section bg-white" id="services">
+                        <div class="container">
 
-    <h3 class="sec_heading">Services & Products</h3>
+                            <h3 class="sec_heading">Services & Products</h3>
 
-    @foreach ($productdata as $cat)
-      <h5 class="mt-4">{{ $cat->name }}</h5>
+                            @foreach ($productdata as $cat)
+                                <h5 class="mt-4">{{ $cat->name }}</h5>
 
-      <div class="row g-4 mt-1">
-        @foreach ($cat->items as $pro)
-          <div class="col-xl-2 col-lg-3 col-md-4 col-6 product_card">
-            <div class="fruite-item shadow-soft">
+                                <div class="row g-4 mt-1">
+                                    @foreach ($cat->items as $pro)
+                                        <div class="col-xl-2 col-lg-3 col-md-4 col-6 product_card">
+                                            <div class="fruite-item shadow-soft">
 
-              <div class="position-relative">
-                <img class="w-100"
-                  style="height:180px;object-fit:cover"
-                  src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                    $pro->image,
-                    asset('storage/app/public/product/').'/'.$pro->image,
-                    asset('public/assets/admin/img/160x160/img1.jpg'),
-                    'product/'
-                  ) }}">
-                @if($pro->discount>0)
-                  <div class="discount_badge">
-                    {{ floor($pro->discount) }}%
-                  </div>
-                @endif
-              </div>
+                                                <div class="position-relative">
+                                                    <img class="w-100" style="height:180px;object-fit:cover"
+                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                            $pro->image,
+                                                            asset('storage/app/public/product/') . '/' . $pro->image,
+                                                            asset('public/assets/admin/img/160x160/img1.jpg'),
+                                                            'product/',
+                                                        ) }}">
+                                                    @if ($pro->discount > 0)
+                                                        <div class="discount_badge">
+                                                            {{ floor($pro->discount) }}%
+                                                        </div>
+                                                    @endif
+                                                </div>
 
-              <div class="p-2">
-                <h6 class="product_name one-line-ellipsis">
-                  {{ ucfirst($pro->name) }}
-                </h6>
+                                                <div class="p-2">
+                                                    <h6 class="product_name one-line-ellipsis">
+                                                        {{ ucfirst($pro->name) }}
+                                                    </h6>
 
-                <p class="fw-bold mb-1">{{ _price($pro->price) }}</p>
+                                                    {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
 
-                @auth
-                  <button onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
-                    class="btn btn-sm btn-outline-primary w-100">
-                    Enquiry
-                  </button>
-                @else
-                  <button data-bs-toggle="modal" data-bs-target="#loginModal"
-                    class="btn btn-sm btn-outline-primary w-100">
-                    Enquiry
-                  </button>
-                @endauth
-              </div>
+                                                    @auth
+                                                        <button
+                                                            onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
+                                                            class="btn btn-sm btn-outline-primary w-100">
+                                                            Enquiry
+                                                        </button>
+                                                    @else
+                                                        <button data-bs-toggle="modal" data-bs-target="#loginModal"
+                                                            class="btn btn-sm btn-outline-primary w-100">
+                                                            Enquiry
+                                                        </button>
+                                                    @endauth
+                                                </div>
 
-            </div>
-          </div>
-        @endforeach
-      </div>
-    @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
 
-  </div>
-</div>
+                        </div>
+                    </div>
 
                     @if ($data['store_config']?->inventory_items_position == 'below')
                         @include('front-views.partials._inventoryItemsSection')
@@ -512,7 +681,13 @@ a:hover{ color:var(--primary-dark); }
                                         style="cursor:default;"
                                         class="table-rest-info gallery_atag gallery-item lightgallery-item"
                                         alt="Gallery image"><img loading="lazy" style="min-height:100px;" loading="lazy"
-                                            src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                $value['image'] ?? '',
+                                                asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                                asset('public/assets/admin/img/160x160/img1.jpg'),
+                                                'store/gallery/',
+                                            ) }}"
                                             alt="">
                                     </a>
                                 @endforeach
@@ -532,7 +707,8 @@ a:hover{ color:var(--primary-dark); }
                                         <br>
                                         @foreach ($data['reviews'] as $rev)
                                             <div class="d-flex border rounded my-2  p-2">
-                                                <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
+                                                <img loading="lazy"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                                     class="img-fluid rounded m-2 r_profile_img" style=""
                                                     alt="{{ $rev->f_name . ' ' . $rev->l_name }}">
                                                 <div class="d-flex flex-column w-100">
@@ -559,13 +735,15 @@ a:hover{ color:var(--primary-dark); }
                                                                 <div class="d-flex">
                                                                     @foreach ($attachments as $img)
                                                                         <a target="_blank" class="mx-1"
-                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
-                                                                                class="rounded" style="width: 55px;"
+                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                                loading="lazy" class="rounded"
+                                                                                style="width: 55px;"
                                                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                                 alt="review"></a>
                                                                         <a target="_blank"
-                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img loading="lazy"
-                                                                                class="rounded" style="width: 55px;"
+                                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
+                                                                                loading="lazy" class="rounded"
+                                                                                style="width: 55px;"
                                                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                                                 alt="review"></a>
                                                                     @endforeach
@@ -575,7 +753,8 @@ a:hover{ color:var(--primary-dark); }
                                                     </div>
                                                     @if ($rev->reply)
                                                         <div class="d-flex border rounded  p-2">
-                                                            <img loading="lazy" src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                                                            <img loading="lazy"
+                                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                                                 class="img-fluid rounded m-2 reply_img" style=""
                                                                 alt="{{ $store->name }}">
                                                             <div class="">
@@ -605,33 +784,33 @@ a:hover{ color:var(--primary-dark); }
                             </div>
                         </div>
                     @endif
-                  <div class="section" id="contact">
-  <div class="container">
-    <h3 class="sec_heading">Contact</h3>
+                    <div class="section" id="contact">
+                        <div class="container">
+                            <h3 class="sec_heading">Contact</h3>
 
-    <div class="contact-container">
-      <div class="contact-box shadow-soft">
-        <strong>Address</strong>
-        <p class="small">{{ $store['address'] }}</p>
-      </div>
+                            <div class="contact-container">
+                                <div class="contact-box shadow-soft">
+                                    <strong>Address</strong>
+                                    <p class="small">{{ $store['address'] }}</p>
+                                </div>
 
-      <div class="contact-box shadow-soft">
-        <strong>Email</strong>
-        <a href="mailto:{{ $store['email'] }}">{{ $store['email'] }}</a>
-      </div>
+                                <div class="contact-box shadow-soft">
+                                    <strong>Email</strong>
+                                    <a href="mailto:{{ $store['email'] }}">{{ $store['email'] }}</a>
+                                </div>
 
-      <div class="contact-box shadow-soft">
-        <strong>Phone</strong>
-        <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
-      </div>
+                                <div class="contact-box shadow-soft">
+                                    <strong>Phone</strong>
+                                    <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                                </div>
 
-      <div class="contact-box shadow-soft">
-        <strong>Location</strong>
-        <a data-bs-toggle="modal" data-bs-target="#exampleModal">View Map</a>
-      </div>
-    </div>
-  </div>
-</div>
+                                <div class="contact-box shadow-soft">
+                                    <strong>Location</strong>
+                                    <a data-bs-toggle="modal" data-bs-target="#exampleModal">View Map</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div id="about" class="mt-4">
                         <div class="">

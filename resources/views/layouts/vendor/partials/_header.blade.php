@@ -70,9 +70,9 @@
             </div>
             
             @endif
-            
+              
             <div class="navbar-nav-wrap-content-right">
-                <!-- Navbar -->
+                <!-- Navbar --> 
                 <ul class="navbar-nav align-items-center flex-row">
                 @if(\App\CentralLogics\Helpers::employee_module_permission_check('store_availability'))
               

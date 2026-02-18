@@ -2332,12 +2332,12 @@ class FrontController extends Controller
             ->where('stores.slug', $slug)
             ->where('store_reviews.status', 1)
             ->count();
-                    if($request->has('template') && $request->template){
-        return view('front-views.store_webpage.template-'.$request->template.'', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-                    }
+        if ($request->has('template') && $request->template) {
+            return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
- 
+        // $templateId = 15;
         // return view('front-views.store_details', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         // return view('front-views.store_webpage.template-2', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         // return view('front-views.store_webpage.template-3', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
@@ -2561,13 +2561,13 @@ class FrontController extends Controller
 
         $data['top_stores'] = $topStores;
 
-    $itemFaqs = ItemFaq::where('item_id', $item->id)
-    ->where('status', 1)
+        $itemFaqs = ItemFaq::where('item_id', $item->id)
+            ->where('status', 1)
             ->orderBy('sort_order')
             ->get();
         // prx(count($data['top_stores']));
 
-        return view('front-views.product_details', compact('itemFaqs','item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
+        return view('front-views.product_details', compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
     public function category_listing(Request $request, $slug)

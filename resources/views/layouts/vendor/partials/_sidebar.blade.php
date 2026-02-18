@@ -1942,8 +1942,8 @@
                                     </a>
                                 </li>
                                 <li
-                                    class="nav-item {{ Request::is('business-settings/store-setup') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.business-settings.store-setup') }}"
+                                    class="nav-item {{ Request::is('store/edit') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.shop.edit') }}"
                                         title="Store Settings">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Store Settings</span>

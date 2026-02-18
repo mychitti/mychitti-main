@@ -79,8 +79,13 @@
         }
 
         @keyframes slideDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
+            from {
+                transform: translateY(-100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
         }
 
         .header-wrap {
@@ -100,9 +105,19 @@
         }
 
         @keyframes bounceIn {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); opacity: 1; }
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .logo-img-compact {
@@ -206,6 +221,16 @@
             z-index: 1;
         }
 
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            padding: 5px;
+        }
+
         /* Compact Hero */
         .compact-hero {
             margin-top: 60px;
@@ -222,13 +247,18 @@
             right: -20%;
             width: 70%;
             height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             animation: rotate 20s linear infinite;
         }
 
         @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .hero-compact-wrap {
@@ -249,13 +279,20 @@
         }
 
         @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-100px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .hero-tag-compact {
             display: inline-block;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             padding: 0.4rem 1rem;
             border-radius: 15px;
             font-size: 11px;
@@ -265,11 +302,19 @@
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
         }
 
         .hero-title-compact {
+            color: white;
             font-size: 3rem;
             font-weight: 900;
             line-height: 1.1;
@@ -299,7 +344,7 @@
 
         .btn-white-red:hover {
             transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
             color: var(--red-primary);
         }
 
@@ -325,8 +370,15 @@
         }
 
         @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .hero-image {
@@ -334,7 +386,7 @@
             height: 350px;
             object-fit: cover;
             border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             transition: transform 0.3s;
         }
 
@@ -350,7 +402,7 @@
         }
 
         .stat-compact {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             padding: 1rem;
             border-radius: 10px;
             text-align: center;
@@ -358,7 +410,7 @@
         }
 
         .stat-compact:hover {
-            background: rgba(255,255,255,0.25);
+            background: rgba(255, 255, 255, 0.25);
             transform: translateY(-5px);
         }
 
@@ -366,9 +418,11 @@
             font-size: 1.75rem;
             font-weight: 900;
             line-height: 1;
+            color: antiquewhite;
         }
 
         .stat-lbl {
+            color: white;
             font-size: 10px;
             margin-top: 0.5rem;
             text-transform: uppercase;
@@ -435,14 +489,14 @@
             background: white;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
             transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             position: relative;
         }
 
         .card-compact:hover {
             transform: translateY(-10px) rotate(-2deg);
-            box-shadow: 0 15px 40px rgba(220,38,38,0.3);
+            box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
         }
 
         .card-img-compact {
@@ -477,9 +531,19 @@
         }
 
         @keyframes shake {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(-5deg); }
-            75% { transform: rotate(5deg); }
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            25% {
+                transform: rotate(-5deg);
+            }
+
+            75% {
+                transform: rotate(5deg);
+            }
         }
 
         .time-compact {
@@ -508,7 +572,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             transition: all 0.3s;
         }
 
@@ -585,7 +649,7 @@
         .btn-card-compact:hover {
             background: var(--red-primary);
             transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(220,38,38,0.4);
+            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
         }
 
         .btn-remove-compact {
@@ -612,13 +676,13 @@
             overflow: hidden;
             aspect-ratio: 1;
             cursor: pointer;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
             transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
         .gallery-mini-item:hover {
             transform: scale(1.08) rotate(3deg);
-            box-shadow: 0 12px 35px rgba(220,38,38,0.3);
+            box-shadow: 0 12px 35px rgba(220, 38, 38, 0.3);
             z-index: 10;
         }
 
@@ -639,7 +703,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, rgba(220,38,38,0.9) 0%, rgba(153,27,27,0.9) 100%);
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -658,9 +722,17 @@
         }
 
         @keyframes zoomPulse {
-            0% { transform: scale(0); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(0);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
         /* Info Section */
@@ -675,7 +747,7 @@
             background: white;
             padding: 2rem;
             border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
             border-left: 4px solid var(--red-primary);
         }
 
@@ -706,7 +778,7 @@
             gap: 1rem;
             margin-bottom: 1.25rem;
             padding-bottom: 1.25rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .contact-row-compact:last-child {
@@ -749,8 +821,13 @@
         }
 
         @keyframes slideInDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
+            from {
+                transform: translateY(-100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
         }
 
         .announce-wrap {
@@ -760,6 +837,20 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+        }
+
+        .cat_name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+            border-bottom: 3px solid var(--red-primary);
+            display: inline-block;
+            padding-bottom: 0.5rem;
+        }
+
+        .product_data {
+            margin: 3rem 0;
         }
 
         /* Responsive */
@@ -772,8 +863,45 @@
                 grid-template-columns: 1fr;
             }
 
+            .mobile-menu-toggle {
+                display: block;
+            }
+
             .nav-compact {
                 display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--dark);
+                flex-direction: column;
+                padding: 10px 0;
+                gap: 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 10;
+            }
+
+            .nav-compact.show {
+                display: flex;
+            }
+
+            .nav-compact a {
+                padding: 12px 25px;
+                display: block;
+                font-size: 14px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .nav-compact a:last-child {
+                border-bottom: none;
+            }
+
+            .nav-compact a::after {
+                display: none;
+            }
+
+            .header-wrap {
+                position: relative;
             }
 
             .products-compact {
@@ -786,8 +914,67 @@
         }
 
         @media (max-width: 768px) {
+            .logo-text-compact h1 {
+                font-size: 14px;
+                max-width: 140px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .logo-text-compact p {
+                display: none;
+            }
+
             .hero-title-compact {
-                font-size: 2rem;
+                font-size: 1.8rem;
+            }
+
+            .hero-desc-compact {
+                font-size: 0.85rem;
+            }
+
+            .hero-image {
+                height: auto;
+            }
+
+            .hero-actions-compact {
+                flex-wrap: wrap;
+            }
+
+            .btn-white-red,
+            .btn-outline-red {
+                padding: 6px 20px;
+                font-size: 13px;
+            }
+
+            .hero-compact-wrap {
+                padding: 0 1rem;
+                gap: 1.5rem;
+            }
+
+            .stat-compact {
+                padding: 8px;
+            }
+
+            .stat-val {
+                font-size: 1.2rem;
+            }
+
+            .section-compact {
+                padding: 1.5rem 0;
+            }
+
+            .section-wrap {
+                padding: 0 1rem;
+            }
+
+            .section-title-compact {
+                font-size: 1.5rem;
+            }
+
+            .section-head-compact {
+                margin-bottom: 1.5rem;
             }
 
             .products-compact {
@@ -797,10 +984,86 @@
             .gallery-minimized {
                 grid-template-columns: repeat(3, 1fr);
             }
+
+            .card-img-compact {
+                height: 120px;
+            }
+
+            .card-body-compact {
+                padding: 8px;
+            }
+
+            .card-title-compact {
+                font-size: 13px;
+                min-height: 36px;
+            }
+
+            .card-price-compact {
+                margin: 0.5rem 0;
+            }
+
+            .price-now-compact {
+                font-size: 1.1rem;
+            }
+
+            .split-info-compact {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin: 1rem 0;
+            }
+
+            .about-compact {
+                padding: 1rem;
+            }
+
+            .contact-compact {
+                padding: 1rem;
+            }
+
+            .rating-compact {
+                padding: 0.75rem;
+                margin-top: 0.75rem;
+            }
+
+            .rating-num-compact {
+                font-size: 2rem;
+            }
+
+            .cat_name {
+                font-size: 1rem;
+                margin-bottom: 0.5rem;
+                padding-bottom: 5px;
+            }
+
+            .product_data {
+                margin: 1rem 0;
+            }
+
+            .announce-compact {
+                padding: 0.5rem 0;
+            }
+
+            .announce-wrap {
+                padding: 0 1rem;
+            }
+
+            .announce-wrap i {
+                font-size: 16px !important;
+            }
+
+            .announce-wrap div {
+                font-size: 12px !important;
+            }
         }
 
-        .cursor-pointer { cursor: pointer; }
-        .d-none { display: none; }
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .d-none {
+            display: none;
+        }
 
         .rating-stars {
             position: relative;
@@ -808,7 +1071,7 @@
         }
 
         .stars-base i {
-            color: rgba(255,255,255,0.3);
+            color: rgba(255, 255, 255, 0.3);
         }
 
         .stars-fill {
@@ -826,11 +1089,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lightgallery.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lg-thumbnail.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lg-video.css">
-    
+
     <script type="text/javascript"
         src="https://platform-api.sharethis.com/js/sharethis.js#property=673458a1da72090013b84006&product=inline-share-buttons&source=platform"
         async="async"></script>
-    
+
     <script>
         function loadScript(src, callback) {
             if (document.querySelector(`script[src="${src}"]`)) {
@@ -923,12 +1186,16 @@
     <header class="compact-header">
         <div class="header-wrap">
             <div class="logo-compact">
-                <img loading="lazy" class="logo-img-compact" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
+                <img loading="lazy" class="logo-img-compact"
+                    src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
                 <div class="logo-text-compact">
                     <h1>{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h1>
                     <p>{{ $store['meta_title'] }}</p>
                 </div>
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-compact').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <nav class="nav-compact">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -953,8 +1220,9 @@
             </div>
 
             <div class="hero-img-compact">
-                <img loading="lazy" class="hero-image" src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="Cover">
-                
+                <img loading="lazy" class="hero-image"
+                    src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="Cover">
+
                 <div class="stats-compact">
                     @php $store_rating = number_format($store->average_rating, 1); @endphp
                     <div class="stat-compact">
@@ -979,7 +1247,6 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}" style="color: var(--red-primary);">Home</a></li>
-                <li class="breadcrumb-item">›</li>
                 <li class="breadcrumb-item active">{{ $data['store_config']?->webpage_name ?? $store['name'] }}</li>
             </ol>
         </nav>
@@ -1010,8 +1277,8 @@
                         @if (strlen($description) > 350)
                             <span id="dots-{{ $store['id'] }}"></span>
                             <span id="more-{{ $store['id'] }}" class="d-none">{!! substr($description, 350) !!}</span>
-                            <a class="cursor-pointer" style="color: var(--red-primary); font-weight: 800;" onclick="toggleReadMore({{ $store['id'] }})"
-                                id="btn-{{ $store['id'] }}">Read more →</a>
+                            <a class="cursor-pointer" style="color: var(--red-primary); font-weight: 800;"
+                                onclick="toggleReadMore({{ $store['id'] }})" id="btn-{{ $store['id'] }}">Read more →</a>
                         @endif
                     </div>
                 </div>
@@ -1024,7 +1291,9 @@
                             <i class="fas fa-phone"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Phone</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Phone</h4>
                             @php
                                 $phones = $data['store_config']?->webpage_phones;
                                 if ($phones) {
@@ -1048,9 +1317,12 @@
                             <i class="fas fa-envelope"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Email</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Email</h4>
                             <p style="font-size: 14px; margin: 0;">
-                                <a href="mailto:{{ $store['email'] }}" style="color: white; text-decoration: none;">{{ $data['store_config']?->webpage_email ?? $store->email }}</a>
+                                <a href="mailto:{{ $store['email'] }}"
+                                    style="color: white; text-decoration: none;">{{ $data['store_config']?->webpage_email ?? $store->email }}</a>
                             </p>
                         </div>
                     </div>
@@ -1060,7 +1332,9 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Address</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--red-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Address</h4>
                             <p style="font-size: 14px; margin: 0;">{{ $store['address'] }}</p>
                         </div>
                     </div>
@@ -1096,16 +1370,17 @@
     </div>
 
     <!-- Banners -->
-    @if(count($data['banners']) > 0)
-    <div style="max-width: 1600px; margin: 2rem auto; padding: 0 2rem;">
-        <div class="owl-carousel banner-carousel bounce-in">
-            @foreach ($data['banners'] as $value)
-                <a href="{{ $value->default_link ?? '#' }}">
-                    <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner" style="border-radius: 12px; width: 100%;">
-                </a>
-            @endforeach
+    @if (count($data['banners']) > 0)
+        <div style="max-width: 1600px; margin: 2rem auto; padding: 0 2rem;">
+            <div class="owl-carousel banner-carousel bounce-in">
+                @foreach ($data['banners'] as $value)
+                    <a href="{{ $value->default_link ?? '#' }}">
+                        <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
+                            alt="banner" style="border-radius: 12px; width: 100%;">
+                    </a>
+                @endforeach
+            </div>
         </div>
-    </div>
     @endif
 
     <!-- Products Section -->
@@ -1121,8 +1396,9 @@
             </div>
 
             @foreach ($productdata as $key => $cat)
-                <div style="margin: 3rem 0;">
-                    <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--dark); border-bottom: 3px solid var(--red-primary); display: inline-block; padding-bottom: 0.5rem;">{{ $cat->name }}</h3>
+                <div class="product_data">
+                    <h3 class="cat_name" style="">
+                        {{ $cat->name }}</h3>
 
                     <div class="products-compact">
                         @foreach ($cat->items as $index => $pro)
@@ -1137,10 +1413,11 @@
                                     $mrp = $pro->mrp_price;
                                 }
                             @endphp
-                            <div class="pr_{{ $pro->id }} card-compact slide-in-right" style="transition-delay: {{ $index * 0.05 }}s;">
+                            <div class="pr_{{ $pro->id }} card-compact slide-in-right"
+                                style="transition-delay: {{ $index * 0.05 }}s;">
                                 <div class="card-img-compact">
                                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
-                                        <img loading="lazy" 
+                                        <img loading="lazy"
                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                             alt="{{ $pro->name }}">
@@ -1161,7 +1438,8 @@
 
                                     <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
                                         class="prHeart_{{ $pro->id }} heart-compact">
-                                        <i class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                        <i
+                                            class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
                                     </div>
                                 </div>
 
@@ -1173,7 +1451,8 @@
                                     </a>
 
                                     @if ($module == 5)
-                                        <p style="font-size: 11px; color: var(--gray); margin-bottom: 0.5rem; min-height: 16px;">
+                                        <p
+                                            style="font-size: 11px; color: var(--gray); margin-bottom: 0.5rem; min-height: 16px;">
                                             {{ !empty($variations) ? $variations[0]->type : '' }}
                                         </p>
 
@@ -1187,12 +1466,14 @@
                                         <div class="cartSec_{{ $pro->id }}">
                                             @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
                                             @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
-                                                <button onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
                                                     class="btn-card-compact btn-remove-compact">
                                                     <i class="fa fa-times"></i> Remove
                                                 </button>
                                             @else
-                                                <button onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
                                                     class="btn-card-compact">
                                                     <i class="fa fa-plus"></i> Add
                                                 </button>
@@ -1251,11 +1532,17 @@
 
                 <div class="gallery-minimized">
                     @foreach ($data['galleries'] as $index => $value)
-                        <a target="_blank"
-                            href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
-                            class="gallery-mini-item pop-in lightgallery-item" style="transition-delay: {{ $index * 0.05 }}s;">
-                            <img loading="lazy" 
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                        <a target="_blank" href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
+                            class="gallery-mini-item pop-in lightgallery-item"
+                            style="transition-delay: {{ $index * 0.05 }}s;">
+                            <img loading="lazy"
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Gallery {{ $index + 1 }}">
                             <div class="gallery-overlay-mini">
                                 <i class="fas fa-search-plus gallery-icon-mini"></i>
@@ -1277,18 +1564,23 @@
                 </div>
 
                 @foreach ($data['reviews'] as $index => $rev)
-                    <div class="slide-in-right" style="transition-delay: {{ $index * 0.1 }}s; background: white; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border-left: 4px solid var(--red-primary);">
+                    <div class="slide-in-right"
+                        style="transition-delay: {{ $index * 0.1 }}s; background: white; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border-left: 4px solid var(--red-primary);">
                         <div style="display: flex; gap: 1.25rem; margin-bottom: 1.25rem;">
-                            <img loading="lazy" 
+                            <img loading="lazy"
                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                 style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid var(--red-primary);"
                                 alt="{{ $rev->f_name }}">
                             <div style="flex: 1;">
-                                <div style="font-size: 1.125rem; font-weight: 800; color: var(--dark); margin-bottom: 0.5rem;">{{ $rev->f_name . ' ' . $rev->l_name }}</div>
-                                <div style="font-size: 11px; color: var(--gray); margin-bottom: 0.5rem;">{{ _formatted_datetime($rev->created_at) }}</div>
+                                <div
+                                    style="font-size: 1.125rem; font-weight: 800; color: var(--dark); margin-bottom: 0.5rem;">
+                                    {{ $rev->f_name . ' ' . $rev->l_name }}</div>
+                                <div style="font-size: 11px; color: var(--gray); margin-bottom: 0.5rem;">
+                                    {{ _formatted_datetime($rev->created_at) }}</div>
                                 <div style="display: flex; gap: 0.25rem;">
                                     @for ($i = 1; $i < 6; $i++)
-                                        <i class="fas fa-star" style="font-size: 14px; color: {{ $rev->rating >= $i ? '#fbbf24' : '#e0e0e0' }};"></i>
+                                        <i class="fas fa-star"
+                                            style="font-size: 14px; color: {{ $rev->rating >= $i ? '#fbbf24' : '#e0e0e0' }};"></i>
                                     @endfor
                                 </div>
                             </div>
@@ -1300,8 +1592,10 @@
                             @if (!empty($attachments))
                                 <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
                                     @foreach ($attachments as $img)
-                                        <a target="_blank" href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
-                                            <img loading="lazy" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid #e5e7eb; cursor: pointer;"
+                                        <a target="_blank"
+                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
+                                            <img loading="lazy"
+                                                style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid #e5e7eb; cursor: pointer;"
                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                 alt="review">
                                         </a>
@@ -1311,18 +1605,22 @@
                         @endif
 
                         @if ($rev->reply)
-                            <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--light); border-left: 3px solid var(--red-primary); border-radius: 8px;">
+                            <div
+                                style="margin-top: 1.5rem; padding: 1.5rem; background: var(--light); border-left: 3px solid var(--red-primary); border-radius: 8px;">
                                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                                    <img loading="lazy" 
+                                    <img loading="lazy"
                                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
                                         alt="{{ $store->name }}">
                                     <div>
-                                        <div style="font-weight: 800; font-size: 13px; color: var(--dark);">Store Response</div>
-                                        <div style="font-size: 11px; color: var(--gray);">{{ _formatted_datetime($rev->replied_at) }}</div>
+                                        <div style="font-weight: 800; font-size: 13px; color: var(--dark);">Store Response
+                                        </div>
+                                        <div style="font-size: 11px; color: var(--gray);">
+                                            {{ _formatted_datetime($rev->replied_at) }}</div>
                                     </div>
                                 </div>
-                                <p style="font-size: 13px; color: var(--gray); line-height: 1.7; margin: 0;">{{ $rev->reply }}</p>
+                                <p style="font-size: 13px; color: var(--gray); line-height: 1.7; margin: 0;">
+                                    {{ $rev->reply }}</p>
                             </div>
                         @endif
                     </div>
@@ -1330,7 +1628,8 @@
 
                 @if ($data['review_count'] > 2)
                     <div style="text-align: center; margin-top: 2.5rem;">
-                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="btn-white-red" style="display: inline-block;">
+                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="btn-white-red"
+                            style="display: inline-block;">
                             View All Reviews <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
@@ -1347,27 +1646,30 @@
                 <h2 class="section-title-compact">Contact Us</h2>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2.5rem;">
-                @php $contacts = [
-                    ['icon' => 'map', 'title' => 'Location', 'value' => $store['address']],
-                    ['icon' => 'secured-letter', 'title' => 'Email', 'value' => $store['email'], 'link' => 'mailto:'],
-                    ['icon' => 'phone', 'title' => 'Phone', 'value' => $store['phone'], 'link' => 'tel:'],
-                    ['icon' => 'marker', 'title' => 'Directions', 'value' => 'View Map', 'modal' => true]
-                ]; @endphp
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2.5rem;">
+                @php $contacts = [['icon' => 'map', 'title' => 'Location', 'value' => $store['address']], ['icon' => 'secured-letter', 'title' => 'Email', 'value' => $store['email'], 'link' => 'mailto:'], ['icon' => 'phone', 'title' => 'Phone', 'value' => $store['phone'], 'link' => 'tel:'], ['icon' => 'marker', 'title' => 'Directions', 'value' => 'View Map', 'modal' => true]]; @endphp
 
                 @foreach ($contacts as $index => $contact)
-                    <div class="bounce-in" style="transition-delay: {{ $index * 0.1 }}s; background: var(--red-bg); padding: 2rem; border-radius: 12px; text-align: center; transition: all 0.3s; cursor: pointer;"
-                         onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 35px rgba(220,38,38,0.2)';"
-                         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <div style="width: 60px; height: 60px; background: var(--red-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
-                            <img loading="lazy" src="https://img.icons8.com/ios-filled/50/{{ $contact['icon'] }}.png" alt="{{ $contact['title'] }}" style="width: 30px; height: 30px; filter: brightness(0) invert(1);">
+                    <div class="bounce-in"
+                        style="transition-delay: {{ $index * 0.1 }}s; background: var(--red-bg); padding: 2rem; border-radius: 12px; text-align: center; transition: all 0.3s; cursor: pointer;"
+                        onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 35px rgba(220,38,38,0.2)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <div
+                            style="width: 60px; height: 60px; background: var(--red-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                            <img loading="lazy" src="https://img.icons8.com/ios-filled/50/{{ $contact['icon'] }}.png"
+                                alt="{{ $contact['title'] }}"
+                                style="width: 30px; height: 30px; filter: brightness(0) invert(1);">
                         </div>
-                        <div style="font-size: 1.125rem; font-weight: 800; color: var(--dark); margin-bottom: 0.5rem;">{{ $contact['title'] }}</div>
+                        <div style="font-size: 1.125rem; font-weight: 800; color: var(--dark); margin-bottom: 0.5rem;">
+                            {{ $contact['title'] }}</div>
                         <div style="font-size: 13px; color: var(--gray);">
                             @if (isset($contact['link']))
-                                <a href="{{ $contact['link'] }}{{ $contact['value'] }}" style="color: var(--red-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
+                                <a href="{{ $contact['link'] }}{{ $contact['value'] }}"
+                                    style="color: var(--red-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
                             @elseif (isset($contact['modal']))
-                                <a class="cursor-pointer" data-bs-toggle="modal" data-bs-target="#exampleModal" style="color: var(--red-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
+                                <a class="cursor-pointer" data-bs-toggle="modal" data-bs-target="#exampleModal"
+                                    style="color: var(--red-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
                             @else
                                 {{ $contact['value'] }}
                             @endif
@@ -1386,7 +1688,8 @@
                 <h2 class="section-title-compact">Our Story</h2>
             </div>
 
-            <div class="slide-in-right" style="background: white; border-radius: 12px; padding: 2.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); line-height: 1.9; font-size: 14px; color: var(--gray); border-left: 4px solid var(--red-primary);">
+            <div class="slide-in-right"
+                style="background: white; border-radius: 12px; padding: 2.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); line-height: 1.9; font-size: 14px; color: var(--gray); border-left: 4px solid var(--red-primary);">
                 {!! $data['store_config']->about_us ?? 'Information coming soon.' !!}
             </div>
         </div>
@@ -1396,9 +1699,11 @@
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="border-radius: 12px; border: none;">
-                <div class="modal-header" style="background: var(--red-primary); color: white; border-radius: 12px 12px 0 0;">
+                <div class="modal-header"
+                    style="background: var(--red-primary); color: white; border-radius: 12px 12px 0 0;">
                     <h5 class="modal-title">{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="map" style="height: 450px; border-radius: 8px;"></div>
@@ -1411,7 +1716,7 @@
 @push('script_2')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
-    
+
     <script>
         // Aggressive Scroll Animation with Intersection Observer
         const animateOptions = {
@@ -1471,7 +1776,7 @@
 
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+            anchor.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
                 if (href !== '#' && document.querySelector(href)) {
                     e.preventDefault();

@@ -397,6 +397,25 @@ class BusinessSettingsController extends Controller
         Toastr::success('Saved Successfully');
         return back();
     }
+    public function common_pp_save(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        DB::table('store_privacy_policy')
+            ->updateOrInsert(
+                [
+                    'store_id' => $storeId,
+                ],
+                [
+                    'content' => $request->content,
+                    'updated_at'        => now(),
+                    'created_at'        => now(),
+                ]
+            );
+
+        Toastr::success('Saved Successfully');
+        return back();
+    }
 
     public function submit_requirement(Request $request)
     {

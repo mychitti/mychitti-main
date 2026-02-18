@@ -16,6 +16,7 @@ use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Holiday;
 use App\Models\HolidayOverride;
+use App\Models\InventoryItem;
 use App\Models\OfferBanner;
 use App\Models\OrderType;
 use App\Models\Plan;
@@ -91,6 +92,8 @@ class SettingsController extends Controller
                 ->latest()->paginate(config('default_pagination'));
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'banners'));
         } else if ($tab == 'privacy-policy') {
+            $privacyPolicy = DB::table('store_privacy_policy')->where('store_id',  $store_id)->first();
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'privacyPolicy'));
         } else if ($tab == 'tnc') {
             $tAndCContent = DB::table('vendor_terms_conditions')->where('type', 'for_customer')->where('vendor_id',  $store_id)->first();
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'tAndCContent'));
@@ -101,11 +104,62 @@ class SettingsController extends Controller
             $about_us = StoreConfig::where('store_id', Helpers::get_store_id())
                 ->value('about_us') ?? '';
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'about_us'));
+        } else if ($tab == 'my-services') {
+            $search  = $request->search ?? '';
+            $type  = $request->type ?? '';
+            $filter  = $request->filter ?? '';
+
+            $inventory_items = InventoryItem::with('entries')->where('store_id', Helpers::get_store_id())
+            ->where("show_on_store_page",1)
+                ->when($search, function ($query) use ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('item_name', 'like', "%{$search}%")
+                            ->orWhere('sku_id', 'like', "%{$search}%");
+                    });
+                })
+                ->when($type, function ($query) use ($type) {
+                    $query->where(function ($q) use ($type) {
+                        $q->where('item_type', $type);
+                    });
+                })
+                ->when($filter, function ($query) {
+                    $query->where('stock', '<', 5);
+                })
+                ->orderBy('id', 'desc')
+                ->paginate(50);
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'inventory_items'));
+        } else if ($tab == 'mychitti-services') {
+            $mychitti_services = '';
+            $store_data = Helpers::get_store_data();
+
+            $categoryIds = [
+                $store_data->category_1,
+                $store_data->category_2
+            ];
+            $children = Category::whereIn('parent_id', $categoryIds)->select('id', 'parent_id')->get()->groupBy('parent_id');
+            $allcategories_1 = array_merge(
+                [$store_data->category_1],
+                ($children->get($store_data->category_1, collect()))->pluck('id')->toArray()
+            );
+
+            $allcategories_2 = array_merge(
+                [$store_data->category_2],
+                ($children->get($store_data->category_2, collect()))->pluck('id')->toArray()
+            );
+
+            $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->get();
+            $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->get();
+            $module_categories = Category::where('module_id', $store_data->module_id)->where('position', 0)->where('status', 1)->get();
+
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_data', 'items_1', 'items_2', 'module_categories'));
         } else if ($tab == 'webpage-templates') {
-            // prx($store);
             $store_template_id = StoreConfig::where('store_id', $store_id)->value('template_id') ?: 1;
             $templates = DB::table("store_webpage_templates")->where('status', 1)->get();
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates'));
+        } else if ($tab == 'domain-setup') {
+            return view('vendor-views.settings.webpage', compact('store', 'tab'));
+        } else if ($tab == 'third-party') {
+            return view('vendor-views.settings.webpage', compact('store', 'tab'));
         }
     }
     public function common_setting_save(Request $request)
@@ -273,7 +327,9 @@ class SettingsController extends Controller
         } else {
             $data['resign'] = 0;
         }
-        return view('vendor-views.profile.index', compact('data', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
+        $store = Helpers::get_store_data();
+
+        return view('vendor-views.profile.index', compact('data','store', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
     }
     public function quick_actions_save(Request $request)
     {

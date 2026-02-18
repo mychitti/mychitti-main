@@ -20,7 +20,7 @@ return [
         'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
     ],
 
-    'postmark' => [
+    'postmark' => [ 
         'token' => env('POSTMARK_TOKEN'),
     ],
 
@@ -40,6 +40,12 @@ return [
         'user'   => env('GOOGLE_USER_REDIRECT'),
         'vendor' => env('GOOGLE_VENDOR_REDIRECT'),
     ],
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+    'openai' => [
+    'key' => env('OPENAI_API_KEY'),
+],
 
 
 ];

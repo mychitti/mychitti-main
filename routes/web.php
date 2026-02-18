@@ -8,10 +8,10 @@ use App\Http\Controllers\PaytabsController;
 use App\Http\Controllers\PaystackController;
 use App\Http\Controllers\RazorPayController;
 use App\Http\Controllers\SenangPayController;
-use App\Http\Controllers\MercadoPagoController;
+use App\Http\Controllers\MercadoPagoController; 
 use App\Http\Controllers\BkashPaymentController;
 use App\Http\Controllers\CronController;
-use App\Http\Controllers\FlutterwaveV3Controller;
+use App\Http\Controllers\FlutterwaveV3Controller; 
 use App\Http\Controllers\Front\CartController;
 use App\Http\Controllers\PaypalPaymentController;
 use App\Http\Controllers\StripePaymentController;
@@ -23,6 +23,7 @@ use App\Http\Controllers\Front\McVendorController;
 use App\Http\Controllers\Front\ModuleInfoController;
 use App\Http\Controllers\Front\UserController as FrontUserController;
 use App\Http\Controllers\Front\WishlistController;
+use App\Http\Controllers\Front\AIChatController as FrontAIChatController;
 use App\Http\Controllers\PaymentGateway;
 use App\Http\Controllers\Front\SitemapController;
 use App\Http\Controllers\LocationController;
@@ -213,6 +214,11 @@ Route::group(['middleware' => ['loginuser']], function () {
     Route::get('success', [FrontController::class, 'order_success']);
     Route::post('submit-review', [FrontUserController::class, 'submit_review'])->name('submit-review');
     Route::post('submit-service-review', [FrontUserController::class, 'submit_service_review'])->name('submit-service-review');
+
+    // AI Chat
+    Route::post('ai-chat/send', [FrontAIChatController::class, 'chat'])->name('ai-chat.send');
+    Route::get('ai-chat/history', [FrontAIChatController::class, 'history'])->name('ai-chat.history');
+    Route::post('ai-chat/clear', [FrontAIChatController::class, 'clearMemory'])->name('ai-chat.clear');
 });
 Route::get('delete-account/{id}', [FrontUserController::class, 'delete_account'])->name('delete-account');
 

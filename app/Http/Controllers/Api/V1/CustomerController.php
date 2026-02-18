@@ -22,6 +22,7 @@ use App\Models\ManualInvoice;
 use App\Models\ServiceInvoice;
 use App\Models\Store;
 use App\Models\WalletTransaction;
+use App\Models\AccountDeletion;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -49,6 +50,44 @@ class CustomerController extends Controller
         return response()->json($data, 200);
     }
 
+    public function delete_reasons(Request $request)
+    {
+        $data = DB::table('delete_account_reasons')->where('user_type', 'user')->select('id','reason')->get();
+        return response()->json($data, 200);
+    }
+    
+    public function remove_account(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason_id'    => 'required',
+            'other_reason' => 'required_if:reason_id,5',
+        ],[
+            'other_reason.required_if' => 'Other Reason is required'
+        ]); 
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $user = $request->user();
+
+        if (Order::where('user_id', $user->id)->whereIn('order_status', ['pending', 'accepted', 'confirmed', 'processing', 'handover', 'picked_up'])->count()) {
+            return response()->json(['errors' => [['code' => 'on-going', 'message' => translate('messages.Please_complete_your_ongoing_and_accepted_orders')]]], 203);
+        }
+        AccountDeletion::create([
+            'user_type'    => 'user',
+            'user_id'      => $user->id,
+            'reason_id'    => $request->input('reason_id'),
+            'other_reason' => $request->input('other_reason'),
+            'deleted_at'   => now(),
+        ]); 
+
+        $request->user()->token()->revoke();
+        if ($user->userinfo) {
+            $user->userinfo->delete();
+        }
+        $user->delete();
+        return response()->json(['message'=> 'Deleted Successfully'], 200);
+    }
     public function get_bills(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -636,20 +675,6 @@ class CustomerController extends Controller
         return response()->json([], 200);
     }
 
-    public function remove_account(Request $request)
-    {
-        $user = $request->user();
-
-        if (Order::where('user_id', $user->id)->whereIn('order_status', ['pending', 'accepted', 'confirmed', 'processing', 'handover', 'picked_up'])->count()) {
-            return response()->json(['errors' => [['code' => 'on-going', 'message' => translate('messages.Please_complete_your_ongoing_and_accepted_orders')]]], 203);
-        }
-        $request->user()->token()->revoke();
-        if ($user->userinfo) {
-            $user->userinfo->delete();
-        }
-        $user->delete();
-        return response()->json([]);
-    }
 
     public function review_reminder(Request $request)
     {

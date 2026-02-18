@@ -204,6 +204,7 @@
         }
 
         .hero-title {
+            color:white;
             font-size: 3.5rem;
             font-weight: 800;
             line-height: 1.1;
@@ -244,6 +245,7 @@
         }
 
         .stat-info h3 {
+            color:wheat;
             font-size: 1.75rem;
             font-weight: 700;
             margin: 0;
@@ -483,7 +485,7 @@
         .category-banner {
             background: linear-gradient(135deg, var(--corp-dark) 0%, var(--corp-primary) 100%);
             color: white;
-            padding: 2rem 2.5rem;
+            padding:10px;
             border-radius: 12px;
             margin: 3rem 0 2rem;
             display: flex;
@@ -493,9 +495,10 @@
         }
 
         .category-info h3 {
-            font-size: 2rem;
+            font-size: 22px;
             font-weight: 700;
             margin: 0;
+            color: antiquewhite;
         }
 
         .category-count {
@@ -726,7 +729,7 @@
 
         .gallery-grid-corp {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(204px, 1fr));
             gap: 2rem;
             margin-top: 2.5rem;
         }
@@ -798,7 +801,7 @@
         .review-card-corp {
             background: white;
             border-radius: 12px;
-            padding: 2rem;
+            padding: 20px;
             margin-bottom: 2rem;
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
             transition: all 0.3s;
@@ -863,8 +866,8 @@
         }
 
         .review-img-corp {
-            width: 90px;
-            height: 90px;
+            width: 60px;
+            height: 60px;
             border-radius: 8px;
             object-fit: cover;
             border: 2px solid var(--corp-border);
@@ -879,7 +882,7 @@
 
         .store-reply-corp {
             margin-top: 1.5rem;
-            padding: 1.5rem;
+            padding: 10px;
             background: var(--corp-light);
             border-left: 4px solid var(--corp-secondary);
             border-radius: 8px;
@@ -1048,38 +1051,10 @@
                 grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             }
         }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .hero-title {
-                font-size: 2.5rem;
-            }
-
-            .hero-stats {
-                flex-wrap: wrap;
-                gap: 1.5rem;
-            }
-
-            .products-grid-corp {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.25rem;
-            }
-
-            .gallery-grid-corp {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .contact-grid-corp {
-                grid-template-columns: 1fr;
-            }
-        }
-
+ 
         /* Utilities */
         .cursor-pointer {
-            cursor: pointer;
+            cursor: pointer; 
         }
 
         .d-none {
@@ -1103,6 +1078,222 @@
             white-space: nowrap;
             color: var(--corp-accent);
             width: 0;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            padding: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle { display: block; }
+            .nav-container {
+                position: relative;
+                padding: 0 1rem;
+                height: 60px;
+            }
+            .brand-section {
+                gap: 0.75rem;
+                overflow: hidden;
+                flex: 1;
+                min-width: 0;
+            }
+            .brand-logo {
+                height: 38px;
+                width: 38px;
+                flex-shrink: 0;
+            }
+            .brand-info {
+                overflow: hidden;
+                min-width: 0;
+            }
+            .brand-info h1 {
+                font-size: 0.85rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 1;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                line-height: 1.3;
+            }
+            .brand-info p {
+                font-size: 8px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: none;
+            }
+            .nav-links {
+                gap: 1rem;
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--corp-dark);
+                flex-direction: column;
+                padding: 10px 0;
+                gap: 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10;
+            }
+            .nav-links.show { display: flex; }
+            .nav-links a {
+                padding: 10px 20px;
+                display: block;
+                font-size: 14px;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            .nav-links a::after { display: none; }
+            .nav-links .cta-button {
+                margin: 10px 20px;
+                text-align: center;
+                display: block;
+            }
+            .hero-banner {
+                margin-top: 60px;
+                height: auto;
+                min-height: unset;
+            }
+            .hero-image {
+                position: relative;
+                height: auto;
+            }
+            .hero-banner::before,
+            .hero-banner::after {
+                z-index: 1;
+            }
+            .hero-content {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                padding: 2rem 1.25rem;
+            }
+            .alert-corp {
+                padding: 0.6rem 0;
+                margin: 1rem 0;
+            }
+            .alert-corp-content {
+                padding: 0 1.25rem;
+                gap: 0.75rem;
+            }
+            .alert-corp-icon {
+                font-size: 18px;
+            }
+            .alert-corp-text {
+                font-size: 12px;
+            }
+            .hero-title {
+                font-size: 1.75rem;
+            }
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            .hero-badge {
+                font-size: 11px;
+                padding: 0.35rem 0.85rem;
+                margin-bottom: 1rem;
+            }
+            .hero-stats {
+                flex-direction: column;
+                gap: 1rem;
+                margin-top: 1.5rem;
+            }
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                border-radius: 10px;
+            }
+            .stat-info h3 {
+                font-size: 1.35rem;
+            }
+            .stat-info p {
+                font-size: 11px;
+            }
+            .products-container,
+            .breadcrumb-corp .breadcrumb {
+                padding: 0 1.25rem;
+            }
+            .info-container {
+                padding: 0 1.25rem;
+                    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+            }
+            .section-title-corp {
+                font-size: 1.75rem;
+            }
+            .section-desc {
+                font-size: 0.95rem;
+            }
+            .company-description {
+                padding: 1.5rem;
+            }
+            .quick-contact {
+                padding: 1.5rem;
+            }
+            .products-grid-corp {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .product-img-corp {
+                height: 160px;
+            }
+            .product-info-corp {
+                padding: 0.75rem;
+            }
+            .product-title-corp {
+                font-size: 0.85rem;
+                min-height: 40px;
+            }
+            .price-now {
+                font-size: 1.15rem;
+            }
+            .price-was {
+                font-size: 0.75rem;
+            }
+            .product-price-corp {
+                margin: 0.75rem 0;
+                padding-top: 0.75rem;
+                gap: 0.5rem;
+            }
+            .btn-corp {
+                padding: 0.6rem;
+                font-size: 10px;
+                gap: 0.35rem;
+            }
+            .gallery-grid-corp {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+            }
+            .contact-grid-corp {
+                grid-template-columns: 1fr;
+            }
+            .contact-value {
+                    font-size: 13px;
+            }
+            .category-banner {
+                padding: 8px 12px;
+                margin: 1.5rem 0 1rem;
+            }
+            .category-info h3 {
+                font-size: 16px;
+            }
+            .category-count {
+                padding: 0.4rem 0.85rem;
+                font-size: 12px;
+            }
+            .about-content-corp {
+                padding: 1.5rem;
+            }
         }
     </style>
 
@@ -1213,6 +1404,9 @@
                     <p>{{ $store['meta_title'] }}</p>
                 </div>
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <div class="nav-links">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -1269,9 +1463,8 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb-corp">
         <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
+            <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                <li class="breadcrumb-item">›</li>
                 <li class="breadcrumb-item active">{{ $data['store_config']?->webpage_name ?? $store['name'] }}</li>
             </ol>
         </nav>
@@ -1557,7 +1750,13 @@
                             href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                             class="gallery-card-corp lightgallery-item">
                             <img loading="lazy" 
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Gallery {{ $key + 1 }}">
                             <div class="gallery-overlay-corp">
                                 <div class="gallery-text">

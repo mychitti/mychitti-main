@@ -31,47 +31,23 @@ use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
-   
+
     public function view()
     {
-        if(auth('vendor_employee')->check()){
-            $employee  = VendorEmployee::with('role', 'department', 'branch')->where('id', Helpers::get_loggedin_user()->id)->first();
-        return view('vendor-views.profile.staff_profile', compact('employee'));
-
-        }else{
-        $allPlans = Plan::where('status', 1)
-            ->where(function ($q) {
-                $q->whereNull('store_id')
-                    ->orWhere('store_id', Helpers::get_store_id());
-            })
-            ->get();
-
-
-        $store_data = Helpers::get_store_data();
-
-        $module_categories = Category::where('module_id', $store_data->module_id)->where('position', 0)->where('status', 1)->get();
-        $module_subcategories = Category::where('module_id', $store_data->module_id)->where('position', 1)->where('status', 1)->get();
-
-        // all items set 1
-        $allcategories_1 = [];
-        array_push($allcategories_1, $store_data->category_1);
-        $ct1 = Category::where('parent_id', $store_data->category_1)->pluck('id')->toArray();
-        $allcategories_1 = array_merge($allcategories_1, $ct1);
-        $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->get();
-
-        // all items set 2
-        $allcategories_2 = [];
-        array_push($allcategories_2, $store_data->category_2);
-        $ct2 = Category::where('parent_id', $store_data->category_2)->pluck('id')->toArray();
-        $allcategories_2 = array_merge($allcategories_2, $ct2);
-        $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->get();
         if (auth('vendor_employee')->check()) {
-            $data['resign'] = DB::table('employee_resignations')->where('id', Helpers::get_loggedin_user()->id)->exists();
+            $employee  = VendorEmployee::with('role', 'department', 'branch')->where('id', Helpers::get_loggedin_user()->id)->first();
+            return view('vendor-views.profile.staff_profile', compact('employee'));
         } else {
-            $data['resign'] = 0;
-        }
 
-        return view('vendor-views.profile.index', compact('data', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
+            $store_data = Helpers::get_store_data();
+
+            if (auth('vendor_employee')->check()) {
+                $data['resign'] = DB::table('employee_resignations')->where('id', Helpers::get_loggedin_user()->id)->exists();
+            } else {
+                $data['resign'] = 0;
+            }
+
+            return view('vendor-views.profile.index', compact('data', 'store_data'));
         }
     }
 
@@ -88,7 +64,7 @@ class ProfileController extends Controller
             ['store_id' => $storeId],
             ['store_id' => $storeId]
         );
-     
+
 
         if ((int) $StoreConfig->free_trial_consumed === 1) {
             Toastr::error('Free Trial Already Consumed');
@@ -651,6 +627,18 @@ class ProfileController extends Controller
         return view('vendor-views.profile.edit', compact('data'));
     }
 
+    public function about_update(Request $request)
+    {
+        $seller = auth('vendor')->user();
+
+        if (auth('vendor')->check()) {
+            $seller->why_we_started = $request->why_we_started;
+            $seller->our_idea = $request->our_idea;
+            $seller->save();
+        }
+        Toastr::success(translate('messages.about_updated_successfully'));
+        return back();
+    }
     public function update(Request $request)
     {
         $table = auth('vendor')->check() ? 'vendors' : 'vendor_employees';
@@ -695,13 +683,13 @@ class ProfileController extends Controller
             ->get();
         // prx($allPlans);
         $features = DB::table('subscription_modules')->where('status', 1)->get();
- $StoreConfig = StoreConfig::where('store_id' , $storeId)->first();
+        $StoreConfig = StoreConfig::where('store_id', $storeId)->first();
         $sub_modules = SubModule::all();
         $subscriptions = VendorSubscription::with('plan')->where('vendor_id', $storeId)
             ->where('plan_expiry', '>', now())->get();
         // prx($subscriptions);
 
-        return view('vendor-views.subscriptions.index', compact('allPlans','StoreConfig', 'features', 'sub_modules', 'subscriptions'));
+        return view('vendor-views.subscriptions.index', compact('allPlans', 'StoreConfig', 'features', 'sub_modules', 'subscriptions'));
     }
     public function settings_password_update(Request $request)
     {

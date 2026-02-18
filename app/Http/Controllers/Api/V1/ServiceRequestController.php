@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\AccountTransaction;
 use App\Models\BusinessSetting;
 use App\Models\CustomerAddress;
+use App\Models\DataSetting;
 use App\Models\EmployeeRole;
 use App\Models\GatePassItem;
 use App\Models\LeadCharge;
@@ -37,6 +38,17 @@ class ServiceRequestController extends Controller
             return response()->json(['status' => true, 'message' => 'Retrieved Successfully',  'data' => $tnc]);
         } else {
             return response()->json(['status' => false, 'message' => 'Terms and Conditions for this vendor does not exist',  'data' => []]);
+        }
+    }
+    public function get_privacy_policy(Request $request)
+    {
+
+        $privacy_policy = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'privacy_policy')->first();
+
+        if ($privacy_policy) {
+            return response()->json(['status' => true, 'message' => 'Retrieved Successfully', 'content' => $privacy_policy->value]);
+        } else {
+            return response()->json(['status' => false, 'message' => 'Privacy Policy does not exists', 'content' => '']);
         }
     }
 
@@ -280,6 +292,7 @@ class ServiceRequestController extends Controller
         }
         //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
         $serviceRequest = ServiceRequest::with([
+            'leadStatus:service_request_id,status,created_at',
             'accepted:id,service_request_id,quoted_price,current_status,service_request_id,coupon_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,assigned_status,cancel_reason,cancelled_by',
             'accepted.store:id,name,phone,email,logo,address',
             'accepted.coupon:id,title,code,start_date,expire_date,min_purchase,discount,limit',
@@ -334,26 +347,27 @@ class ServiceRequestController extends Controller
             return response()->json(['status' => false, 'message' => 'Service not found'], 404);
         }
         //last status 
-        $serviceRequest->recent_status = LeadStatus::where('service_request_id', $serviceRequest->id)->latest()->value('status');
+        // $lastStatus  = LeadStatus::where('service_request_id', $serviceRequest->id)->latest()->first();
+        // $serviceRequest->recent_status = $lastStatus->status;
+        // $serviceRequest->recent_status_timestamp = $lastStatus->created_at;
 
         if ($serviceRequest->item?->image) {
             $serviceRequest->item->image = $filesPath . '/product/' .   $serviceRequest->item->image;
-
-            }
-            // add role
-        if ( $serviceRequest->accepted) {
-            if ($serviceRequest->accepted->assigned_type == 'vendor') {
+        }
+        // add role
+        if ($serviceRequest->accepted) {
+            if ($serviceRequest->accepted?->assigned_type == 'vendor') {
                 $serviceRequest->accepted->staff->role = 'Vendor';
-            } elseif ($serviceRequest->accepted->staff) {
-                if ($serviceRequest->accepted->staff->employee_role_id) {
+            } elseif ($serviceRequest->accepted?->staff) {
+                if ($serviceRequest->accepted?->staff?->employee_role_id) {
                     $role = EmployeeRole::where('id', $serviceRequest->accepted->staff->employee_role_id)->first();
                     $serviceRequest->accepted->staff->role = $role ? $role->name : null;
                 }
             }
-            if ($serviceRequest->accepted->staff->image) {
+            if ($serviceRequest->accepted?->staff?->image) {
                 $serviceRequest->accepted->staff->image = $filesPath . '/vendor/' .  $serviceRequest->accepted->staff->image;
             }
-           
+
 
             if (_reviewStatus($serviceRequest->accepted->id)['status'] === 'exists') {
                 $serviceRequest->accepted->review_status = 'Completed';
@@ -362,9 +376,9 @@ class ServiceRequestController extends Controller
             }
         }
 
-         if ($serviceRequest->gatePass) {
-                $serviceRequest->gatePass->images_path = $filesPath . '/gatepass/';
-            } 
+        if ($serviceRequest->gatePass) {
+            $serviceRequest->gatePass->images_path = $filesPath . '/gatepass/';
+        }
 
         // accepted 
         if (!$serviceRequest->accepted) {
@@ -382,7 +396,7 @@ class ServiceRequestController extends Controller
             $serviceRequest->setRelation('accepted', $fakeAccepted);
         }
 
-        
+
         // invoice 
         $invoice = ServiceInvoice::where('service_id', $request->service_id)->first();
         if ($invoice) {

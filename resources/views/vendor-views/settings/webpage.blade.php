@@ -315,8 +315,16 @@
              @include('vendor-views.settings.webpage.privacy_policy')
          @elseif($tab == 'about-us')
              @include('vendor-views.settings.webpage.about_us')
+         @elseif($tab == 'mychitti-services')
+             @include('vendor-views.settings.webpage.mychitti_services')
+         @elseif($tab == 'my-services')
+             @include('vendor-views.settings.webpage.my_services')
          @elseif($tab == 'webpage-templates')
              @include('vendor-views.settings.webpage.templates')
+         @elseif($tab == 'domain-setup')
+             @include('vendor-views.settings.webpage.domain_setup')
+         @elseif($tab == 'third-party')
+             @include('vendor-views.settings.webpage.third_party')
          @endif
      </div>
  @endsection
@@ -334,6 +342,15 @@
          @include('vendor-views.settings.webpage_js.gallery_js')
      @elseif($tab == 'webpage-templates')
          @include('vendor-views.settings.webpage_js.templates_js')
+     @elseif($tab == 'mychitti-services')
+         @include('vendor-views.settings.webpage_js.mychitti_services_js')
+     @elseif($tab == 'my-services')
+         @include('vendor-views.settings.webpage_js.my_services_js')
+     @elseif($tab == 'privacy-policy')
+         @include('vendor-views.settings.webpage_js.privacy_policy_js')
+     @elseif($tab == 'domain-setup')
+         @include('vendor-views.settings.webpage_js.domain_setup_js')
+     @elseif($tab == 'third-party')
+         @include('vendor-views.settings.webpage_js.third_party_js')
      @endif
-
  @endpush

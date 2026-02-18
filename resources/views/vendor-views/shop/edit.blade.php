@@ -7,6 +7,182 @@
     <link href="{{ asset('public/assets/admin/css/croppie.css') }}" rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
+        .vdp-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .vdp-heading {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+
+        .vdp-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .vdp-doc-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .vdp-doc-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .vdp-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 16px;
+        }
+
+        .vdp-file-icon {
+            width: 50px;
+            height: 50px;
+            background: #e4e4e4ff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .vdp-card-info {
+            flex: 1;
+        }
+
+        .vdp-doc-filename {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .vdp-doc-meta {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .vdp-card-body {
+            margin-bottom: 16px;
+        }
+
+        .vdp-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .vdp-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .vdp-info-label {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .vdp-info-value {
+            font-size: 13px;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .vdp-status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .vdp-status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .vdp-status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .vdp-status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .vdp-card-footer {
+            display: flex;
+            gap: 8px;
+        }
+
+
+        .vdp-btn-primary {
+            background: var(--primary, #4f46e5);
+            color: white;
+            border-color: var(--primary, #4f46e5);
+        }
+
+        .vdp-btn-primary:hover {
+            background: var(--primary-light, #6366f1);
+            border-color: var(--primary-light, #6366f1);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .vdp-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .vdp-empty-state {
+            background: white;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .vdp-empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .vdp-empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .vdp-empty-text {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 24px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .vdp-empty-state .vdp-btn-upload {
+            display: inline-block;
+        }
+
         .form-row {
             margin-top: 6px;
             padding: 0 12px !important;
@@ -25,18 +201,115 @@
             margin-bottom: 0px !important;
 
         }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 20px;
+        }
+
+        .profile-card {
+            border: 1px solid #eee;
+            border-radius: 14px;
+            padding: 18px;
+            background: #fff;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .upload-card {
+            border: 1px dashed #dcdcdc;
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            background: #fafafa;
+        }
+
+        .upload-preview {
+            width: 100%;
+            height: 160px;
+            object-fit: contain;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .cover-preview {
+            height: 180px;
+            object-fit: contain;
+        }
+
+        .map-card {
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #eee;
+            position: relative;
+        }
+
+        #map {
+            height: 420px;
+            width: 100%;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .profile-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .profile-user img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .small-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .form-control {
+            border-radius: 10px;
+        }
+
+        .custom-file-label {
+            border-radius: 10px;
+        }
+
+        @media(max-width:991px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 @endpush
 @section('content')
     <!-- Content Row -->
     <div class="content container-fluid">
-        <div class="page-header">
+        <div class="page-header d-flex justify-content-between">
             <h2 class="page-header-title text-capitalize">
                 <img class="w--26" src="{{ asset('/public/assets/admin/img/store.png') }}" alt="public">
                 <span>
-                    {{ translate('messages.edit_store_info') }}
+                    {{ translate('messages.store settings') }}
                 </span>
-                </h1>
+            </h2>
+            <button type="button" class="btn btn-outline-primary" data-toggle="modal"
+                data-target="#ammouncementModal" > <i class="tio-volume-up"></i> Announcement</button>
         </div>
         @php($language = \App\Models\BusinessSetting::where('key', 'language')->first())
         @php($language = $language->value ?? null)
@@ -46,145 +319,204 @@
             <div class="row g-3">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-body py-0">
-                            <div class="row ">
-                                <div class="row col-md-7">
-                                    <div class="form-group col-md-6">
-                                        <label class="form-label"
-                                            for="exampleFormControlInput1">{{ translate('messages.name') }}</label>
-                                        <input type="text" name="name[]" class="form-control"
-                                            value="{{ $shop->getRawOriginal('name') }}"
-                                            placeholder="{{ translate('messages.store_name') }}" required>
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <label class="form-label"
-                                            for="name">{{ translate('messages.contact_number') }}<span
-                                                class="text-danger">*</span></label>
-                                        <input type="text" name="contact" value="{{ $shop->phone }}"
-                                            class="form-control intl_input" id="name" required>
-                                    </div>
-                                    <input type="hidden" name="lang[]" value="default">
-                                    <div class="form-group mb-0 col-md-6">
-                                        <label class="form-label"
-                                            for="exampleFormControlInput1">{{ translate('messages.address') }}
-                                        </label>
-                                        <input type="text" name="address[]"
-                                            placeholder="{{ translate('messages.store') }}"
-                                            value="{{ $shop->getRawOriginal('address') }}" class="form-control"
-                                            id="address" required>
-                                    </div>
-                                    <div class="col-md-6 form-group">
-                                        <label class="form-label" for="choice_zones">City<span class="form-label-secondary"
-                                                data-toggle="tooltip" data-placement="right"
-                                                data-original-title="{{ translate('messages.select_zone_for_map') }}"><img
-                                                    src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
-                                                    alt="{{ translate('messages.select_zone_for_map') }}"></span></label>
-                                        <select name="zone_id" id="choice_zones"
-                                            data-placeholder="{{ translate('messages.select_zone') }}"
-                                            class="form-control js-select2-custom get_zone_data">
-                                            @foreach (\App\Models\Zone::active()->get() as $zone)
-                                                <option value="{{ $zone->id }}"
-                                                    {{ $shop->zone_id == $zone->id ? 'selected' : '' }}>
-                                                    {{ $zone->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="card-title font-regular">
-                                                    {{ translate('messages.upload_logo') }}
-                                                </h5>
+                        <div class="card-body">
+
+                            <div class="profile-grid">
+
+                                {{-- LEFT PANEL --}}
+                                <div class="profile-card">
+
+                                    <div class="section-title">Business Profile</div>
+
+                                    <div class="row">
+
+                                        <div class="col-md-6 form-group">
+                                            <label class="small-label">Legal Business Name</label>
+                                            <input type="text" name="name[]" class="form-control"
+                                                value="{{ $shop->getRawOriginal('name') }}" required>
+                                        </div>
+
+                                        <div class="col-md-6 form-group">
+                                            <label class="small-label">Contact Number</label>
+                                            <input type="text" name="contact" value="{{ $shop->phone }}"
+                                                class="form-control intl_input" required>
+                                        </div>
+
+                                        <input type="hidden" name="lang[]" value="default">
+
+                                        <div class="col-md-6 form-group">
+                                            <label class="small-label">Business Address</label>
+                                            <input type="text" name="address[]"
+                                                value="{{ $shop->getRawOriginal('address') }}" class="form-control"
+                                                required>
+                                        </div>
+                                        <div class="col-md-6 form-group">
+                                            <label class="small-label">Documents</label>
+                                            <div class="gap-2">
+                                                <button type="button" class="btn btn-outline-primary" data-toggle="modal"
+                                                    data-target="#gstDocUpdateModal">GST
+                                                    Document</button>
+                                                <button type="button" class="btn btn-outline-primary" data-toggle="modal"
+                                                    data-target="#idDocUpdateModal">ID Proof
+                                                    Document</button>
                                             </div>
-                                            <div class="card-body d-flex flex-column pt-0">
-                                                <div class="text-center my-auto py-1">
-                                                    <img class="store-banner onerror-image" id="viewer"
-                                                        data-onerror-image="{{ asset('public/assets/admin/img/image-place-holder.png') }}"
-                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($shop->logo, asset('storage/app/public/store/') . '/' . $shop->logo, asset('public/assets/admin/img/image-place-holder.png'), 'store/') }}"
-                                                        alt="Product thumbnail" />
-                                                </div>
-                                                <div class="custom-file">
-                                                    <input type="file" name="image"
-                                                        accept="image/*,android/allowCamera" id="customFileUpload"
-                                                        class="custom-file-input"
-                                                        accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
-                                                    <label class="custom-file-label"
-                                                        for="customFileUpload">{{ translate('messages.choose_file') }}</label>
+                                        </div>
+
+
+
+                                    </div>
+
+                                    <div class="section-title mt-3">Brand Images</div>
+
+                                    <div class="row">
+
+                                        {{-- Logo --}}
+                                        <div class="col-md-6 mb-3">
+                                            <div class="upload-card">
+                                                <div class="small-label mb-2">Brand Logo (500×500)</div>
+
+                                                <img id="viewer" class="upload-preview"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                        $shop->logo,
+                                                        asset('storage/app/public/store/' . $shop->logo),
+                                                        asset('public/assets/admin/img/image-place-holder.png'),
+                                                        'store/',
+                                                    ) }}">
+
+                                                <div class="custom-file mt-2">
+                                                    <input type="file" name="image" class="custom-file-input"
+                                                        id="customFileUpload">
+                                                    {{-- <label class="custom-file-label" for="customFileUpload">
+                                Choose file
+                            </label> --}}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5 class="card-title font-regular">
-                                                    {{ translate('messages.upload_cover_photo') }} <span
-                                                        class="text-danger">({{ translate('messages.ratio') }} 2:1)</span>
-                                                </h5>
-                                            </div>
-                                            <div class="card-body d-flex flex-column pt-0">
-                                                <div class="text-center my-auto py-1">
-                                                    <img class="store-banner onerror-image" id="coverImageViewer"
-                                                        data-onerror-image="{{ asset('public/assets/admin/img/restaurant_cover.jpg') }}"
-                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($shop->cover_photo, asset('storage/app/public/store/cover/') . '/' . $shop->cover_photo, asset('public/assets/admin/img/restaurant_cover.jpg'), 'store/cover/') }}"
-                                                        alt="Product thumbnail" />
-                                                </div>
-                                                <div class="custom-file">
+
+                                        {{-- Cover --}}
+                                        <div class="col-md-6 mb-3">
+                                            <div class="upload-card">
+                                                <div class="small-label mb-2">Cover Photo (1050×500)</div>
+
+                                                <img id="coverImageViewer" class="upload-preview cover-preview"
+                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                        $shop->cover_photo,
+                                                        asset('storage/app/public/store/cover/' . $shop->cover_photo),
+                                                        asset('public/assets/admin/img/restaurant_cover.jpg'),
+                                                        'store/cover/',
+                                                    ) }}">
+
+                                                <div class="custom-file mt-2">
                                                     <input type="file" name="photo" id="coverImageUpload"
-                                                        class="custom-file-input"
-                                                        accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
-                                                    <label class="custom-file-label"
-                                                        for="coverImageUpload">{{ translate('messages.choose_file') }}</label>
+                                                        class="custom-file-input">
+                                                    {{-- <label class="custom-file-label" for="coverImageUpload">
+                                Choose file
+                            </label> --}}
                                                 </div>
                                             </div>
                                         </div>
+
                                     </div>
-                                    <input type="hidden" name="latitude" id = "latitude"
-                                        value="{{ $shop->latitude }}">
-                                    <input type="hidden" name="longitude" id = "longitude"
-                                        value="{{ $shop->longitude }}">
-                                    {{-- <div class="invisible" style="height: 0px;">
-                                        <label class="form-label"
-                                            for="latitude">{{ translate('messages.latitude') }}<span
-                                                class="form-label-secondary" data-toggle="tooltip" data-placement="right"
-                                                data-original-title="{{ translate('messages.store_lat_lng_warning') }}"><img
-                                                    src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
-                                                    alt="{{ translate('messages.store_lat_lng_warning') }}"></span></label>
-                                        <input type="text" id="latitude" name="latitude" class="form-control"
-                                            placeholder="{{ translate('messages.Ex:') }} -94.22213"
-                                            value="{{ $shop->latitude }}" required readonly>
-                                    </div>
-                                    <div class="invisible" style="height: 0px;">
-                                        <label class="form-label"
-                                            for="longitude">{{ translate('messages.longitude') }}<span
-                                                class="form-label-secondary" data-toggle="tooltip" data-placement="right"
-                                                data-original-title="{{ translate('messages.store_lat_lng_warning') }}"><img
-                                                    src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
-                                                    alt="{{ translate('messages.store_lat_lng_warning') }}"></span></label>
-                                        <input type="text" name="longitude" class="form-control"
-                                            placeholder="{{ translate('messages.Ex:') }} 103.344322" id="longitude"
-                                            value="{{ $shop->longitude }}" required readonly>
-                                    </div> --}}
+
+                                    <input type="hidden" name="latitude" id="latitude" value="{{ $shop->latitude }}">
+                                    <input type="hidden" name="longitude" id="longitude" value="{{ $shop->longitude }}">
+
                                 </div>
 
 
-                                <div class="col-md-5">
-                                    <input id="pac-input" class="controls rounded" data-toggle="tooltip"
-                                        data-placement="right"
-                                        data-original-title="{{ translate('messages.search_your_location_here') }}"
-                                        type="text" placeholder="{{ translate('messages.search_here') }}" />
-                                    <div id="map"></div>
+                                {{-- RIGHT PANEL --}}
+                                <div>
+                                <div class="profile-card">
+                                    <div class="profile-header">
+
+                                        <div class="col-md-12 form-group">
+                                            <label class="small-label">Service Location</label>
+                                            <select name="zone_id" id="choice_zones"
+                                                class="form-control js-select2-custom get_zone_data">
+                                                @foreach (\App\Models\Zone::active()->get() as $zone)
+                                                    <option value="{{ $zone->id }}"
+                                                        {{ $shop->zone_id == $zone->id ? 'selected' : '' }}>
+                                                        {{ $zone->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="small-label mb-2">
+                                        Select your business location
+                                    </div>
+
+                                    <input id="pac-input" class="form-control mb-2" type="text"
+                                        placeholder="Search your location">
+
+                                    <div class="map-card">
+                                        <div id="map"></div>
+                                    </div>
                                 </div>
+
+                                <div class="profile-card mt-2">
+                                    <div class="form-group mb-0 p-1">
+                                        <label class="input-label text-capitalize"
+                                            for="minimum_delivery_time">{{ $store->module->id == 5 ? translate('messages.approx_delivery_time') : 'Response Time' }}<span
+                                                class="input-label-secondary" data-toggle="tooltip"
+                                                data-placement="right"
+                                                data-original-title="{{ translate('Set_the_total_time_to_deliver_products.') }}"><img
+                                                    src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                    alt="{{ translate('Set_the_total_time_to_deliver_products.') }}"></span></label>
+                                        <div class="input-group">
+                                            <input type="number" id="minimum_delivery_time" name="minimum_delivery_time"
+                                                class="form-control" placeholder="Min: 10"
+                                                value="{{ explode('-', $store->delivery_time)[0] }}"
+                                                title="{{ translate('messages.minimum_delivery_time') }}">
+                                            <input type="number" name="maximum_delivery_time" class="form-control"
+                                                placeholder="Max: 20"
+                                                value="{{ explode(' ', explode('-', $store->delivery_time)[1])[0] }}"
+                                                title="{{ translate('messages.maximum_delivery_time') }}">
+                                            <select name="delivery_time_type" class="form-control text-capitalize"
+                                                required>
+                                                <option value="min"
+                                                    {{ isset(explode(' ', explode('-', $store->delivery_time)[1])[1]) && explode(' ', explode('-', $store->delivery_time)[1])[1] == 'min' ? 'selected' : '' }}>
+                                                    {{ translate('messages.minutes') }}</option>
+                                                <option value="hours"
+                                                    {{ isset(explode(' ', explode('-', $store->delivery_time)[1])[1]) && explode(' ', explode('-', $store->delivery_time)[1])[1] == 'hours' ? 'selected' : '' }}>
+                                                    {{ translate('messages.hours') }}</option>
+                                                <option value="days"
+                                                    {{ isset(explode(' ', explode('-', $store->delivery_time)[1])[1]) && explode(' ', explode('-', $store->delivery_time)[1])[1] == 'days' ? 'selected' : '' }}>
+                                                    {{ translate('messages.days') }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class=" p-1">
+                                        <div class="form-group mb-0 ">
+                                            <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
+                                                for="gst_status">
+                                                <span>{{ translate('messages.gst') }} <span class="form-label-secondary"
+                                                        data-toggle="tooltip" data-placement="right"
+                                                        data-original-title="{{ translate('messages.gst_status_warning') }}"><img
+                                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                            alt="{{ translate('messages.gst_status_warning') }}"></span></span>
+                                                <input type="checkbox" class="toggle-switch-input" name="gst_status"
+                                                    id="gst_status" value="1"
+                                                    {{ $store->gst_status ? 'checked' : '' }}>
+                                                <span class="toggle-switch-label">
+                                                    <span class="toggle-switch-indicator"></span>
+                                                </span>
+                                            </label>
+                                            <input type="text" id="gst" name="gst" class="form-control"
+                                                value="{{ $store->gst_code }}"
+                                                {{ isset($store->gst_status) ? '' : 'readonly' }}>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                </div>
+
                             </div>
-                            {{-- <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="address">{{translate('messages.address')}}<span class="text-danger">*</span></label>
-                                        <textarea type="text" rows="4" name="address" value="" class="form-control" id="address"
-                                                required>{{$shop->address}}</textarea>
-                                    </div>
-                                </div> --}}
+
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -197,6 +529,268 @@
             id="btn_update">{{ translate('messages.update') }}</button>
     </div>
     </form>
+
+    </div>
+    <div class="modal fade" id="ammouncementModal" tabindex  ="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Store Announcement</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="profile-card">
+
+                        <div class="card-body p-0 ">
+                            {{-- <div class="d-flex  justify-content-between border p-2 mx-2">
+                                <h4 class="card-title align-items-center d-flex">
+                                    <img src="{{ asset('public/assets/admin/img/store.png') }}" class="w--20 mr-1"
+                                        alt="">
+                                    <span>{{ translate('messages.store_temporarily_closed') }}</span>
+                                </h4>
+                                <label class="switch toggle-switch-lg m-0">
+                                    <input type="checkbox" class="toggle-switch-input restaurant-open-status"
+                                        {{ $store->active ? '' : 'checked' }}>
+                                    <span class="toggle-switch-label">
+                                        <span class="toggle-switch-indicator"></span>
+                                    </span>
+                                </label>
+                            </div> --}}
+                            <div class="card-header">
+                                <h5 class="card-title toggle-switch toggle-switch-sm d-flex justify-content-between">
+                                    <span class="card-header-icon mr-1"><i class="tio-dashboard"></i></span>
+                                    <span>{{ translate('Announcement') }}</span><span class="input-label-secondary"
+                                        data-toggle="tooltip" data-placement="right"
+                                        data-original-title="{{ translate('This_feature_is_for_sharing_important_information_or_announcements_related_to_the_store.') }}"><img
+                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                            alt="{{ translate('messages.This_feature_is_for_sharing_important_information_or_announcements_related_to_the_store') }}"></span>
+                                </h5>
+                                <label class="toggle-switch toggle-switch-sm" for="announcement_status">
+                                    <input class="toggle-switch-input dynamic-checkbox" type="checkbox"
+                                        id="announcement_status" data-id="announcement_status" data-type="status"
+                                        data-image-on='{{ asset('/public/assets/admin/img/modal') }}/digital-payment-on.png'
+                                        data-image-off="{{ asset('/public/assets/admin/img/modal') }}/digital-payment-off.png"
+                                        data-title-on="{{ translate('Do_you_want_to_enable_the_announcement') }}"
+                                        data-title-off="{{ translate('Do_you_want_to_disable_the_announcement') }}"
+                                        data-text-on="<p>{{ translate('User_will_able_to_see_the_Announcement_on_the_store_page.') }}</p>"
+                                        data-text-off="<p>{{ translate('User_will_not_be_able_to_see_the_Announcement_on_the_store_page') }}</p>"
+                                        name="announcement" value="1" {{ $shop->announcement ? 'checked' : '' }}>
+                                    <span class="toggle-switch-label">
+                                        <span class="toggle-switch-indicator"></span>
+                                    </span>
+                                </label>
+                            </div>
+                            <form
+                                action="{{ route('vendor.business-settings.toggle-settings', [$shop->id, $shop->announcement ? 0 : 1, 'announcement']) }}"
+                                method="get" id="announcement_status_form">
+                            </form>
+                            <div class="card-body p-1">
+                                <form action="{{ route('vendor.shop.update-message') }}" method="post">
+                                    @csrf
+                                    <textarea name="announcement_message" id="" class="form-control" rows="5"
+                                        placeholder="{{ translate('messages.ex_:_ABC_Company') }}">{{ $shop->announcement_message ?? '' }}</textarea>
+                                    <div class="justify-content-end btn--container mt-2">
+                                        <button type="submit"
+                                            class="btn btn--primary">{{ translate('publish') }}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="gstDocUpdateModal" tabindex  ="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">GST Document</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Document Card 1 -->
+                    <div class="vdp-doc-card">
+                        <div class="vdp-card-header">
+                            <div class="vdp-file-icon">
+                                {{ $gst_doc ? _getFileTypeLabel($gst_doc->file_path) : 'GST' }}
+                            </div>
+                            <div class="vdp-card-info">
+                                <div class="vdp-doc-filename">GST Document</div>
+                            </div>
+                        </div>
+                        <div class="vdp-card-body">
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">File Type</span>
+                                <span
+                                    class="vdp-info-value">{{ $gst_doc ? _getFileTypeLabel($gst_doc->file_path) : '' }}</span>
+                            </div>
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">Status</span>
+                                @if ($gst_doc)
+                                    @if ($gst_doc && $gst_doc->verified == 0)
+                                        <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                    @else
+                                        <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                    @endif
+                                @endif
+
+                            </div>
+                        </div>
+
+                        <div class="vdp-card-footer align-items-start flex-wrap">
+                            @if ($gst_doc || $store->gst_doc)
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $gst_doc->file_path }}"
+                                    class="btn btn-primary">View</a>
+                                <a download
+                                    href="{{ asset('storage/app/public/store/docs') . '/' . $gst_doc->file_path }}"
+                                    class="btn btn-outline-primary">Download</a>
+                            @endif
+
+                            <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
+                                data-target="#collapseExample" aria-expanded="false"
+                                aria-controls="collapseExample">Update</button>
+                            <div class="collapse w-100" id="collapseExample">
+                                <div class="card card-body">
+                                    <form method="POST" enctype="multipart/form-data"
+                                        action="{{ route('vendor.business-settings.update-doc') }}">
+                                        @csrf
+                                        <input type="hidden" name="file_type" value="gst_doc">
+                                        <div class="form-group">
+                                            <label for="gst_doc">Upload New GST Document</label>
+                                            <input type="file" class="form-control" id="gst_doc" name="gst_doc"
+                                                required>
+                                        </div>
+                                        <div class="d-flex w-100 justify-content-end">
+
+                                            <button type="submit" class="btn btn-primary">Update</button>
+                                        </div>
+                                    </form>
+
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="idDocUpdateModal" tabindex  ="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">ID Proof</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Document Card 1 -->
+                    <div class="vdp-doc-card">
+                        <div class="vdp-card-header">
+                            <div class="vdp-file-icon">
+                                {{ $id_doc ? _getFileTypeLabel($id_doc->file_path) : 'ID' }}</div>
+                            <div class="vdp-card-info">
+                                <div class="vdp-doc-filename">ID Proof</div>
+                            </div>
+                        </div>
+                        <div class="vdp-card-body">
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">File Type</span>
+                                <span
+                                    class="vdp-info-value">{{ $id_doc ? _getFileTypeLabel($id_doc->file_path) : '' }}</span>
+                            </div>
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">Status</span>
+                                <div class="gap-1 d-flex">
+                                    @if ($id_doc)
+                                        @if ($id_doc && $id_doc->verified == 0)
+                                            <b>Front : </b>
+                                            <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                        @else
+                                            <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                        @endif
+                                    @endif
+
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vdp-card-footer align-items-start flex-wrap">
+                            @if ($id_doc)
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->file_path }}"
+                                    class="btn btn-primary">View Front</a>
+                                @if ($id_doc->back_side)
+                                    <a href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}"
+                                        class="btn btn-primary">View Back</a>
+                                @endif
+                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->file_path }}"
+                                    class="btn btn-outline-primary">Download Front</a>
+                                @if ($id_doc->back_side)
+                                    <a download
+                                        href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}"
+                                        class="btn btn-outline-primary">Download Back</a>
+                                @endif
+                            @endif
+
+                            <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
+                                data-target="#collapseExample" aria-expanded="false"
+                                aria-controls="collapseExample">Update</button>
+                            <div class="collapse w-100" id="collapseExample">
+                                <div class="card card-body">
+                                    <form method="POST" enctype="multipart/form-data"
+                                        action="{{ route('vendor.business-settings.update-doc') }}">
+                                        @csrf
+                                        <input type="hidden" name="file_type" value="id_doc">
+                                        <div class="form-group">
+                                            <label for="id_doc">New ID Proof (Front / both sides)</label>
+                                            <input type="file" class="form-control" id="id_doc" name="id_doc"
+                                                required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="id_doc_back">New ID Proof (Back side)</label>
+                                            <input type="file" class="form-control" id="id_doc_back"
+                                                name="id_doc_back" required>
+                                        </div>
+                                        <div class="d-flex w-100 justify-content-end">
+                                            <button type="submit" class="btn btn-primary">Update</button>
+                                        </div>
+                                    </form>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 
@@ -207,7 +801,7 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value }}&libraries=places&callback=initMap&v=3.45.8">
     </script>
-     @include('admin-views.partials.tel_input')
+    @include('admin-views.partials.tel_input')
 
     <script>
         let myLatlng = {

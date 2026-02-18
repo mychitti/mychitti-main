@@ -15,7 +15,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
         ->name('secure.download')->middleware('signed');
-
+ 
     Route::group(['prefix' => 'pr-file', 'as' => 'pr-file.', 'middleware' => ['module:protected_file']], function () {
         Route::post('upload', 'ProtectedFileController@upload_file')->name('upload');
     });
@@ -31,6 +31,13 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('google-ads-delete/{id}', 'DashboardController@google_ads_delete')->name('google-ads.delete');
     });
     Route::group(['middleware' => ['admin', 'current-module']], function () {
+
+        Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
+            Route::get('/', 'AIChatController@index')->name('index');
+            Route::post('send', 'AIChatController@chat')->name('send');
+            Route::get('history', 'AIChatController@history')->name('history');
+            Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+        });
 
         Route::group(['prefix' => 'logs', 'as' => 'logs.'], function () {
             Route::get('action-logs/{tab?}', 'DashboardController@action_logs')->name('action-logs');
@@ -425,6 +432,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('pending-requests', 'VendorController@pending_requests')->name('pending-requests');
                 Route::get('deny-requests', 'VendorController@deny_requests')->name('deny-requests');
                 Route::post('search', 'VendorController@search')->name('search');
+                Route::get('duplicates', 'VendorController@duplicates')->name('duplicates');
                 Route::get('export', 'VendorController@export')->name('export');
                 Route::get('store-wise-reviwe-export', 'VendorController@store_wise_reviwe_export')->name('store_wise_reviwe_export');
                 Route::get('export/cash/{type}/{store_id}', 'VendorController@cash_export')->name('cash_export');
@@ -847,16 +855,16 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('order/details/{id}', 'OrderController@details')->name('order.details');
                 Route::get('order/generate-invoice/{id}', 'OrderController@generate_invoice')->name('order.generate-invoice');
             });
-        });
+        }); 
 
-
+ 
 
         Route::get('users', 'DashboardController@user_dashboard')->name('users.user-dashboard');
         Route::group(['prefix' => 'users', 'as' => 'users.'], function () {
             Route::get('disbursement-export/{id}/{type}', 'DeliveryManController@disbursement_export')->name('disbursement-export');
             Route::get('export', 'DeliveryManController@export')->name('export');
 
-
+ 
             // ADDONS =============
 
             Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['module:attendance', 'planwise:att_manage']], function () {

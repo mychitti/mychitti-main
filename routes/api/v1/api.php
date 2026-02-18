@@ -45,6 +45,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('faqs', 'ConfigController@faqs');
 
     Route::post('get-tems-n-conditions', 'ServiceRequestController@get_termsnconditions');
+    Route::get('get-privacy-policy', 'ServiceRequestController@get_privacy_policy');
+
     Route::group(['prefix' => 'service-request'], function () {
         Route::post('/add', 'ServiceRequestController@add');
         Route::post('/details', 'ServiceRequestController@details');
@@ -64,7 +66,15 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::get('/quotation/terms-and-conditions', 'ServiceRequestController@quotation_terms_and_conditions'); // for development purpose only
         Route::get('/gatepass/terms-and-conditions', 'ServiceRequestController@gatepass_terms_and_conditions'); // for development purpose only
     });
+
+    // help and support
+    Route::group(['prefix' => 'help-n-support'], function () {
+        Route::get('/', 'ContactController@helpAndSupport');
+        Route::post('/', 'ContactController@helpAndSupportForm');
+    });
+
     Route::group(['prefix' => 'auth', 'namespace' => 'Auth'], function () {
+
         Route::post('sign-up', 'CustomerAuthController@register');
         Route::post('otp-login', 'CustomerAuthController@login_with_otp');
         Route::post('login', 'CustomerAuthController@login');
@@ -331,6 +341,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('stores/details-limited/{id}', 'StoreController@get_details_limited');
 
     Route::group(['prefix' => 'customer'], function () {
+        Route::get('delete-reasons', 'CustomerController@delete_reasons');
+
         Route::post('get-bills', 'CustomerController@get_bills');
         Route::post('download-bill', 'CustomerController@download_bill');
         Route::post('download-service-bill', 'CustomerController@download_service_bill');

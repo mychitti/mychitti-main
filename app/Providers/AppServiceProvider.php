@@ -19,6 +19,7 @@ use App\Models\Item;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\Relation;
+
 class AppServiceProvider extends ServiceProvider
 {
     use AddonHelper;
@@ -83,12 +84,16 @@ class AppServiceProvider extends ServiceProvider
             'vendor' => \App\Models\Store::class,
         ]);
 
-         Carbon::serializeUsing(function ($carbon) {
-        return $carbon
-            ->timezone(config('app.timezone'))
-            ->format('Y-m-d H:i:s');
-    });
-   
+        Carbon::serializeUsing(function ($carbon) {
+            return $carbon
+                ->timezone(config('app.timezone'))
+                ->format('Y-m-d H:i:s');
+        });
+
+        $this->app->singleton(\OpenAI\Client::class, function () {
+            return \OpenAI::client(config('services.openai.key'));
+        });
+
 
         $host = request()->getHost();
 

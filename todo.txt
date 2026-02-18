@@ -1,0 +1,62 @@
+-- ============================================================
+-- a_i_chat_messages
+-- ============================================================
+CREATE TABLE `a_i_chat_messages` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `admin_id`   BIGINT UNSIGNED NOT NULL,
+    `role`       ENUM('user', 'assistant') NOT NULL,
+    `content`    LONGTEXT NOT NULL,
+    `type`       VARCHAR(20) NOT NULL DEFAULT 'text',
+    `summarized` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+
+    PRIMARY KEY (`id`),
+    INDEX `a_i_chat_messages_admin_id_summarized_index` (`admin_id`, `summarized`),
+    CONSTRAINT `a_i_chat_messages_admin_id_foreign`
+        FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- summaries
+-- ============================================================
+CREATE TABLE `summaries` (
+    `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `admin_id`         BIGINT UNSIGNED NOT NULL,
+    `summary`          LONGTEXT NOT NULL,
+    `messages_covered` INT UNSIGNED NOT NULL DEFAULT 0,
+    `created_at`       TIMESTAMP NULL DEFAULT NULL,
+    `updated_at`       TIMESTAMP NULL DEFAULT NULL,
+
+    PRIMARY KEY (`id`),
+    INDEX `summaries_admin_id_index` (`admin_id`),
+    CONSTRAINT `summaries_admin_id_foreign`
+        FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- admin_memories
+-- ============================================================
+CREATE TABLE `admin_memories` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `admin_id`   BIGINT UNSIGNED NOT NULL,
+    `key`        VARCHAR(255) NOT NULL,
+    `value`      TEXT NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `admin_memories_admin_id_key_unique` (`admin_id`, `key`),
+    CONSTRAINT `admin_memories_admin_id_foreign`
+        FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- DROP (reverse / down migration)
+-- ============================================================
+-- DROP TABLE IF EXISTS `admin_memories`;
+-- DROP TABLE IF EXISTS `summaries`;
+-- DROP TABLE IF EXISTS `a_i_chat_messages`;

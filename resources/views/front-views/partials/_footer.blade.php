@@ -9,7 +9,8 @@
     }
 </style>
 {{-- common footer  --}}
-@if (!Request::is('store*') && !Request::is('store-terms-and-conditions'))
+
+@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions'))
     <div class="container-fluid bg-dark text-white-50 footer pt-5 ">
         <div class="container p-2 py-5">
             <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">

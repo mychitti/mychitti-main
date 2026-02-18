@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"> 
-  
-<head>  
-    <meta charset="utf-8">   
-    <title>@yield('title', 'My Chitti')</title> 
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>@yield('title', 'My Chitti')</title>
     <meta name="csrf-token" id="csrf-token" content="{{ csrf_token() }}">
     <meta name="google-site-verification" content="GKuvdu8PAKO0h9zq-kyGkm1OjAuHY44lWi01iSL40Sk" />
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
@@ -492,6 +492,227 @@
     @include('front-views.partials._footer')
     <div id="toast" class="toast">This is a toaster notification!</div>
 
+    {{-- AI Chat Panel --}}
+        <style>
+            #ai-chat-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, .35);
+                z-index: 10000;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity .3s
+            }
+
+            #ai-chat-overlay.open {
+                opacity: 1;
+                visibility: visible
+            }
+
+            #ai-chat-panel {
+                position: fixed;
+                top: 0;
+                right: -420px;
+                width: 400px;
+                max-width: 92vw;
+                height: 100vh;
+                background: #fff;
+                z-index: 10001;
+                display: flex;
+                flex-direction: column;
+                box-shadow: -4px 0 20px rgba(0, 0, 0, .15);
+                transition: right .35s cubic-bezier(.4, 0, .2, 1)
+            }
+
+            #ai-chat-panel.open {
+                right: 0
+            }
+
+            .ai-chat-header {
+                padding: 14px 18px;
+                background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between
+            }
+
+            .ai-chat-header h5 {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 600
+            }
+
+            .ai-chat-close {
+                background: none;
+                border: none;
+                color: #fff;
+                font-size: 22px;
+                cursor: pointer;
+                padding: 0 4px
+            }
+
+            .ai-chat-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                background: #f8f9fa
+            }
+
+            .ai-msg {
+                max-width: 82%;
+                padding: 10px 14px;
+                border-radius: 14px;
+                font-size: 14px;
+                line-height: 1.5;
+                word-wrap: break-word
+            }
+
+            .ai-msg.user {
+                align-self: flex-end;
+                background: #4f46e5;
+                color: #fff;
+                border-bottom-right-radius: 4px
+            }
+
+            .ai-msg.assistant {
+                align-self: flex-start;
+                background: #fff;
+                color: #333;
+                border: 1px solid #e5e5e5;
+                border-bottom-left-radius: 4px
+            }
+
+            .ai-msg.typing {
+                font-style: italic;
+                color: #999;
+                border: 1px dashed #ddd;
+                background: #fafafa
+            }
+
+            .ai-chat-input-area {
+                padding: 12px;
+                border-top: 1px solid #eee;
+                background: #fff
+            }
+
+            .ai-chat-input-area textarea {
+                width: 100%;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 14px;
+                resize: none;
+                outline: none;
+                font-family: inherit
+            }
+
+            .ai-chat-input-area textarea:focus {
+                border-color: #4f46e5
+            }
+
+            .ai-chat-btns {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 8px
+            }
+
+            .ai-chat-btns button {
+                border: none;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-size: 13px;
+                cursor: pointer;
+                font-weight: 500
+            }
+
+            .ai-send-btn {
+                background: #4f46e5;
+                color: #fff
+            }
+
+            .ai-send-btn:hover {
+                background: #4338ca
+            }
+
+            .ai-attach-btn,
+            .ai-record-btn,
+            .ai-stop-btn {
+                background: #f3f4f6;
+                color: #333;
+                border: 1px solid #ddd !important
+            }
+
+            .ai-clear-btn {
+                background: #fee2e2;
+                color: #dc2626;
+                margin-left: auto;
+                font-size: 12px;
+                padding: 4px 10px
+            }
+
+            #ai-chat-fab {
+                position: fixed;
+                bottom: 28px;
+                right: 28px;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                color: #fff;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                box-shadow: 0 4px 16px rgba(79, 70, 229, .4);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform .2s
+            }
+
+            #ai-chat-fab:hover {
+                transform: scale(1.1)
+            }
+        </style>
+
+        {{-- <button id="ai-chat-fab" title="Chat with AI">
+            <i class="fas fa-comments"></i>
+        </button> --}}
+
+        <div id="ai-chat-overlay"></div>
+        <div id="ai-chat-panel">
+            <div class="ai-chat-header">
+                <h5 style="    color: white;"><i class="fas fa-robot"></i> AI Assistant</h5>
+                <button class="ai-chat-close">&times;</button>
+            </div>
+            <div class="ai-chat-messages" id="ai-chat-messages">
+                <div class="text-muted text-center" style="font-size:13px">Loading chat...</div>
+            </div>
+            <div class="ai-chat-input-area">
+                <form id="ai-chat-form" enctype="multipart/form-data">
+                    @csrf
+                    <textarea id="ai-chat-msg" name="message" rows="2" placeholder="Type your message..."></textarea>
+                    <input type="file" id="ai-chat-file" name="file" accept="image/*,.pdf" style="display:none">
+                    <div class="ai-chat-btns">
+                        <button type="submit" class="ai-send-btn">Send</button>
+                        <button type="button" class="ai-attach-btn" id="ai-attach-btn"><i
+                                class="fas fa-paperclip"></i></button>
+                        <button type="button" class="ai-record-btn" id="ai-start-record"><i
+                                class="fas fa-microphone"></i></button>
+                        <button type="button" class="ai-stop-btn d-none" id="ai-stop-record"><i
+                                class="fas fa-stop"></i> Stop</button>
+                        <span id="ai-record-status" style="font-size:12px;color:#999"></span>
+                        <button type="button" class="ai-clear-btn" id="ai-clear-memory">Clear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
 
     <!-- <div class="modal fade show" id="mapModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-modal="true" role="dialog" style="display: block;"> -->
 
@@ -503,7 +724,8 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Location</h5>
                     @if (session()->has('latitude') && session()->has('longitude'))
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
                     @endif
                 </div>
                 <div class="modal-body">
@@ -1219,53 +1441,64 @@
                 geocodeLatLng(place.geometry.location.lat(), place.geometry.location.lng());
             });
         }
+
         function useCurrentLocation() {
 
-    if (!navigator.geolocation) {
-        alert('Geolocation not supported');
-        return;
-    }
+            if (!navigator.geolocation) {
+                alert('Geolocation not supported');
+                return;
+            }
 
-    navigator.geolocation.getCurrentPosition(
-        function (position) {
-            let lat = position.coords.latitude;
-            let lng = position.coords.longitude;
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    let lat = position.coords.latitude;
+                    let lng = position.coords.longitude;
 
-            console.log('📍 Current location:', lat, lng);
+                    console.log('📍 Current location:', lat, lng);
 
-            map.setHelpText?.('');
-            map.setCenter({ lat, lng });
-            map.setZoom(16);
-            marker.setPosition({ lat, lng });
+                    map.setHelpText?.('');
+                    map.setCenter({
+                        lat,
+                        lng
+                    });
+                    map.setZoom(16);
+                    marker.setPosition({
+                        lat,
+                        lng
+                    });
 
-            // reverse geocode
-            geocoder.geocode(
-                { location: { lat, lng } },
-                function (results, status) {
-                    if (status === 'OK' && results[0]) {
+                    // reverse geocode
+                    geocoder.geocode({
+                            location: {
+                                lat,
+                                lng
+                            }
+                        },
+                        function(results, status) {
+                            if (status === 'OK' && results[0]) {
 
-                        let locality = null;
-                        for (const comp of results[0].address_components) {
-                            if (comp.types.includes('locality')) {
-                                locality = comp.long_name;
-                                break;
+                                let locality = null;
+                                for (const comp of results[0].address_components) {
+                                    if (comp.types.includes('locality')) {
+                                        locality = comp.long_name;
+                                        break;
+                                    }
+                                }
+
+                                $('#user_city').val(locality);
+                                $('#user_address, #searchInput').val(results[0].formatted_address);
+                                $('#user_latitude').val(lat);
+                                $('#user_longitude').val(lng);
+                                $(".location_name_show").text('in ' + locality);
                             }
                         }
-
-                        $('#user_city').val(locality);
-                        $('#user_address, #searchInput').val(results[0].formatted_address);
-                        $('#user_latitude').val(lat);
-                        $('#user_longitude').val(lng);
-                        $(".location_name_show").text('in ' + locality);
-                    }
+                    );
+                },
+                function(error) {
+                    alert('Please allow location permission');
                 }
             );
-        },
-        function (error) {
-            alert('Please allow location permission');
         }
-    );
-}
 
 
 
@@ -1599,6 +1832,167 @@
     });
 </script>
 
+    <script>
+        (function() {
+            const $fab = $('#ai-chat-fab');
+            const $panel = $('#ai-chat-panel');
+            const $overlay = $('#ai-chat-overlay');
+            const $box = $('#ai-chat-messages');
+            const $form = $('#ai-chat-form');
+            const $msg = $('#ai-chat-msg');
+            let aiMediaRecorder, aiAudioChunks = [],
+                aiRecordedBlob = null;
 
+            function openChat() {
+                $panel.addClass('open');
+                $overlay.addClass('open');
+                $fab.hide();
+                scrollBottom();
+            }
+
+            function closeChat() {
+                $panel.removeClass('open');
+                $overlay.removeClass('open');
+                $fab.show();
+            }
+
+            function scrollBottom() {
+                setTimeout(() => {
+                    $box[0].scrollTop = $box[0].scrollHeight;
+                }, 50);
+            }
+
+            function renderMsg(role, text) {
+                const safe = $('<div>').text(text).html().replace(/\n/g, '<br>');
+                $box.append('<div class="ai-msg ' + role + '">' + safe + '</div>');
+                scrollBottom();
+            }
+
+            $fab.on('click', function() {
+                openChat();
+                loadHistory();
+            });
+            $overlay.on('click', closeChat);
+            $('.ai-chat-close').on('click', closeChat);
+
+            let historyLoaded = false;
+
+            function loadHistory() {
+                if (historyLoaded) return;
+                $.get("{{ route('ai-chat.history') }}", function(res) {
+                    $box.empty();
+                    if (res.messages && res.messages.length) {
+                        res.messages.forEach(m => renderMsg(m.role, m.content));
+                    } else {
+                        $box.html(
+                            '<div class="text-muted text-center" style="font-size:13px">Start a conversation...</div>'
+                            );
+                    }
+                    historyLoaded = true;
+                });
+            }
+
+            // Send message
+            $form.on('submit', function(e) {
+                e.preventDefault();
+                let formData = new FormData();
+                let message = $msg.val();
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('message', message);
+
+                const file = $('#ai-chat-file')[0].files[0];
+                if (file) formData.append('file', file);
+                if (aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
+
+                if (!message && !file && !aiRecordedBlob) return;
+
+                if (message) renderMsg('user', message);
+                else if (file) renderMsg('user', '[File sent]');
+                else if (aiRecordedBlob) renderMsg('user', '[Voice message]');
+
+                $msg.val('');
+                $('#ai-chat-file').val('');
+                aiRecordedBlob = null;
+                $('#ai-record-status').text('');
+
+                $box.append('<div class="ai-msg typing" id="ai-typing">Thinking...</div>');
+                scrollBottom();
+
+                $.ajax({
+                    url: "{{ route('ai-chat.send') }}",
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        $('#ai-typing').remove();
+                        if (res.success) renderMsg('assistant', res.message);
+                        else renderMsg('assistant', 'Something went wrong.');
+                    },
+                    error: function() {
+                        $('#ai-typing').remove();
+                        renderMsg('assistant', 'Failed to send. Please try again.');
+                    }
+                });
+            });
+
+            // Enter to send, Shift+Enter for newline
+            $msg.on('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    $form.trigger('submit');
+                }
+            });
+
+            // File attach
+            $('#ai-attach-btn').on('click', function() {
+                $('#ai-chat-file').click();
+            });
+
+            // Voice recording
+            $('#ai-start-record').on('click', async function() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Voice recording not supported.');
+                    return;
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+                aiAudioChunks = [];
+                aiRecordedBlob = null;
+                aiMediaRecorder = new MediaRecorder(stream);
+                aiMediaRecorder.ondataavailable = e => aiAudioChunks.push(e.data);
+                aiMediaRecorder.onstop = () => {
+                    aiRecordedBlob = new Blob(aiAudioChunks, {
+                        type: 'audio/webm'
+                    });
+                    $('#ai-record-status').text('Voice ready.');
+                };
+                aiMediaRecorder.start();
+                $('#ai-start-record').addClass('d-none');
+                $('#ai-stop-record').removeClass('d-none');
+                $('#ai-record-status').text('Recording...');
+            });
+
+            $('#ai-stop-record').on('click', function() {
+                aiMediaRecorder.stop();
+                $('#ai-stop-record').addClass('d-none');
+                $('#ai-start-record').removeClass('d-none');
+            });
+
+            // Clear memory
+            $('#ai-clear-memory').on('click', function() {
+                if (!confirm('Clear all chat history?')) return;
+                $.post("{{ route('ai-chat.clear') }}", {
+                    _token: '{{ csrf_token() }}'
+                }, function(res) {
+                    $box.html(
+                        '<div class="text-muted text-center" style="font-size:13px">Chat cleared. Start fresh!</div>'
+                        );
+                    historyLoaded = false;
+                });
+            });
+        })();
+    </script>
 
 </html>

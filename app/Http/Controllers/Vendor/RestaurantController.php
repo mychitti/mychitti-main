@@ -7,6 +7,7 @@ use App\Models\Store;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
+use App\Models\StoreDocument;
 use App\Models\Translation;
 use App\Models\Vendor;
 use App\Models\Zone;
@@ -24,7 +25,10 @@ class RestaurantController extends Controller
     {
         $store = Helpers::get_store_data();
         $shop = Store::withoutGlobalScope('translate')->findOrFail($store['id']);
-        return view('vendor-views.shop.edit', compact('shop'));
+          $store_documents = StoreDocument::where('store_id', $store->id)->where('status', 1)->get();
+        $id_doc = $store_documents->where('doc_type', 'id_doc')->first();
+        $gst_doc = $store_documents->where('doc_type', 'gst_doc')->first();
+        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc'));
     }
 
     public function update(Request $request)
@@ -130,7 +134,8 @@ class RestaurantController extends Controller
         }
 
         Toastr::success(translate('messages.store_data_updated'));
-        return redirect()->route('vendor.business-settings.store-setup');
+        return back();
+        // return redirect()->route('vendor.business-settings.store-setup');
     }
 
     public function update_message(Request $request)

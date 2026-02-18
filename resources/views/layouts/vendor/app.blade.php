@@ -186,35 +186,33 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <!-- END ONLY DEV -->
 
     <main id="content" role="main" class="main pointer-event">
-     <div class="mobil_linke">
-             <div class="d-flex gap-1  flex-wrap">
+        <div class="mobil_linke">
+            <div class="d-flex gap-1  flex-wrap">
                 @if (count(_quickActions()))
-                
+
                     @foreach (_quickActions() as $key => $value)
                         @if ($value->route == 'vendor.customer.list')
-                            <a type="button" class="text-primary quick_action2 add-customer-btn " 
-                                data-toggle="modal" data-target="#addCustomerModal">
+                            <a type="button" class="text-primary quick_action2 add-customer-btn " data-toggle="modal"
+                                data-target="#addCustomerModal">
                                 {{ $value->name }}
                             </a>
                         @else
-                            <a href="{{ route($value->route, ['add']) }}" class="text-primary quick_action2"
-                               >{{ $value->name }}</a>
+                            <a href="{{ route($value->route, ['add']) }}"
+                                class="text-primary quick_action2">{{ $value->name }}</a>
                         @endif
                     @endforeach
-                    <a href="{{ route('vendor.menu_preference') }}"><i
-                            class="tio-edit"></i></a>
+                    <a href="{{ route('vendor.menu_preference') }}"><i class="tio-edit"></i></a>
                 @else
-                    <a class="btn btn--primary"
-                        href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
+                    <a class="btn btn--primary" href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
                 @endif
             </div>
-            </div>
-            
+        </div>
+
         <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a>
 
         @yield('content')
-
+ 
         @include('layouts.vendor.partials._footer')
 
         <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -268,6 +266,77 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
+        {{-- AI Chat FAB --}}
+        {{-- <button id="ai-chat-fab" title="AI Assistant"
+            style="position:fixed;bottom:30px;right:30px;z-index:1050;width:56px;height:56px;border-radius:50%;
+                   background:var(--primary);color:#fff;border:none;box-shadow:0 4px 12px rgba(0,0,0,.25);
+                   cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s">
+            <i class="tio-chat-outlined" style="font-size:1.6em"></i>
+        </button> --}}
+
+        {{-- AI Chat Panel --}}
+        <div id="ai-chat-panel"
+             style="position:fixed;top:0;right:-400px;width:400px;max-width:100vw;height:100vh;z-index:1060;
+                    background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);display:flex;flex-direction:column;
+                    transition:right .3s ease">
+
+            {{-- Header --}}
+            <div style="padding:14px 16px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+                <strong style="font-size:15px">AI Assistant</strong>
+                <div>
+                    <button type="button" class="btn btn-sm px-2 py-0" id="ai-clear-memory"
+                            style="color:#fff;opacity:.8;font-size:12px;border:1px solid rgba(255,255,255,.4);margin-right:6px">
+                        Clear
+                    </button>
+                    <button type="button" id="ai-chat-close" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0">
+                        &times;
+                    </button>
+                </div>
+            </div>
+
+            {{-- Messages --}}
+            <div id="ai-chat-box" style="flex:1;overflow-y:auto;padding:14px;background:#f7f7f8">
+                <div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>
+            </div>
+
+            {{-- Input --}}
+            <div style="padding:10px 12px;border-top:1px solid #e5e5e5;background:#fff;flex-shrink:0">
+                <form id="ai-chat-form" enctype="multipart/form-data">
+                    @csrf
+                    <div style="display:flex;gap:6px;align-items:flex-end">
+                        <textarea class="form-control" id="ai-message" name="message"
+                                  placeholder="Type a message..." rows="1"
+                                  style="resize:none;border-radius:20px;padding:8px 14px;font-size:13px;max-height:80px;overflow-y:auto"></textarea>
+                        <button class="btn btn-primary btn-sm" type="submit" id="ai-send-btn"
+                                style="border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0">
+                            <i class="tio-send"></i>
+                        </button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+                        <input type="file" id="ai-fileInput" name="file" accept="image/*,.pdf" style="display:none">
+                        <button type="button" class="btn btn-sm btn-light" id="ai-attachFileBtn"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                            <i class="tio-attachment"></i> File
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" id="ai-startRecord"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                            <i class="tio-mic"></i> Voice
+                        </button>
+                        <button type="button" class="btn btn-sm btn-warning d-none" id="ai-stopRecord"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                            <i class="tio-stop"></i> Stop
+                        </button>
+                        <span class="small text-muted" id="ai-recordStatus"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Overlay --}}
+        <div id="ai-chat-overlay"
+             style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:1055;background:rgba(0,0,0,.3);
+                    display:none;cursor:pointer"></div>
+
 
         <div class="modal fade" id="toggle-modal">
             <div class="modal-dialog status-warning-modal">
@@ -347,7 +416,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                                         <span id="notf_message"></span>
                                     </h2>
                                     <hr>
-                                    <a href="{{route('vendor.notifications')}}"
+                                    <a href="{{ route('vendor.notifications') }}"
                                         class="btn btn-primary notif_url">{{ translate('messages.Ok, let me check') }}</a>
                                 </div>
                             </div>
@@ -456,6 +525,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         <source src="{{ asset('public/assets/admin/sound/notification.mp3') }}" type="audio/mpeg">
     </audio>
     <script src="{{ asset('public/assets/admin/js/view-pages/common.js') }}"></script>
+
     <script>
         var notfUrl = "{{ route('vendor.last-notification') }}";
 
@@ -1656,6 +1726,138 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 }
             });
         })
+    </script>
+    <script>
+    $(function(){
+        var $panel   = $('#ai-chat-panel');
+        var $overlay = $('#ai-chat-overlay');
+        var $fab     = $('#ai-chat-fab');
+        var $box     = $('#ai-chat-box');
+        var aiMediaRecorder, aiAudioChunks = [], aiRecordedBlob = null;
+        var aiChatLoaded = false;
+
+        function openChat(){
+            $panel.css('right','0');
+            $overlay.show();
+            $fab.hide();
+            if(!aiChatLoaded){ aiLoadHistory(); aiChatLoaded = true; }
+            $('#ai-message').focus();
+        }
+        function closeChat(){
+            $panel.css('right','-400px');
+            $overlay.hide();
+            $fab.show();
+        }
+
+        $fab.on('click', openChat);
+        $('#ai-chat-close, #ai-chat-overlay').on('click', closeChat);
+        $(document).on('keydown', function(e){ if(e.key==='Escape') closeChat(); });
+
+        function aiRenderMessage(role, content){
+            var isUser = role === 'user';
+            var html = '<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+';margin-bottom:10px">' +
+                '<div style="max-width:82%;padding:9px 13px;border-radius:'+(isUser?'16px 16px 4px 16px':'16px 16px 16px 4px')+
+                ';background:'+(isUser?'var(--primary)':'#e9ecef')+';color:'+(isUser?'#fff':'#333')+
+                ';font-size:13px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word">' +
+                content + '</div></div>';
+            $box.append(html);
+            $box.scrollTop($box[0].scrollHeight);
+        }
+
+        function aiLoadHistory(){
+            $box.html('<div class="text-muted text-center" style="margin-top:40%">Loading...</div>');
+            $.get("{{ route('vendor.ai-chat.history') }}", function(res){
+                $box.html('');
+                if(res.success && res.messages.length){
+                    res.messages.forEach(function(r){ aiRenderMessage(r.role, r.content); });
+                } else {
+                    $box.html('<div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>');
+                }
+            });
+        }
+
+        $('#ai-attachFileBtn').on('click', function(){ $('#ai-fileInput').click(); });
+
+        $('#ai-startRecord').on('click', async function(){
+            if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Voice not supported.'); return; }
+            var stream = await navigator.mediaDevices.getUserMedia({audio:true});
+            aiAudioChunks=[]; aiRecordedBlob=null;
+            aiMediaRecorder = new MediaRecorder(stream);
+            aiMediaRecorder.ondataavailable = function(e){ aiAudioChunks.push(e.data); };
+            aiMediaRecorder.onstop = function(){
+                aiRecordedBlob = new Blob(aiAudioChunks,{type:'audio/webm'});
+                stream.getTracks().forEach(function(t){t.stop();});
+                $('#ai-recordStatus').text('Ready to send');
+            };
+            aiMediaRecorder.start();
+            $('#ai-startRecord').addClass('d-none');
+            $('#ai-stopRecord').removeClass('d-none');
+            $('#ai-recordStatus').text('Recording...');
+        });
+
+        $('#ai-stopRecord').on('click', function(){
+            aiMediaRecorder.stop();
+            $('#ai-stopRecord').addClass('d-none');
+            $('#ai-startRecord').removeClass('d-none');
+        });
+
+        $('#ai-chat-form').on('submit', function(e){
+            e.preventDefault();
+            var formData = new FormData();
+            var message = $('#ai-message').val();
+            formData.append('_token','{{ csrf_token() }}');
+            formData.append('message', message);
+
+            var file = $('#ai-fileInput')[0].files[0];
+            if(file) formData.append('file', file);
+            if(aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
+            if(!message && !file && !aiRecordedBlob) return;
+
+            if(message) aiRenderMessage('user', message);
+            else if(file) aiRenderMessage('user', '[File: '+file.name+']');
+            else if(aiRecordedBlob) aiRenderMessage('user', '[Voice message]');
+
+            $('#ai-message').val('').css('height','auto');
+            $('#ai-fileInput').val('');
+            aiRecordedBlob=null;
+            $('#ai-recordStatus').text('');
+
+            // Show typing indicator
+            $box.append('<div id="ai-typing" style="display:flex;margin-bottom:10px"><div style="padding:9px 13px;border-radius:16px 16px 16px 4px;background:#e9ecef;color:#999;font-size:13px"><i>Thinking...</i></div></div>');
+            $box.scrollTop($box[0].scrollHeight);
+            $('#ai-send-btn').prop('disabled',true);
+
+            $.ajax({
+                url: "{{ route('vendor.ai-chat.send') }}",
+                type:"POST", data:formData, processData:false, contentType:false,
+                success: function(res){
+                    $('#ai-typing').remove();
+                    if(res.success) aiRenderMessage('assistant', res.message);
+                    else alert(res.message||'Something went wrong.');
+                },
+                error: function(xhr){
+                    $('#ai-typing').remove();
+                    alert(xhr.responseJSON?xhr.responseJSON.message:'AI request failed.');
+                },
+                complete: function(){ $('#ai-send-btn').prop('disabled',false); }
+            });
+        });
+
+        $('#ai-clear-memory').on('click', function(){
+            if(!confirm('Clear all AI chat memory?')) return;
+            $.post("{{ route('vendor.ai-chat.clear') }}", {_token:'{{ csrf_token() }}'}, function(res){
+                if(res.success) $box.html('<div class="text-muted text-center" style="margin-top:40%">Chat cleared.</div>');
+            });
+        });
+
+        // Enter to send, Shift+Enter for newline, auto-resize textarea
+        $('#ai-message').on('keydown', function(e){
+            if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('#ai-chat-form').submit(); }
+        }).on('input', function(){
+            this.style.height='auto';
+            this.style.height=Math.min(this.scrollHeight,80)+'px';
+        });
+    });
     </script>
 
 </body>

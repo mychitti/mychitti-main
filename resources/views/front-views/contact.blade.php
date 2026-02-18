@@ -1,6 +1,6 @@
 @extends('front-views.layout')
 
-@section('title','Home')
+@section('title','Contact')
 
 @push('css_or_js')
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -16,7 +16,6 @@
     </ol>
 </div>
 <!-- Single Page Header End -->
-
 
 <!-- Contact Start -->
 <div class="container-fluid contact py-5">

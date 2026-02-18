@@ -5,7 +5,7 @@
 @section('meta_keywords', $keywords)
 @section('meta_description', $store['meta_description'])
 
- 
+
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
@@ -33,6 +33,20 @@
             overflow-x: hidden;
         }
 
+        .product_data {
+            margin: 3rem 0;
+        }
+
+        .about_section {
+            background: var(--t13-primary-bg);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid #ede9fe;
+            line-height: 1.9;
+            font-size: 14px;
+            color: var(--t13-gray);
+        }
+
         /* ===== SPARKLE CURSOR ===== */
         .sparkle-canvas {
             position: fixed;
@@ -50,6 +64,7 @@
             transform: translateX(-80px);
             transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
+
         .t13-slide-left.active {
             opacity: 1;
             transform: translateX(0);
@@ -60,6 +75,7 @@
             transform: translateX(80px);
             transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
+
         .t13-slide-right.active {
             opacity: 1;
             transform: translateX(0);
@@ -70,6 +86,7 @@
             transform: translateY(50px);
             transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
+
         .t13-fade-up.active {
             opacity: 1;
             transform: translateY(0);
@@ -80,6 +97,7 @@
             transform: scale(0.85);
             transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
+
         .t13-zoom-in.active {
             opacity: 1;
             transform: scale(1);
@@ -96,6 +114,7 @@
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(124, 58, 237, 0.2);
         }
+
         .t13-header-inner {
             max-width: 1400px;
             margin: 0 auto;
@@ -104,11 +123,13 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .t13-logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
+
         .t13-logo img {
             width: 42px;
             height: 42px;
@@ -117,32 +138,38 @@
             object-fit: cover;
             transition: all 0.4s;
         }
+
         .t13-logo img:hover {
             border-color: var(--t13-accent);
             box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
         }
+
         .t13-logo h1 {
             font-size: 1.2rem;
             font-weight: 800;
             color: white;
         }
+
         .t13-logo p {
             font-size: 10px;
             color: var(--t13-primary-light);
         }
+
         .t13-nav {
             display: flex;
             gap: 2rem;
             align-items: center;
         }
+
         .t13-nav a {
-            color: rgba(255,255,255,0.8);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             font-size: 13px;
             font-weight: 600;
             transition: all 0.3s;
             position: relative;
         }
+
         .t13-nav a::after {
             content: '';
             position: absolute;
@@ -155,12 +182,15 @@
             transform: translateX(-50%);
             border-radius: 2px;
         }
+
         .t13-nav a:hover {
             color: white;
         }
+
         .t13-nav a:hover::after {
             width: 100%;
         }
+
         .t13-btn-glow {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             color: white;
@@ -172,10 +202,54 @@
             transition: all 0.3s;
             display: inline-block;
         }
+
         .t13-btn-glow:hover {
             box-shadow: 0 0 25px rgba(124, 58, 237, 0.6), 0 0 50px rgba(244, 114, 182, 0.3);
             transform: translateY(-2px);
             color: white;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            padding: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .t13-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(30, 27, 75, 0.98);
+                backdrop-filter: blur(20px);
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 10;
+            }
+
+            .t13-nav.show {
+                display: flex;
+            }
+
+            .t13-nav a {
+                padding: 12px 25px;
+                display: block;
+            }
+
+            .t13-header-inner {
+                position: relative;
+            }
         }
 
         /* ===== HERO ===== */
@@ -186,32 +260,43 @@
             position: relative;
             overflow: hidden;
         }
+
         .t13-hero::before {
             content: '';
             position: absolute;
             width: 500px;
             height: 500px;
-            background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
             top: -150px;
             right: -100px;
             border-radius: 50%;
             animation: t13-float 8s ease-in-out infinite;
         }
+
         .t13-hero::after {
             content: '';
             position: absolute;
             width: 400px;
             height: 400px;
-            background: radial-gradient(circle, rgba(244,114,182,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(244, 114, 182, 0.1) 0%, transparent 70%);
             bottom: -100px;
             left: -100px;
             border-radius: 50%;
             animation: t13-float 10s ease-in-out infinite reverse;
         }
+
         @keyframes t13-float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(30px, -30px) scale(1.1); }
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(30px, -30px) scale(1.1);
+            }
         }
+
         .t13-hero-inner {
             max-width: 1400px;
             margin: 0 auto;
@@ -223,9 +308,11 @@
             position: relative;
             z-index: 1;
         }
+
         .t13-hero-text {
             color: white;
         }
+
         .t13-hero-badge {
             display: inline-flex;
             align-items: center;
@@ -240,29 +327,35 @@
             margin-bottom: 1.5rem;
             backdrop-filter: blur(10px);
         }
+
         .t13-hero-title {
+            color: #eed5ff;
             font-size: 3.5rem;
             font-weight: 900;
             line-height: 1.08;
             margin-bottom: 1.25rem;
         }
+
         .t13-hero-title span {
             background: linear-gradient(135deg, var(--t13-primary-light), var(--t13-accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
         .t13-hero-desc {
             font-size: 1.0625rem;
-            color: rgba(255,255,255,0.75);
+            color: rgba(255, 255, 255, 0.75);
             line-height: 1.7;
             margin-bottom: 2rem;
         }
+
         .t13-hero-actions {
             display: flex;
             gap: 1rem;
             align-items: center;
         }
+
         .t13-btn-hero {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             color: white;
@@ -273,65 +366,75 @@
             transition: all 0.3s;
             font-size: 14px;
         }
+
         .t13-btn-hero:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(124, 58, 237, 0.5);
             color: white;
         }
+
         .t13-btn-ghost {
             color: white;
             padding: 0.9rem 2.25rem;
             border-radius: 30px;
             font-weight: 800;
             text-decoration: none;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             transition: all 0.3s;
             font-size: 14px;
         }
+
         .t13-btn-ghost:hover {
             border-color: var(--t13-primary-light);
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
         }
+
         .t13-hero-img {
             position: relative;
         }
+
         .t13-hero-img img {
             width: 100%;
             height: 380px;
             object-fit: cover;
             border-radius: 20px;
             border: 2px solid rgba(124, 58, 237, 0.3);
-            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
         }
+
         .t13-stats-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
             margin-top: 2rem;
         }
+
         .t13-stat-box {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 1rem;
             border-radius: 12px;
             text-align: center;
             backdrop-filter: blur(10px);
             transition: all 0.3s;
         }
+
         .t13-stat-box:hover {
             background: rgba(124, 58, 237, 0.15);
             border-color: var(--t13-primary);
             transform: translateY(-3px);
         }
+
         .t13-stat-val {
             font-size: 1.75rem;
             font-weight: 900;
             color: white;
         }
+
         .t13-stat-lbl {
             font-size: 10px;
-            color: rgba(255,255,255,0.6);
+            color: rgba(255, 255, 255, 0.6);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-top: 0.25rem;
@@ -343,6 +446,7 @@
             padding: 0.75rem 0;
             border-bottom: 1px solid #e9d5ff;
         }
+
         .t13-breadcrumb .breadcrumb {
             max-width: 1400px;
             margin: 0 auto;
@@ -355,15 +459,18 @@
         .t13-section {
             padding: 4.5rem 0;
         }
+
         .t13-wrap {
             max-width: 1400px;
             margin: 0 auto;
             padding: 0 2rem;
         }
+
         .t13-section-header {
             text-align: center;
             margin-bottom: 3rem;
         }
+
         .t13-section-tag {
             display: inline-block;
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
@@ -376,6 +483,7 @@
             letter-spacing: 3px;
             margin-bottom: 0.5rem;
         }
+
         .t13-section-title {
             font-size: 2.5rem;
             font-weight: 900;
@@ -388,6 +496,7 @@
             color: white;
             padding: 0.875rem 0;
         }
+
         .t13-announce-inner {
             max-width: 1400px;
             margin: 0 auto;
@@ -403,6 +512,7 @@
             grid-template-columns: 1.5fr 1fr;
             gap: 2.5rem;
         }
+
         .t13-about-card {
             background: white;
             padding: 2.5rem;
@@ -410,12 +520,14 @@
             box-shadow: 0 4px 20px rgba(124, 58, 237, 0.06);
             border: 1px solid #ede9fe;
         }
+
         .t13-about-card h2 {
             font-size: 1.5rem;
             font-weight: 800;
             margin-bottom: 1rem;
             color: var(--t13-dark);
         }
+
         .t13-contact-card {
             background: linear-gradient(160deg, var(--t13-dark) 0%, #312e81 100%);
             color: white;
@@ -424,35 +536,40 @@
             position: relative;
             overflow: hidden;
         }
+
         .t13-contact-card::before {
             content: '';
             position: absolute;
             width: 200px;
             height: 200px;
-            background: radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.2) 0%, transparent 70%);
             top: -50px;
             right: -50px;
             border-radius: 50%;
         }
+
         .t13-contact-card h3 {
             font-size: 1.25rem;
             font-weight: 800;
             margin-bottom: 1.5rem;
             color: var(--t13-primary-light);
         }
+
         .t13-contact-row {
             display: flex;
             align-items: start;
             gap: 1rem;
             margin-bottom: 1.25rem;
             padding-bottom: 1.25rem;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             position: relative;
             z-index: 1;
         }
+
         .t13-contact-row:last-child {
             border: none;
         }
+
         .t13-contact-icon {
             width: 42px;
             height: 42px;
@@ -464,6 +581,7 @@
             font-size: 18px;
             flex-shrink: 0;
         }
+
         .t13-rating-box {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             padding: 1.5rem;
@@ -473,6 +591,7 @@
             position: relative;
             z-index: 1;
         }
+
         .t13-rating-num {
             font-size: 3rem;
             font-weight: 900;
@@ -486,6 +605,7 @@
             grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
             gap: 1.5rem;
         }
+
         .t13-card {
             background: white;
             border-radius: 18px;
@@ -495,26 +615,31 @@
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             position: relative;
         }
+
         .t13-card:hover {
             transform: translateY(-8px);
             box-shadow: 0 15px 40px rgba(124, 58, 237, 0.15);
             border-color: var(--t13-primary-light);
         }
+
         .t13-card-img {
             position: relative;
             width: 100%;
             height: 200px;
             overflow: hidden;
         }
+
         .t13-card-img img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.5s;
         }
+
         .t13-card:hover .t13-card-img img {
             transform: scale(1.08);
         }
+
         .t13-card-badge {
             position: absolute;
             top: 10px;
@@ -526,6 +651,7 @@
             font-size: 11px;
             font-weight: 800;
         }
+
         .t13-card-time {
             position: absolute;
             top: 10px;
@@ -539,6 +665,7 @@
             align-items: center;
             gap: 0.3rem;
         }
+
         .t13-card-heart {
             position: absolute;
             bottom: 10px;
@@ -551,28 +678,35 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: all 0.3s;
         }
+
         .t13-card-heart:hover {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             transform: scale(1.15);
         }
+
         .t13-card-heart:hover i {
             color: white !important;
         }
+
         .t13-card-heart i {
             font-size: 16px;
         }
+
         .text_red {
             color: var(--t13-primary);
         }
+
         .text_grey {
             color: #cbd5e1;
         }
+
         .t13-card-body {
             padding: 1.25rem;
         }
+
         .t13-card-title {
             font-size: 0.9375rem;
             font-weight: 700;
@@ -584,22 +718,26 @@
             overflow: hidden;
             min-height: 45px;
         }
+
         .t13-card-price {
             display: flex;
             align-items: baseline;
             gap: 0.5rem;
             margin: 0.75rem 0;
         }
+
         .t13-price-now {
             font-size: 1.375rem;
             font-weight: 900;
             color: var(--t13-primary);
         }
+
         .t13-price-was {
             font-size: 0.875rem;
             color: var(--t13-gray);
             text-decoration: line-through;
         }
+
         .t13-btn-card {
             width: 100%;
             padding: 0.7rem;
@@ -612,15 +750,18 @@
             cursor: pointer;
             transition: all 0.3s;
         }
+
         .t13-btn-card:hover {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
             transform: translateY(-2px);
         }
+
         .t13-btn-remove {
             background: var(--t13-primary-bg);
             color: var(--t13-primary);
         }
+
         .t13-btn-remove:hover {
             background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent));
             color: white;
@@ -632,6 +773,7 @@
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 1rem;
         }
+
         .t13-gallery-item {
             position: relative;
             border-radius: 16px;
@@ -640,33 +782,39 @@
             cursor: pointer;
             transition: all 0.4s;
         }
+
         .t13-gallery-item:hover {
             transform: scale(1.04);
             box-shadow: 0 10px 30px rgba(124, 58, 237, 0.25);
             z-index: 10;
         }
+
         .t13-gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.5s;
         }
+
         .t13-gallery-item:hover img {
             transform: scale(1.15);
         }
+
         .t13-gallery-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(124,58,237,0.85), rgba(244,114,182,0.85));
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(244, 114, 182, 0.85));
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s;
         }
+
         .t13-gallery-item:hover .t13-gallery-overlay {
             opacity: 1;
         }
+
         .t13-gallery-overlay i {
             font-size: 2rem;
             color: white;
@@ -682,6 +830,7 @@
             border: 1px solid #ede9fe;
             transition: all 0.3s;
         }
+
         .t13-review:hover {
             border-color: var(--t13-primary-light);
             box-shadow: 0 8px 30px rgba(124, 58, 237, 0.1);
@@ -693,6 +842,7 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
         }
+
         .t13-tile {
             background: white;
             padding: 2.5rem 2rem;
@@ -703,22 +853,26 @@
             position: relative;
             overflow: hidden;
         }
+
         .t13-tile::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(124,58,237,0.03), rgba(244,114,182,0.03));
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.03), rgba(244, 114, 182, 0.03));
             opacity: 0;
             transition: opacity 0.3s;
         }
+
         .t13-tile:hover::before {
             opacity: 1;
         }
+
         .t13-tile:hover {
             border-color: var(--t13-primary-light);
             transform: translateY(-6px);
             box-shadow: 0 12px 35px rgba(124, 58, 237, 0.12);
         }
+
         .t13-tile-icon {
             width: 64px;
             height: 64px;
@@ -732,16 +886,34 @@
             z-index: 1;
         }
 
-        .cursor-pointer { cursor: pointer; }
-        .d-none { display: none; }
+        .cat_name {
+            font-size: 1.375rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--t13-dark);
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, var(--t13-primary), var(--t13-accent)) 1;
+            display: inline-block;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .d-none {
+            display: none;
+        }
 
         .rating-stars {
             position: relative;
             display: inline-block;
         }
+
         .stars-base i {
-            color: rgba(255,255,255,0.3);
+            color: rgba(255, 255, 255, 0.3);
         }
+
         .stars-fill {
             position: absolute;
             top: 0;
@@ -754,16 +926,213 @@
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
-            .t13-hero-inner { grid-template-columns: 1fr; }
-            .t13-info-grid { grid-template-columns: 1fr; }
-            .t13-nav { display: none; }
-            .t13-products { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+            .t13-hero-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .t13-info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .t13-nav {
+                display: none;
+            }
+
+            .t13-products {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
         }
+
         @media (max-width: 768px) {
-            .t13-hero-title { font-size: 2.5rem; }
-            .t13-products { grid-template-columns: repeat(2, 1fr); }
-            .t13-gallery { grid-template-columns: repeat(3, 1fr); }
-            .t13-section { padding: 3rem 0; }
+            .t13-hero-title {
+                font-size: 23px;
+            }
+
+            .t13-products {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .t13-gallery {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .t13-section {
+                padding: 3rem 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .t13-hero-desc {
+                font-size: 12px;
+            }
+
+            .t13-btn-ghost,
+            .t13-btn-hero {
+                padding: 10px;
+            }
+
+            .t13-stat-box {
+                padding: 6px;
+            }
+
+            .t13-stat-val {
+                font-size: 19px;
+            }
+
+            .t13-hero-inner {
+                gap: 2rem;
+
+            }
+
+            .dfasdf {
+                font-size: 13px;
+                padding: 0.85rem 7px;
+            }
+
+            .t13-btn-outline {
+                padding: 0.75rem 10px;
+            }
+
+            .t13-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                z-index: 10;
+            }
+
+            .t13-hero-stat-val {
+                font-size: 15px;
+            }
+
+            .t13-nav.show {
+                display: flex;
+            }
+
+            .t13-nav a {
+                padding: 10px 20px;
+                display: block;
+            }
+
+            .t13-header-inner {
+                position: relative;
+            }
+
+            .t13-topbar {
+                display: none;
+            }
+
+            .t13-hero {
+                padding: 2rem 0 3rem;
+            }
+
+            .t13-logo p {
+                display: none;
+            }
+
+            .t13-logo h1 {
+                font-size: 13px;
+            }
+
+            .t13-header-inner {
+                padding: 0.875rem 1rem;
+            }
+
+            .t13-hero-img img {
+                height: auto;
+            }
+
+            .t13-hero-inner {
+                padding: 0 1rem;
+            }
+
+            .t13-announce-inner {
+                padding: 0 1rem;
+            }
+
+            .t13-info-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .t13-wrap {
+                padding: 0 1rem;
+            }
+
+            .t13-about-card {
+                padding: 1.5rem;
+            }
+
+            .t13-contact-card {
+                padding: 10px;
+            }
+
+            .t13-rating-num {
+                font-size: 2rem;
+                font-weight: 600;
+            }
+
+            .t13-rating-box {
+                padding: 0.5rem;
+            }
+
+            .t13-section {
+                padding: 1rem 0;
+            }
+
+            .t13-section-title {
+                font-size: 23px;
+            }
+
+            .cat_name {
+                font-size: 15px;
+            }
+
+            .t13-section-header {
+                margin-bottom: 1rem;
+            }
+
+
+            .product_data {
+                margin: 1rem 0;
+            }
+
+            .about_section {
+                   padding: 1rem;
+            }
+
+            .t13-card-img {
+                height: 111px;
+            }
+
+            .t13-card-body {
+                padding: 10px;
+            }
+
+            .t13-card-title {
+                font-size: 13px;
+            }.t13-nav {
+    gap: 1rem;
+            }
+
+            .product_data {
+                margin: 1rem 0;
+            }
+            .t13-nav a {
+    color: #9947e0;}
+        }
+        .t13-btn-glow{
+                    color: white;
         }
     </style>
 
@@ -871,12 +1240,16 @@
     <header class="t13-header">
         <div class="t13-header-inner">
             <div class="t13-logo">
-                <img loading="lazy" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
+                <img loading="lazy" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}"
+                    alt="{{ $store['name'] }}">
                 <div>
                     <h1>{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h1>
                     <p>{{ $store['meta_title'] }}</p>
                 </div>
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.t13-nav').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <nav class="t13-nav">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -919,7 +1292,8 @@
             </div>
 
             <div class="t13-hero-img">
-                <img loading="lazy" src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="Cover">
+                <img loading="lazy" src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}"
+                    alt="Cover">
             </div>
         </div>
     </div>
@@ -960,8 +1334,8 @@
                         @if (strlen($description) > 350)
                             <span id="dots-{{ $store['id'] }}"></span>
                             <span id="more-{{ $store['id'] }}" class="d-none">{!! substr($description, 350) !!}</span>
-                            <a class="cursor-pointer" style="color: var(--t13-primary); font-weight: 800;" onclick="toggleReadMore({{ $store['id'] }})"
-                                id="btn-{{ $store['id'] }}">Read more →</a>
+                            <a class="cursor-pointer" style="color: var(--t13-primary); font-weight: 800;"
+                                onclick="toggleReadMore({{ $store['id'] }})" id="btn-{{ $store['id'] }}">Read more →</a>
                         @endif
                     </div>
                 </div>
@@ -974,7 +1348,9 @@
                             <i class="fas fa-phone"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Phone</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Phone</h4>
                             @php
                                 $phones = $data['store_config']?->webpage_phones;
                                 if ($phones) {
@@ -998,9 +1374,12 @@
                             <i class="fas fa-envelope"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Email</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Email</h4>
                             <p style="font-size: 14px; margin: 0;">
-                                <a href="mailto:{{ $store['email'] }}" style="color: white; text-decoration: none;">{{ $data['store_config']?->webpage_email ?? $store->email }}</a>
+                                <a href="mailto:{{ $store['email'] }}"
+                                    style="color: white; text-decoration: none;">{{ $data['store_config']?->webpage_email ?? $store->email }}</a>
                             </p>
                         </div>
                     </div>
@@ -1010,7 +1389,9 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">Address</h4>
+                            <h4
+                                style="font-size: 10px; text-transform: uppercase; color: var(--t13-primary-light); margin-bottom: 0.5rem; letter-spacing: 1px;">
+                                Address</h4>
                             <p style="font-size: 14px; margin: 0;">{{ $store['address'] }}</p>
                         </div>
                     </div>
@@ -1034,7 +1415,8 @@
                                 <i class="fas fa-star" style="font-size: 18px;"></i>
                             </div>
                         </div>
-                        <div style="font-size: 12px; opacity: 0.95; color: white;">{{ $store->rating_count }} Reviews</div>
+                        <div style="font-size: 12px; opacity: 0.95; color: white;">{{ $store->rating_count }} Reviews
+                        </div>
                     </div>
 
                     <div style="margin-top: 1.5rem;">
@@ -1046,16 +1428,17 @@
     </div>
 
     <!-- Banners -->
-    @if(count($data['banners']) > 0)
-    <div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
-        <div class="owl-carousel banner-carousel t13-zoom-in">
-            @foreach ($data['banners'] as $value)
-                <a href="{{ $value->default_link ?? '#' }}">
-                    <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner" style="border-radius: 16px; width: 100%;">
-                </a>
-            @endforeach
+    @if (count($data['banners']) > 0)
+        <div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
+            <div class="owl-carousel banner-carousel t13-zoom-in">
+                @foreach ($data['banners'] as $value)
+                    <a href="{{ $value->default_link ?? '#' }}">
+                        <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
+                            alt="banner" style="border-radius: 16px; width: 100%;">
+                    </a>
+                @endforeach
+            </div>
         </div>
-    </div>
     @endif
 
     <!-- Products Section -->
@@ -1071,8 +1454,8 @@
             </div>
 
             @foreach ($productdata as $key => $cat)
-                <div style="margin: 3rem 0;">
-                    <h3 class="t13-slide-left" style="font-size: 1.375rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--t13-dark); padding-bottom: 0.5rem; border-bottom: 3px solid; border-image: linear-gradient(90deg, var(--t13-primary), var(--t13-accent)) 1; display: inline-block;">{{ $cat->name }}</h3>
+                <div style="" class="product_data">
+                    <h3 class="t13-slide-left cat_name" style="">{{ $cat->name }}</h3>
 
                     <div class="t13-products">
                         @foreach ($cat->items as $index => $pro)
@@ -1087,7 +1470,8 @@
                                     $mrp = $pro->mrp_price;
                                 }
                             @endphp
-                            <div class="pr_{{ $pro->id }} t13-card {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}" style="transition-delay: {{ $index * 0.06 }}s;">
+                            <div class="pr_{{ $pro->id }} t13-card {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}"
+                                style="transition-delay: {{ $index * 0.06 }}s;">
                                 <div class="t13-card-img">
                                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                                         <img loading="lazy"
@@ -1111,7 +1495,8 @@
 
                                     <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
                                         class="prHeart_{{ $pro->id }} t13-card-heart">
-                                        <i class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                        <i
+                                            class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
                                     </div>
                                 </div>
 
@@ -1123,7 +1508,8 @@
                                     </a>
 
                                     @if ($module == 5)
-                                        <p style="font-size: 11px; color: var(--t13-gray); margin-bottom: 0.5rem; min-height: 16px;">
+                                        <p
+                                            style="font-size: 11px; color: var(--t13-gray); margin-bottom: 0.5rem; min-height: 16px;">
                                             {{ !empty($variations) ? $variations[0]->type : '' }}
                                         </p>
 
@@ -1137,12 +1523,14 @@
                                         <div class="cartSec_{{ $pro->id }}">
                                             @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
                                             @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
-                                                <button onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
                                                     class="t13-btn-card t13-btn-remove">
                                                     <i class="fa fa-times"></i> Remove
                                                 </button>
                                             @else
-                                                <button onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
                                                     class="t13-btn-card">
                                                     <i class="fa fa-plus"></i> Add
                                                 </button>
@@ -1201,11 +1589,17 @@
 
                 <div class="t13-gallery">
                     @foreach ($data['galleries'] as $index => $value)
-                        <a target="_blank"
-                            href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
-                            class="t13-gallery-item {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }} lightgallery-item" style="transition-delay: {{ $index * 0.05 }}s;">
+                        <a target="_blank" href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
+                            class="t13-gallery-item {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }} lightgallery-item"
+                            style="transition-delay: {{ $index * 0.05 }}s;">
                             <img loading="lazy"
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Gallery {{ $index + 1 }}">
                             <div class="t13-gallery-overlay">
                                 <i class="fas fa-search-plus"></i>
@@ -1227,18 +1621,23 @@
                 </div>
 
                 @foreach ($data['reviews'] as $index => $rev)
-                    <div class="t13-review {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}" style="transition-delay: {{ $index * 0.1 }}s;">
+                    <div class="t13-review {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}"
+                        style="transition-delay: {{ $index * 0.1 }}s;">
                         <div style="display: flex; gap: 1.25rem; margin-bottom: 1.25rem;">
                             <img loading="lazy"
                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                                 style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid var(--t13-primary);"
                                 alt="{{ $rev->f_name }}">
                             <div style="flex: 1;">
-                                <div style="font-size: 1.0625rem; font-weight: 800; color: var(--t13-dark); margin-bottom: 0.5rem;">{{ $rev->f_name . ' ' . $rev->l_name }}</div>
-                                <div style="font-size: 11px; color: var(--t13-gray); margin-bottom: 0.5rem;">{{ _formatted_datetime($rev->created_at) }}</div>
+                                <div
+                                    style="font-size: 1.0625rem; font-weight: 800; color: var(--t13-dark); margin-bottom: 0.5rem;">
+                                    {{ $rev->f_name . ' ' . $rev->l_name }}</div>
+                                <div style="font-size: 11px; color: var(--t13-gray); margin-bottom: 0.5rem;">
+                                    {{ _formatted_datetime($rev->created_at) }}</div>
                                 <div style="display: flex; gap: 0.25rem;">
                                     @for ($i = 1; $i < 6; $i++)
-                                        <i class="fas fa-star" style="font-size: 14px; color: {{ $rev->rating >= $i ? '#f59e0b' : '#e0e0e0' }};"></i>
+                                        <i class="fas fa-star"
+                                            style="font-size: 14px; color: {{ $rev->rating >= $i ? '#f59e0b' : '#e0e0e0' }};"></i>
                                     @endfor
                                 </div>
                             </div>
@@ -1250,8 +1649,10 @@
                             @if (!empty($attachments))
                                 <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
                                     @foreach ($attachments as $img)
-                                        <a target="_blank" href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
-                                            <img loading="lazy" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; border: 2px solid #ede9fe; cursor: pointer;"
+                                        <a target="_blank"
+                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
+                                            <img loading="lazy"
+                                                style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; border: 2px solid #ede9fe; cursor: pointer;"
                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                 alt="review">
                                         </a>
@@ -1261,18 +1662,22 @@
                         @endif
 
                         @if ($rev->reply)
-                            <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--t13-primary-bg); border-left: 3px solid var(--t13-primary); border-radius: 10px;">
+                            <div
+                                style="margin-top: 1.5rem; padding: 1.5rem; background: var(--t13-primary-bg); border-left: 3px solid var(--t13-primary); border-radius: 10px;">
                                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                                     <img loading="lazy"
                                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
                                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
                                         alt="{{ $store->name }}">
                                     <div>
-                                        <div style="font-weight: 800; font-size: 13px; color: var(--t13-dark);">Store Response</div>
-                                        <div style="font-size: 11px; color: var(--t13-gray);">{{ _formatted_datetime($rev->replied_at) }}</div>
+                                        <div style="font-weight: 800; font-size: 13px; color: var(--t13-dark);">Store
+                                            Response</div>
+                                        <div style="font-size: 11px; color: var(--t13-gray);">
+                                            {{ _formatted_datetime($rev->replied_at) }}</div>
                                     </div>
                                 </div>
-                                <p style="font-size: 13px; color: var(--t13-gray); line-height: 1.7; margin: 0;">{{ $rev->reply }}</p>
+                                <p style="font-size: 13px; color: var(--t13-gray); line-height: 1.7; margin: 0;">
+                                    {{ $rev->reply }}</p>
                             </div>
                         @endif
                     </div>
@@ -1280,7 +1685,8 @@
 
                 @if ($data['review_count'] > 2)
                     <div style="text-align: center; margin-top: 2.5rem;">
-                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="t13-btn-glow" style="padding: 0.85rem 2.25rem; font-size: 14px;">
+                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="t13-btn-glow"
+                            style="padding: 0.85rem 2.25rem; font-size: 14px;">
                             View All Reviews <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
@@ -1298,24 +1704,26 @@
             </div>
 
             <div class="t13-contact-tiles" style="margin-top: 2.5rem;">
-                @php $contacts = [
-                    ['icon' => 'map', 'title' => 'Location', 'value' => $store['address']],
-                    ['icon' => 'secured-letter', 'title' => 'Email', 'value' => $store['email'], 'link' => 'mailto:'],
-                    ['icon' => 'phone', 'title' => 'Phone', 'value' => $store['phone'], 'link' => 'tel:'],
-                    ['icon' => 'marker', 'title' => 'Directions', 'value' => 'View Map', 'modal' => true]
-                ]; @endphp
+                @php $contacts = [['icon' => 'map', 'title' => 'Location', 'value' => $store['address']], ['icon' => 'secured-letter', 'title' => 'Email', 'value' => $store['email'], 'link' => 'mailto:'], ['icon' => 'phone', 'title' => 'Phone', 'value' => $store['phone'], 'link' => 'tel:'], ['icon' => 'marker', 'title' => 'Directions', 'value' => 'View Map', 'modal' => true]]; @endphp
 
                 @foreach ($contacts as $index => $contact)
-                    <div class="t13-tile {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}" style="transition-delay: {{ $index * 0.1 }}s;">
+                    <div class="t13-tile {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}"
+                        style="transition-delay: {{ $index * 0.1 }}s;">
                         <div class="t13-tile-icon">
-                            <img loading="lazy" src="https://img.icons8.com/ios-filled/50/{{ $contact['icon'] }}.png" alt="{{ $contact['title'] }}" style="width: 28px; height: 28px; filter: sepia(1) saturate(10) hue-rotate(240deg) brightness(0.6);">
+                            <img loading="lazy" src="https://img.icons8.com/ios-filled/50/{{ $contact['icon'] }}.png"
+                                alt="{{ $contact['title'] }}"
+                                style="width: 28px; height: 28px; filter: sepia(1) saturate(10) hue-rotate(240deg) brightness(0.6);">
                         </div>
-                        <div style="font-size: 1.125rem; font-weight: 800; color: var(--t13-dark); margin-bottom: 0.5rem; position: relative; z-index: 1;">{{ $contact['title'] }}</div>
+                        <div
+                            style="font-size: 1.125rem; font-weight: 800; color: var(--t13-dark); margin-bottom: 0.5rem; position: relative; z-index: 1;">
+                            {{ $contact['title'] }}</div>
                         <div style="font-size: 13px; color: var(--t13-gray); position: relative; z-index: 1;">
                             @if (isset($contact['link']))
-                                <a href="{{ $contact['link'] }}{{ $contact['value'] }}" style="color: var(--t13-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
+                                <a href="{{ $contact['link'] }}{{ $contact['value'] }}"
+                                    style="color: var(--t13-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
                             @elseif (isset($contact['modal']))
-                                <a class="cursor-pointer" data-bs-toggle="modal" data-bs-target="#exampleModal" style="color: var(--t13-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
+                                <a class="cursor-pointer" data-bs-toggle="modal" data-bs-target="#exampleModal"
+                                    style="color: var(--t13-primary); text-decoration: none; font-weight: 600;">{{ $contact['value'] }}</a>
                             @else
                                 {{ $contact['value'] }}
                             @endif
@@ -1334,7 +1742,7 @@
                 <h2 class="t13-section-title">Our Story</h2>
             </div>
 
-            <div class="t13-slide-left" style="background: var(--t13-primary-bg); border-radius: 20px; padding: 2.5rem; border: 1px solid #ede9fe; line-height: 1.9; font-size: 14px; color: var(--t13-gray);">
+            <div class="t13-slide-left about_section" style="">
                 {!! $data['store_config']->about_us ?? 'Information coming soon.' !!}
             </div>
         </div>
@@ -1344,9 +1752,11 @@
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="border-radius: 20px; border: none;">
-                <div class="modal-header" style="background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent)); color: white; border-radius: 20px 20px 0 0;">
+                <div class="modal-header"
+                    style="background: linear-gradient(135deg, var(--t13-primary), var(--t13-accent)); color: white; border-radius: 20px 20px 0 0;">
                     <h5 class="modal-title">{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="map" style="height: 450px; border-radius: 10px;"></div>
@@ -1366,7 +1776,8 @@
             const canvas = document.getElementById('sparkleCanvas');
             const ctx = canvas.getContext('2d');
             let particles = [];
-            let mouseX = 0, mouseY = 0;
+            let mouseX = 0,
+                mouseY = 0;
             let animId;
 
             function resize() {
@@ -1459,7 +1870,10 @@
                     entry.target.classList.add('active');
                 }
             });
-        }, { threshold: 0.08, rootMargin: '0px' });
+        }, {
+            threshold: 0.08,
+            rootMargin: '0px'
+        });
 
         document.querySelectorAll('.t13-slide-left, .t13-slide-right, .t13-fade-up, .t13-zoom-in').forEach(el => {
             t13Observer.observe(el);
@@ -1504,7 +1918,7 @@
 
         /* ===== SMOOTH SCROLL ===== */
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+            anchor.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
                 if (href !== '#' && document.querySelector(href)) {
                     e.preventDefault();

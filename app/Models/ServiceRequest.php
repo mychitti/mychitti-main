@@ -21,7 +21,10 @@ class ServiceRequest extends Model
     {
         return $this->belongsTo(Item::class, 'item_id', 'id')->withoutGlobalScopes();
     }
-
+    public function leadStatus() 
+    {
+        return $this->hasMany(LeadStatus::class, 'service_request_id');
+    }
     public function accepted()
     {
         return $this->hasOne(AcceptedServiceRequest::class, 'service_request_id');

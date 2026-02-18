@@ -30,12 +30,12 @@
             My Services
         </a>
     </li>
-    <li class="nav-item">
+    {{-- <li class="nav-item">
         <a class=" tab_item nav-link {{ Request::is('store-panel/settings/webpage/webpage-templates') ? 'active' : '' }}"
             href="{{ route('vendor.settings.webpage', ['tab' => 'webpage-templates']) }}">
             Webpage Templates
         </a>
-    </li>
+    </li> --}}
     <li class="nav-item">
         <a class="tab_item nav-link {{ Request::is('store-panel/settings/webpage/banners') ? 'active' : '' }}"
             href="{{ route('vendor.settings.webpage', ['tab' => 'banners']) }}">
@@ -73,6 +73,12 @@
         <a class=" tab_item nav-link {{ Request::is('store-panel/settings/webpage/domain-setup') ? 'active' : '' }}"
             href="{{ route('vendor.settings.webpage', ['tab' => 'domain-setup']) }}">
            Domain Setup
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class=" tab_item nav-link {{ Request::is('store-panel/settings/webpage/third-party') ? 'active' : '' }}"
+            href="{{ route('vendor.settings.webpage', ['tab' => 'third-party']) }}">
+           Third Party
         </a>
     </li>
 

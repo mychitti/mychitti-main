@@ -141,19 +141,21 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        .t14-nav {
+        .t14-nav { 
             display: flex;
             gap: 1.75rem;
             align-items: center;
         }
+        .about_content{
+            font-size: 14px; color: var(--t14-gray); line-height: 1.8; padding-left: 1.5rem;
+        }
         .t14-nav a {
-            color: var(--t14-dark);
             text-decoration: none;
             font-size: 13px;
             font-weight: 700;
             transition: all 0.3s;
             position: relative;
-            padding: 0.3rem 0;
+              padding: 0.3rem 4px;
         }
         .t14-nav a::after {
             content: '';
@@ -186,6 +188,35 @@
             color: var(--t14-dark);
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(245,158,11,0.4);
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--t14-primary);
+            padding: 5px;
+        }
+        @media (max-width: 768px) {
+            .mobile-menu-toggle { display: block; }
+            .t14-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                z-index: 10;
+                border-top: 3px solid var(--t14-gold);
+            }
+            .t14-nav.show { display: flex; }
+            .t14-nav a { padding: 10px 25px; display: block; }
+            .t14-header-inner { position: relative; }
         }
 
         /* ===== HERO ===== */
@@ -281,6 +312,7 @@
             font-weight: 900;
             line-height: 1.08;
             margin-bottom: 1.25rem;
+            color: #9b9b9b;
         }
         .t14-typed-text {
             color: var(--t14-gold);
@@ -879,11 +911,169 @@
             .t14-products { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
         }
         @media (max-width: 768px) {
-            .t14-hero-title { font-size: 2.5rem; }
+            .t14-hero-title {         font-size: 22px;}
             .t14-products { grid-template-columns: repeat(2, 1fr); }
             .t14-gallery { grid-template-columns: repeat(3, 1fr); }
             .t14-section { padding: 3rem 0; }
             .t14-chalkboard { padding: 2rem; }
+             .mobile-menu-toggle {
+                display: block;
+            }
+            .t14-btn-hero-primary, .t14-btn-hero-outline{
+                    padding: 8px;
+            }
+
+            .dfasdf {
+                font-size: 13px;
+                padding: 0.85rem 7px;
+            }
+
+            .t14-btn-outline {
+                padding: 0.75rem 10px;
+            }
+
+            .t14-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                z-index: 10;
+            }
+
+            .t14-hero-stat-val {
+                font-size: 15px;
+            }
+
+            .t14-nav.show {
+                display: flex;
+            }
+
+            .t14-nav a {
+                padding: 10px 20px;
+                display: block;
+            }
+
+            .t14-header-inner {
+                position: relative;
+            }
+
+            .t14-topbar {
+                display: none;
+            }
+
+            .t14-hero {
+                padding: 2rem 0 3rem;
+            }
+
+            .t14-logo p {
+                display: none;
+            }
+
+            .t14-logo h1 {
+                font-size: 13px;
+            }
+
+            .t14-header-inner {
+                padding: 0.875rem 1rem;
+            }
+
+            .t14-hero-img img {
+                height: auto;
+            }
+
+            .t14-hero-inner {
+                padding: 0 1rem;
+            }
+
+            .t14-announce-inner {
+                padding: 0 1rem;
+            }
+
+            .t14-info-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .t14-wrap {
+                padding: 0 1rem;
+            }
+
+            .t14-about-card {
+                padding: 1.5rem;
+            }
+
+            .t14-contact-card {
+                padding: 1.5rem;
+            }
+
+            .t14-rating-num {
+                font-size: 2rem;
+                font-weight: 600;
+            }
+
+            .t14-rating-box {
+                padding: 0.5rem;
+            }
+
+            .t14-section {
+                padding: 1rem 0;
+            }
+
+            .t14-section-title {
+                font-size: 23px;
+            }
+
+            .cat_name {
+                font-size: 17px;
+            }
+
+            .product_data {
+                margin: 1rem 0;
+            }
+
+            .t14-card-img {
+                height: 111px;
+            }
+
+            .t14-card-body {
+                padding: 10px;
+            }
+
+            .t14-card-title {
+                font-size: 13px;
+            }
+
+            .t14-nav {
+                gap: 1rem;
+
+            }
+            .t14-counter {
+    padding: 2px;}
+    .t14-counter-val {
+    font-size: 20px;}
+    .t14-hero-visual img {
+    height: auto;}
+    .t14-hero-inner {
+    gap: 2rem;
+    }
+    .t14-about-card::before{
+        content : none;
+    }
+    .t14-about-card h2, .about_content{
+        padding: 0;
+    }
+    .t14-contact-sidebar {
+    padding: 1rem;
+
+    }
+    .t14-rating-big {
+    font-size: 2rem;}
         }
     </style>
 
@@ -994,6 +1184,9 @@
                     <p>{{ $store['meta_title'] }}</p>
                 </div>
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.t14-nav').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <nav class="t14-nav">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -1082,7 +1275,7 @@
                         $description = $store['meta_description'];
                         $short = Str::limit($description, 350);
                     @endphp
-                    <div style="font-size: 14px; color: var(--t14-gray); line-height: 1.8; padding-left: 1.5rem;" id="text-{{ $store['id'] }}">
+                    <div style="" class="about_content" id="text-{{ $store['id'] }}">
                         {!! $short !!}
                         @if (strlen($description) > 350)
                             <span id="dots-{{ $store['id'] }}"></span>
@@ -1335,7 +1528,13 @@
                             href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                             class="t14-gallery-item {{ $index % 2 == 0 ? 't14-from-left' : 't14-from-right' }} lightgallery-item" style="transition-delay: {{ $index * 0.05 }}s;">
                             <img loading="lazy"
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Gallery {{ $index + 1 }}">
                             <div class="t14-gallery-ov">
                                 <i class="fas fa-search-plus"></i>

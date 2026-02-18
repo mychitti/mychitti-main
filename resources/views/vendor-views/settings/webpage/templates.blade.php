@@ -11,12 +11,18 @@
         <div class="row">
             @foreach ($templates as $template)
                 <div class="col-md-3 col-sm-6 mb-4">
-                    <div class="card h-100 template-card">
+                    <div class="card h-100 template-card" style="    border: 1px solid #d7d7d7;">
 
-                        <img src="{{ $template->thumbnail }}" class="card-img-top" style="height:150px;object-fit:cover">
+                        <img src="{{ asset('storage/app/public/uploaded/templates') .'/'. $template->thumbnail }}" class="card-img-top" style="height:150px;object-fit:cover">
 
                         <div class="card-body p-2 text-center">
-                            <small class="d-block mb-2">{{ $template->name }}</small>
+                            <p style="font-size: 21px;
+                                font-weight: bold;" class="d-block mb-2">{{ $template->name }}</p>
+                                <p style="    color: black;">
+                                @if($template->price > 0 )
+                                {{_price($template->price) }} ({{$template->duration_count . ' ' . $template->duration_unit}})
+                                @else Free @endif
+                            </p>
 
                             <div class="btn-group btn-group-sm">
 

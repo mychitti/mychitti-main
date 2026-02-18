@@ -134,63 +134,9 @@
                     <button type="reset" class="btn btn--primary ml-2 location-reload-to-base" data-url="{{url()->full()}}">{{translate('messages.reset')}}</button>
                     @endif
 
-   <button type="button" data-toggle="modal" data-target="#importStoreModal"
-                        class="btn btn-outline-primary">Import</button>
-                    <div class="modal fade" id="importStoreModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-                        aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
-                                    <button type="button" class="close close_modal" data-dismiss="modal"
-                                        aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <form action="{{ route('admin.store.import') }}" method="post"
-                                        enctype="multipart/form-data">
-                                        @csrf
-                                        <a href="{{ asset('storage/app/public/util/store_import_example.xlsx') }}"
-                                            download class="btn btn-outline-primary mb-2">View Example</a>
-                                        <div class="form-group">
-                                            <label for="file">Upload Excel File</label>
-                                            <input type="file" style="height: 46px !important;" name="file"
-                                                class="form-control" id="file" accept=".xlsx,.xls">
-                                        </div>
-                                        <div class="form-group w-100 ">
-                                            <button type="submit" class="btn btn-primary float-right">Import</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="p-3">
-                                    <h4>How It Works</h4>
-                                    <ol>
-                                        <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
-                                        <li><strong>Required Fields</strong><br> Must fill : <code>Store Name</code>,
-                                            <code>Phone</code>,
-                                            <code>Owner First Name</code>,
-                                            <code>Owner Last Name</code>,
-                                            <code>Google Verification</code>,
-                                            <code>Address</code>,
-                                            <code>Latitude</code>,
-                                            <code>Longitude</code>,
-                                            <code>Business Type</code>,
-                                            <code>Zone Id</code>
-                                        </li>
-                                        <li><strong>Phone</strong><br> Format : <code>Conuntry Code (91)</code> + <code>10
-                                                digits (9988779898)</code> eg. : <code>919988779898</code></li>
-                                        <li><strong>Business Type</strong><br> Options :
-                                            @foreach ($service_stores_type as $key => $value)
-                                                <code>{{$value->name}}</code>,
-                                            @endforeach
-                                        </li>
-
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-                    </div>                    <!-- Unfold -->
+                    <button type="button" data-toggle="modal" data-target="#importStoreModal"
+                                            class="btn btn-outline-primary">Import</button>
+                                     <!-- Unfold -->
                     <div class="hs-unfold mr-2">
                         <a class="js-hs-unfold-invoker btn btn-sm btn-white dropdown-toggle min-height-40" href="javascript:;"
                             data-hs-unfold-options='{
@@ -218,7 +164,11 @@
                         </div>
                     </div>
                     <!-- End Unfold -->
-                </div>
+                </div>   
+           
+            </div> <div class="card-header py-2">
+
+              <span><a href="" class="btn btn-outline-success"><b>Total:</b> {{ $stores->total() }}</a>  <a class="btn btn-outline-danger " href="javascript:;" id="showDuplicatesBtn" >Duplicates : {{ $duplicateCount }}</a> </span>
             </div>
             <!-- End Header -->
 
@@ -241,6 +191,7 @@
                         <th class="border-0">{{translate('messages.zone')}}</th>
                         <th class="text-uppercase border-0">{{translate('messages.featured')}}</th>
                         <th class="text-uppercase border-0">{{translate('messages.status')}}</th>
+                        <th class="text-uppercase border-0">{{translate('messages.added_at')}}</th>
                         <th class="text-center border-0">{{translate('messages.action')}}</th>
                     </tr>
                     </thead>
@@ -327,7 +278,7 @@
                                     @endif
                                 @endif
                             </td>
-
+                              <td>{{$store->created_at}}</td>
                             <td>
                                 <div class="btn--container justify-content-center">
                                     <a class="btn action-btn btn--warning btn-outline-warning"
@@ -377,6 +328,99 @@
         </div>
         <!-- End Card -->
     </div>
+  <div class="modal fade" id="importStoreModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
+                <button type="button" class="close close_modal" data-dismiss="modal"
+                    aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ route('admin.store.import') }}" method="post"
+                    enctype="multipart/form-data">
+                    @csrf
+                    <a href="{{ asset('storage/app/public/util/store_import_example.xlsx') }}"
+                        download class="btn btn-outline-primary mb-2">View Example</a>
+                    <div class="form-group">
+                        <label for="file">Upload Excel File</label>
+                        <input type="file" style="height: 46px !important;" name="file"
+                            class="form-control" id="file" accept=".xlsx,.xls">
+                    </div>
+                    <div class="form-group w-100 ">
+                        <button type="submit" class="btn btn-primary float-right">Import</button>
+                    </div>
+                </form>
+            </div>
+            <div class="p-3">
+                <h4>How It Works</h4>
+                <ol>
+                    <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
+                    <li><strong>Required Fields</strong><br> Must fill : <code>Store Name</code>,
+                        <code>Phone</code>,
+                        <code>Owner First Name</code>,
+                        <code>Owner Last Name</code>,
+                        <code>Google Verification</code>,
+                        <code>Address</code>,
+                        <code>Latitude</code>,
+                        <code>Longitude</code>,
+                        <code>Business Type</code>,
+                        <code>Zone Id</code>
+                    </li>
+                    <li><strong>Phone</strong><br> Format : <code>Conuntry Code (91)</code> + <code>10
+                            digits (9988779898)</code> eg. : <code>919988779898</code></li>
+                    <li><strong>Business Type</strong><br> Options :
+                        @foreach ($service_stores_type as $key => $value)
+                            <code>{{$value->name}}</code>,
+                        @endforeach
+                    </li>
+
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicates Modal -->
+<div class="modal fade" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicatesModalLabel">Duplicate Stores</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="duplicatesLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Loading duplicates...</p>
+                </div>
+                <div class="table-responsive" id="duplicatesTableWrap" style="display:none;">
+                    <table class="table table-bordered table-sm">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Store Name</th>
+                                <th>Phone</th>
+                                <th>Created By</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duplicatesTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="duplicatesEmpty" class="text-center py-4" style="display:none;">
+                    <p>No duplicates found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 
@@ -476,6 +520,55 @@
         setTimeout(() => $(this).html('<i class="tio-copy"></i>'), 1000);
     });
 });
+
+        $('#showDuplicatesBtn').on('click', function () {
+            $('#duplicatesModal').modal('show');
+            $('#duplicatesLoading').show();
+            $('#duplicatesTableWrap').hide();
+            $('#duplicatesEmpty').hide();
+
+            var params = new URLSearchParams(window.location.search);
+            var duplicateUrl = '{{ route("admin.store.duplicates") }}';
+            if (params.get('created_by')) {
+                duplicateUrl += '?created_by=' + params.get('created_by');
+            }
+
+            $.ajax({
+                url: duplicateUrl,
+                type: 'GET',
+                success: function (res) {
+                    $('#duplicatesLoading').hide();
+                    if (res.data && res.data.length > 0) {
+                        var rows = '';
+                        var colors = ['#fff3cd', '#d1ecf1', '#f8d7da', '#d4edda', '#e2e3e5', '#cce5ff'];
+                        $.each(res.data, function (groupIndex, group) {
+                            var bgColor = colors[groupIndex % colors.length];
+                            rows += '<tr style="background-color: #f0f0f0;">' +
+                                '<td colspan="6"><strong>' + group.reason + '</strong> <span class="badge badge-soft-danger">' + group.stores.length + ' stores</span></td>' +
+                                '</tr>';
+                            $.each(group.stores, function (i, store) {
+                                rows += '<tr style="background-color:' + bgColor + ';">' +
+                                    '<td>' + store.id + '</td>' +
+                                    '<td>' + store.name + '</td>' +
+                                    '<td>' + store.phone + '</td>' +
+                                    '<td>' + store.created_by + '</td>' +
+                                    '<td>' + store.status + '</td>' +
+                                    '<td><a href="' + store.view_url + '" class="btn btn-sm btn-outline-primary">View</a></td>' +
+                                    '</tr>';
+                            }); 
+                        });
+                        $('#duplicatesTableBody').html(rows);
+                        $('#duplicatesTableWrap').show();
+                    } else {
+                        $('#duplicatesEmpty').show();
+                    }
+                },
+                error: function () {
+                    $('#duplicatesLoading').hide();
+                    $('#duplicatesEmpty').html('<p class="text-danger">Failed to load duplicates.</p>').show();
+                }
+            });
+        });
 
     </script>
 

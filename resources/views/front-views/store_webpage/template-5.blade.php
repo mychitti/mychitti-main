@@ -107,6 +107,7 @@
         }
 
         .logo-text h1 {
+            color:white;
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0;
@@ -127,20 +128,20 @@
         .medical-nav a {
             color: white;
             text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
+            font-weight: 500;  
+            font-size: 14px; 
             transition: all 0.3s;
             padding: 0.5rem 0;
             border-bottom: 2px solid transparent;
         }
-
+ 
         .medical-nav a:hover {
             border-bottom-color: white;
-        }
+        } 
 
         .appointment-btn {
             background: white;
-            color: var(--medical-blue);
+            color: var(--medical-blue)  !important;
             padding: 0.75rem 1.5rem;
             border-radius: 8px;
             font-weight: 600;
@@ -153,6 +154,18 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            padding: 5px;
+        }
+
+     
 
         /* Breadcrumb Medical */
         .breadcrumb-medical {
@@ -255,6 +268,7 @@
         .certifications {
             display: flex;
             gap: 1.5rem;
+                flex-wrap: wrap;
             padding: 1.5rem 0;
             border-top: 2px solid var(--medical-light);
             border-bottom: 2px solid var(--medical-light);
@@ -465,7 +479,7 @@
         .department-header {
             background: linear-gradient(135deg, var(--medical-blue) 0%, var(--medical-teal) 100%);
             color: white;
-            padding: 1.5rem 2rem;
+            padding: 10px;
             border-radius: 12px;
             margin: 2.5rem 0 1.5rem;
             display: flex;
@@ -486,9 +500,10 @@
         }
 
         .department-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0;
+                color: white;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
         }
 
         /* Medical Service Cards */
@@ -698,9 +713,9 @@
             background: var(--medical-bg);
         }
 
-        .gallery-grid-medical {
+        .gallery-grid-medical{
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
             gap: 1.5rem;
             margin-top: 2rem;
         }
@@ -988,36 +1003,6 @@
             }
         }
 
-        @media (max-width: 768px) {
-            .header-top {
-                display: none;
-            }
-
-            .facility-name {
-                font-size: 1.75rem;
-            }
-
-            .certifications {
-                flex-wrap: wrap;
-            }
-
-            .contact-quick {
-                grid-template-columns: 1fr;
-            }
-
-            .services-grid-medical {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-
-            .gallery-grid-medical {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .contact-grid-medical {
-                grid-template-columns: 1fr;
-            }
-        }
 
         /* Utilities */
         .cursor-pointer {
@@ -1045,6 +1030,207 @@
             white-space: nowrap;
             color: #fbbf24;
             width: 0;
+        }
+           @media (max-width: 768px) {
+      .contact-quick{
+            display: flex;
+    flex-direction: column;
+      }
+            .mobile-menu-toggle { display: block; }
+            .header-top { display: none; }
+            .header-main {
+                padding: 0.5rem 0;
+            }
+            .header-main-content {
+                position: relative;
+                padding: 0 1rem;
+            }
+            .medical-logo-section {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                gap: 0.75rem;
+            }
+            .medical-logo {
+                height: 40px;
+                width: 40px;
+                padding: 5px;
+                flex-shrink: 0;
+            }
+            .logo-text {
+                overflow: hidden;
+                min-width: 0;
+            }
+            .logo-text h1 {
+                font-size: 0.85rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 1;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                line-height: 1.3;
+            }
+            .logo-text p {
+                display: none;
+            }
+            .medical-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, var(--medical-blue) 0%, var(--medical-teal) 100%);
+                flex-direction: column;
+                padding: 8px 0;
+                gap: 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+            .medical-nav.show { display: flex; }
+            .medical-nav a {
+                padding: 10px 20px;
+                display: block;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            .medical-nav a:hover {
+                border-bottom-color: rgba(255,255,255,0.1);
+            }
+            .medical-nav .appointment-btn {
+                margin: 10px 20px;
+                text-align: center;
+                display: block;
+            }
+            .breadcrumb-medical {
+                margin-top: 65px;
+                padding: 0.75rem 0;
+            }
+            .breadcrumb-content {
+                padding: 0 1rem;
+            }
+            .medical-hero {
+                padding: 1.5rem 0;
+            }
+            .hero-content {
+                padding: 0 1rem;
+                gap: 1.5rem; 
+                display: block;
+            }
+            .hero-info {
+                padding: 1.5rem;
+            }
+            .facility-name {
+                font-size: 1.5rem;
+            }
+            .facility-tagline {
+                font-size: 0.95rem;
+            }
+            .hero-stats {
+                padding: 1.5rem;
+                margin: 10px 0 ;
+            }
+            .cover-medical {
+                height: auto;
+            }
+            .alert-medical {
+                padding: 0.5rem 0;
+                margin: 1rem 0;
+            }
+            .alert-content {
+                padding: 0 1rem;
+                gap: 0.75rem;
+            }
+            .alert-icon {
+                font-size: 16px;
+            }
+            .alert-text {
+                font-size: 12px;
+            }
+            .services-container {
+                padding: 0 1rem;
+            }
+            .services-medical,
+            .gallery-medical,
+            .reviews-medical,
+            .contact-medical,
+            .about-medical {
+                padding: 2rem 0;
+            }
+            .section-title-medical {
+                font-size: 1.5rem;
+            }
+            .section-subtitle-medical {
+                font-size: 13px;
+            }
+            .department-header {
+                padding: 8px 12px;
+                margin: 1.5rem 0 1rem;
+                gap: 0.75rem;
+            }
+            .department-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+            .department-name {
+                font-size: 15px;
+            }
+            .services-grid-medical {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .service-image-medical {
+                height: 140px;
+            }
+            .service-body-medical {
+                padding: 0.75rem;
+            }
+            .service-title-medical {
+                font-size: 0.8rem;
+                min-height: 36px;
+            }
+            .price-current-medical {
+                font-size: 1.1rem;
+            }
+            .service-pricing-medical {
+                margin: 0.5rem 0;
+                padding-top: 0.5rem;
+            }
+            .btn-medical {
+                padding: 0.5rem;
+                font-size: 11px;
+                gap: 0.35rem;
+            }
+            .gallery-grid-medical {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+            }
+            .contact-grid-medical {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+            .contact-card-medical {
+                padding: 1.25rem;
+            }
+            .contact-icon-medical {
+                width: 50px;
+                height: 50px;
+                margin-bottom: 0.75rem;
+            }
+            .contact-icon-medical img {
+                width: 24px;
+                height: 24px;
+            }
+            .contact-title-medical {
+                font-size: 0.95rem;
+            }
+            .contact-text-medical {
+                font-size: 12px;
+            }
+            .about-content-medical {
+                padding: 1.5rem;
+            }
+            .review-card-medical {
+                padding: 1rem;
+            }
         }
     </style>
 
@@ -1187,6 +1373,9 @@
                         <p>{{ $store['meta_title'] }}</p>
                     </div>
                 </div>
+                <button class="mobile-menu-toggle" onclick="document.querySelector('.medical-nav').classList.toggle('show')">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <nav class="medical-nav">
                     <a href="#services">Services</a>
                     <a href="#reviews">Reviews</a>
@@ -1202,9 +1391,8 @@
     <div class="breadcrumb-medical">
         <div class="breadcrumb-content">
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
+                <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                    <li class="breadcrumb-item">›</li>
                     <li class="breadcrumb-item active">{{ $data['store_config']?->webpage_name ?? $store['name'] }}</li>
                 </ol>
             </nav>
@@ -1501,7 +1689,13 @@
                             href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                             class="gallery-item-medical lightgallery-item">
                             <img loading="lazy" 
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                                 data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Facility">
                             <div class="gallery-overlay">
                                 <i class="fas fa-search-plus" style="font-size: 24px;"></i>

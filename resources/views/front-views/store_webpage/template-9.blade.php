@@ -115,6 +115,7 @@
             font-size: 11px;
             color: var(--text-secondary);
             font-weight: 300;
+            margin-bottom: 0;
         }
 
         .nav-minimal {
@@ -167,6 +168,17 @@
             background: var(--accent-lavender);
             color: white;
         }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-primary);
+            padding: 5px;
+        }
+
 
         /* Hero Minimal */
         .hero-minimal {
@@ -744,7 +756,7 @@
 
         .gallery-grid-minimal {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
             gap: 2rem;
             margin-top: 3rem;
         }
@@ -783,7 +795,7 @@
         .review-minimal {
             background: white;
             border-radius: 12px;
-            padding: 2.5rem;
+            padding: 1.5rem;
             margin-bottom: 2rem;
             border: 1px solid var(--border-light);
             transition: all 0.3s;
@@ -861,8 +873,8 @@
         }
 
         .reply-minimal {
-            margin-top: 1.75rem;
-            padding: 1.75rem;
+            margin-top: 0.75rem;
+            padding: 0.75rem;
             background: var(--soft-gray);
             border-radius: 8px;
             border-left: 3px solid var(--accent-lavender);
@@ -1032,12 +1044,70 @@
         }
 
         @media (max-width: 768px) {
+            .brand-text h1 {
+                font-size: 15px;
+            }
+
+            .hero-layout {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .hero-minimal {
+                padding: 0;
+            }
+
+            .hero-left-minimal {
+                padding: 1rem 0;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .nav-minimal {
+                display: none;
+                gap: 1rem;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--white);
+                flex-direction: column;
+                padding: 15px 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                z-index: 10;
+            }
+
+            .nav-minimal.show {
+                display: flex;
+            }
+
+            .nav-minimal a {
+                padding: 10px 25px;
+                display: block;
+            }
+
+            .header-content {
+                position: relative;
+            }
+
+            .minimal-top-bar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .brand-text p {
+                display: none;
+            }
+
             .top-bar-content {
                 padding: 0 1.5rem;
             }
 
             .header-content {
-                padding: 1.5rem 1.5rem;
+                padding: 15px 1.5rem;
             }
 
             .hero-container,
@@ -1047,12 +1117,12 @@
             }
 
             .hero-title-minimal {
-                font-size: 2.5rem;
+                font-size: 1.5rem;
             }
 
             .products-grid-minimal {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 1.5rem;
+                        gap: 1rem;
             }
 
             .gallery-grid-minimal {
@@ -1062,6 +1132,72 @@
             .contact-grid-minimal {
                 grid-template-columns: 1fr;
             }
+
+            .hero-description {
+                font-size: 12px;
+                margin-bottom: 1rem;
+            }
+
+            .btn-primary-minimal,
+            .btn-secondary-minimal {
+                padding: 10px;
+                font-size: 11px;
+
+            }
+
+            .hero-image-minimal {
+                height: auto;
+            }
+
+            .stat-box-minimal {
+                padding: 0.5rem;
+            }
+
+            .stat-value-minimal {
+                font-size: 1rem;
+            }
+
+            .info-minimal {
+                padding: 1rem 0;
+            }
+
+            .products-minimal {
+                padding: 1rem 0;
+            }
+
+            .section-title-minimal {
+                font-size: 2rem;
+            }
+
+            .info-grid {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .contact-minimal {
+                padding: 1rem;
+            }
+
+            .contact-detail p {
+                font-size: 12px;
+            }
+
+            .product-image-minimal {
+                height: 107px;
+            }
+
+            .product-body-minimal {
+                    padding: 10px;
+            }
+            .product-name-minimal {
+                    font-size: 14px;
+            }
+            .btn-product-minimal
+ {
+        padding: 5px;
+            font-size: 11px;
+ }
+
         }
 
         /* Utilities */
@@ -1091,17 +1227,25 @@
             color: var(--accent-peach);
             width: 0;
         }
+
+        @media (max-width: 992px) {
+
+            .secondary_nav,
+            .page-header {
+                margin-top: 0px !important;
+            }
+        }
     </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/css/lightgallery.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lightgallery.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lg-thumbnail.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lg-video.css">
-    
+
     <script type="text/javascript"
         src="https://platform-api.sharethis.com/js/sharethis.js#property=673458a1da72090013b84006&product=inline-share-buttons&source=platform"
         async="async"></script>
-    
+
     <script>
         function loadScript(src, callback) {
             if (document.querySelector(`script[src="${src}"]`)) {
@@ -1226,12 +1370,16 @@
     <header class="minimal-header">
         <div class="header-content">
             <div class="brand">
-                <img loading="lazy" class="brand-logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}" alt="{{ $store['name'] }}">
+                <img loading="lazy" class="brand-logo" src="{{ asset('storage/app/public/store/') . '/' . $store['logo'] }}"
+                    alt="{{ $store['name'] }}">
                 <div class="brand-text">
                     <h1>{{ $data['store_config']?->webpage_name ?? $store['name'] }}</h1>
                     <p>{{ $store['meta_title'] }}</p>
                 </div>
             </div>
+            <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-minimal').classList.toggle('show')">
+                <i class="fas fa-bars"></i>
+            </button>
             <nav class="nav-minimal">
                 <a href="#services">Services</a>
                 <a href="#reviews">Reviews</a>
@@ -1259,8 +1407,9 @@
                 </div>
 
                 <div class="hero-right-minimal">
-                    <img loading="lazy" class="hero-image-minimal" src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="Cover">
-                    
+                    <img loading="lazy" class="hero-image-minimal"
+                        src="{{ asset('storage/app/public/store/cover/') . '/' . $store['cover_photo'] }}" alt="Cover">
+
                     <div class="hero-stats">
                         @php $store_rating = number_format($store->average_rating, 1); @endphp
                         <div class="stat-box-minimal">
@@ -1306,8 +1455,8 @@
                     @if (strlen($description) > 400)
                         <span id="dots-{{ $store['id'] }}"></span>
                         <span id="more-{{ $store['id'] }}" class="d-none">{!! substr($description, 400) !!}</span>
-                        <a class="cursor-pointer" style="color: var(--accent-lavender); text-decoration: underline;" onclick="toggleReadMore({{ $store['id'] }})"
-                            id="btn-{{ $store['id'] }}">Read more</a>
+                        <a class="cursor-pointer" style="color: var(--accent-lavender); text-decoration: underline;"
+                            onclick="toggleReadMore({{ $store['id'] }})" id="btn-{{ $store['id'] }}">Read more</a>
                     @endif
                 </div>
             </div>
@@ -1345,7 +1494,9 @@
                     </div>
                     <div class="contact-detail">
                         <h4>Email</h4>
-                        <p><a href="mailto:{{ $store['email'] }}">{{ $data['store_config']?->webpage_email ?? $store->email }}</a></p>
+                        <p><a
+                                href="mailto:{{ $store['email'] }}">{{ $data['store_config']?->webpage_email ?? $store->email }}</a>
+                        </p>
                     </div>
                 </div>
 
@@ -1389,18 +1540,19 @@
     </div>
 
     <!-- Banners -->
-    @if(count($data['banners']) > 0)
-    <div style="max-width: 1300px; margin: 0 auto; padding: 0 3rem;">
-        <div class="banner-minimal">
-            <div class="owl-carousel banner-carousel">
-                @foreach ($data['banners'] as $value)
-                    <a href="{{ $value->default_link ?? '#' }}">
-                        <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner">
-                    </a>
-                @endforeach
+    @if (count($data['banners']) > 0)
+        <div style="max-width: 1300px; margin: 0 auto; padding: 0 3rem;">
+            <div class="banner-minimal">
+                <div class="owl-carousel banner-carousel">
+                    @foreach ($data['banners'] as $value)
+                        <a href="{{ $value->default_link ?? '#' }}">
+                            <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
+                                alt="banner">
+                        </a>
+                    @endforeach
+                </div>
             </div>
         </div>
-    </div>
     @endif
 
     <!-- Announcement -->
@@ -1445,7 +1597,7 @@
                             <div class="pr_{{ $pro->id }} product-minimal">
                                 <div class="product-image-minimal">
                                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
-                                        <img loading="lazy" 
+                                        <img loading="lazy"
                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                                             alt="{{ $pro->name }}">
@@ -1466,7 +1618,8 @@
 
                                     <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
                                         class="prHeart_{{ $pro->id }} like-minimal">
-                                        <i class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                        <i
+                                            class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
                                     </div>
                                 </div>
 
@@ -1495,12 +1648,14 @@
                                         <div class="product-action-minimal cartSec_{{ $pro->id }}">
                                             @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
                                             @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
-                                                <button onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
                                                     class="btn-product-minimal btn-remove-minimal">
                                                     <i class="fa fa-times"></i> Remove
                                                 </button>
                                             @else
-                                                <button onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
                                                     class="btn-product-minimal">
                                                     <i class="fa fa-plus"></i> Add to Cart
                                                 </button>
@@ -1518,7 +1673,8 @@
 
                                         <div class="product-action-minimal">
                                             @if (auth('web')->user())
-                                                <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
+                                                <button
+                                                    onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                     class="btn-product-minimal btn-enquiry-minimal">
                                                     <i class="fas fa-paper-plane"></i> Enquire Now
                                                 </button>
@@ -1561,11 +1717,16 @@
 
                 <div class="gallery-grid-minimal">
                     @foreach ($data['galleries'] as $key => $value)
-                        <a target="_blank"
-                            href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
+                        <a target="_blank" href="{{ asset('storage/app/public/store/gallery') }}/{{ $value->image }}"
                             class="gallery-item-minimal lightgallery-item">
-                            <img loading="lazy" 
-                                src="{{ asset('storage/app/public/store/gallery/') . '/' . $value['image'] }}"
+                            <img loading="lazy"
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                    $value['image'] ?? '',
+                                    asset('storage/app/public/store/gallery') . '/' . $value['image'] ?? '',
+                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                    'store/gallery/',
+                                ) }}"
                                 alt="Gallery {{ $key + 1 }}">
                         </a>
                     @endforeach
@@ -1586,16 +1747,16 @@
                 @foreach ($data['reviews'] as $rev)
                     <div class="review-minimal">
                         <div class="review-header-minimal">
-                            <img loading="lazy" 
+                            <img loading="lazy"
                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
-                                class="reviewer-img"
-                                alt="{{ $rev->f_name }}">
+                                class="reviewer-img" alt="{{ $rev->f_name }}">
                             <div class="reviewer-info-minimal">
                                 <div class="reviewer-name-minimal">{{ $rev->f_name . ' ' . $rev->l_name }}</div>
                                 <div class="review-date-minimal">{{ _formatted_datetime($rev->created_at) }}</div>
                                 <div class="review-stars-minimal">
                                     @for ($i = 1; $i < 6; $i++)
-                                        <i class="fas fa-star" style="color: {{ $rev->rating >= $i ? 'var(--accent-peach)' : '#e0e0e0' }};"></i>
+                                        <i class="fas fa-star"
+                                            style="color: {{ $rev->rating >= $i ? 'var(--accent-peach)' : '#e0e0e0' }};"></i>
                                     @endfor
                                 </div>
                             </div>
@@ -1608,7 +1769,8 @@
                             @if (!empty($attachments))
                                 <div class="review-images-minimal">
                                     @foreach ($attachments as $img)
-                                        <a target="_blank" href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
+                                        <a target="_blank"
+                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
                                             <img loading="lazy" class="review-img-minimal"
                                                 src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
                                                 alt="review">
@@ -1621,13 +1783,14 @@
                         @if ($rev->reply)
                             <div class="reply-minimal">
                                 <div class="reply-header-minimal">
-                                    <img loading="lazy" 
+                                    <img loading="lazy"
                                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                                        class="reply-avatar"
-                                        alt="{{ $store->name }}">
+                                        class="reply-avatar" alt="{{ $store->name }}">
                                     <div>
-                                        <div style="font-weight: 500; font-size: 14px; color: var(--text-primary);">Store Response</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">{{ _formatted_datetime($rev->replied_at) }}</div>
+                                        <div style="font-weight: 500; font-size: 14px; color: var(--text-primary);">Store
+                                            Response</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                            {{ _formatted_datetime($rev->replied_at) }}</div>
                                     </div>
                                 </div>
                                 <p class="reply-text-minimal">{{ $rev->reply }}</p>
@@ -1638,7 +1801,8 @@
 
                 @if ($data['review_count'] > 2)
                     <div style="text-align: center; margin-top: 3rem;">
-                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="btn-primary-minimal" style="display: inline-block;">
+                        <a href="{{ route('store.reviews', [$store->slug]) }}" class="btn-primary-minimal"
+                            style="display: inline-block;">
                             View All Reviews
                         </a>
                     </div>
@@ -1730,7 +1894,7 @@
 @push('script_2')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
-    
+
     <script>
         // Rating stars
         document.querySelectorAll('.rating-stars').forEach(el => {
@@ -1768,7 +1932,7 @@
 
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+            anchor.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
                 if (href !== '#' && document.querySelector(href)) {
                     e.preventDefault();
