@@ -10,12 +10,12 @@
 </style>
 {{-- common footer  --}}
 
-@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions'))
+@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions') && !request()->attributes->get('is_store_domain'))
     <div class="container-fluid bg-dark text-white-50 footer pt-5 ">
         <div class="container p-2 py-5">
             <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">
                 <div class="row">
-                    <div class="col-lg-3">
+                    <div class="col-lg-3"> 
                         <a href="#">
                             @php($store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
 

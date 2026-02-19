@@ -27,11 +27,12 @@ class ResolveStoreByDomain
         if (in_array($host, $systemDomains)) {
             return $next($request);
         }
-
+ 
         // Try to find store by custom domain
         $store = Store::where('domain', $host)->first();
 
         if ($store) {
+            $request->attributes->set('is_store_domain', true);
             $result = (new FrontController())->store_details($request, _selectedCity(), $store->slug);
             return Router::toResponse($request, $result);
         }

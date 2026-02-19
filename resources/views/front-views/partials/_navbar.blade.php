@@ -1,6 +1,6 @@
-@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions'))
+@if (!Route::is('store.details') && !Request::is('store-terms-and-conditions') && !request()->attributes->get('is_store_domain'))
     <!-- Navbar start -->
-    <div class="fixed-top">
+    <div class="fixed-top"> 
         <nav
             class="nav-wrapper navbar navbar-light bg-white navbar-expand-xl mx-md-5 mx-0 justify-content-between p-0 pt-2">
             <a href="{{ route('home') }}" class="navbar-brand   nav-link " style=" width: 150px;">

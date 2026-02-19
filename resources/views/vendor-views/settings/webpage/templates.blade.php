@@ -44,6 +44,7 @@
                         @if ($template->price > 0)
                             <p class="mb-0" style="font-size:13px;color:#333;">
                                 {{ _price($template->price) }}
+                                 <span class="text-muted" style="font-size:11px;"> +gst</span>
                                 <span class="text-muted" style="font-size:11px;">({{ $template->duration_count }} {{ $template->duration_unit }})</span>
                             </p> 
                         @else

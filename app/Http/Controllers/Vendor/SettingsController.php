@@ -485,15 +485,16 @@ class SettingsController extends Controller
 
     public function domain_update(Request $request)
     {
+        $store = Store::findOrFail(Helpers::get_store_id());
         $request->validate([
             'domain' => [
                 'required',
                 'string',
                 'max:255',
-                'regex:/^(?!https?:\/\/)(?!www\.)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/'
+                'regex:/^(?!https?:\/\/)(?!www\.)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/',
+                \Illuminate\Validation\Rule::unique('stores', 'domain')->ignore($store->id),
             ],
-        ]);
-        $store = Store::findOrFail(Helpers::get_store_id());
+        ]); 
         $store->domain = $request->domain;
         $store->save();
 
