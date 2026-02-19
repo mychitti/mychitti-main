@@ -267,12 +267,12 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             </div>
         </div> 
         {{-- AI Chat FAB --}}
-        <button id="ai-chat-fab" title="AI Assistant"
+        {{-- <button id="ai-chat-fab" title="AI Assistant"
             style="position:fixed;bottom:30px;right:30px;z-index:1050;width:56px;height:56px;border-radius:50%;
                    background:var(--primary);color:#fff;border:none;box-shadow:0 4px 12px rgba(0,0,0,.25);
                    cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s">
             <i class="tio-chat-outlined" style="font-size:1.6em"></i>
-        </button>
+        </button> --}}
 
         {{-- AI Chat Panel --}}
         <div id="ai-chat-panel"
