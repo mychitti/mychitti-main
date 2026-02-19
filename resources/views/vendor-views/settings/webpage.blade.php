@@ -353,4 +353,18 @@
      @elseif($tab == 'third-party')
          @include('vendor-views.settings.webpage_js.third_party_js')
      @endif
+     <script>
+     @if (request('flag') === 'success')
+         toastr.success('Template purchased and activated successfully!');
+         // remove flag and token from url 
+        const url = new URL(window.location.href);
+        url.searchParams.delete('flag');
+        url.searchParams.delete('token');
+
+        window.history.replaceState({}, document.title, url.toString());
+
+     @elseif(request('flag') === 'fail')
+         toastr.error('Payment failed. Please try again.');
+     @endif
+     </script>
  @endpush

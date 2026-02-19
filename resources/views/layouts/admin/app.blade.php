@@ -114,10 +114,12 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <!-- Builder -->
     @include('layouts.admin.partials._front-settings')
     <!-- End Builder -->
-
+ 
     <!-- JS Preview mode only -->
     @include('layouts.admin.partials._header')
     @if (Request::is('payment/configuration*') || Request::is('sms/configuration*'))
+        @php($module_type = 'settings')
+    @elseif(Request::is('prompt*') || Request::is('admin/prompt*'))
         @php($module_type = 'settings')
     @elseif(_isCommonDashboard()|| Request::is('file*')|| Request::is('admin/file*'))
         @php($module_type = 'dashboard')

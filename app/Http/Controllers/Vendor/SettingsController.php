@@ -28,6 +28,15 @@ use App\Models\TempStoreStatus;
 use App\Models\Translation;
 use App\Models\VendorEmployee;
 use App\Models\VendorRequirement;
+use App\Models\BusinessSetting;
+use App\Models\InvoiceItem;
+use App\Models\ManualInvoice;
+use App\Models\TemplatePurchase;
+use App\Models\Vendor;
+use App\Traits\Payment;
+use App\Library\Payer;
+use App\Library\Payment as PaymentInfo;
+use App\Library\Receiver;
 use Illuminate\Support\Facades\Validator;
 
 class SettingsController extends Controller
@@ -110,7 +119,7 @@ class SettingsController extends Controller
             $filter  = $request->filter ?? '';
 
             $inventory_items = InventoryItem::with('entries')->where('store_id', Helpers::get_store_id())
-            ->where("show_on_store_page",1)
+                ->where("show_on_store_page", 1)
                 ->when($search, function ($query) use ($search) {
                     $query->where(function ($q) use ($search) {
                         $q->where('item_name', 'like', "%{$search}%")
@@ -155,9 +164,17 @@ class SettingsController extends Controller
         } else if ($tab == 'webpage-templates') {
             $store_template_id = StoreConfig::where('store_id', $store_id)->value('template_id') ?: 1;
             $templates = DB::table("store_webpage_templates")->where('status', 1)->get();
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates'));
+            $purchases = TemplatePurchase::where('vendor_id', $store_id)
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->get()
+                ->keyBy('template_id');
+            $purchasedTemplateIds = $purchases->keys()->toArray();
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates', 'purchasedTemplateIds', 'purchases'));
         } else if ($tab == 'domain-setup') {
-            return view('vendor-views.settings.webpage', compact('store', 'tab'));
+             $domain = Helpers::get_store_data()->domain;
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain'));
         } else if ($tab == 'third-party') {
             return view('vendor-views.settings.webpage', compact('store', 'tab'));
         }
@@ -329,7 +346,7 @@ class SettingsController extends Controller
         }
         $store = Helpers::get_store_data();
 
-        return view('vendor-views.profile.index', compact('data','store', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
+        return view('vendor-views.profile.index', compact('data', 'store', 'allPlans', 'items_1', 'items_2', 'store_data', 'module_categories', 'module_subcategories'));
     }
     public function quick_actions_save(Request $request)
     {
@@ -400,5 +417,193 @@ class SettingsController extends Controller
         }
         Toastr::success('Menu Preference updated.');
         return back();
+    }
+
+    public function purchase_template(Request $request)
+    {
+        $request->validate(['template_id' => 'required|integer|exists:store_webpage_templates,id']);
+
+        $storeId  = Helpers::get_store_id();
+        $template = DB::table('store_webpage_templates')
+            ->where('id', $request->template_id)
+            ->where('status', 1)
+            ->first();
+
+        if (!$template) {
+            Toastr::error('Template not found.');
+            return back();
+        }
+
+        // Already purchased and not expired — just select it
+        $existing = TemplatePurchase::where('vendor_id', $storeId)
+            ->where('template_id', $template->id)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->first();
+
+        if ($existing || $template->price == 0) {
+            StoreConfig::updateOrInsert(['store_id' => $storeId], ['template_id' => $template->id]);
+            Toastr::success('Template selected successfully.');
+            return back();
+        }
+
+        // Initiate Razorpay payment
+        $vendor     = Vendor::find(Helpers::get_vendor_id());
+        $currency   = BusinessSetting::where('key', 'currency')->value('value');
+        $gstPercent = (float) (BusinessSetting::where('key', 'template_gst_percent')->value('value') ?? 0);
+        $totalAmount = _taxIncludedPrice($template->price, $gstPercent, 'actual');
+
+        $additional_data = [
+            'business_name' => BusinessSetting::where('key', 'business_name')->value('value'),
+            'business_logo' => asset('storage/app/public/business') . '/' . BusinessSetting::where('key', 'logo')->value('value'),
+        ];
+
+        $payer = new Payer($vendor->f_name . ' ' . $vendor->l_name, $vendor->email, $vendor->phone, '');
+
+        $external_redirect_link = $request->getHost() == 'staging.mychitti.net' ?  'store-panel/settings/webpage/webpage-templates' : 'settings/webpage/webpage-templates';
+        $payment_info = new PaymentInfo(
+            success_hook: 'template_purchase_success',
+            failure_hook: 'plan_failed',
+            currency_code: $currency,
+            payment_method: 'razor_pay',
+            payment_platform: 'web',
+            payer_id: $storeId,
+            receiver_id: 100,
+            additional_data: $additional_data,
+            payment_amount: $totalAmount,
+            external_redirect_link: $external_redirect_link,
+            attribute: 'template_purchase',
+            attribute_id: $template->id,
+        );
+
+        $receiver_info = new Receiver('Admin', 'example.png');
+        $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
+
+        return redirect()->to($redirect_link);
+    }
+
+    public function domain_update(Request $request)
+    {
+        $request->validate([
+            'domain' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^(?!https?:\/\/)(?!www\.)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/'
+            ],
+        ]);
+        $store = Store::findOrFail(Helpers::get_store_id());
+        $store->domain = $request->domain;
+        $store->save();
+
+        Toastr::success('Domain updated successfully');
+        return back();
+    }
+    public function completeTemplatePurchase($vendorId, $templateId)
+    {
+        $template = DB::table('store_webpage_templates')->where('id', $templateId)->first();
+        if (!$template) {
+            return false;
+        }
+
+
+        // Fetch GST setting and compute GST-inclusive total
+        $gstPercent  = (float) (BusinessSetting::where('key', 'template_gst_percent')->value('value') ?? 0);
+        $totalAmount = _taxIncludedPrice($template->price, $gstPercent, 'actual');
+
+        // Create invoice following the same pattern as ProfileController::buyModule
+        $invoice = new ManualInvoice();
+        $invoice->invoice_id     = Helpers::generateInvoiceIdAdmin();
+        $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
+        $invoice->vendor_id      = null;
+        $invoice->bill_to        = $vendorId;
+        $invoice->bill_to_type   = 'vendor';
+        $invoice->module_id      = null;
+        $invoice->total_amount   = $totalAmount;
+        $invoice->payment_method = 'Online';
+        $invoice->tax_type       = $gstPercent > 0 ? 'gst' : 'non-gst';
+        $invoice->payment_status = 'Paid';
+        $invoice->payment_date   = now()->toDateString();
+        $invoice->generated_by   = 'admin';
+        $invoice->save();
+
+        $item = new InvoiceItem();
+        $item->rand_invoice_id = $invoice->invoice_id;
+        $item->name            = $template->name . ' - Webpage Template';
+        $item->qty             = 1;
+        $item->price           = $template->price;
+        $item->tax             = $gstPercent;
+        $item->hsn             = '';
+        $item->save();
+
+        try {
+            $pdfResult = _createBillPdf($invoice, 'admin');
+            if ($pdfResult && isset($pdfResult['pdf'])) {
+                $invoice->update(['pdf' => $pdfResult['pdf']]);
+            }
+        } catch (\Exception $e) {
+            // PDF generation failure should not block purchase recording
+        }
+
+        // Calculate expiry
+        $expiresAt = null;
+        if (!empty($template->duration_count) && !empty($template->duration_unit)) {
+            $expiresAt = match (strtolower($template->duration_unit)) {
+                'months', 'month' => now()->addMonths((int) $template->duration_count),
+                'years', 'year'   => now()->addYears((int) $template->duration_count),
+                'weeks', 'week'   => now()->addWeeks((int) $template->duration_count),
+                default           => now()->addDays((int) $template->duration_count),
+            };
+        }
+
+        TemplatePurchase::create([
+            'vendor_id'    => $vendorId,
+            'template_id'  => $template->id,
+            'amount_paid'  => $totalAmount,
+            'invoice_id'   => $invoice->invoice_id,
+            'purchased_at' => now(),
+            'expires_at'   => $expiresAt,
+        ]);
+
+        // Ledger & daybook entries (same pattern as buyModule)
+        $debit_account  = Helpers::ensurePurchaseAccount('Template Purchase', $vendorId);
+        $credit_account = Helpers::ensureSubscriptionRevenueAccount();
+
+        $ledgerData = [
+            'date'         => now(),
+            'amount'       => $totalAmount,
+            'status'       => 'approved',
+            'description'  => 'Webpage Template Purchase - ' . $template->name,
+            'voucher_type' => 'Purchase',
+            'invoice_id'   => $invoice->getKey(),
+        ];
+
+        $voucher = _masterLedgerEntry(
+            $ledgerData,
+            $credit_account,
+            $debit_account,
+            'store',
+            'admin',
+            null,
+            $vendorId
+        );
+
+        _saveDayBookEntry(
+            $totalAmount,
+            'debit',
+            $vendorId,
+            'Template Purchase',
+            $invoice->getKey(),
+            $voucher?->id,
+            null,
+            null,
+            'Online'
+        );
+
+        // Auto-select the template
+        StoreConfig::updateOrInsert(['store_id' => $vendorId], ['template_id' => $template->id]);
+
+        return true;
     }
 }

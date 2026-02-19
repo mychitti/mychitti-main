@@ -14,8 +14,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
-        ->name('secure.download')->middleware('signed');
- 
+        ->name('secure.download')->middleware('signed'); 
+
+    Route::group(['prefix' => 'prompt', 'as' => 'prompt.', 'middleware' => ['module:ai_agent']], function () {
+        Route::get('/', 'SystemPromptController@index')->name('index');
+        Route::post('store', 'SystemPromptController@store')->name('store');
+        Route::post('update', 'SystemPromptController@update')->name('update');
+        Route::delete('delete/{prompt}', 'SystemPromptController@delete')->name('delete');
+    });
     Route::group(['prefix' => 'pr-file', 'as' => 'pr-file.', 'middleware' => ['module:protected_file']], function () {
         Route::post('upload', 'ProtectedFileController@upload_file')->name('upload');
     });
@@ -855,16 +861,16 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('order/details/{id}', 'OrderController@details')->name('order.details');
                 Route::get('order/generate-invoice/{id}', 'OrderController@generate_invoice')->name('order.generate-invoice');
             });
-        }); 
+        });
 
- 
+
 
         Route::get('users', 'DashboardController@user_dashboard')->name('users.user-dashboard');
         Route::group(['prefix' => 'users', 'as' => 'users.'], function () {
             Route::get('disbursement-export/{id}/{type}', 'DeliveryManController@disbursement_export')->name('disbursement-export');
             Route::get('export', 'DeliveryManController@export')->name('export');
 
- 
+
             // ADDONS =============
 
             Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['module:attendance', 'planwise:att_manage']], function () {

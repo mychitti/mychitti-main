@@ -16,99 +16,99 @@
         .spacer {
             height: 70px;
         }
-          .coupon-card {
-        position: relative;
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transition: all 0.2s;
-    }
+ 
+        .coupon-card {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s;
+        }
 
-    .coupon-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    }
+        .coupon-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
 
-    .coupon-top {
-        background: linear-gradient(135deg, #81c408 0%, #a6d54eff 100%);
-        padding: 16px;
-        position: relative;
-    }
+        .coupon-top {
+            background: linear-gradient(135deg, #81c408 0%, #a6d54eff 100%);
+            padding: 16px;
+            position: relative;
+        }
 
-    .coupon-top::after {
-        content: '';
-        position: absolute;
-        bottom: -6px;
-        left: 0;
-        right: 0;
-        height: 12px;
-        background: radial-gradient(circle at 6px, transparent 6px, white 6px);
-        background-size: 12px 12px;
-        background-position: 0 0;
-    }
+        .coupon-top::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            right: 0;
+            height: 12px;
+            background: radial-gradient(circle at 6px, transparent 6px, white 6px);
+            background-size: 12px 12px;
+            background-position: 0 0;
+        }
 
-    .coupon-name {
-        color: white;
-        font-size: 14px;
-        font-weight: 600;
-        margin: 0 0 8px 0;
-    }
+        .coupon-name {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+        }
 
-    .coupon-code-box {
-        background: white;
-        color: #81c408;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-family: monospace;
-        font-size: 16px;
-        font-weight: 700;
-        display: inline-block;
-        letter-spacing: 1px;
-    }
+        .coupon-code-box {
+            background: white;
+            color: #81c408;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: 700;
+            display: inline-block;
+            letter-spacing: 1px;
+        }
 
-    .coupon-bottom {
-        padding: 16px;
-    }
+        .coupon-bottom {
+            padding: 16px;
+        }
 
-    .coupon-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-    }
+        .coupon-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
 
-    .info-item {
-        text-align: center;
-    }
+        .info-item {
+            text-align: center;
+        }
 
-    .info-label {
-        font-size: 13px;
-        color: #9ca3af;
-        text-transform: uppercase;
-        font-weight: 600;
-        margin-bottom: 2px;
-    }
+        .info-label {
+            font-size: 13px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
 
-    .info-value {
-        font-size: 14px;
-        color: #1f2937;
-        font-weight: 600;
-    }
+        .info-value {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 600;
+        }
 
-    .discount-value {
-        font-size: 20px;
-        color: #81c408;
-    }
+        .discount-value {
+            font-size: 20px;
+            color: #81c408;
+        }
 
-    .coupon-meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: 13px;
-        color: #393e46ff;
-        padding-top: 12px;
-        border-top: 1px dashed #e5e7eb;
-    }
-
+        .coupon-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #393e46ff;
+            padding-top: 12px;
+            border-top: 1px dashed #e5e7eb;
+        }
     </style>
 @endpush
 
@@ -121,30 +121,22 @@
                 <img class="profile_img"
                     src="{{ \App\CentralLogics\Helpers::onerror_image_helper($user_details->image, asset('storage/app/public/profile/') . '/' . $user_details->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
                     alt="profile">
-                {{-- <button class="nav-link " id="v-pills-profile-tab" data-bs-toggle="pill" data-bs-target="#v-pills-profile"
-                    type="button" role="tab" aria-controls="v-pills-profile" aria-selected="false">Profile</button>
-                <button class="nav-link " id="v-pills-home-tab" data-bs-toggle="pill" data-bs-target="#v-pills-home"
-                    type="button" role="tab" aria-controls="v-pills-home" aria-selected="true">Address</button>
-                <button class="nav-link active" id="v-pills-service-tab" data-bs-toggle="pill"
-                    data-bs-target="#v-pills-service" type="button" role="tab" aria-controls="v-pills-service"
-                    aria-selected="true">Bookings</button>
-                <button class="nav-link" id="v-pills-coupons-tab" data-bs-toggle="pill" data-bs-target="#v-pills-coupons"
-                    type="button" role="tab" aria-controls="v-pills-coupons" aria-selected="false">Coupons</button>
-                <button class="nav-link" id="v-pills-messages-tab" data-bs-toggle="pill" data-bs-target="#v-pills-messages"
-                    type="button" role="tab" aria-controls="v-pills-messages" aria-selected="false">Favourite</button>
+                <a href="{{ route('dashboard', ['profile']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/profile') || Request::is('dashboard') ? 'active' : '' }}">Profile</a>
+                <a href="{{ route('dashboard', ['address']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/address') ? 'active' : '' }}">Address</a>
+                <a href="{{ route('dashboard', ['bookings']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/bookings') ? 'active' : '' }}">Bookings</a>
+                <a href="{{ route('dashboard', ['coupons']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/coupons') ? 'active' : '' }}">Coupons</a>
+                <a href="{{ route('dashboard', ['favourites']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/favourites') ? 'active' : '' }}">Favourites</a>
                 <button class="nav-link" type="button" data-bs-toggle="modal"
-                    data-bs-target="#exampleModalLogout">Logout</button> --}}
-                <a href="{{route('dashboard', ['profile'])}}" class=" text-center nav-link  {{Request::is('dashboard/profile') || Request::is('dashboard') ? 'active' : ''}}">Profile</a>
-                <a href="{{route('dashboard', ['address'])}}" class=" text-center nav-link  {{Request::is('dashboard/address') ? 'active' : ''}}">Address</a>
-                <a href="{{route('dashboard', ['bookings'])}}" class=" text-center nav-link  {{Request::is('dashboard/bookings') ? 'active' : ''}}">Bookings</a>
-                <a href="{{route('dashboard', ['coupons'])}}" class=" text-center nav-link  {{Request::is('dashboard/coupons') ? 'active' : ''}}">Coupons</a>
-                <a href="{{route('dashboard', ['favourites'])}}" class=" text-center nav-link  {{Request::is('dashboard/favourites') ? 'active' : ''}}">Favourites</a>
-                  <button class="nav-link" type="button" data-bs-toggle="modal"
                     data-bs-target="#exampleModalLogout">Logout</button>
-               
+
             </div>
             <div class="tab-content " id="v-pills-tabContent" style="width:100% ;min-height: 300px;">
-                @if (request()->tab == 'profile' || Request::is('dashboard') )
+                @if (request()->tab == 'profile' || Request::is('dashboard'))
                     @include('front-views.partials.dashboard._profile-tab')
                 @elseif(request()->tab == 'address')
                     @include('front-views.partials.dashboard._address-tab')

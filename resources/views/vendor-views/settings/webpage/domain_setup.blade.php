@@ -8,13 +8,13 @@
 
                 <div class="card-body">
 
-                    <form method="POST" action="">
+                    <form method="POST" action="{{route('vendor.settings.domain.update')}}">
                         @csrf
 
                         <div class="form-group">
                             <label>Domain</label>
                             <input type="text" name="domain" class="form-control"
-                                placeholder="example: myshop.com" value="{{ old('domain') }}" required>
+                                placeholder="example: myshop.com" value="{{ $domain ?? (old('domain') ?? ''  )}}" required>
                             <small class="text-muted">
                                 Enter domain without http:// or https://
                             </small>

@@ -1088,14 +1088,18 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('receivable-receipts', 'SettingsController@receivable_receipts')->name('receivable-receipts');
             });
         });
-
+ 
 
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
             Route::get('webpage/{tab?}', 'SettingsController@webpage_settings')->name('webpage');
             Route::post('webpage-update', 'SettingsController@webpage_settings_update')->name('webpage-update');
             Route::post('webpage-template', 'SettingsController@webpage_template_update')->name('webpage-template');
-
-
+            Route::post('purchase-template', 'SettingsController@purchase_template')->name('purchase-template');
+            
+            
+            Route::group(['prefix' => 'domain', 'as' => 'domain.'], function () {
+                Route::post('update', 'SettingsController@domain_update')->name('update');
+            });
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
                 Route::get('profile', 'SettingsController@profile_settings')->name('profile');
                 Route::get('store', 'SettingsController@store_settings')->name('store');
@@ -1137,7 +1141,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}/{user_type}', 'ConversationController@store')->name('store');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
-        });
+        }); 
 
         Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['module:report']], function () {
             Route::post('set-date', 'ReportController@set_date')->name('set-date');

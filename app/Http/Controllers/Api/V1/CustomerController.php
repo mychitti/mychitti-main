@@ -501,14 +501,13 @@ class CustomerController extends Controller
         foreach ($details as $det) {
             $det['product_details'] = json_decode($det['product_details'], true);
         }
-
+ 
         return response()->json($details, 200);
     }
 
     public function info(Request $request)
     {
         if (!$request->hasHeader('X-localization')) {
-
             $errors = [];
             array_push($errors, ['code' => 'current_language_key', 'message' => translate('messages.current_language_key_required')]);
             return response()->json([
@@ -527,6 +526,7 @@ class CustomerController extends Controller
         $data['userinfo'] = $data->userinfo;
         $data['order_count'] = (int)$request->user()->orders->count();
         $data['member_since_days'] = (int)$request->user()->created_at->diffInDays();
+        $data['image'] = Helpers::onerror_image_helper($data->image, asset('storage/app/public/profile/') . '/' . $data->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/');
         unset($data['orders']);
         return response()->json($data, 200);
     }

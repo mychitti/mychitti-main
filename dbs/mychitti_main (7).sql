@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Feb 18, 2026 at 09:12 AM
+-- Generation Time: Feb 19, 2026 at 11:13 AM
 -- Server version: 10.11.10-MariaDB
 -- PHP Version: 8.1.34
 
@@ -292,6 +292,23 @@ CREATE TABLE `admin_features` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `admin_memories`
+--
+
+CREATE TABLE `admin_memories` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `vendor_id` bigint(20) DEFAULT NULL,
+  `key` varchar(255) NOT NULL,
+  `value` text NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `admin_promotional_banners`
 --
 
@@ -491,6 +508,25 @@ CREATE TABLE `audit_logs` (
   `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE current_timestamp(),
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `a_i_chat_messages`
+--
+
+CREATE TABLE `a_i_chat_messages` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `vendor_id` bigint(20) DEFAULT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `role` enum('user','assistant') NOT NULL,
+  `content` longtext NOT NULL,
+  `type` varchar(20) NOT NULL DEFAULT 'text',
+  `summarized` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -830,6 +866,7 @@ CREATE TABLE `conversations` (
 
 CREATE TABLE `coupons` (
   `id` bigint(20) UNSIGNED NOT NULL,
+  `parent_coupon_id` bigint(20) DEFAULT NULL,
   `title` varchar(191) DEFAULT NULL,
   `code` varchar(100) DEFAULT NULL,
   `start_date` date DEFAULT NULL,
@@ -849,7 +886,7 @@ CREATE TABLE `coupons` (
   `module_id` bigint(20) UNSIGNED NOT NULL,
   `created_by` varchar(50) DEFAULT 'admin',
   `customer_id` varchar(255) DEFAULT '["all"]',
-  `scratched_by` text NOT NULL DEFAULT '[]',
+  `scratched_by` varchar(255) NOT NULL DEFAULT '''[]''',
   `slug` varchar(255) DEFAULT NULL,
   `store_id` bigint(20) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -4178,7 +4215,8 @@ CREATE TABLE `stores` (
   `emp_id_serial` int(11) DEFAULT 1,
   `prefix_status` int(11) NOT NULL DEFAULT 0,
   `jobcard_serial_number` int(11) DEFAULT 1,
-  `receivable_receipt_serial_number` int(11) NOT NULL DEFAULT 1
+  `receivable_receipt_serial_number` int(11) NOT NULL DEFAULT 1,
+  `domain` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -4458,6 +4496,36 @@ CREATE TABLE `store_configs` (
   `delivery_charges_gst_pos` tinyint(4) DEFAULT 0,
   `free_trial_consumed` tinyint(4) DEFAULT 0,
   `template_id` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `store_config_news`
+--
+
+CREATE TABLE `store_config_news` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `store_id` bigint(20) UNSIGNED NOT NULL,
+  `custom_domain` varchar(255) DEFAULT NULL,
+  `personal_domain` varchar(255) DEFAULT NULL,
+  `website_active` tinyint(1) NOT NULL DEFAULT 1,
+  `domain_status` enum('active','pending','inactive') NOT NULL DEFAULT 'active',
+  `webpage_name` varchar(255) DEFAULT NULL,
+  `webpage_email` varchar(255) DEFAULT NULL,
+  `webpage_address` text DEFAULT NULL,
+  `webpage_phones` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`webpage_phones`)),
+  `gst_number` varchar(255) DEFAULT NULL,
+  `webpage_latitude` decimal(10,8) DEFAULT NULL,
+  `webpage_longitude` decimal(11,8) DEFAULT NULL,
+  `inventory_items_position` enum('above','below') NOT NULL DEFAULT 'above',
+  `primary_color` varchar(255) DEFAULT NULL,
+  `secondary_color` varchar(255) DEFAULT NULL,
+  `custom_css` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`custom_css`)),
+  `dns_records` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`dns_records`)),
+  `domain_verified_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -4878,6 +4946,9 @@ CREATE TABLE `store_webpage_templates` (
   `thumbnail` varchar(255) DEFAULT NULL,
   `status` int(11) NOT NULL DEFAULT 1,
   `type` enum('free','premium') NOT NULL DEFAULT 'premium',
+  `price` decimal(24,3) NOT NULL,
+  `duration_count` int(11) NOT NULL DEFAULT 3,
+  `duration_unit` enum('day','month','year') NOT NULL DEFAULT 'year',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -4943,6 +5014,23 @@ CREATE TABLE `sub_modules` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `summaries`
+--
+
+CREATE TABLE `summaries` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `vendor_id` bigint(20) DEFAULT NULL,
+  `summary` longtext NOT NULL,
+  `messages_covered` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `supply_orders`
 --
 
@@ -4982,6 +5070,20 @@ CREATE TABLE `supply_order_items` (
   `qty` int(11) DEFAULT NULL,
   `tax_amount` decimal(24,3) NOT NULL DEFAULT 0.000,
   `total_amount` decimal(24,3) NOT NULL DEFAULT 0.000,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_prompts`
+--
+
+CREATE TABLE `system_prompts` (
+  `id` int(11) NOT NULL,
+  `user_type` enum('user','vendor') NOT NULL DEFAULT 'user',
+  `prompt` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -5104,6 +5206,24 @@ CREATE TABLE `telescope_entries_tags` (
 CREATE TABLE `telescope_monitoring` (
   `tag` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `template_purchases`
+--
+
+CREATE TABLE `template_purchases` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `vendor_id` bigint(20) UNSIGNED NOT NULL,
+  `template_id` bigint(20) UNSIGNED NOT NULL,
+  `amount_paid` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `invoice_id` varchar(255) DEFAULT NULL,
+  `purchased_at` timestamp NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -5898,6 +6018,13 @@ ALTER TABLE `admin_features`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `admin_memories`
+--
+ALTER TABLE `admin_memories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `admin_memories_admin_id_key_unique` (`admin_id`,`key`);
+
+--
 -- Indexes for table `admin_promotional_banners`
 --
 ALTER TABLE `admin_promotional_banners`
@@ -5970,6 +6097,13 @@ ALTER TABLE `attributes`
 ALTER TABLE `audit_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `store_id` (`store_id`);
+
+--
+-- Indexes for table `a_i_chat_messages`
+--
+ALTER TABLE `a_i_chat_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `a_i_chat_messages_admin_id_summarized_index` (`admin_id`,`summarized`);
 
 --
 -- Indexes for table `banners`
@@ -7071,6 +7205,15 @@ ALTER TABLE `store_configs`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `store_config_news`
+--
+ALTER TABLE `store_config_news`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `store_config_news_custom_domain_unique` (`custom_domain`),
+  ADD KEY `store_config_news_store_id_index` (`store_id`),
+  ADD KEY `store_config_news_custom_domain_index` (`custom_domain`);
+
+--
 -- Indexes for table `store_customers`
 --
 ALTER TABLE `store_customers`
@@ -7232,6 +7375,13 @@ ALTER TABLE `sub_modules`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `summaries`
+--
+ALTER TABLE `summaries`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `summaries_admin_id_index` (`admin_id`);
+
+--
 -- Indexes for table `supply_orders`
 --
 ALTER TABLE `supply_orders`
@@ -7243,6 +7393,12 @@ ALTER TABLE `supply_orders`
 ALTER TABLE `supply_order_items`
   ADD PRIMARY KEY (`id`),
   ADD KEY `supply_order_items_supply_order_id_foreign` (`order_table_id`);
+
+--
+-- Indexes for table `system_prompts`
+--
+ALTER TABLE `system_prompts`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `tags`
@@ -7297,6 +7453,12 @@ ALTER TABLE `telescope_entries_tags`
 --
 ALTER TABLE `telescope_monitoring`
   ADD PRIMARY KEY (`tag`);
+
+--
+-- Indexes for table `template_purchases`
+--
+ALTER TABLE `template_purchases`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `temp_employees`
@@ -7577,6 +7739,12 @@ ALTER TABLE `admin_features`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `admin_memories`
+--
+ALTER TABLE `admin_memories`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `admin_promotional_banners`
 --
 ALTER TABLE `admin_promotional_banners`
@@ -7647,6 +7815,12 @@ ALTER TABLE `attributes`
 --
 ALTER TABLE `audit_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `a_i_chat_messages`
+--
+ALTER TABLE `a_i_chat_messages`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `banners`
@@ -8639,6 +8813,12 @@ ALTER TABLE `store_configs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `store_config_news`
+--
+ALTER TABLE `store_config_news`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `store_customers`
 --
 ALTER TABLE `store_customers`
@@ -8789,6 +8969,12 @@ ALTER TABLE `sub_modules`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `summaries`
+--
+ALTER TABLE `summaries`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `supply_orders`
 --
 ALTER TABLE `supply_orders`
@@ -8798,6 +8984,12 @@ ALTER TABLE `supply_orders`
 -- AUTO_INCREMENT for table `supply_order_items`
 --
 ALTER TABLE `supply_order_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `system_prompts`
+--
+ALTER TABLE `system_prompts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -8835,6 +9027,12 @@ ALTER TABLE `tax_rates`
 --
 ALTER TABLE `telescope_entries`
   MODIFY `sequence` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `template_purchases`
+--
+ALTER TABLE `template_purchases`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `temp_employees`
@@ -9033,6 +9231,12 @@ ALTER TABLE `zone_requests`
 --
 
 --
+-- Constraints for table `admin_memories`
+--
+ALTER TABLE `admin_memories`
+  ADD CONSTRAINT `admin_memories_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `advance_requests`
 --
 ALTER TABLE `advance_requests`
@@ -9166,6 +9370,12 @@ ALTER TABLE `store_bank_transactions`
 --
 ALTER TABLE `store_bank_transaction_files`
   ADD CONSTRAINT `store_bank_transaction_files_ibfk_1` FOREIGN KEY (`bank_id`) REFERENCES `store_bank_accounts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `summaries`
+--
+ALTER TABLE `summaries`
+  ADD CONSTRAINT `summaries_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `telescope_entries_tags`

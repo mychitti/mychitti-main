@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Feb 18, 2026 at 09:12 AM
+-- Generation Time: Feb 19, 2026 at 11:13 AM
 -- Server version: 10.5.29-MariaDB
 -- PHP Version: 8.1.34
 
@@ -4215,7 +4215,8 @@ CREATE TABLE `stores` (
   `emp_id_serial` int(11) DEFAULT 1,
   `prefix_status` int(11) NOT NULL DEFAULT 0,
   `jobcard_serial_number` int(11) DEFAULT 1,
-  `receivable_receipt_serial_number` int(11) NOT NULL DEFAULT 1
+  `receivable_receipt_serial_number` int(11) NOT NULL DEFAULT 1,
+  `domain` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -5083,8 +5084,13 @@ CREATE TABLE `system_prompts` (
   `id` int(11) NOT NULL,
   `user_type` enum('user','vendor') NOT NULL DEFAULT 'user',
   `prompt` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `skill_type` varchar(255) DEFAULT NULL,
+  `status` enum('active','draft') NOT NULL DEFAULT 'active',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT NULL
+  `updated_at` datetime DEFAULT NULL,
+  `settings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`settings`))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -5205,6 +5211,24 @@ CREATE TABLE `telescope_entries_tags` (
 CREATE TABLE `telescope_monitoring` (
   `tag` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `template_purchases`
+--
+
+CREATE TABLE `template_purchases` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `vendor_id` bigint(20) UNSIGNED NOT NULL,
+  `template_id` bigint(20) UNSIGNED NOT NULL,
+  `amount_paid` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `invoice_id` varchar(255) DEFAULT NULL,
+  `purchased_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -7436,6 +7460,12 @@ ALTER TABLE `telescope_monitoring`
   ADD PRIMARY KEY (`tag`);
 
 --
+-- Indexes for table `template_purchases`
+--
+ALTER TABLE `template_purchases`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `temp_employees`
 --
 ALTER TABLE `temp_employees`
@@ -9002,6 +9032,12 @@ ALTER TABLE `tax_rates`
 --
 ALTER TABLE `telescope_entries`
   MODIFY `sequence` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `template_purchases`
+--
+ALTER TABLE `template_purchases`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `temp_employees`

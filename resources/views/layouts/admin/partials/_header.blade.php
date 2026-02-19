@@ -59,8 +59,14 @@
                                             <img src="{{asset('/public/assets/admin/img/navbar-setting-icon/module.svg')}}" alt="">
                                             <span>{{translate('System Module Setup')}}</span>
                                         </a>
-                                    </li>
+                                    </li> 
                                     @endif
+                                    <li>
+                                        <a href="{{ route('admin.prompt.index') }}" class="next-tour">
+                                            <img src="{{asset('/public/assets/admin/img/referral.png')}}" alt="">
+                                            <span>{{translate('AI Agents Setup')}}</span>
+                                        </a>
+                                    </li>
                                     @if (\App\CentralLogics\Helpers::module_permission_check('zone'))
                                     <li>
                                         <a href="{{ route('admin.business-settings.zone.home') }}" class="next-tour">

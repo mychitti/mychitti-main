@@ -5,7 +5,7 @@
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-           .form-row{
+        .form-row {
             margin-top: 6px;
         }
     </style>
@@ -13,8 +13,7 @@
 
 @section('content')
     <div class="content container-fluid">
-    <div class="content container-fluid">
-        <!-- Page Header -->
+        <!-- Page Header --> 
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Add Staff </h1>
             <div class="page-header-select-wrapper">
@@ -32,7 +31,7 @@
         <div class="row g-2">
             <form class="w-100" action="{{ route('vendor.staff.save') }}" method="post">
                 @csrf
-                <input type="hidden" id="staff_id" name="staff_id" value="{{isset($staff->id ) ? $staff->id : ''}}">
+                <input type="hidden" id="staff_id" name="staff_id" value="{{ isset($staff->id) ? $staff->id : '' }}">
                 <div class="col-md-12">
                     <div class="card h-100">
                         <h4 class="m-3 mb-0">Personal Information</h4>
@@ -59,7 +58,7 @@
                             </div>
                             <div class="form-row col-4">
                                 <label for="exampleInputEmail1">DOB </label>
-                                <input type="date" name="dob"  class="form-control">
+                                <input type="date" name="dob" class="form-control">
                             </div>
                             <div class="form-row col-4">
                                 <label for="exampleInputEmail1">City <span class="text-danger">*</span></label>
@@ -90,8 +89,10 @@
                                     </select>
                                 </div>
                                 <div class="form-row col-6">
-                                    <label for="exampleInputEmail1">Salary <i>(/ month)</i> <span class="text-danger">*</span></label>
-                                    <input type="number" required name="salary_per_month" placeholder="Salary Per Month" class="form-control">
+                                    <label for="exampleInputEmail1">Salary <i>(/ month)</i> <span
+                                            class="text-danger">*</span></label>
+                                    <input type="number" required name="salary_per_month" placeholder="Salary Per Month"
+                                        class="form-control">
                                 </div>
                                 <div class="form-row">
                                     <div class="col my-2">
@@ -103,10 +104,12 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
 
 
 
-        @endsection
+@endsection
 
-        @push('script_2')
-        @endpush
+@push('script_2')
+@endpush

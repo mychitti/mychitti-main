@@ -5,14 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/** @mixin \Eloquent */
 class ManualInvoice extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
+    protected $fillable = [ 
         'bill_to',
         'bill_to_type',
-        'user_type',
+        'user_type', 
         'invoice_id',
         'invoice_serial',
         'type',
