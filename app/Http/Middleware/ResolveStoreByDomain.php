@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Store;
 use App\Http\Controllers\Front\FrontController;
+use Illuminate\Routing\Router;
 
 class ResolveStoreByDomain
 {
@@ -31,7 +32,8 @@ class ResolveStoreByDomain
         $store = Store::where('domain', $host)->first();
 
         if ($store) {
-            return (new FrontController())->store_details($request, _selectedCity(), $store->slug);
+            $result = (new FrontController())->store_details($request, _selectedCity(), $store->slug);
+            return Router::toResponse($request, $result);
         }
 
         return $next($request);
