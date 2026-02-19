@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\Store;
+use App\Http\Controllers\Front\FrontController;
 
 class ResolveStoreByDomain
 {
@@ -30,13 +31,9 @@ class ResolveStoreByDomain
         $store = Store::where('domain', $host)->first();
 
         if ($store) {
-            prx($store);
-            die;
-        } else {
-            // echo 'no stoer';
-            // die;
+            return (new FrontController())->store_details($request, _selectedCity(), $store->slug);
         }
 
         return $next($request);
     }
-}
+} 
