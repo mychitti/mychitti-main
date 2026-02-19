@@ -33,8 +33,8 @@ class ResolveStoreByDomain
             prx($store);
             die;
         } else {
-            echo 'no stoer';
-            die;
+            // echo 'no stoer';
+            // die;
         }
 
         return $next($request);
