@@ -16,8 +16,8 @@ class ResolveStoreByDomain
         $systemDomains = [
             'mychitti.net',
             'www.mychitti.net',
-            'vendor.mychitti.net',
-            'vendor-employee.mychitti.net',
+            'vendor.mcvendorhub.com',
+            'vendor-staff.mcvendorhub.com',
             'staging.mychitti.net'
         ];
 
