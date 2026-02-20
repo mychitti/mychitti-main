@@ -498,12 +498,12 @@ class SettingsController extends Controller
         $store->domain = $request->domain;
         $store->save();
 
-        \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
+       $res = \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
             ->post('https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames', [
                 'hostname' => $request->domain,
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);
-
+prx($res);
         Toastr::success('Domain updated successfully');
         return back();
     }
