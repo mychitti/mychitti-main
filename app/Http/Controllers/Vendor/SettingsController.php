@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Store;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 use App\Models\StoreSchedule;
 use Brian2694\Toastr\Facades\Toastr;
@@ -168,13 +169,16 @@ class SettingsController extends Controller
                 ->where(function ($q) {
                     $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
                 })
-                ->get()
+                ->get() 
                 ->keyBy('template_id');
             $purchasedTemplateIds = $purchases->keys()->toArray();
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates', 'purchasedTemplateIds', 'purchases'));
         } else if ($tab == 'domain-setup') {
-            $domain = Helpers::get_store_data()->domain;
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain'));
+            $domain         = Helpers::get_store_data()->domain;
+            $domainCharge   = (float) (BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
+            $domainGstPct   = (float) (BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
+            $domainGstIncl  = BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0;
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain', 'domainCharge', 'domainGstPct', 'domainGstIncl'));
         } else if ($tab == 'third-party') {
             return view('vendor-views.settings.webpage', compact('store', 'tab'));
         }
@@ -483,6 +487,46 @@ class SettingsController extends Controller
         return redirect()->to($redirect_link);
     }
 
+    public function domain_remove()
+    {
+        $store = Store::findOrFail(Helpers::get_store_id());
+        $domain = $store->domain;
+
+        // prx($domain);
+ 
+        if ($domain) {
+            $token   = config('services.cloudflare.api_token');
+            $zoneId  = config('services.cloudflare.zone_id');
+            $baseUrl = 'https://api.cloudflare.com/client/v4/zones/' . $zoneId . '/custom_hostnames';
+
+            $listRes = Http::withToken(config('services.cloudflare.api_token'))->get($baseUrl, ['hostname' => $domain]);
+
+            if ($listRes->successful()) {
+                $hostnames = $listRes->json('result');
+                if (!empty($hostnames)) {
+                   Http::withToken($token)->delete($baseUrl . '/' . $hostnames[0]['id']);
+                   
+                }
+            } else {
+                // dd([ 
+                //     'status'  => $listRes->status(),
+                //     'body'    => $listRes->json(),
+                //     'token'   => $token ? 'set (' . strlen($token) . ' chars)' : 'MISSING',
+                //     'zone_id' => $zoneId ?: 'MISSING',
+                //     'url'     => $baseUrl,
+                //     'domain'  => $domain,
+                // ]);
+            }
+            
+
+            $store->domain = null;
+            $store->save();
+        }
+
+        Toastr::success('Domain removed successfully');
+        return back();
+    }
+
     public function domain_update(Request $request)
     {
         $store = Store::findOrFail(Helpers::get_store_id());
@@ -495,18 +539,69 @@ class SettingsController extends Controller
                 \Illuminate\Validation\Rule::unique('stores', 'domain')->ignore($store->id),
             ],
         ]);
-        $store->domain = $request->domain;
-        $store->save();
-        // echo config('services.cloudflare.api_token');
-        $res = \Illuminate\Support\Facades\Http::withToken(config('services.cloudflare.api_token'))
-            ->post('https://api.cloudflare.com/client/v4/zones/' . config('services.cloudflare.zone_id') . '/custom_hostnames', [
-                'hostname' => $request->domain,
-                'ssl' => ['method' => 'http', 'type' => 'dv'],
-            ]);
-        // prx($res);
-        Toastr::success('Domain updated successfully');
+
+        $charge  = (float) (BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
+        $gstPct  = (float) (BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
+        $gstIncl = (bool)  (BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0);
+
+        if ($charge > 0) {
+            // GST already baked into price → use as-is; otherwise add GST on top
+            $totalAmount = $gstIncl ? $charge : _taxIncludedPrice($charge, $gstPct, 'actual');
+
+            $vendor   = Vendor::find(Helpers::get_vendor_id());
+            $currency = BusinessSetting::where('key', 'currency')->value('value');
+
+            $additional_data = [
+                'business_name' => BusinessSetting::where('key', 'business_name')->value('value'),
+                'business_logo' => asset('storage/app/public/business') . '/' . BusinessSetting::where('key', 'logo')->value('value'),
+            ];
+
+            $payer = new Payer($vendor->f_name . ' ' . $vendor->l_name, $vendor->email, $vendor->phone, '');
+
+            $external_redirect_link = $request->getHost() == 'staging.mychitti.net'
+                ? 'store-panel/settings/webpage/domain-setup'
+                : 'settings/webpage/domain-setup';
+ 
+            $payment_info = new PaymentInfo(
+                success_hook: 'domain_purchase_success',
+                failure_hook: 'plan_failed',
+                currency_code: $currency,
+                payment_method: 'razor_pay',
+                payment_platform: 'web',
+                payer_id: Helpers::get_store_id(),
+                receiver_id: 100,
+                additional_data: $additional_data,
+                payment_amount: $totalAmount,
+                external_redirect_link: $external_redirect_link,
+                attribute: 'domain_purchase',
+                attribute_id: $request->domain,
+            );
+
+            $receiver_info = new Receiver('Admin', 'example.png');
+            $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
+            return redirect()->to($redirect_link);
+        }
+
+        // Free — save and register directly
+        $this->completeDomainRegistration(Helpers::get_store_id(), $request->domain);
+        Toastr::success('Domain saved successfully');
         return back();
     }
+    public function completeDomainRegistration($storeId, $domain)
+    {
+        $store = Store::findOrFail($storeId);
+        $store->domain = $domain;
+        $store->save();
+
+        Http::withToken(config('services.cloudflare.api_token'))
+            ->post('https://api.cloudflare.com/client/v4/zones/' . config('services.cloudflare.zone_id') . '/custom_hostnames', [
+                'hostname' => $domain,
+                'ssl'      => ['method' => 'http', 'type' => 'dv'],
+            ]);
+
+        return true;
+    }
+
     public function completeTemplatePurchase($vendorId, $templateId)
     {
         $template = DB::table('store_webpage_templates')->where('id', $templateId)->first();

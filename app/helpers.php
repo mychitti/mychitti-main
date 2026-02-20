@@ -590,9 +590,17 @@ function plan_success($data)
 }
 function plan_failed($data)
 {
-
+ 
     // $store_id = $data->attribute_id; 
 
+}
+
+function domain_purchase_success($data)
+{
+    $domain   = $data->attribute_id;
+    $store_id = $data->payer_id;
+    $controller = new \App\Http\Controllers\Vendor\SettingsController();
+    return $controller->completeDomainRegistration($store_id, $domain);
 }
 
 function template_purchase_success($data)

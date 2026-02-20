@@ -10,7 +10,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
-
+ 
     // mc vendorhub routes 
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
@@ -1099,6 +1099,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             
             Route::group(['prefix' => 'domain', 'as' => 'domain.'], function () {
                 Route::post('update', 'SettingsController@domain_update')->name('update');
+                Route::post('remove', 'SettingsController@domain_remove')->name('remove');
             });
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
                 Route::get('profile', 'SettingsController@profile_settings')->name('profile');

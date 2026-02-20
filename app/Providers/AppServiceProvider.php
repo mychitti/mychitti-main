@@ -94,7 +94,6 @@ class AppServiceProvider extends ServiceProvider
             return \OpenAI::client(config('services.openai.key'));
         });
 
-
         $host = request()->getHost();
 
         if (Str::contains($host, 'vendor-staff')) {
