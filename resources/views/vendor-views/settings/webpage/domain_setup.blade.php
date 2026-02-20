@@ -59,6 +59,10 @@ Value : stores.mychitti.net</pre>
                             <b>redirect/forwarding</b> to <b>www.yourdomain.com</b>.<br>
                             In GoDaddy: go to <b>My Products → DNS → Forwarding</b> and forward
                             <code>yourdomain.com</code> → <code>https://www.yourdomain.com</code> (Permanent 301).
+<pre class="mb-2 mt-2">
+host name : yourdomain.com
+value : https://www.yourdomain.com
+</pre>
                         </li>
                         <li>
                             If you are using a subdomain (like <b>shop.yourdomain.com</b>), add instead:

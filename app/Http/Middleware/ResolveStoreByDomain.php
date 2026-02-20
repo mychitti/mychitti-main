@@ -19,6 +19,7 @@ class ResolveStoreByDomain
             'mychitti.net',
             'admin.mychitti.net',
             'www.mychitti.net', 
+            'binoculars.mcvendorhub.com',
             'mcvendorhub.com',
             'vendor.mcvendorhub.com',
             'vendor-staff.mcvendorhub.com',
