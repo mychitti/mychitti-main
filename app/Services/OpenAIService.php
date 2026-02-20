@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 
 class OpenAIService
 {
-    private string $model;
+    private string $model; 
 
     public function __construct(private \OpenAI\Client $client) 
     {
