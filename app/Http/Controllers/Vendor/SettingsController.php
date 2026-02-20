@@ -505,7 +505,7 @@ class SettingsController extends Controller
                 'hostname' => $request->domain,
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);
-        prx($res);
+        // prx($res);
         Toastr::success('Domain updated successfully');
         return back();
     }
