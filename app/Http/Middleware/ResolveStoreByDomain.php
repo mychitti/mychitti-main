@@ -38,7 +38,7 @@ class ResolveStoreByDomain
             $result = (new FrontController())->store_details($request, _selectedCity(), $store->slug);
             return Router::toResponse($request, $result);
         }else{
-             return redirect('https://mychitti.net/' ._selectedCity(). '/store/' . $store->slug);
+             return redirect('https://mychitti.net');
         }
 
         return $next($request);
