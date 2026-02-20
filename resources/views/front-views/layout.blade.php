@@ -1327,8 +1327,11 @@
     !request()->is('list-your-business') &&
         !request()->is('store*') &&
         !request()->is('checkout') &&
-        !request()->is('edit-address/*'))
-
+        !request()->is('edit-address/*') &&
+        !request()->attributes->get('is_store_domain') && 
+        !request()->attributes->get('vendor_store')
+        )
+ 
     <script>
         let map, marker, geocoder;
 
