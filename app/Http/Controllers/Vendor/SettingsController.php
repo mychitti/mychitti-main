@@ -506,8 +506,8 @@ class SettingsController extends Controller
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);
         prx($res);
-        Toastr::success('Domain updated successfully');
-        return back();
+        // Toastr::success('Domain updated successfully');
+        // return back();
     }
     public function completeTemplatePurchase($vendorId, $templateId)
     {
