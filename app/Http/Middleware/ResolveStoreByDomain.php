@@ -26,7 +26,7 @@ class ResolveStoreByDomain
         // If system domain → skip resolving
         if (in_array($host, $systemDomains)) {
             return $next($request);
-        }
+        } 
   
         // Try to find store by custom domain
         $store = Store::where('domain', $host)->first();

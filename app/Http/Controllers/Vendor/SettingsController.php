@@ -481,7 +481,7 @@ class SettingsController extends Controller
         $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
 
         return redirect()->to($redirect_link);
-    }
+    } 
 
     public function domain_update(Request $request)
     {
@@ -494,9 +494,15 @@ class SettingsController extends Controller
                 'regex:/^(?!https?:\/\/)(?!www\.)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/',
                 \Illuminate\Validation\Rule::unique('stores', 'domain')->ignore($store->id),
             ],
-        ]); 
+        ]);  
         $store->domain = $request->domain;
         $store->save();
+
+        \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
+            ->post('https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames', [
+                'hostname' => $request->domain,
+                'ssl' => ['method' => 'http', 'type' => 'dv'],
+            ]);
 
         Toastr::success('Domain updated successfully');
         return back();
