@@ -497,12 +497,9 @@ class SettingsController extends Controller
         ]);
         $store->domain = $request->domain;
         $store->save();
-        echo 'zone id : ' . env('CLOUDFLARE_ZONE_ID');
-        $url = 'https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames';
-        echo ' url : '. $url;
-        // die;
-        $res = \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
-            ->post($url, [
+        echo config('services.cloudflare.api_token');
+        $res = \Illuminate\Support\Facades\Http::withToken(config('services.cloudflare.api_token'))
+            ->post('https://api.cloudflare.com/client/v4/zones/' . config('services.cloudflare.zone_id') . '/custom_hostnames', [
                 'hostname' => $request->domain,
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);

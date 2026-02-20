@@ -44,8 +44,12 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
     'openai' => [
-    'key' => env('OPENAI_API_KEY'),
-],
+        'key' => env('OPENAI_API_KEY'),
+    ],
+    'cloudflare' => [
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
+    ],
 
 
 ];
