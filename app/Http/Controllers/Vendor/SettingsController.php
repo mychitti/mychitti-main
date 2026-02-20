@@ -173,7 +173,7 @@ class SettingsController extends Controller
             $purchasedTemplateIds = $purchases->keys()->toArray();
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates', 'purchasedTemplateIds', 'purchases'));
         } else if ($tab == 'domain-setup') {
-             $domain = Helpers::get_store_data()->domain;
+            $domain = Helpers::get_store_data()->domain;
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain'));
         } else if ($tab == 'third-party') {
             return view('vendor-views.settings.webpage', compact('store', 'tab'));
@@ -481,7 +481,7 @@ class SettingsController extends Controller
         $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
 
         return redirect()->to($redirect_link);
-    } 
+    }
 
     public function domain_update(Request $request)
     {
@@ -494,16 +494,18 @@ class SettingsController extends Controller
                 'regex:/^(?!https?:\/\/)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/',
                 \Illuminate\Validation\Rule::unique('stores', 'domain')->ignore($store->id),
             ],
-        ]);   
+        ]);
         $store->domain = $request->domain;
         $store->save();
-
-       $res = \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
-            ->post('https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames', [
+        $url = 'https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames';
+        echo $url;
+        die;
+        $res = \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
+            ->post($url, [
                 'hostname' => $request->domain,
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);
-prx($res);
+        prx($res);
         Toastr::success('Domain updated successfully');
         return back();
     }
