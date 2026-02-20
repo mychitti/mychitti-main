@@ -497,15 +497,15 @@ class SettingsController extends Controller
         ]);
         $store->domain = $request->domain;
         $store->save();
-        echo config('services.cloudflare.api_token');
+        // echo config('services.cloudflare.api_token');
         $res = \Illuminate\Support\Facades\Http::withToken(config('services.cloudflare.api_token'))
             ->post('https://api.cloudflare.com/client/v4/zones/' . config('services.cloudflare.zone_id') . '/custom_hostnames', [
                 'hostname' => $request->domain,
                 'ssl' => ['method' => 'http', 'type' => 'dv'],
             ]);
-        prx($res);
-        // Toastr::success('Domain updated successfully');
-        // return back();
+        // prx($res);
+        Toastr::success('Domain updated successfully');
+        return back();
     }
     public function completeTemplatePurchase($vendorId, $templateId)
     {
