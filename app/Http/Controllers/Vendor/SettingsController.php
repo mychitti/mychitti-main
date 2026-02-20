@@ -491,10 +491,10 @@ class SettingsController extends Controller
                 'required',
                 'string',
                 'max:255',
-                'regex:/^(?!https?:\/\/)(?!www\.)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/',
+                'regex:/^(?!https?:\/\/)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/',
                 \Illuminate\Validation\Rule::unique('stores', 'domain')->ignore($store->id),
             ],
-        ]);  
+        ]);   
         $store->domain = $request->domain;
         $store->save();
 
