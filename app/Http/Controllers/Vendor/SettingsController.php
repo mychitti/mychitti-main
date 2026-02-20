@@ -498,8 +498,8 @@ class SettingsController extends Controller
         $store->domain = $request->domain;
         $store->save();
         $url = 'https://api.cloudflare.com/client/v4/zones/' . env('CLOUDFLARE_ZONE_ID') . '/custom_hostnames';
-        echo $url;
-        die;
+        // echo $url;
+        // die;
         $res = \Illuminate\Support\Facades\Http::withToken(env('CLOUDFLARE_API_TOKEN'))
             ->post($url, [
                 'hostname' => $request->domain,
