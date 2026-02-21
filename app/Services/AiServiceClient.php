@@ -33,7 +33,10 @@ class AiServiceClient
                 ->timeout(120)
                 ->post("{$this->url}/api/ai/chat", $payload);
 
-            return $response->json() ?? ['success' => false, 'message' => 'No response from AI service.'];
+            dd([ 
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
         } catch (\Exception $e) {
             Log::error('AI service chat error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'AI service unavailable.'];
