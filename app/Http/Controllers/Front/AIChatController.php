@@ -51,19 +51,16 @@ class AIChatController extends Controller
             'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:10240',
         ]);
 
-        echo 'fd';
 
         $userId = auth('web')->id();
 
         $message     = $request->input('message') ?? '';
         $fileContent = null;
-echo 'hfd2';
         // File upload (image or PDF)
         if ($request->hasFile('file')) {
             $file   = $request->file('file');
             $mime   = $file->getMimeType();
             $base64 = base64_encode(file_get_contents($file->getRealPath()));
-echo '3';
             if ($mime === 'application/pdf') {
                 echo '4';
                 $fileContent = [
@@ -86,8 +83,7 @@ echo '3';
                 ];
             }
         }
-echo '6';
-die;
+
         // Voice → Text (OpenAI Whisper)
         if ($request->hasFile('voice')) {
             $voiceFile = $request->file('voice');
