@@ -7,6 +7,7 @@ use App\Services\ClaudeService;
 use App\Services\OpenAIService;
 use App\Services\MemoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AIChatController extends Controller
 { 
@@ -18,7 +19,31 @@ class AIChatController extends Controller
 
     public function chat(Request $request)
     {
-        prx($request->all());
+        // --- TEMP DEBUG ---
+        $phpUploadErrors = [
+            0 => 'UPLOAD_ERR_OK',
+            1 => 'UPLOAD_ERR_INI_SIZE',
+            2 => 'UPLOAD_ERR_FORM_SIZE',
+            3 => 'UPLOAD_ERR_PARTIAL',
+            4 => 'UPLOAD_ERR_NO_FILE',
+            6 => 'UPLOAD_ERR_NO_TMP_DIR',
+            7 => 'UPLOAD_ERR_CANT_WRITE',
+            8 => 'UPLOAD_ERR_EXTENSION',
+        ];
+        if (isset($_FILES['file'])) {
+            $errCode = $_FILES['file']['error'];
+            \Log::error('AI Chat file upload error', [
+                'php_error_code' => $errCode,
+                'php_error_name' => $phpUploadErrors[$errCode] ?? 'UNKNOWN',
+                'file_name'      => $_FILES['file']['name'] ?? null,
+                'file_size'      => $_FILES['file']['size'] ?? null,
+                'tmp_name'       => $_FILES['file']['tmp_name'] ?? null,
+                'tmp_writable'   => is_writable(sys_get_temp_dir()),
+                'tmp_dir'        => sys_get_temp_dir(),
+            ]);
+        }
+        // --- END DEBUG ---
+
         $request->validate([
             'message' => 'nullable|string|max:10000',
             'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
@@ -142,7 +167,7 @@ class AIChatController extends Controller
         ]);
     }
 
-    public function history()
+    public function history() 
     {
         $userId = auth('web')->id();
 
