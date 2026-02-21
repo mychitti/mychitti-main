@@ -27,12 +27,11 @@ class AiServiceClient
         if ($fileContent) {
             $payload['attachment'] = $fileContent; 
         }
-
+ 
         try {
             $response = Http::withHeaders(['X-Api-Key' => $this->key])
                 ->timeout(120)
                 ->post("{$this->url}/api/ai/chat", $payload);
-                prx($this->url);
             if (!$response->successful()) {
                 return ['success' => false, 'message' => 'AI service error: ' . $response->status(), 'detail' => $response->body()];
             }
@@ -41,7 +40,7 @@ class AiServiceClient
         } catch (\Exception $e) {
             Log::error('AI service chat error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'AI service unavailable.'];
-        }
+        } 
     }
 
     public function history(int $userId, string $guard): array
