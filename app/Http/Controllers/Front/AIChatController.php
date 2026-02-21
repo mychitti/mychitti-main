@@ -44,6 +44,8 @@ class AIChatController extends Controller
         }
         // --- END DEBUG ---
 
+        prx('here');
+
         $request->validate([
             'message' => 'nullable|string|max:10000',
             'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
