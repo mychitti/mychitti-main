@@ -27,7 +27,7 @@ class OpenAIService
 
         foreach ($messages as $message) {
             $openaiMessages[] = $this->convertMessage($message);
-        }
+        } 
 
         try {
             $response = $this->client->chat()->create([
