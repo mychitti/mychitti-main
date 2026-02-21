@@ -44,7 +44,6 @@ class AIChatController extends Controller
         }
         // --- END DEBUG ---
 
-        prx('here');
 
         $request->validate([
             'message' => 'nullable|string|max:10000',
@@ -52,18 +51,21 @@ class AIChatController extends Controller
             'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:10240',
         ]);
 
+        echo 'fd';
+
         $userId = auth('web')->id();
 
         $message     = $request->input('message') ?? '';
         $fileContent = null;
-
+echo 'hfd2';
         // File upload (image or PDF)
         if ($request->hasFile('file')) {
             $file   = $request->file('file');
             $mime   = $file->getMimeType();
             $base64 = base64_encode(file_get_contents($file->getRealPath()));
-
+echo '3';
             if ($mime === 'application/pdf') {
+                echo '4';
                 $fileContent = [
                     'type'   => 'document',
                     'source' => [
@@ -73,6 +75,7 @@ class AIChatController extends Controller
                     ],
                 ];
             } elseif (str_starts_with($mime, 'image/')) {
+                echo '5';
                 $fileContent = [
                     'type'   => 'image',
                     'source' => [
@@ -83,7 +86,8 @@ class AIChatController extends Controller
                 ];
             }
         }
-
+echo '6';
+die;
         // Voice → Text (OpenAI Whisper)
         if ($request->hasFile('voice')) {
             $voiceFile = $request->file('voice');
