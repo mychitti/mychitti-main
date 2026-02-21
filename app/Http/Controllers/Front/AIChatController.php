@@ -62,7 +62,6 @@ class AIChatController extends Controller
             $mime   = $file->getMimeType();
             $base64 = base64_encode(file_get_contents($file->getRealPath()));
             if ($mime === 'application/pdf') {
-                echo '4';
                 $fileContent = [
                     'type'   => 'document',
                     'source' => [
@@ -72,7 +71,6 @@ class AIChatController extends Controller
                     ],
                 ];
             } elseif (str_starts_with($mime, 'image/')) {
-                echo '5';
                 $fileContent = [
                     'type'   => 'image',
                     'source' => [
