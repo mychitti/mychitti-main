@@ -8,7 +8,7 @@ use App\Services\AiServiceClient;
 use Illuminate\Http\Request;
 
 class AIChatController extends Controller
-{
+{ 
     public function __construct(
         private OpenAIService $openai,
         private AiServiceClient $aiService
@@ -79,7 +79,6 @@ class AIChatController extends Controller
         if ($finalMessage === '' && !$fileContent) {
             return response()->json(['success' => false, 'message' => 'Empty message.'], 422);
         }
-
         $result = $this->aiService->chat($userId, 'user', $finalMessage, $fileContent);
 
         return response()->json($result);

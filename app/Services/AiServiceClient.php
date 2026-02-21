@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class AiServiceClient
 {
     private string $url;
-    private string $key;
+    private string $key; 
 
     public function __construct()
     {
@@ -32,7 +32,7 @@ class AiServiceClient
             $response = Http::withHeaders(['X-Api-Key' => $this->key])
                 ->timeout(120)
                 ->post("{$this->url}/api/ai/chat", $payload);
-
+prx($response);
             if (!$response->successful()) {
                 return ['success' => false, 'message' => 'AI service error: ' . $response->status(), 'detail' => $response->body()];
             }
