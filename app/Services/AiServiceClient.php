@@ -32,7 +32,7 @@ class AiServiceClient
             $response = Http::withHeaders(['X-Api-Key' => $this->key])
                 ->timeout(120)
                 ->post("{$this->url}/api/ai/chat", $payload);
-prx($response);
+                prx($this->url);
             if (!$response->successful()) {
                 return ['success' => false, 'message' => 'AI service error: ' . $response->status(), 'detail' => $response->body()];
             }

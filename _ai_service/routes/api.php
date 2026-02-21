@@ -19,6 +19,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::get('ai/ping', fn() => response()->json(['pong' => true, 'server' => 'ai-service']));
+
 Route::middleware('ai.key')->prefix('ai')->group(function () {
     Route::post('chat',    [AIChatController::class, 'chat']);
     Route::get('history',  [AIChatController::class, 'history']);
