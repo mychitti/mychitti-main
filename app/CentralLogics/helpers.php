@@ -5056,9 +5056,8 @@ class Helpers
             }
             Storage::disk('public')->putFileAs($dir, $image, $imageName);
         } else {
-            $imageName = 'def.png';
+            $imageName = 'def.png'; 
         }
-
         return $imageName;
     }
     public static function getDateRangeFromRequest()
