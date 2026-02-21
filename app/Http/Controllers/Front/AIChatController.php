@@ -18,6 +18,7 @@ class AIChatController extends Controller
 
     public function chat(Request $request)
     {
+        prx($request->all());
         $request->validate([
             'message' => 'nullable|string|max:10000',
             'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
