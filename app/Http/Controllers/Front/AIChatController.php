@@ -38,14 +38,14 @@ class AIChatController extends Controller
                 'file_name'      => $_FILES['file']['name'] ?? null,
                 'file_size'      => $_FILES['file']['size'] ?? null,
                 'tmp_name'       => $_FILES['file']['tmp_name'] ?? null,
-                'tmp_writable'   => is_writable(sys_get_temp_dir()),
-                'tmp_dir'        => sys_get_temp_dir(),
+                'tmp_writable'   => is_writable(storage_path('app/tmp')),
+                'tmp_dir'        => storage_path('app/tmp'),
             ]);
         }
         // --- END DEBUG ---
 
 
-        $request->validate([
+        $request->validate([ 
             'message' => 'nullable|string|max:10000',
             'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
             'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:10240',
@@ -113,7 +113,7 @@ die;
                       ?? $voiceFile->getClientOriginalExtension()
                       ?? 'wav';
 
-            $tmpPath = sys_get_temp_dir() . '/' . uniqid('voice_') . '.' . $extension;
+            $tmpPath = storage_path('app/tmp') . '/' . uniqid('voice_') . '.' . $extension;
             copy($voiceFile->getRealPath(), $tmpPath);
 
             try {
@@ -131,7 +131,7 @@ die;
                 }
             }
         }
-
+ 
         $finalMessage = trim($message);
 
         if ($finalMessage === '' && !$fileContent) {
