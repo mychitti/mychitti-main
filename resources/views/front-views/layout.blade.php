@@ -680,9 +680,9 @@
             }
         </style>
  
-        {{-- <button id="ai-chat-fab" title="Chat with AI">
+        <button id="ai-chat-fab" title="Chat with AI">
             <i class="fas fa-comments"></i>
-        </button> --}}
+        </button>
 
         <div id="ai-chat-overlay"></div>
         <div id="ai-chat-panel">
