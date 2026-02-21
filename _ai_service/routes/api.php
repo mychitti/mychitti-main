@@ -1,18 +1,23 @@
 <?php
 
 use App\Http\Controllers\Api\AIChatController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-/*
-|------------------------------------------------------------- -------------
-| AI Service API Routes
+/* 
 |--------------------------------------------------------------------------
-| Protected by ApiKeyMiddleware (X-Api-Key header).
-| Register ApiKeyMiddleware in app/Http/Kernel.php:
-|   'ai.key' => \App\Http\Middleware\ApiKeyMiddleware::class,
+| API Routes
+|--------------------------------------------------------------------------
 |
-| Add AI_SERVICE_KEY=<secret> to .env on this server.
+| Here is where you can register API routes for your application. These 
+| routes are loaded by the RouteServiceProvider within a group which 
+| is assigned the "api" middleware group. Enjoy building your API!
+|
 */
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
 
 Route::middleware('ai.key')->prefix('ai')->group(function () {
     Route::post('chat',    [AIChatController::class, 'chat']);

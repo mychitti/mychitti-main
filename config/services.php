@@ -49,11 +49,11 @@ return [
     'cloudflare' => [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
         'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
-    ], 
+    ],  
     'ai_service' => [
         'url' => env('AI_SERVICE_URL'),
         'key' => env('AI_SERVICE_KEY'),
     ],
-
+ 
 
 ];

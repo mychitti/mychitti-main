@@ -18,14 +18,14 @@ class AiServiceClient
 
     public function chat(int $userId, string $guard, string $message, ?array $fileContent = null): array
     {
-        $payload = [
+        $payload = [ 
             'user_id' => $userId,
             'guard'   => $guard,
             'message' => $message,
         ];
 
         if ($fileContent) {
-            $payload['attachment'] = $fileContent;
+            $payload['attachment'] = $fileContent; 
         }
 
         try {
@@ -33,10 +33,11 @@ class AiServiceClient
                 ->timeout(120)
                 ->post("{$this->url}/api/ai/chat", $payload);
 
-            dd([ 
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
+            if (!$response->successful()) {
+                return ['success' => false, 'message' => 'AI service error: ' . $response->status(), 'detail' => $response->body()];
+            }
+
+            return $response->json() ?? ['success' => false, 'message' => 'No response from AI service.'];
         } catch (\Exception $e) {
             Log::error('AI service chat error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'AI service unavailable.'];

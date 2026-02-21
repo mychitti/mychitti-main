@@ -9,7 +9,7 @@ use App\Http\Controllers\Front\FrontController;
 use Illuminate\Routing\Router;
 
 class ResolveStoreByDomain
-{
+{ 
     public function handle(Request $request, Closure $next)
     {
         $host = $request->getHost();
@@ -17,13 +17,19 @@ class ResolveStoreByDomain
         // your system domains (important for your setup)
         $systemDomains = [
             'mychitti.net',
-            'admin.mychitti.net',
             'www.mychitti.net', 
-            'binoculars.mcvendorhub.com',
+            'admin.mychitti.net',
+            'www.admin.mychitti.net',
             'mcvendorhub.com',
+            'www.mcvendorhub.com',
+            'binoculars.mcvendorhub.com',
+            'www.binoculars.mcvendorhub.com',
             'vendor.mcvendorhub.com',
+            'www.vendor.mcvendorhub.com',
             'vendor-staff.mcvendorhub.com',
-            'staging.mychitti.net'
+            'www.vendor-staff.mcvendorhub.com',
+            'staging.mychitti.net',
+            'www.staging.mychitti.net'
         ];
 
         // If system domain → skip resolving
