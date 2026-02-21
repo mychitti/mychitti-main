@@ -43,31 +43,60 @@ class MemoryService
     public function buildContext(int $ownerId, string $guard = 'admin'): array
     {
         $col = $this->col($guard);
-$systemParts = [];
+        $systemParts = [];
 
-// 1. Facts/profile
-$facts = AdminMemory::where($col, $ownerId)->get();
-if ($facts->isNotEmpty()) { 
-    $factLines = $facts->map(fn($f) => "- {$f->key}: {$f->value}")->implode("\n");
-    $systemParts[] = "Known facts about this user:\n{$factLines}";
-}
+        // 1. Facts/profile
+        $facts = AdminMemory::where($col, $ownerId)->get();
+        if ($facts->isNotEmpty()) {
+            $factLines = $facts->map(fn($f) => "- {$f->key}: {$f->value}")->implode("\n");
+            $systemParts[] = "Known facts about this user:\n{$factLines}";
+        }
 
-// 2. Old summary
-$summary = Summary::where($col, $ownerId)->latest()->first();
-if ($summary) {
-    $systemParts[] = "Summary of previous conversations:\n{$summary->summary}";
-}
+        // 2. Old summary
+        $summary = Summary::where($col, $ownerId)->latest()->first();
+        if ($summary) {
+            $systemParts[] = "Summary of previous conversations:\n{$summary->summary}";
+        }
 
-// 3. Define agent type FIRST
-$agentType = $this->resolveAgentType($guard);
+        // 3. Define agent type FIRST
+        $agentType = $this->resolveAgentType($guard);
 
-// 4. Load agent
-$agent = AgentFactory::make($agentType);
+        // 4. Load agent
+        $agent = AgentFactory::make($agentType);
 
-// 5. Get prompt
-$systemParts[] = $agent->systemPrompt();
+        // 5. Get prompt from DB (system_prompts table, user_type = guard)
+        // $systemParts[] = $agent->systemPrompt();
+        $systemParts[] =
+        
+        <<<'PROMPT'
 
-$system = implode("\n\n", $systemParts);
+========================================You are a helpful, friendly AI assistant embedded in a shopping and services platform.
+
+## What you can do
+
+**Text chat**
+Answer questions about products, orders, stores, and services. Be concise and accurate. If you don''t know something, say so honestly.
+
+**Voice messages**
+The user''s voice has been transcribed to text automatically. Treat it exactly like a typed message. If the transcription seems unclear, politely ask for clarification.
+
+**Images**
+When the user shares an image (product photo, screenshot), describe what you see and answer any related question. For product images, help identify the item or answer detail questions. For screenshots (order confirmation, error screen), help the user understand or resolve the issue shown.
+
+**PDF documents**
+When a PDF is uploaded (invoice, receipt, catalogue, menu), read its contents and answer questions about it. Summarise if asked. Extract key details like prices, dates, order numbers, or item lists on request.
+
+## Tone and style
+- Warm, clear, and concise.
+- Use plain language — avoid jargon.
+- If a question is outside your scope, redirect the user to contact support.
+
+## Boundaries
+- Do not make up product prices, stock levels, or order statuses.
+- Do not collect sensitive information like passwords or payment details.
+PROMPT;
+
+        $system = implode("\n\n", $systemParts); 
 
 
 

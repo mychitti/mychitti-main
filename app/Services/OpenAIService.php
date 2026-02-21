@@ -14,13 +14,21 @@ class OpenAIService
     }
 
     /**
+     * Proxy to the underlying OpenAI client's audio resource (e.g. Whisper transcription).
+     */
+    public function audio(): \OpenAI\Resources\Audio
+    {
+        return $this->client->audio();
+    }
+
+    /**
      * Send messages to OpenAI and get a response.
      * Accepts Claude-style content blocks and converts them automatically.
      */
     public function chat(array $messages, string $system = '', int $maxTokens = 4096): string
     {
         $openaiMessages = [];
-
+ 
         if (!empty($system)) {
             $openaiMessages[] = ['role' => 'system', 'content' => $system];
         }

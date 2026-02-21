@@ -9,7 +9,7 @@ use App\Services\MemoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class AIChatController extends Controller
+class AIChatController extends Controller 
 { 
     public function __construct(
         private OpenAIService $openai,
@@ -155,7 +155,7 @@ class AIChatController extends Controller
             'content' => $userContent,
         ];
 
-        $reply = $this->openai->chat($history, $system);
+        $reply = $this->claude->chat($history, $system);
 
         $this->memory->saveMessage($userId, 'assistant', $reply, 'text', 'user');
 
