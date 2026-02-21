@@ -34,7 +34,6 @@ class ClaudeService
      */
     public function chat(array $messages, string $system = '', int $maxTokens = 4096): string
     {
-        echo $this->apiKey;
         $payload = [
             'model'      => $this->model,
             'max_tokens' => $maxTokens,
