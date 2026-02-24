@@ -3635,18 +3635,19 @@ class Helpers
         if ($multi_data == true) {
             foreach ($data as $item) {
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
-                $item['positive_rating'] = $ratings['positive_rating'];
+                // $item['positive_rating'] = $ratings['positive_rating'];
 
                 array_push($storage, $item);
             }
-            $data = $storage;
+            $data = $storage; 
         } else {
 
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
-            unset($data['rating']);
-            // $data['avg_rating'] = $ratings['rating'];
-            // $data['rating_count'] = $ratings['total'];
-            $data['positive_rating'] = $ratings['positive_rating'];
+            // unset($data['rating']);
+            $data['avg_rating'] = $ratings['rating'];
+            $data['rating_count'] = $ratings['total'];
+            // $data['positive_rating'] = $ratings['positive_rating'];
+            unset($data['positive_rating']);
         }
 
         return $data;

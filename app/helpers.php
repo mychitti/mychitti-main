@@ -2735,6 +2735,7 @@ if (!function_exists('_serviceHistory')) {
 
             $confirmationReq = $confirmationReq1
                 ->union($confirmationReq2)
+                ->orderByDesc('created_at')
                 ->get();
 
 
@@ -2787,7 +2788,7 @@ if (!function_exists('_serviceRunning')) {
     function _serviceRunning($uid, $paginate = false, $perPage = 10, $service_id = null)
     {
         $query = DB::table('service_requests')
-            ->leftJoin(
+            ->leftJoin( 
                 'accepted_service_requests',
                 'accepted_service_requests.service_request_id',
                 'service_requests.id'

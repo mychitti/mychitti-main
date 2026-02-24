@@ -27,21 +27,15 @@ class ProductLogic
             ->first();
     }
     public static function stores_limited_columns($id, $zone_id, $limit, $offset, $type, $longitude, $latitude)
-    { 
-        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids; 
-        $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0) 
-        ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
-            $query->whereHas('zone.modules', function ($query) {
-                $query->where('modules.id', config('module.current_module_data')['id']);
-            })->module(config('module.current_module_data')['id']);
-            if (!config('module.current_module_data')['all_zone_service']) {
-                $query->whereIn('zone_id', json_decode($zone_id, true));
-            }
-        })
-        ->whereIn('id', explode(',', $store_ids))
-        ->active()->type($type)
-        ->select('id', 'name', 'address', 'logo', 'meta_description')
-        ->latest()->paginate($limit, ['*'], 'page', $offset);
+    {
+        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids;
+        $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0)
+            ->where('module_id', 6)
+            ->whereIn('zone_id', json_decode($zone_id, true))
+            ->whereIn('id', explode(',', $store_ids))
+            ->active()->type($type)
+            ->select('id', 'name', 'address', 'logo', 'meta_description', 'rating_count', 'average_rating')
+            ->latest()->paginate($limit, ['*'], 'page', $offset);
 
         return [
             'total_size' => $paginator->total(),
@@ -53,18 +47,18 @@ class ProductLogic
     public static function stores($id, $zone_id, $limit, $offset, $type, $longitude, $latitude)
     {
         $store_ids = DB::table('items')->where('id', $id)->first()->store_ids;
-        $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0) 
-        ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
-            $query->whereHas('zone.modules', function ($query) {
-                $query->where('modules.id', config('module.current_module_data')['id']);
-            })->module(config('module.current_module_data')['id']);
-            if (!config('module.current_module_data')['all_zone_service']) {
-                $query->whereIn('zone_id', json_decode($zone_id, true));
-            }
-        })
-        ->whereIn('id', explode(',', $store_ids))
-        ->active()->type($type)
-        ->latest()->paginate($limit, ['*'], 'page', $offset);
+        $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0)
+            ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
+                $query->whereHas('zone.modules', function ($query) {
+                    $query->where('modules.id', config('module.current_module_data')['id']);
+                })->module(config('module.current_module_data')['id']);
+                if (!config('module.current_module_data')['all_zone_service']) {
+                    $query->whereIn('zone_id', json_decode($zone_id, true));
+                }
+            })
+            ->whereIn('id', explode(',', $store_ids))
+            ->active()->type($type)
+            ->latest()->paginate($limit, ['*'], 'page', $offset);
 
         return [
             'total_size' => $paginator->total(),
@@ -331,8 +325,8 @@ class ProductLogic
         $data = [];
         if ($limit != null && $offset != null) {
             $paginator = Item::when(isset($store_id), function ($q) use ($store_id) {
-                    $q->where('store_id', $store_id);
-                })
+                $q->where('store_id', $store_id);
+            })
                 ->whereHas('store', function ($query) use ($zone_id) {
                     $query->when(config('module.current_module_data'), function ($query) {
                         $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
@@ -387,8 +381,8 @@ class ProductLogic
     {
         if ($limit != null && $offset != null) {
             $paginator = Item::whereHas('module.zones', function ($query) use ($zone_id) {
-                    $query->whereIn('zones.id', json_decode($zone_id, true));
-                })
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            })
                 ->whereHas('store', function ($query) use ($zone_id) {
                     $query->when(config('module.current_module_data'), function ($query) {
                         $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
@@ -430,8 +424,8 @@ class ProductLogic
     {
         if ($limit != null && $offset != null) {
             $paginator = Item::whereHas('module.zones', function ($query) use ($zone_id) {
-                    $query->whereIn('zones.id', json_decode($zone_id, true));
-                })
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            })
                 ->whereHas('store', function ($query) use ($zone_id) {
                     $query->when(config('module.current_module_data'), function ($query) {
                         $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
@@ -505,8 +499,8 @@ class ProductLogic
         $filter = $filter ? (is_array($filter) ? $filter : str_getcsv(trim($filter, "[]"), ',')) : '';
         if ($limit != null && $offset != null) {
             $paginator = Item::whereHas('module.zones', function ($query) use ($zone_id) {
-                    $query->whereIn('zones.id', json_decode($zone_id, true));
-                })
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            })
                 ->when(isset($category_ids) && (count($category_ids) > 0), function ($query) use ($category_ids) {
                     $query->whereHas('category', function ($q) use ($category_ids) {
                         return $q->whereIn('id', $category_ids)->orWhereIn('parent_id', $category_ids);
@@ -542,8 +536,8 @@ class ProductLogic
                 ->paginate($limit, ['*'], 'page', $offset);
 
             $item_categories = Item::whereHas('module.zones', function ($query) use ($zone_id) {
-                    $query->whereIn('zones.id', json_decode($zone_id, true));
-                })
+                $query->whereIn('zones.id', json_decode($zone_id, true));
+            })
                 ->when(isset($category_ids) && (count($category_ids) > 0), function ($query) use ($category_ids) {
                     $query->whereHas('category', function ($q) use ($category_ids) {
                         return $q->whereIn('id', $category_ids)->orWhereIn('parent_id', $category_ids);

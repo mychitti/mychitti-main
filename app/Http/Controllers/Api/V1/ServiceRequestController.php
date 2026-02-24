@@ -32,7 +32,6 @@ class ServiceRequestController extends Controller
 {
     public function get_termsnconditions(Request $request)
     {
-
         $tnc = DB::table('vendor_terms_conditions')->where('type', 'for_customer')->where('vendor_id', $request->vendor_id)->first();
         if ($tnc) {
             return response()->json(['status' => true, 'message' => 'Retrieved Successfully',  'data' => $tnc]);

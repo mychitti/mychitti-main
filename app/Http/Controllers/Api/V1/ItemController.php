@@ -18,12 +18,12 @@ use App\Models\Store;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
-class ItemController extends Controller 
+class ItemController extends Controller
 {
     public function get_stores(Request $request, $id)
     {
         if (!$request->hasHeader('zoneId')) {
-            $errors = []; 
+            $errors = [];
             array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
             return response()->json([
                 'errors' => $errors
@@ -35,6 +35,7 @@ class ItemController extends Controller
         $type = $request->query('type', 'all');
 
         $data = ProductLogic::stores_limited_columns($id, $zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
+        // prx( $data);
         $data['stores'] = Helpers::store_data_formatting_limited($data['stores'], true);
         return response()->json($data, 200);
     }
@@ -87,9 +88,9 @@ class ItemController extends Controller
             })
             ->join('categories', 'categories.id', 'items.category_id')
             ->whereNull('categories.added_by')
-            ->select('items.id','items.name', 'items.image',DB::raw('COUNT(service_requests.item_id) as total_requests'))
+            ->select('items.id', 'items.name', 'items.image', DB::raw('COUNT(service_requests.item_id) as total_requests'))
             ->groupBy('items.id')
-           ->orderBy('total_requests', 'desc')
+            ->orderBy('total_requests', 'desc')
             ->paginate($limit, ['*'], 'page', $offset);
 
         return response()->json($items, 200);
@@ -211,7 +212,7 @@ class ItemController extends Controller
             $resultItems .= '<li><a href="' . route('category.listing', [$pro->slug, _selectedCity()]) . '">' . $pro->name . ' - Category </a></li>';
         }
         foreach ($matchingStores as $pro) {
-            $resultItems .= '<li><a href="' . route('store.details', [_selectedCity() ,$pro->slug]) . '">' . $pro->name . ' - Store </a></li>';
+            $resultItems .= '<li><a href="' . route('store.details', [_selectedCity(), $pro->slug]) . '">' . $pro->name . ' - Store </a></li>';
         }
 
         if (count($matchingProducts) || count($matchingCategories) || count($matchingStores) || count($keywordsMatch)) {
@@ -1169,6 +1170,38 @@ class ItemController extends Controller
             $items = ProductLogic::get_related_products($zone_id, $id);
             $items = Helpers::product_data_formatting($items, true, false, app()->getLocale());
             return response()->json($items, 200);
+        }
+        return response()->json([
+            'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]
+        ], 404);
+    }
+    public function get_related_services(Request $request, $id)
+    {
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id = $request->header('zoneId');
+        $item = Item::find($id);
+        if ($item) {
+            $related_services = DB::table('items')
+                ->where('items.is_approved', 1)
+                ->join('categories', 'items.category_id', 'categories.id')
+                ->join('stores', function ($join) {
+                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                })
+                ->whereIn('stores.zone_id',  json_decode($zone_id, true))
+                ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
+                ->whereNot('items.id', $id)
+                ->where('items.module_id', 6)
+                ->select('items.id', 'items.name', 'items.image', 'stores.delivery_time', 'categories.slug as cat_slug')
+                ->limit(12)
+                ->groupBy('items.id')
+                ->get();
+            return response()->json(['image_path' => asset('storage/product') . '/', 'data' => $related_services], 200);
         }
         return response()->json([
             'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]

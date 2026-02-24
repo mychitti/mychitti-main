@@ -44,6 +44,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::get('faqs', 'ConfigController@faqs');
 
+    Route::get('terms-and-conditions', 'CustomerController@terms_n_conditions');
     Route::post('get-tems-n-conditions', 'ServiceRequestController@get_termsnconditions');
     Route::get('get-privacy-policy', 'ServiceRequestController@get_privacy_policy');
 
@@ -439,6 +440,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('search-suggestion', 'ItemController@get_searched_products_suggestion');
             Route::get('details/{id}', 'ItemController@get_product');
             Route::get('related-items/{item_id}', 'ItemController@get_related_products');
+            Route::get('related-services/{item_id}', 'ItemController@get_related_services');
             Route::get('related-store-items/{item_id}', 'ItemController@get_related_store_products');
             Route::get('reviews/{item_id}', 'ItemController@get_product_reviews');
             Route::get('rating/{item_id}', 'ItemController@get_product_rating');
@@ -524,3 +526,12 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 });
 
 WebSocketsRouter::webSocket('/delivery-man/live-location', DMLocationSocketHandler::class);
+ 
+// ── AI Service internal API (called by the AI droplet) ───────────────────────
+Route::middleware('ai.internal')->prefix('ai-internal')->group(function () {
+    Route::get('user/{userId}/service-bookings',  [\App\Http\Controllers\Api\AiInternalController::class, 'userServiceBookings']);
+    Route::get('user/{userId}/addresses',         [\App\Http\Controllers\Api\AiInternalController::class, 'userAddresses']);
+    Route::get('services',                        [\App\Http\Controllers\Api\AiInternalController::class, 'listServices']);
+    Route::post('user/{userId}/service-booking',  [\App\Http\Controllers\Api\AiInternalController::class, 'createServiceBooking']);
+});
+ 
