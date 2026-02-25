@@ -238,16 +238,16 @@ class SalespointController extends Controller
         $delivery_gst['percent'] = $deliveryConfig?->delivery_charges_gst_percent ?? 0;
         $delivery_gst['status'] = $deliveryConfig?->delivery_charges_gst_pos ?? 0;
 
-        if (!auth('vendor')->check()) {
-            $branch_id = Helpers::get_loggedin_user()->branch_id;
-        } else {
+        // if (!auth('vendor')->check()) {
+        //     $branch_id = Helpers::get_loggedin_user()->branch_id;
+        // } else {
             if ($request->has('branch')) {
                 $branch_id = $request->branch ?? 0;
             } else {
                 $branch = Branch::where('store_id', $store_id)->first();
                 $branch_id = $branch ? $branch->id : 0;
             }
-        }
+        // }
         $inventoryItems->where('bi.branch_id', $branch_id);
 
         $inventoryItems = $inventoryItems->select(
@@ -402,11 +402,11 @@ class SalespointController extends Controller
                 ->join('branches as b', 'bi.branch_id', '=', 'b.id')
                 ->where('bi.inventory_item_id', $item_id);
 
-            if (auth('vendor')->check()) {
+            // if (auth('vendor')->check()) {
                 $branch_id = $request->branch_id ?? null;
-            } else {
-                $branch_id = Helpers::get_loggedin_user()->branch_id;
-            }
+            // } else {
+            //     $branch_id = Helpers::get_loggedin_user()->branch_id;
+            // }
             $itemQuery->where('b.id', $branch_id);
             // prx(                $branch_id);
             $itemRow = (clone $itemQuery)

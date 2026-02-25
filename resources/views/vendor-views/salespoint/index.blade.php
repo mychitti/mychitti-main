@@ -330,7 +330,7 @@
                          <h2 class="coffee-title">Token Generate</h2>
                          <div class="d-flex gap-2 flex-wrap align-items-start">
 
-                             @if (auth('vendor')->check())
+                             {{-- @if (auth('vendor')->check()) --}}
                                  <form action="" style="min-width: 144px;" class="d-flex">
                                      <select class="form-control mx-1 js-select2-custom" id="branch_id" name="branch"
                                          onchange="this.form.submit()">
@@ -340,7 +340,7 @@
                                          @endforeach
                                      </select>
                                  </form>
-                             @endif
+                             {{-- @endif --}}
                              <div class="search_inp">
                                  <div class="input-group">
                                      <input type="text" placeholder="Search Item Name" class="pos_search form-control">
