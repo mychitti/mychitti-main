@@ -1645,12 +1645,7 @@ class ServiceController extends Controller
                     'otp' => $otp,
                     'created_at' => now()
                 ]);
-                echo $userPhone->phone;
-               prx( _send_confirmation_sms('mobile_verification', $userPhone->phone, $otp));
-            }else{
-                prx('User not found for sending SMS');
             }
-
             $empJob = VendorEmpJob::where('service_id', $service_id)->first();
             $empJob->ended_at = NOW();
             $empJob->update();

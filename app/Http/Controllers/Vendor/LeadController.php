@@ -266,8 +266,8 @@ class LeadController extends Controller
         $otp = rand(1000, 9999);
         $service_id = $request->service_id;
         $serviceDet = DB::table('service_requests')->where('id', $service_id)->first();
-
         $phone = User::where('id', $serviceDet->user_id)->first()->phone;
+        echo $phone;
         $cm_firebase_token = User::where('id', $serviceDet->user_id)->first()->cm_firebase_token;
 
         $data = [
@@ -291,6 +291,7 @@ class LeadController extends Controller
             ]
         );
         _send_confirmation_sms('job_msg', $phone, $otp);
+        prx($phone);
         return 1;
     }
     public function manage(Request $request, $id)
