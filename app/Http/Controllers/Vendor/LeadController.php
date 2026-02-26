@@ -263,11 +263,14 @@ class LeadController extends Controller
     }
     public function change_job_status(Request $request)
     {
+        echo 'fd';
         $otp = rand(1000, 9999);
         $service_id = $request->service_id;
         $serviceDet = DB::table('service_requests')->where('id', $service_id)->first();
         $phone = User::where('id', $serviceDet->user_id)->first()->phone;
         echo $phone;
+        echo '33';
+        die;
         $cm_firebase_token = User::where('id', $serviceDet->user_id)->first()->cm_firebase_token;
 
         $data = [
