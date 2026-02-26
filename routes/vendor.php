@@ -612,7 +612,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('job-otp-verify2', 'LeadController@job_otp_verify2')->name('job-otp-verify2');
             Route::post('save-comment', 'LeadController@save_comment')->name('save-comment')->middleware('permission:leads_manage,comment');
             Route::post('start-job', 'LeadController@start_job')->name('start-job')->middleware('permission:leads_manage,start_job');
-            Route::post('change-job-status', 'LeadController@change_job_status')->name('change-job-status')->middleware('permission:leads_manage,change_status');
+            Route::post('change-job-status', 'LeadController@change_job_status')->name('change-job-status');
             Route::get('convert-to-task/{lead_id}', 'LeadController@convert_to_task')->name('convert-to-task')->middleware('permission:leads_manage,convert_to_task');
             Route::get('convert-to-order/{lead_id}', 'LeadController@convert_to_order')->name('convert-to-order');
             Route::post('convert-to-order-store', 'LeadController@convert_to_order_store')->name('convert-to-order-store');
@@ -731,12 +731,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         //
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
 
-            // restaurent table 
+            // restaurent table  
             Route::resource('restaurant-tables', \App\Http\Controllers\Vendor\RestaurantTableController::class);
 
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
             Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
+            Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:pos,settings');
+            Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:pos,settings');
             Route::get('calendar', 'SalespointController@calendar')->name('calendar');
 
             // POS TOKEN 
