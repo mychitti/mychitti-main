@@ -352,7 +352,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::group(['middleware' => ['module-check']], function () {
         Route::group(['prefix' => 'customer', 'middleware' => 'auth:api'], function () {
             Route::get('notifications', 'NotificationController@get_notifications');
-            Route::get('ads', 'NotificationController@get_ads');
+            Route::get('ads', 'NotificationController@we');
             Route::get('info', 'CustomerController@info');
             Route::get('update-zone', 'CustomerController@update_zone');
             Route::post('update-profile', 'CustomerController@update_profile');

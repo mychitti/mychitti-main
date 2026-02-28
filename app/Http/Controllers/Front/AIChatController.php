@@ -1,18 +1,45 @@
 <?php
 
-namespace App\Http\Controllers\Front; 
-
+namespace App\Http\Controllers\Front;
+ 
 use App\Http\Controllers\Controller;
 use App\Services\OpenAIService;
 use App\Services\AiServiceClient;
 use Illuminate\Http\Request;
 
 class AIChatController extends Controller
-{ 
-    public function __construct(
+{
+    public function __construct( 
         private OpenAIService $openai,
         private AiServiceClient $aiService
-    ) {} 
+    ) {}
+
+    // ── Resolve user ID: real auth ID or session-based guest pseudo-ID ────
+
+    private function resolveUserId(): int
+    {
+        if ($id = auth('web')->id()) {
+            return $id;
+        }
+
+        if ($id = auth('customer')->id()) {
+            return $id;
+        }
+
+        // Guest: stable pseudo-ID for this browser session (100M–999M range)
+        if (!session()->has('ai_guest_id')) {
+            session(['ai_guest_id' => random_int(100_000_000, 999_999_999)]);
+        }
+
+        return session('ai_guest_id');
+    }
+
+    private function resolveGuard(): string
+    {
+        return (auth('web')->check() || auth('customer')->check()) ? 'user' : 'guest';
+    }
+
+    // ── Chat ──────────────────────────────────────────────────────────────
 
     public function chat(Request $request)
     {
@@ -22,7 +49,8 @@ class AIChatController extends Controller
             'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:10240',
         ]);
 
-        $userId      = auth('web')->id();
+        $userId      = $this->resolveUserId();
+        $guard       = $this->resolveGuard();
         $message     = $request->input('message') ?? '';
         $fileContent = null;
 
@@ -79,20 +107,25 @@ class AIChatController extends Controller
         if ($finalMessage === '' && !$fileContent) {
             return response()->json(['success' => false, 'message' => 'Empty message.'], 422);
         }
-        $result = $this->aiService->chat($userId, 'user', $finalMessage, $fileContent);
+
+        $result = $this->aiService->chat($userId, $guard, $finalMessage, $fileContent);
 
         return response()->json($result);
     }
+
+    // ── History ───────────────────────────────────────────────────────────
 
     public function history()
     {
-        $result = $this->aiService->history(auth('web')->id(), 'user');
+        $result = $this->aiService->history($this->resolveUserId(), $this->resolveGuard());
         return response()->json($result);
     }
 
+    // ── Clear memory ──────────────────────────────────────────────────────
+
     public function clearMemory()
     {
-        $result = $this->aiService->clearMemory(auth('web')->id(), 'user');
+        $result = $this->aiService->clearMemory($this->resolveUserId(), $this->resolveGuard());
         return response()->json($result);
     }
 }

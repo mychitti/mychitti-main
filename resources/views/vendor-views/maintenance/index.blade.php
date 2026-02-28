@@ -23,7 +23,19 @@
                 <div class="d-flex gap-1 flex-wrap flex-md-nowrap ">
                     <button class="btn btn--primary" data-toggle="modal" type="button" data-target="#howItWorksModal"
                         style="font-size: 21px !important;padding: 3px;"><i class="tio-info-outined"></i></button>
-
+                    @if (hasPermission('boa_monthly_maintenance', 'list'))
+                        <form action="">
+                            <select onchange="this.form.submit()" name="added_by" id="added_by"
+                                class="form-control js-select2-custom">
+                                <option {{ request('added_by') == '' ? 'selected' : '' }} value="">All</option>
+                                <option {{ request('added_by') == 'self' ? 'selected' : '' }} value="self">Self</option>
+                                @foreach ($staffList as $key => $value)
+                                    <option {{ request('added_by') == $value->id ? 'selected' : '' }} value="{{ $value->id }}"> {{ $value->f_name . ' ' . $value->l_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
                     @if (hasPermission('boa_monthly_maintenance', 'add'))
                         <a type="button" style="    white-space: nowrap;" data-toggle="modal"
                             data-target="#addExpenseModal" class="btn_sm btn btn-primary mb-0">
@@ -80,6 +92,8 @@
                                     <th>Payment Day</th>
                                     <th>Duration Type</th>
                                     <th>Start Month</th>
+                                    <th>Added By</th>
+                                    <th>Ledger Accounts</th>
                                     <th>Status</th>
                                     <th>Notes</th>
                                     <th>Action</th>
@@ -100,6 +114,10 @@
                                         <td>{{ $e['payment_day'] }}</td>
                                         <td>{{ $e['duration_type'] }}</td>
                                         <td>{{ $e['start_month'] }}</td>
+                                        <td>{{$e->employee?->f_name  . ' ' . $e->employee?->l_name}}</td>
+                                        <td>
+                                            {{ $e->debitAccount?->name ?? '' }} → {{ $e->creditAccount?->name ?? '' }}
+                                        </td>
                                         <td>
                                             @if ($e['stts'] == 'No dues')
                                                 <span class="badge badge-soft-success">No dues</span>
@@ -463,6 +481,7 @@ display:none;"><i
                                 </ul>
                             </div>
 
+
                             <label for="expense_type1">Expense Type <a
                                     href="{{ route('vendor.account.setting.common-settings') }}"
                                     class="text-primary text-underline">Edit options <i class="tio-edit"></i></a></label>
@@ -480,7 +499,32 @@ display:none;"><i
                             <label for="amount">Amount</label>
                             <input class="form-control" type="number" step="0.001" name="amount"
                                 placeholder="Amount" required>
-
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="from_ledger_account">From</label>
+                                    <select name="from_ledger_account" id="from_ledger_account"
+                                        class="form-control js-select2-custom-tags" required>
+                                        <option value="">Select Ledger Account</option>
+                                        @foreach ($storeAccounts as $type)
+                                            <option value="{{ $type->id }}">{{ $type->name }}
+                                                ({{ $type->code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_ledger_account">To</label>
+                                    <select name="to_ledger_account" id="to_ledger_account"
+                                        class="form-control js-select2-custom-tags" required>
+                                        <option value="">Select Ledger Account</option>
+                                        @foreach ($storeAccounts as $type)
+                                            <option value="{{ $type->id }}">{{ $type->name }}
+                                                ({{ $type->code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
 
                             <label for="payment_day">Payment Day <i class="tio-info-outlined"
                                     title="Select the day of the month for payment"></i></label>
@@ -575,6 +619,34 @@ display:none;"><i
                             <input class="form-control edit_amount" type="number" step="0.001" name="amount"
                                 placeholder="Amount" required>
 
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="from_ledger_account">From</label>
+                                    <select name="from_ledger_account" id="from_ledger_account"
+                                        class="form-control js-select2-custom-tags" required>
+                                        <option value="">Select Ledger Account</option>
+                                        @foreach ($storeAccounts as $type)
+                                            <option value="{{ $type->id }}">{{ $type->name }}
+                                                ({{ $type->code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_ledger_account">To</label>
+                                    <select name="to_ledger_account" id="to_ledger_account"
+                                        class="form-control js-select2-custom-tags" required>
+                                        <option value="">Select Ledger Account</option>
+                                        @foreach ($storeAccounts as $type)
+                                            <option value="{{ $type->id }}">{{ $type->name }}
+                                                ({{ $type->code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+
                             <label for="payment_day">Payment Day</label>
                             <input type="number" name="payment_day" class="form-control edit_payment_day"
                                 min="1" max="31" required placeholder="Day (1-31)"
@@ -603,9 +675,9 @@ display:none;"><i
             var selectedType = $(this).val();
             if (selectedType === 'monthly') {
                 $('.start_month').hide();
-            } else  {
+            } else {
                 $('.start_month').show();
-            } 
+            }
         })
         $(".edit_btn").on('click', function() {
             var id = $(this).attr('data-id')

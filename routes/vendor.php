@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
 
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
+
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
- 
+
     // mc vendorhub routes 
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
@@ -76,7 +77,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('edit/{id}', 'TaskController@edit')->name('edit')->middleware('permission:task,edit');
             Route::post('update', 'TaskController@update')->name('update')->middleware('permission:task,edit');
             Route::post('reassign', 'TaskController@reassign')->name('reassign')->middleware('permission:task,edit');
-            Route::get('list/{id?}', 'TaskController@list')->name('list')->middleware('permission:task,list');
+            Route::get('list/{id?}', 'TaskController@list')->name('list');
             Route::get('detail/{id}', 'TaskController@detail')->name('detail')->middleware('permission:task,view');
             Route::post('delete/{id}', 'TaskController@delete')->name('delete')->middleware('permission:task,delete');
             Route::post('save-progress', 'TaskController@save_progress')->name('save-progress');
@@ -114,6 +115,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             });
         });
 
+        Route::get('task/add/{id}', 'TaskController@add')->name('task.add-lead'); // for project details page without planwise:task_manage and permission:task,add check
         Route::post('applyCoupon', 'ServiceController@applyCoupon')->name('applyCoupon');
 
         Route::group(['prefix' => 'billing', 'as' => 'invoice.',], function () {
@@ -130,8 +132,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice')->middleware('permission:billing,edit');
             Route::get('reminder/{type}/{status}/{id}', 'ServiceController@reminder_status')->name('reminder')->middleware('permission:billing,reminder_update');
-            Route::post('save-manual-invoice/{id?}', 'ServiceController@save_manual_invoice')->name('save-manual-invoice')->middleware('permission:billing,add_basic');
-            Route::post('save-new-manual-invoice', 'BillingController@save_new_manual_invoice')->name('save-new-manual-invoice')->middleware('permission:billing,add_advance');
+            Route::post('save-manual-invoice', 'ServiceController@save_manual_invoice')->name('save-manual-invoice')->middleware('permission:billing,add_basic');
+            Route::post('save-new-manual-invoice', 'BillingController@save_new_manual_invoice')->name('save-new-manual-invoice')->middleware('permission:billing,add_advanced');
             Route::post('delete-row', 'ServiceController@delete_row')->name('delete-row');
             Route::get('invoice-view/{type}/{id}', 'ServiceController@invoice_view')->name('invoice-view')->middleware('permission:billing,view');
             Route::get('view-invoice/{type}/{invoice_id}', 'ServiceController@manual_invoice_view')->name('manual-invoice-view')->middleware('permission:billing,view');
@@ -147,12 +149,13 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('save', 'BillingController@save_purchase_invoice')->name('save')->middleware('permission:purchase_bill,add');
                 Route::post('import', 'BillingController@importPurchaseInvoices')->name('import')->middleware('permission:purchase_bill,import');
             });
-
+ 
             //SERVICE BILLS 
             Route::post('service-update-invoice', 'BillingController@service_update_invoice')->name('service-update-invoice')->middleware('permission:service_bill,edt');
             Route::post('save-invoice', 'ServiceController@save_invoice')->name('save-invoice')->middleware('permission:service_bill,add');
             Route::get('edit-service-invoice/{id}', 'BillingController@edit_service_invoice')->name('edit.service.invoice')->middleware('permission:service_bill,edit'); // only for manual invoices
         });
+        Route::post('billing/save-manual-invoice/{id}', 'ServiceController@save_manual_invoice')->name('invoice.save-manual-invoice-lead'); // for task invoice save without permission check because it is used in task details page and we have given access to view task details for some roles who don't have permission to manage billing
         Route::get('invoices', 'DashboardController@invoices')->name('invoices');
         Route::get('invoice-list', 'DashboardController@order_invoices')->name('order.invoices');
 
@@ -204,12 +207,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('salary/advance-request/store', 'SalaryController@advance_request_store')->name('salary.advance-request.store');
 
 
+        Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
         Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage']], function () {
             Route::get('settings', 'InventoryController@settings')->name('settings')->middleware('permission:inventory,settings');
             Route::post('settings-save', 'InventoryController@settings_save')->name('settings-save')->middleware('permission:inventory,settings_save');
             Route::get('dashboard', 'InventoryController@dashboard')->name('dashboard')->middleware('permission:inventory,dashboard');
             Route::get('/', 'InventoryController@inventory_management')->name('index');
-            Route::post('get-item-info', 'InventoryController@get_item_info')->name('get-item-info');
             Route::post('get_my_fee_amount', 'InventoryController@get_my_fee_amount')->name('get_my_fee_amount');
             Route::post('get_item_details', 'InventoryController@get_item_details')->name('get_item_details');
             Route::post('get_variation_details', 'InventoryController@get_variation_details')->name('get_variation_details');
@@ -482,8 +485,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('store');
                 Route::get('list', 'DocumentsController@job_cards_list')->name('list');
                 Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
-            });
-        });
+            }); 
+        }); 
+        Route::post('documents/service-report/store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('documents.service-report.store-lead'); // for task service report save without module:documents check because it is used in task details page
+        Route::post('documents/receivable-receipt/store/{action?}/{task_id?}', 'LibraryController@recievable_store')->name('documents.receivable-receipt.store-lead'); // for task receivable receipt save without module:documents check because it is used in task details page
         Route::group(['prefix' => 'smart-calendar', 'as' => 'smart-calendar.'], function () {
             Route::get('/', 'SmartCalendarController@index')->name('all');
         });
@@ -617,6 +622,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('convert-to-order/{lead_id}', 'LeadController@convert_to_order')->name('convert-to-order');
             Route::post('convert-to-order-store', 'LeadController@convert_to_order_store')->name('convert-to-order-store');
         });
+
         Route::group(['prefix' => 'lead', 'as' => 'lead.', 'middleware' => ['planwise:leads_manage']], function () {
             Route::get('list', 'LeadController@index')->name('list');
             Route::get('add', 'LeadController@add')->name('add')->middleware('permission:leads_manage,add');
@@ -635,7 +641,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('quotation_number_validation', 'QuoteController@quotation_number_validation')->name('quotation_number_validation')->middleware('permission:quotaiton_manage,add');
             Route::get('add', 'QuoteController@add')->name('add')->middleware('permission:quotaiton_manage,add');
             Route::post('status-change', 'QuoteController@status_change')->name('status-change')->middleware('permission:quotaiton_manage,status_chang');
-            Route::post('save-info/{id?}', 'QuoteController@save_info')->name('save-info')->middleware('permission:quotaiton_manage,add');
+            Route::post('save-info', 'QuoteController@save_info')->name('save-info')->middleware('permission:quotaiton_manage,add');
             Route::post('lead_approval', 'QuoteController@lead_approval')->name('lead_approval');
             Route::get('delete/{id}', 'QuoteController@delete')->name('delete')->middleware('permission:quotaiton_manage,delete');
             Route::get('manage/{id}', 'QuoteController@manage')->name('manage')->middleware('permission:quotaiton_manage,edit');
@@ -647,8 +653,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('signature-fetch', 'BusinessSettingsController@signature_fetch')->name('signature.fetch')->middleware('permission:quotation_sign,list');
             Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:quotation_bank_account,add');;
             Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:quotation_bank_account,delete');;
-        });
-
+        }); 
+        Route::post('quotation/save-info/{id}', 'QuoteController@save_info')->name('quotation.save-info-task'); // for lead quotation save without permission check because it is used in lead details page and we have given access to view lead details for some roles who don't have permission to manage quotation
 
         Route::group(['prefix' => 'staff-department', 'as' => 'staff-department.'], function () {
             Route::get('/', 'StaffController@departments')->name('all');
@@ -721,8 +727,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('delete/{id}', 'CustomerController@delete')->name('delete')->middleware('permission:client_manage,delete');
             Route::post('bulk-delete', 'CustomerController@bulk_delete')->name('bulk-delete')->middleware('permission:client_manage,delete');
             Route::post('upload-excel', 'CustomerController@upload_excel')->name('upload-excel')->middleware('permission:client_manage,import');
-            Route::post('fetch-details', 'CustomerController@fetch_details')->name('fetch-details');
-            Route::get('get-matches', 'CustomerController@get_matches')->name('get-matches');
             Route::get('get-store-customer', 'CustomerController@get_store_customer')->name('get-store-customer');
             Route::get('export', 'CustomerController@export')->name('export')->middleware('permission:client_manage,export');
             Route::post('upload-excel', 'CustomerController@upload_excel')->name('upload-excel')->middleware('permission:client_manage,import');
@@ -736,7 +740,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
-            Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
             Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:pos,settings');
             Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:pos,settings');
             Route::get('calendar', 'SalespointController@calendar')->name('calendar');
@@ -785,6 +788,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store', 'OrderTypeController@store')->name('store')->middleware('permission:pos_order_type,add');
                 Route::get('delete/{id}', 'OrderTypeController@delete')->name('delete')->middleware('permission:pos_order_type,delete');
                 Route::post('update', 'OrderTypeController@update')->name('update')->middleware('permission:pos_order_type,edit');
+            });
+
+            // SETTING
+            Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
+            Route::group(['prefix' => 'setting', 'as' => 'setting.'], function () {
+                Route::post('save', 'SalespointController@setting_save')->name('save')->middleware('permission:pos,settings');
             });
         });
 
@@ -1045,8 +1054,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
         });
 
-        Route::get('menu-preference', 'SettingsController@menu_preference')->name('menu_preference')->middleware('permission:module,menu_preference');
-        Route::post('menu-preference-save', 'SettingsController@menu_preference_save')->name('menu_preference_save')->middleware('permission:module,menu_preference');
+        Route::get('menu-preference', 'SettingsController@menu_preference')->name('menu_preference')->middleware('module:menu_preference');
+        Route::post('menu-preference-save', 'SettingsController@menu_preference_save')->name('menu_preference_save')->middleware('module:menu_preference');
         Route::get('business-settings/update-active-status', 'BusinessSettingsController@active_status')->name('business-settings.update-active-status')->middleware('module:store_availability');
 
         Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.', 'middleware' => ['module:store_setup']], function () {
@@ -1090,15 +1099,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('receivable-receipts', 'SettingsController@receivable_receipts')->name('receivable-receipts');
             });
         });
- 
+
 
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
             Route::get('webpage/{tab?}', 'SettingsController@webpage_settings')->name('webpage');
             Route::post('webpage-update', 'SettingsController@webpage_settings_update')->name('webpage-update');
             Route::post('webpage-template', 'SettingsController@webpage_template_update')->name('webpage-template');
             Route::post('purchase-template', 'SettingsController@purchase_template')->name('purchase-template');
-            
-            
+
+
             Route::group(['prefix' => 'domain', 'as' => 'domain.'], function () {
                 Route::post('update', 'SettingsController@domain_update')->name('update');
                 Route::post('remove', 'SettingsController@domain_remove')->name('remove');
@@ -1112,7 +1121,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('holiday/delete/{id}', 'SettingsController@holiday_delete')->name('holiday.delete');
             });
         });
-        Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions');
+        Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions')->middleware('module:subscriptions');;
 
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:subscriptions']], function () {
             Route::get('enable-free-trial', 'ProfileController@enable_free_trial')->name('enable-free-trial');
@@ -1139,12 +1148,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('update', 'RestaurantController@update')->name('update');
             Route::post('update-message', 'RestaurantController@update_message')->name('update-message');
         });
- 
+
         Route::group(['prefix' => 'message', 'as' => 'message.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}/{user_type}', 'ConversationController@store')->name('store');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
-        }); 
+        });
 
         Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['module:report']], function () {
             Route::post('set-date', 'ReportController@set_date')->name('set-date');

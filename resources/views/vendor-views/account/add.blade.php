@@ -142,9 +142,9 @@
                         Export
                     </a>
                 @endif
-                @if (hasPermission('boa_master_ledger', 'import'))
+                {{-- @if (hasPermission('boa_master_ledger', 'import'))
                     <a data-toggle="modal" data-target="#importExcelModal" class="btn btn-outline-primary btn_sm">Import</a>
-                @endif
+                @endif --}}
             </div>
         </div>
         <!-- End Page Header -->

@@ -40,6 +40,15 @@
 
 
                 <form action="" class="d-flex date-range-form gap-1">
+                    <select class="form-control mx-1 js-select2-custom" name="payment_method" onchange="this.form.submit()">
+                        <option {{ request()->payment_method == 'all' ? 'selected' : '' }} value="all">All Payment
+                            Methods
+                        </option>
+                        <option {{ request()->payment_method == 'cash' ? 'selected' : '' }} value="cash">Cash</option>
+                        <option {{ request()->payment_method == 'bank' ? 'selected' : '' }} value="bank">Bank</option>
+                        <option {{ request()->payment_method == 'upi' ? 'selected' : '' }} value="upi">UPI</option>
+                    </select>
+
                     @if (auth('vendor')->check())
                         <select class="form-control mx-1 js-select2-custom" name="branch" onchange="this.form.submit()">
                             <option {{ request()->branch == 'all' ? 'selected' : '' }} value="all">All Branches
@@ -121,8 +130,13 @@
                                                 <span class="badge badge-primary">Cash</span>
                                             @elseif($token->payment_method == 'card')
                                                 <span class="badge badge-success">Card</span>
-                                            @else
+                                            @elseif($token->payment_method == 'bank')
+                                                <span class="badge badge-success">Bank</span>
+                                            @elseif($token->payment_method == 'upi')
                                                 <span class="badge badge-info">UPI</span>
+                                            @else
+                                                <span
+                                                    class="badge badge-info">{{ ucfirst($token->payment_method) }}</span>
                                             @endif
                                         </a>
                                     </td>

@@ -19,7 +19,7 @@ class BankingController extends Controller
 {
     public function bank_account(Request $request)
     {
-        $year = $request->year ?? date('Y') . '-' . (date('Y') + 1);
+        $year = $request->year ?? Helpers::get_financial_year();
         list($startYear, $endYear) = explode('-', $year);
         $fyStart = $startYear . '-04-01';
         $fyEnd = $endYear . '-03-31';
@@ -27,12 +27,12 @@ class BankingController extends Controller
         $accounts = StoreBankAccount::where('store_id', Helpers::get_store_id())
             ->get();
 
-        $last_txn =  StoreBankTransaction::where('store_id', Helpers::get_store_id())
+        $account_last_txn =  StoreBankTransaction::where('store_id', Helpers::get_store_id())
             ->whereBetween('txn_date', [$fyStart, $fyEnd])
             ->latest('id') // tie-breaker if same date
             ->first();
-
-        return view('vendor-views.account.banking.bank-account.index', compact('accounts', 'fyStart', 'fyEnd', 'year', 'last_txn'));
+        // prx($account_last_txn);
+        return view('vendor-views.account.banking.bank-account.index', compact('accounts', 'fyStart', 'fyEnd', 'year', 'account_last_txn'));
     }
     public function bank_account_store(Request $request)
     {

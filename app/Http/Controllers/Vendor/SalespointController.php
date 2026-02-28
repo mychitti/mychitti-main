@@ -11,6 +11,7 @@ use App\Imports\InvItemImport;
 use App\Imports\POSInvItemImport;
 use App\Imports\POSItemImport;
 use App\Models\Account;
+use App\Models\AccountDetail;
 use App\Models\AccountOption;
 use App\Models\Branch;
 use App\Models\BranchInventoryItem;
@@ -241,14 +242,18 @@ class SalespointController extends Controller
         // if (!auth('vendor')->check()) {
         //     $branch_id = Helpers::get_loggedin_user()->branch_id;
         // } else {
-            if ($request->has('branch')) {
-                $branch_id = $request->branch ?? 0;
-            } else {
-                $branch = Branch::where('store_id', $store_id)->first();
-                $branch_id = $branch ? $branch->id : 0;
-            }
+        if ($request->has('branch')) {
+            $branch_id = $request->branch ?? 0;
+        } else {
+            $branch = Branch::where('store_id', $store_id)->first();
+            $branch_id = $branch ? $branch->id : 0;
+        }
         // }
-        $inventoryItems->where('bi.branch_id', $branch_id);
+        $inventoryItems->where('bi.branch_id', $branch_id); 
+
+        if ($request->filled('category')) {
+            $inventoryItems->where('ii.category_id', $request->category);
+        } 
 
         $inventoryItems = $inventoryItems->select(
             'ii.id',
@@ -277,7 +282,7 @@ class SalespointController extends Controller
 
         if ($store_config && $store_config->pos_menu_design) {
             $designId = $store_config->pos_menu_design;
-            // Special case: if design 4, use 3 instead
+            // Special case: if design 4, use 3 instead 
             $designCssId = ($designId == 4) ? $defaultDesign : $designId;
         } else {
             $designId = $defaultDesign;
@@ -286,16 +291,25 @@ class SalespointController extends Controller
 
         $data['design_id'] = $designId;
         $data['design']    = "/token_generate_{$designCssId}.css";
+        $data['category_position'] = $store_config?->category_position ?? 'dropdown';
 
         $data['branches'] = Branch::where('store_id', Helpers::get_store_id())->get();
         $data['order_from'] = OrderType::where('store_id', Helpers::get_store_id())->get();
-        $data['upcoming_number'] = Helpers::_nextTokenNumber();
         $data['branchWiseItems'] = $branchWiseItems;
         $data['tables'] = RestaurantTable::where('store_id', $store_id)->with('openOrder')
             ->orderBy('name')
             ->get();
 
+        $posItemCategoryIds = DB::table('inventory_items')->where('store_id', $store_id)->distinct()->pluck('category_id');
+        $data['categories'] = Category::whereIn('id', $posItemCategoryIds)->get();
+        $data['selected_category'] = $request->category_id;
+
         $data['waiters'] = VendorEmployee::where('store_id', $store_id)
+            ->get();
+        $data['payment_accounts'] = AccountDetail::where('user_type', 'vendor')
+            ->where('user_id', $store_id)
+            ->where('type', 'pos')
+            ->orderByDesc('id')
             ->get();
 
         return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id'));
@@ -317,6 +331,19 @@ class SalespointController extends Controller
     {
         // prx($request->all());
         $store_id = Helpers::get_store_id();
+
+        $request->validate([
+            'payment_method' => 'required|in:cash,bank,upi,cash_online',
+            'payment_detail_id_bank' => 'nullable|integer',
+            'payment_detail_id_upi' => 'nullable|integer',
+            'cash_amount' => 'nullable|numeric|min:0',
+            'online_amount' => 'nullable|numeric|min:0',
+        ]);
+        if ($request->payment_method === 'bank') {
+            $request->validate(['payment_detail_id_bank' => 'required|integer']);
+        } elseif ($request->payment_method === 'upi') {
+            $request->validate(['payment_detail_id_upi' => 'required|integer']);
+        }
 
         $branch_id = $request->branch_id ?? 0;
         $branch = Branch::where('store_id', $store_id)->where('id', $request->branch_id)->first();
@@ -359,6 +386,32 @@ class SalespointController extends Controller
         $pos_token->customer_id = $request->customer_id;
 
         $pos_token->payment_method = $request->payment_method;
+        $selectedBankId = null;
+        $selectedUpiId = null;
+        if ($request->payment_method === 'bank') {
+            $selectedBankId = AccountDetail::where('id', $request->payment_detail_id_bank)
+                ->where('user_type', 'vendor')
+                ->where('user_id', $store_id)
+                ->where('type', 'pos')
+                ->where('payment_type', 'bank')
+                ->value('id');
+        } elseif ($request->payment_method === 'upi') {
+            $selectedUpiId = AccountDetail::where('id', $request->payment_detail_id_upi)
+                ->where('user_type', 'vendor')
+                ->where('user_id', $store_id)
+                ->where('type', 'pos')
+                ->where('payment_type', 'upi')
+                ->value('id');
+        }
+        $pos_token->bank_account_id = $selectedBankId;
+        $pos_token->upi_account_id = $selectedUpiId;
+        if ($request->payment_method === 'cash_online') {
+            $pos_token->cash_amount = $request->cash_amount;
+            $pos_token->online_amount = $request->online_amount;
+        } else {
+            $pos_token->cash_amount = null;
+            $pos_token->online_amount = null;
+        }
         $pos_token->payment_status = $request->payment_status;
         $pos_token->order_from = $request->order_from;
         $pos_token->order_type = $request->order_type ?? 'take_away';
@@ -403,7 +456,7 @@ class SalespointController extends Controller
                 ->where('bi.inventory_item_id', $item_id);
 
             // if (auth('vendor')->check()) {
-                $branch_id = $request->branch_id ?? null;
+            $branch_id = $request->branch_id ?? null;
             // } else {
             //     $branch_id = Helpers::get_loggedin_user()->branch_id;
             // }
@@ -895,8 +948,53 @@ class SalespointController extends Controller
 
     public function payment_method(Request $request)
     {
+        $request->validate([
+            'payment_method' => 'required|in:cash,bank,upi,cash_online',
+            'payment_detail_id_bank' => 'nullable|integer',
+            'payment_detail_id_upi' => 'nullable|integer',
+            'cash_amount' => 'nullable|numeric|min:0',
+            'online_amount' => 'nullable|numeric|min:0',
+        ]);
+        if ($request->payment_method === 'bank') {
+            $request->validate(['payment_detail_id_bank' => 'required|integer']);
+        } elseif ($request->payment_method === 'upi') {
+            $request->validate(['payment_detail_id_upi' => 'required|integer']);
+        }
+
+        $store_id = Helpers::get_store_id(); 
         $token = PosToken::findOrFail($request->token_id);
         $token->payment_method = $request->payment_method;
+        if ($request->payment_method === 'bank') {
+            $token->bank_account_id = AccountDetail::where('id', $request->payment_detail_id_bank)
+                ->where('user_type', 'vendor')
+                ->where('user_id', $store_id)
+                ->where('type', 'pos')
+                ->where('payment_type', 'bank')
+                ->value('id');
+            $token->upi_account_id = null;
+            $token->cash_amount = null;
+            $token->online_amount = null;
+        } elseif ($request->payment_method === 'upi') {
+            $token->upi_account_id = AccountDetail::where('id', $request->payment_detail_id_upi)
+                ->where('user_type', 'vendor')
+                ->where('user_id', $store_id)
+                ->where('type', 'pos')
+                ->where('payment_type', 'upi')
+                ->value('id');
+            $token->bank_account_id = null;
+            $token->cash_amount = null;
+            $token->online_amount = null;
+        } elseif ($request->payment_method === 'cash_online') {
+            $token->bank_account_id = null;
+            $token->upi_account_id = null;
+            $token->cash_amount = $request->cash_amount;
+            $token->online_amount = $request->online_amount;
+        } else {
+            $token->bank_account_id = null;
+            $token->upi_account_id = null;
+            $token->cash_amount = null;
+            $token->online_amount = null;
+        }
         $token->save();
 
         Toastr::success('Payment method updated successfully');
@@ -957,6 +1055,21 @@ class SalespointController extends Controller
         Toastr::success('Cancelled Successfully');;
         return back();
     }
+    public function setting_save(Request $request)
+    {
+        //  prx($request->all());
+        $data = $request->except(['_token', '_method']);
+        if (!empty($data)) {
+            $config = StoreConfig::firstOrNew(['store_id' => Helpers::get_store_id()]);
+            $config->fill($data); // updates only fields present in request
+            $config->save();
+
+            Toastr::success('Updated Successfully');
+        } else {
+            Toastr::info('No fields to update');
+        }
+        return back();
+    }
     public function token_list(Request $request)
     {
         $preset = request('date_range') ?? 'today';
@@ -966,20 +1079,23 @@ class SalespointController extends Controller
         $formatted_to = $range['end'];
         $from = $range['start']->toDateString();
         $to  = $range['end']->toDateString();
+        $paymentMethod = $request->payment_method ?? null;
 
-        $query =  PosToken::with('client', 'invoice')->where('store_id', Helpers::get_store_id());
+        $query =  PosToken::with('client', 'invoice')
+            ->when($paymentMethod && $paymentMethod !== 'all', function ($q) use ($paymentMethod) {
+                $q->where('payment_method', $paymentMethod);
+            })
+            ->where('store_id', Helpers::get_store_id());
         if ($request->has('search') && $request->search != '') {
             $query->where('token_number', 'like', "%{$request->search}%");
         } else {
             $query->whereBetween('created_at', [$formatted_from, $formatted_to]);
-
             if ($request->has('branch') && $request->branch != '' && $request->branch != 'all') {
                 $query->where('branch_id', $request->branch);
             }
         }
         if (!auth('vendor')->check()) {
             $branch_id = Helpers::get_loggedin_user()->branch_id;
-
             $tokens = $query->where('branch_id', $branch_id);
         }
 

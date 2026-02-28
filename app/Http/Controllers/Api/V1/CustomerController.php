@@ -49,7 +49,12 @@ class CustomerController extends Controller
         ];
         return response()->json($data, 200);
     }
+  public function terms_n_conditions()
+    {
+        $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'terms_and_conditions')->value('value');
+        return response()->json($content, 200);
 
+    }
     public function delete_reasons(Request $request)
     {
         $data = DB::table('delete_account_reasons')->where('user_type', 'user')->select('id','reason')->get();

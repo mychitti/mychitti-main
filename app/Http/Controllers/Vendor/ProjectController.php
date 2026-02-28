@@ -449,7 +449,11 @@ class ProjectController extends Controller
         $project->save();
 
         Toastr::success('Saved Successfully');
-        return redirect()->route('vendor.project.all');
+        if(hasPermission('project', 'list')) {
+            return redirect()->route('vendor.project.all');
+        }else{
+            return back();
+        }
     }
     public function save_info(Request $request)
     {
@@ -651,7 +655,11 @@ class ProjectController extends Controller
 
         // -----------------------------------------------------
         Toastr::success('Project Saved Successfully');
-        return redirect()->route('vendor.project.all');
+        if(hasPermission('project', 'list')) {
+            return redirect()->route('vendor.project.all');
+        }else{
+            return back();
+        }
     }
 
 

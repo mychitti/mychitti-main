@@ -265,11 +265,11 @@
                     {{-- date range modal --}}
                     @include('vendor-views/form_modals/date_range')
                 </form>
-                @if (hasPermission('boa_journal_entry', 'import'))
+                {{-- @if (hasPermission('boa_journal_entry', 'import'))
                     <button data-toggle="modal" data-target="#importExcelModal"
                         class=" btn_sm btn btn-outline-primary">Import
                     </button>
-                @endif
+                @endif --}}
                 @if (hasPermission('boa_journal_entry', 'export'))
                     <a class="btn btn-outline-primary  btn_sm " href="{{ route('vendor.account.journal-entry.export') }}">
                         Export </a>

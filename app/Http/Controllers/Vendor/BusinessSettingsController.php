@@ -121,22 +121,41 @@ class BusinessSettingsController extends Controller
             DB::table('store_configs')->insert(['store_id' => Helpers::get_store_id(), 'cl_for_employees' => $request->cl, 'sl_for_employees' => $request->sl, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
         }
         Toastr::success('Updated Successfully');
-        return back();
+        return back(); 
     }
 
     public function new_bank_account(Request $request)
     {
-        // prx($request->all());
-        // bank details update  ==========================
+        $type = $request->input('type', 'invoice');
+        $paymentType = $type === 'pos' ? $request->input('payment_type', 'bank') : 'bank';
+
+        $rules = [
+            'type' => 'nullable|string|in:invoice,quotation,pos',
+            'payment_type' => 'nullable|string|in:bank,upi',
+            'upi_id' => 'nullable|string|max:255',
+        ];
+
+        if ($paymentType === 'upi') {
+            $rules['upi_id'] = 'required|string|max:255';
+        } else {
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['account_holder_name'] = 'required|string|max:255';
+            $rules['account_number'] = 'required|string|max:255';
+            $rules['ifsc_code'] = 'required|string|max:255';
+        }
+
+        $request->validate($rules);
+
         $account = new AccountDetail();
         $account->user_type = 'vendor';
-        $account->type =  $request->type;
+        $account->type =  $type;
         $account->user_id =  Helpers::get_store_id();
-        $account->payment_type =  'bank';
-        $account->account_holder_name = $request->account_holder_name;
-        $account->account_number = $request->account_number;
-        $account->bank_name = $request->bank_name;
-        $account->ifsc_code  = $request->ifsc_code;
+        $account->payment_type = $paymentType;
+        $account->account_holder_name = $paymentType === 'bank' ? $request->account_holder_name : null;
+        $account->account_number = $paymentType === 'bank' ? $request->account_number : null;
+        $account->bank_name = $paymentType === 'bank' ? $request->bank_name : null;
+        $account->ifsc_code  = $paymentType === 'bank' ? $request->ifsc_code : null;
+        $account->upi_id = $request->filled('upi_id') ? $request->upi_id : null;
         if ($request->hasFile('upi_qr_code')) {
             $account->upi_qr_code = Helpers::upload('store/documents/', 'png', $request->file('upi_qr_code'));
         }

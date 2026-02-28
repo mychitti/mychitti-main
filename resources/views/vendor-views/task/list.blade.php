@@ -344,44 +344,50 @@
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Task Management</h1>
         </div>
-
-        <div class="d-flex row p-3">
-            <div class="col-6 col-md-2 p-1">
-                <div class="card  stat-card theme-skyblue-color ">
-                    <span class="card-caption">Allotted</span>
-                    <span class="card-main-text">{{ $data['alotted'] }}</span>
+        @if (hasPermission('task', 'list'))
+            <div class="d-flex row p-3">
+                <div class="col-6 col-md-2 p-1">
+                    <div class="card  stat-card theme-skyblue-color ">
+                        <span class="card-caption">Allotted</span>
+                        <span class="card-main-text">{{ $data['alotted'] }}</span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 p-1">
+                    <div class="card  stat-card theme-green-color">
+                        <span class="card-caption">Completed</span>
+                        <span class="card-main-text">{{ $data['completed'] }}</span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 p-1">
+                    <div class="card  stat-card theme-grey-color">
+                        <span class="card-caption">In Progress</span>
+                        <span class="card-main-text">{{ $data['inprogress'] }}</span>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 p-1">
+                    <div class="card  stat-card theme-pink-color">
+                        <span class="card-caption">Cancelled</span>
+                        <span class="card-main-text">{{ $data['cancelled'] }}</span>
+                    </div>
                 </div>
             </div>
-            <div class="col-6 col-md-2 p-1">
-                <div class="card  stat-card theme-green-color">
-                    <span class="card-caption">Completed</span>
-                    <span class="card-main-text">{{ $data['completed'] }}</span>
-                </div>
-            </div>
-            <div class="col-6 col-md-2 p-1">
-                <div class="card  stat-card theme-grey-color">
-                    <span class="card-caption">In Progress</span>
-                    <span class="card-main-text">{{ $data['inprogress'] }}</span>
-                </div>
-            </div>
-            <div class="col-6 col-md-2 p-1">
-                <div class="card  stat-card theme-pink-color">
-                    <span class="card-caption">Cancelled</span>
-                    <span class="card-main-text">{{ $data['cancelled'] }}</span>
-                </div>
-            </div>
-        </div>
+        @endif
         <div class="card-header d-flex justify-content-end gap-2 flex-wrap py-2">
-            <button type="button" class="btn btn--primary mb-0" data-toggle="modal" data-target="#calendarModal">
-                Calendar
-            </button>
+            @if (hasPermission('task', 'list'))
+                <button type="button" class="btn btn--primary mb-0" data-toggle="modal" data-target="#calendarModal">
+                    Calendar
+                </button>
+            @endif
             @if (hasPermission('task', 'add'))
                 <a href="{{ route('vendor.task.add') }}" class="btn btn_sm btn-primary">+ Add New Task</a>
             @endif
         </div>
         <div class="page-header d-flex justify-content-between flex-wrap gap-1">
+            @if (hasPermission('task', 'list'))
+
             <h1 class="page-header-title"> Task List <span class="badge badge-soft-dark ml-2"
                     id="itemCount">{{ count($tasks) }}</span></h1>
+                    @endif
             <div class="card-header d-flex py-2  flex-wrap align-items-center">
 
                 @if (!$empId) <!-- if not showing employee specific -->

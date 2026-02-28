@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Design — MC Vendor Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#f0f2f7;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+.topbar{background:#fff;border-bottom:1px solid #e5e8ef;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.tl{display:flex;align-items:center;gap:9px}
+.brand{font-size:12.5px;font-weight:700;color:#e3342f}
+.sep{color:#d1d5db;font-size:14px}
+.page-title{font-size:14.5px;font-weight:700;color:#111827}
+.env-select{border:1.5px solid #e5e8ef;border-radius:8px;padding:6px 28px 6px 10px;font-size:12px;font-weight:700;font-family:inherit;outline:none;cursor:pointer;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 8px center}
+.env-select.prod{color:#ef4444;border-color:#fca5a5;background-color:#fff5f5}
+.env-select.staging{color:#d97706;border-color:#fcd34d;background-color:#fffbeb}
+.env-select.sandbox{color:#059669;border-color:#6ee7b7;background-color:#f0fdf4}
+.tr{display:flex;align-items:center;gap:9px}
+.btn-t{padding:7px 14px;background:#f0fdf4;color:#059669;border:1.5px solid #a7f3d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+.btn-t:hover{background:#dcfce7}
+.btn-n{background:linear-gradient(135deg,#e3342f,#c0392b);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(227,52,47,.25)}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;height:calc(100vh - 52px);overflow:hidden}
+
+/* ── LEFT ── */
+.lp{width:262px;background:#fff;border-right:1px solid #e5e8ef;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.tabs{display:flex;padding:11px 11px 0;gap:3px;border-bottom:1px solid #e5e8ef}
+.tab{flex:1;text-align:center;padding:7px 2px;font-size:11.5px;font-weight:600;color:#6b7280;cursor:pointer;border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;gap:4px;border-bottom:2px solid transparent;transition:all .18s;position:relative;bottom:-1px}
+.tab.on{color:#e3342f;border-bottom:2px solid #e3342f;background:#fff8f8}
+.tab:hover:not(.on){color:#374151;background:#f9fafb}
+.bdg{border-radius:20px;font-size:9.5px;font-weight:700;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px;background:#e3342f;color:#fff}
+.bdg.g{background:#d1d5db;color:#374151}
+.bdg.b{background:#3b82f6}
+.sh{display:flex;align-items:center;justify-content:space-between;padding:11px 13px 5px}
+.sh-l{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px}
+.sh-r{font-size:11px;font-weight:600;color:#9ca3af}
+.si{margin:3px 7px;padding:10px 11px;border-radius:9px;cursor:pointer;transition:all .18s;border:1.5px solid transparent;display:flex;align-items:center;justify-content:space-between}
+.si:hover{background:#f9fafb}
+.si.on{background:linear-gradient(135deg,#e3342f,#c0392b);box-shadow:0 4px 14px rgba(227,52,47,.28)}
+.sdot{width:7px;height:7px;border-radius:50%;margin-right:8px;flex-shrink:0}
+.sdot.dr{background:#f59e0b}
+.sdot.ac{background:#10b981}
+.sinfo{display:flex;align-items:center;flex:1}
+.sn{font-size:12.5px;font-weight:600;color:#111827;display:block}
+.si.on .sn{color:#fff}
+.ss{font-size:11px;color:#6b7280;display:block;margin-top:1px}
+.si.on .ss{color:rgba(255,255,255,.7)}
+.stag{font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:20px}
+.si.on .stag{background:rgba(255,255,255,.2);color:#fff}
+.stag.dt{background:#fef3c7;color:#d97706}
+.stag.at{background:#d1fae5;color:#059669}
+.add-s{margin:7px 9px 11px;padding:8px;border:1.5px dashed #d1d5db;border-radius:9px;text-align:center;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;transition:all .18s}
+.add-s:hover{border-color:#e3342f;color:#e3342f;background:#fff5f5}
+
+/* ── RIGHT ── */
+.rp{flex:1;padding:18px 22px;overflow-y:auto;background:#f0f2f7}
+
+/* ── CARDS ── */
+.card{background:#fff;border-radius:13px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid #e5e8ef;margin-bottom:15px}
+
+/* Card header */
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #f3f4f6}
+.ch-l{display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#e3342f,#c0392b);display:flex;align-items:center;justify-content:center;font-size:15px}
+.ct{font-size:17px;font-weight:700;color:#111827;letter-spacing:-.3px}
+.cm{font-size:11px;color:#9ca3af;margin-top:2px}
+.ca{display:flex;gap:8px;align-items:center}
+.sbig{padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:700}
+.sbig.dr{background:#fef3c7;color:#d97706}
+.sbig.ac{background:#d1fae5;color:#059669}
+.bdel{padding:6px 13px;border:1.5px solid #fca5a5;background:#fff;color:#ef4444;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.bdel:hover{background:#fef2f2}
+.bsav{padding:6px 16px;background:linear-gradient(135deg,#e3342f,#c0392b);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(227,52,47,.22)}
+.bsav:hover{transform:translateY(-1px)}
+
+/* Section header */
+.sch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #f3f4f6}
+.sch-l{display:flex;align-items:center;gap:10px}
+.ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.st{font-size:13.5px;font-weight:700;color:#111827}
+.ss2{font-size:11px;color:#9ca3af;margin-top:1px}
+
+/* Buttons */
+.badd{padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s;border:1.5px solid}
+.badd.ind{background:#eef2ff;color:#4f46e5;border-color:#c7d2fe}
+.badd.ind:hover{background:#e0e7ff}
+.badd.grn{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+.badd.grn:hover{background:#d1fae5}
+.badd.red{background:#fff5f5;color:#ef4444;border-color:#fca5a5}
+.badd.red:hover{background:#fee2e2}
+.badd.pur{background:#faf5ff;color:#7c3aed;border-color:#ddd6fe}
+.badd.pur:hover{background:#ede9fe}
+
+/* Form */
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.fr{display:grid;gap:14px;margin-bottom:14px}
+.fr.c3{grid-template-columns:1fr 1fr 1fr}
+.fr.c2{grid-template-columns:1fr 1fr}
+.fr.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.fl{font-size:10.5px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.7px}
+.fh{font-size:10.5px;color:#9ca3af;margin-top:2px}
+.fc{border:1.5px solid #e5e8ef;border-radius:8px;padding:8px 11px;font-size:12.5px;font-family:inherit;color:#111827;background:#fff;outline:none;transition:border-color .18s;width:100%}
+.fc:focus{border-color:#e3342f;box-shadow:0 0 0 3px rgba(227,52,47,.07)}
+select.fc{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px}
+textarea.fc{resize:vertical;min-height:100px;line-height:1.6}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:600;border:1.5px solid #e5e8ef;color:#6b7280;cursor:pointer;transition:all .14s}
+.chip:hover{border-color:#e3342f;color:#e3342f}
+.chip.on{background:#e3342f;color:#fff;border-color:#e3342f}
+
+/* Info banners */
+.ib{border-radius:8px;padding:9px 13px;margin-bottom:15px;display:flex;align-items:flex-start;gap:8px;font-size:12px;font-weight:500;line-height:1.5}
+.ib.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8}
+.ib.red{background:#fff5f5;border:1px solid #fca5a5;color:#dc2626}
+.ib.amber{background:#fffbeb;border:1px solid #fcd34d;color:#d97706}
+.ib.green{background:#f0fdf4;border:1px solid #a7f3d0;color:#065f46}
+
+/* Table */
+.tw{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl thead tr{background:#f9fafb}
+.tbl th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+.tbl td{padding:7px 8px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#fafafa}
+.rn{font-size:11px;font-weight:600;color:#9ca3af;text-align:center;width:26px}
+.ti{border:1.5px solid #e5e8ef;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:#111827;width:100%;outline:none;background:#fff}
+.ti:focus{border-color:#e3342f}
+.ts{border:1.5px solid #e5e8ef;border-radius:6px;padding:5px 8px;font-size:11.5px;font-family:inherit;color:#374151;background:#fff;outline:none;cursor:pointer;width:100%;appearance:none}
+
+/* Pills */
+.pill{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.pill.ac{background:#d1fae5;color:#059669}
+.pill.dr{background:#fef3c7;color:#d97706}
+.pill.er{background:#fee2e2;color:#ef4444}
+.pill.in{background:#f3f4f6;color:#6b7280}
+.pill.bl{background:#dbeafe;color:#1d4ed8}
+
+/* Action type pills */
+.at-r{background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.at-w{background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.at-d{background:#fee2e2;color:#ef4444;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+
+/* Toggle */
+.tog{width:36px;height:20px;border-radius:10px;background:#d1d5db;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.tog.on{background:#e3342f}
+.tog.gr.on{background:#059669}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog.on::after{left:18px}
+
+/* Mem toggles */
+.mt-row{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border:1.5px solid #e5e8ef;border-radius:8px;margin-bottom:8px}
+.mt-l{font-size:12.5px;font-weight:600;color:#111827}
+.mt-h{font-size:11px;color:#9ca3af}
+
+/* Permissions */
+.pg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pi{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1.5px solid #e5e8ef;border-radius:8px;cursor:pointer;transition:all .14s}
+.pi.on{border-color:#4f46e5;background:#eef2ff}
+.pi:hover:not(.on){border-color:#a5b4fc}
+.pck{width:17px;height:17px;border-radius:4px;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .14s}
+.pi.on .pck{background:#4f46e5;border-color:#4f46e5}
+.pl{font-size:12px;font-weight:600;color:#374151}
+.pi.on .pl{color:#4f46e5}
+
+/* Notifications */
+.ng{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ni{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1.5px solid #e5e8ef;border-radius:8px}
+.nico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.nb{flex:1}
+.nl{font-size:12.5px;font-weight:600;color:#111827}
+.nh{font-size:10.5px;color:#9ca3af}
+
+/* Slider */
+.slider{-webkit-appearance:none;width:100%;height:4px;border-radius:3px;background:#e5e8ef;outline:none}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#e3342f;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.sl-lab{display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-top:4px}
+
+/* Task rows */
+.tklist{display:flex;flex-direction:column;gap:8px}
+.tkrow{background:#f9fafb;border:1.5px solid #e5e8ef;border-radius:10px;padding:10px 12px;transition:all .15s}
+.tkrow:hover{background:#fff;border-color:#d1d5db}
+.tkrow.destructive{border-left:3px solid #ef4444}
+.tkrow.destructive .tk-warn{display:flex}
+.tk-warn{display:none;align-items:center;gap:6px;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:6px 10px;margin-top:7px;font-size:11.5px;color:#dc2626;font-weight:600}
+.tk-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tk-drag{color:#d1d5db;font-size:15px;cursor:grab;user-select:none;flex-shrink:0}
+.tk-name{flex:1;min-width:150px;font-weight:600}
+.tk-conf-row{display:flex;align-items:center;gap:7px;margin-top:7px;padding:7px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:7px}
+.tk-conf-row.hidden{display:none}
+.tk-conf-label{font-size:11.5px;font-weight:600;color:#d97706;flex:1}
+
+/* JSON schema editor */
+.schema-box{background:#1a1a2e;border-radius:9px;padding:14px;position:relative}
+.schema-lang{position:absolute;top:10px;right:12px;font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.5px}
+.schema-ta{width:100%;background:transparent;border:none;outline:none;color:#a3e635;font-family:'Courier New',monospace;font-size:12px;line-height:1.7;resize:vertical;min-height:160px}
+.schema-ta::selection{background:#3f3f5a}
+.schema-actions{display:flex;gap:8px;margin-top:10px}
+.schema-btn{padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid}
+.schema-btn.validate{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+.schema-btn.format{background:#eef2ff;color:#4f46e5;border-color:#c7d2fe}
+.schema-result{margin-top:8px;padding:7px 10px;border-radius:7px;font-size:11.5px;font-weight:600;display:none}
+.schema-result.ok{background:#d1fae5;color:#059669;display:block}
+.schema-result.err{background:#fee2e2;color:#ef4444;display:block}
+
+/* Error handling */
+.eh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.eh-item{padding:12px 14px;border:1.5px solid #e5e8ef;border-radius:9px}
+.eh-label{font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+.fallback-ta{width:100%;border:1.5px solid #e5e8ef;border-radius:7px;padding:8px 10px;font-size:12px;font-family:inherit;color:#374151;resize:none;min-height:55px;outline:none}
+.fallback-ta:focus{border-color:#e3342f}
+.esc-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid #e5e8ef;border-radius:8px;margin-bottom:8px}
+.esc-icon{font-size:16px;flex-shrink:0}
+.esc-body{flex:1}
+.esc-title{font-size:12.5px;font-weight:600;color:#111827}
+.esc-sub{font-size:11px;color:#9ca3af}
+
+/* Versioning */
+.ver-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9fafb;border:1.5px solid #e5e8ef;border-radius:10px;margin-bottom:12px}
+.ver-num{font-size:22px;font-weight:800;color:#e3342f;letter-spacing:-1px;line-height:1}
+.ver-info{flex:1}
+.ver-label{font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.7px}
+.ver-val{font-size:13px;font-weight:600;color:#111827;margin-top:1px}
+.changelog-ta{width:100%;border:1.5px solid #e5e8ef;border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;color:#374151;resize:none;min-height:75px;outline:none;line-height:1.6}
+.changelog-ta:focus{border-color:#e3342f}
+.ver-history{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.vh-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:1px solid #f3f4f6;border-radius:8px;background:#fafafa}
+.vh-v{font-size:11.5px;font-weight:700;color:#e3342f;min-width:36px}
+.vh-body{flex:1}
+.vh-msg{font-size:12px;font-weight:600;color:#374151}
+.vh-time{font-size:10.5px;color:#9ca3af}
+.vh-pill{font-size:10px;padding:2px 8px;border-radius:20px;background:#d1fae5;color:#059669;font-weight:700}
+
+/* Login state */
+.role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.role-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1.5px solid #e5e8ef;border-radius:8px;cursor:pointer;transition:all .14s}
+.role-item.on{border-color:#059669;background:#f0fdf4}
+.role-item:hover:not(.on){border-color:#a7f3d0}
+.role-check{width:17px;height:17px;border-radius:4px;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.role-item.on .role-check{background:#059669;border-color:#059669}
+.role-label{font-size:12px;font-weight:600;color:#374151}
+.role-item.on .role-label{color:#059669}
+
+/* Test console */
+.console{background:#1e1e2e;border-radius:10px;padding:14px}
+.con-label{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.con-in{width:100%;background:#2a2a3e;border:1px solid #3f3f5a;border-radius:7px;padding:9px 11px;color:#e2e8f0;font-family:inherit;font-size:12.5px;resize:none;outline:none;min-height:60px}
+.con-in::placeholder{color:#4b5563}
+.con-out{background:#2a2a3e;border-radius:7px;padding:11px;color:#a3e635;font-family:'Courier New',monospace;font-size:11.5px;min-height:80px;line-height:1.7;margin-top:9px;white-space:pre-wrap}
+.con-run{margin-top:9px;padding:7px 18px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+.con-run:hover{transform:translateY(-1px)}
+
+/* Logs */
+.log-list{display:flex;flex-direction:column;gap:7px}
+.log-i{display:flex;align-items:center;gap:10px;padding:9px 13px;border:1px solid #f3f4f6;border-radius:8px;background:#fafafa}
+.log-ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.log-ic.ok{background:#d1fae5}
+.log-ic.fa{background:#fee2e2}
+.log-ic.wa{background:#fef3c7}
+.log-b{flex:1}
+.log-t{font-size:12px;font-weight:600;color:#111827}
+.log-m{font-size:10.5px;color:#9ca3af}
+
+/* Remove btn */
+.brm{background:none;border:none;color:#9ca3af;cursor:pointer;font-size:11px;padding:3px 5px;border-radius:4px}
+.brm:hover{background:#fee2e2;color:#ef4444}
+
+/* Bottom bar */
+.bb{display:flex;justify-content:flex-end;gap:9px;padding:0 0 28px;margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tl">
+    <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <span class="brand">MC Vendor Hub</span>
+    <span class="sep">›</span>
+    <span class="page-title">Agent Design</span>
+  </div>
+  <div class="tr">
+    <!-- 3️⃣ ENVIRONMENT MODE -->
+    <select class="env-select prod" id="env-sel" onchange="changeEnv(this)">
+      <option value="prod">🔴 Production</option>
+      <option value="staging">🟡 Staging</option>
+      <option value="sandbox">🟢 Sandbox</option>
+    </select>
+    <button class="btn-t" onclick="openTest()">▶ Test Agent</button>
+    <button class="btn-n">+ New Skill</button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="lp">
+    <div class="tabs">
+      <div class="tab">Admin <span class="bdg g">0</span></div>
+      <div class="tab">User <span class="bdg b">1</span></div>
+      <div class="tab on">Vendor <span class="bdg">2</span></div>
+    </div>
+    <div class="sh"><span class="sh-l">Vendor Skills</span><span class="sh-r">2 skills</span></div>
+    <div class="si on">
+      <div class="sinfo"><span class="sdot dr"></span><div><span class="sn">Account Management</span><span class="ss">analytics</span></div></div>
+      <span class="stag dt">DRAFT</span>
+    </div>
+    <div class="si">
+      <div class="sinfo"><span class="sdot ac"></span><div><span class="sn">Sam</span><span class="ss">chatbot</span></div></div>
+      <span class="stag at">ACTIVE</span>
+    </div>
+    <div class="add-s">+ Add Skill</div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rp">
+
+    <!-- ① AGENT IDENTITY -->
+    <div class="card">
+      <div class="ch">
+        <div class="ch-l">
+          <div class="av">🤖</div>
+          <div><div class="ct">Account Management</div><div class="cm">vendor · analytics · Last saved: Never</div></div>
+        </div>
+        <div class="ca">
+          <span class="sbig dr">DRAFT</span>
+          <button class="bdel">Delete</button>
+          <button class="bsav">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Env warning -->
+      <div class="ib red" id="env-warn">
+        🔴 <strong>Production mode active.</strong> This agent will run on LIVE data. Switch to Sandbox for testing.
+      </div>
+
+      <div class="fr c3">
+        <div class="fg"><label class="fl">Agent User Type</label><select class="fc"><option>vendor</option><option>admin</option><option>user</option></select></div>
+        <div class="fg"><label class="fl">Skill Type</label><select class="fc"><option>Analytics</option><option>Chatbot</option><option>SEO</option><option>PDF Analysis</option><option>Excel Generator</option><option>Inventory</option><option>Billing</option><option>HR Assistant</option></select></div>
+        <div class="fg"><label class="fl">Status</label><select class="fc"><option>Draft</option><option>Active</option><option>Inactive</option></select></div>
+      </div>
+      <div class="fr c2">
+        <div class="fg"><label class="fl">Skill Name</label><input class="fc" type="text" value="Account Management"></div>
+        <div class="fg"><label class="fl">Description</label><input class="fc" type="text" value="Helps vendors manage accounts and analytics"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">System Prompt</label>
+        <textarea class="fc">You are a helpful vendor assistant for MC Vendor Hub. Help vendors manage accounts, analyze sales data, generate reports, and answer business questions. Always be professional and concise.</textarea>
+      </div>
+      <label class="fl">Quick Skill Types</label>
+      <div class="chips">
+        <span class="chip on" onclick="this.classList.toggle('on')">Analytics</span>
+        <span class="chip" onclick="this.classList.toggle('on')">Chatbot</span>
+        <span class="chip" onclick="this.classList.toggle('on')">SEO</span>
+        <span class="chip" onclick="this.classList.toggle('on')">PDF Analysis</span>
+        <span class="chip" onclick="this.classList.toggle('on')">Excel Generator</span>
+        <span class="chip" onclick="this.classList.toggle('on')">Billing</span>
+        <span class="chip" onclick="this.classList.toggle('on')">HR Assistant</span>
+        <span class="chip" onclick="this.classList.toggle('on')">Inventory</span>
+      </div>
+    </div>
+
+    <!-- 6️⃣ AGENT VERSIONING -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📦</div>
+          <div><div class="st">Agent Versioning</div><div class="ss2">Track prompt changes — important for billing, pricing, legal compliance</div></div>
+        </div>
+        <button class="badd ind" onclick="bumpVersion()">+ New Version</button>
+      </div>
+      <div class="ver-header">
+        <div class="ver-num" id="ver-display">v1.2</div>
+        <div class="ver-info">
+          <div class="ver-label">Current Version</div>
+          <div class="ver-val" id="ver-updated">Last updated: Feb 22, 2026 · by Admin</div>
+        </div>
+        <span class="pill ac">Live</span>
+      </div>
+      <div class="fr c2">
+        <div class="fg"><label class="fl">Version Tag</label><input class="fc" type="text" value="v1.2" id="ver-tag"></div>
+        <div class="fg"><label class="fl">Updated By</label><input class="fc" type="text" value="Admin"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Changelog / Notes</label>
+        <textarea class="changelog-ta" placeholder="Describe what changed in this version...">Updated system prompt: adjusted Sam's pricing response. Changed invoice creation limit to 5/hour. Added new analytics queries support.</textarea>
+      </div>
+      <div class="ver-history">
+        <div class="vh-item"><span class="vh-v">v1.1</span><div class="vh-body"><div class="vh-msg">Added low stock trigger, updated billing rules</div><div class="vh-time">Feb 10, 2026 · Admin</div></div><span class="vh-pill">Archived</span></div>
+        <div class="vh-item"><span class="vh-v">v1.0</span><div class="vh-body"><div class="vh-msg">Initial agent setup — analytics + chatbot</div><div class="vh-time">Jan 15, 2026 · Admin</div></div><span class="vh-pill" style="background:#f3f4f6;color:#6b7280">Archived</span></div>
+      </div>
+    </div>
+
+    <!-- ② AI MODEL CONFIG -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">🧠</div>
+          <div><div class="st">AI Model Configuration</div><div class="ss2">Choose AI model and tune response behavior</div></div>
+        </div>
+      </div>
+      <div class="fr c3">
+        <div class="fg"><label class="fl">AI Provider</label><select class="fc"><option>Anthropic (Claude)</option><option>OpenAI (GPT)</option><option>Google (Gemini)</option><option>Custom / Self-hosted</option></select></div>
+        <div class="fg"><label class="fl">Model</label><select class="fc"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-haiku-4-5</option><option>gpt-4o</option><option>gpt-4o-mini</option></select></div>
+        <div class="fg"><label class="fl">Max Tokens</label><input class="fc" type="number" value="1024"><span class="fh">Max response length</span></div>
+      </div>
+      <div class="fr c2">
+        <div class="fg">
+          <label class="fl">Temperature — <span id="tv" style="color:#e3342f;font-weight:700">0.7</span></label>
+          <input class="slider" type="range" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('tv').textContent=this.value">
+          <div class="sl-lab"><span>Precise</span><span>Balanced</span><span>Creative</span></div>
+        </div>
+        <div class="fg">
+          <label class="fl">Top-P — <span id="tpv" style="color:#e3342f;font-weight:700">0.9</span></label>
+          <input class="slider" type="range" min="0" max="1" step="0.05" value="0.9" oninput="document.getElementById('tpv').textContent=this.value">
+          <div class="sl-lab"><span>Focused</span><span>Normal</span><span>Diverse</span></div>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">API Key Override (optional)</label>
+        <input class="fc" type="password" placeholder="Leave blank to use platform default key">
+        <span class="fh">Only set if using your own API key for this specific agent</span>
+      </div>
+    </div>
+
+    <!-- 2️⃣ LOGIN STATE & AUTH -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#0f766e,#0d9488)">🔐</div>
+          <div><div class="st">Login State & Access Control</div><div class="ss2">Authentication requirements and role restrictions for this agent</div></div>
+        </div>
+      </div>
+      <div class="ib amber">⚠️ Without login restriction, any unauthenticated user could trigger this agent. Always enable auth for write-capable agents.</div>
+      <div class="fr c2">
+        <div class="fg">
+          <label class="fl">Requires Authentication?</label>
+          <select class="fc">
+            <option>Yes — Login Required</option>
+            <option>No — Public Access</option>
+            <option>Optional — Works Both Ways</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Session Validation</label>
+          <select class="fc">
+            <option>Validate JWT Token</option>
+            <option>Check Active Session</option>
+            <option>API Key Auth</option>
+            <option>None</option>
+          </select>
+        </div>
+      </div>
+      <label class="fl">Allowed Roles — Who Can Trigger This Agent</label>
+      <div class="role-grid" style="margin-top:9px">
+        <div class="role-item on" onclick="toggleRole(this)"><div class="role-check"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="role-label">👑 Owner</span></div>
+        <div class="role-item on" onclick="toggleRole(this)"><div class="role-check"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="role-label">🏢 Manager</span></div>
+        <div class="role-item" onclick="toggleRole(this)"><div class="role-check"></div><span class="role-label">👷 Staff</span></div>
+        <div class="role-item" onclick="toggleRole(this)"><div class="role-check"></div><span class="role-label">📊 Analyst</span></div>
+        <div class="role-item on" onclick="toggleRole(this)"><div class="role-check"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="role-label">🤖 System</span></div>
+        <div class="role-item" onclick="toggleRole(this)"><div class="role-check"></div><span class="role-label">📱 API User</span></div>
+      </div>
+    </div>
+
+    <!-- ③ TRIGGER / ACTIVATION -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#f59e0b,#d97706)">⚡</div>
+          <div><div class="st">Trigger & Activation</div><div class="ss2">How and when this agent gets activated</div></div>
+        </div>
+      </div>
+      <div class="fr c3">
+        <div class="fg">
+          <label class="fl">Trigger Type</label>
+          <select class="fc" id="ttype" onchange="showTrig()">
+            <option>Manual (On Demand)</option><option>Scheduled (Cron)</option><option>Webhook</option><option>Event Based</option><option>Chat Message</option>
+          </select>
+        </div>
+        <div class="fg" id="cf" style="display:none"><label class="fl">Cron Schedule</label><input class="fc" type="text" value="0 9 * * *"><span class="fh">Daily at 9AM</span></div>
+        <div class="fg" id="wf" style="display:none"><label class="fl">Webhook URL</label><input class="fc" type="text" value="https://mcvendorhub.com/hook/a3x9k" readonly style="background:#f9fafb;font-size:11px"></div>
+        <div class="fg" id="ef" style="display:none"><label class="fl">Event Name</label><select class="fc"><option>New Order</option><option>Low Stock</option><option>New Review</option><option>Payment Received</option></select></div>
+        <div class="fg"><label class="fl">Run As User</label><select class="fc"><option>System (Auto)</option><option>Vendor Owner</option><option>Assigned Staff</option></select></div>
+        <div class="fg"><label class="fl">Timeout (seconds)</label><input class="fc" type="number" value="30"></div>
+      </div>
+    </div>
+
+    <!-- ④ MEMORY / CONTEXT -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">💾</div>
+          <div><div class="st">Memory & Context</div><div class="ss2">How the agent remembers conversations and data</div></div>
+        </div>
+      </div>
+      <div class="mt-row"><div><div class="mt-l">Conversation History</div><div class="mt-h">Remember past messages in same session</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="mt-row"><div><div class="mt-l">Cross-Session Memory</div><div class="mt-h">Remember vendor data across different sessions</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+      <div class="mt-row"><div><div class="mt-l">Inject Vendor Profile</div><div class="mt-h">Auto-load vendor business info into context</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="fr c2" style="margin-top:11px">
+        <div class="fg"><label class="fl">Max History Messages</label><input class="fc" type="number" value="10"><span class="fh">Last N messages in context</span></div>
+        <div class="fg"><label class="fl">Context Window</label><select class="fc"><option>4K tokens</option><option>8K tokens</option><option selected>32K tokens</option><option>128K tokens</option></select></div>
+      </div>
+    </div>
+
+    <!-- 1️⃣ API CALLS + TOOL-LEVEL PERMISSIONS -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">🔌</div>
+          <div><div class="st">API Calls & Tool-Level Permissions</div><div class="ss2">Control exactly what each API can do — action type, confirmation, rate limits</div></div>
+        </div>
+        <button class="badd ind" onclick="addApi()">+ Add API</button>
+      </div>
+      <div class="ib red">🛡️ <strong>Write / Delete actions</strong> should always have <strong>Require Confirmation = Yes</strong> to prevent the AI from auto-executing destructive operations.</div>
+      <div class="tw">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>API Name</th>
+              <th>Endpoint</th>
+              <th>Method</th>
+              <th>Auth</th>
+              <th>Action Type</th>
+              <th>Require Confirm</th>
+              <th>Rate Limit</th>
+              <th>Write Guard</th>
+              <th>Status</th>
+              <th>Test</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="api-tb">
+            <tr>
+              <td class="rn">1</td>
+              <td><input class="ti" type="text" value="Get Vendor Sales" style="min-width:110px"></td>
+              <td><input class="ti" type="text" value="/api/v1/vendor/sales" style="min-width:140px"></td>
+              <td><select class="ts" style="width:68px"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select></td>
+              <td><select class="ts" style="width:105px"><option>Bearer Token</option><option>API Key</option><option>Basic Auth</option><option>None</option></select></td>
+              <td><select class="ts" style="width:85px" onchange="colorActionType(this)"><option>Read</option><option>Write</option><option>Delete</option></select></td>
+              <td style="text-align:center"><div class="tog gr on" onclick="this.classList.toggle('on')"></div></td>
+              <td><input class="ti" type="text" value="60/hr" style="width:65px"></td>
+              <td style="text-align:center"><div class="tog" onclick="this.classList.toggle('on')" title="Write protection — block if not explicitly allowed"></div></td>
+              <td><span class="pill ac">Active</span></td>
+              <td><button class="badd ind" style="padding:3px 9px;font-size:10.5px" onclick="testApi(this)">▶ Test</button></td>
+              <td><button class="brm" onclick="this.closest('tr').remove()">✕</button></td>
+            </tr>
+            <tr>
+              <td class="rn">2</td>
+              <td><input class="ti" type="text" value="Create Invoice" style="min-width:110px"></td>
+              <td><input class="ti" type="text" value="/api/v1/billing/invoice" style="min-width:140px"></td>
+              <td><select class="ts" style="width:68px"><option>GET</option><option selected>POST</option><option>PUT</option><option>DELETE</option></select></td>
+              <td><select class="ts" style="width:105px"><option>Bearer Token</option><option>API Key</option><option>Basic Auth</option><option>None</option></select></td>
+              <td><select class="ts" style="width:85px" onchange="colorActionType(this)"><option>Read</option><option selected>Write</option><option>Delete</option></select></td>
+              <td style="text-align:center"><div class="tog gr on" onclick="this.classList.toggle('on')"></div></td>
+              <td><input class="ti" type="text" value="5/hr" style="width:65px"></td>
+              <td style="text-align:center"><div class="tog on" onclick="this.classList.toggle('on')"></div></td>
+              <td><span class="pill ac">Active</span></td>
+              <td><button class="badd ind" style="padding:3px 9px;font-size:10.5px" onclick="testApi(this)">▶ Test</button></td>
+              <td><button class="brm" onclick="this.closest('tr').remove()">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:#6b7280;font-weight:600">Legend:</span>
+        <span class="at-r">Read</span><span style="font-size:11px;color:#9ca3af">— Safe, no confirmation needed</span>
+        <span class="at-w">Write</span><span style="font-size:11px;color:#9ca3af">— Should confirm</span>
+        <span class="at-d">Delete</span><span style="font-size:11px;color:#9ca3af">— Always confirm + write guard</span>
+      </div>
+    </div>
+
+    <!-- 4️⃣ FUNCTION SCHEMA (Tool Calling) -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#0f172a,#1e293b)">📐</div>
+          <div><div class="st">Function Schema (Tool Calling)</div><div class="ss2">Required for OpenAI function calling & Claude tool use — define parameters and validation</div></div>
+        </div>
+        <button class="badd pur" onclick="addSchema()">+ Add Function</button>
+      </div>
+      <div class="ib blue">📌 Without a proper JSON schema, AI function calling is unstable. The model needs to know the exact parameter names, types, and which are required.</div>
+      <div id="schema-list">
+        <!-- Function 1 -->
+        <div class="schema-entry" style="margin-bottom:16px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+            <input class="fc" type="text" value="create_invoice" placeholder="function_name" style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
+            <input class="fc" type="text" value="Creates a new invoice for a vendor's customer" placeholder="Description" style="flex:2">
+            <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+          </div>
+          <div class="schema-box">
+            <span class="schema-lang">JSON SCHEMA</span>
+            <textarea class="schema-ta" id="schema-1">{
+  "name": "create_invoice",
+  "description": "Creates a new invoice for a vendor's customer",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "customer_name": {
+        "type": "string",
+        "description": "Full name of the customer"
+      },
+      "amount": {
+        "type": "number",
+        "description": "Invoice amount in INR"
+      },
+      "items": {
+        "type": "array",
+        "description": "List of invoice line items"
+      },
+      "due_date": {
+        "type": "string",
+        "description": "Due date in YYYY-MM-DD format"
+      }
+    },
+    "required": ["customer_name", "amount"]
+  }
+}</textarea>
+          </div>
+          <div class="schema-actions">
+            <button class="schema-btn validate" onclick="validateSchema('schema-1','res-1')">✓ Validate JSON</button>
+            <button class="schema-btn format" onclick="formatSchema('schema-1','res-1')">⟳ Format</button>
+          </div>
+          <div class="schema-result" id="res-1"></div>
+        </div>
+        <!-- Function 2 -->
+        <div class="schema-entry" style="margin-bottom:4px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+            <input class="fc" type="text" value="get_sales_report" placeholder="function_name" style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
+            <input class="fc" type="text" value="Fetches vendor sales analytics for a date range" placeholder="Description" style="flex:2">
+            <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+          </div>
+          <div class="schema-box">
+            <span class="schema-lang">JSON SCHEMA</span>
+            <textarea class="schema-ta" id="schema-2">{
+  "name": "get_sales_report",
+  "description": "Fetches vendor sales analytics for a date range",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "start_date": {
+        "type": "string",
+        "description": "Start date YYYY-MM-DD"
+      },
+      "end_date": {
+        "type": "string",
+        "description": "End date YYYY-MM-DD"
+      },
+      "group_by": {
+        "type": "string",
+        "enum": ["day", "week", "month"],
+        "description": "Grouping interval"
+      }
+    },
+    "required": ["start_date", "end_date"]
+  }
+}</textarea>
+          </div>
+          <div class="schema-actions">
+            <button class="schema-btn validate" onclick="validateSchema('schema-2','res-2')">✓ Validate JSON</button>
+            <button class="schema-btn format" onclick="formatSchema('schema-2','res-2')">⟳ Format</button>
+          </div>
+          <div class="schema-result" id="res-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑥ TASKS + 7️⃣ DESTRUCTIVE CONFIRMATION -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#10b981,#059669)">✅</div>
+          <div><div class="st">Tasks</div><div class="ss2">Automated actions — enable approval for destructive operations</div></div>
+        </div>
+        <button class="badd grn" onclick="addTask()">+ Add Task</button>
+      </div>
+      <div class="ib amber">🔒 Tasks marked <strong>Destructive</strong> (delete data, cancel bookings, deduct wallet) will show an approval prompt before execution.</div>
+      <div class="tklist" id="task-list">
+
+        <div class="tkrow">
+          <div class="tk-top">
+            <span class="tk-drag">⠿</span>
+            <input class="ti tk-name" type="text" value="Generate Monthly Sales Report" style="flex:1;min-width:150px;font-weight:600">
+            <select class="ts" style="width:120px"><option>Scheduled</option><option>On Demand</option><option>Trigger</option><option>Manual</option></select>
+            <select class="ts" style="width:100px"><option>Analytics</option><option>PDF</option><option>Excel</option><option>Chatbot</option><option>SEO</option></select>
+            <!-- 7️⃣ Destructive toggle -->
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6b7280;cursor:pointer;white-space:nowrap">
+              <div class="tog" onclick="toggleDestructive(this)"></div> Destructive?
+            </label>
+            <span class="pill ac">Active</span>
+            <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+          </div>
+          <input class="ti" type="text" value="Generates PDF sales report monthly and emails to vendor." style="margin-top:6px;color:#6b7280;font-size:11.5px">
+          <div class="tk-warn">⚠️ This task is marked destructive. Vendor must approve before execution.</div>
+          <div class="tk-conf-row hidden">
+            <span style="font-size:13px">✅</span>
+            <span class="tk-conf-label">Require vendor approval before running this task</span>
+            <div class="tog gr on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="tkrow destructive">
+          <div class="tk-top">
+            <span class="tk-drag">⠿</span>
+            <input class="ti tk-name" type="text" value="Cancel Overdue Bookings" style="flex:1;min-width:150px;font-weight:600">
+            <select class="ts" style="width:120px"><option>Scheduled</option><option>On Demand</option><option selected>Trigger</option><option>Manual</option></select>
+            <select class="ts" style="width:100px"><option>Analytics</option><option>PDF</option><option>Excel</option><option selected>Chatbot</option><option>SEO</option></select>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#ef4444;cursor:pointer;white-space:nowrap">
+              <div class="tog on" onclick="toggleDestructive(this)"></div> Destructive?
+            </label>
+            <span class="pill er">Destructive</span>
+            <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+          </div>
+          <input class="ti" type="text" value="Automatically cancels bookings overdue by more than 24 hours." style="margin-top:6px;color:#6b7280;font-size:11.5px">
+          <div class="tk-warn">⚠️ This task is marked destructive. Vendor must approve before execution.</div>
+          <div class="tk-conf-row">
+            <span style="font-size:13px">✅</span>
+            <span class="tk-conf-label">Require vendor approval before running this task</span>
+            <div class="tog gr on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="tkrow">
+          <div class="tk-top">
+            <span class="tk-drag">⠿</span>
+            <input class="ti tk-name" type="text" value="Low Stock Alert" style="flex:1;min-width:150px;font-weight:600">
+            <select class="ts" style="width:120px"><option>Scheduled</option><option>On Demand</option><option selected>Trigger</option><option>Manual</option></select>
+            <select class="ts" style="width:100px"><option selected>Analytics</option><option>PDF</option><option>Excel</option><option>Chatbot</option><option>SEO</option></select>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6b7280;cursor:pointer;white-space:nowrap">
+              <div class="tog" onclick="toggleDestructive(this)"></div> Destructive?
+            </label>
+            <span class="pill dr">Draft</span>
+            <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+          </div>
+          <input class="ti" type="text" value="Sends Telegram/SMS alert when stock falls below threshold." style="margin-top:6px;color:#6b7280;font-size:11.5px">
+          <div class="tk-warn">⚠️ This task is marked destructive. Vendor must approve before execution.</div>
+          <div class="tk-conf-row hidden">
+            <span style="font-size:13px">✅</span>
+            <span class="tk-conf-label">Require vendor approval before running this task</span>
+            <div class="tog gr on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ⑦ PERMISSIONS -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#ef4444,#dc2626)">🛡️</div>
+          <div><div class="st">Module Permissions</div><div class="ss2">Which platform modules this agent can access</div></div>
+        </div>
+      </div>
+      <div class="pg">
+        <div class="pi on" onclick="togglePerm(this)"><div class="pck"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="pl">📊 Analytics</span></div>
+        <div class="pi on" onclick="togglePerm(this)"><div class="pck"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="pl">🧾 Billing</span></div>
+        <div class="pi" onclick="togglePerm(this)"><div class="pck"></div><span class="pl">📦 Inventory</span></div>
+        <div class="pi" onclick="togglePerm(this)"><div class="pck"></div><span class="pl">👥 HRM</span></div>
+        <div class="pi on" onclick="togglePerm(this)"><div class="pck"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="pl">📄 Documents</span></div>
+        <div class="pi" onclick="togglePerm(this)"><div class="pck"></div><span class="pl">🛒 Orders</span></div>
+        <div class="pi" onclick="togglePerm(this)"><div class="pck"></div><span class="pl">⭐ Reviews</span></div>
+        <div class="pi" onclick="togglePerm(this)"><div class="pck"></div><span class="pl">💬 Messages</span></div>
+        <div class="pi on" onclick="togglePerm(this)"><div class="pck"><svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span class="pl">🏪 Vendor Profile</span></div>
+      </div>
+    </div>
+
+    <!-- 5️⃣ ERROR HANDLING STRATEGY -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#dc2626,#991b1b)">⚠️</div>
+          <div><div class="st">Error Handling Strategy</div><div class="ss2">What the agent does when API calls fail or timeout</div></div>
+        </div>
+      </div>
+      <div class="eh-grid">
+        <div class="eh-item">
+          <div class="eh-label">On API Failure</div>
+          <div class="fr c2" style="margin-bottom:10px">
+            <div class="fg"><label class="fl">Retry Count</label><select class="fc"><option>0 — No retry</option><option selected>1 — Retry once</option><option>2 — Retry twice</option><option>3 — Retry 3x</option></select></div>
+            <div class="fg"><label class="fl">Backoff Strategy</label><select class="fc"><option>None</option><option selected>Linear (2s)</option><option>Exponential</option></select></div>
+          </div>
+          <label class="fl" style="margin-bottom:6px">Fallback Message to Vendor</label>
+          <textarea class="fallback-ta">Sorry, I couldn't complete this action right now. Please try again in a moment or contact support.</textarea>
+        </div>
+        <div class="eh-item">
+          <div class="eh-label">Escalation Rules</div>
+          <div class="esc-row"><div class="esc-icon">🔑</div><div class="esc-body"><div class="esc-title">Auth Error → Ask vendor to re-login</div><div class="esc-sub">Trigger: 401 / 403 response</div></div><div class="tog gr on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="esc-row"><div class="esc-icon">👑</div><div class="esc-body"><div class="esc-title">Write Error → Notify Admin</div><div class="esc-sub">Trigger: 500 on write/delete operations</div></div><div class="tog gr on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="esc-row"><div class="esc-icon">⏱️</div><div class="esc-body"><div class="esc-title">Timeout → Log and skip silently</div><div class="esc-sub">Trigger: Request exceeds timeout limit</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+          <div class="esc-row"><div class="esc-icon">🚦</div><div class="esc-body"><div class="esc-title">Rate Limit Hit → Queue & retry</div><div class="esc-sub">Trigger: 429 Too Many Requests</div></div><div class="tog gr on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑧ NOTIFICATIONS -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#f97316,#ea580c)">🔔</div>
+          <div><div class="st">Notifications & Output</div><div class="ss2">Where to send agent results and alerts</div></div>
+        </div>
+      </div>
+      <div class="ng">
+        <div class="ni"><div class="nico" style="background:#e0f2fe">📱</div><div class="nb"><div class="nl">Telegram Bot</div><div class="nh">Send to vendor's Telegram</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ni"><div class="nico" style="background:#fef3c7">📧</div><div class="nb"><div class="nl">Email</div><div class="nh">Send result via email</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ni"><div class="nico" style="background:#d1fae5">💬</div><div class="nb"><div class="nl">In-App Notification</div><div class="nh">Show in vendor dashboard</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ni"><div class="nico" style="background:#fce7f3">📲</div><div class="nb"><div class="nl">SMS / WhatsApp</div><div class="nh">Send SMS alert</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ni"><div class="nico" style="background:#ede9fe">📊</div><div class="nb"><div class="nl">Save to Report</div><div class="nh">Auto-save output as report</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ni"><div class="nico" style="background:#fef9c3">🔗</div><div class="nb"><div class="nl">Webhook Callback</div><div class="nh">POST result to external URL</div></div><div class="tog" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+    </div>
+
+    <!-- TEST CONSOLE -->
+    <div class="card" id="test-section">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:#1e1e2e">⌨️</div>
+          <div><div class="st">Test Agent</div><div class="ss2">Send a test message and preview the live response</div></div>
+        </div>
+        <span class="pill dr" id="env-badge">Production</span>
+      </div>
+      <div class="console">
+        <div class="con-label">Your Message</div>
+        <textarea class="con-in" id="con-in" placeholder="e.g. Show me vendor sales for last month..."></textarea>
+        <button class="con-run" onclick="runTest()">▶ Run Agent</button>
+        <div class="con-label" style="margin-top:13px">Agent Response</div>
+        <div class="con-out" id="con-out">// Response will appear here after running the agent...</div>
+      </div>
+    </div>
+
+    <!-- RUN LOGS -->
+    <div class="card">
+      <div class="sch">
+        <div class="sch-l">
+          <div class="ico" style="background:linear-gradient(135deg,#374151,#1f2937)">📋</div>
+          <div><div class="st">Run Logs</div><div class="ss2">Recent execution history</div></div>
+        </div>
+        <span style="font-size:11.5px;color:#9ca3af">Last 5 runs</span>
+      </div>
+      <div class="log-list">
+        <div class="log-i"><div class="log-ic ok">✓</div><div class="log-b"><div class="log-t">Ran successfully — Sales report generated</div><div class="log-m">Today 09:00 AM · Scheduled · v1.2</div></div><span style="font-size:11px;font-weight:600;color:#6b7280">1.4s</span><span class="pill ac" style="margin-left:8px">OK</span></div>
+        <div class="log-i"><div class="log-ic ok">✓</div><div class="log-b"><div class="log-t">Ran successfully — Invoice created (Approved by vendor)</div><div class="log-m">Yesterday 03:22 PM · Manual · v1.2</div></div><span style="font-size:11px;font-weight:600;color:#6b7280">2.1s</span><span class="pill ac" style="margin-left:8px">OK</span></div>
+        <div class="log-i"><div class="log-ic fa">✕</div><div class="log-b"><div class="log-t">Failed — API timeout on /api/v1/vendor/sales · Retried 1x · Admin notified</div><div class="log-m">Feb 20 11:45 AM · Webhook · v1.1</div></div><span style="font-size:11px;font-weight:600;color:#6b7280">30s</span><span class="pill er" style="margin-left:8px">ERROR</span></div>
+        <div class="log-i"><div class="log-ic wa">!</div><div class="log-b"><div class="log-t">Destructive task blocked — Vendor approval pending for "Cancel Overdue Bookings"</div><div class="log-m">Feb 19 08:00 AM · Trigger · v1.1</div></div><span style="font-size:11px;font-weight:600;color:#6b7280">0.2s</span><span class="pill dr" style="margin-left:8px">PENDING</span></div>
+      </div>
+    </div>
+
+    <div class="bb">
+      <button class="bdel">Discard</button>
+      <button class="bsav" style="padding:9px 26px;font-size:13px">💾 Save Agent</button>
+    </div>
+
+  </div><!-- /rp -->
+</div><!-- /layout -->
+
+<script>
+// Environment
+function changeEnv(sel) {
+  sel.className = 'env-select ' + sel.value;
+  const warn = document.getElementById('env-warn');
+  const badge = document.getElementById('env-badge');
+  if(sel.value === 'prod') {
+    warn.className = 'ib red'; warn.style.display = 'flex';
+    warn.innerHTML = '🔴 <strong>Production mode active.</strong> This agent runs on LIVE data. Switch to Sandbox for safe testing.';
+    badge.textContent = 'Production'; badge.className = 'pill er';
+  } else if(sel.value === 'staging') {
+    warn.className = 'ib amber'; warn.style.display = 'flex';
+    warn.innerHTML = '🟡 <strong>Staging mode.</strong> Uses staging database — safe but not real data.';
+    badge.textContent = 'Staging'; badge.className = 'pill dr';
+  } else {
+    warn.className = 'ib green'; warn.style.display = 'flex';
+    warn.innerHTML = '🟢 <strong>Sandbox mode.</strong> Safe to test — no real data will be affected.';
+    badge.textContent = 'Sandbox'; badge.className = 'pill ac';
+  }
+}
+
+// Trigger fields
+function showTrig() {
+  const v = document.getElementById('ttype').value;
+  document.getElementById('cf').style.display = v.includes('Scheduled') ? 'flex' : 'none';
+  document.getElementById('wf').style.display = v.includes('Webhook') ? 'flex' : 'none';
+  document.getElementById('ef').style.display = v.includes('Event') ? 'flex' : 'none';
+}
+
+// Permissions
+function togglePerm(el) {
+  el.classList.toggle('on');
+  el.querySelector('.pck').innerHTML = el.classList.contains('on')
+    ? '<svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+}
+
+// Roles
+function toggleRole(el) {
+  el.classList.toggle('on');
+  el.querySelector('.role-check').innerHTML = el.classList.contains('on')
+    ? '<svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+}
+
+// Destructive task toggle
+function toggleDestructive(tog) {
+  tog.classList.toggle('on');
+  const row = tog.closest('.tkrow');
+  const isOn = tog.classList.contains('on');
+  const pill = row.querySelector('.pill');
+  const confRow = row.querySelector('.tk-conf-row');
+  const warnRow = row.querySelector('.tk-warn');
+  if(isOn) {
+    row.classList.add('destructive');
+    if(pill) { pill.textContent = 'Destructive'; pill.className = 'pill er'; }
+    if(confRow) confRow.classList.remove('hidden');
+    if(warnRow) warnRow.style.display = 'flex';
+    tog.style.background = '#e3342f';
+  } else {
+    row.classList.remove('destructive');
+    if(pill) { pill.textContent = 'Active'; pill.className = 'pill ac'; }
+    if(confRow) confRow.classList.add('hidden');
+    if(warnRow) warnRow.style.display = 'none';
+    tog.style.background = '';
+  }
+}
+
+// API table
+let ac = 2;
+function addApi() {
+  ac++;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="rn">${ac}</td>
+    <td><input class="ti" type="text" placeholder="API Name" style="min-width:110px"></td>
+    <td><input class="ti" type="text" placeholder="/api/endpoint" style="min-width:140px"></td>
+    <td><select class="ts" style="width:68px"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select></td>
+    <td><select class="ts" style="width:105px"><option>Bearer Token</option><option>API Key</option><option>Basic Auth</option><option>None</option></select></td>
+    <td><select class="ts" style="width:85px" onchange="colorActionType(this)"><option>Read</option><option>Write</option><option>Delete</option></select></td>
+    <td style="text-align:center"><div class="tog gr" onclick="this.classList.toggle('on')"></div></td>
+    <td><input class="ti" type="text" placeholder="60/hr" style="width:65px"></td>
+    <td style="text-align:center"><div class="tog" onclick="this.classList.toggle('on')"></div></td>
+    <td><span class="pill ac">Active</span></td>
+    <td><button class="badd ind" style="padding:3px 9px;font-size:10.5px" onclick="testApi(this)">▶ Test</button></td>
+    <td><button class="brm" onclick="this.closest('tr').remove()">✕</button></td>`;
+  document.getElementById('api-tb').appendChild(tr);
+  tr.querySelector('input').focus();
+}
+
+function testApi(btn) {
+  btn.textContent = '...';
+  setTimeout(() => { btn.textContent='✓ 200'; btn.style.background='#dcfce7'; btn.style.color='#059669'; btn.style.borderColor='#a7f3d0'; }, 1300);
+}
+
+function colorActionType(sel) {
+  // just visual feedback
+}
+
+// Task add
+function addTask() {
+  const d = document.createElement('div');
+  d.className = 'tkrow';
+  d.innerHTML = `<div class="tk-top">
+    <span class="tk-drag">⠿</span>
+    <input class="ti tk-name" type="text" placeholder="Task name" style="flex:1;min-width:150px;font-weight:600">
+    <select class="ts" style="width:120px"><option>Scheduled</option><option>On Demand</option><option>Trigger</option><option>Manual</option></select>
+    <select class="ts" style="width:100px"><option>Analytics</option><option>PDF</option><option>Excel</option><option>Chatbot</option><option>SEO</option></select>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6b7280;cursor:pointer;white-space:nowrap">
+      <div class="tog" onclick="toggleDestructive(this)"></div> Destructive?
+    </label>
+    <span class="pill dr">Draft</span>
+    <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+  </div>
+  <input class="ti" type="text" placeholder="Describe what this task does..." style="margin-top:6px;color:#6b7280;font-size:11.5px">
+  <div class="tk-warn" style="display:none">⚠️ This task is marked destructive. Vendor must approve before execution.</div>
+  <div class="tk-conf-row hidden">
+    <span style="font-size:13px">✅</span>
+    <span class="tk-conf-label">Require vendor approval before running this task</span>
+    <div class="tog gr on" onclick="this.classList.toggle('on')"></div>
+  </div>`;
+  document.getElementById('task-list').appendChild(d);
+  d.querySelector('input').focus();
+}
+
+// Schema functions
+let schIdx = 2;
+function addSchema() {
+  schIdx++;
+  const id = 'schema-' + schIdx;
+  const rid = 'res-' + schIdx;
+  const div = document.createElement('div');
+  div.className = 'schema-entry';
+  div.style = 'margin-bottom:16px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px';
+  div.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+    <input class="fc" type="text" placeholder="function_name" style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
+    <input class="fc" type="text" placeholder="Short description of this function" style="flex:2">
+    <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+  </div>
+  <div class="schema-box">
+    <span class="schema-lang">JSON SCHEMA</span>
+    <textarea class="schema-ta" id="${id}">{
+  "name": "function_name",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "param1": {"type": "string", "description": "Description"}
+    },
+    "required": ["param1"]
+  }
+}</textarea>
+  </div>
+  <div class="schema-actions">
+    <button class="schema-btn validate" onclick="validateSchema('${id}','${rid}')">✓ Validate JSON</button>
+    <button class="schema-btn format" onclick="formatSchema('${id}','${rid}')">⟳ Format</button>
+  </div>
+  <div class="schema-result" id="${rid}"></div>`;
+  document.getElementById('schema-list').appendChild(div);
+  div.querySelector('input').focus();
+}
+
+function validateSchema(taId, resId) {
+  const ta = document.getElementById(taId);
+  const res = document.getElementById(resId);
+  try {
+    JSON.parse(ta.value);
+    res.className = 'schema-result ok';
+    res.textContent = '✓ Valid JSON — Schema looks good!';
+  } catch(e) {
+    res.className = 'schema-result err';
+    res.textContent = '✕ Invalid JSON: ' + e.message;
+  }
+}
+
+function formatSchema(taId, resId) {
+  const ta = document.getElementById(taId);
+  const res = document.getElementById(resId);
+  try {
+    const obj = JSON.parse(ta.value);
+    ta.value = JSON.stringify(obj, null, 2);
+    res.className = 'schema-result ok';
+    res.textContent = '✓ Formatted successfully!';
+  } catch(e) {
+    res.className = 'schema-result err';
+    res.textContent = '✕ Cannot format — Invalid JSON: ' + e.message;
+  }
+}
+
+// Versioning
+let verMajor = 1, verMinor = 2;
+function bumpVersion() {
+  verMinor++;
+  const tag = `v${verMajor}.${verMinor}`;
+  document.getElementById('ver-display').textContent = tag;
+  document.getElementById('ver-tag').value = tag;
+  document.getElementById('ver-updated').textContent = `Last updated: ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})} · by Admin`;
+}
+
+// Test console
+function openTest() { document.getElementById('test-section').scrollIntoView({behavior:'smooth'}); }
+function runTest() {
+  const inp = document.getElementById('con-in').value || 'Show me vendor sales data';
+  const out = document.getElementById('con-out');
+  const env = document.getElementById('env-sel').value;
+  out.style.color = '#f59e0b';
+  out.textContent = `// Running agent in ${env.toUpperCase()} mode...\n// Validating auth token...\n// Checking rate limits...`;
+  setTimeout(() => {
+    out.style.color = '#a3e635';
+    out.textContent = `> Agent: Account Management (v1.2)\n> Environment: ${env.toUpperCase()}\n> Auth: ✓ Owner role verified\n> Input: "${inp}"\n\n✓ Loading vendor profile...\n✓ Fetching from /api/v1/vendor/sales [GET — Read — no confirmation needed]\n✓ Processing with claude-sonnet-4-6 (temp: 0.7)\n\n📊 Response:\n"Here is your sales summary for the selected period:\n- Total Revenue: ₹42,500\n- Orders Completed: 87\n- Top Product: Premium Package\n- Growth: +12% vs last month\n\nWould you like a detailed PDF report or breakdown by category?"\n\n> Logged to run history · Duration: 1.8s`;
+  }, 2000);
+}
+</script>
+</body>
+</html>

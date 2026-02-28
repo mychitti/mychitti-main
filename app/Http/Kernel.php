@@ -6,7 +6,7 @@ use App\Http\Middleware\ActivationCheckMiddleware;
 use App\Http\Middleware\InstallationMiddleware;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-class Kernel extends HttpKernel
+ class Kernel extends HttpKernel
 {
     /**
      * The application's global HTTP middleware stack.
@@ -88,5 +88,7 @@ class Kernel extends HttpKernel
         // 'redirect.subdomain' => \App\Http\Middleware\RedirectToCorrectSubdomain::class,
         'fix-urls' => \App\Http\Middleware\FixVendorEmployeeUrls::class,
         'permission' => \App\Http\Middleware\Permission::class,
+        'ai.internal' => \App\Http\Middleware\AiInternalApiKeyMiddleware::class,
     ];
 }
+ 

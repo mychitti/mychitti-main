@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Feb 19, 2026 at 11:13 AM
+-- Generation Time: Feb 28, 2026 at 11:15 AM
 -- Server version: 10.11.10-MariaDB
 -- PHP Version: 8.1.34
 
@@ -406,6 +406,130 @@ CREATE TABLE `advance_requests` (
   `installments` int(11) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agent_api_tools`
+--
+
+CREATE TABLE `agent_api_tools` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `api_name` varchar(255) NOT NULL,
+  `endpoint` varchar(500) NOT NULL,
+  `method` enum('GET','POST','PUT','PATCH','DELETE') NOT NULL DEFAULT 'GET',
+  `auth_type` varchar(50) NOT NULL DEFAULT 'bearer',
+  `action_type` enum('read','write','delete') NOT NULL DEFAULT 'read',
+  `require_confirm` tinyint(1) NOT NULL DEFAULT 0,
+  `rate_limit` varchar(50) DEFAULT NULL,
+  `write_guard` tinyint(1) NOT NULL DEFAULT 0,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agent_functions`
+--
+
+CREATE TABLE `agent_functions` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `function_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `json_schema` longtext DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agent_run_logs`
+--
+
+CREATE TABLE `agent_run_logs` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `version_tag` varchar(20) DEFAULT NULL,
+  `trigger_type` varchar(50) DEFAULT NULL,
+  `status` enum('ok','error','pending','blocked') NOT NULL DEFAULT 'ok',
+  `message` text DEFAULT NULL,
+  `duration_ms` int(11) DEFAULT NULL,
+  `triggered_by` varchar(100) DEFAULT NULL,
+  `meta` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`meta`)),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agent_tasks`
+--
+
+CREATE TABLE `agent_tasks` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `task_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `trigger_type` enum('scheduled','on_demand','trigger','manual') NOT NULL DEFAULT 'manual',
+  `skill_category` varchar(100) DEFAULT NULL,
+  `is_destructive` tinyint(1) NOT NULL DEFAULT 0,
+  `require_approval` tinyint(1) NOT NULL DEFAULT 0,
+  `status` enum('active','draft','inactive') NOT NULL DEFAULT 'draft',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `agent_versions`
+--
+
+CREATE TABLE `agent_versions` (
+  `id` int(11) NOT NULL,
+  `agent_id` int(11) NOT NULL,
+  `version_tag` varchar(20) NOT NULL,
+  `changelog` text DEFAULT NULL,
+  `updated_by` varchar(100) DEFAULT NULL,
+  `is_live` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ai_models`
+--
+
+CREATE TABLE `ai_models` (
+  `id` int(11) NOT NULL,
+  `key` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ai_providers`
+--
+
+CREATE TABLE `ai_providers` (
+  `id` int(11) NOT NULL,
+  `key` varchar(255) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `status` tinyint(4) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -2461,6 +2585,7 @@ CREATE TABLE `menu` (
   `under_development` int(11) DEFAULT 0,
   `status` int(11) NOT NULL DEFAULT 1,
   `group` varchar(255) DEFAULT NULL,
+  `permission` varchar(255) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE current_timestamp(),
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -3227,6 +3352,8 @@ CREATE TABLE `pos_tokens` (
   `discount` decimal(24,3) NOT NULL DEFAULT 0.000,
   `discount_type` enum('percent','amount') NOT NULL DEFAULT 'amount',
   `payment_method` varchar(20) DEFAULT NULL,
+  `cash_amount` decimal(24,2) DEFAULT NULL,
+  `online_amount` decimal(24,2) DEFAULT NULL,
   `payment_status` enum('paid','unpaid','cancelled') NOT NULL DEFAULT 'unpaid',
   `pdf` varchar(255) DEFAULT NULL,
   `invoice_table_id` int(11) DEFAULT NULL,
@@ -4492,10 +4619,12 @@ CREATE TABLE `store_configs` (
   `webpage_latitude` varchar(255) DEFAULT NULL,
   `webpage_longitude` varchar(255) DEFAULT NULL,
   `inventory_items_position` varchar(255) DEFAULT NULL,
+  `category_position` varchar(20) NOT NULL DEFAULT 'dropdown',
   `delivery_charges_gst_percent` int(11) DEFAULT 0,
   `delivery_charges_gst_pos` tinyint(4) DEFAULT 0,
   `free_trial_consumed` tinyint(4) DEFAULT 0,
-  `template_id` int(11) NOT NULL DEFAULT 1
+  `template_id` int(11) NOT NULL DEFAULT 1,
+  `token_prefix` varchar(255) NOT NULL DEFAULT 'TKN'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -5082,10 +5211,43 @@ CREATE TABLE `supply_order_items` (
 
 CREATE TABLE `system_prompts` (
   `id` int(11) NOT NULL,
-  `user_type` enum('user','vendor') NOT NULL DEFAULT 'user',
+  `user_type` enum('user','vendor','admin') NOT NULL DEFAULT 'user',
   `prompt` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `skill_type` varchar(255) DEFAULT NULL,
+  `status` enum('active','draft') NOT NULL DEFAULT 'active',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT NULL
+  `updated_at` datetime DEFAULT NULL,
+  `settings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`settings`)),
+  `ai_provider` varchar(50) NOT NULL DEFAULT 'anthropic',
+  `ai_model` varchar(100) NOT NULL DEFAULT 'claude-sonnet-4-6',
+  `max_tokens` int(11) NOT NULL DEFAULT 1024,
+  `temperature` decimal(3,2) NOT NULL DEFAULT 0.70,
+  `top_p` decimal(3,2) NOT NULL DEFAULT 0.90,
+  `api_key_override` text DEFAULT NULL,
+  `requires_auth` tinyint(1) NOT NULL DEFAULT 1,
+  `session_validation` varchar(50) NOT NULL DEFAULT 'jwt',
+  `allowed_roles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`allowed_roles`)),
+  `trigger_type` varchar(50) NOT NULL DEFAULT 'manual',
+  `cron_schedule` varchar(100) DEFAULT NULL,
+  `webhook_url` varchar(500) DEFAULT NULL,
+  `event_name` varchar(100) DEFAULT NULL,
+  `run_as_user` varchar(50) NOT NULL DEFAULT 'system',
+  `timeout_seconds` int(11) NOT NULL DEFAULT 30,
+  `conv_history_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `cross_session_memory` tinyint(1) NOT NULL DEFAULT 0,
+  `inject_vendor_profile` tinyint(1) NOT NULL DEFAULT 1,
+  `max_history_messages` int(11) NOT NULL DEFAULT 10,
+  `context_window` varchar(20) NOT NULL DEFAULT '32k',
+  `retry_count` tinyint(1) NOT NULL DEFAULT 1,
+  `backoff_strategy` varchar(50) NOT NULL DEFAULT 'linear',
+  `fallback_message` text DEFAULT NULL,
+  `escalation_rules` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`escalation_rules`)),
+  `notification_settings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`notification_settings`)),
+  `module_permissions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`module_permissions`)),
+  `current_version` varchar(20) NOT NULL DEFAULT 'v1.0',
+  `environment` enum('production','staging','sandbox') NOT NULL DEFAULT 'sandbox'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -6060,6 +6222,54 @@ ALTER TABLE `admin_wallets`
 ALTER TABLE `advance_requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `employee_id` (`employee_id`);
+
+--
+-- Indexes for table `agent_api_tools`
+--
+ALTER TABLE `agent_api_tools`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_agent_id` (`agent_id`);
+
+--
+-- Indexes for table `agent_functions`
+--
+ALTER TABLE `agent_functions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_agent_id` (`agent_id`);
+
+--
+-- Indexes for table `agent_run_logs`
+--
+ALTER TABLE `agent_run_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_agent_id` (`agent_id`),
+  ADD KEY `idx_status` (`status`);
+
+--
+-- Indexes for table `agent_tasks`
+--
+ALTER TABLE `agent_tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_agent_id` (`agent_id`);
+
+--
+-- Indexes for table `agent_versions`
+--
+ALTER TABLE `agent_versions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_agent_id` (`agent_id`);
+
+--
+-- Indexes for table `ai_models`
+--
+ALTER TABLE `ai_models`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `ai_providers`
+--
+ALTER TABLE `ai_providers`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `areas`
@@ -7781,6 +7991,48 @@ ALTER TABLE `advance_requests`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `agent_api_tools`
+--
+ALTER TABLE `agent_api_tools`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `agent_functions`
+--
+ALTER TABLE `agent_functions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `agent_run_logs`
+--
+ALTER TABLE `agent_run_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `agent_tasks`
+--
+ALTER TABLE `agent_tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `agent_versions`
+--
+ALTER TABLE `agent_versions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ai_models`
+--
+ALTER TABLE `ai_models`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ai_providers`
+--
+ALTER TABLE `ai_providers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `areas`
 --
 ALTER TABLE `areas`
@@ -9241,6 +9493,36 @@ ALTER TABLE `admin_memories`
 --
 ALTER TABLE `advance_requests`
   ADD CONSTRAINT `advance_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `vendor_employees` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `agent_api_tools`
+--
+ALTER TABLE `agent_api_tools`
+  ADD CONSTRAINT `agent_api_tools_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `system_prompts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `agent_functions`
+--
+ALTER TABLE `agent_functions`
+  ADD CONSTRAINT `agent_functions_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `system_prompts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `agent_run_logs`
+--
+ALTER TABLE `agent_run_logs`
+  ADD CONSTRAINT `agent_run_logs_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `system_prompts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `agent_tasks`
+--
+ALTER TABLE `agent_tasks`
+  ADD CONSTRAINT `agent_tasks_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `system_prompts` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `agent_versions`
+--
+ALTER TABLE `agent_versions`
+  ADD CONSTRAINT `agent_versions_ibfk_1` FOREIGN KEY (`agent_id`) REFERENCES `system_prompts` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `banners`

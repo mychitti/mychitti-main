@@ -394,7 +394,7 @@ class QuoteController extends Controller
             $quotation_det_item->item_id = $request->invoice_item_new[$key] ?? null;
             $quotation_det_item->qty = $request->item_qty_new[$key];
             $quotation_det_item->price = $request->item_price_new[$key];
-            $quotation_det_item->unit = $request->item_unit_new[$key];
+            $quotation_det_item->unit = $request->has('item_unit_new') ? $request->item_unit_new[$key] : null;
             $quotation_det_item->tax = $request->item_tax_new[$key] ? $request->item_tax_new[$key] :  0;
             $quotation_det_item->hsn = $request->item_hsn_new[$key];
             $quotation_det_item->save();

@@ -60,6 +60,7 @@ use App\Models\StoreVoucher;
 use App\Models\SubModule;
 use App\Models\SupplyOrder;
 use App\Models\SupplyOrderItem;
+use App\Models\VendorEmployee;
 use Exception;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Http;
@@ -151,6 +152,11 @@ class Helpers
 
 
 
+    public static function get_staff_list(){
+        $store_id = self::get_store_id();
+        $staffList = VendorEmployee::where('store_id', $store_id)->where('status', 1)->get();
+        return $staffList;
+    }
     public static function createPendingAction(array $data)
     {
         $otp = rand(1000, 9999);

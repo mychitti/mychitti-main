@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\MaintananceImport;
 use App\Models\AccountOption;
 use App\Models\MonthlyMaintanance;
+use App\Models\StoreAccount;
 use App\Models\StoreConfig;
 use App\Models\StoreLedgerEntry;
 use App\Models\StoreVoucher;
@@ -35,13 +36,24 @@ class MaintananceController extends Controller
         $data['day_before'] = $storeConfig && $storeConfig->reminder_day_before ? $storeConfig->reminder_day_before : 2;
 
         $expense_types = AccountOption::where('type', 'expense_type')->where('store_id', $store_id)->get();
-        $masters = MonthlyMaintanance::where('store_id', $store_id)
-
+        $masters = MonthlyMaintanance::with('debitAccount', 'creditAccount')
+            ->where('store_id', $store_id)
             ->where('master', 1)
+            ->when(request('added_by'), function ($query) {
+                if (request('added_by') === 'self') {
+
+                    $query->where(function ($q) {
+                        $q->where('employee_id', 0)
+                            ->orWhereNull('employee_id');
+                    });
+                } else {
+                    $query->where('employee_id', request('added_by'));
+                }
+            })
             ->get();
 
         $masterIds = $masters->pluck('id')->toArray();
- 
+
         $records = MonthlyMaintanance::where('store_id', $store_id)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -79,8 +91,10 @@ class MaintananceController extends Controller
             }
         }
 
+        $storeAccounts = StoreAccount::where('store_id', $store_id)->get();
+        $staffList = Helpers::get_staff_list();
 
-        return view('vendor-views.maintenance.index', compact('data', 'preset', 'records', 'masters', 'expense_types'));
+        return view('vendor-views.maintenance.index', compact('data', 'staffList', 'preset', 'records', 'masters', 'expense_types', 'storeAccounts'));
     }
 
     public function import(Request $request)
@@ -153,7 +167,7 @@ class MaintananceController extends Controller
     {
         $record = MonthlyMaintanance::findOrFail($id);
         $record->due = 0; // Mark as paid
-        $record->status = 'clear' ; // Mark as paid
+        $record->status = 'clear'; // Mark as paid
         $record->paid_for = now(); // Set last paid date to now
         $record->save();
 
@@ -187,7 +201,7 @@ class MaintananceController extends Controller
     public function store(Request $request)
     {
 
-    // prx($request->all());
+        // prx($request->all());
         $request->validate([
             'expense_type' => 'required',
             'title' => 'required',
@@ -212,8 +226,10 @@ class MaintananceController extends Controller
         $maintenance->title = $request->title;
         $maintenance->amount = $request->amount;
         $maintenance->notes = $request->notes;
+        $maintenance->credit_account = $request->to_ledger_account;
+        $maintenance->debit_account = $request->from_ledger_account;
         $maintenance->status = 'clear';
-
+        $maintenance->employee_id = auth('vendor')->check() ? 0 : auth('vendor_employee')->id();
         $maintenance->payment_day = $request->payment_day;
         $maintenance->duration_type = $request->duration_type;
         $maintenance->start_month = $request->start_month;
@@ -285,6 +301,8 @@ class MaintananceController extends Controller
         $record->amount = $request->amount;
         $record->payment_day = $request->payment_day;
         $record->notes = $request->notes;
+        $record->credit_account = $request->to_ledger_account;
+        $record->debit_account = $request->from_ledger_account;
         $record->save();
 
         _auditLogs("Updated Monthly Maintanance : " . $request->title);

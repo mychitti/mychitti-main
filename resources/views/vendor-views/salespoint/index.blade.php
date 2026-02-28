@@ -43,7 +43,13 @@
              -webkit-line-clamp: 1;
          }
 
-
+         .cart_form {
+             overflow-y: scroll;
+             overflow-x: hidden;
+             position: sticky;
+             top: 60px;
+             max-height: 90vh;
+         }
 
          /* Custom Tab Navigation */
          .coffee-nav-tabs {
@@ -118,7 +124,8 @@
          .coffee-cart {
              background: white;
              border-radius: 15px;
-             padding: 20px;
+             padding: 10px 20px;
+             margin: 4px;
              box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
              position: sticky;
              top: 20px;
@@ -206,8 +213,8 @@
          /* Cart Totals */
          .cart-totals {
              border-top: 2px solid #f0f0f0;
-             padding-top: 15px;
-             margin-top: 15px;
+             padding-top: 10px;
+             margin-top: 10px;
          }
 
          .total-row {
@@ -225,16 +232,7 @@
              color: var(--dark-gray);
          }
 
-         .final-total {
-             font-weight: bold;
-             color: var(--text-dark);
-         }
-
-         .final-total .total-label,
-         .final-total .total-amount {
-             color: var(--text-dark);
-             font-weight: bold;
-         }
+         /* .final-total styles defined in design block below */
 
          .order-btn {
              background-color: var(--primary-orange);
@@ -244,7 +242,7 @@
              padding: 12px;
              border-radius: 25px;
              font-weight: 500;
-             margin-top: 20px;
+             margin-top: 8px;
              cursor: pointer;
              transition: all 0.3s ease;
              font-size: 16px;
@@ -304,6 +302,210 @@
              width: 100%;
          }
 
+
+         /* ── Header ── */
+         .coffee-header {
+             margin-bottom: 8px !important;
+         }
+
+         /* Take Away / Dine-In toggle - match branch select height */
+         .order-type-toggle {
+             margin: 0 !important;
+             padding: 0 !important;
+         }
+
+         .order-type-toggle ul {
+             margin: 0 !important;
+             flex-wrap: nowrap !important;
+         }
+
+         .order-type-toggle ul li label span {
+             height: 34px !important;
+             padding: 0 16px !important;
+             font-size: 13px !important;
+             font-weight: 600;
+             border-radius: 8px !important;
+             display: inline-flex !important;
+             align-items: center !important;
+             justify-content: center !important;
+             border: 1.5px solid #dee2e6 !important;
+             color: #555 !important;
+             background: white;
+             transition: all 0.2s ease;
+         }
+
+         .order-type-toggle ul li label span:hover {
+             border-color: var(--primary-orange) !important;
+             color: var(--primary-orange) !important;
+         }
+
+         .order-type-toggle ul li label input:checked~span {
+             background: var(--primary-orange) !important;
+             color: #fff !important;
+             border-color: var(--primary-orange) !important;
+             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+         }
+
+         /* ── Cart Top Section (Customer + Order Type) ── */
+         .cart-top-section {
+             background: white;
+             border-radius: 12px;
+             padding: 10px 12px 6px;
+             margin-bottom: 8px;
+             box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+         }
+
+         .cart-top-section label {
+             font-size: 11px;
+             font-weight: 600;
+             text-transform: uppercase;
+             letter-spacing: 0.4px;
+             color: #999;
+             margin-bottom: 3px;
+         }
+
+         .cart-top-section .form-control {
+             font-size: 13px;
+             height: 34px;
+             padding: 4px 8px;
+         }
+
+         .cart-top-section .add-customer-btn {
+             height: 43px;
+             width: fit-content;
+             font-size: 11px;
+             padding: 15px 7px;
+             border-radius: 8px;
+             white-space: nowrap;
+             line-height: 1.2;
+             flex-shrink: 0;
+         }
+
+         /* ── Cart Card ── */
+         .coffee-cart {
+             padding: 8px 10px !important;
+             border-radius: 12px !important;
+             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+         }
+
+         /* ── Cart Items scrollbar ── */
+         .inner_cart::-webkit-scrollbar {
+             width: 4px;
+         }
+
+         .inner_cart::-webkit-scrollbar-track {
+             background: #f1f1f1;
+             border-radius: 4px;
+         }
+
+         .inner_cart::-webkit-scrollbar-thumb {
+             background: #ccc;
+             border-radius: 4px;
+         }
+
+         /* ── Totals rows ── */
+         .cart-totals {
+             border-top: 1px solid #f0f0f0 !important;
+             padding-top: 6px !important;
+         }
+
+         .total-row {
+             font-size: 12px;
+             margin-bottom: 3px !important;
+             align-items: center;
+         }
+
+         .total-label {
+             font-size: 12px;
+             color: #888;
+         }
+
+         /* ── Payment Block ── */
+         .payment-block {
+             background: #f8f9fa;
+             border-radius: 10px;
+             padding: 8px 10px;
+             margin: 5px 0;
+         }
+
+         .payment-block-label {
+             font-size: 10px;
+             font-weight: 700;
+             text-transform: uppercase;
+             letter-spacing: 0.5px;
+             color: #aaa;
+             margin-bottom: 4px;
+         }
+
+         /* ── Payment Pills ── */
+         .pos--payment-options ul {
+             margin: 0 !important;
+         }
+
+         .pos--payment-options ul li label span {
+             border-radius: 50px !important;
+             padding: 5px 12px !important;
+             font-size: 11px !important;
+             font-weight: 500;
+             transition: all 0.2s ease;
+             border: 1.5px solid #dee2e6 !important;
+             color: #555 !important;
+             background: white;
+             display: inline-block;
+         }
+
+         .pos--payment-options ul li label span:hover {
+             border-color: var(--primary-orange) !important;
+             color: var(--primary-orange) !important;
+         }
+
+         .pos--payment-options ul li label input:checked~span {
+             background: var(--primary-orange) !important;
+             color: #fff !important;
+             border-color: var(--primary-orange) !important;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+         }
+
+         .payment-status-options ul li label input[value="paid"]:checked~span {
+             background: #28a745 !important;
+             border-color: #28a745 !important;
+         }
+
+         .payment-status-options ul li label input[value="unpaid"]:checked~span {
+             background: #dc3545 !important;
+             border-color: #dc3545 !important;
+         }
+
+         /* ── Print Bill button ── */
+         .order-btn {
+             border-radius: 50px !important;
+             font-size: 14px !important;
+             font-weight: 600;
+             letter-spacing: 0.3px;
+             padding: 10px !important;
+             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+         }
+
+         /* ── Final Total bar ── */
+         .final-total {
+             background: var(--primary-orange);
+             border-radius: 10px;
+             padding: 6px 10px;
+             margin-top: 4px;
+         }
+
+         .final-total h2 {
+             font-size: 14px !important;
+             font-weight: 700;
+             color: white !important;
+             margin: 0;
+         }
+
+         .final-total .total-label,
+         .final-total .total-amount {
+             color: white !important;
+         }
+
          /* Responsive */
      </style>
      <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
@@ -323,23 +525,52 @@
      <div class="content container-fluid px-2">
          <div class="coffee-container">
              <div class="row w-100 g-0">
+                 <!-- Category Sidenav Column -->
+
+
                  <!-- Main Content -->
-                 <div class="col-lg-8 p-2 ">
+                 <div class="col-lg-9 p-2 ">
                      <!-- Header -->
                      <div class="coffee-header mb-2">
                          <h2 class="coffee-title">Token Generate</h2>
-                         <div class="d-flex gap-2 flex-wrap align-items-start">
-
+                         <div class="d-flex gap-2 flex-wrap align-items-center">
+                             <div class="pos--payment-options order-type-toggle m-0">
+                                 <ul>
+                                     <li>
+                                         <label>
+                                             <input type="radio" name="type" value="take_away" class="order_type"
+                                                 hidden checked>
+                                             <span>Take Away</span>
+                                         </label>
+                                     </li>
+                                     <li>
+                                         <label>
+                                             <input type="radio" name="type" value="dine_in" class="order_type" hidden>
+                                             <span>Dine-In</span>
+                                         </label>
+                                     </li>
+                                 </ul>
+                             </div>
                              {{-- @if (auth('vendor')->check()) --}}
-                                 <form action="" style="min-width: 144px;" class="d-flex">
-                                     <select class="form-control mx-1 js-select2-custom" id="branch_id" name="branch"
+                             <form action="" style="min-width: 144px;" class="d-flex gap-2">
+                                 @if ($data['category_position'] == 'dropdown')
+                                     <select class="form-control mx-1 js-select2-custom" id="category_id" name="category"
                                          onchange="this.form.submit()">
-                                         @foreach ($data['branches'] as $key => $branch)
-                                             <option {{ request()->branch == $branch->id ? 'selected' : '' }}
-                                                 value="{{ $branch->id }}">{{ ucfirst($branch->name) }}</option>
+                                         <option value="">All Categories</option>
+                                         @foreach ($data['categories'] as $key => $category)
+                                             <option {{ request()->category == $category->id ? 'selected' : '' }}
+                                                 value="{{ $category->id }}">{{ ucfirst($category->name) }}</option>
                                          @endforeach
                                      </select>
-                                 </form>
+                                 @endif
+                                 <select class="form-control mx-1 js-select2-custom" id="branch_id" name="branch"
+                                     onchange="this.form.submit()">
+                                     @foreach ($data['branches'] as $key => $branch)
+                                         <option {{ request()->branch == $branch->id ? 'selected' : '' }}
+                                             value="{{ $branch->id }}">{{ ucfirst($branch->name) }}</option>
+                                     @endforeach
+                                 </select>
+                             </form>
                              {{-- @endif --}}
                              <div class="search_inp">
                                  <div class="input-group">
@@ -355,27 +586,14 @@
                                      </a>
                                  </div>
                              </div>
+                             <button type="button" class="btn btn-outline-danger" onclick="resetCart()">
+                                 <i class="tio-refresh mr-1"></i> Reset
+                             </button>
 
                          </div>
                      </div>
 
-                     <div class="pos--payment-options mt-3 mb-3">
-                         <ul>
-                             <li>
-                                 <label>
-                                     <input type="radio" name="type" value="take_away" class="order_type" hidden
-                                         checked>
-                                     <span>Take away</span>
-                                 </label>
-                             </li>
-                             <li>
-                                 <label>
-                                     <input type="radio" name="type" value="dine_in" class="order_type" hidden>
-                                     <span>Dine-in </span>
-                                 </label>
-                             </li>
-                         </ul>
-                     </div>
+
                      {{-- ================= DINE IN PANEL ================= --}}
                      <div id="dineInPanel" class="card mb-3" style="display:none;">
                          <div class="card-body p-2">
@@ -395,7 +613,7 @@
                                      <div class="col-md-2 col-4 mb-2 p-2">
 
                                          <div class="card dine-table-card p-2 text-center
-    {{ $table->status == 'occupied' ? 'border-danger' : 'border-success' }}"
+                                              {{ $table->status == 'occupied' ? 'border-danger' : 'border-success' }}"
                                              data-id="{{ $table->id }}" data-status="{{ $table->status }}">
 
                                              <strong>{{ $table->name }}</strong>
@@ -404,7 +622,7 @@
 
                                              <span
                                                  class="badge
-        {{ $table->status == 'free' ? 'badge-success' : 'badge-danger' }}">
+                                                        {{ $table->status == 'free' ? 'badge-success' : 'badge-danger' }}">
                                                  {{ ucfirst($table->status) }}
                                              </span>
 
@@ -429,48 +647,64 @@
                          </div>
                      </div>
 
-
-
                      <div class="coffee-tab-content active" id="tab_">
-                         @foreach ($data['branchWiseItems'] as $branchName => $items)
-                             <h2 class="card-title align-items-center d-flex mb-3">{{ ucfirst($branchName) }} Menu<span
-                                     class="badge badge-soft-dark ml-2" id="itemCount">{{ count($items) }}</span></h2>
+                         <div class="row">
+                             @if ($data['category_position'] == 'sidenav')
+                                 <div class="col-2">
+                                     <div class="pos-category-sidenav" style="display:flex;flex-direction:column;gap:5px;">
+                                         <button class="pos-cat-btn active" data-category="">All</button>
+                                         @foreach ($data['categories'] as $category)
+                                             <button class="pos-cat-btn"
+                                                 data-category="{{ $category->id }}">{{ ucfirst($category->name) }}</button>
+                                         @endforeach
+                                     </div>
+                                 </div>
+                             @endif
+                             <div class="col-10">
 
-                             <div class="row g-1 menu-container  rounded desk_p2"
-                                 style="{{ $data['design_id'] == 4 ? 'display:none' : '' }}">
-                                 @foreach ($items as $key => $item)
-                                     <div class="item-card item_card item_{{ $item->id }}">
-                                         <div class="coffee-menu-item">
-                                             <img style="cursor:pointer;"
-                                                 onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
-                                                 src=" {{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/inventory-item/') . '/' . $item->image, asset('public/assets/admin/img/100x100/2.jpg'), 'inventory-item/') }}"
-                                                 alt="{{ $item->name }}"
-                                                 class="menu-item-image img_item_{{ $item->id }}">
-                                             <div class="menu-item-content">
-                                                 <div class="menu-item-header">
-                                                     <h5 style="cursor:pointer;"
+                                 @foreach ($data['branchWiseItems'] as $branchName => $items)
+                                     <h2 class="card-title align-items-center d-flex mb-3">{{ ucfirst($branchName) }}
+                                         Menu<span class="badge badge-soft-dark ml-2"
+                                             id="itemCount">{{ count($items) }}</span></h2>
+
+                                     <div class="row g-1 menu-container  rounded desk_p2"
+                                         style="{{ $data['design_id'] == 4 ? 'display:none' : '' }}">
+                                         @foreach ($items as $key => $item)
+                                             <div class="item-card item_card item_{{ $item->id }}"
+                                                 data-category-id="{{ $item->category_id }}">
+                                                 <div class="coffee-menu-item">
+                                                     <img style="cursor:pointer;"
                                                          onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
-                                                         data-id="{{ $item->id }}"
-                                                         class="menu-item-title item_name two-line-ellipsis ">
-                                                         {{ ucfirst($item->name) }}</h5>
-                                                     <span style="cursor:pointer;"
-                                                         onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
-                                                         class="menu-item-price">{{ _price($item->price) }}</span>
-                                                 </div>
-                                                 @if ($item->qty_left < 5)
-                                                     <span class="text-danger stock_span">Only {{ $item->qty_left }} Left
-                                                     </span>
-                                                 @else
-                                                     <span class="text-success stock_span">{{ $item->qty_left }} In Stock
-                                                     </span>
-                                                 @endif
+                                                         src=" {{ \App\CentralLogics\Helpers::onerror_image_helper($item->image, asset('storage/app/public/inventory-item/') . '/' . $item->image, asset('public/assets/admin/img/100x100/2.jpg'), 'inventory-item/') }}"
+                                                         alt="{{ $item->name }}"
+                                                         class="menu-item-image img_item_{{ $item->id }}">
+                                                     <div class="menu-item-content">
+                                                         <div class="menu-item-header">
+                                                             <h5 style="cursor:pointer;"
+                                                                 onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
+                                                                 data-id="{{ $item->id }}"
+                                                                 class="menu-item-title item_name two-line-ellipsis ">
+                                                                 {{ ucfirst($item->name) }}</h5>
+                                                             <span style="cursor:pointer;"
+                                                                 onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
+                                                                 class="menu-item-price">{{ _price($item->price) }}</span>
+                                                         </div>
+                                                         @if ($item->qty_left < 5)
+                                                             <span class="text-danger stock_span">Only
+                                                                 {{ $item->qty_left }} Left
+                                                             </span>
+                                                         @else
+                                                             <span class="text-success stock_span">{{ $item->qty_left }}
+                                                                 In Stock
+                                                             </span>
+                                                         @endif
 
-                                                 <small class="menu-item-description">
-                                                     {{ $item->brand . ', ' . $item->model_number . ', ' . $item->sku_id }}
-                                                 </small>
+                                                         <small class="menu-item-description">
+                                                             {{ $item->brand . ', ' . $item->model_number . ', ' . $item->sku_id }}
+                                                         </small>
 
-                                                 <div class="menu-item-actions">
-                                                     {{-- <div class="size-selector ">
+                                                         <div class="menu-item-actions">
+                                                             {{-- <div class="size-selector ">
                                                          <div class="pos--payment-options p-0">
                                                              <ul style="flex-wrap: nowrap;">
                                                                  <li style="padding:0!important;">
@@ -497,159 +731,108 @@
                                                              </ul>
                                                          </div>
                                                      </div> --}}
-                                                     <div class="quantity-selector">
-                                                         <button class="quantity-btn"
-                                                             data-id="{{ $item->id }}">-</button>
-                                                         <input type="number"
-                                                             class="quantity-display card_qty_{{ $item->id }}"
-                                                             name="" value="1">
-                                                         <button class="quantity-btn"
-                                                             data-id="{{ $item->id }}">+</button>
-                                                     </div>
+                                                             <div class="quantity-selector">
+                                                                 <button class="quantity-btn"
+                                                                     data-id="{{ $item->id }}">-</button>
+                                                                 <input type="number"
+                                                                     class="quantity-display card_qty_{{ $item->id }}"
+                                                                     name="" value="1">
+                                                                 <button class="quantity-btn"
+                                                                     data-id="{{ $item->id }}">+</button>
+                                                             </div>
 
-                                                     <button type="button"
-                                                         onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
-                                                         class="add-cart-btn d-flex gap-1 align-items-center"><i
-                                                             class="fa-solid fa-cart-plus"></i><span
-                                                             class="d-none d-sm-block">
-                                                             Add</span>
-                                                     </button>
+                                                             <button type="button"
+                                                                 onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
+                                                                 class="add-cart-btn d-flex gap-1 align-items-center"><i
+                                                                     class="fa-solid fa-cart-plus"></i><span
+                                                                     class="d-none d-sm-block">
+                                                                     Add</span>
+                                                             </button>
+                                                         </div>
+                                                     </div>
                                                  </div>
                                              </div>
-                                         </div>
+                                         @endforeach
+                                         @if (!count($items))
+                                             <div class="empty-tab">
+                                                 <h5 class="empty-tab-text">No items found...</h5>
+                                             </div>
+                                         @endif
                                      </div>
                                  @endforeach
-
-                                 @if (!count($items))
-                                     <div class="empty-tab">
-                                         <h5 class="empty-tab-text">No items found...</h5>
-                                     </div>
-                                 @endif
                              </div>
-                         @endforeach
+                         </div>
 
-                     </div>
+                     </div>{{-- end coffee-tab-content --}}
                  </div>
 
 
-                 <div class="col-lg-4">
-                     <form action="{{ route('vendor.pos.token-generate') }}" method="post" id="cartForm">
+                 <div class="col-lg-3">
+                     <form action="{{ route('vendor.pos.token-generate') }}" method="post" class="cart_form"
+                         id="cartForm">
                          @csrf
                          <input type="hidden" name="branch_id" value="{{ $branch_id ?? 0 }}">
 
-                         <div class="d-flex align-items-center mb-3 bg-light p-2 shadow border flex-wrap">
-                             <label class="mb-0 mr-2 font-weight-bold" style="white-space: nowrap;">Token Number</label>
-                             <i class="tio-edit text-primary mr-2" style="cursor:pointer;"></i>
+                         {{-- <div class="d-flex align-items-center mb-3 bg-light p-2 shadow border flex-wrap">
+                            
 
-                             <div class="input-group input-group-sm" style="width: auto; width: 150px;">
-                                 <input maxlength="3" type="text" name="token_prefix"
-                                     class="form-control text-center font-weight-bold" value="TKN"
-                                     style="max-width:60px;    height: 41px !important; border-right:0px !important; ">
-                                 <span class="input-group-text bg-light font-weight-bold">
-                                     {{ $data['upcoming_number'] }}
-                                 </span>
-                             </div>
-
-                             <button type="button" class="btn btn-outline-danger" onclick="resetCart()">
+                           
+                             <a href="" class="btn btn-outline-danger">
                                  <i class="tio-refresh mr-1"></i> Reset
-                             </button>
-                             {{-- <a href="" class="btn btn-outline-danger">
-                                 <i class="tio-refresh mr-1"></i> Reset
-                             </a> --}}
-                         </div>
+                             </a>
+                         </div> --}}
 
-                         {{-- select customemr  --}}
-                         <div class="mb-2 row align-items-end">
-                             <div class="col-md-6 px-1">
-                                 <label class="text-dark text-capitalize"
-                                     for="customer">{{ translate('messages.customer') }}</label>
-                                 <select id='customer_id' name="customer_id" data-url="{{ url()->full() }}"
-                                     data-filter="customer_id"
-                                     data-placeholder="{{ translate('messages.select_customer') }}"
-                                     class="form-control w-100" title="{{ translate('messages.select_client') }}">
-                                 </select>
+                         <div class="cart-top-section">
+                             <div class="row g-1">
+                                 {{-- Customer col --}}
+                                 <div class="col-7">
+                                     <label class="text-dark text-capitalize"
+                                         for="customer">{{ translate('messages.customer') }}</label>
+                                     <div class="d-flex gap-1 align-items-center">
+                                         <select id='customer_id' name="customer_id" data-url="{{ url()->full() }}"
+                                             data-filter="customer_id"
+                                             data-placeholder="{{ translate('messages.select_customer') }}"
+                                             class="form-control" title="{{ translate('messages.select_client') }}">
+                                         </select>
+                                         <button type="button" class="btn add-customer-btn flex-shrink-0"
+                                             data-toggle="modal" data-target="#addCustomerModal">
+                                             + Add New
+                                         </button>
+                                     </div>
+                                 </div>
+
+                                 {{-- Order Type col --}}
+                                 <div class="col-5">
+                                     <label class="text-dark text-capitalize" for="order_from">Order Type</label>
+                                     <select id="itemSelect" name="order_from" class="form-control w-100">
+                                         <option data-image="{{ asset('storage/app/public/util/walk-in.png') }}"
+                                             value="Walk-in Order">Walk-in Order</option>
+                                         @foreach ($data['order_from'] as $key => $value)
+                                             <option
+                                                 data-image="{{ asset('storage/app/public/store/order_type/' . $value->icon) }}"
+                                                 value="{{ $value->name }}">{{ $value->name }}</option>
+                                         @endforeach
+                                         <option data-image="{{ asset('storage/app/public/util/on-call.png') }}"
+                                             value="On Call">On Call</option>
+                                         <option data-image="{{ asset('storage/app/public/util/swiggy.png') }}"
+                                             value="Swiggy">Swiggy</option>
+                                         <option data-image="{{ asset('storage/app/public/util/zomato.png') }}"
+                                             value="Zomato">Zomato</option>
+                                     </select>
+                                 </div>
                              </div>
-                             <div class="col-md-6 px-1 mt-1">
-                                 <button type="button" class="btn add-customer-btn mb-1 w-100" data-toggle="modal"
-                                     data-target="#addCustomerModal">
-                                     + Add New Client
-                                 </button>
-                             </div>
-                         </div>
-
-
-
-
-
-
-                         <div class="mb-2">
-                             <label class="text-dark text-capitalize" for="customer">Order Type</label>
-                             {{-- <select data-placeholder="Type new or select" name="order_from"
-                                 class="js-select2-custom-tags">
-                                 <option value=""></option>
-                                 @foreach ($data['order_from'] as $key => $value)
-                                     <option value="{{ $value->name }}">{{ $value->name }}</option>
-                                 @endforeach
-                                 <option value="Walk-in Order">Walk-in Order</option>
-                                 <option value="On Call">On Call</option>
-                                 <option value="Swiggy">Swiggy</option>
-                                 <option value="Zomato">Zomato</option>
-                             </select> --}}
-                             <select id="itemSelect" name="order_from" class="form-control">
-                                 <option data-image="{{ asset('storage/app/public/util/walk-in.png') }}"
-                                     value="Walk-in Order">Walk-in Order</option>
-                                 @foreach ($data['order_from'] as $key => $value)
-                                     <option
-                                         data-image="{{ asset('storage/app/public/store/order_type/' . $value->icon) }}"
-                                         value="{{ $value->name }}">{{ $value->name }}</option>
-                                 @endforeach
-
-                                 <option data-image="{{ asset('storage/app/public/util/on-call.png') }}" value="On Call">
-                                     On Call</option>
-                                 <option data-image="{{ asset('storage/app/public/util/swiggy.png') }}" value="Swiggy">
-                                     Swiggy</option>
-                                 <option data-image="{{ asset('storage/app/public/util/zomato.png') }}" value="Zomato">
-                                     Zomato</option>
-                             </select>
                          </div>
                          <div class="coffee-cart" id="cart">
-                             <h4 class="cart-title">Cart</h4>
+                             {{-- <h4 class="cart-title">Cart</h4> --}}
 
                              <!-- Cart Items -->
-                             <div class="inner_cart">
-                             </div>
+                             <div class="inner_cart" style="max-height: 97px;overflow-y: scroll;"></div>
 
                              <!-- Totals -->
                              <div class="cart-totals">
-
-
-
-
                                  <div id="checkout-section">
-                                     <div class="pos--payment-options mt-3 mb-3">
-                                         <p class="mb-3">{{ translate('paid_By') }}</p>
-                                         <ul>
-                                             <li>
-                                                 <label>
-                                                     <input type="radio" name="payment_method" value="cash" hidden
-                                                         checked>
-                                                     <span>Cash</span>
-                                                 </label>
-                                             </li>
-                                             <li>
-                                                 <label>
-                                                     <input type="radio" name="payment_method" value="card" hidden>
-                                                     <span>Card</span>
-                                                 </label>
-                                             </li>
-                                             <li>
-                                                 <label>
-                                                     <input type="radio" name="payment_method" value="upi" hidden>
-                                                     <span>Upi</span>
-                                                 </label>
-                                             </li>
-                                         </ul>
-                                     </div>
+
+
 
                                      <div class="total-row ">
                                          <span class="total-label">Coupon:</span>
@@ -695,29 +878,153 @@
                                              <span class="gst-amount">₹<span class="delivery_gst_amount">0</span>
                                          </div>
                                      @endif
+                                     <div class="payment-block">
+                                         <div class="d-flex flex-column gap-1">
+                                             <div>
+                                                 <p class="payment-block-label mb-1 mt-1">Payment Method</p>
+                                                 <div class="pos--payment-options p-0">
+                                                     <ul>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_method"
+                                                                     value="cash" hidden checked>
+                                                                 <span>Cash</span>
+                                                             </label>
+                                                         </li>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_method"
+                                                                     value="bank" hidden>
+                                                                 <span>Bank</span>
+                                                             </label>
+                                                         </li>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_method"
+                                                                     value="upi" hidden>
+                                                                 <span>Upi</span>
+                                                             </label>
+                                                         </li>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_method"
+                                                                     value="cash_online" hidden>
+                                                                 <span>Cash + Online</span>
+                                                             </label>
+                                                         </li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
 
-                                     <div class="pos--payment-options mt-3 mb-3 ">
-                                         <ul>
-                                             <li>
-                                                 <label>
-                                                     <input type="radio" name="payment_status" value="paid" hidden
-                                                         checked>
-                                                     <span>Paid</span>
-                                                 </label>
-                                             </li>
-                                             <li>
-                                                 <label>
-                                                     <input type="radio" name="payment_status" value="unpaid" hidden>
-                                                     <span>Unpaid</span>
-                                                 </label>
-                                             </li>
-                                         </ul>
+                                             <div>
+                                                 <p class="payment-block-label mb-1 mt-0">Status</p>
+                                                 <div class="pos--payment-options payment-status-options mt-1 mb-2 p-0">
+                                                     <ul>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_status"
+                                                                     value="paid" hidden checked>
+                                                                 <span>Paid</span>
+                                                             </label>
+                                                         </li>
+                                                         <li>
+                                                             <label>
+                                                                 <input type="radio" name="payment_status"
+                                                                     value="unpaid" hidden>
+                                                                 <span>Unpaid</span>
+                                                             </label>
+                                                         </li>
+                                                     </ul>
+                                                 </div>
+                                             </div>
+
+                                         </div>
+                                     </div>{{-- end payment-block --}}
+                                     <div class="row">
+
+                                         <div class="col-12 d-flex align-items-end">
+                                             @php
+                                                 $bankAccounts = collect($data['payment_accounts'] ?? [])->where(
+                                                     'payment_type',
+                                                     'bank',
+                                                 );
+                                                 $upiAccounts = collect($data['payment_accounts'] ?? [])->where(
+                                                     'payment_type',
+                                                     'upi',
+                                                 );
+                                                 $bankCount = $bankAccounts->count();
+                                                 $upiCount = $upiAccounts->count();
+                                             @endphp
+                                             @if (($data['payment_accounts'] ?? collect())->count() > 0)
+                                                 <div class="payment-detail-wrap payment-method-bank-wrap w-100"
+                                                     style="display:none;">
+                                                     @if ($bankCount > 1)
+                                                         <select name="payment_detail_id_bank" class="form-control mb-2">
+                                                             <option value="">Select Bank Account</option>
+                                                             @foreach ($bankAccounts as $account)
+                                                                 <option value="{{ $account->id }}">
+                                                                     {{ $account->bank_name }} -
+                                                                     {{ $account->account_number }}
+                                                                 </option>
+                                                             @endforeach
+                                                         </select>
+                                                     @elseif ($bankCount === 1)
+                                                         <input type="hidden" name="payment_detail_id_bank"
+                                                             value="{{ $bankAccounts->first()->id }}">
+                                                         {{-- <div class="form-control mb-2 d-flex align-items-center">
+                                                     {{ $bankAccounts->first()->bank_name }} -
+                                                     {{ $bankAccounts->first()->account_number }}
+                                                 </div> --}}
+                                                     @else
+                                                         <div class="small text-danger mb-2">No bank account found in POS
+                                                             settings.</div>
+                                                     @endif
+                                                 </div>
+                                                 <div class="payment-detail-wrap payment-method-upi-wrap w-100"
+                                                     style="display:none;">
+                                                     @if ($upiCount > 1)
+                                                         <select name="payment_detail_id_upi" class="form-control mb-2">
+                                                             {{-- <option value="">Select UPI ID</option> --}}
+                                                             @foreach ($upiAccounts as $account)
+                                                                 <option value="{{ $account->id }}">
+                                                                     {{ $account->upi_id }}</option>
+                                                             @endforeach
+                                                         </select>
+                                                     @elseif ($upiCount === 1)
+                                                         <input type="hidden" name="payment_detail_id_upi"
+                                                             value="{{ $upiAccounts->first()->id }}">
+                                                         <div class="form-control mb-2 d-flex align-items-center">
+                                                             {{ $upiAccounts->first()->upi_id }}
+                                                         </div>
+                                                     @else
+                                                         <div class="small text-danger mb-2">No UPI ID found in POS
+                                                             settings.
+                                                         </div>
+                                                     @endif
+                                                 </div>
+                                             @endif
+
+                                             <div class="payment-detail-wrap payment-method-cash-online-wrap w-100"
+                                                 style="display:none;">
+                                                 <div class="d-flex gap-2 align-items-center mb-2">
+                                                     <label class="mb-0 text-nowrap small">Cash ₹</label>
+                                                     <input type="number" name="cash_amount" id="cash_amount_input"
+                                                         class="form-control form-control-sm" placeholder="0"
+                                                         min="0" step="0.01">
+                                                     <label class="mb-0 text-nowrap small">Online ₹</label>
+                                                     <input type="number" name="online_amount" id="online_amount_input"
+                                                         class="form-control form-control-sm" placeholder="0"
+                                                         min="0" step="0.01" readonly>
+                                                 </div>
+                                             </div>
+
+                                         </div>
                                      </div>
-                                     <input type="hidden" name="token_id" id="current_token_id">
-                                     <button type="button" id="btn-print-bill" class="order-btn">Print Bill</button>
+
+
                                      {{-- <button type="button" onclick="printInvoice()">Print Invoice</button> --}}
                                      <div class="token_type ">
-                                         <div class="pos--payment-options mt-3 mb-3">
+                                         <div class="pos--payment-options my-1">
                                              <ul>
                                                  <li>
                                                      <label>
@@ -750,11 +1057,12 @@
                                  <span class="total-label">Subtotal:</span>
                                  <span class="total-amount">₹<span class="subtotal_show">0</span></span>
                              </div>
-                             <div class="total-row final-total">
-                                 <span class="total-label">Total:</span>
-                                 <span class="total-amount">₹<span class="total_show">0</span></span>
+                             <div class="total-row ">
+                                 <h2 class="total-label">Total:</h2>
+                                 <h2 class="total-amount">₹<span class="total_show">0</span></h2>
                              </div>
-
+                             <input type="hidden" name="token_id" id="current_token_id">
+                             <button type="button" id="btn-print-bill" class="order-btn">Print Bill</button>
                              <button type="button" class="btn btn-primary" id="btn-start-dine-order"
                                  style="display:none">
                                  Start order
@@ -805,7 +1113,56 @@
              );
          }
      </script>
+     @if ($data['category_position'] == 'sidenav')
+         <script>
+             $(document).on('click', '.pos-cat-btn', function() {
+                 $('.pos-cat-btn').removeClass('active');
+                 $(this).addClass('active');
+                 const catId = $(this).data('category');
+                 if (!catId) {
+                     $('.item_card').show();
+                 } else {
+                     $('.item_card').each(function() {
+                         $(this).toggle($(this).data('category-id') == catId);
+                     });
+                 }
+             });
+         </script>
+     @endif
      <script>
+         function togglePaymentMethodDetails() {
+             const method = $('input[name="payment_method"]:checked').val();
+             $('.payment-method-bank-wrap').hide();
+             $('.payment-method-upi-wrap').hide();
+             $('.payment-method-cash-online-wrap').hide();
+             if (method === 'bank') {
+                 $('.payment-method-bank-wrap').show();
+             } else if (method === 'upi') {
+                 $('.payment-method-upi-wrap').show();
+             } else if (method === 'cash_online') {
+                 $('.payment-method-cash-online-wrap').show();
+                 syncCashOnlineSplit();
+             }
+         }
+         $(document).on('change', 'input[name="payment_method"]', togglePaymentMethodDetails);
+         togglePaymentMethodDetails();
+
+         function syncCashOnlineSplit() {
+             const total = parseFloat($('.price-display').first().text().replace(/[^0-9.]/g, '')) || 0;
+             const cash = parseFloat($('#cash_amount_input').val()) || 0;
+             $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
+         }
+
+         $(document).on('input', '#cash_amount_input', function() {
+             const total = parseFloat($('.price-display').first().text().replace(/[^0-9.]/g, '')) || 0;
+             let cash = parseFloat($(this).val()) || 0;
+             if (cash > total) {
+                 cash = total;
+                 $(this).val(cash);
+             }
+             $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
+         });
+
          $('.order-btn').on('click', function() {
              console.log('fd')
              let orderType = $('input[class="order_type"]:checked').val();

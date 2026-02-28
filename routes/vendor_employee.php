@@ -17,7 +17,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     // mc vendorhub routes 
-    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () { 
+    Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
@@ -28,7 +28,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
-    }); 
+    });
 
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
@@ -54,6 +54,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('submit-reply', 'ReviewController@submit_reply')->name('submit-reply');
         Route::get('site_direction', 'BusinessSettingsController@site_direction_vendor')->name('site_direction');
 
+        Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
+            Route::get('/', 'NotificationController@index')->name('add-new');
+            Route::post('store', 'NotificationController@store')->name('store');
+            Route::get('edit/{id}', 'NotificationController@edit')->name('edit');
+            Route::post('update/{id}', 'NotificationController@update')->name('update');
+            Route::delete('/delete{id}', 'NotificationController@delete')->name('delete');
+            Route::get('status/{id}/{status}', 'NotificationController@updateStatus')->name('status');
+            Route::get('export', 'NotificationController@exportList')->name('export');
+        });
         Route::group(['prefix' => 'task', 'as' => 'task.'], function () {
             Route::get('assigned-tasks', 'TaskController@assigned_tasks')->name('assigned_tasks');
             Route::post('otp-send', 'TaskController@task_otp_send')->name('job-otp-verify');
@@ -72,7 +81,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('edit/{id}', 'TaskController@edit')->name('edit')->middleware('permission:task,edit');
             Route::post('update', 'TaskController@update')->name('update')->middleware('permission:task,edit');
             Route::post('reassign', 'TaskController@reassign')->name('reassign')->middleware('permission:task,edit');
-            Route::get('list/{id?}', 'TaskController@list')->name('list')->middleware('permission:task,list');
+            Route::get('list/{id?}', 'TaskController@list')->name('list');
             Route::get('detail/{id}', 'TaskController@detail')->name('detail')->middleware('permission:task,view');
             Route::post('delete/{id}', 'TaskController@delete')->name('delete')->middleware('permission:task,delete');
             Route::post('save-progress', 'TaskController@save_progress')->name('save-progress');
@@ -110,6 +119,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             });
         });
 
+        Route::get('task/add/{id}', 'TaskController@add')->name('task.add-lead'); // for project details page without planwise:task_manage and permission:task,add check
         Route::post('applyCoupon', 'ServiceController@applyCoupon')->name('applyCoupon');
 
         Route::group(['prefix' => 'billing', 'as' => 'invoice.',], function () {
@@ -126,8 +136,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice')->middleware('permission:billing,edit');
             Route::get('reminder/{type}/{status}/{id}', 'ServiceController@reminder_status')->name('reminder')->middleware('permission:billing,reminder_update');
-            Route::post('save-manual-invoice/{id?}', 'ServiceController@save_manual_invoice')->name('save-manual-invoice')->middleware('permission:billing,add_basic');
-            Route::post('save-new-manual-invoice', 'BillingController@save_new_manual_invoice')->name('save-new-manual-invoice')->middleware('permission:billing,add_advance');
+            Route::post('save-manual-invoice', 'ServiceController@save_manual_invoice')->name('save-manual-invoice')->middleware('permission:billing,add_basic');
+            Route::post('save-new-manual-invoice', 'BillingController@save_new_manual_invoice')->name('save-new-manual-invoice')->middleware('permission:billing,add_advanced');
             Route::post('delete-row', 'ServiceController@delete_row')->name('delete-row');
             Route::get('invoice-view/{type}/{id}', 'ServiceController@invoice_view')->name('invoice-view')->middleware('permission:billing,view');
             Route::get('view-invoice/{type}/{invoice_id}', 'ServiceController@manual_invoice_view')->name('manual-invoice-view')->middleware('permission:billing,view');
@@ -143,12 +153,13 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('save', 'BillingController@save_purchase_invoice')->name('save')->middleware('permission:purchase_bill,add');
                 Route::post('import', 'BillingController@importPurchaseInvoices')->name('import')->middleware('permission:purchase_bill,import');
             });
-
+ 
             //SERVICE BILLS 
             Route::post('service-update-invoice', 'BillingController@service_update_invoice')->name('service-update-invoice')->middleware('permission:service_bill,edt');
             Route::post('save-invoice', 'ServiceController@save_invoice')->name('save-invoice')->middleware('permission:service_bill,add');
             Route::get('edit-service-invoice/{id}', 'BillingController@edit_service_invoice')->name('edit.service.invoice')->middleware('permission:service_bill,edit'); // only for manual invoices
         });
+        Route::post('billing/save-manual-invoice/{id}', 'ServiceController@save_manual_invoice')->name('invoice.save-manual-invoice-lead'); // for task invoice save without permission check because it is used in task details page and we have given access to view task details for some roles who don't have permission to manage billing
         Route::get('invoices', 'DashboardController@invoices')->name('invoices');
         Route::get('invoice-list', 'DashboardController@order_invoices')->name('order.invoices');
 
@@ -200,12 +211,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('salary/advance-request/store', 'SalaryController@advance_request_store')->name('salary.advance-request.store');
 
 
+        Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
         Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage']], function () {
             Route::get('settings', 'InventoryController@settings')->name('settings')->middleware('permission:inventory,settings');
             Route::post('settings-save', 'InventoryController@settings_save')->name('settings-save')->middleware('permission:inventory,settings_save');
             Route::get('dashboard', 'InventoryController@dashboard')->name('dashboard')->middleware('permission:inventory,dashboard');
             Route::get('/', 'InventoryController@inventory_management')->name('index');
-            Route::post('get-item-info', 'InventoryController@get_item_info')->name('get-item-info');
             Route::post('get_my_fee_amount', 'InventoryController@get_my_fee_amount')->name('get_my_fee_amount');
             Route::post('get_item_details', 'InventoryController@get_item_details')->name('get_item_details');
             Route::post('get_variation_details', 'InventoryController@get_variation_details')->name('get_variation_details');
@@ -439,7 +450,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store', 'MaintananceController@store')->name('store')->middleware('permission:boa_monthly_maintenance,add');
                 Route::get('edit/{id}', 'MaintananceController@edit')->name('edit')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::post('update', 'MaintananceController@update')->name('update')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::post('update-entry-price', 'MaintananceController@update_entry_price')->name('update-entry-price')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::delete('delete/{id}', 'MaintananceController@destroy')->name('delete')->middleware('permission:boa_monthly_maintenance,delete');
+                Route::get('status/{id}/{status}', 'MaintananceController@status')->name('status')->middleware('permission:boa_monthly_maintenance,edit');
                 Route::get('mark-paid/{id}', 'MaintananceController@mark_paid')->name('mark-paid')->middleware('permission:boa_monthly_maintenance,mark_paid');
                 Route::get('export', 'MaintananceController@export')->name('export')->middleware('permission:boa_monthly_maintenance,export');
                 Route::post('import', 'MaintananceController@import')->name('import')->middleware('permission:boa_monthly_maintenance,import');
@@ -476,8 +489,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('store');
                 Route::get('list', 'DocumentsController@job_cards_list')->name('list');
                 Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
-            });
-        });
+            }); 
+        }); 
+        Route::post('documents/service-report/store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('documents.service-report.store-lead'); // for task service report save without module:documents check because it is used in task details page
+        Route::post('documents/receivable-receipt/store/{action?}/{task_id?}', 'LibraryController@recievable_store')->name('documents.receivable-receipt.store-lead'); // for task receivable receipt save without module:documents check because it is used in task details page
         Route::group(['prefix' => 'smart-calendar', 'as' => 'smart-calendar.'], function () {
             Route::get('/', 'SmartCalendarController@index')->name('all');
         });
@@ -487,8 +502,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('select-template', 'LibraryController@select_template')->name('select-template');
             Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
                 // Route::group(['prefix' => 'purchase', 'as' => 'purchase.'], function () {
-                    Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
-                    Route::post('store', 'DocumentsController@store_gatepass')->name('store');
+                Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
+                Route::post('store', 'DocumentsController@store_gatepass')->name('store');
                 // });
                 // Route::group(['prefix' => 'sale', 'as' => 'sale.'], function () {
                 //     Route::get('add', 'DocumentsController@add_sale_gatepass')->name('add');
@@ -611,6 +626,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('convert-to-order/{lead_id}', 'LeadController@convert_to_order')->name('convert-to-order');
             Route::post('convert-to-order-store', 'LeadController@convert_to_order_store')->name('convert-to-order-store');
         });
+
         Route::group(['prefix' => 'lead', 'as' => 'lead.', 'middleware' => ['planwise:leads_manage']], function () {
             Route::get('list', 'LeadController@index')->name('list');
             Route::get('add', 'LeadController@add')->name('add')->middleware('permission:leads_manage,add');
@@ -629,7 +645,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('quotation_number_validation', 'QuoteController@quotation_number_validation')->name('quotation_number_validation')->middleware('permission:quotaiton_manage,add');
             Route::get('add', 'QuoteController@add')->name('add')->middleware('permission:quotaiton_manage,add');
             Route::post('status-change', 'QuoteController@status_change')->name('status-change')->middleware('permission:quotaiton_manage,status_chang');
-            Route::post('save-info/{id?}', 'QuoteController@save_info')->name('save-info')->middleware('permission:quotaiton_manage,add');
+            Route::post('save-info', 'QuoteController@save_info')->name('save-info')->middleware('permission:quotaiton_manage,add');
             Route::post('lead_approval', 'QuoteController@lead_approval')->name('lead_approval');
             Route::get('delete/{id}', 'QuoteController@delete')->name('delete')->middleware('permission:quotaiton_manage,delete');
             Route::get('manage/{id}', 'QuoteController@manage')->name('manage')->middleware('permission:quotaiton_manage,edit');
@@ -641,8 +657,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('signature-fetch', 'BusinessSettingsController@signature_fetch')->name('signature.fetch')->middleware('permission:quotation_sign,list');
             Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:quotation_bank_account,add');;
             Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:quotation_bank_account,delete');;
-        });
-
+        }); 
+        Route::post('quotation/save-info/{id}', 'QuoteController@save_info')->name('quotation.save-info-task'); // for lead quotation save without permission check because it is used in lead details page and we have given access to view lead details for some roles who don't have permission to manage quotation
 
         Route::group(['prefix' => 'staff-department', 'as' => 'staff-department.'], function () {
             Route::get('/', 'StaffController@departments')->name('all');
@@ -715,15 +731,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('delete/{id}', 'CustomerController@delete')->name('delete')->middleware('permission:client_manage,delete');
             Route::post('bulk-delete', 'CustomerController@bulk_delete')->name('bulk-delete')->middleware('permission:client_manage,delete');
             Route::post('upload-excel', 'CustomerController@upload_excel')->name('upload-excel')->middleware('permission:client_manage,import');
-            Route::post('fetch-details', 'CustomerController@fetch_details')->name('fetch-details');
-            Route::get('get-matches', 'CustomerController@get_matches')->name('get-matches');
             Route::get('get-store-customer', 'CustomerController@get_store_customer')->name('get-store-customer');
             Route::get('export', 'CustomerController@export')->name('export')->middleware('permission:client_manage,export');
             Route::post('upload-excel', 'CustomerController@upload_excel')->name('upload-excel')->middleware('permission:client_manage,import');
             Route::post('comment-save', 'CustomerController@comment_save')->name('comment-save')->middleware('permission:client_manage,comment');
         });
-        // 
+        //
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
+
+            // restaurent table  
+            Route::resource('restaurant-tables', \App\Http\Controllers\Vendor\RestaurantTableController::class);
+
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
             Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
@@ -732,7 +750,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('calendar', 'SalespointController@calendar')->name('calendar');
 
             // POS TOKEN 
-            Route::get('token', 'SalespointController@token')->name('token')->middleware('permission:pos_token,generate');
+            Route::get('token/{id?}', 'SalespointController@token')->name('token')->middleware('permission:pos_token,generate');
             Route::get('token-list', 'SalespointController@token_list')->name('token.list')->middleware('permission:pos_token,list');
             Route::get('token-export', 'SalespointController@token_export')->name('token.export')->middleware('permission:pos_token,export');
             Route::get('convert-to-bill/{id}', 'SalespointController@convert_to_bill')->name('token.convert-to-bill')->middleware('permission:pos_token,convert to invoice');
@@ -741,6 +759,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('token-generate', 'SalespointController@token_generate')->name('token-generate')->middleware('permission:pos_token,generate');
             Route::get('mark-paid/{id}', 'SalespointController@mark_paid')->name('token.mark-paid')->middleware('permission:pos_token,mark_paid');
             Route::post('payment-method', 'SalespointController@payment_method')->name('token.payment-method')->middleware('permission:pos_token,edit');
+
+            // DINE IN //
+            // Route::get('open-table', 'SalespointController@open_table')->name('open-table');
+            // Route::get('pos/{order}', 'SalespointController@order_show')->name('order.show');
+
+
+            Route::post('dine-in/open-table', 'SalespointController@openTable')->name('dinein.open');
+            Route::get('pos/dine-in/table-state', 'SalespointController@tableState')->name('dinein.table-state');
+            Route::post('pos/dine-in/update', 'SalespointController@updateDineOrder')->name('dinein.update');
 
             // POS ITEMS 
             Route::post('items-import', 'SalespointController@items_import')->name('items_import');
@@ -766,6 +793,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('store', 'OrderTypeController@store')->name('store')->middleware('permission:pos_order_type,add');
                 Route::get('delete/{id}', 'OrderTypeController@delete')->name('delete')->middleware('permission:pos_order_type,delete');
                 Route::post('update', 'OrderTypeController@update')->name('update')->middleware('permission:pos_order_type,edit');
+            });
+
+            // SETTING 
+            Route::group(['prefix' => 'setting', 'as' => 'setting.'], function () {
+                Route::post('save', 'SalespointController@setting_save')->name('save')->middleware('permission:pos,settings');
             });
         });
 
@@ -799,6 +831,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function () {
             Route::post('order-stats', 'DashboardController@order_stats')->name('order-stats');
             Route::post('filter-pnl', 'DashboardController@filter_pnl')->name('filter-pnl');
+
+            Route::get('leads', 'DashboardController@leads_list')->name('leads');
+            Route::get('sales/{type?}', 'DashboardController@sales_list')->name('sales');
+            Route::get('pending', 'DashboardController@pending_list')->name('pending');
+            Route::get('expense', 'DashboardController@expense_list')->name('expense');
+            Route::get('tasks', 'DashboardController@tasks_list')->name('tasks');
+            Route::get('projects', 'DashboardController@projects_list')->name('projects');
+            Route::get('inventory-sales', 'DashboardController@inventory_sale_list')->name('inventory-sales');
         });
 
         Route::group(['prefix' => 'category', 'as' => 'category.', 'middleware' => ['module:item']], function () {
@@ -1018,8 +1058,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
         });
 
-        Route::get('menu-preference', 'SettingsController@menu_preference')->name('menu_preference')->middleware('permission:module,menu_preference');
-        Route::post('menu-preference-save', 'SettingsController@menu_preference_save')->name('menu_preference_save')->middleware('permission:module,menu_preference');
+        Route::get('menu-preference', 'SettingsController@menu_preference')->name('menu_preference')->middleware('module:menu_preference');
+        Route::post('menu-preference-save', 'SettingsController@menu_preference_save')->name('menu_preference_save')->middleware('module:menu_preference');
         Route::get('business-settings/update-active-status', 'BusinessSettingsController@active_status')->name('business-settings.update-active-status')->middleware('module:store_availability');
 
         Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.', 'middleware' => ['module:store_setup']], function () {
@@ -1038,6 +1078,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('about-us-save', 'BusinessSettingsController@about_us_save')->name('about-us.save');
             Route::get('terms-and-conditions', 'BusinessSettingsController@common_terms_and_conditions')->name('common-terms-and-conditions');
             Route::post('common-tnc-save', 'BusinessSettingsController@common_tnc_save')->name('common-tnc-save');
+            Route::post('common-pp-save', 'BusinessSettingsController@common_pp_save')->name('common-pp-save');
             Route::get('settings', 'BusinessSettingsController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('settings-save', 'BusinessSettingsController@terms_and_conditions_save')->name('terms-and-conditions.save');
 
@@ -1065,8 +1106,16 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
 
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
-            Route::get('webpage', 'SettingsController@webpage_settings')->name('webpage');
+            Route::get('webpage/{tab?}', 'SettingsController@webpage_settings')->name('webpage');
             Route::post('webpage-update', 'SettingsController@webpage_settings_update')->name('webpage-update');
+            Route::post('webpage-template', 'SettingsController@webpage_template_update')->name('webpage-template');
+            Route::post('purchase-template', 'SettingsController@purchase_template')->name('purchase-template');
+
+
+            Route::group(['prefix' => 'domain', 'as' => 'domain.'], function () {
+                Route::post('update', 'SettingsController@domain_update')->name('update');
+                Route::post('remove', 'SettingsController@domain_remove')->name('remove');
+            });
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
                 Route::get('profile', 'SettingsController@profile_settings')->name('profile');
                 Route::get('store', 'SettingsController@store_settings')->name('store');
@@ -1076,16 +1125,18 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('holiday/delete/{id}', 'SettingsController@holiday_delete')->name('holiday.delete');
             });
         });
-        Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions');
+        Route::get('subscriptions', 'ProfileController@subscriptions')->name('subscriptions')->middleware('module:subscriptions');;
 
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:subscriptions']], function () {
             Route::get('enable-free-trial', 'ProfileController@enable_free_trial')->name('enable-free-trial');
             Route::post('buy-module', 'ProfileController@buy_module')->name('buy-module');
             Route::post('buy-plan', 'ProfileController@buy_plan')->name('buy-plan');
             Route::post('settings-plans', 'ProfileController@settings_plans')->name('settings-plans');
+            Route::post('about/update', 'ProfileController@about_update')->name('about.update');
         });
 
         Route::get('profile/view', 'ProfileController@view')->name('profile.view');
+        Route::get('profile/edit', 'ProfileController@edit')->name('profile.edit');
         Route::post('profile/update', 'ProfileController@update')->name('profile.update');
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:bank_info']], function () {
             Route::post('settings-password', 'ProfileController@settings_password_update')->name('settings-password');
@@ -1117,7 +1168,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('disbursement-report-export/{type}', 'ReportController@disbursement_report_export')->name('disbursement-report-export');
         });
     });
-
+    Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
+        Route::get('/', 'AIChatController@index')->name('index');
+        Route::post('send', 'AIChatController@chat')->name('send');
+        Route::get('history', 'AIChatController@history')->name('history');
+        Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+    });
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {

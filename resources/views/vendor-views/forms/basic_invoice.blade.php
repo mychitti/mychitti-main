@@ -1,5 +1,5 @@
 <form class="w-100 row g-0 invoice-form calc-form"
-    action="{{ isset($task) ? route('vendor.invoice.save-manual-invoice', [$task->id]) : route('vendor.invoice.save-manual-invoice') }}"
+    action="{{ isset($task) ? route('vendor.invoice.save-manual-invoice-lead', [$task->id]) : route('vendor.invoice.save-manual-invoice') }}"
     method="post">
     @csrf
     <div class="col-md-12 p-1">
@@ -7,7 +7,7 @@
             <div class="card-body">
                 <input type="hidden" id="service_id" name="service_id" value="">
 
-                <!-- Row 1: Invoice Details -->
+                <!-- Row 1: Invoice Details --> 
                 <div class="row  mb-2">
                     <div class="col-md-2 p-1">
                         <label class="form-check-label d-flex mb-1" for="flexRadioDefault32">Invoice Id</label>

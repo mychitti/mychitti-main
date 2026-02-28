@@ -123,7 +123,7 @@
                         </li>
                     @endif
                     {{-- hasMasterModulePermission('leads_manage') && --}}
-                    @if (selected_menu('leads_manage') && $store_data->module->id == 6)
+                    @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6)
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -498,8 +498,17 @@
 
                     @endif
                     {{-- =============================== CLIENT Management=========================== --}}
-                    @if (selected_menu('client_manage') && hasMasterModulePermission('client_manage'))
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
+                            @if(
+                                (auth('vendor')->check() 
+                                    && selected_menu('client_manage') 
+                                    && hasMasterModulePermission('client_manage')
+                                )
+                                ||
+                                (auth('vendor_employee')->check() 
+                                    && hasMasterModulePermission('client_manage')
+                                )
+                            )          
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Client Management">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
@@ -2076,7 +2085,7 @@
                                 <span class="text-truncate">My Chitti T&C</span>
                             </a>
                         </li>
-                    @elseif(auth('vendor_employee')->check())
+                    {{-- @elseif(auth('vendor_employee')->check())
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('terms-n-conditions-staff') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
@@ -2087,7 +2096,7 @@
 
                                 <span class="text-truncate">{{ $store_data->name }} T&C</span>
                             </a>
-                        </li>
+                        </li> --}}
                     @endif
                     @if (selected_menu('notifications') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                         <li
@@ -2551,6 +2560,7 @@
                             </ul>
                         </li>
                     @endif
+                    @if (selected_menu('notifications') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link "
@@ -2560,6 +2570,7 @@
                             <span class="text-truncate">Post Ads</span>
                         </a>
                     </li>
+                    @endif
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('subscriptions') ? 'active' : '' }}">

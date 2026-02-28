@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Front;
 
 use App\CentralLogics\BannerLogic;
 use App\CentralLogics\CouponLogic;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+
 use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
@@ -40,6 +42,7 @@ use App\Models\OrderDetail;
 use App\Models\ParcelCategory;
 use App\Models\SeoContent;
 use App\Models\ServiceKeyword;
+use App\Models\ServiceRequest;
 use App\Models\ZoneRequest;
 use App\Models\Store;
 use App\Models\StoreConfig;
@@ -152,13 +155,51 @@ class FrontController extends Controller
     }
     public function testing(Request $request, $type = 'vendor')
     {
+       
+    //    prx(  _send_confirmation_sms('otp',  8897228124, 1234));
+
+    die;
+     $bookings = ServiceRequest::where('user_id', 925)
+            ->with([
+                'item:id,name',
+                'accepted:service_request_id,vendor_id,assigned_to,assigned_type',
+                'accepted.store:id,name,phone',
+                'accepted.staff' => function (MorphTo $morphTo) {
+                    $morphTo->constrain([
+                        \App\Models\VendorEmployee::class => function ($q) {
+                            $q->select('id', 'f_name', 'l_name', 'phone', 'email', 'image');
+                        },
+                        \App\Models\Store::class => function ($q) {
+                            $q->select('id', 'name', 'phone', 'email', 'logo', 'address');
+                        },
+                    ]);
+                },
+            ])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get(['id', 'item_id', 'status', 'requirements', 'city', 'created_at', 'updated_at']);
+        $data = [
+            'success'  => true, 
+            'bookings' => $bookings->map(fn($b) => [
+                'id'           => $b->id,
+                'service_name' => $b->item?->name ?? 'Unknown Service',
+                'status'       => $b->status ?? 'new',
+                'requirements' => $b->requirements,
+                'city'         => $b->city,
+                'date'         => $b->created_at?->format('d M Y'),
+                'assigned'     => $b->accepted !== null,
+                'staff'        => $b->accepted?->assigned_details['name'], // normalized: {id,type,name,phone,...}
+                'store'        => $b->accepted?->store?->name,
+            ]),
+        ];
+        prx($data);
         // $filePath = 'apis.json';
         // if (Storage::disk('secure')->exists($filePath)) {
         //     return Storage::disk('secure')->download($filePath);
         // }
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
 
-        return view('front-views.test_view');
+        // return view('front-views.test_view');
     }
 
 

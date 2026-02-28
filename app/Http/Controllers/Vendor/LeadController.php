@@ -291,7 +291,6 @@ class LeadController extends Controller
             ]
         );
         _send_confirmation_sms('job_msg', $phone, $otp);
-        prx($phone);
         return 1;
     }
     public function manage(Request $request, $id)

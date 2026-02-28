@@ -277,6 +277,11 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
+        $module_type = Config::get('module.current_module_type');
+
+        if($module_type == 'pharmacy'){ 
+            return app(AIAgentSkillController::class)->index($request);
+        }
         if (_onlyStoreAddEdit()) {
             return redirect()->route('admin.store.list');
         }
@@ -294,7 +299,6 @@ class DashboardController extends Controller
         $commission = $data['commission'];
         $delivery_commission = $data['delivery_commission'];
         $label = $data['label'];
-        $module_type = Config::get('module.current_module_type');
 
         if ($module_type == 'settings') {
             return redirect()->route('admin.business-settings.business-setup');

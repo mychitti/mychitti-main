@@ -56,6 +56,7 @@ class NotificationController extends Controller
             ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by','vendor')
             ->get();
             $notifications->append('data');
+            $notifications->each->setAppends(['image_url']);
 
             return response()->json($notifications, 200);
         } catch (\Exception $e) {

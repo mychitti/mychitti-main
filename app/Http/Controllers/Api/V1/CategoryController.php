@@ -63,6 +63,7 @@ class CategoryController extends Controller
         if($request->has('module_id')){
             try {
                 $categories = Category::where(['position' => 0, 'status' => 1])
+                ->whereNull('added_by')
                 ->module($request->module_id)
                 ->orderBy('priority', 'desc')->get();
                 return response()->json($categories, 200);
@@ -74,13 +75,14 @@ class CategoryController extends Controller
              try {
             $key = explode(' ', $search);
             $featured = $request->query('featured');
-            $categories = Category::withoutGlobalScopes()->
+            $categories = Category::withoutGlobalScopes()
             // ->with(['childes' => function ($query) {
             //     $query->where('status', 1)->withCount(['products', 'childes' => function ($query) {
             //         $query->where('status', 1);
             //     }]);
             // }])
-                where(['position' => 0, 'status' => 1])
+                ->whereNull('added_by')
+                ->where(['position' => 0, 'status' => 1])
                 ->when(config('module.current_module_data'), function ($query) {
                     $query->module(config('module.current_module_data')['id']);
                 })

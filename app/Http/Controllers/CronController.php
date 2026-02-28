@@ -329,175 +329,104 @@ class CronController extends Controller
         }
     }
     public function monthly_maintenance_reminder(Request $request)
-{
-    $today = Carbon::today();
+    {
+        $today = Carbon::today();
+        $masterRecords = MonthlyMaintanance::where('master', 1)->get();
 
-    $masterRecords = MonthlyMaintanance::where('master', 1)->get();
+        foreach ($masterRecords as $master) {
 
-    foreach ($masterRecords as $master) {
+            $storeConfig = StoreConfig::where('store_id', $master->store_id)->first();
 
-        $storeConfig = StoreConfig::where('store_id', $master->store_id)->first();
+            $reminderDaysBefore = $storeConfig && $storeConfig->reminder_day_before
+                ? $storeConfig->reminder_day_before
+                : 2;
 
-        $reminderDaysBefore = $storeConfig && $storeConfig->reminder_day_before
-            ? $storeConfig->reminder_day_before
-            : 2;
+            $paymentDay   = (int) $master->payment_day;
+            $durationType = $master->duration_type ?? 'monthly'; // monthly / quarterly / annually
+            $startMonth   = (int) $master->start_month;          // only for quarterly / annually
 
-        $paymentDay   = (int) $master->payment_day;
-        $durationType = $master->duration_type ?? 'monthly'; // monthly / quarterly / annually
-        $startMonth   = (int) $master->start_month;          // only for quarterly / annually
-
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Decide whether this expense should be generated for this month
         |--------------------------------------------------------------------------
         */
 
-        $generateForThisMonth = false;
+            $generateForThisMonth = false;
 
-        if ($durationType == 'monthly') {
+            if ($durationType == 'monthly') {
 
-            $generateForThisMonth = true;
+                $generateForThisMonth = true;
+            } elseif ($durationType == 'quarterly') {
 
-        } elseif ($durationType == 'quarterly') {
+                if (!$startMonth) {
+                    continue;
+                }
 
-            if (!$startMonth) {
+                $diff = ($today->month - $startMonth + 12) % 12;
+
+                if ($diff % 3 == 0) {
+                    $generateForThisMonth = true;
+                }
+            } elseif ($durationType == 'yearly') {
+
+                if (!$startMonth) {
+                    continue;
+                }
+
+                if ($today->month == $startMonth) {
+                    $generateForThisMonth = true;
+                }
+            }
+
+            if (!$generateForThisMonth) {
                 continue;
             }
 
-            $diff = ($today->month - $startMonth + 12) % 12;
-
-            if ($diff % 3 == 0) {
-                $generateForThisMonth = true;
-            }
-
-        } elseif ($durationType == 'yearly') {
-
-            if (!$startMonth) {
-                continue;
-            }
-
-            if ($today->month == $startMonth) {
-                $generateForThisMonth = true;
-            }
-        }
-
-        if (!$generateForThisMonth) {
-            continue;
-        }
-
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Due date (safe for 28/30/31)
         |--------------------------------------------------------------------------
         */
 
-        $lastDay = Carbon::create($today->year, $today->month, 1)->endOfMonth()->day;
+            $lastDay = Carbon::create($today->year, $today->month, 1)->endOfMonth()->day;
 
-        $dueDate = Carbon::create(
-            $today->year,
-            $today->month,
-            min($paymentDay, $lastDay)
-        );
+            $dueDate = Carbon::create(
+                $today->year,
+                $today->month,
+                min($paymentDay, $lastDay)
+            );
 
-        $reminderStartDate = $dueDate->copy()->subDays($reminderDaysBefore);
+            $reminderStartDate = $dueDate->copy()->subDays($reminderDaysBefore);
 
-        if ($today->lt($reminderStartDate)) {
-            continue;
-        }
-
-        $exists = MonthlyMaintanance::where('store_id', $master->store_id)
-            ->where('expense_type', $master->expense_type)
-            ->where('master', 0)
-            ->whereMonth('for_month', $today->month)
-            ->whereYear('for_month', $today->year)
-            ->exists();
-
-        $due = !$storeConfig || $storeConfig->monthly_maintnnce_req == 'manual_pay'
-            ? 1
-            : 0;
-
-        if (!$exists) {
-
-            $created = MonthlyMaintanance::create([
-                'store_id'     => $master->store_id,
-                'expense_type' => $master->expense_type,
-                'title'        => $master->title,
-                'amount'       => $master->amount,
-                'payment_day'  => $master->payment_day,
-                'parent'       => $master->id,
-                'master'       => 0,
-                'for_month'    => $today->copy()->startOfMonth(),
-                'due'          => $due,
-                'status'       => 'due',
-                'due_date'     => $dueDate,
-            ]);
-
-            $store = Store::withoutGlobalScopes()->find($master->store_id);
-
-            if ($store) {
-
-                $daysUntilDue = $today->diffInDays($dueDate, false);
-
-                if ($daysUntilDue > 0) {
-                    $reminderText = "due in {$daysUntilDue} day(s)";
-                } elseif ($daysUntilDue == 0) {
-                    $reminderText = "due today";
-                } else {
-                    $reminderText = "overdue by " . abs($daysUntilDue) . " day(s)";
-                }
-
-                $data = [
-                    'title'       => "Monthly Maintenance Reminder",
-                    'description' => "Your maintenance payment of Rs. {$master->amount} for " .
-                        ucfirst($master->expense_type) .
-                        " is {$reminderText} (Due: {$dueDate->format('M d, Y')}).",
-                ];
-
-                $url = route('vendor.account.maintenance.index');
-
-                _inAppNotification(
-                    $data['title'],
-                    $data['description'],
-                    null,
-                    $store->id,
-                    $url,
-                    'vendor'
-                );
-
-                $debit_account  = Helpers::ensureMaintenanceExpenseAccount($store->id);
-                $credit_account = Helpers::ensureOtherBankAccount();
-
-                $ledgerData = [
-                    'date'         => $dueDate,
-                    'amount'       => $master->amount,
-                    'voucher_type' => 'Payment',
-                    'maintanace_id'=> $created->id,
-                    'status'       => $due ? 'pending' : 'approved',
-                    'description'  => $master->expense_type,
-                ];
-
-                _masterLedgerEntry(
-                    $ledgerData,
-                    $credit_account,
-                    $debit_account,
-                    'store',
-                    'other',
-                    null,
-                    $master->store_id
-                );
+            if ($today->lt($reminderStartDate)) {
+                continue;
             }
 
-        } else {
-
-            $entry = MonthlyMaintanance::where('store_id', $master->store_id)
+            $exists = MonthlyMaintanance::where('store_id', $master->store_id)
                 ->where('expense_type', $master->expense_type)
                 ->where('master', 0)
                 ->whereMonth('for_month', $today->month)
                 ->whereYear('for_month', $today->year)
-                ->where('due', $due)
-                ->first();
+                ->exists();
 
-            if ($entry) {
+            $due = !$storeConfig || $storeConfig->monthly_maintnnce_req == 'manual_pay'
+                ? 1
+                : 0;
+            if (!$exists) {
+
+                $created = MonthlyMaintanance::create([
+                    'store_id'     => $master->store_id,
+                    'expense_type' => $master->expense_type,
+                    'title'        => $master->title,
+                    'amount'       => $master->amount,
+                    'payment_day'  => $master->payment_day,
+                    'parent'       => $master->id,
+                    'master'       => 0,
+                    'for_month'    => $today->copy()->startOfMonth(),
+                    'due'          => $due,
+                    'status'       => 'due',
+                    'due_date'     => $dueDate,
+                ]);
 
                 $store = Store::withoutGlobalScopes()->find($master->store_id);
 
@@ -510,17 +439,14 @@ class CronController extends Controller
                     } elseif ($daysUntilDue == 0) {
                         $reminderText = "due today";
                     } else {
-                        $reminderText = "OVERDUE by " . abs($daysUntilDue) . " day(s)";
+                        $reminderText = "overdue by " . abs($daysUntilDue) . " day(s)";
                     }
 
                     $data = [
-                        'title' => $daysUntilDue < 0
-                            ? "Overdue Payment Reminder"
-                            : "Monthly Maintenance Reminder",
-
-                        'description' => "Reminder: Your maintenance payment of Rs. {$master->amount} for " .
+                        'title'       => "Monthly Maintenance Reminder",
+                        'description' => "Your maintenance payment of Rs. {$master->amount} for " .
                             ucfirst($master->expense_type) .
-                            " is {$reminderText}.",
+                            " is {$reminderText} (Due: {$dueDate->format('M d, Y')}).",
                     ];
 
                     $url = route('vendor.account.maintenance.index');
@@ -533,11 +459,81 @@ class CronController extends Controller
                         $url,
                         'vendor'
                     );
+
+                    $debit_account  = $master->debit_account ?? Helpers::ensureMaintenanceExpenseAccount($store->id);
+                    $credit_account = $master->credit_account ?? Helpers::ensureOtherBankAccount();
+
+                    $ledgerData = [
+                        'date'         => $dueDate,
+                        'amount'       => $master->amount,
+                        'voucher_type' => 'Payment',
+                        'maintanace_id' => $created->id,
+                        'status'       => $due ? 'pending' : 'approved',
+                        'description'  => $master->expense_type,
+                    ];
+
+                     _masterLedgerEntry(
+                        $ledgerData,
+                        $credit_account,
+                        $debit_account,
+                        'store',
+                        'other',
+                        null,
+                        $master->store_id
+                    );
+                }
+            } else {
+
+                $entry = MonthlyMaintanance::where('store_id', $master->store_id)
+                    ->where('expense_type', $master->expense_type)
+                    ->where('master', 0)
+                    ->whereMonth('for_month', $today->month)
+                    ->whereYear('for_month', $today->year)
+                    ->where('due', $due)
+                    ->first();
+
+
+                if ($entry) {
+
+                    $store = Store::withoutGlobalScopes()->find($master->store_id);
+
+                    if ($store) {
+
+                        $daysUntilDue = $today->diffInDays($dueDate, false);
+
+                        if ($daysUntilDue > 0) {
+                            $reminderText = "due in {$daysUntilDue} day(s)";
+                        } elseif ($daysUntilDue == 0) {
+                            $reminderText = "due today";
+                        } else {
+                            $reminderText = "OVERDUE by " . abs($daysUntilDue) . " day(s)";
+                        }
+
+                        $data = [
+                            'title' => $daysUntilDue < 0
+                                ? "Overdue Payment Reminder"
+                                : "Monthly Maintenance Reminder",
+
+                            'description' => "Reminder: Your maintenance payment of Rs. {$master->amount} for " .
+                                ucfirst($master->expense_type) .
+                                " is {$reminderText}.",
+                        ];
+
+                        $url = route('vendor.account.maintenance.index');
+
+                        _inAppNotification(
+                            $data['title'],
+                            $data['description'],
+                            null,
+                            $store->id,
+                            $url,
+                            'vendor'
+                        );
+                    }
                 }
             }
         }
     }
-}
 
 
     public function employee_attendance(Request $request)

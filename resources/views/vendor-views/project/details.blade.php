@@ -95,9 +95,9 @@
                             @endif
                         </div>
                     </div>
-                    <div>
+                    <div> 
                         @if (hasPermission('project_task', 'add'))
-                            <a href="{{ route('vendor.task.add', $project->id) }}" class="btn text-white"
+                            <a href="{{ route('vendor.project.task.add', $project->id) }}" class="btn text-white"
                                 style="background-color: var(--primary);">
                                 <i class="tio-add mr-1"></i>
                                 Add Task
@@ -403,8 +403,10 @@
                                         <div class="card-body">
                                             <div class="d-flex align-items-center justify-content-between">
                                                 <h6 class="card-subtitle mb-2 text-muted">Team Members</h6>
+                                                @if(hasPermission('project', 'edit'))
                                                 <button class="btn btn-outline-primary btn-sm" type="button"
                                                     data-toggle="modal" data-target="#teamModal">Edit Team</button>
+                                                    @endif
                                             </div>
                                             @if ($project->teamMembers && $project->teamMembers->count() > 0)
                                                 @foreach ($project->teamMembers as $member)
@@ -773,11 +775,18 @@
             var id = $(this).attr('id'); // example: milestones-tab
             var tab = id.split("-")[0]; // "milestones"
 
-            var full = window.location.pathname.split("/");
+            var parts = window.location.pathname.split("/").filter(Boolean);
 
-            var baseUrl = full.slice(0, 4).join("/");
-            console.log(baseUrl)
+            // Find the last numeric segment (the project ID) and keep everything up to it
+            var idIndex = -1;
+            for (var i = parts.length - 1; i >= 0; i--) {
+                if (!isNaN(parts[i]) && parts[i] !== '') {
+                    idIndex = i;
+                    break; 
+                }
+            }
 
+            var baseUrl = "/" + parts.slice(0, idIndex + 1).join("/");
             var newUrl = baseUrl + "/" + tab;
 
             history.pushState({}, "", newUrl);

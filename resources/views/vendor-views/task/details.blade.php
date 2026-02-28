@@ -386,8 +386,6 @@
             position: relative;
             padding: 10px;
             height: fit-content;
-
-
         }
 
         .timeline-item h4 {
@@ -786,14 +784,14 @@
                             </div>
                         </div>
                     </div>
-                    @if ($task->employee_id == null && $task->offered_to == null)
+
+                    @if (hasPermission($task_type, 'reassign') && $task->employee_id == null && $task->offered_to == null)
                         <button class="btn btn-primary reassign_modal_btn" data-id="{{ $task->id }}"
                             data-toggle="modal" data-target="#assignmentModal">Reassign</button>
                         @include('vendor-views.form_modals.assign_task_modal')
                     @endif
-
                 </div>
-            </div>
+            </div> 
             <!-- End Page Header -->
 
             <div class="row align-items-start g-0">
@@ -801,7 +799,7 @@
 
                     @if ($data['quotation'] && $data['quotation']->pdf)
                     @else
-                        <form action="{{ route('vendor.quotation.save-info', [$task->id]) }}" method="post">
+                        <form action="{{ route('vendor.quotation.save-info-task', [$task->id]) }}" method="post">
                             @csrf
                             @include('vendor-views/form_modals/quote_add_modal')
                         </form>
@@ -1097,97 +1095,106 @@
                                                 </button>
                                             </div>
                                             <div class="modal-body">
-                                              <div class="d-flex justify-content-between">
-                                    <h3>Timeline</h3>
-                                </div>
-
-                                <div class="timeline_container">
-                                    @if (count($task_statuses))
-                                        @foreach ($task_statuses as $key => $status)
-                                            @php
-                                                // Handle normal uploaded files
-                                                $files = $status->file;
-
-                                                if (is_string($files) && str_starts_with($files, '[')) {
-                                                    $files = json_decode($files, true);
-                                                } elseif (!empty($files)) {
-                                                    $files = [$files];
-                                                } else {
-                                                    $files = [];
-                                                }
-
-                                                $webcamFiles = $status->webcam_file;
-
-                                                if (is_string($webcamFiles) && str_starts_with($webcamFiles, '[')) {
-                                                    $webcamFiles = json_decode($webcamFiles, true);
-                                                } elseif (!empty($webcamFiles)) {
-                                                    $webcamFiles = [$webcamFiles];
-                                                } else {
-                                                    $webcamFiles = [];
-                                                }
-                                            @endphp
-
-                                            <div class="timeline-item border">
                                                 <div class="d-flex justify-content-between">
-                                                    <div>
-                                                        <small>{{ _formatted_datetime($status['created_at']) }}</small><br>
-                                                        <small><i class="created_by">Updated By:
-                                                                {{ _vendorOrStaffName($status->created_by) }}</i></small>
-                                                        <h4>{{ $status['status'] }}</h4>
-                                                    </div>
-                                                    <div class="d-flex gap-1 ">
-                                                        @if (count($files) || count($webcamFiles) || $status['note'])
-                                                            <a class="btn btn-outline-primary action-btn"
-                                                                data-toggle="collapse"
-                                                                href="#collapseExample_l{{ $key }}"
-                                                                role="button" aria-expanded="false"
-                                                                aria-controls="collapseExample">
-                                                                <i class="tio-visible"></i></a>
-                                                        @endif
-                                                    </div>
-
+                                                    <h3>Timeline</h3>
                                                 </div>
 
-                                                @if (count($files) || count($webcamFiles) || $status['note'])
-                                                    <div class="collapse" id="collapseExample_l{{ $key }}">
-                                                        <p>{{ $status['note'] }}</p>
-                                                        <div class="p-1 card card-body lightgallery d-flex gap-2 flex-row">
+                                                <div class="timeline_container">
+                                                    @if (count($task_statuses))
+                                                        @foreach ($task_statuses as $key => $status)
+                                                            @php
+                                                                // Handle normal uploaded files
+                                                                $files = $status->file;
+
+                                                                if (is_string($files) && str_starts_with($files, '[')) {
+                                                                    $files = json_decode($files, true);
+                                                                } elseif (!empty($files)) {
+                                                                    $files = [$files];
+                                                                } else {
+                                                                    $files = [];
+                                                                }
+
+                                                                $webcamFiles = $status->webcam_file;
+
+                                                                if (
+                                                                    is_string($webcamFiles) &&
+                                                                    str_starts_with($webcamFiles, '[')
+                                                                ) {
+                                                                    $webcamFiles = json_decode($webcamFiles, true);
+                                                                } elseif (!empty($webcamFiles)) {
+                                                                    $webcamFiles = [$webcamFiles];
+                                                                } else {
+                                                                    $webcamFiles = [];
+                                                                }
+                                                            @endphp
+
+                                                            <div class="timeline-item border">
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <small>{{ _formatted_datetime($status['created_at']) }}</small><br>
+                                                                        <small><i class="created_by">Updated By:
+                                                                                {{ _vendorOrStaffName($status->created_by) }}</i></small>
+                                                                        <h4>{{ $status['status'] }}</h4>
+                                                                    </div>
+                                                                    <div class="d-flex gap-1 ">
+                                                                        @if (count($files) || count($webcamFiles) || $status['note'])
+                                                                            <a class="btn btn-outline-primary action-btn"
+                                                                                data-toggle="collapse"
+                                                                                href="#collapseExample_l{{ $key }}"
+                                                                                role="button" aria-expanded="false"
+                                                                                aria-controls="collapseExample">
+                                                                                <i class="tio-visible"></i></a>
+                                                                        @endif
+                                                                    </div>
+
+                                                                </div>
+
+                                                                @if (count($files) || count($webcamFiles) || $status['note'])
+                                                                    <div class="collapse"
+                                                                        id="collapseExample_l{{ $key }}">
+                                                                        <p>{{ $status['note'] }}</p>
+                                                                        <div
+                                                                            class="p-1 card card-body lightgallery d-flex gap-2 flex-row">
 
 
-                                                            @if (!empty($files))
-                                                                @foreach ($files as $file)
-                                                                    <a href="{{ asset('storage/app/public/task/' . $file) }}"
-                                                                        style="cursor: zoom-in" target="_blank">
-                                                                        <img src="{{ asset('storage/app/public/task/' . $file) }}"
-                                                                            alt="status update" class="img--40 rounded">
-                                                                    </a>
-                                                                @endforeach
-                                                            @endif
+                                                                            @if (!empty($files))
+                                                                                @foreach ($files as $file)
+                                                                                    <a href="{{ asset('storage/app/public/task/' . $file) }}"
+                                                                                        style="cursor: zoom-in"
+                                                                                        target="_blank">
+                                                                                        <img src="{{ asset('storage/app/public/task/' . $file) }}"
+                                                                                            alt="status update"
+                                                                                            class="img--40 rounded">
+                                                                                    </a>
+                                                                                @endforeach
+                                                                            @endif
 
 
-                                                            @if (!empty($webcamFiles))
-                                                                @foreach ($webcamFiles as $file)
-                                                                    <a href="{{ asset('storage/app/public/task/' . $file) }}"
-                                                                        style="cursor: zoom-in" target="_blank">
-                                                                        <img src="{{ asset('storage/app/public/task/' . $file) }}"
-                                                                            alt="status update" class="img--40 rounded">
-                                                                    </a>
-                                                                @endforeach
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    @else
-                                        <div class="no-status">No Work Updates ...</div>
-                                    @endif
-                                </div>
+                                                                            @if (!empty($webcamFiles))
+                                                                                @foreach ($webcamFiles as $file)
+                                                                                    <a href="{{ asset('storage/app/public/task/' . $file) }}"
+                                                                                        style="cursor: zoom-in"
+                                                                                        target="_blank">
+                                                                                        <img src="{{ asset('storage/app/public/task/' . $file) }}"
+                                                                                            alt="status update"
+                                                                                            class="img--40 rounded">
+                                                                                    </a>
+                                                                                @endforeach
+                                                                            @endif
+                                                                        </div>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    @else
+                                                        <div class="no-status">No Work Updates ...</div>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                         </div>
 
@@ -1229,7 +1236,95 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4 ">
+                    <div class="card border shadow-sm my-3">
+                        <div class="card-header bg-white border-bottom py-3">
+                            <h5 class="mb-0 fw-bold">
+                                <i class="tio-time me-2"></i>Task Time Cards
+                            </h5>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="d-flex gap-2 align-items-start mb-3">
+
+                                @if (hasPermission($task_type, 'status_change') &&
+                                        $task->status !== 'Completed' &&
+                                        $task->status != 'Cancelled' &&
+                                        $task->user?->phone)
+                                    @php
+                                        $statusText = strtolower(trim($task->status));
+                                        $isRunning = in_array($statusText, [
+                                            'in progress',
+                                            'in_progress',
+                                            'inprogress',
+                                        ]);
+                                        $isPaused = in_array($statusText, ['on hold', 'pause', 'paused']);
+                                    @endphp
+                                    @if (!$isRunning && !$isPaused)
+                                        <button type="button" class="btn btn-sm btn-outline-success start_job_btn"
+                                            data-toggle="modal" data-target="#taskStartJobOtpModal"
+                                            data-job-action="start" data-url="{{ route('vendor.task.job-otp-verify') }}"
+                                            data-task="{{ $task->id }}" data-phone="{{ $task->user?->phone }}">
+                                            Start Job <i class="tio-play-circle-outlined"></i>
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-outline-danger start_job_btn"
+                                            data-toggle="modal" data-target="#taskStartJobOtpModal" data-job-action="end"
+                                            data-url="{{ route('vendor.task.job-otp-verify') }}"
+                                            data-task="{{ $task->id }}" data-phone="{{ $task->user?->phone }}">
+                                            End Job <i class="tio-stop-circle-outlined"></i>
+                                        </button>
+                                        @if ($isRunning)
+                                            <button type="button" class="btn btn-sm btn-outline-warning quick-status-btn"
+                                                data-url="{{ $task->parent_id ? route('vendor.task.subtask.status.update') : route('vendor.task.status.update') }}"
+                                                data-task="{{ $task->id }}" data-status="On Hold">
+                                                Pause <i class="tio-pause-circle-outlined"></i>
+                                            </button>
+                                        @else
+                                            <button type="button" class="btn btn-sm btn-outline-info quick-status-btn"
+                                                data-url="{{ $task->parent_id ? route('vendor.task.subtask.status.update') : route('vendor.task.status.update') }}"
+                                                data-task="{{ $task->id }}" data-status="In Progress">
+                                                Resume <i class="tio-play-circle-outlined"></i>
+                                            </button>
+                                        @endif
+                                    @endif
+                                @endif
+                            </div>
+                            <div class="mb-3">
+                                <div class="small text-muted">Start Time</div>
+                                <div>
+                                    {{ $taskTimeCard?->start_time ? _formatted_datetime($taskTimeCard->start_time) : '-' }}
+                                </div>
+                            </div>
+                            {{-- <div class="mb-3">
+                                <div class="small text-muted">Last Pause Time</div>
+                                <div>{{ $taskTimeCard?->pause_time ? _formatted_datetime($taskTimeCard->pause_time) : '-' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="small text-muted">Last Resume Time</div>
+                                <div>{{ $taskTimeCard?->resume_time ? _formatted_datetime($taskTimeCard->resume_time) : '-' }}</div>
+                            </div> --}}
+                            <div class="mb-3">
+                                <div class="small text-muted">End Time</div>
+                                <div>{{ $taskTimeCard?->end_time ? _formatted_datetime($taskTimeCard->end_time) : '-' }}
+                                </div>
+                            </div>
+
+                            <hr>
+                            <div class="small text-muted mb-2">Event History</div>
+                            @if (isset($taskTimeCardEvents) && count($taskTimeCardEvents))
+                                <div style="max-height:260px;overflow:auto;">
+                                    @foreach ($taskTimeCardEvents as $event)
+                                        <div class="d-flex justify-content-between py-1 border-bottom">
+                                            <span class="text-capitalize">{{ $event->event_type }}</span>
+                                            <span>{{ _formatted_datetime($event->event_time) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-muted small">No time card events found.</div>
+                            @endif
+                        </div>
+                    </div>
                     <div class=" card border shadow-sm h-100">
                         <div class="card-header bg-white border-bottom py-3">
                             <div class="w-100 d-flex justify-content-between align-items-center">
@@ -1237,6 +1332,7 @@
                                     <i class="tio-timeline me-2"></i>Work Updates
                                 </h5>
                                 <div class="d-flex gap-2 align-items-start">
+
                                     {{-- @if (hasPermission($task_type, 'status_change') && $task->status !== 'Completed' && $task->status != 'Cancelled')
                             <button data-toggle="modal" data-target="#taskStatusModal"
                                 class="btn btn-sm btn-outline-primary" title="Edit Status">
@@ -1412,6 +1508,7 @@
                             @endif
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -1516,6 +1613,41 @@
                                         <button class="btn btn-primary">Save</button>
                                     </div>
                                 </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+        @if (hasPermission($task_type, 'status_change'))
+            <div class="modal fade" id="taskStartJobOtpModal" tabindex="-1" aria-labelledby="taskStartJobOtpModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="taskStartJobOtpModalLabel">Job OTP Verification</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form class="taskOtpForm" action="{{ route('vendor.task.job-otp-verify') }}" method="post">
+                                @csrf
+                                <p class="task-otp-help">OTP has been sent to client. Please verify.</p>
+                                <input type="hidden" name="task_id" id="task_start_task_id"
+                                    value="{{ $task->id }}">
+                                <input type="hidden" name="customer_phone" id="task_start_phone"
+                                    value="{{ $task->user?->phone }}">
+                                <input type="hidden" name="action" value="verify_otp">
+                                <input type="hidden" name="job_action" id="task_job_action" value="start">
+                                <div class="d-flex justify-content-center w-100">
+                                    <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                    <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                    <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                    <input type="text" maxlength="1" class="otp-input" name="otp[]" />
+                                </div>
+                                <button type="submit"
+                                    class="btn btn-lg btn-block btn--primary mt-3 task-otp-submit">Submit</button>
                             </form>
                         </div>
                     </div>
@@ -1678,9 +1810,9 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body p-0">
+                    <div class="modal-body p-0"> 
                         <form class="w-100 p-0" id="ck_editor_form" enctype="multipart/form-data"
-                            action="{{ route('vendor.documents.service-report.store', ['save', $task->id]) }}"
+                            action="{{ route('vendor.documents.service-report.store-lead', ['save', $task->id]) }}"
                             method="post">
                             @csrf
                             <input type="hidden" name="task_id" value="{{ $task->id }}">
@@ -1707,10 +1839,10 @@
                             <button type="button" class="close close_rr" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-                        </div>
+                        </div>  
                         <div class="modal-body p-1">
                             <form class="w-100 p-0" id="task_form" enctype="multipart/form-data"
-                                action="{{ route('vendor.documents.receivable-receipt.store', ['save', $task->id]) }}"
+                                action="{{ route('vendor.documents.receivable-receipt.store-lead', ['save', $task->id]) }}"
                                 method="post">
                                 @csrf
 
@@ -1742,7 +1874,7 @@
                 <div class="modal-body">
                     @if (!$task_closed)
                         <div class="d-flex align-items-center flex-wrap gap-2">
-                            @if (_isEnabled('task_service_reports'))
+                            @if (hasPermission( $task_type, 'service_report') && _isEnabled('task_service_reports'))
                                 @if ($data['service_report'] && $data['service_report']->pdf)
                                 @else
                                     <button class="btn btn-info btn_sm px-3 py-2 add_attachment" data-toggle="modal"
@@ -1854,13 +1986,18 @@
                             <p><b>Time Estimation :</b>{{ $task->time_count . ' ' . $task->time_unit . '(s)' }}</p>
                             <p><b>Created At :</b>{{ $task->created_at }}</p>
                         </div>
+                        @if(hasPermission($task_type, 'edit'))
                         <a href="{{ route('vendor.task.edit', [$task->id]) }}"
                             class="btn btn-outline-primary action-btn"><i class="tio-edit"></i></a>
+                            @endif
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    @if (hasPermission($task_type, 'reassign') && $task->employee_id == null && $task->offered_to == null)
+
                     <a href="{{ route('vendor.task.edit', [$task->id]) }}" class="btn btn-primary">Edit</a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -2591,6 +2728,105 @@
             updateCountdown(); // Initial call
             setInterval(updateCountdown, 1000);
         }
+
+        $(".start_job_btn").on('click', function() {
+            const url = $(this).attr('data-url');
+            const taskId = $(this).attr('data-task');
+            const phone = $(this).attr('data-phone');
+            const jobAction = $(this).attr('data-job-action') || 'start';
+
+            $('#task_start_task_id').val(taskId);
+            $('#task_start_phone').val(phone);
+            $('#task_job_action').val(jobAction);
+            if (jobAction === 'end') {
+                $('#taskStartJobOtpModalLabel').text('End Job OTP Verification');
+                $('.task-otp-help').text('OTP has been sent to client. Please verify to end the job.');
+                $('.task-otp-submit').text('End Job');
+            } else {
+                $('#taskStartJobOtpModalLabel').text('Start Job OTP Verification');
+                $('.task-otp-help').text('OTP has been sent to client. Please verify to start the job.');
+                $('.task-otp-submit').text('Start Job');
+            }
+
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.post({
+                url: url,
+                data: {
+                    task_id: taskId,
+                    customer_phone: phone,
+                    action: 'send_otp',
+                    job_action: jobAction
+                },
+                success: function(data) {
+                    if (data.status) {
+                        toastr.success(data.msg || 'OTP sent successfully');
+                    } else {
+                        toastr.error(data.msg || 'Failed to send OTP');
+                    }
+                },
+            });
+        });
+
+        $(".quick-status-btn").on('click', function() {
+            const url = $(this).attr('data-url');
+            const taskId = $(this).attr('data-task');
+            const status = $(this).attr('data-status');
+
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.post({
+                url: url,
+                data: {
+                    task_id: taskId,
+                    status: status,
+                    request_type: 'ajax',
+                    action: 'verify_otp'
+                },
+                success: function(data) {
+                    if (data.status) {
+                        toastr.success(data.msg || 'Status updated');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 400);
+                    } else {
+                        toastr.error(data.msg || 'Failed to update status');
+                    }
+                }
+            });
+        });
+
+        $(".taskOtpForm").on('submit', function(e) {
+            e.preventDefault();
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.post({
+                url: $(this).attr('action'),
+                data: $(this).serialize(),
+                success: function(data) {
+                    if (data.status) {
+                        toastr.success(data.msg || 'Job started successfully');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        toastr.error(data.msg || 'Invalid OTP');
+                    }
+                },
+                complete: function() {
+                    $('#loading').hide();
+                }
+            });
+        });
 
         $(".status_update_form").on("submit", function(e) {
             console.log('fsdf')

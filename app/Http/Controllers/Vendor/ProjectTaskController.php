@@ -557,12 +557,15 @@ class ProjectTaskController extends Controller
         }
 
         Toastr::success('Task Added Successfully');
+        if(hasPermission('project_task', 'view')){
         if ($task->parent_id) {
-
             return redirect()->route('vendor.task.subtask.detail', [$task->id]);
         } else {
 
             return redirect()->route('vendor.task.detail', [$task->id]);
+        }
+        }else{
+            return back();
         }
     }
     public function reassign(Request $request)

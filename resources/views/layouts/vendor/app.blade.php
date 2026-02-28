@@ -120,6 +120,60 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             color: #0aebff !important;
         }
 
+        .ai-vendor-md {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .ai-vendor-md p {
+            margin-bottom: 0.35rem;
+        }
+
+        .ai-vendor-md strong {
+            font-weight: 700;
+        }
+
+        .ai-vendor-md em {
+            font-style: italic;
+        }
+
+        .ai-vendor-md ul,
+        .ai-vendor-md ol {
+            padding-left: 1.2rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .ai-vendor-md li {
+            margin-bottom: 0.2rem;
+        }
+
+        .ai-vendor-md h1,
+        .ai-vendor-md h2,
+        .ai-vendor-md h3 {
+            font-weight: 700;
+            margin: 0.4rem 0 0.2rem;
+            color: #333;
+        }
+
+        .ai-vendor-md code {
+            background: rgba(0, 0, 0, .08);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+
+        .ai-vendor-md pre {
+            background: rgba(0, 0, 0, .08);
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .ai-vendor-md a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
         .animated-btn {
             padding: 8px 16px;
             font-size: 14px;
@@ -208,11 +262,13 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             </div>
         </div>
 
-        <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
+        {{-- <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
+            style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a> --}}
+        <a type="button" class="animated-btn" type="button"  id="ai-chat-fab"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a>
 
         @yield('content')
- 
+
         @include('layouts.vendor.partials._footer')
 
         <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -265,77 +321,81 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
                 </div>
             </div>
-        </div> 
-        {{-- AI Chat FAB --}}
-        <button id="ai-chat-fab" title="AI Assistant"
-            style="position:fixed;bottom:30px;right:30px;z-index:1050;width:56px;height:56px;border-radius:50%;
+        </div>
+        @if (auth('vendor')->check())
+            {{-- AI Chat FAB --}}
+            {{-- <button id="ai-chat-fab" title="AI Assistant"
+                style="position:fixed;bottom:30px;right:30px;z-index:1050;width:56px;height:56px;border-radius:50%;
                    background:var(--primary);color:#fff;border:none;box-shadow:0 4px 12px rgba(0,0,0,.25);
                    cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s">
-            <i class="tio-chat-outlined" style="font-size:1.6em"></i>
-        </button>
+                <i class="tio-chat-outlined" style="font-size:1.6em"></i>
+            </button> --}}
 
-        {{-- AI Chat Panel --}}
-        <div id="ai-chat-panel"
-             style="position:fixed;top:0;right:-400px;width:400px;max-width:100vw;height:100vh;z-index:1060;
+            {{-- AI Chat Panel --}}
+            <div id="ai-chat-panel"
+                style="position:fixed;top:0;right:-400px;width:400px;max-width:100vw;height:100vh;z-index:1060;
                     background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);display:flex;flex-direction:column;
                     transition:right .3s ease">
 
-            {{-- Header --}}
-            <div style="padding:14px 16px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-                <strong style="font-size:15px">AI Assistant</strong>
-                <div>
-                    <button type="button" class="btn btn-sm px-2 py-0" id="ai-clear-memory"
+                {{-- Header --}}
+                <div
+                    style="padding:14px 16px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+                    <strong style="font-size:15px">AI Assistant</strong>
+                    <div>
+                        <button type="button" class="btn btn-sm px-2 py-0" id="ai-clear-memory"
                             style="color:#fff;opacity:.8;font-size:12px;border:1px solid rgba(255,255,255,.4);margin-right:6px">
-                        Clear
-                    </button>
-                    <button type="button" id="ai-chat-close" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0">
-                        &times;
-                    </button>
+                            Clear
+                        </button>
+                        <button type="button" id="ai-chat-close"
+                            style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0">
+                            &times;
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Messages --}}
+                <div id="ai-chat-box" style="flex:1;overflow-y:auto;padding:14px;background:#f7f7f8">
+                    <div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>
+                </div>
+
+                {{-- Input --}}
+                <div style="padding:10px 12px;border-top:1px solid #e5e5e5;background:#fff;flex-shrink:0">
+                    <form id="ai-chat-form" enctype="multipart/form-data">
+                        @csrf
+                        <div style="display:flex;gap:6px;align-items:flex-end">
+                            <textarea class="form-control" id="ai-message" name="message" placeholder="Type a message..." rows="1"
+                                style="resize:none;border-radius:20px;padding:8px 14px;font-size:13px;max-height:80px;overflow-y:auto"></textarea>
+                            <button class="btn btn-primary btn-sm" type="submit" id="ai-send-btn"
+                                style="border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0">
+                                <i class="tio-send"></i>
+                            </button>
+                        </div>
+                        <div id="ai-attach-preview" style="display:none;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                            <input type="file" id="ai-fileInput" name="file" accept="image/*,.pdf"
+                                style="display:none">
+                            <button type="button" class="btn btn-sm btn-light" id="ai-attachFileBtn"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                <i class="tio-attachment"></i> File
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light" id="ai-startRecord"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                <i class="tio-mic"></i> Voice
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger d-none" id="ai-stopRecord"
+                                style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                <i class="tio-stop"></i> Stop
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-
-            {{-- Messages --}}
-            <div id="ai-chat-box" style="flex:1;overflow-y:auto;padding:14px;background:#f7f7f8">
-                <div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>
-            </div>
-
-            {{-- Input --}}
-            <div style="padding:10px 12px;border-top:1px solid #e5e5e5;background:#fff;flex-shrink:0">
-                <form id="ai-chat-form" enctype="multipart/form-data">
-                    @csrf
-                    <div style="display:flex;gap:6px;align-items:flex-end">
-                        <textarea class="form-control" id="ai-message" name="message"
-                                  placeholder="Type a message..." rows="1"
-                                  style="resize:none;border-radius:20px;padding:8px 14px;font-size:13px;max-height:80px;overflow-y:auto"></textarea>
-                        <button class="btn btn-primary btn-sm" type="submit" id="ai-send-btn"
-                                style="border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0">
-                            <i class="tio-send"></i>
-                        </button>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
-                        <input type="file" id="ai-fileInput" name="file" accept="image/*,.pdf" style="display:none">
-                        <button type="button" class="btn btn-sm btn-light" id="ai-attachFileBtn"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                            <i class="tio-attachment"></i> File
-                        </button>
-                        <button type="button" class="btn btn-sm btn-light" id="ai-startRecord"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                            <i class="tio-mic"></i> Voice
-                        </button>
-                        <button type="button" class="btn btn-sm btn-warning d-none" id="ai-stopRecord"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                            <i class="tio-stop"></i> Stop
-                        </button>
-                        <span class="small text-muted" id="ai-recordStatus"></span>
-                    </div>
-                </form>
-            </div>
-        </div>
-
+        @endif
         {{-- Overlay --}}
         <div id="ai-chat-overlay"
-             style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:1055;background:rgba(0,0,0,.3);
-                    display:none;cursor:pointer"></div>
+            style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:1055;background:rgba(0,0,0,.3);
+                    display:none;cursor:pointer">
+        </div>
 
 
         <div class="modal fade" id="toggle-modal">
@@ -403,7 +463,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
-        <div class="modal fade" id="notif-popup-modal">
+        {{-- <div class="modal fade" id="notif-popup-modal">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-body">
@@ -445,7 +505,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
         <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="exampleModalLabel"
             aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -504,6 +564,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <script src="{{ asset('public/assets/admin') }}/js/emogi-area.js"></script>
 
     <script src="{{ asset('public/assets/admin/js/app-blade/vendor.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     {!! Toastr::message() !!}
     <script src="{{ asset('public/assets/admin/intltelinput/js/intlTelInput.min.js') }}"></script>
 
@@ -527,32 +588,32 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <script src="{{ asset('public/assets/admin/js/view-pages/common.js') }}"></script>
 
     <script>
-        var notfUrl = "{{ route('vendor.last-notification') }}";
-
-        setInterval(function() {
-            $.getJSON(notfUrl, function(res) {
-
-                if (res.data) {
-
-                    var $notifyText = $('#notf_message');
-                    var $notifyBadge = $('.notif_count_badge');
-
-                    $notifyText.text(res.data.message);
-
-                    playAudio();
-                    $("#notf_title").text(res.data.title);
-                    $('#notif-popup-modal').appendTo("body").modal('show');
-                }
-
-            });
-        }, 300000); // 5 minutes
-
-
-        var audio = document.getElementById("myAudio");
-
-        function playAudio() {
-            audio.play();
-        }
+        //var notfUrl = "{{ route('vendor.last-notification') }}";
+//
+        //setInterval(function() {
+        //    $.getJSON(notfUrl, function(res) {
+//
+        //        if (res.data) {
+//
+        //            var $notifyText = $('#notf_message');
+        //            var $notifyBadge = $('.notif_count_badge');
+//
+        //            $notifyText.text(res.data.message);
+//
+        //            playAudio();
+        //            $("#notf_title").text(res.data.title);
+        //            $('#notif-popup-modal').appendTo("body").modal('show');
+        //        }
+//
+        //    });
+        //}, 300000); // 5 minutes
+//
+//
+        //var audio = document.getElementById("myAudio");
+//
+        //function playAudio() {
+        //    audio.play();
+        //}
 
         function pauseAudio() {
             audio.pause();
@@ -1728,136 +1789,233 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         })
     </script>
     <script>
-    $(function(){
-        var $panel   = $('#ai-chat-panel');
-        var $overlay = $('#ai-chat-overlay');
-        var $fab     = $('#ai-chat-fab');
-        var $box     = $('#ai-chat-box');
-        var aiMediaRecorder, aiAudioChunks = [], aiRecordedBlob = null;
-        var aiChatLoaded = false;
+        $(function() {
+            var $panel = $('#ai-chat-panel');
+            var $overlay = $('#ai-chat-overlay');
+            var $fab = $('#ai-chat-fab');
+            var $box = $('#ai-chat-box');
+            var aiMediaRecorder, aiAudioChunks = [],
+                aiRecordedBlob = null;
+            var aiChatLoaded = false;
 
-        function openChat(){
-            $panel.css('right','0');
-            $overlay.show();
-            $fab.hide();
-            if(!aiChatLoaded){ aiLoadHistory(); aiChatLoaded = true; }
-            $('#ai-message').focus();
-        }
-        function closeChat(){
-            $panel.css('right','-400px');
-            $overlay.hide();
-            $fab.show();
-        }
-
-        $fab.on('click', openChat);
-        $('#ai-chat-close, #ai-chat-overlay').on('click', closeChat);
-        $(document).on('keydown', function(e){ if(e.key==='Escape') closeChat(); });
-
-        function aiRenderMessage(role, content){
-            var isUser = role === 'user';
-            var html = '<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+';margin-bottom:10px">' +
-                '<div style="max-width:82%;padding:9px 13px;border-radius:'+(isUser?'16px 16px 4px 16px':'16px 16px 16px 4px')+
-                ';background:'+(isUser?'var(--primary)':'#e9ecef')+';color:'+(isUser?'#fff':'#333')+
-                ';font-size:13px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word">' +
-                content + '</div></div>';
-            $box.append(html);
-            $box.scrollTop($box[0].scrollHeight);
-        }
-
-        function aiLoadHistory(){
-            $box.html('<div class="text-muted text-center" style="margin-top:40%">Loading...</div>');
-            $.get("{{ route('vendor.ai-chat.history') }}", function(res){
-                $box.html('');
-                if(res.success && res.messages.length){
-                    res.messages.forEach(function(r){ aiRenderMessage(r.role, r.content); });
-                } else {
-                    $box.html('<div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>');
+            function openChat() {
+                $panel.css('right', '0');
+                $overlay.show();
+                $fab.hide();
+                if (!aiChatLoaded) {
+                    aiLoadHistory();
+                    aiChatLoaded = true;
                 }
+                $('#ai-message').focus();
+            }
+
+            function closeChat() {
+                $panel.css('right', '-400px');
+                $overlay.hide();
+                $fab.show();
+            }
+
+            $fab.on('click', openChat);
+            $('#ai-chat-close, #ai-chat-overlay').on('click', closeChat);
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') closeChat();
             });
-        }
 
-        $('#ai-attachFileBtn').on('click', function(){ $('#ai-fileInput').click(); });
+            function aiRenderMessage(role, content) {
+                var isUser = role === 'user';
+                var body;
+                if (isUser) {
+                    body = $('<div>').text(content).html().replace(/\n/g, '<br>');
+                } else {
+                    body = '<div class="ai-vendor-md">' + marked.parse(content) + '</div>';
+                }
+                var html = '<div style="display:flex;justify-content:' + (isUser ? 'flex-end' : 'flex-start') +
+                    ';margin-bottom:10px">' +
+                    '<div style="max-width:82%;padding:9px 13px;border-radius:' + (isUser ? '16px 16px 4px 16px' :
+                        '16px 16px 16px 4px') +
+                    ';background:' + (isUser ? 'var(--primary)' : '#e9ecef') + ';color:' + (isUser ? '#fff' :
+                        '#333') +
+                    ';font-size:13px;line-height:1.45;word-wrap:break-word">' +
+                    body + '</div></div>';
+                $box.append(html);
+                $box.scrollTop($box[0].scrollHeight);
+            }
 
-        $('#ai-startRecord').on('click', async function(){
-            if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Voice not supported.'); return; }
-            var stream = await navigator.mediaDevices.getUserMedia({audio:true});
-            aiAudioChunks=[]; aiRecordedBlob=null;
-            aiMediaRecorder = new MediaRecorder(stream);
-            aiMediaRecorder.ondataavailable = function(e){ aiAudioChunks.push(e.data); };
-            aiMediaRecorder.onstop = function(){
-                aiRecordedBlob = new Blob(aiAudioChunks,{type:'audio/webm'});
-                stream.getTracks().forEach(function(t){t.stop();});
-                $('#ai-recordStatus').text('Ready to send');
-            };
-            aiMediaRecorder.start();
-            $('#ai-startRecord').addClass('d-none');
-            $('#ai-stopRecord').removeClass('d-none');
-            $('#ai-recordStatus').text('Recording...');
-        });
+            function aiLoadHistory() {
+                $box.html('<div class="text-muted text-center" style="margin-top:40%">Loading...</div>');
+                $.get("{{ route('vendor.ai-chat.history') }}", function(res) {
+                    $box.html('');
+                    if (res.success && res.messages.length) {
+                        res.messages.forEach(function(r) {
+                            aiRenderMessage(r.role, r.content);
+                        });
+                    } else {
+                        $box.html(
+                            '<div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>'
+                            );
+                    }
+                });
+            }
 
-        $('#ai-stopRecord').on('click', function(){
-            aiMediaRecorder.stop();
-            $('#ai-stopRecord').addClass('d-none');
-            $('#ai-startRecord').removeClass('d-none');
-        });
+            function aiShowChip(id, icon, label, onRemove) {
+                $('#ai-attach-preview').css('display', 'flex');
+                var chip = $('<span id="' + id +
+                    '" style="display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:2px 10px;font-size:12px"></span>'
+                    );
+                chip.append(icon + ' ' + label);
+                var x = $(
+                    '<button type="button" style="background:none;border:none;padding:0 0 0 4px;cursor:pointer;font-size:15px;line-height:1;color:inherit;opacity:.7">&times;</button>'
+                    );
+                x.on('click', function() {
+                    chip.remove();
+                    if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
+                    onRemove();
+                });
+                chip.append(x);
+                $('#ai-attach-preview').append(chip);
+            }
 
-        $('#ai-chat-form').on('submit', function(e){
-            e.preventDefault();
-            var formData = new FormData();
-            var message = $('#ai-message').val();
-            formData.append('_token','{{ csrf_token() }}');
-            formData.append('message', message);
+            $('#ai-attachFileBtn').on('click', function() {
+                $('#ai-fileInput').click();
+            });
 
-            var file = $('#ai-fileInput')[0].files[0];
-            if(file) formData.append('file', file);
-            if(aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
-            if(!message && !file && !aiRecordedBlob) return;
+            $('#ai-fileInput').on('change', function() {
+                $('#ai-file-chip').remove();
+                if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
+                var file = this.files[0];
+                if (!file) return;
+                var isImg = file.type.startsWith('image/');
+                var icon = isImg ? '🖼️' : '📄';
+                aiShowChip('ai-file-chip', icon, file.name, function() {
+                    $('#ai-fileInput').val('');
+                });
+            });
 
-            if(message) aiRenderMessage('user', message);
-            else if(file) aiRenderMessage('user', '[File: '+file.name+']');
-            else if(aiRecordedBlob) aiRenderMessage('user', '[Voice message]');
+            $('#ai-startRecord').on('click', async function() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Voice not supported.');
+                    return;
+                }
+                var stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+                aiAudioChunks = [];
+                aiRecordedBlob = null;
+                $('#ai-voice-chip').remove();
+                if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
+                aiMediaRecorder = new MediaRecorder(stream);
+                aiMediaRecorder.ondataavailable = function(e) {
+                    aiAudioChunks.push(e.data);
+                };
+                aiMediaRecorder.onstop = function() {
+                    aiRecordedBlob = new Blob(aiAudioChunks, {
+                        type: 'audio/webm'
+                    });
+                    stream.getTracks().forEach(function(t) {
+                        t.stop();
+                    });
+                    $('#ai-voice-chip').remove();
+                    aiShowChip('ai-voice-chip', '🎤', 'Voice ready', function() {
+                        aiRecordedBlob = null;
+                    });
+                    var chip = $('#ai-voice-chip');
+                    chip.css({
+                        background: '#e8fde8',
+                        border: '1px solid #9fd99f',
+                        color: '#2d6a2d'
+                    });
+                };
+                aiMediaRecorder.start();
+                $('#ai-startRecord').addClass('d-none');
+                $('#ai-stopRecord').removeClass('d-none');
+                aiShowChip('ai-recording-chip', '🔴', 'Recording...', function() {});
+                $('#ai-recording-chip').css({
+                    background: '#fde8e8',
+                    border: '1px solid #f9a0a0',
+                    color: '#8b0000'
+                });
+            });
 
-            $('#ai-message').val('').css('height','auto');
-            $('#ai-fileInput').val('');
-            aiRecordedBlob=null;
-            $('#ai-recordStatus').text('');
+            $('#ai-stopRecord').on('click', function() {
+                aiMediaRecorder.stop();
+                $('#ai-stopRecord').addClass('d-none');
+                $('#ai-startRecord').removeClass('d-none');
+                $('#ai-recording-chip').remove();
+                if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
+            });
 
-            // Show typing indicator
-            $box.append('<div id="ai-typing" style="display:flex;margin-bottom:10px"><div style="padding:9px 13px;border-radius:16px 16px 16px 4px;background:#e9ecef;color:#999;font-size:13px"><i>Thinking...</i></div></div>');
-            $box.scrollTop($box[0].scrollHeight);
-            $('#ai-send-btn').prop('disabled',true);
+            $('#ai-chat-form').on('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData();
+                var message = $('#ai-message').val();
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('message', message);
 
-            $.ajax({
-                url: "{{ route('vendor.ai-chat.send') }}",
-                type:"POST", data:formData, processData:false, contentType:false,
-                success: function(res){
-                    $('#ai-typing').remove();
-                    if(res.success) aiRenderMessage('assistant', res.message);
-                    else alert(res.message||'Something went wrong.');
-                },
-                error: function(xhr){
-                    $('#ai-typing').remove();
-                    alert(xhr.responseJSON?xhr.responseJSON.message:'AI request failed.');
-                },
-                complete: function(){ $('#ai-send-btn').prop('disabled',false); }
+                var file = $('#ai-fileInput')[0].files[0];
+                if (file) formData.append('file', file);
+                if (aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
+                if (!message && !file && !aiRecordedBlob) return;
+
+                if (message) aiRenderMessage('user', message);
+                else if (file) aiRenderMessage('user', '[File: ' + file.name + ']');
+                else if (aiRecordedBlob) aiRenderMessage('user', '[Voice message]');
+
+                $('#ai-message').val('').css('height', 'auto');
+                $('#ai-fileInput').val('');
+                aiRecordedBlob = null;
+                $('#ai-attach-preview').empty().hide();
+
+                // Show typing indicator
+                $box.append(
+                    '<div id="ai-typing" style="display:flex;margin-bottom:10px"><div style="padding:9px 13px;border-radius:16px 16px 16px 4px;background:#e9ecef;color:#999;font-size:13px"><i>Thinking...</i></div></div>'
+                    );
+                $box.scrollTop($box[0].scrollHeight);
+                $('#ai-send-btn').prop('disabled', true);
+
+                $.ajax({
+                    url: "{{ route('vendor.ai-chat.send') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        $('#ai-typing').remove();
+                        if (res.success) aiRenderMessage('assistant', res.message);
+                        else alert(res.message || 'Something went wrong.');
+                    },
+                    error: function(xhr) {
+                        $('#ai-typing').remove();
+                        alert(xhr.responseJSON ? xhr.responseJSON.message :
+                            'AI request failed.');
+                    },
+                    complete: function() {
+                        $('#ai-send-btn').prop('disabled', false);
+                    }
+                });
+            });
+
+            $('#ai-clear-memory').on('click', function() {
+                if (!confirm('Clear all AI chat memory?')) return;
+                $.post("{{ route('vendor.ai-chat.clear') }}", {
+                    _token: '{{ csrf_token() }}'
+                }, function(res) {
+                    if (res.success) $box.html(
+                        '<div class="text-muted text-center" style="margin-top:40%">Chat cleared.</div>'
+                        );
+                });
+            });
+
+            // Enter to send, Shift+Enter for newline, auto-resize textarea
+            $('#ai-message').on('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    $('#ai-chat-form').submit();
+                }
+            }).on('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 80) + 'px';
             });
         });
-
-        $('#ai-clear-memory').on('click', function(){
-            if(!confirm('Clear all AI chat memory?')) return;
-            $.post("{{ route('vendor.ai-chat.clear') }}", {_token:'{{ csrf_token() }}'}, function(res){
-                if(res.success) $box.html('<div class="text-muted text-center" style="margin-top:40%">Chat cleared.</div>');
-            });
-        });
-
-        // Enter to send, Shift+Enter for newline, auto-resize textarea
-        $('#ai-message').on('keydown', function(e){
-            if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('#ai-chat-form').submit(); }
-        }).on('input', function(){
-            this.style.height='auto';
-            this.style.height=Math.min(this.scrollHeight,80)+'px';
-        });
-    });
     </script>
 
 </body>

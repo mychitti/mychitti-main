@@ -343,20 +343,7 @@ class DeliverymanController extends Controller
         return response()->json(['message' => 'location recorded'], 200);
     }
 
-    public function get_order_history(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'order_id' => 'required'
-        ]);
-        if ($validator->fails()) {
-            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
-        $dm = DeliveryMan::where(['auth_token' => $request['token']])->first();
-
-        $history = DeliveryHistory::where(['order_id' => $request['order_id'], 'delivery_man_id' => $dm['id']])->get();
-        return response()->json($history, 200);
-    }
-
+  
     public function send_order_otp(Request $request)
     {
         $validator = Validator::make($request->all(), [

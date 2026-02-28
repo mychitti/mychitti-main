@@ -250,8 +250,7 @@
 
                                         class="__nav-module-item set-module {{ !_isCommonDashboard() && Config::get('module.current_module_id') == $module->id ?'active':''}}">
                                             <div class="img w--70px ">
-                                                <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($module?->icon, asset('storage/app/public/module/').'/' . $module?->icon, asset('public/assets/admin/img/new-img/module/e-shop.svg') ,'module/')}}"
-
+                                                <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($module?->icon, asset('storage/app/public/'. ($module->thumbnail_path ?? 'module/') ).'/' . $module?->icon, asset('public/assets/admin/img/new-img/module/e-shop.svg') ,($module->thumbnail_path ?? 'module/') )}}"
                                                      data-onerror-image="{{asset('public/assets/admin/img/new-img/module/e-shop.svg')}}"
                                                 alt="new-img" class="mw-100 onerror-image">
                                             </div>

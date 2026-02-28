@@ -767,7 +767,7 @@ class BillingController extends Controller
       Toastr::error('Invoice Id Already Exists');
       return back();
     }
-// prx($request->all());
+    // prx($request->all());
     $items = [];
     foreach ($request->invoice_item_new as $key => $id) {
       $inventory_item = InventoryItem::where('item_name', $request->item_name_new[$key])->where('store_id', Helpers::get_store_id())->first();
@@ -857,10 +857,10 @@ class BillingController extends Controller
       'item_name_new.*.required' => 'Item Name is required',
     ]);
     // Items
-    if (is_serial_number_used($request->invoice_serial, $request->prefixe,  $request->tax_type)) {
-      Toastr::error("Serial Number Already Used");
-      return  back();
-    }
+    // if (is_serial_number_used($request->invoice_serial, $request->prefixe,  $request->tax_type)) {
+    //   Toastr::error("Serial Number Already Used");
+    //   return  back();
+    // }
 
     // match amount
     if ($request->payment_stts == 'Paid' && $request->payment_mode == 'Cash and Online') {
@@ -877,10 +877,10 @@ class BillingController extends Controller
     foreach ($request->item_name_new as $key => $name) {
       $InvoiceItem = new InvoiceItem();
       $InvoiceItem->inventory_item_id = $request->inventory_item_id[$key];
-      $InvoiceItem->name = $request->item_name_new[$key];
-      $InvoiceItem->qty = $quantity = $request->item_qty_new[$key];
-      $InvoiceItem->price = $unitPrice = $request->item_price_new[$key];
-      $InvoiceItem->unit = $request->item_unit_new[$key];
+      $InvoiceItem->name = $request->item_name_new[$key] ?? '';
+      $InvoiceItem->qty = $quantity = $request->item_qty_new[$key] ?? 1;
+      $InvoiceItem->price = $unitPrice = $request->item_price_new[$key] ?? 0;
+      $InvoiceItem->unit = $request->has('item_unit_new.' . $key) ? $request->item_unit_new[$key] : null;
       $InvoiceItem->tax = $taxPercent = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
       $InvoiceItem->hsn = $request->item_hsn_new[$key];
       $InvoiceItem->inv_id = $request->inventory_item_id[$key] ?? null;
@@ -894,11 +894,10 @@ class BillingController extends Controller
       $invoiceItemsToSave[] = $InvoiceItem;
 
       if ($request->inventory_item_id[$key]) {
-        _updateInventoryStock($request->inventory_item_id[$key], $request->item_qty_new[$key], $request->item_unit_new[$key]);
+        _updateInventoryStock($request->inventory_item_id[$key], $request->item_qty_new[$key], ($request->has('item_unit_new.' . $key) ? $request->item_unit_new[$key] : null));
         $inv_items++;
       }
     }
-
     // Additional Charges
     $additionalChargesTotal = 0;
     $additionalChargesTax = 0;
@@ -938,6 +937,7 @@ class BillingController extends Controller
         'status' => $statuses[$index] ?? 'included',
       ];
     }
+
     // additional charges end
 
     // Discount
@@ -1076,6 +1076,7 @@ class BillingController extends Controller
     if ($inv_items) {
       Helpers::_placeInventoryOrder($invoice);
     }
+
     $invoice = ManualInvoice::with('bankAccount')->where('id', $invoice->id)->first();
 
     // master ledger entry 
@@ -1112,11 +1113,17 @@ class BillingController extends Controller
     $data = _createBillPdf($invoice, 'vendor');
     $invoice->update(['pdf' => $data['pdf']]);
     _auditLogs('Created Bill (Advanced) : ' . $invoice->invoice_id);
+
     try {
       if ($request->form_type == 'ajax') {
         return response()->json(['status' => true, 'msg' => "Added  Successfully"]);
       } else {
-        return redirect()->route('vendor.invoice.view-invoice', ['invoice_id' => $invoice->id]);
+        if (hasPermission('billing', 'view')){
+          return redirect()->route('vendor.invoice.view-invoice', ['invoice_id' => $invoice->id]);
+        } else {
+          Toastr::success('Invoice created successfully');
+          return back();
+        }
       }
     } catch (\Throwable $th) {
       //

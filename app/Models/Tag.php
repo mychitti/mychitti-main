@@ -15,4 +15,5 @@ class Tag extends Model
     {
         return $this->belongsToMany(Item::class)->using('App\Models\ItemTag');
     }
+    
 }

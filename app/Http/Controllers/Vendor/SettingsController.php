@@ -211,8 +211,10 @@ class SettingsController extends Controller
         $store_id = Helpers::get_store_id();
         $store = StoreConfig::where('store_id', $store_id)->first();
         $order_type = OrderType::where('store_id', $store_id)->get();
+        $accounts = AccountDetail::where('user_type', 'vendor')->where('user_id',  $store_id)->where('type', 'pos')->get();
+        // $data['upcoming_number'] = Helpers::_nextTokenNumber();
 
-        return view('vendor-views.settings.pos', compact('store', 'order_type'));
+        return view('vendor-views.settings.pos', compact('store', 'order_type', 'accounts'));
     }
 
     public function quotation_settings(Request $request)

@@ -50,6 +50,12 @@ class Notification extends Model
     /**
      * @return array
      */
+    public function getImageUrlAttribute()
+{
+    return $this->image
+        ? asset('storage/notification/' . ltrim($this->image, '/'))
+        : null;
+}
     public function getDataAttribute(): array
     {
         return [

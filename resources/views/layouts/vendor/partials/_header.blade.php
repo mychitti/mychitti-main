@@ -50,12 +50,12 @@
                 <div class="d-flex gap-2  ">
                     @if (count(_quickActions()))
                         @foreach (_quickActions() as $key => $value)
-                            @if ($value->route == 'vendor.customer.list')
+                            @if ($value->route == 'vendor.customer.list' && hasPermission('client_manage', 'add'))
                                 <button type="button" class="badge badge-soft-primary quick_action add-customer-btn " 
                                     data-toggle="modal" data-target="#addCustomerModal">
                                     {{ $value->name }}
                                 </button>
-                            @else
+                            @elseif($value->group == NULL || hasPermission($value->group, 'add'))
                                 <a href="{{ route($value->route, ['add']) }}" class="badge badge-soft-primary quick_action"
                                 >{{ $value->name }}</a>
                             @endif
@@ -94,48 +94,49 @@
                    </li>
                   
                    @endif
-    
-                    <li class="nav-item max-sm-m-0">
-                     <i  style="font-size: 1.5em;" class="tio-notifications"><a href="{{ route('vendor.notifications') }}" class="position-relative"><span class="badge badge-danger notif_count_badge" style="position: absolute;
-                    right: -9px;
-                    top: -10px;
-                    border-radius: 50%;
-                    padding: 3px 8px;">@php print_r(_unreadNotificationCount()) @endphp</i>
-                        <div class="hs-unfold">
-                            <div>
-                                @php($local = session()->has('vendor_local')?session('vendor_local'):null)
-                                @php($lang = \App\Models\BusinessSetting::where('key', 'system_language')->first())
-                                @if ($lang)
-                                <!-- <div
-                                    class="topbar-text dropdown disable-autohide text-capitalize d-flex">
-                                    <a class="topbar-link dropdown-toggle d-flex align-items-center title-color"
-                                    href="#" data-toggle="dropdown">
-                                            @foreach(json_decode($lang['value'],true) as $data)
-                                                @if($data['code']==$local)
-                                                    <i class="tio-globe"></i> {{$data['code']}}
+                    @if(\App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                        <li class="nav-item max-sm-m-0">
+                        <i  style="font-size: 1.5em;" class="tio-notifications"><a href="{{ route('vendor.notifications') }}" class="position-relative"><span class="badge badge-danger notif_count_badge" style="position: absolute;
+                            right: -9px;
+                            top: -10px;
+                            border-radius: 50%;
+                            padding: 3px 8px;">@php print_r(_unreadNotificationCount()) @endphp</i>
+                            <div class="hs-unfold">
+                                <div>
+                                    @php($local = session()->has('vendor_local')?session('vendor_local'):null)
+                                    @php($lang = \App\Models\BusinessSetting::where('key', 'system_language')->first())
+                                    @if ($lang)
+                                    <!-- <div
+                                        class="topbar-text dropdown disable-autohide text-capitalize d-flex">
+                                        <a class="topbar-link dropdown-toggle d-flex align-items-center title-color"
+                                        href="#" data-toggle="dropdown">
+                                                @foreach(json_decode($lang['value'],true) as $data)
+                                                    @if($data['code']==$local)
+                                                        <i class="tio-globe"></i> {{$data['code']}}
 
-                                                @elseif(!$local &&  $data['default'] == true)
-                                                    <i class="tio-globe"></i> {{$data['code']}}
+                                                    @elseif(!$local &&  $data['default'] == true)
+                                                        <i class="tio-globe"></i> {{$data['code']}}
+                                                    @endif
+                                                @endforeach
+                                        </a>
+                                        <ul class="dropdown-menu lang-menu">
+                                            @foreach(json_decode($lang['value'],true) as $key =>$data)
+                                                @if($data['status']==1)
+                                                    <li>
+                                                        <a class="dropdown-item py-1"
+                                                            href="{{route('vendor.lang',[$data['code']])}}">
+                                                            <span class="text-capitalize">{{$data['code']}}</span>
+                                                        </a>
+                                                    </li>
                                                 @endif
                                             @endforeach
-                                    </a>
-                                    <ul class="dropdown-menu lang-menu">
-                                        @foreach(json_decode($lang['value'],true) as $key =>$data)
-                                            @if($data['status']==1)
-                                                <li>
-                                                    <a class="dropdown-item py-1"
-                                                        href="{{route('vendor.lang',[$data['code']])}}">
-                                                        <span class="text-capitalize">{{$data['code']}}</span>
-                                                    </a>
-                                                </li>
-                                            @endif
-                                        @endforeach
-                                    </ul>
-                                </div> -->
-                                @endif
+                                        </ul>
+                                    </div> -->
+                                    @endif
+                                </div>
                             </div>
-                        </div>
-                    </li>
+                        </li>
+                    @endif
                     @if(\App\CentralLogics\Helpers::get_store_data()->module_id == 5)
                     <li class="nav-item d-none d-sm-inline-block mr-4">
                         <!-- Notification -->

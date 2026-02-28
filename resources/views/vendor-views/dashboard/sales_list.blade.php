@@ -27,7 +27,7 @@
                 </td>
                 <td>{{ _price($inv->total_amount) }}</td>
                 <td class="type-expense">
-                <a href="{{ $inv->pdf }}" style="width: fit-content; padding: 0 10px !important;" class="btn action-btn  btn-outline-primary">View Invoice</a>
+                <a href="{{ asset('storage/invoice') . '/' . $inv->pdf }}" style="width: fit-content; padding: 0 10px !important;" class="btn action-btn  btn-outline-primary">View Invoice</a>
                 </td>
             </tr>
         @endforeach

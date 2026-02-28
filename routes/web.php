@@ -11,7 +11,7 @@ use App\Http\Controllers\SenangPayController;
 use App\Http\Controllers\MercadoPagoController; 
 use App\Http\Controllers\BkashPaymentController;
 use App\Http\Controllers\CronController;
-use App\Http\Controllers\FlutterwaveV3Controller; 
+use App\Http\Controllers\FlutterwaveV3Controller;
 use App\Http\Controllers\Front\CartController;
 use App\Http\Controllers\PaypalPaymentController;
 use App\Http\Controllers\StripePaymentController;
@@ -215,11 +215,11 @@ Route::group(['middleware' => ['loginuser']], function () {
     Route::post('submit-review', [FrontUserController::class, 'submit_review'])->name('submit-review');
     Route::post('submit-service-review', [FrontUserController::class, 'submit_service_review'])->name('submit-service-review');
 
-    // AI Chat
-    Route::post('ai-chat/send', [FrontAIChatController::class, 'chat'])->name('ai-chat.send');
-    Route::get('ai-chat/history', [FrontAIChatController::class, 'history'])->name('ai-chat.history');
-    Route::post('ai-chat/clear', [FrontAIChatController::class, 'clearMemory'])->name('ai-chat.clear');
 });
+// AI Chat — open to all (guests use session-based pseudo-ID)
+Route::post('ai-chat/send',    [FrontAIChatController::class, 'chat'])->name('ai-chat.send');
+Route::get('ai-chat/history',  [FrontAIChatController::class, 'history'])->name('ai-chat.history');
+Route::post('ai-chat/clear',   [FrontAIChatController::class, 'clearMemory'])->name('ai-chat.clear');
 Route::get('delete-account/{id}', [FrontUserController::class, 'delete_account'])->name('delete-account');
 
 Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
@@ -234,7 +234,6 @@ Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
         Route::post('return-approval', [ServiceController::class, 'quotation_return_approval'])->name('return-approval');
         Route::get('details', [ServiceController::class, 'quotation_details'])->name('details');
     });
-   
 });
 Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home');

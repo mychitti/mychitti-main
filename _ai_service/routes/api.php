@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\AIChatController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-/* 
+/*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
@@ -19,7 +19,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('ai/ping', fn() => response()->json(['pong' => true, 'server' => 'ai-service']));
 
 Route::middleware('ai.key')->prefix('ai')->group(function () {
     Route::post('chat',    [AIChatController::class, 'chat']);

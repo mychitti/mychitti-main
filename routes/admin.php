@@ -44,6 +44,38 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('history', 'AIChatController@history')->name('history');
             Route::post('clear', 'AIChatController@clearMemory')->name('clear');
         });
+ 
+        Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['module:ai_agent']], function () {
+            // Dashboard / index
+            Route::get('/', 'AIAgentSkillController@index')->name('index');
+ 
+            // Agent CRUD
+            Route::post('store',          'AIAgentSkillController@store')->name('store');
+            Route::get('{id}',            'AIAgentSkillController@show')->name('show');
+            Route::post('{id}/update',    'AIAgentSkillController@update')->name('update');
+            Route::delete('{id}',         'AIAgentSkillController@destroy')->name('destroy');
+
+            // Test console
+            Route::post('{id}/test',      'AIAgentSkillController@test')->name('test');
+ 
+            // Versioning
+            Route::post('{id}/version',   'AIAgentSkillController@bumpVersion')->name('version.bump');
+
+            // API Tools
+            Route::post('{agentId}/tools',         'AIAgentSkillController@storeApiTool')->name('tools.store');
+            Route::post('tools/{toolId}/update',   'AIAgentSkillController@updateApiTool')->name('tools.update');
+            Route::delete('tools/{toolId}',        'AIAgentSkillController@destroyApiTool')->name('tools.destroy');
+
+            // Function Schemas
+            Route::post('{agentId}/functions',         'AIAgentSkillController@storeFunction')->name('functions.store');
+            Route::post('functions/{fnId}/update',     'AIAgentSkillController@updateFunction')->name('functions.update');
+            Route::delete('functions/{fnId}',          'AIAgentSkillController@destroyFunction')->name('functions.destroy');
+
+            // Tasks
+            Route::post('{agentId}/tasks',         'AIAgentSkillController@storeTask')->name('tasks.store');
+            Route::post('tasks/{taskId}/update',   'AIAgentSkillController@updateTask')->name('tasks.update');
+            Route::delete('tasks/{taskId}',        'AIAgentSkillController@destroyTask')->name('tasks.destroy');
+        });
 
         Route::group(['prefix' => 'logs', 'as' => 'logs.'], function () {
             Route::get('action-logs/{tab?}', 'DashboardController@action_logs')->name('action-logs');

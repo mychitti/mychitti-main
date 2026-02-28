@@ -590,7 +590,7 @@ function plan_success($data)
 }
 function plan_failed($data)
 {
- 
+
     // $store_id = $data->attribute_id; 
 
 }
@@ -1202,7 +1202,7 @@ function _quickActions()
         ->where('store_menu_visibility.store_id', Helpers::get_store_id())
         ->where('store_menu_visibility.menu_type', 'quick_action')
         ->where('menu.status', '1')
-        ->select('menu.name', 'menu.route')
+        ->select('menu.name', 'menu.route', 'menu.group')
         ->get();
 
     return $quickActions;
@@ -2548,10 +2548,11 @@ if (!function_exists('_pendingLeavesCount')) {
 }
 
 if (!function_exists('_serviceCoupon')) {
-    function _serviceCoupon($acc_id) {
+    function _serviceCoupon($acc_id)
+    {
         $acceptnce = AcceptedServiceRequest::find($acc_id);
-        if($acceptnce && $acceptnce->coupon_id){
-            $coupon = Coupon::find( $acceptnce->coupon_id);
+        if ($acceptnce && $acceptnce->coupon_id) {
+            $coupon = Coupon::find($acceptnce->coupon_id);
         }
         return $coupon ?? null;
     }
@@ -2788,7 +2789,7 @@ if (!function_exists('_serviceRunning')) {
     function _serviceRunning($uid, $paginate = false, $perPage = 10, $service_id = null)
     {
         $query = DB::table('service_requests')
-            ->leftJoin( 
+            ->leftJoin(
                 'accepted_service_requests',
                 'accepted_service_requests.service_request_id',
                 'service_requests.id'
@@ -3126,8 +3127,23 @@ if (! function_exists('hasAnyModulePermission')) {
 }
 
 if (!function_exists('hasMasterModulePermission')) {
-    function hasMasterModulePermission(string $masterModule): bool
+    function hasMasterModulePermission(string $masterModule)
     {
+        $hasPermission =  DB::table('role_feature_permissions as rfp')
+            ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')
+            ->join('features as f', 'fp.feature_id', '=', 'f.id')
+            ->where('f.master_module', $masterModule)
+            ->where('fp.free', 1)
+            ->exists();
+
+        if ($hasPermission) {
+            if (auth('vendor')->check()) {
+                return true;
+            }elseif(auth('vendor_employee')->check() && Helpers::employee_module_permission_check($masterModule)){
+                return true;
+            }
+        }
+
         if (Helpers::permission_check($masterModule)) {
             if (auth('vendor')->check()) {
                 return true;
@@ -3145,7 +3161,6 @@ if (!function_exists('hasMasterModulePermission')) {
                 ->where('rfp.role_id', $user->employee_role_id)
                 ->where('f.master_module', $masterModule)
                 ->exists();
-
             return $hasPermission;
         } else {
             return false;
@@ -3170,15 +3185,17 @@ if (!function_exists('hasPermission')) {
         }
 
         // check if free 
-        $featureAction = DB::table('feature_permissions as fp')
-            ->join('features as f', 'fp.feature_id', '=', 'f.id')
-            ->where('f.name', $feature)
-            ->where('fp.action', $action)
-            ->select('f.master_module', 'fp.free')
-            ->first();
+        if (auth('vendor')->check()) {
 
-        if ($featureAction && $featureAction->free == 1) {
-            return true;
+            $featureAction = DB::table('feature_permissions as fp')
+                ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                ->where('f.name', $feature)
+                ->where('fp.action', $action)
+                ->select('f.master_module', 'fp.free')
+                ->first();
+            if ($featureAction && $featureAction->free == 1) {
+                return true;
+            }
         }
 
         $permissionRow = DB::table('role_feature_permissions as rfp')
@@ -3494,7 +3511,7 @@ if (!function_exists('_price')) {
     }
 }
 
- 
+
 
 if (!function_exists('_quotationExist')) {
     function _quotationExist($serviceId)

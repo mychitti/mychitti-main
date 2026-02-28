@@ -36,12 +36,61 @@ use App\Models\TaskStatus;
 use App\Models\TempEmployee;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TaskController extends Controller
 {
+    private function logTaskTimeCardEvent(StoreTask $task, string $event): void
+    {
+        DB::table('task_time_card_events')->insert([
+            'task_id' => $task->id,
+            'store_id' => $task->store_id,
+            'event_type' => $event,
+            'event_time' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function upsertTaskTimeCard(StoreTask $task, string $event): void
+    {
+        $now = now();
+        $existing = DB::table('task_time_cards')->where('task_id', $task->id)->first();
+
+        $payload = [
+            'store_id' => $task->store_id,
+            'updated_at' => $now,
+        ];
+
+        if (!$existing) {
+            $payload['task_id'] = $task->id;
+            $payload['created_at'] = $now;
+        }
+
+        if ($event === 'start') {
+            if (!$existing || !$existing->start_time) {
+                $payload['start_time'] = $now;
+            }
+        } elseif ($event === 'pause') {
+            $payload['pause_time'] = $now;
+        } elseif ($event === 'resume') {
+            $payload['resume_time'] = $now;
+        } elseif ($event === 'end') {
+            $payload['end_time'] = $now;
+        }
+
+        if ($existing) {
+            DB::table('task_time_cards')->where('task_id', $task->id)->update($payload);
+        } else {
+            DB::table('task_time_cards')->insert($payload);
+        }
+
+        $this->logTaskTimeCardEvent($task, $event);
+    }
+
     public function  getTargetTime($task)
     {
         $created_at = $task->created_at; // Example created_at from DB
@@ -197,7 +246,19 @@ class TaskController extends Controller
             }
         } while ($exists);
 
-        return view('vendor-views.task.details', compact('inventory_items', 'dynamicFieldsBySections', 'services', 'bill_num', 'tasks', 'data',  'staff', 'statuses', 'task_statuses', 'task_comments', 'task'));
+        $taskTimeCard = null;
+        $taskTimeCardEvents = collect();
+        if (Schema::hasTable('task_time_cards')) {
+            $taskTimeCard = DB::table('task_time_cards')->where('task_id', $task->id)->first();
+        }
+        if (Schema::hasTable('task_time_card_events')) {
+            $taskTimeCardEvents = DB::table('task_time_card_events')
+                ->where('task_id', $task->id)
+                ->orderByDesc('event_time')
+                ->get();
+        }
+
+        return view('vendor-views.task.details', compact('inventory_items', 'dynamicFieldsBySections', 'services', 'bill_num', 'tasks', 'data',  'staff', 'statuses', 'task_statuses', 'task_comments', 'task', 'taskTimeCard', 'taskTimeCardEvents'));
     }
     private function formatTaskForJs($task)
     {
@@ -439,6 +500,7 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
+         prx('fds');
         $request->validate([
             'title' => 'required',
             'customer' => 'required_without:project_id',
@@ -564,12 +626,14 @@ class TaskController extends Controller
         }
 
         Toastr::success('Task Added Successfully');
-        if ($task->parent_id) {
-
-            return redirect()->route('vendor.task.subtask.detail', [$task->id]);
+        if (hasPermission('task', 'view') || (!empty($task->project_id) && hasPermission('project_task', 'view'))) {
+            if ($task->parent_id) {
+                return redirect()->route('vendor.task.subtask.detail', [$task->id]);
+            } else {
+                return redirect()->route('vendor.task.detail', [$task->id]);
+            }
         } else {
-
-            return redirect()->route('vendor.task.detail', [$task->id]);
+            return back();
         }
     }
     public function reassign(Request $request)
@@ -610,6 +674,86 @@ class TaskController extends Controller
         $task->save();
         Toastr::success('Task Rejected');
         return back();
+    }
+    public function task_otp_send(Request $request)
+    {
+        $task = StoreTask::where('id', $request->task_id)
+            ->where('store_id', Helpers::get_store_id())
+            ->first();
+
+        if (!$task) {
+            return response()->json(['status' => false, 'msg' => 'Task not found']);
+        }
+
+        $phone = $task->user?->phone ?? $request->customer_phone;
+        if (!$phone) {
+            return response()->json(['status' => false, 'msg' => 'Customer phone not found']);
+        }
+
+        $jobAction = $request->job_action === 'end' ? 'end' : 'start';
+
+        if ($request->action === 'verify_otp') {
+            $otp = implode('', $request->otp ?? []);
+            if (!$otp || !_verify_otp($phone, $otp)) {
+                return response()->json(['status' => false, 'msg' => 'Invalid OTP']);
+            }
+
+            DB::table('phone_otp')->where('phone', $phone)->update(['otp' => null]);
+
+            if ($jobAction === 'end') {
+                $task->status = 'Completed';
+                $task->completed_at = now();
+                $task->save();
+                $this->upsertTaskTimeCard($task, 'end');
+
+                $taskStatus = new TaskStatus();
+                $taskStatus->task_id = $task->id;
+                $taskStatus->store_id = $task->store_id;
+                $taskStatus->status = 'Job Ended';
+                $taskStatus->note = 'Ended with customer OTP verification';
+                $taskStatus->created_by = auth('vendor')->check() ? 0 : Helpers::get_loggedin_user()->id;
+                $taskStatus->save();
+
+                return response()->json(['status' => true, 'msg' => 'Job ended successfully']);
+            } else {
+                if (!in_array($task->status, ['Completed', 'Cancelled'])) {
+                    $storeStatuses = array_map('trim', explode(',', Helpers::get_store_data()->task_statuses ?? ''));
+                    $startStatus = in_array('In Progress', $storeStatuses) ? 'In Progress' : ($storeStatuses[1] ?? 'In Progress');
+                    $task->status = $startStatus ?: 'In Progress';
+                    $task->save();
+                    $this->upsertTaskTimeCard($task, 'start');
+
+                    $taskStatus = new TaskStatus();
+                    $taskStatus->task_id = $task->id;
+                    $taskStatus->store_id = $task->store_id;
+                    $taskStatus->status = 'Job Started';
+                    $taskStatus->note = 'Started with customer OTP verification';
+                    $taskStatus->created_by = auth('vendor')->check() ? 0 : Helpers::get_loggedin_user()->id;
+                    $taskStatus->save();
+                }
+
+                return response()->json(['status' => true, 'msg' => 'Job started successfully']);
+            }
+        }
+
+        $otp  = rand(1000, 9999);
+        DB::table('phone_otp')->updateOrInsert(
+            ['phone' => $phone],
+            [
+                'phone' => $phone,
+                'otp' => $otp,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+        _send_confirmation_sms('job_msg', $phone, $otp);
+
+        return response()->json([
+            'status' => true,
+            'action' => 'otp_sent',
+            'job_action' => $jobAction,
+            'msg' => 'OTP sent successfully'
+        ]);
     }
     public function update(Request $request)
     {
@@ -819,6 +963,15 @@ class TaskController extends Controller
         $task->status = $request->status;
         $task->delivery_person =  $delivery_person ?? null;
         $task->save();
+
+        $normalizedStatus = strtolower(trim($request->status));
+        if (in_array($normalizedStatus, ['on hold', 'pause', 'paused'])) {
+            $this->upsertTaskTimeCard($task, 'pause');
+        } elseif (in_array($normalizedStatus, ['in progress', 'in_progress', 'inprogress'])) {
+            $this->upsertTaskTimeCard($task, 'resume');
+        } elseif (in_array($normalizedStatus, ['completed', 'cancelled'])) {
+            $this->upsertTaskTimeCard($task, 'end');
+        }
 
         if ($rr) {
             $rr->delivered = 1;

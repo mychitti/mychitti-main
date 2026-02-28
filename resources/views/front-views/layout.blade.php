@@ -493,225 +493,295 @@
     <div id="toast" class="toast">This is a toaster notification!</div>
 
     {{-- AI Chat Panel --}}
-        <style>
-            #ai-chat-overlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, .35);
-                z-index: 10000;
-                opacity: 0;
-                visibility: hidden;
-                transition: opacity .3s
-            }
+    <style>
+        #ai-chat-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .35);
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .3s
+        }
 
-            #ai-chat-overlay.open {
-                opacity: 1;
-                visibility: visible
-            }
+        #ai-chat-overlay.open {
+            opacity: 1;
+            visibility: visible
+        }
 
-            #ai-chat-panel {
-                position: fixed;
-                top: 0;
-                right: -420px;
-                width: 400px;
-                max-width: 92vw;
-                height: 100vh;
-                background: #fff;
-                z-index: 10001;
-                display: flex;
-                flex-direction: column;
-                box-shadow: -4px 0 20px rgba(0, 0, 0, .15);
-                transition: right .35s cubic-bezier(.4, 0, .2, 1)
-            }
+        #ai-chat-panel {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            max-width: 92vw;
+            height: 100vh;
+            /* ← dynamic viewport height, shrinks when keyboard opens */
+            background: #fff;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, .15);
+            {{-- transition: right .35s cubic-bezier(.4, 0, .2, 1) --}}
+        }
 
-            #ai-chat-panel.open {
-                right: 0
-            }
+        #ai-chat-panel {
+            height: 100dvh;
+            {{-- transition: right .35s cubic-bezier(.4, 0, .2, 1), height .3s ease; --}}
+        }
 
-            .ai-chat-header {
-                padding: 14px 18px;
-                background: linear-gradient(135deg, #4f46e5, #7c3aed);
-                color: #fff;
-                display: flex;
-                align-items: center;
-                justify-content: space-between
-            }
+        #ai-chat-panel.open {
+            right: 0
+        }
 
-            .ai-chat-header h5 {
-                margin: 0;
-                font-size: 16px;
-                font-weight: 600
-            }
+        .ai-chat-messages {
+            {{-- height: 80dvh !important; --}} flex: 1;
+            {{-- overflow-y: auto; --}} -webkit-overflow-scrolling: touch;
+            /* smooth scroll on iOS */
+        }
 
-            .ai-chat-close {
-                background: none;
-                border: none;
-                color: #fff;
-                font-size: 22px;
-                cursor: pointer;
-                padding: 0 4px
-            }
+        .ai-chat-input-area {
+            flex-shrink: 0;
+            /* prevents input from being squished */
+        }
 
-            .ai-chat-messages {
-                flex: 1;
-                overflow-y: auto;
-                padding: 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                background: #f8f9fa
-            }
+        .ai-chat-header {
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
 
-            .ai-msg {
-                max-width: 82%;
-                padding: 10px 14px;
-                border-radius: 14px;
-                font-size: 14px;
-                line-height: 1.5;
-                word-wrap: break-word
-            }
+        .ai-chat-header h5 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600
+        }
 
-            .ai-msg.user {
-                align-self: flex-end;
-                background: #4f46e5;
-                color: #fff;
-                border-bottom-right-radius: 4px
-            }
+        .ai-chat-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 4px
+        }
 
-            .ai-msg.assistant {
-                align-self: flex-start;
-                background: #fff;
-                color: #333;
-                border: 1px solid #e5e5e5;
-                border-bottom-left-radius: 4px
-            }
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f8f9fa
+        }
 
-            .ai-msg.typing {
-                font-style: italic;
-                color: #999;
-                border: 1px dashed #ddd;
-                background: #fafafa
-            }
+        .ai-msg {
+            max-width: 82%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word
+        }
 
-            .ai-chat-input-area {
-                padding: 12px;
-                border-top: 1px solid #eee;
-                background: #fff
-            }
+        .ai-msg.user {
+            align-self: flex-end;
+            background: #4f46e5;
+            color: #fff;
+            border-bottom-right-radius: 4px
+        }
 
-            .ai-chat-input-area textarea {
-                width: 100%;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 14px;
-                resize: none;
-                outline: none;
-                font-family: inherit
-            }
+        .ai-msg.assistant {
+            align-self: flex-start;
+            background: #fff;
+            color: #333;
+            border: 1px solid #e5e5e5;
+            border-bottom-left-radius: 4px
+        }
 
-            .ai-chat-input-area textarea:focus {
-                border-color: #4f46e5
-            }
+        .ai-msg.assistant .ai-msg-body {
+            font-size: 14px;
+            line-height: 1.6;
+        }
 
-            .ai-chat-btns {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-top: 8px
-            }
+        .ai-msg.assistant .ai-msg-body p {
+            margin-bottom: 0.4rem;
+        }
 
-            .ai-chat-btns button {
-                border: none;
-                border-radius: 6px;
-                padding: 6px 14px;
-                font-size: 13px;
-                cursor: pointer;
-                font-weight: 500
-            }
+        .ai-msg.assistant .ai-msg-body strong {
+            font-weight: 700;
+        }
 
-            .ai-send-btn {
-                background: #4f46e5;
-                color: #fff
-            }
+        .ai-msg.assistant .ai-msg-body em {
+            font-style: italic;
+        }
 
-            .ai-send-btn:hover {
-                background: #4338ca
-            }
+        .ai-msg.assistant .ai-msg-body ul,
+        .ai-msg.assistant .ai-msg-body ol {
+            padding-left: 1.3rem;
+            margin-bottom: 0.4rem;
+        }
 
-            .ai-attach-btn,
-            .ai-record-btn,
-            .ai-stop-btn {
-                background: #f3f4f6;
-                color: #333;
-                border: 1px solid #ddd !important
-            }
+        .ai-msg.assistant .ai-msg-body li {
+            margin-bottom: 0.2rem;
+        }
 
-            .ai-clear-btn {
-                background: #fee2e2;
-                color: #dc2626;
-                margin-left: auto;
-                font-size: 12px;
-                padding: 4px 10px
-            }
+        .ai-msg.assistant .ai-msg-body h1,
+        .ai-msg.assistant .ai-msg-body h2,
+        .ai-msg.assistant .ai-msg-body h3 {
+            font-weight: 700;
+            margin: 0.5rem 0 0.25rem;
+        }
 
-            #ai-chat-fab {
-                position: fixed;
-                bottom: 28px;
-                right: 28px;
-                width: 56px;
-                height: 56px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #4f46e5, #7c3aed);
-                color: #fff;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                box-shadow: 0 4px 16px rgba(79, 70, 229, .4);
-                z-index: 9999;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: transform .2s
-            }
+        .ai-msg.assistant .ai-msg-body code {
+            background: #f0f0f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
 
-            #ai-chat-fab:hover {
-                transform: scale(1.1)
-            }
-        </style>
- 
-        <button id="ai-chat-fab" title="Chat with AI">
-            <i class="fas fa-comments"></i>
-        </button>
+        .ai-msg.assistant .ai-msg-body pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
 
-        <div id="ai-chat-overlay"></div>
-        <div id="ai-chat-panel">
-            <div class="ai-chat-header">
-                <h5 style="    color: white;"><i class="fas fa-robot"></i> AI Assistant</h5>
-                <button class="ai-chat-close">&times;</button>
-            </div>
-            <div class="ai-chat-messages" id="ai-chat-messages">
-                <div class="text-muted text-center" style="font-size:13px">Loading chat...</div>
-            </div>
-            <div class="ai-chat-input-area">
-                <form id="ai-chat-form" enctype="multipart/form-data">
-                    @csrf
-                    <textarea id="ai-chat-msg" name="message" rows="2" placeholder="Type your message..."></textarea>
-                    <input type="file" id="ai-chat-file" name="file" accept="image/*,.pdf" style="display:none">
-                    <div class="ai-chat-btns">
-                        <button type="submit" class="ai-send-btn">Send</button>
-                        <button type="button" class="ai-attach-btn" id="ai-attach-btn"><i
-                                class="fas fa-paperclip"></i></button>
-                        <button type="button" class="ai-record-btn" id="ai-start-record"><i
-                                class="fas fa-microphone"></i></button>
-                        <button type="button" class="ai-stop-btn d-none" id="ai-stop-record"><i
-                                class="fas fa-stop"></i> Stop</button>
-                        <span id="ai-record-status" style="font-size:12px;color:#999"></span>
-                        <button type="button" class="ai-clear-btn" id="ai-clear-memory">Clear</button>
-                    </div>
-                </form>
-            </div>
+        .ai-msg.assistant .ai-msg-body a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+
+        .ai-msg.typing {
+            font-style: italic;
+            color: #999;
+            border: 1px dashed #ddd;
+            background: #fafafa
+        }
+
+        .ai-chat-input-area {
+            padding: 12px;
+            border-top: 1px solid #eee;
+            background: #fff
+        }
+
+        .ai-chat-input-area textarea {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            font-family: inherit
+        }
+
+        .ai-chat-input-area textarea:focus {
+            border-color: #4f46e5
+        }
+
+        .ai-chat-btns {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px
+        }
+
+        .ai-chat-btns button {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500
+        }
+
+        .ai-send-btn {
+            background: #4f46e5;
+            color: #fff
+        }
+
+        .ai-send-btn:hover {
+            background: #4338ca
+        }
+
+        .ai-attach-btn,
+        .ai-record-btn,
+        .ai-stop-btn {
+            background: #f3f4f6;
+            color: #333;
+            border: 1px solid #ddd !important
+        }
+
+        .ai-clear-btn {
+            background: #fee2e2;
+            color: #dc2626;
+            margin-left: auto;
+            font-size: 12px;
+            padding: 4px 10px
+        }
+
+        #ai-chat-fab {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(79, 70, 229, .4);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .2s
+        }
+
+        #ai-chat-fab:hover {
+            transform: scale(1.1)
+        }
+    </style>
+
+    <button id="ai-chat-fab" title="Chat with AI">
+        <i class="fas fa-comments"></i>
+    </button>
+
+    <div id="ai-chat-overlay"></div>
+    <div id="ai-chat-panel">
+        <div class="ai-chat-header">
+            <h5 style="    color: white;"><i class="fas fa-robot"></i> AI Assistant</h5>
+            <button class="ai-chat-close">&times;</button>
         </div>
+        <div class="ai-chat-messages" id="ai-chat-messages">
+            <div class="text-muted text-center" style="font-size:13px">Loading chat...</div>
+        </div>
+        <div class="ai-chat-input-area">
+            <form id="ai-chat-form" enctype="multipart/form-data">
+                @csrf
+                <textarea id="ai-chat-msg" name="message" rows="2" placeholder="Type your message..."></textarea>
+                <input type="file" id="ai-chat-file" name="file" accept="image/*,.pdf" style="display:none">
+                <div id="ai-front-preview" style="display:none;flex-wrap:wrap;gap:4px;margin:4px 0"></div>
+                <div class="ai-chat-btns">
+                    <button type="submit" class="ai-send-btn">Send</button>
+                    <button type="button" class="ai-attach-btn" id="ai-attach-btn"><i
+                            class="fas fa-paperclip"></i></button>
+                    <button type="button" class="ai-record-btn" id="ai-start-record"><i
+                            class="fas fa-microphone"></i></button>
+                    <button type="button" class="ai-stop-btn d-none" id="ai-stop-record"><i class="fas fa-stop"></i>
+                        Stop</button>
+                    <button type="button" class="ai-clear-btn" id="ai-clear-memory">Clear</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
     <!-- <div class="modal fade show" id="mapModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-modal="true" role="dialog" style="display: block;"> -->
@@ -795,6 +865,7 @@
     <!-- JavaScript Libraries -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="{{ asset('public/assets/front/lib/easing/easing.min.js') }}"></script>
     <script src="{{ asset('public/assets/front/lib/waypoints/waypoints.min.js') }}"></script>
     <script src="{{ asset('public/assets/front/lib/lightbox/js/lightbox.min.js') }}"></script>
@@ -1328,10 +1399,9 @@
         !request()->is('store*') &&
         !request()->is('checkout') &&
         !request()->is('edit-address/*') &&
-        !request()->attributes->get('is_store_domain') && 
-        !request()->attributes->get('vendor_store')
-        )
- 
+        !request()->attributes->get('is_store_domain') &&
+        !request()->attributes->get('vendor_store'))
+
     <script>
         let map, marker, geocoder;
 
@@ -1835,167 +1905,226 @@
     });
 </script>
 
-    <script>
-        (function() {
-            const $fab = $('#ai-chat-fab');
-            const $panel = $('#ai-chat-panel');
-            const $overlay = $('#ai-chat-overlay');
-            const $box = $('#ai-chat-messages');
-            const $form = $('#ai-chat-form');
-            const $msg = $('#ai-chat-msg');
-            let aiMediaRecorder, aiAudioChunks = [],
-                aiRecordedBlob = null;
+<script>
+    $('#ai-chat-msg').on('focus', function() {
+        $('#ai-chat-panel').css('height', '100dvh');
+        $('#ai-chat-messages').css('min-height', '100px');
+        $('#ai-chat-messages').scrollTop($('#ai-chat-messages')[0].scrollHeight);
+    });
 
-            function openChat() {
-                $panel.addClass('open');
-                $overlay.addClass('open');
-                $fab.hide();
-                scrollBottom();
+    $('#ai-chat-msg').on('blur', function() {
+        $('#ai-chat-panel').css('height', '100dvh');
+        $('#ai-chat-messages').css('min-height', '');
+    });
+    (function() {
+        const $fab = $('#ai-chat-fab');
+        const $panel = $('#ai-chat-panel');
+        const $overlay = $('#ai-chat-overlay');
+        const $box = $('#ai-chat-messages');
+        const $form = $('#ai-chat-form');
+        const $msg = $('#ai-chat-msg');
+        let aiMediaRecorder, aiAudioChunks = [],
+            aiRecordedBlob = null;
+
+        function openChat() {
+            $panel.addClass('open');
+            $overlay.addClass('open');
+            $fab.hide();
+            scrollBottom();
+        }
+
+        function closeChat() {
+            $panel.removeClass('open');
+            $overlay.removeClass('open');
+            $fab.show();
+        }
+
+        function scrollBottom() {
+            setTimeout(() => {
+                $box[0].scrollTop = $box[0].scrollHeight;
+            }, 50);
+        }
+
+        function renderMsg(role, text) {
+            let body;
+            if (role === 'assistant') {
+                body = '<div class="ai-msg-body">' + marked.parse(text) + '</div>';
+            } else {
+                body = $('<div>').text(text).html().replace(/\n/g, '<br>');
             }
+            $box.append('<div class="ai-msg ' + role + '">' + body + '</div>');
+            scrollBottom();
+        }
 
-            function closeChat() {
-                $panel.removeClass('open');
-                $overlay.removeClass('open');
-                $fab.show();
-            }
+        $fab.on('click', function() {
+            openChat();
+            loadHistory();
+        });
+        $overlay.on('click', closeChat);
+        $('.ai-chat-close').on('click', closeChat);
 
-            function scrollBottom() {
-                setTimeout(() => {
-                    $box[0].scrollTop = $box[0].scrollHeight;
-                }, 50);
-            }
+        let historyLoaded = false;
 
-            function renderMsg(role, text) {
-                const safe = $('<div>').text(text).html().replace(/\n/g, '<br>');
-                $box.append('<div class="ai-msg ' + role + '">' + safe + '</div>');
-                scrollBottom();
-            }
-
-            $fab.on('click', function() {
-                openChat();
-                loadHistory();
-            });
-            $overlay.on('click', closeChat);
-            $('.ai-chat-close').on('click', closeChat);
-
-            let historyLoaded = false;
-
-            function loadHistory() {
-                if (historyLoaded) return;
-                $.get("{{ route('ai-chat.history') }}", function(res) {
-                    $box.empty();
-                    if (res.messages && res.messages.length) {
-                        res.messages.forEach(m => renderMsg(m.role, m.content));
-                    } else {
-                        $box.html(
-                            '<div class="text-muted text-center" style="font-size:13px">Start a conversation...</div>'
-                            );
-                    }
-                    historyLoaded = true;
-                });
-            }
-
-            // Send message
-            $form.on('submit', function(e) {
-                e.preventDefault();
-                let formData = new FormData();
-                let message = $msg.val();
-                formData.append('_token', '{{ csrf_token() }}');
-                formData.append('message', message);
-
-                const file = $('#ai-chat-file')[0].files[0];
-                if (file) formData.append('file', file);
-                if (aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
-
-                if (!message && !file && !aiRecordedBlob) return;
-
-                if (message) renderMsg('user', message);
-                else if (file) renderMsg('user', '[File sent]');
-                else if (aiRecordedBlob) renderMsg('user', '[Voice message]');
-
-                $msg.val('');
-                $('#ai-chat-file').val('');
-                aiRecordedBlob = null;
-                $('#ai-record-status').text('');
-
-                $box.append('<div class="ai-msg typing" id="ai-typing">Thinking...</div>');
-                scrollBottom();
-
-                $.ajax({
-                    url: "{{ route('ai-chat.send') }}",
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(res) {
-                        $('#ai-typing').remove();
-                        if (res.success) renderMsg('assistant', res.message);
-                        else renderMsg('assistant', 'Something went wrong.');
-                    },
-                    error: function() {
-                        $('#ai-typing').remove();
-                        renderMsg('assistant', 'Failed to send. Please try again.');
-                    }
-                });
-            });
-
-            // Enter to send, Shift+Enter for newline
-            $msg.on('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    $form.trigger('submit');
-                }
-            });
-
-            // File attach
-            $('#ai-attach-btn').on('click', function() {
-                $('#ai-chat-file').click();
-            });
-
-            // Voice recording
-            $('#ai-start-record').on('click', async function() {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert('Voice recording not supported.');
-                    return;
-                }
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: true
-                });
-                aiAudioChunks = [];
-                aiRecordedBlob = null;
-                aiMediaRecorder = new MediaRecorder(stream);
-                aiMediaRecorder.ondataavailable = e => aiAudioChunks.push(e.data);
-                aiMediaRecorder.onstop = () => {
-                    aiRecordedBlob = new Blob(aiAudioChunks, {
-                        type: 'audio/webm'
-                    });
-                    $('#ai-record-status').text('Voice ready.');
-                };
-                aiMediaRecorder.start();
-                $('#ai-start-record').addClass('d-none');
-                $('#ai-stop-record').removeClass('d-none');
-                $('#ai-record-status').text('Recording...');
-            });
-
-            $('#ai-stop-record').on('click', function() {
-                aiMediaRecorder.stop();
-                $('#ai-stop-record').addClass('d-none');
-                $('#ai-start-record').removeClass('d-none');
-            });
-
-            // Clear memory
-            $('#ai-clear-memory').on('click', function() {
-                if (!confirm('Clear all chat history?')) return;
-                $.post("{{ route('ai-chat.clear') }}", {
-                    _token: '{{ csrf_token() }}'
-                }, function(res) {
+        function loadHistory() {
+            if (historyLoaded) return;
+            $.get("{{ route('ai-chat.history') }}", function(res) {
+                $box.empty();
+                if (res.messages && res.messages.length) {
+                    res.messages.forEach(m => renderMsg(m.role, m.content));
+                } else {
                     $box.html(
-                        '<div class="text-muted text-center" style="font-size:13px">Chat cleared. Start fresh!</div>'
-                        );
-                    historyLoaded = false;
-                });
+                        '<div class="text-muted text-center" style="font-size:13px">Start a conversation...</div>'
+                    );
+                }
+                historyLoaded = true;
             });
-        })();
-    </script>
+        }
+
+        // Send message
+        $form.on('submit', function(e) {
+            e.preventDefault();
+            let formData = new FormData();
+            let message = $msg.val();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('message', message);
+
+            const file = $('#ai-chat-file')[0].files[0];
+            if (file) formData.append('file', file);
+            if (aiRecordedBlob) formData.append('voice', aiRecordedBlob, 'voice.webm');
+
+            if (!message && !file && !aiRecordedBlob) return;
+
+            if (message) renderMsg('user', message);
+            else if (file) renderMsg('user', '[File sent]');
+            else if (aiRecordedBlob) renderMsg('user', '[Voice message]');
+
+            $msg.val('');
+            $('#ai-chat-file').val('');
+            aiRecordedBlob = null;
+            $('#ai-front-preview').empty().hide();
+
+            $box.append('<div class="ai-msg typing" id="ai-typing">Thinking...</div>');
+            scrollBottom();
+
+            $.ajax({
+                url: "{{ route('ai-chat.send') }}",
+                type: 'POST',
+                data: formData,
+                processData: false,  
+                contentType: false,
+                success: function(res) { 
+                    $('#ai-typing').remove();
+                    if (res.success) renderMsg('assistant', res.message);
+                    else renderMsg('assistant', res.message || 'Something went wrong.');
+                },
+                error: function() {
+                    $('#ai-typing').remove();
+                    renderMsg('assistant', 'Failed to send. Please try again.');
+                }
+            });
+        });
+
+        // Enter to send, Shift+Enter for newline
+        $msg.on('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                $form.trigger('submit');
+            }
+        });
+
+        // Chip helper
+        function frontShowChip(id, icon, label, styles, onRemove) {
+            $('#ai-front-preview').css('display', 'flex');
+            var chip = $('<span id="' + id +
+                '" style="display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:2px 10px;font-size:12px;' +
+                styles + '"></span>');
+            chip.append(icon + ' ' + label);
+            var x = $(
+                '<button type="button" style="background:none;border:none;padding:0 0 0 4px;cursor:pointer;font-size:15px;line-height:1;opacity:.7">&times;</button>'
+            );
+            x.on('click', function() {
+                chip.remove();
+                if (!$('#ai-front-preview').children().length) $('#ai-front-preview').hide();
+                onRemove();
+            });
+            chip.append(x);
+            $('#ai-front-preview').append(chip);
+        }
+
+        // File attach
+        $('#ai-attach-btn').on('click', function() {
+            $('#ai-chat-file').click();
+        });
+
+        $('#ai-chat-file').on('change', function() {
+            $('#ai-front-file-chip').remove();
+            if (!$('#ai-front-preview').children().length) $('#ai-front-preview').hide();
+            var file = this.files[0];
+            if (!file) return;
+            var icon = file.type.startsWith('image/') ? '🖼️' : '📄';
+            frontShowChip('ai-front-file-chip', icon, file.name,
+                'background:#e8f0fe;border:1px solid #c5d8fc;color:#1a56a0',
+                function() {
+                    $('#ai-chat-file').val('');
+                });
+        });
+
+        // Voice recording
+        $('#ai-start-record').on('click', async function() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Voice recording not supported.');
+                return;
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+            aiAudioChunks = [];
+            aiRecordedBlob = null;
+            $('#ai-front-voice-chip').remove();
+            if (!$('#ai-front-preview').children().length) $('#ai-front-preview').hide();
+            aiMediaRecorder = new MediaRecorder(stream);
+            aiMediaRecorder.ondataavailable = e => aiAudioChunks.push(e.data);
+            aiMediaRecorder.onstop = () => {
+                aiRecordedBlob = new Blob(aiAudioChunks, {
+                    type: 'audio/webm'
+                });
+                stream.getTracks().forEach(t => t.stop());
+                $('#ai-front-recording-chip').remove();
+                frontShowChip('ai-front-voice-chip', '🎤', 'Voice ready',
+                    'background:#e8fde8;border:1px solid #9fd99f;color:#2d6a2d',
+                    function() {
+                        aiRecordedBlob = null;
+                    });
+            };
+            aiMediaRecorder.start();
+            $('#ai-start-record').addClass('d-none');
+            $('#ai-stop-record').removeClass('d-none');
+            frontShowChip('ai-front-recording-chip', '🔴', 'Recording...',
+                'background:#fde8e8;border:1px solid #f9a0a0;color:#8b0000',
+                function() {});
+        });
+
+        $('#ai-stop-record').on('click', function() {
+            aiMediaRecorder.stop();
+            $('#ai-stop-record').addClass('d-none');
+            $('#ai-start-record').removeClass('d-none');
+            $('#ai-front-recording-chip').remove();
+            if (!$('#ai-front-preview').children().length) $('#ai-front-preview').hide();
+        });
+
+        // Clear memory
+        $('#ai-clear-memory').on('click', function() {
+            if (!confirm('Clear all chat history?')) return;
+            $.post("{{ route('ai-chat.clear') }}", {
+                _token: '{{ csrf_token() }}'
+            }, function(res) {
+                $box.html(
+                    '<div class="text-muted text-center" style="font-size:13px">Chat cleared. Start fresh!</div>'
+                );
+                historyLoaded = false;
+            });
+        });
+    })();
+</script>
 
 </html>

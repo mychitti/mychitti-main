@@ -439,34 +439,37 @@
 
                 <!-- Tasks and Projects -->
                 <div class="staff-dash-content-grid">
-                    <!-- Assigned Tasks -->
-                    <div class="staff-dash-card">
-                        <div class="staff-dash-card-header d-flex justify-content-between">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="staff-dash-icon">✓</span>
-                                <h3 class="mb-0">Assigned Tasks</h3>
+                    @if (hasPermission('task_manage', 'list'))
+                        <!-- Assigned Tasks -->
+                        <div class="staff-dash-card">
+                            <div class="staff-dash-card-header d-flex justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="staff-dash-icon">✓</span>
+                                    <h3 class="mb-0">Assigned Tasks</h3>
+                                </div>
+                                <a href="{{ route('vendor.task.assigned_tasks') }}" class="text-primary">View All</a>
                             </div>
-                            <a href="{{ route('vendor.task.assigned_tasks') }}" class="text-primary">View All</a>
+                            <div class="staff-dash-task-list" id="staffDashTaskList">
+                                @foreach ($assingned_tasks as $key => $task)
+                                    <a href="{{ route('vendor.task.detail', [$task->id]) }}"
+                                        class="staff-dash-task-item text-dark">
+                                        <div class="staff-dash-task-header">
+                                            <div class="staff-dash-task-title">{{ ucfirst($task->title) }}</div>
+                                            <span
+                                                class="staff-dash-badge staff-dash-badge-{{ $task->priority }}">{{ $task->priority }}</span>
+                                        </div>
+                                        <p>{{ $task->description }}</p>
+                                        <div class="staff-dash-task-footer">
+                                            <span class="badge badge-soft-success">{{ $task->status }}</span>
+                                            <span class="staff-dash-due-date">Duration: {{ $task->time_count }}
+                                                {{ $task->time_unit }}</span>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
-                        <div class="staff-dash-task-list" id="staffDashTaskList">
-                            @foreach ($assingned_tasks as $key => $task)
-                                <a href="{{ route('vendor.task.detail', [$task->id]) }}"
-                                    class="staff-dash-task-item text-dark">
-                                    <div class="staff-dash-task-header">
-                                        <div class="staff-dash-task-title">{{ ucfirst($task->title) }}</div>
-                                        <span
-                                            class="staff-dash-badge staff-dash-badge-{{ $task->priority }}">{{ $task->priority }}</span>
-                                    </div>
-                                    <p>{{ $task->description }}</p>
-                                    <div class="staff-dash-task-footer">
-                                        <span class="badge badge-soft-success">{{ $task->status }}</span>
-                                        <span class="staff-dash-due-date">Duration: {{ $task->time_count }}
-                                            {{ $task->time_unit }}</span>
-                                    </div>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
+                    @endif
+                    @if (hasPermission('projects_manage', 'list'))
 
                     <!-- Assigned Projects -->
                     <div class="staff-dash-card">
@@ -509,6 +512,7 @@
                             @endforeach
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -564,7 +568,7 @@
                 })
             );
         @endif
-  
+
         $(document).ready(function() {
             let staffDashIsPunchedIn = @json(_clockedInEmployee() ?? 0);
             let staffDashPunchInTime = @json(_inTime('timestamp') ?? null);

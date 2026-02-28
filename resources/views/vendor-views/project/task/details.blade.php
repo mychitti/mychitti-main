@@ -791,7 +791,7 @@
                         <button class="btn btn-primary reassign_modal_btn" data-id="{{ $task->id }}"
                             data-toggle="modal" data-target="#assignmentModal">Reassign</button>
                         @include('vendor-views.form_modals.assign_task_modal')
-                    @endif
+                    @endif 
 
                 </div>
             </div>
@@ -802,7 +802,7 @@
 
                     @if ($data['quotation'] && $data['quotation']->pdf)
                     @else
-                        <form action="{{ route('vendor.quotation.save-info', [$task->id]) }}" method="post">
+                        <form action="{{ route('vendor.quotation.save-info-task', [$task->id]) }}" method="post">
                             @csrf
                             @include('vendor-views/form_modals/quote_add_modal')
                         </form>
@@ -1205,14 +1205,12 @@
 
                         </div>
                     </div>
-
-
                 </div>
                 <div class="col-md-4">
                     <div class=" card border shadow-sm h-100">
                         <div class="card-header bg-white border-bottom py-3">
                             <div class="w-100 d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold">
+                                <h5 class="mb-0 fw-bold"> 
                                     <i class="tio-timeline me-2"></i>Status Updates
                                 </h5>
                                 <div class="d-flex gap-2 align-items-start">
@@ -1657,9 +1655,9 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body p-0">
+                    <div class="modal-body p-0"> 
                         <form class="w-100 p-0" id="ck_editor_form" enctype="multipart/form-data"
-                            action="{{ route('vendor.documents.service-report.store', ['save', $task->id]) }}"
+                            action="{{ route('vendor.documents.service-report.store-lead', ['save', $task->id]) }}"
                             method="post">
                             @csrf
                             <input type="hidden" name="task_id" value="{{ $task->id }}">
@@ -1686,10 +1684,10 @@
                             <button type="button" class="close close_rr" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-                        </div>
+                        </div>  
                         <div class="modal-body p-1">
                             <form class="w-100 p-0" id="task_form" enctype="multipart/form-data"
-                                action="{{ route('vendor.documents.receivable-receipt.store', ['save', $task->id]) }}"
+                                action="{{ route('vendor.documents.receivable-receipt.store-lead', ['save', $task->id]) }}"
                                 method="post">
                                 @csrf
 

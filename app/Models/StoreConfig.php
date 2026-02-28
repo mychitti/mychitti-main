@@ -10,9 +10,10 @@ class StoreConfig extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'token_prefix',
         'pos_token_template',
-        'store_id',
-        'jurisdiction_statement',
+        'store_id', 
+        'jurisdiction_statement', 
         'signature',
         'invoice_sign_status',
         'jurisdiction_statement_status',
@@ -59,8 +60,7 @@ class StoreConfig extends Model
         'webpage_phones',
         'webpage_latitude',
         'webpage_longitude',
-        'inventory_items_position',
-        'free_trial_consumed'
+        'category_position'
     ];
 
     protected $table;

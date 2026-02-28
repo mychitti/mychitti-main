@@ -40,8 +40,6 @@ class StoreController extends Controller
         return response()->json($stores, 200);
     }
 
-
-
     public function get_nearby_stores(Request $request)
     {
         $radius = 10;
@@ -96,7 +94,7 @@ class StoreController extends Controller
         cos(radians(stores.longitude) - radians(?)) +
         sin(radians(?)) *
         sin(radians(stores.latitude))
-    ))";
+         ))";
 
         $stores = Store::select('stores.*')
             ->leftJoin('categories as c1', 'c1.id', '=', 'stores.category_1')
@@ -474,7 +472,11 @@ class StoreController extends Controller
                 ->where('category_id', $cat->id)
                 ->where('status', 1)
                 ->select('items.id', 'items.name', 'items.description', 'items.image')
-                ->get();
+                ->get()
+                ->map(function ($item) {
+                    $item->image = $item->image ? asset('storage/app/public/product/') . '/' . $item->image : null;
+                    return $item;
+                });
         }
 
         //INVENTORY ITEMS
@@ -493,7 +495,11 @@ class StoreController extends Controller
                 ->where('category_id', $cat->id)
                 ->where('status', 1)
                 ->select('items.id', 'items.name', 'items.description', 'items.image')
-                ->get();
+                ->get()
+                ->map(function ($item) {
+                    $item->image = $item->image ? asset('storage/product/') . '/' . $item->image : null;
+                    return $item;
+                });
         }
         $productdata = $serviceData1->merge($invItemdata); // paginate this 
 
