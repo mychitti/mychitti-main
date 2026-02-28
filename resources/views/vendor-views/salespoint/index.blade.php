@@ -826,7 +826,7 @@
                              {{-- <h4 class="cart-title">Cart</h4> --}}
 
                              <!-- Cart Items -->
-                             <div class="inner_cart" style="max-height: 97px;overflow-y: scroll;"></div>
+                             <div class="inner_cart" ></div>
 
                              <!-- Totals -->
                              <div class="cart-totals">
