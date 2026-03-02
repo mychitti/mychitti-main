@@ -8,7 +8,7 @@
         "php": "^7.3|^8.1",
         "ext-curl": "*",
         "ext-json": "*",
-        "ext-simplexml": "*",
+        "ext-simplexml": "*", 
         "beyondcode/laravel-websockets": "^1.14",
         "brian2694/laravel-toastr": "^5.54",
         "doctrine/dbal": "^3.3",
@@ -20,7 +20,7 @@
         "laravel/passport": "^11.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.5",
-        "laravelpkg/laravelchk": "dev-master",
+
         "league/flysystem-aws-s3-v3": "^3.0",
         "maatwebsite/excel": "^3.1",
         "madnest/madzipper": "*",

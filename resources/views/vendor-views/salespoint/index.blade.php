@@ -680,7 +680,7 @@
                                                          class="menu-item-image img_item_{{ $item->id }}">
                                                      <div class="menu-item-content">
                                                          <div class="menu-item-header">
-                                                             <h5 style="cursor:pointer;"
+                                                             <h5 style="cursor:pointer;font-size: 16px;"
                                                                  onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
                                                                  data-id="{{ $item->id }}"
                                                                  class="menu-item-title item_name two-line-ellipsis ">
@@ -771,6 +771,7 @@
                      <form action="{{ route('vendor.pos.token-generate') }}" method="post" class="cart_form"
                          id="cartForm">
                          @csrf
+                         <input type="hidden" name="x_client" id="x_client_input" value="">
                          <input type="hidden" name="branch_id" value="{{ $branch_id ?? 0 }}">
 
                          {{-- <div class="d-flex align-items-center mb-3 bg-light p-2 shadow border flex-wrap">
@@ -1101,17 +1102,23 @@
      </script>
 
      <script>
-         @if (session('pdf_url'))
-             printInvoice("{{ session('pdf_url') }}")
-         @endif
-         function printInvoice(url) {
-             window.ReactNativeWebView.postMessage(
-                 JSON.stringify({
-                     type: 'PRINT_INVOICE',
-                     url: url
-                 })
-             );
+         function printInvoice(url) { 
+             if (window.ReactNativeWebView) {
+                 window.ReactNativeWebView.postMessage(
+                     JSON.stringify({
+                         type: 'PRINT_INVOICE',
+                         url: url
+                     })
+                 );
+             } else {
+                 window.open(url, '_blank');
+             }
          }
+         @if (session('pdf_url'))
+             document.addEventListener('DOMContentLoaded', function() {
+                 printInvoice("{{ session('pdf_url') }}");
+             });
+         @endif
      </script>
      @if ($data['category_position'] == 'sidenav')
          <script>
@@ -1148,23 +1155,22 @@
          togglePaymentMethodDetails();
 
          function syncCashOnlineSplit() {
-             const total = parseFloat($('.price-display').first().text().replace(/[^0-9.]/g, '')) || 0;
+             const total = parseFloat($('.total_show').text().replace(/[^0-9.]/g, '')) || 0;
              const cash = parseFloat($('#cash_amount_input').val()) || 0;
              $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
          }
 
          $(document).on('input', '#cash_amount_input', function() {
-             const total = parseFloat($('.price-display').first().text().replace(/[^0-9.]/g, '')) || 0;
+             const total = parseFloat($('.total_show').text().replace(/[^0-9.]/g, '')) || 0;
              let cash = parseFloat($(this).val()) || 0;
              if (cash > total) {
                  cash = total;
-                 $(this).val(cash);
+                 $(this).val(cash.toFixed(2));
              }
              $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
          });
 
          $('.order-btn').on('click', function() {
-             console.log('fd')
              let orderType = $('input[class="order_type"]:checked').val();
 
              if (orderType === 'dine_in') {
@@ -1186,7 +1192,8 @@
                  $('.order_type[value="take_away"]').prop('checked', true);
                  $("#dineInPanel").hide();
                  {{-- $(".inner_cart").hide(); --}}
-                 $("#cartForm").submit();
+                 $('#x_client_input').val(window.ReactNativeWebView ? 'app' : 'web');
+                $("#cartForm").submit();
              } else {
                  toastr.error('Please add atleast one item');
              }
@@ -1326,6 +1333,11 @@
              $(".subtotal_show").text(subtotal.toFixed(3));
              $(".delivery_gst_amount").text(delivery_gst_amount.toFixed(3));
              $(".total_show").text(total.toFixed(3));
+
+             // keep Cash + Online split in sync whenever totals change
+             if ($('input[name="payment_method"]:checked').val() === 'cash_online') {
+                 syncCashOnlineSplit();
+             }
 
          }
          $(".pos_search").on("keyup", function() {

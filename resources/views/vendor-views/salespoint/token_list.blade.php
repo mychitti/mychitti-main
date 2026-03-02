@@ -49,6 +49,17 @@
                         <option {{ request()->payment_method == 'upi' ? 'selected' : '' }} value="upi">UPI</option>
                     </select>
 
+                    @if (!empty($upiAccounts) && $upiAccounts->count() > 0)
+                        <select class="form-control mx-1 js-select2-custom" name="upi_account_id" onchange="this.form.submit()">
+                            <option value="all" {{ request()->upi_account_id == 'all' || !request()->upi_account_id ? 'selected' : '' }}>All UPI IDs</option>
+                            @foreach ($upiAccounts as $upi)
+                                <option value="{{ $upi->id }}" {{ request()->upi_account_id == $upi->id ? 'selected' : '' }}>
+                                    {{ $upi->upi_id }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @endif
+
                     @if (auth('vendor')->check())
                         <select class="form-control mx-1 js-select2-custom" name="branch" onchange="this.form.submit()">
                             <option {{ request()->branch == 'all' ? 'selected' : '' }} value="all">All Branches
@@ -97,6 +108,7 @@
                                 <th class="border-0 ">Client</th>
                                 <th class="border-0 ">Total</th>
                                 <th class="border-0 ">Payment Method</th>
+                                <th class="border-0 ">UPI ID</th>
                                 <th class="border-0 ">Payment Status</th>
                                 <th class="border-0 ">Order Type</th>
                                 <th class="border-0 ">Created At</th>
@@ -139,6 +151,9 @@
                                                     class="badge badge-info">{{ ucfirst($token->payment_method) }}</span>
                                             @endif
                                         </a>
+                                    </td>
+                                    <td>
+                                        {{ $token->upiAccount->upi_id ?? '—' }}
                                     </td>
                                     <td>
                                         @if ($token->payment_status == 'paid')

@@ -34,9 +34,9 @@ class VendorTokenIsValid
             return response()->json([
                 'errors' => $errors
             ], 403);
-        }
+        } 
         $vendor_type= $request->header('vendorType');
-        if($vendor_type == 'owner'){
+        if($vendor_type == 'owner'){ 
             $vendor = Vendor::where('auth_token', $token)->first();
             if(!isset($vendor))
             {
@@ -47,6 +47,13 @@ class VendorTokenIsValid
                 ], 401);
             }
             $request['vendor']=$vendor;
+            if ($vendor->stores->isEmpty()) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'no-store', 'message' => 'No store is assigned to this vendor.']
+                    ]
+                ], 403);
+            }
             Config::set('module.current_module_data', $vendor->stores[0]->module);
         }elseif($vendor_type == 'employee'){
             $vendor = VendorEmployee::where('auth_token', $token)->first();
@@ -60,6 +67,13 @@ class VendorTokenIsValid
             }
             $request['vendor']=$vendor->vendor;
             $request['vendor_employee']=$vendor;
+            if (!$vendor->vendor || $vendor->vendor->stores->isEmpty()) {
+                return response()->json([
+                    'errors' => [
+                        ['code' => 'no-store', 'message' => 'No store is assigned to this vendor employee.']
+                    ]
+                ], 403);
+            }
             Config::set('module.current_module_data', $vendor->vendor->stores[0]->module);
         }
         return $next($request);

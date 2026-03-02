@@ -69,7 +69,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use MatanYadaev\EloquentSpatial\Objects\Point;
-use Laravelpkg\Laravelchk\Http\Controllers\LaravelchkController;
+
 use Smalot\PdfParser\Parser;
 use Illuminate\Support\Facades\File;
 use Mpdf\Mpdf;
@@ -3638,16 +3638,19 @@ class Helpers
     public static function store_data_formatting_limited($data, $multi_data = false)
     {
         $storage = [];
-        if ($multi_data == true) {
+        $baseUrl = asset('storage/store') . '/';
+        if ($multi_data == true) { 
             foreach ($data as $item) {
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 // $item['positive_rating'] = $ratings['positive_rating'];
-
+                $item['logo'] = $item['logo'] ? $baseUrl . $item['logo'] : null;
+                $item['cover_photo'] = $item['cover_photo'] ? $baseUrl . '/cover/'. $item['cover_photo'] : null;
                 array_push($storage, $item);
             }
-            $data = $storage; 
+            $data = $storage;
         } else {
-
+            $data['logo'] = $data['logo'] ? $baseUrl . $data['logo'] : null;
+            $data['cover_photo'] = $data['cover_photo'] ? $baseUrl .  'cover/'.  $data['cover_photo'] : null;
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
             // unset($data['rating']);
             $data['avg_rating'] = $ratings['rating'];
@@ -4626,7 +4629,7 @@ class Helpers
             $data = ["status" => "0", "message" => "", 'translations' => []];
         }
 
-        if ($data) {
+        if ($data) { 
             if ($data['status'] == 0) {
                 return 0;
             }
@@ -4638,7 +4641,7 @@ class Helpers
 
     public static function send_order_place_notification($order)
     {
-        $fcm_token = User::find($order->user_id)->cm_firebase_token;
+        $fcm_token = User::find($order->user_id)?->cm_firebase_token; 
         $value = self::order_status_update_message($order->order_status, 'ecommerce', 'en');
         $value = self::text_variable_data_format(value: $value, store_name: $order->store?->name, order_id: $order->id, user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}", delivery_man_name: "{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
         $data = [
@@ -4652,7 +4655,7 @@ class Helpers
     }
     public static function send_order_status_notification($order)
     {
-        $fcm_token = User::find($order->user_id)->cm_firebase_token;
+        $fcm_token = User::find($order->user_id)?->cm_firebase_token;
         $value = self::order_status_update_message($order->order_status, 'ecommerce', 'en');
         $value = self::text_variable_data_format(value: $value, store_name: $order->store?->name, order_id: $order->id, user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}", delivery_man_name: "{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
         $data = [
@@ -5634,12 +5637,7 @@ class Helpers
         return $envValue;
     }
 
-    public static function requestSender()
-    {
-        $class = new LaravelchkController();
-        $response = $class->actch();
-        return json_decode($response->getContent(), true);
-    }
+
 
     public static function insert_business_settings_key($key, $value = null)
     {

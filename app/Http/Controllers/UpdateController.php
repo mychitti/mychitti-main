@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\Store;
-use App\Models\DataSetting;
+use App\Models\DataSetting; 
 
 ini_set('max_execution_time', 180);
 
@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use App\Models\EmailTemplate;
 use App\CentralLogics\Helpers;
 use App\Models\BusinessSetting;
-use App\Traits\ActivationClass;
+
 use Illuminate\Support\Facades\DB;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Filesystem\Filesystem;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class UpdateController extends Controller
 {
-    use ActivationClass;
+
 
     public function update_software_index()
     {
@@ -45,9 +45,7 @@ class UpdateController extends Controller
 
         // $data = Helpers::requestSender();
         // if (!$data['active']) {
-        if (!$this->actch()) {
-            return redirect(base64_decode('aHR0cHM6Ly82YW10ZWNoLmNvbS9zb2Z0d2FyZS1hY3RpdmF0aW9u'));
-        }
+
 
         Artisan::call('migrate', ['--force' => true]);
         $previousRouteServiceProvier = base_path('app/Providers/RouteServiceProvider.php');

@@ -7,7 +7,7 @@ return [
     /*
     |--------------------------------------------------------------------------
     | Application Name
-    |--------------------------------------------------------------------------
+    |-------------------------------------------------------------------------- 
     |
     | This value is the name of your application. This value is used when the
     | framework needs to place the application's name in a notification or
@@ -178,7 +178,7 @@ return [
         App\Providers\RouteServiceProvider::class,
         // Grimzy\LaravelMysqlSpatial\SpatialServiceProvider::class,
         App\Providers\ConfigServiceProvider::class,
-        Laravelpkg\Laravelchk\LaravelchkServiceProvider::class,
+        // Laravelpkg\Laravelchk\LaravelchkServiceProvider::class, // removed - 6amtech activation
         // FruitCake\Cors\CorsServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
         InterfaceServiceProvider::class

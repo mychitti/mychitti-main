@@ -1,0 +1,405 @@
+# 📊 Full Project Report — `mychitti-main`
+
+> **Generated:** 2 March 2026 | **Platform:** Laravel 10 | **Type:** Multi-Vendor SaaS Marketplace
+
+---
+
+## 1. Project Overview
+
+**mychitti-main** is a large-scale, multi-vendor SaaS marketplace platform built on **Laravel 10**. It supports multiple business verticals (food delivery, grocery, pharmacy, parcel, eCommerce, services) all within a single codebase, distinguished by a **zone + module** architecture. It includes portals for Admins, Vendors/Stores, Delivery Men, and Customers, exposed via both a web panel and a REST API layer.
+
+---
+
+## 2. Technology Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend Framework** | Laravel 10 (PHP ^7.3 / ^8.1) |
+| **Database** | MySQL (via Eloquent ORM + Spatial support) |
+| **Authentication** | Laravel Passport (OAuth2), Firebase JWT |
+| **Real-time** | Laravel WebSockets (Pusher-compatible), Pusher PHP Server |
+| **File Storage** | Local disk, AWS S3 (Flysystem v3), Cloudflare R2 |
+| **Task Queue** | Sync (configurable) / Laravel Queues |
+| **Email** | SMTP via Laravel Mail + 30+ email templates |
+| **Package Manager** | Composer (PHP), npm (JS/CSS assets) |
+| **Bundler** | Laravel Mix (webpack.mix.js) |
+| **Geospatial** | `matanyadaev/laravel-eloquent-spatial` |
+| **PDF Generation** | mPDF |
+| **Excel Import/Export** | Maatwebsite Excel, Rap2hpoutre Fast Excel |
+| **Image Processing** | Intervention Image |
+| **CAPTCHA** | Gregwar CAPTCHA |
+| **Module System** | nwidart/laravel-modules |
+
+---
+
+## 3. Architecture
+
+### 3.1 Folder Structure
+
+```
+mychitti-main/
+├── app/
+│   ├── AI/                  # AI agents & factory
+│   ├── CentralLogics/       # Core business logic helpers (13 files)
+│   ├── Console/             # Scheduled commands & artisan commands
+│   ├── Contracts/           # 26 interfaces/contracts
+│   ├── DTOs/                # Data Transfer Objects
+│   ├── Enums/               # 26 enum definitions
+│   ├── Events/              # Event classes
+│   ├── Exports/             # 82 Excel export classes
+│   ├── Http/
+│   │   ├── Controllers/     # 262 controllers
+│   │   │   ├── Admin/       # 88 admin panel controllers
+│   │   │   ├── Vendor/      # 78 vendor panel controllers
+│   │   │   ├── Api/         # 52 REST API controllers
+│   │   │   └── Front/       # 13 public web controllers
+│   │   ├── Middleware/      # 35 middleware
+│   │   └── Requests/        # 37 form request validators
+│   ├── Imports/             # 11 Excel import classes
+│   ├── Jobs/                # 7 queue jobs
+│   ├── Library/             # Constants, helpers, responses (9 files)
+│   ├── Mail/                # 30 mailable classes
+│   ├── Models/              # 250+ Eloquent models
+│   ├── Repositories/        # 23 repository classes
+│   ├── Services/            # 20 service classes (including AI)
+│   ├── Traits/              # 10 reusable traits
+│   └── Utils/               # Language, settings, constants utilities
+├── database/
+│   ├── migrations/          # 131 migration files (2022–2026)
+│   ├── seeders/             # 10 seeders
+│   └── factories/           # 8 factories
+├── routes/
+│   ├── admin.php            # Admin panel routes (~89 KB)
+│   ├── vendor.php           # Vendor panel routes (~107 KB)
+│   ├── vendor_employee.php  # Vendor employee routes (~107 KB)
+│   ├── web.php              # Public web routes (~28 KB)
+│   └── api/                 # REST API routes (split files)
+├── resources/               # Views, JS, CSS (1182 files)
+├── public/                  # Static assets (2491 files)
+├── Modules/                 # nwidart modular features
+└── config/                  # 28 config files
+```
+
+### 3.2 Multi-Portal System
+
+| Portal | Route File | Controllers |
+|---|---|---|
+| Admin Panel | [routes/admin.php](file:///d:/Work%20Projects/mychitti-main/routes/admin.php) | `Http/Controllers/Admin/` (88 files) |
+| Vendor Panel | [routes/vendor.php](file:///d:/Work%20Projects/mychitti-main/routes/vendor.php) | `Http/Controllers/Vendor/` (78 files) |
+| Vendor Employee | [routes/vendor_employee.php](file:///d:/Work%20Projects/mychitti-main/routes/vendor_employee.php) | Shared with Vendor |
+| REST API | `routes/api/` | `Http/Controllers/Api/` (52 files) |
+| Public Web | `routes/web.php` | `Http/Controllers/Front/` (13 files) |
+| Install Wizard | `routes/install.php` | `InstallController.php` |
+
+---
+
+## 4. Core Features
+
+### 4.1 Order & Delivery Management
+- Full order lifecycle: placement → acceptance → preparation → delivery → completion
+- Order types: standard, parcel, prescription/pharmacy, POS, guest orders
+- Delivery man assignment, tracking, history, and vehicle management (`DMVehicle`)
+- Order refund system with configurable refund reasons
+- Partial payment support, service charge, tips, cutlery options
+- Real-time order delivery history tracking
+
+### 4.2 Store / Vendor Management
+- Multi-store, multi-zone setup
+- Store scheduling, shifts, holidays, holiday overrides
+- Store galleries, documents, signatures, announcements
+- Vendor subscriptions & subscription plan requests
+- Store wallets, daily balance, bank accounts & transactions
+- Vendor ledger entries, store accounts, disbursements
+- Store teams and team members
+
+### 4.3 Product / Menu Item Management
+- Hierarchical categories with slugs, SEO, banners
+- Items with variations, add-ons, attributes, tags, FAQs, area keywords
+- Flash sales and item campaigns
+- Pharmacy-specific item details
+- Bulk item import/export (Excel)
+- Temp product staging system
+
+### 4.4 Customer Management
+- User registration, social login (`laravel/socialite`), phone verification
+- Customer wallet, loyalty points, referral code system
+- Wishlists, cart management (database-persisted), recent searches
+- Customer addresses with geospatial support
+- Guest checkout support
+
+### 4.5 Marketing & Promotions
+- Coupon system (admin + vendor created)
+- Flash sales (global & store-level)
+- Item campaigns, campaign stores
+- Wallet bonuses (configurable rules)
+- Offer banners, module-wise banners
+- Admin promotional banners, testimonials, admin features/criteria
+
+### 4.6 Reporting & Analytics
+- Large `ReportController.php` (~188 KB) covering:
+  - Revenue reports, order reports, expense reports
+  - Delivery man reports, disbursement reports
+  - Loyalty point reports, wallet reports
+  - Sales statistics, store-wise analytics
+- DashboardController with comprehensive KPI aggregation (~74 KB)
+- Excel export for most report types
+
+### 4.7 Zone & Module System
+- Geographic zones with polygon-based boundaries
+- Module types (food, grocery, pharmacy, parcel, eCommerce, shops)
+- Module-zone assignments, zone-based payment method toggles
+- Maximum COD order amount per zone
+- Module-wise banners, why-choose sections
+
+### 4.8 POS (Point of Sale)
+- `POSController.php` (~38 KB) for in-store orders
+- POS tokens and POS token items
+- Integrated with the order pipeline
+
+### 4.9 Inventory Management
+- Inventory items, orders, order details, gate passes
+- Branch inventory, inventory reports, supply orders
+- Storage units, purchase orders, return purchase slips
+
+### 4.10 HR / Employee Management
+- Attendance tracking, time cards
+- Salary management, leave management
+- Employee roles, temporary employees
+- Advance requests, gate passes (employee)
+- Holiday management, department management
+
+### 4.11 Accounting & Finance
+- Ledger accounts and account types
+- Accounts, account transactions, account detail options
+- Day books, cash books, expenses
+- Manual invoices, invoice items, invoice configuration
+- Receivable receipts, disbursements, withdrawal methods
+
+### 4.12 Lead & Service Management
+- `LeadOrder`, `LeadOrderDetail`, `LeadStatus`, `LeadsDistribution`
+- Service requests, service invoices, accepted service requests
+- Quotations, quotation details, service coupons
+- Service notifications, service reports
+- Common service issues, in-service quotations
+
+### 4.13 Conversations & Messaging
+- Real-time chat via WebSockets
+- Conversations between users and vendors
+- Message model with file support
+- `ConversationController` in admin panel
+
+### 4.14 Website / CMS Settings
+- `BusinessSettingsController.php` (~330 KB) — master settings controller
+- Blog system (BlogCategory, BlogPost)
+- SEO content, social media links, newsletter
+- Contact forms, react/flutter special criteria
+- `claudeai_webpage_settings/` — UI config for Claude AI landing pages
+- `sitemap.xml` (42 KB)
+
+### 4.15 Notification System
+- Database notifications (UserNotification, InAppNotification, ServiceNotification)
+- Push notifications via Firebase (`firebase-messaging-sw.js`, `service-account-key.json`)
+- Notification messages and templates
+
+### 4.16 Multi-language Support
+- `LanguageController`, `Translation` model
+- `app/Utils/language.php` utilities
+- `current_language_key` stored per user
+
+---
+
+## 5. AI & Intelligent Features
+
+### 5.1 AI Chat System
+- `AIChatMessage` model (messages stored per admin, with summarization flag)
+- `Summary` model (rolling message summaries for memory efficiency)
+- `AdminMemory` model (persistent key-value memory per admin)
+- `AIChatController` in the admin panel
+
+### 5.2 AI Services
+| Service | File | Description |
+|---|---|---|
+| `ClaudeService` | `Services/ClaudeService.php` | Anthropic Claude API integration (8 KB) |
+| `OpenAIService` | `Services/OpenAIService.php` | OpenAI API integration (7.7 KB) |
+| `AiServiceClient` | `Services/AiServiceClient.php` | Generic AI client abstraction (5.6 KB) |
+| `MemoryService` | `Services/MemoryService.php` | Context memory management (7.6 KB) |
+
+### 5.3 Agent System
+- `AgentFactory`, `AgentTask`, `AgentFunction`, `AgentRunLog`, `AgentVersion`, `AgentApiTool` models
+- `AIAgentSkillController.php` in Admin (~12 KB)
+- Agent Tasks, Function Registration, Run Logging
+
+### 5.4 System Prompts
+- `SystemPrompt` model (3.2 KB)
+- `SystemPromptController.php` for managing admin-side AI system prompts
+- `AiProvider` model for multi-provider support
+
+---
+
+## 6. Payment Gateways
+
+| Gateway | Controller |
+|---|---|
+| PayPal | `PaypalPaymentController.php` |
+| Stripe | `StripePaymentController.php` |
+| Razorpay | `RazorPayController.php` |
+| Flutterwave | `FlutterwaveV3Controller.php` |
+| Paystack | `PaystackController.php` |
+| Bkash | `BkashPaymentController.php` |
+| Paytm | `PaytmController.php` |
+| Paymob | `PaymobController.php` |
+| Paytabs | `PaytabsController.php` |
+| MercadoPago | `MercadoPagoController.php` |
+| LiqPay | `LiqPayController.php` |
+| SenangPay | `SenangPayController.php` |
+| SslCommerz | `SslCommerzPaymentController.php` |
+| Xendit | via `xendit/xendit-php` package |
+| Offline Payments | `OfflinePaymentMethodController.php` |
+| Wallet Payments | `WalletPayment` model |
+
+> **16 payment methods** supported (online + offline + wallet)
+
+---
+
+## 7. Database Overview
+
+### 7.1 Migration Timeline
+- **131 total migrations** from `2022-03` to `2026-02`
+- Active development through early 2026
+
+### 7.2 Key Table Groups
+
+| Group | Tables (examples) |
+|---|---|
+| **Users & Auth** | users, admins, vendor_employees, delivery_men, guests, phone_verifications |
+| **Orders** | orders, order_details, order_transactions, order_payments, order_cancel_reasons, order_references |
+| **Items** | items, item_campaigns, flash_sales, flash_sale_items, add_ons, attributes, tags |
+| **Stores** | stores, store_configs, store_schedules, store_wallets, store_teams |
+| **Zones & Modules** | zones, modules, module_zones, module_wise_banners |
+| **Payments** | wallet_transactions, offline_payments, disbursements, withdraw_requests |
+| **AI** | a_i_chat_messages, summaries, admin_memories, agent_tasks, agent_functions, agent_run_logs, agent_versions, agent_api_tools |
+| **HR / Finance** | attendance, salaries, leaves, expenses, account_transactions, day_books |
+| **Inventory** | inventory_items, inventory_orders, inventory_gatepasses, supply_orders |
+| **CMS** | business_settings, banners, data_settings, email_templates, seo_contents |
+| **Communication** | conversations, messages, notifications, user_notifications |
+
+---
+
+## 8. Key Configuration Files
+
+| File | Purpose |
+|---|---|
+| `composer.json` | PHP dependencies (38 packages) |
+| `package.json` | JS/CSS build dependencies |
+| `webpack.mix.js` | Laravel Mix asset compilation |
+| `phpunit.xml` | PHPUnit test configuration |
+| `.htaccess` | Apache URL rewriting rules |
+| `.env` / `.env.example` | Environment configuration |
+| `config/` (28 files) | App, cache, database, mail, queue, websockets configs |
+| `modules_statuses.json` | nwidart module enable/disable status |
+| `firebase-messaging-sw.js` | Firebase push notification service worker |
+| `service-account-key.json` | Firebase service account credentials |
+
+---
+
+## 9. Autoloaded Helper Files
+
+The following files are autoloaded globally via `composer.json`:
+
+| File | Domain |
+|---|---|
+| `app/CentralLogics/banner.php` | Banner logic |
+| `app/CentralLogics/category.php` | Category logic |
+| `app/CentralLogics/campaign.php` | Campaign logic |
+| `app/CentralLogics/item.php` | Item/product logic |
+| `app/CentralLogics/store.php` | Store logic |
+| `app/CentralLogics/helpers.php` | General helpers |
+| `app/CentralLogics/customer.php` | Customer logic |
+| `app/CentralLogics/order.php` | Order logic |
+| `app/CentralLogics/coupon.php` | Coupon logic |
+| `app/CentralLogics/sms_module.php` | SMS helpers |
+| `app/CentralLogics/filemanager.php` | File manager helpers |
+| `app/helpers.php` | Global helpers (~190 KB) |
+| `app/Library/Constants.php` | App constants |
+| `app/Library/Responses.php` | API response helpers |
+| `app/Utils/language.php` | Language utilities |
+| `app/Utils/settings.php` | Settings utilities |
+| `app/Utils/constant.php` | Utility constants |
+
+---
+
+## 10. Middleware Layer (35 Middleware)
+
+Managed via `app/Http/Kernel.php`. Includes custom middleware for:
+- Admin, Vendor, and Delivery Man authentication guards
+- API token validation
+- Locale / language switching
+- Role-based access control
+
+---
+
+## 11. Scheduled Jobs & Commands
+
+- `app/Console/` has **7 command files**
+- `CronController.php` (~40 KB) handles complex cron-driven business logic
+- Jobs: 7 queue job classes (email, notifications, AI processing)
+
+---
+
+## 12. Testing
+
+| Asset | Detail |
+|---|---|
+| Test Framework | PHPUnit ^10.0 |
+| Test Directory | `tests/` (4 files) |
+| Config | `phpunit.xml` |
+| Dev Tools | `barryvdh/laravel-debugbar`, `spatie/laravel-ignition` |
+
+> Testing coverage is minimal; the project primarily relies on manual/integration testing.
+
+---
+
+## 13. Deployment Notes
+
+- `code_backup.sh` — Script to backup codebase
+- `db_backup.sh` — Script to backup database
+- `cloudflare_r2_setup.php` — Cloudflare R2 setup helper
+- `installation/` — Self-hosted installation wizard (13 files)
+- `.github/` — GitHub Actions CI/CD workflows
+- `php.ini` / `.user.ini` — Server PHP config overrides
+- `robots.txt`, `sitemap.xml` — SEO assets
+
+---
+
+## 14. Highlights & Scale
+
+| Metric | Count |
+|---|---|
+| PHP Models | 250+ |
+| Database Migrations | 131 |
+| Controllers | 262 (across all portals) |
+| Admin Controllers | 88 |
+| Vendor Controllers | 78 |
+| API Controllers | 52 |
+| Services | 20 |
+| Middleware | 35 |
+| Mail Classes | 30 |
+| Excel Export Classes | 82 |
+| Payment Gateways | 16 |
+| Route Files | 16+ |
+| Public Assets | 2,491 files |
+| Resources (views/JS/CSS) | 1,182 files |
+
+---
+
+## 15. Summary
+
+**mychitti-main** is a production-grade, enterprise-level multi-vendor marketplace platform. Its key differentiators include:
+
+- **Multi-module business verticals** (food, grocery, pharmacy, parcel, eCommerce, services)
+- **Multi-zone geographic delivery** with polygon-based zone boundaries and spatial queries
+- **16 payment gateways** for global market coverage
+- **Built-in AI chat & agent system** using Claude and OpenAI APIs, with memory and summary management
+- **Comprehensive admin + vendor + delivery man portals** with role-based access control
+- **Full HR, Inventory, and Accounting modules** within the same platform
+- **SaaS-ready** with vendor subscription management, plan billing, and installation wizard

@@ -249,11 +249,11 @@ class SalespointController extends Controller
             $branch_id = $branch ? $branch->id : 0;
         }
         // }
-        $inventoryItems->where('bi.branch_id', $branch_id); 
+        $inventoryItems->where('bi.branch_id', $branch_id);
 
         if ($request->filled('category')) {
             $inventoryItems->where('ii.category_id', $request->category);
-        } 
+        }
 
         $inventoryItems = $inventoryItems->select(
             'ii.id',
@@ -461,7 +461,7 @@ class SalespointController extends Controller
             //     $branch_id = Helpers::get_loggedin_user()->branch_id;
             // }
             $itemQuery->where('b.id', $branch_id);
-            // prx(                $branch_id);
+            // prx($branch_id);
             $itemRow = (clone $itemQuery)
                 ->select('bi.*')
                 ->first();
@@ -623,15 +623,13 @@ class SalespointController extends Controller
             }
         }
         session()->flash('clear_cart', true);
-        // prx($data); 
         if (isset($data['success']) && $data['success']) {
-            $isApp = request()->header('X-Client') === 'app';
-
-            if ($isApp) {
+            $isApp = request()->header('X-Client') === 'app' || request()->input('x_client') === 'app';
+         
+            if ( $isApp) {
                 return redirect()->back()->with('pdf_url', $data['url']);
             } else {
-                return redirect()->to($data['url']);
-                // return redirect()->to($data['url']);
+                return redirect()->to($data['url']); 
             }
         } else {
             Toastr::error("Failed to generate POS token");
@@ -961,7 +959,7 @@ class SalespointController extends Controller
             $request->validate(['payment_detail_id_upi' => 'required|integer']);
         }
 
-        $store_id = Helpers::get_store_id(); 
+        $store_id = Helpers::get_store_id();
         $token = PosToken::findOrFail($request->token_id);
         $token->payment_method = $request->payment_method;
         if ($request->payment_method === 'bank') {
@@ -1080,10 +1078,14 @@ class SalespointController extends Controller
         $from = $range['start']->toDateString();
         $to  = $range['end']->toDateString();
         $paymentMethod = $request->payment_method ?? null;
+        $upiAccountFilter = $request->upi_account_id ?? null;
 
-        $query =  PosToken::with('client', 'invoice')
+        $query =  PosToken::with('client', 'invoice', 'upiAccount')
             ->when($paymentMethod && $paymentMethod !== 'all', function ($q) use ($paymentMethod) {
                 $q->where('payment_method', $paymentMethod);
+            })
+            ->when($upiAccountFilter && $upiAccountFilter !== 'all', function ($q) use ($upiAccountFilter) {
+                $q->where('upi_account_id', $upiAccountFilter);
             })
             ->where('store_id', Helpers::get_store_id());
         if ($request->has('search') && $request->search != '') {
@@ -1100,9 +1102,15 @@ class SalespointController extends Controller
         }
 
         $branches = Branch::where('store_id', Helpers::get_store_id())->get();
+        $upiAccounts = AccountDetail::where('user_type', 'vendor')
+            ->where('user_id', Helpers::get_store_id())
+            ->where('type', 'pos')
+            ->where('payment_type', 'upi')
+            ->orderByDesc('id')
+            ->get();
 
         $tokens = $query->orderBy('id', 'desc')->paginate(50);
-        return view('vendor-views.salespoint.token_list', compact('branches', 'preset', 'tokens'));
+        return view('vendor-views.salespoint.token_list', compact('branches', 'preset', 'tokens', 'upiAccounts'));
     }
     public function calendar_export(Request $request)
     {

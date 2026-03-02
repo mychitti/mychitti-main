@@ -500,7 +500,6 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-         prx('fds');
         $request->validate([
             'title' => 'required',
             'customer' => 'required_without:project_id',

@@ -81,13 +81,13 @@ class ReportController extends Controller
             })
             ->when(request('module_id'), function ($query) {
                 return $query->module(request('module_id'));
-            })
+            }) 
             ->when(isset($from) && isset($to) && $from != null && $to != null && $filter == 'custom', function ($query) use ($from, $to) {
                 return $query->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
             })
             ->when(isset($filter) && $filter == 'this_year', function ($query) {
                 return $query->whereYear('created_at', now()->format('Y'));
-            })
+            }) 
             ->when(isset($filter) && $filter == 'this_month', function ($query) {
                 return $query->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
             })
@@ -106,7 +106,7 @@ class ReportController extends Controller
             return $query->where('zone_id', $zone->id);
         })
                         ->when(isset($key), function ($query) use ($key) {
-                    return $query->where(function ($q) use ($key) {
+                    return $query->where(function ($q) use ($key) { 
                             foreach ($key as $value) {
                                 $q->orWhere('order_id', 'like', "%{$value}%");
                             }

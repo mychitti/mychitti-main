@@ -15,7 +15,7 @@ class CustomerLogic
 
     public static function create_wallet_transaction($user_id, float $amount, $transaction_type, $referance)
     {
-        if (BusinessSetting::where('key', 'wallet_status')->first()->value != 1) return false;
+        if ((BusinessSetting::where('key', 'wallet_status')->first()->value ?? 0) != 1) return false;
         $user = User::find($user_id);
         $current_balance = $user->wallet_balance;
 
@@ -34,16 +34,16 @@ class CustomerLogic
             if ($transaction_type == 'add_fund') {
                 $admin_bonus = self::calculate_wallet_bonus($amount);
                 $wallet_transaction->admin_bonus = $admin_bonus;
-            } else if ($transaction_type == 'loyalty_point') {
+            } else if ($transaction_type == 'loyalty_point') { 
 
-                $check_loyalty_point_exchange_rate = (int) BusinessSetting::where('key', 'loyalty_point_exchange_rate')->first()->value;
+                $check_loyalty_point_exchange_rate = (int) (BusinessSetting::where('key', 'loyalty_point_exchange_rate')->first()->value ?? 0);
 
                 if($check_loyalty_point_exchange_rate == 0){
                     
-                    $credit = (int)($amount / 1);
+                    $credit = (int)($amount / 1); 
                 }
                 else{
-                    $credit = (int)($amount / BusinessSetting::where('key', 'loyalty_point_exchange_rate')->first()->value);
+                    $credit = (int)($amount / max(1, (int)(BusinessSetting::where('key', 'loyalty_point_exchange_rate')->first()->value ?? 1)));
                 }
             }
         } else if ($transaction_type == 'order_place') {
@@ -75,7 +75,7 @@ class CustomerLogic
             DB::rollback();
 
             return false;
-        }
+        } 
         return false;
     }
 

@@ -12,7 +12,7 @@ class PosToken extends Model
     'payment_status',
   ];
 
-  public function tokenItems()
+  public function tokenItems() 
   {
     return $this->hasMany(PosTokenItem::class, 'token_id', 'id');
   }
@@ -27,5 +27,9 @@ class PosToken extends Model
   public function invoice()
   {
     return $this->belongsTo(ManualInvoice::class, 'invoice_table_id', 'id');
+  }
+  public function upiAccount()
+  {
+    return $this->belongsTo(AccountDetail::class, 'upi_account_id', 'id');
   }
 }
