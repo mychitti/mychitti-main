@@ -29,7 +29,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 
 
-    Route::group(['prefix' => 'banners'], function () {
+    Route::group(['prefix' => 'banners'], function () { 
         Route::get('offer/{store_id}', 'BannerController@get_offer_banners');
         Route::get('default', 'BannerController@get_default_banners');
         Route::get('category-banner/{id}', 'BannerController@category_banners');
@@ -523,6 +523,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     });
     Route::get('vehicle/extra_charge', 'ConfigController@extra_charge');
     Route::get('get-vehicles', 'ConfigController@get_vehicles');
+
+    // AI Chatbot
+    Route::group(['prefix' => 'chatbot'], function () {
+        Route::post('message', 'ChatbotController@message');
+    });
 });
 
 WebSocketsRouter::webSocket('/delivery-man/live-location', DMLocationSocketHandler::class);

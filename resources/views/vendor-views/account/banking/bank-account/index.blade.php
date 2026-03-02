@@ -411,7 +411,7 @@
                                 </div>
 
                                 <div class="info-row"> 
-                                    <span class="info-label">Bala nce Amt-</span>
+                                    <span class="info-label">Balance Amt-</span>
                                     <span class="info-value amount-green">{{ $account_last_txn?->closing_balance }}</span>
                                 </div>
                             </div>
