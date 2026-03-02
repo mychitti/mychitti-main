@@ -410,7 +410,7 @@
                                         class="info-value amount-red">{{ $account_last_txn?->type == 'debit' ? $account_last_txn?->amount : 0 }}</span>
                                 </div>
 
-                                <div class="info-row">
+                                <div class="info-row"> 
                                     <span class="info-label">Bala nce Amt-</span>
                                     <span class="info-value amount-green">{{ $account_last_txn?->closing_balance }}</span>
                                 </div>
