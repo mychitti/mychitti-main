@@ -395,24 +395,24 @@
 
                                 <div class="info-row">
                                     <span class="info-label">Last up dated</span>
-                                    <span class="info-value">{{ $last_txn?->created_at }}</span>
+                                    <span class="info-value">{{ $account_last_txn?->created_at }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Deposit Amt-</span>
                                     <span
-                                        class="info-value amount-green">{{ $last_txn?->type == 'credit' ? $last_txn?->amount : 0 }}</span>
+                                        class="info-value amount-green">{{ $account_last_txn?->type == 'credit' ? $account_last_txn?->amount : 0 }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Withdrawal Amt-</span>
                                     <span
-                                        class="info-value amount-red">{{ $last_txn?->type == 'debit' ? $last_txn?->amount : 0 }}</span>
+                                        class="info-value amount-red">{{ $account_last_txn?->type == 'debit' ? $account_last_txn?->amount : 0 }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Bala nce Amt-</span>
-                                    <span class="info-value amount-green">{{ $last_txn?->closing_balance }}</span>
+                                    <span class="info-value amount-green">{{ $account_last_txn?->closing_balance }}</span>
                                 </div>
                             </div>
 
@@ -426,24 +426,24 @@
 
                                 <div class="info-row">
                                     <span class="info-label">Last up dated</span>
-                                    <span class="info-value">{{ $last_txn?->created_at }}</span>
+                                    <span class="info-value">{{ $account_last_txn?->created_at }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Deposit Amt-</span>
                                     <span
-                                        class="info-value amount-green">{{ $last_txn?->type == 'credit' ? $last_txn?->amount : 0 }}</span>
+                                        class="info-value amount-green">{{ $account_last_txn?->type == 'credit' ? $account_last_txn?->amount : 0 }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Withdrawal Amt-</span>
                                     <span
-                                        class="info-value amount-red">{{ $last_txn?->type == 'debit' ? $last_txn?->amount : 0 }}</span>
+                                        class="info-value amount-red">{{ $account_last_txn?->type == 'debit' ? $account_last_txn?->amount : 0 }}</span>
                                 </div>
 
                                 <div class="info-row">
                                     <span class="info-label">Balance Amt-</span>
-                                    <span class="info-value amount-green">{{ $last_txn?->closing_balance }}</span>
+                                    <span class="info-value amount-green">{{ $account_last_txn?->closing_balance }}</span>
                                 </div>
                             </span>
 
