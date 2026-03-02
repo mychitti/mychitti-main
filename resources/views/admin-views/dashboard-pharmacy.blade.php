@@ -2463,6 +2463,7 @@
         const AGENT_ID = {{ $a?->id ?? 'null' }};
         const USER_TYPE = '{{ $userType }}';
         const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+        const ADMIN_PREFIX = window.location.hostname === 'staging.mychitti.net' ? '/admin' : '';
 
         // ── API helper ──
         function api(url, method, data) {
@@ -2785,7 +2786,7 @@
                     functions: getFunctions(),
                     tasks: getTasks(),
                 };
-                const res = await api(`/admin/agent/${AGENT_ID}/update`, 'POST', data);
+                const res = await api(`${ADMIN_PREFIX}/agent/${AGENT_ID}/update`, 'POST', data);
                 if (res.status) {
                     toast('Agent saved successfully!');
                     document.getElementById('agent-title').textContent = data.name;
@@ -2807,7 +2808,7 @@
         async function deleteAgent() {
             if (!AGENT_ID) return;
             if (!confirm('Delete this agent? This cannot be undone.')) return;
-            const res = await api(`/admin/agent/${AGENT_ID}`, 'DELETE');
+            const res = await api(`${ADMIN_PREFIX}/agent/${AGENT_ID}`, 'DELETE');
             if (res.status) {
                 window.location.href = '{{ route('admin.agent.index', ['user_type' => $userType ?? 'vendor']) }}';
             } else {
@@ -2827,7 +2828,7 @@
                 alert('Version tag is required');
                 return;
             }
-            const res = await api(`/admin/agent/${AGENT_ID}/version`, 'POST', {
+            const res = await api(`${ADMIN_PREFIX}/agent/${AGENT_ID}/version`, 'POST', {
                 version_tag: tag,
                 changelog: log
             });
@@ -2852,7 +2853,7 @@
                 return;
             }
             const utype = document.getElementById('ns-utype').value;
-            const res = await api('/admin/agent/store', 'POST', {
+            const res = await api(`${ADMIN_PREFIX}/agent/store`, 'POST', {
                 name,
                 user_type: utype,
                 skill_type: document.getElementById('ns-stype').value,
@@ -2860,7 +2861,7 @@
             });
             if (res.status && res.agent) {
                 $('#newSkillModal').modal('hide');
-                window.location.href = `/admin/agent?user_type=${utype}&agent_id=${res.agent.id}`;
+                window.location.href = `${ADMIN_PREFIX}/agent?user_type=${utype}&agent_id=${res.agent.id}`;
             } else {
                 toast('Could not create skill', false);
             }
@@ -2949,7 +2950,7 @@
             btn.textContent = '⏳ Running...';
 
             try {
-                const res = await api(`/admin/agent/${AGENT_ID}/test`, 'POST', {
+                const res = await api(`${ADMIN_PREFIX}/agent/${AGENT_ID}/test`, 'POST', {
                     message: inp
                 });
                 if (res.success) {

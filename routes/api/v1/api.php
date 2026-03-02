@@ -517,14 +517,14 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('user', 'CouponController@user');
             Route::get('apply', 'CouponController@apply');
             Route::post('scratch', 'CouponController@scratch');
-        });
+        }); 
 
         Route::get('parcel-category', 'ParcelCategoryController@index');
     });
     Route::get('vehicle/extra_charge', 'ConfigController@extra_charge');
     Route::get('get-vehicles', 'ConfigController@get_vehicles');
 
-    // AI Chatbot
+    // AI Chatbot 
     Route::group(['prefix' => 'chatbot'], function () {
         Route::post('message', 'ChatbotController@message');
     });

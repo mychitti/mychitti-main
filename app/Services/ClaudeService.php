@@ -5,114 +5,249 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Multi-provider AI service.
+ * Supported providers: anthropic | openai | google | custom
+ */
 class ClaudeService
 {
-    private string $apiKey;
-    private string $model;
-    private string $apiUrl = 'https://api.anthropic.com/v1/messages';
-    private $client;
+    private string $claudeApiKey;
+    private string $claudeModel;
+    private string $claudeApiUrl = 'https://api.anthropic.com/v1/messages';
+    private string $openaiApiUrl = 'https://api.openai.com/v1/chat/completions';
 
-    public function __construct() 
-    {  
-        $this->apiKey = config('services.anthropic.key');
-        $this->model  = config('services.anthropic.model', 'claude-sonnet-4-5-20250929');
-
-        // 👇 initialize the client
-        $this->client = \Illuminate\Support\Facades\Http::withHeaders([
-            'x-api-key'         => $this->apiKey,
-            'anthropic-version' => '2023-06-01',
-            'content-type'      => 'application/json',
-        ])->baseUrl('https://api.anthropic.com/v1/');
-    }
-    /**
-     * Send messages to Claude and get a response.
-     *
-     * @param  array  $messages   Full message array [['role'=>'user','content'=>...], ...]
-     * @param  string $system     System prompt
-     * @param  int    $maxTokens
-     * @return string
-     */
-    public function chat(array $messages, string $system = '', int $maxTokens = 4096): string
+    public function __construct()
     {
+        $this->claudeApiKey = config('services.anthropic.key');
+        $this->claudeModel  = config('services.anthropic.model', 'claude-sonnet-4-5-20250929');
+    }
+
+    /**
+     * Send messages and get a reply.
+     *
+     * @param  array       $messages   [['role'=>'user','content'=>'...'], ...]
+     * @param  string      $system     System prompt
+     * @param  int         $maxTokens
+     * @param  string      $provider   anthropic | openai | google | custom
+     * @param  string|null $model      Override default model for the provider
+     * @param  string|null $customUrl  Required when provider = 'custom'
+     * @param  string|null $customKey  API key for custom provider
+     */
+    public function chat(
+        array $messages,
+        string $system = '',
+        int $maxTokens = 4096,
+        string $provider = 'anthropic',
+        ?string $model = null,
+        ?string $customUrl = null,
+        ?string $customKey = null
+    ): string {
+        return match (strtolower($provider)) {
+            'openai'    => $this->chatOpenAI($messages, $system, $maxTokens, $model),
+            'google'    => $this->chatGemini($messages, $system, $maxTokens, $model),
+            'custom'    => $this->chatCustom($messages, $system, $maxTokens, $model, $customUrl, $customKey),
+            default     => $this->chatClaude($messages, $system, $maxTokens, $model),
+        };
+    }
+
+    // ── Anthropic / Claude ────────────────────────────────────────────────
+
+    private function chatClaude(array $messages, string $system, int $maxTokens, ?string $model): string
+    {
+        $model  = $model ?? $this->claudeModel;
+        $apiKey = $this->claudeApiKey;
+
         $payload = [
-            'model'      => $this->model,
+            'model'      => $model,
             'max_tokens' => $maxTokens,
             'messages'   => $messages,
-            'tools'      => $this->getTools(),
+            'tools'      => $this->getClaudeTools(),
         ];
-
         if (!empty($system)) {
             $payload['system'] = $system;
         }
 
         $response = Http::withHeaders([
-            'x-api-key'          => $this->apiKey,
+            'x-api-key'         => $apiKey,
             'anthropic-version' => '2023-06-01',
             'anthropic-beta'    => 'pdfs-2024-09-25',
             'content-type'      => 'application/json',
-        ])->timeout(120)->post($this->apiUrl, $payload);
+        ])->timeout(120)->post($this->claudeApiUrl, $payload);
 
         if ($response->failed()) {
-            Log::error('Claude API error', [
-                'status' => $response->status(),
-                'body'   => $response->body()
-            ]);
-
+            Log::error('Claude API error', ['status' => $response->status(), 'body' => $response->body()]);
             throw new \Exception('Claude API error: ' . $response->body());
         }
 
-        // FIX: read response JSON
         $data = $response->json();
 
-        if (
-            isset($data['stop_reason']) &&
-            $data['stop_reason'] === 'tool_use' &&
-            method_exists($this, 'handleToolCall')
-        ) {
-            return $this->handleToolCall($data, $messages, $system, $maxTokens);
+        if (isset($data['stop_reason']) && $data['stop_reason'] === 'tool_use') {
+            return $this->handleClaudeToolCall($data, $messages, $system, $maxTokens, $apiKey, $model);
         }
 
         return data_get($data, 'content.0.text', '');
     }
 
-    private function handleToolCall(array $data, array $messages, string $system, int $maxTokens): string
+    private function handleClaudeToolCall(array $data, array $messages, string $system, int $maxTokens, string $apiKey, string $model): string
     {
         $toolResults = [];
 
         foreach ($data['content'] as $block) {
             if ($block['type'] !== 'tool_use') continue;
-
-            $toolName  = $block['name'];
-            $toolInput = $block['input'];
-            $toolUseId = $block['id'];
-
-            // Execute the tool
-            $result = $this->executeTool($toolName, $toolInput);
-
+            $result = $this->executeTool($block['name'], $block['input']);
             $toolResults[] = [
                 'type'        => 'tool_result',
-                'tool_use_id' => $toolUseId,
+                'tool_use_id' => $block['id'],
                 'content'     => $result,
             ];
         }
 
-        // Send result back to Claude so it can form a natural reply
-        $messages[] = ['role' => 'assistant', 'content' => $data['content']];
+        $assistantContent = array_map(function ($block) {
+            if ($block['type'] === 'tool_use' && is_array($block['input'])) {
+                $block['input'] = (object) $block['input'];
+            }
+            return $block;
+        }, $data['content']);
+
+        $messages[] = ['role' => 'assistant', 'content' => $assistantContent];
         $messages[] = ['role' => 'user',      'content' => $toolResults];
 
-        $followUp = $this->client->post('messages', [
-            'model'      => 'claude-sonnet-4-5-20250929',
+        $followPayload = [
+            'model'      => $model,
             'max_tokens' => $maxTokens,
-            'system'     => $system,
             'messages'   => $messages,
-            'tools'      => $this->getTools(),
-        ])->json();
+            'tools'      => $this->getClaudeTools(),
+        ];
+        if (!empty($system)) {
+            $followPayload['system'] = $system;
+        }
 
-        return collect($followUp['content'])
+        $followResponse = Http::withHeaders([
+            'x-api-key'         => $apiKey,
+            'anthropic-version' => '2023-06-01',
+            'anthropic-beta'    => 'pdfs-2024-09-25',
+            'content-type'      => 'application/json',
+        ])->timeout(120)->post($this->claudeApiUrl, $followPayload);
+
+        if ($followResponse->failed()) {
+            throw new \Exception('Claude tool follow-up error: ' . $followResponse->body());
+        }
+
+        return collect($followResponse->json()['content'] ?? [])
             ->where('type', 'text')
             ->pluck('text')
             ->implode('');
     }
+
+    // ── OpenAI ────────────────────────────────────────────────────────────
+
+    private function chatOpenAI(array $messages, string $system, int $maxTokens, ?string $model): string
+    {
+        $model  = $model ?? 'gpt-4o';
+        $apiKey = config('services.openai.key');
+
+        return $this->sendOpenAICompatible($this->openaiApiUrl, $apiKey, $model, $messages, $system, $maxTokens, 'OpenAI');
+    }
+
+    // ── Google Gemini ─────────────────────────────────────────────────────
+
+    private function chatGemini(array $messages, string $system, int $maxTokens, ?string $model): string
+    {
+        $model  = $model ?? 'gemini-1.5-pro';
+        $apiKey = config('services.google.key');
+
+        $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+        $contents = [];
+        if (!empty($system)) {
+            $contents[] = ['role' => 'user',  'parts' => [['text' => $system]]];
+            $contents[] = ['role' => 'model', 'parts' => [['text' => 'Understood.']]];
+        }
+        foreach ($messages as $m) {
+            $text = is_array($m['content'])
+                ? collect($m['content'])->where('type', 'text')->pluck('text')->implode(' ')
+                : $m['content'];
+            $contents[] = [
+                'role'  => $m['role'] === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => $text]],
+            ];
+        }
+
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+            ->timeout(120)
+            ->post($geminiUrl, [
+                'contents'         => $contents,
+                'generationConfig' => ['maxOutputTokens' => $maxTokens],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
+            throw new \Exception('Gemini API error: ' . $response->body());
+        }
+
+        return data_get($response->json(), 'candidates.0.content.parts.0.text', '');
+    }
+
+    // ── Custom / Self-hosted (OpenAI-compatible) ──────────────────────────
+
+    /**
+     * Calls any OpenAI-compatible endpoint (Ollama, LiteLLM, DeepSeek, Groq, etc.)
+     * Falls back to config values if customUrl / customKey are not provided.
+     */
+    private function chatCustom(array $messages, string $system, int $maxTokens, ?string $model, ?string $customUrl, ?string $customKey): string
+    {
+        $url    = $customUrl ?? config('services.custom_ai.url');
+        $apiKey = $customKey ?? config('services.custom_ai.key');
+        $model  = $model ?? config('services.custom_ai.model', 'custom-model');
+
+        if (empty($url)) {
+            throw new \Exception('Custom AI provider URL is not configured.');
+        }
+
+        return $this->sendOpenAICompatible($url, $apiKey, $model, $messages, $system, $maxTokens, 'Custom AI');
+    }
+
+    /**
+     * Shared OpenAI-compatible request (used by OpenAI + Custom providers).
+     */
+    private function sendOpenAICompatible(string $url, ?string $apiKey, string $model, array $messages, string $system, int $maxTokens, string $label): string
+    {
+        $oaiMessages = [];
+        if (!empty($system)) {
+            $oaiMessages[] = ['role' => 'system', 'content' => $system];
+        }
+        foreach ($messages as $m) {
+            $oaiMessages[] = [
+                'role'    => $m['role'],
+                'content' => is_array($m['content'])
+                    ? collect($m['content'])->where('type', 'text')->pluck('text')->implode(' ')
+                    : $m['content'],
+            ];
+        }
+
+        $headers = ['Content-Type' => 'application/json'];
+        if (!empty($apiKey)) {
+            $headers['Authorization'] = 'Bearer ' . $apiKey;
+        }
+
+        $response = Http::withHeaders($headers)
+            ->timeout(120)
+            ->post($url, [
+                'model'      => $model,
+                'max_tokens' => $maxTokens,
+                'messages'   => $oaiMessages,
+            ]);
+
+        if ($response->failed()) {
+            Log::error("{$label} API error", ['status' => $response->status(), 'body' => $response->body()]);
+            throw new \Exception("{$label} API error: " . $response->body());
+        }
+
+        return data_get($response->json(), 'choices.0.message.content', '');
+    }
+
+    // ── Tools (Claude only) ───────────────────────────────────────────────
+
     private function executeTool(string $toolName, array $input): string
     {
         return match ($toolName) {
@@ -125,75 +260,53 @@ class ClaudeService
     {
         try {
             \App\Models\Contact::create([
-                'subject'  => $input['subject'],
-                'message'  => $input['message'],
-                'name' => $input['name'],
-                'email' => $input['email'],
-                'seen'   => '0',
+                'subject' => $input['subject'],
+                'message' => $input['message'],
+                'name'    => $input['name'],
+                'email'   => $input['email'],
+                'seen'    => '0',
             ]);
-
             return 'Query stored successfully. A support agent will follow up soon.';
         } catch (\Exception $e) {
             return 'Failed to store query: ' . $e->getMessage();
         }
     }
-    private function getTools(): array
+
+    private function getClaudeTools(): array
     {
         return [
             [
-                'name' => 'store_query',
-                'description' => 'Store a customer query or complaint in the database for follow-up by the support team.',
+                'name'         => 'store_query',
+                'description'  => 'Store a customer query or complaint in the database for follow-up by the support team.',
                 'input_schema' => [
-                    'type' => 'object',
+                    'type'       => 'object',
                     'properties' => [
-                        'subject' => [
-                            'type' => 'string',
-                            'description' => 'Short subject/title of the query'
-                        ],
-                        'message' => [
-                            'type' => 'string',
-                            'description' => 'Full details of the customer query'
-                        ],
-                        'name' => [
-                            'type' => 'string',
-                            'description' => 'Full Name'
-                        ],
-                        'email' => [
-                            'type' => 'string',
-                            'description' => 'Email'
-                        ],
+                        'subject' => ['type' => 'string', 'description' => 'Short subject/title of the query'],
+                        'message' => ['type' => 'string', 'description' => 'Full details of the customer query'],
+                        'name'    => ['type' => 'string', 'description' => 'Full Name'],
+                        'email'   => ['type' => 'string', 'description' => 'Email'],
                     ],
-                    'required' => ['subject', 'message', 'name', 'email']
-                ]
+                    'required' => ['subject', 'message', 'name', 'email'],
+                ],
             ],
-
-            // You can add more tools here later
-            // e.g. check_order_status, cancel_order, get_invoice etc.
         ];
     }
 
-    /**
-     * Ask Claude to summarize a block of conversation history.
-     */
+    // ── Utilities ─────────────────────────────────────────────────────────
+
     public function summarize(array $messages): string
     {
         $transcript = collect($messages)
             ->map(fn($m) => strtoupper($m['role']) . ': ' . (is_array($m['content']) ? json_encode($m['content']) : $m['content']))
             ->implode("\n\n");
 
-        $prompt = "Please summarize the following conversation concisely, preserving all important context, decisions, and topics discussed:\n\n{$transcript}";
-
         return $this->chat(
-            [['role' => 'user', 'content' => $prompt]],
+            [['role' => 'user', 'content' => "Please summarize the following conversation concisely:\n\n{$transcript}"]],
             'You are a conversation summarizer. Be concise but complete.',
             1024
         );
     }
 
-    /**
-     * Ask Claude to extract key facts about the user from a conversation.
-     * Returns JSON array of {key, value} pairs.
-     */
     public function extractFacts(array $messages): array
     {
         $transcript = collect($messages)
@@ -202,28 +315,16 @@ class ClaudeService
 
         $prompt = <<<EOT
 From this conversation, extract key facts about the USER only (not the assistant).
-Focus on: name, job, skills, preferences, location, goals, language, and any personal details they shared.
 Return ONLY a valid JSON array like:
-[
-  {"key": "name", "value": "John"},
-  {"key": "job_title", "value": "PHP Developer"},
-  {"key": "preferred_language", "value": "PHP"}
-]
+[{"key": "name", "value": "John"}, {"key": "job_title", "value": "PHP Developer"}]
 If nothing useful, return an empty array [].
 
 CONVERSATION:
 {$transcript}
 EOT;
 
-        $raw = $this->chat(
-            [['role' => 'user', 'content' => $prompt]],
-            'You are a fact extractor. Return only valid JSON.',
-            512
-        );
-
-        // Strip markdown code fences if present
-        $raw = preg_replace('/```json|```/', '', $raw);
-
+        $raw   = $this->chat([['role' => 'user', 'content' => $prompt]], 'You are a fact extractor. Return only valid JSON.', 512);
+        $raw   = preg_replace('/```json|```/', '', $raw);
         $facts = json_decode(trim($raw), true);
 
         return is_array($facts) ? $facts : [];
