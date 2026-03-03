@@ -270,7 +270,6 @@
     flex-direction: column;
     gap: 5px;
     padding: 8px 6px;
-    background: var(--light-gray);
     border-radius: 10px;
     position: sticky;
     top: 10px;

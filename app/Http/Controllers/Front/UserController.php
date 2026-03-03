@@ -568,8 +568,7 @@ class UserController extends Controller
                     'updated_at' => now()
                 ]);
             }
-            // 287imafreenansari1998@gmail.com
-            // Deccan@12345
+         
             $ref_by = $referar_user->id;
         }
 

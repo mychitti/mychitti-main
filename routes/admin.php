@@ -490,6 +490,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
                 Route::get('selected-stores', 'VendorController@selected_stores')->name('selected_stores');
 
+                // Inactive vendor management
+                Route::get('inactive', 'VendorController@inactive_vendors')->name('inactive');
+                Route::post('notify-inactive/{store_id}', 'VendorController@notify_inactive_vendor')->name('notify-inactive');
+                Route::delete('delete-inactive/{store_id}', 'VendorController@delete_inactive_vendor')->name('delete-inactive');
+
 
                 //Import and export
                 Route::get('bulk-import', 'VendorController@bulk_import_index')->name('bulk-import');

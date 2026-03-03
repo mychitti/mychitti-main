@@ -1022,9 +1022,7 @@
                                          </div>
                                      </div>
 
-
-                                     {{-- <button type="button" onclick="printInvoice()">Print Invoice</button> --}}
-                                     <div class="token_type ">
+                                     <div class="token_type "> 
                                          <div class="pos--payment-options my-1">
                                              <ul>
                                                  <li>
@@ -1034,7 +1032,7 @@
                                                          <span>Token</span>
                                                      </label>
                                                  </li>
-                                                 <li>
+                                                 <li> 
                                                      <label>
                                                          <input type="radio" name="token_type" value="kitchen" hidden>
                                                          <span>Kitchen Token</span>
@@ -1100,26 +1098,266 @@
 
          });
      </script>
+   
+     <script>  
+        // ══════════════════════════════════════════════════
+        //  POS PRINTER CONFIG  (injected from PHP) 
+        // ══════════════════════════════════════════════════
+        const POS_PRINTER = {
+            type:        '{{ $store_config?->printer_type ?? 'none' }}',
+            ip:          '{{ $store_config?->printer_ip ?? '' }}',
+            port:        {{ $store_config?->printer_port ?? 9100 }},
+            name:        '{{ $store_config?->printer_name ?? '' }}',
+            paperWidth:  '{{ $store_config?->printer_paper_width ?? '80mm' }}',
+            autoPrint:   {{ ($store_config?->printer_auto_print ?? 0) ? 'true' : 'false' }},
+        };  
+ 
+        // ── Web Serial port reference (persisted across prints in same session) ──
+        let _serialPort = null;  
+        let _serialWriter = null;   
+ 
+        /**
+         * ESC/POS helpers — minimal set for receipt printing
+         */
+        const ESC = 0x1B, GS = 0x1D;
+        function escposInit()  { return new Uint8Array([ESC, 0x40]); }
+        function escposCut()   { return new Uint8Array([GS, 0x56, 0x41, 0x10]); }
+        function escposAlign(n){ return new Uint8Array([ESC, 0x61, n]); }  // 0=L,1=C,2=R
+        function escposText(str){
+            const enc = new TextEncoder();
+            return enc.encode(str + '\n');
+        }
+        function escposDoubleHeight(on){
+            return new Uint8Array([ESC, 0x21, on ? 0x10 : 0x00]);
+        } 
+ 
+        /**   
+         * Send raw bytes to a serial port (USB or Bluetooth-COM)
+         */
+        async function serialPrint(bytes, isAutoPrint = false) {
+            try {
+                if (!('serial' in navigator)) {
+                    throw new Error('Web Serial API not supported. Use Chrome or Edge.');
+                }
 
-     <script>
-         function printInvoice(url) { 
-             if (window.ReactNativeWebView) {
-                 window.ReactNativeWebView.postMessage(
-                     JSON.stringify({
-                         type: 'PRINT_INVOICE',
-                         url: url
-                     })
-                 );
-             } else {
-                 window.open(url, '_blank');
-             }
-         }
-         @if (session('pdf_url'))
-             document.addEventListener('DOMContentLoaded', function() {
-                 printInvoice("{{ session('pdf_url') }}");
-             });
-         @endif
-     </script>
+                // 1. If we already have an open port, use it
+                if (_serialPort && _serialPort.readable && _serialPort.writable) {
+                    try {
+                        const writer = _serialPort.writable.getWriter();
+                        await writer.write(bytes);
+                        writer.releaseLock();
+                        return true;
+                    } catch (e) {
+                        console.warn('Existing port failed, will try reconnect...', e);
+                        _serialPort = null; // reset and try again 
+                    }
+                }
+
+                // 2. See if we have previously authorized ports we can connect to silently
+                if (!_serialPort && isAutoPrint) {
+                    const ports = await navigator.serial.getPorts();
+                    if (ports.length > 0) {
+                        _serialPort = ports[0];
+                    }
+                }
+
+                // 3. If still no port, we MUST request one.
+                // Requesting a port REQUIRES a user gesture. If this was an auto-print (no click), it will fail.
+                if (!_serialPort) {
+                    if (isAutoPrint) {
+                        // We cannot request port on page load without a click.
+                        // Show a big button to the user requesting they click to print.
+                        showManualPrintOverlay(bytes);
+                        return false; 
+                    } else {
+                        _serialPort = await navigator.serial.requestPort();
+                    }
+                }
+
+                // 4. Open the port if it's not open
+                if (_serialPort && !_serialPort.readable) {
+                    await _serialPort.open({ baudRate: 9600 });
+                }
+
+                // 5. Write data
+                const writer = _serialPort.writable.getWriter();
+                await writer.write(bytes);
+                writer.releaseLock();
+                return true;
+
+            } catch (err) {
+                console.error('Serial print error:', err);
+                
+                // If the error is "Failed to open serial port" it usually means it's exclusively locked
+                if (err.message.includes('Failed to open serial port')) {
+                    toastr.error('Printer is busy or turned off. Please check connection.', 'Printer Error');
+                } else if (err.message.includes('No port selected')) {
+                     // user cancelled prompt, ignore
+                } else {
+                    toastr.error(err.message || 'Serial print failed');
+                }
+                _serialPort = null; // force re-select next time
+                return false;
+            }
+        }
+
+        // Render a manual print button if auto-print was blocked by browser security
+        function showManualPrintOverlay(bytes) {
+            let overlay = document.getElementById('pos-manual-print');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'pos-manual-print';
+                overlay.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#fff;padding:15px;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);z-index:9999;border-left:4px solid var(--primary-orange); display:flex; align-items:center; gap:15px;';
+                
+                const text = document.createElement('div');
+                text.innerHTML = '<b>Receipt Ready</b><br><small class="text-muted">Click to connect printer</small>';
+                
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-primary btn-sm';
+                btn.innerHTML = '<i class="tio-print"></i> Print Now';
+                btn.onclick = async () => {
+                    const ok = await serialPrint(bytes, false); // false = triggered by user click
+                    if (ok) overlay.remove();
+                };
+
+                const close = document.createElement('button');
+                close.className = 'btn btn-ghost-danger btn-sm px-2';
+                close.innerHTML = '<i class="tio-clear"></i>';
+                close.onclick = () => overlay.remove();
+
+                overlay.appendChild(text);
+                overlay.appendChild(btn);
+                overlay.appendChild(close);
+                document.body.appendChild(overlay);
+            }
+        }
+
+        /**
+         * Build a minimal ESC/POS receipt from the current cart total
+         * (Used for USB/Bluetooth direct print)
+         */
+        function buildEscPosReceipt(pdfUrl) {
+            const storeName = '{{ \App\CentralLogics\Helpers::get_store_data()?->name ?? 'Store' }}';
+            const total     = document.querySelector('.total_show')?.textContent?.trim() || '0';
+            const tokenNum  = document.querySelector('#current_token_id')?.value || '';
+            const date      = new Date().toLocaleString('en-IN', { hour12: true });
+            const width     = POS_PRINTER.paperWidth === '58mm' ? 32 : 48;
+            const line      = '-'.repeat(width);
+
+            const chunks = [
+                escposInit(),
+                escposAlign(1),              // center
+                escposDoubleHeight(true),
+                escposText(storeName),
+                escposDoubleHeight(false),
+                escposText(date),
+                escposAlign(0),              // left
+                escposText(line),
+                escposText('Token : ' + tokenNum),
+                escposText(line),
+                escposAlign(2),              // right
+                escposDoubleHeight(true),
+                escposText('Total: Rs. ' + total),
+                escposDoubleHeight(false),
+                escposAlign(1),              // center
+                escposText('\n\nThank You! Visit Again!\n\n'),
+                escposCut(),
+            ];
+
+            const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+            const merged   = new Uint8Array(totalLen);
+            let offset = 0;
+            chunks.forEach(c => { merged.set(c, offset); offset += c.length; });
+            return merged;
+        }
+
+        var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        function printPdf(url) {
+            var frame = document.createElement('iframe');
+            frame.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
+            frame.src = url;
+            document.body.appendChild(frame);
+            frame.onload = function() {
+                try {
+                    frame.contentWindow.focus();
+                    frame.contentWindow.print();
+                } catch(e) {
+                    window.open(url, '_blank');
+                }
+            };
+        }
+
+        function printHtml(htmlContent, fallbackUrl) {
+            var printWin = window.open('', '_blank');
+            if (!printWin) {
+                window.open(fallbackUrl, '_blank');
+                return;
+            }
+            var baseStyle = '<style>' +
+                'html,body{margin:0!important;padding:0!important;}' +
+                '.ticket{padding:2mm!important;margin:0!important;}' +
+                '@media print{@page{margin:0;}}' +
+                '<' + '/style>';
+            var headClose = '<' + '/head>';
+            var modifiedHtml = htmlContent;
+            if (modifiedHtml.indexOf(headClose) !== -1) {
+                modifiedHtml = modifiedHtml.replace(headClose, baseStyle + headClose);
+            } else {
+                modifiedHtml = baseStyle + modifiedHtml;
+            }
+            printWin.document.write(modifiedHtml);
+            printWin.document.close();
+            printWin.onload = function() {
+                printWin.focus();
+                printWin.print();
+            };
+        }
+
+        async function printInvoice(url, isAutoPrint = false, htmlData = null) {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(
+                    JSON.stringify({ type: 'PRINT_INVOICE', url: url })
+                );
+                return;
+            }
+
+            const type = POS_PRINTER.type;
+            const autoConfig = POS_PRINTER.autoPrint;
+
+            if (isAutoPrint && !autoConfig && type !== 'none') {
+                 return;
+            }
+
+            if (type === 'bluetooth') {
+                const receipt = buildEscPosReceipt(url);
+                const ok = await serialPrint(receipt, isAutoPrint);
+                if (!ok) window.open(url, '_blank');
+                return;
+            }
+
+            if (isMobile && htmlData) {
+                var mainHtml = (typeof htmlData === 'object' && htmlData !== null) ? htmlData.main : htmlData;
+                if (mainHtml) {
+                    printHtml(mainHtml, url);
+                } else {
+                    window.open(url, '_blank');
+                }
+                return;
+            }
+
+            printPdf(url);
+        }
+
+        // ── Auto-trigger on page load if token was just generated ──
+        @if (session('pdf_url'))
+            document.addEventListener('DOMContentLoaded', function() {
+                var htmlData = {!! json_encode(session('print_html_array', null)) !!};
+                printInvoice("{{ session('pdf_url') }}", true, htmlData);
+            });
+        @endif
+    </script>
+
      @if ($data['category_position'] == 'sidenav')
          <script>
              $(document).on('click', '.pos-cat-btn', function() {
@@ -1168,9 +1406,9 @@
                  $(this).val(cash.toFixed(2));
              }
              $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
-         });
+         });  
 
-         $('.order-btn').on('click', function() {
+         $('.order-btn').on('click', function() { 
              let orderType = $('input[class="order_type"]:checked').val();
 
              if (orderType === 'dine_in') {

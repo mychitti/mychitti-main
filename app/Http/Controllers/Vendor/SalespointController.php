@@ -312,7 +312,7 @@ class SalespointController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id'));
+        return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id', 'store_config'));
     }
 
     public function calendar(Request $request)
@@ -591,11 +591,33 @@ class SalespointController extends Controller
 
         $token = PosToken::with('tokenItems')
             ->where('id', $pos_token->id)
-            ->first();
+            ->first(); 
 
-        $data =  Helpers::generatePOSToken($token);
+        // Disable Laravel Debugbar if it exists, otherwise it forcefully injects 
+        // a massive Javascript payload (Sfdump, PHPDebugBar CSS) right into our tiny POS receipt HTML, 
+        // completely destroying the iframe layout and spilling raw JS text onto the page.
+        if (class_exists('\Barryvdh\Debugbar\Facades\Debugbar')) {
+            \Barryvdh\Debugbar\Facades\Debugbar::disable();
+        }
 
-        if ($store_config->auto_invoice_pos ?? 0) {
+        $data =  Helpers::generatePOSToken($token); 
+
+        // Generate HTML for native silent printing on mobile/desktop browsers 
+        $store = Helpers::get_store_data();
+        $store_config = StoreConfig::where('store_id', $store->id)->first();
+        $template_id = $store_config && $store_config->pos_token_template ? $store_config->pos_token_template : 1;
+        
+        $print_html_array = [];
+        if ($token->token_type == 'token' || $token->token_type == 'both') {
+            $kitchen = false;
+            $print_html_array['main'] = \Illuminate\Support\Facades\View::make('document_templates/pos_token/token_' . $template_id, compact('store', 'store_config', 'token', 'kitchen'))->render();
+        }
+        if ($token->token_type == 'kitchen' || $token->token_type == 'both') {
+            $kitchen = true;
+            $print_html_array['kitchen'] = \Illuminate\Support\Facades\View::make('document_templates/pos_token/token_' . $template_id, compact('store', 'store_config', 'token', 'kitchen'))->render();
+        }
+
+        if ($store_config->auto_invoice_pos ?? 0) {    
             $invoice = $this->convert_to_bill($request, $token->id, false);
             if ($invoice) {
                 // master ledger entry 
@@ -609,7 +631,7 @@ class SalespointController extends Controller
                 }
                 $data2 = [
                     'date' => now(),
-                    'amount' => $invoice->total_amount,
+                    'amount' => $invoice->total_amount, 
                     'voucher_type' => 'Sales',
                     'invoice_id' => 'manual-' . $invoice->id,
                     'status' => $invoice->payment_status == 'Paid' ? 'approved' : 'pending',
@@ -620,17 +642,14 @@ class SalespointController extends Controller
 
                     _saveDayBookEntry($invoice->total_amount, 'credit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id);
                 }
-            }
+            } 
         }
-        session()->flash('clear_cart', true);
+        session()->flash('clear_cart', true); 
         if (isset($data['success']) && $data['success']) {
-            $isApp = request()->header('X-Client') === 'app' || request()->input('x_client') === 'app';
-         
-            if ( $isApp) {
-                return redirect()->back()->with('pdf_url', $data['url']);
-            } else {
-                return redirect()->to($data['url']); 
-            }
+            return redirect()->back()->with([
+                'pdf_url' => $data['url'],
+                'print_html_array' => $print_html_array
+            ]); 
         } else {
             Toastr::error("Failed to generate POS token");
             return back();
@@ -640,7 +659,7 @@ class SalespointController extends Controller
     {
         $request->validate([
             'table_id' => 'required',
-            'item_id' => 'required|array',
+            'item_id' => 'required|array', 
             'item_qty' => 'required|array',
             'item_type' => 'required|array',
         ]);
@@ -695,7 +714,7 @@ class SalespointController extends Controller
         $gstAmountTotal = 0;
 
         foreach ($request->item_id as $key => $item_id) {
-
+ 
             $type = $request->item_type[$key];
             $qty  = (float) $request->item_qty[$key];
 
@@ -707,7 +726,7 @@ class SalespointController extends Controller
             $current_branch_id = auth('vendor')->check() ? ($request->branch_id ?? $branch_id) : $branch_id;
             $itemQuery->where('b.id', $current_branch_id);
 
-            $itemRow = (clone $itemQuery)
+            $itemRow = (clone $itemQuery) 
                 ->select('bi.*')
                 ->first();
 

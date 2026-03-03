@@ -48,6 +48,8 @@ class DashboardController extends Controller
     {
         $storeId = Helpers::get_store_id();
         if (auth('vendor')->check()) {
+            // Track last panel login
+            auth('vendor')->user()->update(['last_login_at' => now()]);
 
             // $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
             // if ($request->has('date_range')) {
@@ -231,7 +233,45 @@ class DashboardController extends Controller
             $rangeType = Helpers::getRangeTypeFromPreset($preset, $formatted_from, $formatted_to);
             $chart_data = Helpers::getChartData($preset, $formatted_from, $formatted_to);
 
-            return view('vendor-views.dashboard', compact('data', 'chart_data', 'preset'));
+            // --- Profile completion ---
+            $store = Helpers::get_store_data();
+            $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
+            $completionHasService = $store->services_1 || $store->services_2;
+            $completionHasAddress = !empty($store->address) && !empty($store->latitude);
+            $completionHasCover   = !empty($store->cover_photo);
+            $completionHasLogo    = !empty($store->logo);
+            $completionHasProfile = $completionHasAddress && $completionHasCover && $completionHasLogo;
+            $completionHasSub     = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
+            $storeWallet          = StoreWallet::where('vendor_id', $vendorId)->first();
+            $completionWallet     = $storeWallet && (($storeWallet->total_earning ?? 0) > 0 || ($storeWallet->balance ?? 0) > 0);
+
+            $cChecks          = [$completionHasDoc, $completionHasService, $completionHasProfile, $completionHasSub, $completionWallet];
+            $completionDone    = collect($cChecks)->filter()->count();
+            $completionTotal   = count($cChecks);
+            $completionPercent = (int) round(($completionDone / $completionTotal) * 100);
+            $completionRing    = $completionPercent >= 80 ? '#1cc88a' : ($completionPercent >= 50 ? '#f6c23e' : '#e74a3b');
+            $completionCircumf = (int) round(2 * 3.14159 * 28);
+            $completionOffset  = (int) round($completionCircumf * (1 - $completionPercent / 100));
+            $completionItems   = [
+                ['icon' => '📄', 'label' => 'Document Verification',  'done' => $completionHasDoc],
+                ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $completionHasService],
+                ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $completionHasProfile],
+                ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $completionHasSub],
+                ['icon' => '💰', 'label' => 'Wallet Recharged',         'done' => $completionWallet],
+            ];
+
+            $inactiveWarning = \App\Models\InAppNotification::where('reciever', \App\CentralLogics\Helpers::get_store_id())
+                ->where('message', 'inactive_warning')
+                ->where('is_read', 0)
+                ->latest()
+                ->first();
+
+            return view('vendor-views.dashboard', compact(
+                'data', 'chart_data', 'preset',
+                'completionPercent', 'completionDone', 'completionTotal',
+                'completionRing', 'completionCircumf', 'completionOffset', 'completionItems',
+                'inactiveWarning'
+            ));
         } else {
             $employee_id = Helpers::get_loggedin_user()->id;
             $month = (int) date('n');
@@ -1115,5 +1155,13 @@ class DashboardController extends Controller
 
         Toastr::success('Gallery Added Successfully');
         return redirect()->back();
+    }
+
+    public function markInactiveRead(Request $request)
+    {
+        \App\Models\InAppNotification::where('id', $request->id)
+            ->where('vendor_id', auth('vendor')->id())
+            ->update(['is_read' => 1]);
+        return response()->json(['success' => true]);
     }
 }

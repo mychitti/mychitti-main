@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         .form-row {
-            margin-top: 6px;
+            margin-top: 6px; 
         }
 
         .ck.ck-reset {
@@ -20,8 +20,8 @@
             border-radius: 6px;
             padding: 5px;
             {{-- margin: 5px; --}} cursor: pointer;
-            text-align: center;
-            transition: border-color 0.2s ease;
+            text-align: center;  
+            transition: border-color 0.2s ease;  
             width: 100%;
             /* adjust to your preview size */
         }
@@ -251,12 +251,124 @@
                     </div>
                 </div>
             </div>
+            {{-- ═══════════════ PRINTER CONFIGURATION CARD ═══════════════ --}}
+            <div class="card mb-1">
+                <div class="card-header">
+                    <h2 class="card-title h4">
+                        <i class="tio-print"></i>
+                        <span>Printer Configuration</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    {{-- Printer Type Pills --}}
+                    <div class="row mb-3">
+                        <div class="col-12 mb-2">
+                            <label class="form-label font-weight-bold">Printer Type</label>
+                            <div class="d-flex flex-wrap" style="gap:8px;" id="printer_type_group">
+                                @foreach(['none' => '🚫 None', 'usb' => '🔌 USB', 'bluetooth' => '📡 Bluetooth', 'lan' => '🌐 LAN / Network'] as $val => $label)
+                                    <label class="printer-type-pill"
+                                           data-val="{{ $val }}"
+                                           style="cursor:pointer;padding:7px 18px;border-radius:50px;border:2px solid {{ ($store?->printer_type ?? 'none') == $val ? 'var(--primary-orange)' : '#dee2e6' }};background:{{ ($store?->printer_type ?? 'none') == $val ? 'var(--primary-orange)' : '#fff' }};color:{{ ($store?->printer_type ?? 'none') == $val ? '#fff' : '#555' }};font-size:13px;font-weight:500;transition:all .2s;">
+                                        <input type="radio" name="printer_type" value="{{ $val }}" hidden {{ ($store?->printer_type ?? 'none') == $val ? 'checked' : '' }}>
+                                        {{ $label }}
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-end">
+                        {{-- LAN: IP + Port --}}
+                        <div class="col-sm-3 p-2 printer-extra printer-lan" style="{{ ($store?->printer_type ?? 'none') == 'lan' ? '' : 'display:none;' }}">
+                            <div class="form-group mb-0">
+                                <label class="form-label">Printer IP Address</label>
+                                <input type="text" name="printer_ip" class="form-control"
+                                       value="{{ $store?->printer_ip }}" placeholder="e.g. 192.168.1.100">
+                                <small class="text-muted">LAN/Network printer IP</small>
+                            </div>
+                        </div>
+                        <div class="col-sm-2 p-2 printer-extra printer-lan" style="{{ ($store?->printer_type ?? 'none') == 'lan' ? '' : 'display:none;' }}">
+                            <div class="form-group mb-0">
+                                <label class="form-label">Port</label>
+                                <input type="number" name="printer_port" class="form-control"
+                                       value="{{ $store?->printer_port ?? 9100 }}" placeholder="9100" min="1" max="65535">
+                                <small class="text-muted">Usually 9100</small>
+                            </div>
+                        </div>
+
+                        {{-- Device Name / Bluetooth COM port --}}
+                        <div class="col-sm-4 p-2 printer-extra printer-serial" style="{{ in_array($store?->printer_type ?? 'none', ['usb','bluetooth']) ? '' : 'display:none;' }}">
+                            <div class="form-group mb-0">
+                                <label class="form-label" id="printer_name_label">
+                                    {{ ($store?->printer_type ?? '') == 'bluetooth' ? 'Bluetooth COM Port' : 'Printer Name' }}
+                                </label>
+                                <input type="text" name="printer_name" class="form-control"
+                                       value="{{ $store?->printer_name }}" placeholder="e.g. COM3 or Epson TM-T88">
+                                <small class="text-muted" id="printer_name_help">
+                                    {{ ($store?->printer_type ?? '') == 'bluetooth' 
+                                        ? 'Pair BT printer via Windows Settings → shows as COM port.' 
+                                        : 'Optional: Just a label to help identify it.' }}
+                                </small>
+                            </div>
+                        </div>
+
+                        {{-- Paper Width --}}
+                        <div class="col-sm-2 p-2">
+                            <div class="form-group mb-0">
+                                <label class="form-label">Paper Width</label>
+                                <select name="printer_paper_width" class="form-control">
+                                    <option value="58mm" {{ ($store?->printer_paper_width ?? '80mm') == '58mm' ? 'selected' : '' }}>58 mm</option>
+                                    <option value="80mm" {{ ($store?->printer_paper_width ?? '80mm') == '80mm' ? 'selected' : '' }}>80 mm</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {{-- Auto Print Toggle --}}
+                        <div class="col-sm-3 p-2">
+                            <div class="form-group mb-0 p-2 border rounded">
+                                <label class="d-flex justify-content-between switch toggle-switch-sm text-dark" for="printer_auto_print">
+                                    <span>Auto Print on Token Generate
+                                        <span class="form-label-secondary" data-toggle="tooltip" data-placement="right"
+                                              data-original-title="If ON, receipt prints automatically when token is generated. Uses Web Serial strictly for Bluetooth, or iframe+print for USB/LAN/None.">
+                                            <img src="{{ asset('/public/assets/admin/img/info-circle.svg') }}">
+                                        </span>
+                                    </span>
+                                    <input type="hidden" name="printer_auto_print" value="0">
+                                    <input type="checkbox" class="toggle-switch-input" name="printer_auto_print"
+                                           id="printer_auto_print" value="1"
+                                           {{ ($store?->printer_auto_print ?? 0) ? 'checked' : '' }}>
+                                    <span class="toggle-switch-label">
+                                        <span class="toggle-switch-indicator"></span>
+                                    </span>
+                                </label>
+                                <small class="text-muted d-block mt-1">Chrome/Edge required for Bluetooth.</small>
+                            </div>
+                        </div>
+
+                        {{-- Info box --}}
+                        <div class="col-12 mb-2">
+                            <div class="alert alert-info p-2 mb-0" style="font-size:12px;">
+                                <strong>How it works:</strong>
+                                <ul class="mb-0 pl-3 mt-1">
+                                    <li><b>Bluetooth</b> — Uses Web Serial API. BT printer must be paired via Windows Bluetooth → auto creates a COM port. Chrome asks to select port once, then prints silently.</li>
+                                    <li><b>USB / LAN / Network</b> — Opens receipt PDF in hidden iframe and triggers browser print dialog with your thermal printer pre-selected as system default.</li>
+                                    <li><b>None</b> — Auto print disabled; PDF opens in new tab as usual.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <button style="float:right" class="btn btn-lg btn-primary my-2">Update Printer Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </form>
         <div class="card mb-1">
             <div class="card-header d-flex justify-content-between">
                 <h2 class="card-title h4">
                     <i class="tio-account-circle"></i>
-                    <span>{{ translate('messages.bank details') }}</span>
+                    <span>{{ translate('messages.bank details') }}</span> 
                 </h2>
                 <div class="d-flex">
                     <button class="btn btn-primary d-none d-sm-block" type="button" data-toggle="modal"
@@ -490,6 +602,52 @@
         $('input[name="pos_menu_design"]').on('change', function() {
             $('.template-option').removeClass('selected');
             $(this).closest('.template-option').addClass('selected');
+        });
+    </script>
+    <script>
+        // ── Printer Type Pill Toggle ──
+        $(function () {
+            function applyPrinterType(type) {
+                // Update pill styles
+                $('.printer-type-pill').each(function () {
+                    const isActive = $(this).data('val') === type;
+                    $(this).css({
+                        'border-color': isActive ? 'var(--primary-orange)' : '#dee2e6',
+                        'background': isActive ? 'var(--primary-orange)' : '#fff',
+                        'color': isActive ? '#fff' : '#555',
+                    });
+                    $(this).find('input[type=radio]').prop('checked', isActive);
+                });
+
+                // Show/hide conditional fields
+                if (type === 'lan') {
+                    $('.printer-lan').show();
+                    $('.printer-serial').hide();
+                } else if (type === 'usb' || type === 'bluetooth') {
+                    $('.printer-lan').hide();
+                    $('.printer-serial').show();
+                    // Update label and help text
+                    if (type === 'bluetooth') {
+                        $('#printer_name_label').text('Bluetooth COM Port');
+                        $('#printer_name_help').text('Pair BT printer via Windows Settings → shows as COM port.');
+                    } else {
+                        $('#printer_name_label').text('Printer Name');
+                        $('#printer_name_help').text('Optional: Just a label to help identify it.');
+                    }
+                } else {
+                    $('.printer-lan').hide();
+                    $('.printer-serial').hide();
+                }
+            }
+
+            // Initial state from PHP
+            applyPrinterType('{{ $store?->printer_type ?? 'none' }}');
+
+            // Click handler
+            $(document).on('click', '.printer-type-pill', function () {
+                const type = $(this).data('val');
+                applyPrinterType(type);
+            });
         });
     </script>
 @endpush

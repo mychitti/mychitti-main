@@ -28,6 +28,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
+        Route::post('mark-inactive-read', 'DashboardController@markInactiveRead')->name('mark-inactive-read');
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
@@ -1170,6 +1171,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('history', 'AIChatController@history')->name('history');
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
     });
+    
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {

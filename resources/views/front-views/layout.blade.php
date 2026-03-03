@@ -757,27 +757,36 @@
     <div id="ai-chat-overlay"></div>
     <div id="ai-chat-panel">
         <div class="ai-chat-header">
-            <h5 style="    color: white;"><i class="fas fa-robot"></i> AI Assistant</h5>
-            <button class="ai-chat-close">&times;</button>
-        </div>
+            <h5 style="color:white"><i class="fas fa-robot"></i> AI Assistant</h5>
+            <div style="display:flex;align-items:center;gap:6px">
+                <button type="button" id="ai-clear-memory"
+                    style="color:#fff;opacity:.85;font-size:12px;border:1px solid rgba(255,255,255,.4);background:none;border-radius:6px;padding:2px 10px;cursor:pointer">Clear</button>
+                <button class="ai-chat-close">&times;</button>
+            </div>
+        </div> 
         <div class="ai-chat-messages" id="ai-chat-messages">
             <div class="text-muted text-center" style="font-size:13px">Loading chat...</div>
         </div>
         <div class="ai-chat-input-area">
             <form id="ai-chat-form" enctype="multipart/form-data">
                 @csrf
-                <textarea id="ai-chat-msg" name="message" rows="2" placeholder="Type your message..."></textarea>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                    <textarea id="ai-chat-msg" name="message" placeholder="Type a message..." rows="1"
+                        style="flex:1;resize:none;border-radius:20px;padding:8px 14px;font-size:13px;max-height:80px;overflow-y:auto;border:1px solid #ddd;outline:none;font-family:inherit"></textarea>
+                    <button type="submit" id="ai-send-btn"
+                        style="border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        <i class="fas fa-paper-plane" style="font-size:14px"></i>
+                    </button>
+                </div>
                 <input type="file" id="ai-chat-file" name="file" accept="image/*,.pdf" style="display:none">
-                <div id="ai-front-preview" style="display:none;flex-wrap:wrap;gap:4px;margin:4px 0"></div>
-                <div class="ai-chat-btns">
-                    <button type="submit" class="ai-send-btn">Send</button>
-                    <button type="button" class="ai-attach-btn" id="ai-attach-btn"><i
-                            class="fas fa-paperclip"></i></button>
-                    <button type="button" class="ai-record-btn" id="ai-start-record"><i
-                            class="fas fa-microphone"></i></button>
-                    <button type="button" class="ai-stop-btn d-none" id="ai-stop-record"><i class="fas fa-stop"></i>
-                        Stop</button>
-                    <button type="button" class="ai-clear-btn" id="ai-clear-memory">Clear</button>
+                <div id="ai-front-preview" style="display:none;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                    <button type="button" id="ai-attach-btn"
+                        style="border-radius:16px;font-size:12px;padding:3px 10px;background:#f3f4f6;border:1px solid #ddd;cursor:pointer">📎 File</button>
+                    <button type="button" id="ai-start-record"
+                        style="border-radius:16px;font-size:12px;padding:3px 10px;background:#f3f4f6;border:1px solid #ddd;cursor:pointer">🎤 Voice</button>
+                    <button type="button" id="ai-stop-record" class="d-none"
+                        style="border-radius:16px;font-size:12px;padding:3px 10px;background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;cursor:pointer">⏹ Stop</button>
                 </div>
             </form>
         </div>
@@ -2024,12 +2033,15 @@
             });
         });
 
-        // Enter to send, Shift+Enter for newline
+        // Enter to send, Shift+Enter for newline; auto-resize textarea
         $msg.on('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 $form.trigger('submit');
             }
+        }).on('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
         });
 
         // Chip helper

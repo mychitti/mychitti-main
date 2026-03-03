@@ -770,6 +770,30 @@
 @section('content')
     <div class="content container-fluid">
         @if (auth('vendor')->check())
+            {{-- Inactivity warning banner --}}
+            @if(!empty($inactiveWarning))
+            <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-3 mb-3" role="alert"
+                 style="border-left:4px solid #f6c23e;border-radius:10px">
+                <span style="font-size:1.6rem">⚠️</span>
+                <div>
+                    <strong>{{ $inactiveWarning->title }}</strong><br>
+                    <span class="small">{{ $inactiveWarning->description }}</span>
+                </div>
+                <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"
+                        onclick="markInactiveRead({{ $inactiveWarning->id }})">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <script>
+            function markInactiveRead(id){
+                fetch('{{ route("vendor.mark-inactive-read") }}', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                    body: JSON.stringify({id})
+                });
+            }
+            </script>
+            @endif
             <div class="row align-items-center mb-2">
 
                 <div class="col-sm mb-2 mb-sm-0">
@@ -859,26 +883,68 @@
                     @endif
 
                 </div>
-                <div class="activity-section quick-actions-container mt-2">
-                    <h3 class="quick-actions-title">QUICK ACTIONS</h3>
-                    {{-- <div class="quick-actions-grid"> --}}
-                    <a href ="{{ route('vendor.invoice.manual-bill') }}" class="quick-action-btn btn-soft-blue">
-                        <i class="tio-receipt-outlined"></i>
-                        <span>Add Bill</span>
-                    </a>
-                    <a href="{{ route('vendor.account.add', ['add']) }}" class="quick-action-btn btn-soft-yellow">
-                        <i class="tio-wallet-outlined"></i>
-                        <span>Add Expense</span>
-                    </a>
-                    <a href="{{ route('vendor.customer.add') }}" class="quick-action-btn  btn-soft-green">
-                        <i class="tio-user-add"></i>
-                        <span>Add Client</span>
-                    </a>
-                    <a href="{{ route('vendor.project.add') }}" class="quick-action-btn  btn-soft-purple">
-                        <i class="tio-briefcase-outlined"></i>
-                        <span>Add Project</span>
-                    </a>
-                    {{-- </div> --}}
+                <div class="mt-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    {{-- Quick Actions --}}
+                    <div class="activity-section quick-actions-container" >
+                        <h3 class="quick-actions-title">QUICK ACTIONS</h3>
+                        <a href="{{ route('vendor.invoice.manual-bill') }}" class="quick-action-btn btn-soft-blue">
+                            <i class="tio-receipt-outlined"></i>
+                            <span>Add Bill</span>
+                        </a>
+                        <a href="{{ route('vendor.account.add', ['add']) }}" class="quick-action-btn btn-soft-yellow">
+                            <i class="tio-wallet-outlined"></i>
+                            <span>Add Expense</span>
+                        </a>
+                        <a href="{{ route('vendor.customer.add') }}" class="quick-action-btn btn-soft-green">
+                            <i class="tio-user-add"></i>
+                            <span>Add Client</span>
+                        </a>
+                        <a href="{{ route('vendor.project.add') }}" class="quick-action-btn btn-soft-purple">
+                            <i class="tio-briefcase-outlined"></i>
+                            <span>Add Project</span>
+                        </a>
+                    </div>
+                    {{-- Profile Completion --}}
+                    <div class="activity-section" style="display:flex;align-items:center;gap:16px">
+                        {{-- Donut ring --}}
+                        <div style="position:relative;width:68px;height:68px;flex-shrink:0">
+                            <svg width="68" height="68" viewBox="0 0 68 68">
+                                <circle cx="34" cy="34" r="27" fill="none" stroke="#f0f0f5" stroke-width="5"/>
+                                <circle cx="34" cy="34" r="27" fill="none"
+                                    stroke="{{ $completionRing }}" stroke-width="5"
+                                    stroke-linecap="round"
+                                    stroke-dasharray="{{ round(2*3.14159*27) }}"
+                                    stroke-dashoffset="{{ round(2*3.14159*27*(1-$completionPercent/100)) }}"
+                                    transform="rotate(-90 34 34)"/>
+                            </svg>
+                            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1">
+                                <span style="font-size:14px;font-weight:700;color:#333">{{ $completionPercent }}%</span>
+                                <span style="font-size:9px;color:#aaa">{{ $completionDone }}/{{ $completionTotal }}</span>
+                            </div>
+                        </div>
+                        {{-- Checklist --}}
+                        <div >
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:#999;text-transform:uppercase;margin-bottom:6px">Profile Completion</div>
+                            <ul class="list-unstyled mb-0" style="display:flex;flex-wrap: wrap;gap:5px">
+                                @foreach($completionItems as $t)
+                                <li style="display:flex;align-items:center;gap:7px">
+                                    <span style="width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                                                 border:1.5px solid {{ $t['done'] ? $completionRing : '#d0d0dc' }};
+                                                 background:{{ $t['done'] ? $completionRing : 'transparent' }}">
+                                        @if($t['done'])
+                                            <svg width="8" height="8" viewBox="0 0 9 9" fill="none">
+                                                <path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        @endif
+                                    </span>
+                                    <span style="font-size:12px;color:{{ $t['done'] ? '#888' : '#333' }};{{ $t['done'] ? '' : '' }}">
+                                        {{ $t['icon'] }} {{ $t['label'] }}
+                                    </span>
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
                 </div>
                 <div class="content-grid2">
                     <!-- Action Summary Section - Add this after the stats-grid and before content-grid -->

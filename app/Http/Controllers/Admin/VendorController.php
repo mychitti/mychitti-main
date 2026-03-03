@@ -1487,9 +1487,38 @@ class VendorController extends Controller
                     array_push($categories, $s->name);
                 }
             }
-        }
+        } 
 
-        return view('admin-views.vendor.view.index', compact('store', 'wallet', 'categories'));
+        // --- Profile completion ---
+        $hasDoc          = !empty($store->gst_doc) || !empty($store->id_doc);
+        $hasService      = $store->services_1 || $store->services_2 ;
+        $hasAddress      = !empty($store->address) && !empty($store->latitude);
+        $hasCoverPic     = !empty($store->cover_photo);
+        $hasLogo         = !empty($store->logo);
+        $hasProfile      = $hasAddress && $hasCoverPic && $hasLogo;
+        $hasSub          = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
+        $walletRecharged = isset($wallet) && (($wallet->total_earning ?? 0) > 0 || ($wallet->balance ?? 0) > 0);
+
+        $completionChecks   = [$hasDoc, $hasService, $hasProfile, $hasSub, $walletRecharged];
+        $completionDone     = collect($completionChecks)->filter()->count();
+        $completionTotal    = count($completionChecks);
+        $completionPercent  = (int) round(($completionDone / $completionTotal) * 100);
+        $completionRing     = $completionPercent >= 80 ? '#1cc88a' : ($completionPercent >= 50 ? '#f6c23e' : '#e74a3b');
+        $completionCircumf  = (int) round(2 * 3.14159 * 28);
+        $completionOffset   = (int) round($completionCircumf * (1 - $completionPercent / 100));
+        $completionItems    = [
+            ['icon' => '📄', 'label' => 'Document Verification',  'done' => $hasDoc],
+            ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $hasService],
+            ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $hasProfile],
+            ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $hasSub],
+            ['icon' => '💰', 'label' => 'Wallet Recharged',         'done' => $walletRecharged],
+        ];
+
+        return view('admin-views.vendor.view.index', compact(
+            'store', 'wallet', 'categories',
+            'completionPercent', 'completionDone', 'completionTotal',
+            'completionRing', 'completionCircumf', 'completionOffset', 'completionItems'
+        ));
     }
 
     public function verify_doc(Request $request, $id)
@@ -3145,6 +3174,60 @@ class VendorController extends Controller
         $data->save();
 
         Toastr::success(translate('messages.store_shuffle_status_updated'));
+        return back();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  INACTIVE VENDOR MANAGEMENT
+    // ─────────────────────────────────────────────────────────────
+
+    public function inactive_vendors(Request $request)
+    {
+        $months    = (int) (\App\Models\BusinessSetting::where('key', 'vendor_inactive_months')->value('value') ?? 6);
+        $threshold = now()->subMonths($months);
+
+        $vendors = Store::withoutGlobalScopes()
+            ->with('vendor')
+            ->whereHas('vendor', function ($q) use ($threshold) {
+                $q->where(function ($sub) use ($threshold) {
+                    $sub->whereNull('last_login_at')
+                        ->orWhere('last_login_at', '<', $threshold);
+                })->where(function ($sub) use ($threshold) {
+                    // also created before the threshold (ignore brand-new accounts)
+                    $sub->whereNull('last_login_at')
+                        ->where('vendors.created_at', '<', $threshold)
+                        ->orWhere('last_login_at', '<', $threshold);
+                });
+            })
+            ->paginate(20);
+
+        return view('admin-views.vendor.inactive', compact('vendors', 'months', 'threshold'));
+    }
+
+    public function notify_inactive_vendor($store_id)
+    {
+        $store = Store::withoutGlobalScopes()->findOrFail($store_id);
+        \App\Models\InAppNotification::create([
+            'vendor_id'   => $store->vendor_id,
+            'type'        => 'inactive_warning',
+            'title'       => 'Account Inactivity Warning',
+            'description' => 'Your account has been flagged as inactive. Please log in to keep your account active, or it may be removed.',
+            'is_read'     => 0,
+        ]);
+        Toastr::success('Notification sent to vendor.');
+        return back();
+    }
+
+    public function delete_inactive_vendor($store_id)
+    {
+        $store = Store::withoutGlobalScopes()->findOrFail($store_id);
+        $vendor = $store->vendor;
+        // Reuse standard destroy pipeline
+        $store->delete();
+        if ($vendor) {
+            $vendor->delete();
+        }
+        Toastr::success('Vendor account deleted successfully.');
         return back();
     }
 }

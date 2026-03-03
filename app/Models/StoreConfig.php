@@ -16,14 +16,14 @@ class StoreConfig extends Model
         'jurisdiction_statement', 
         'signature',
         'invoice_sign_status',
-        'jurisdiction_statement_status',
+        'jurisdiction_statement_status', 
         'tnc_quotation_status',
-        'tnc_invoice_status',
+        'tnc_invoice_status', 
         'bank_details_status',
         'quotation_footer_line',
         'jrsdctn_quote_status',
         'jrsdctn_quote_statement',
-        'jurisdiction_statement_status',
+        'jurisdiction_statement_status', 
         'returnable_rr_tnc',
         'non_returnable_rr_tnc',
         'returnable_rr_tnc_content',
@@ -60,10 +60,16 @@ class StoreConfig extends Model
         'webpage_phones',
         'webpage_latitude',
         'webpage_longitude',
-        'category_position'
+        'category_position',
+        'printer_type',
+        'printer_ip',
+        'printer_port',
+        'printer_name',
+        'printer_paper_width',
+        'printer_auto_print',
     ];
 
-    protected $table;
+    protected $table; 
     public function __construct(array $attributes = [])
     {
         parent::__construct($attributes);

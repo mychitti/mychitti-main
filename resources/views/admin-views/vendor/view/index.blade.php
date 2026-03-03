@@ -181,7 +181,60 @@
             </div>
         </div>
         <div class="row pt-3 g-3">
-            <div class="col-lg-6">
+
+            {{-- Profile Completion Card --}}
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title m-0 d-flex align-items-center">
+                            <span class="card-header-icon mr-2">
+                                <i class="tio-trending-up"></i>
+                            </span>
+                            <span class="ml-1">Profile Completion</span>
+                        </h5>
+                    </div>
+                    <div class="card-body d-flex align-items-center" style="gap:16px">
+                        {{-- Donut ring --}}
+                        <div style="position:relative;width:72px;height:72px;flex-shrink:0">
+                            <svg width="72" height="72" viewBox="0 0 72 72">
+                                <circle cx="36" cy="36" r="28" fill="none" stroke="#f0f0f5" stroke-width="6"/>
+                                <circle cx="36" cy="36" r="28" fill="none"
+                                    stroke="{{ $completionRing }}" stroke-width="6"
+                                    stroke-linecap="round"
+                                    stroke-dasharray="{{ $completionCircumf }}"
+                                    stroke-dashoffset="{{ $completionOffset }}"
+                                    transform="rotate(-90 36 36)"/>
+                            </svg>
+                            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1">
+                                <span style="font-size:15px;font-weight:700;color:#333">{{ $completionPercent }}%</span>
+                                <span style="font-size:9px;color:#aaa">{{ $completionDone }}/{{ $completionTotal }}</span>
+                            </div>
+                        </div>
+                        {{-- Vertical todo list --}}
+                        <div style="flex:1">
+                            <ul class="list-unstyled mb-0" style="display:flex;flex-direction:column;gap:5px">
+                                @foreach($completionItems as $t)
+                                <li style="display:flex;align-items:center;gap:7px">
+                                    <span style="width:15px;height:15px;border-radius:4px;border:1.5px solid {{ $t['done'] ? $completionRing : '#d0d0dc' }};
+                                                 background:{{ $t['done'] ? $completionRing : 'transparent' }};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                        @if($t['done'])
+                                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                                                <path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        @endif
+                                    </span>
+                                    <span style="font-size:13px;color:{{ $t['done'] ? '#888' : '#333' }};{{ $t['done'] ? 'text-decoration:line-through' : '' }}">
+                                        {{ $t['icon'] }} {{ $t['label'] }}
+                                    </span>
+                                </li>
+                                @endforeach 
+                            </ul> 
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
                 <div class="card h-100">
                     <div class="card-header">
                         <h5 class="card-title m-0 d-flex align-items-center">
@@ -243,7 +296,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-4">
                 <div class="card h-100">
                     <div class="card-header">
                         <h5 class="card-title m-0 d-flex align-items-center">
@@ -266,8 +319,12 @@
                     </div>
                 </div>
             </div>
+
+
         </div>
     </div>
+
+
 
     <div class="modal fade" id="collect-cash" tabindex="-1">
         <div class="modal-dialog">

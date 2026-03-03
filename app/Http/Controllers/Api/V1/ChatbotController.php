@@ -4,96 +4,68 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
-use App\Services\ClaudeService;
+use App\Services\AiServiceClient;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 
 class ChatbotController extends Controller
 {
-    private ClaudeService $claude;
- 
-    public function __construct(ClaudeService $claude) 
+    private AiServiceClient $ai;
+
+    public function __construct(AiServiceClient $ai)
     {
-        $this->claude = $claude;
+        $this->ai = $ai;
     }
 
     /**
      * POST /api/v1/chatbot/message
      *
-     * Body: 
+     * Body:
      *   message     string  (required)   — the user's latest message
-     *   session_id  string  (optional)   — omit to start a new conversation
-     *   provider    string  (optional)   — 'anthropic' | 'openai' | 'gemini'  (default: anthropic)
-     *   model       string  (optional)   — override the default model for the provider
+     *   session_id  string  (optional)   — UUID to continue an existing conversation
+     *                                      Omit to start a new session (guest user_id auto-assigned)
      *
      * Response:
-     *   { reply, session_id, provider }
+     *   { reply, session_id }
      *
-     * History is stored server-side in cache (24 h). The client never manages history.
+     * Routes through AiServiceClient → _ai_service (ClaudeService with full multi-provider support).
+     * History and memory are managed server-side by _ai_service.
      */
     public function message(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'message'    => 'required|string|max:5000',
             'session_id' => 'nullable|string|max:64',
-            'provider'   => 'nullable|string|in:anthropic,openai,google,custom',
-            'model'      => 'nullable|string|max:100',
-            'custom_url' => 'nullable|url',          // required when provider=custom
-            'custom_key' => 'nullable|string|max:200', // API key for custom endpoint
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        // Resolve or create a session ID
-        $sessionId = $request->input('session_id') ?: (string) Str::uuid();
-        $cacheKey  = 'chatbot_history_' . $sessionId;
+        // Use the authenticated user ID, or fall back to a stable guest ID from session_id
+        $userId = auth('api')->id()
+            ?? (int) crc32($request->input('session_id', 'guest'));
 
-        // Load existing history from cache
-        $history = Cache::get($cacheKey, []);
+        $result = $this->ai->chat(
+            userId:     $userId,
+            guard:      auth('api')->check() ? 'user' : 'guest',
+            message:    $request->input('message'),
+        );
 
-        // Append the new user message
-        $history[] = [
-            'role'    => 'user',
-            'content' => $request->input('message'),
-        ];
-
-        // Resolve provider / model
-        $provider   = $request->input('provider', 'anthropic');
-        $model      = $request->input('model') ?: null;       // null = use provider default
-        $customUrl  = $request->input('custom_url') ?: null;  // for custom/self-hosted
-        $customKey  = $request->input('custom_key') ?: null;
-
-        // System prompt
-        $system = 'You are a helpful assistant for My Chitti, a local service marketplace. '
-            . 'Help users with questions about services, bookings, and general support. '
-            . 'Be friendly, concise, and helpful. '
-            . 'If the user wants to raise a complaint or leave feedback, use the store_query tool to save it.';
-
-        try {
-            $reply = $this->claude->chat($history, $system, 4096, $provider, $model, $customUrl, $customKey);
-        } catch (\Throwable $e) {
+        if (!($result['success'] ?? false)) {
             return response()->json([
-                'error'       => 'Failed to get a response. Please try again.',
-                'err_details' => $e->getMessage(),
+                'error' => $result['message'] ?? 'Failed to get a response. Please try again.',
             ], 403);
         }
 
-        // Append assistant reply and save back to cache (24 h, max 40 turns)
-        $history[] = [
-            'role'    => 'assistant',
-            'content' => $reply,
-        ];
-
-        Cache::put($cacheKey, array_slice($history, -40), now()->addHours(24));
+        // Generate a stable session_id the client can pass back (not used for server-side
+        // memory — _ai_service tracks by user_id+guard — but useful for the client to
+        // distinguish conversations).
+        $sessionId = $request->input('session_id') ?: (string) \Illuminate\Support\Str::uuid();
 
         return response()->json([
-            'reply'      => $reply,
+            'reply'      => $result['message'],
             'session_id' => $sessionId,
-            'provider'   => $provider,
         ]);
     }
 }
