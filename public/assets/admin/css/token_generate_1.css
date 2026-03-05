@@ -52,6 +52,7 @@
     font-weight: bold;
     font-size: 18px;
     margin-left: 20px;
+        white-space: nowrap;
 }
 
 .menu-item-description {
@@ -253,8 +254,8 @@
     text-align: left;
     cursor: pointer;
     transition: all 0.2s;
-    white-space: nowrap;
-    overflow: hidden;
+    /* white-space: nowrap; */
+    /* overflow: hidden; */
     text-overflow: ellipsis;
     width: 100%;
 }

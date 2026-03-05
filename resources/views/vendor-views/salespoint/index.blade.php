@@ -687,7 +687,7 @@
                                                                  {{ ucfirst($item->name) }}</h5>
                                                              <span style="cursor:pointer;"
                                                                  onclick="addToCart('item', {{ $item->id }},'{{ $item->name }}', {{ $item->price }})"
-                                                                 class="menu-item-price">{{ _price($item->price) }}</span>
+                                                                 class="menu-item-price">₹ {{ $item->price }}</span>
                                                          </div>
                                                          @if ($item->qty_left < 5)
                                                              <span class="text-danger stock_span">Only
