@@ -299,7 +299,7 @@ class ServiceController extends Controller
             $data = [
                 'title' => "Service Status Update",
                 'description' => "Status of " . $item->name . " is changed to Cancel.",
-                'order_id' => '',
+                'order_id' => $request_id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -307,6 +307,8 @@ class ServiceController extends Controller
             DB::table('user_notifications')->insert([
                 'data' => json_encode($data),
                 'user_id' => $user->id,
+                'type' => 'service',
+                'type_id' => $request_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -1182,7 +1184,7 @@ class ServiceController extends Controller
             $data = [
                 'title' => "Service Confirmation",
                 'description' => "You have recieved a confirmation request from " . Helpers::get_store_data()->name . " for rs." . $request->get('price') . " .",
-                'order_id' => '',
+                'order_id' => $request_id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -1190,6 +1192,8 @@ class ServiceController extends Controller
             DB::table('user_notifications')->insert([
                 'data' => json_encode($data),
                 'user_id' => $user->id,
+                'type' => 'service',
+                'type_id'=> $request_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -1667,7 +1671,7 @@ class ServiceController extends Controller
             $data = [
                 'title' => "Service Status Update",
                 'description' => "Status of " . $item->name . " is changed to " . $stats->status . ".",
-                'order_id' => '',
+                'order_id' => $request_id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -1675,6 +1679,8 @@ class ServiceController extends Controller
             DB::table('user_notifications')->insert([
                 'data' => json_encode($data),
                 'user_id' => $user->id,
+                'type' => 'service',
+                'type_id'=> $service_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -1724,46 +1730,25 @@ class ServiceController extends Controller
 
         $saved = false;
         $gatepass = GatePass::where('service_id', $request->service_id)->first();
-        if ($request->has('gp_status') && $request->gp_status == 'rejected') {
+        $isRecreate = $request->has('gp_status') && $request->gp_status == 'rejected';
+
+        if ($isRecreate) {
             $gatepass->approved = 0;
             $gatepass->created_at = date('Y-m-d H:i:s');
             $gatepass->updated_at = date('Y-m-d H:i:s');
             $gatepass->update();
-
-            DB::table('lead_statuses')->insert([
-                'service_request_id' => $request->service_id,
-                'status' => 'Gatepass Recreated',
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
-
-            $request_id = $request->service_id;
-            $service_requests = ServiceRequest::where('id', $request->service_id)->first();
-            $item = DB::table('items')->where('id', $service_requests->item_id)->first();
-            $user = DB::table('service_requests')->join('users', 'users.id', 'service_requests.user_id')->where('service_requests.id', $request_id)->select('users.*')->first();
-            if ($user) {
-                $fcm_token = $user->cm_firebase_token;
-                $data = [
-                    'title' => "Service Gatepass",
-                    'description' => "Gatepass recreated for " . $item->name . ".",
-                    'order_id' => '',
-                    'image' => '',
-                    'type' => 'block'
-                ];
-                Helpers::send_push_notif_to_device($fcm_token, $data);
-                DB::table('user_notifications')->insert([
-                    'data' => json_encode($data),
-                    'user_id' => $user->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-        } else {
-            DB::table('lead_statuses')->insert([
-                'service_request_id' => $request->service_id,
-                'status' => 'Gatepass Updated',
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
         }
+
+        $statusText = $isRecreate ? 'Gatepass Recreated' : 'Gatepass Updated';
+        $descriptionText = $isRecreate ? 'Gatepass recreated' : 'Gatepass updated';
+
+        DB::table('lead_statuses')->insert([
+            'service_request_id' => $request->service_id,
+            'status' => $statusText,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+
+        $this->sendServiceNotification($request->service_id, 'Service Gatepass', $descriptionText);
 
         //existing items 
         foreach ($request->ids as $key => $item) {
@@ -1925,7 +1910,7 @@ class ServiceController extends Controller
                 $data = [
                     'title' => "Service Gatepass",
                     'description' => "Gatepass created for " . $item->name . ".",
-                    'order_id' => '',
+                    'order_id' => $request_id,
                     'image' => '',
                     'type' => 'block'
                 ];
@@ -1933,6 +1918,8 @@ class ServiceController extends Controller
                 DB::table('user_notifications')->insert([
                     'data' => json_encode($data),
                     'user_id' => $user->id,
+                    'type' => 'service',
+                    'type_id'=> $request->service_id,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -2006,6 +1993,7 @@ class ServiceController extends Controller
         $quotation->save();
 
         if ($saved) {
+            $this->sendServiceNotification($request->service_id, 'Service Quotation', 'Quotation updated');
             Toastr::success('Quotations updated successfully!');
         } else {
             Toastr::error('Some Error Occured');
@@ -2017,7 +2005,7 @@ class ServiceController extends Controller
     public function quotation_add(Request $request)
     {
         $request->validate([
-            'item_name.*' => 'required|max:500',
+            'item_name.*' => 'required|max:500', 
             'item_price.*' => 'required|integer',
             'item_tax.*' =>  'required|integer',
         ]);
@@ -2091,7 +2079,7 @@ class ServiceController extends Controller
                 $data = [
                     'title' => "Service Quotation",
                     'description' => "Quotation created for " . $item->name . ".",
-                    'order_id' => '',
+                    'order_id' => $request_id,
                     'image' => '',
                     'type' => 'block'
                 ];
@@ -2100,6 +2088,8 @@ class ServiceController extends Controller
                 DB::table('user_notifications')->insert([
                     'data' => json_encode($data),
                     'user_id' => $user->id,
+                    'type' => 'service',
+                    'type_id' => $request_id,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -2125,5 +2115,36 @@ class ServiceController extends Controller
             Toastr::error('Some Error Occured');
         }
         return back();
+    }
+
+    private function sendServiceNotification($serviceId, $title, $description)
+    {
+        $service = ServiceRequest::where('id', $serviceId)->first();
+        $item = DB::table('items')->where('id', $service->item_id)->first();
+        $user = DB::table('service_requests')
+            ->join('users', 'users.id', 'service_requests.user_id')
+            ->where('service_requests.id', $serviceId)
+            ->select('users.*')
+            ->first();
+
+        $data = [
+            'title' => $title,
+            'description' => $description . ' for ' . $item->name . '.',
+            'order_id' => $serviceId,
+            'image' => '',
+            'type' => 'block'
+        ];
+
+        if ($user) {
+            Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
+            DB::table('user_notifications')->insert([
+                'data' => json_encode($data),
+                'user_id' => $user->id,
+                'type' => 'service',
+                'type_id' => $serviceId,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
     }
 }

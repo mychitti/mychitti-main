@@ -15,7 +15,7 @@ use App\Models\Store;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-
+ 
 class BannerController extends Controller
 {
     public function get_banners(Request $request)
@@ -28,7 +28,7 @@ class BannerController extends Controller
             ], 403);
         }
         $zone_id = $request->header('zoneId');
-        $banners = BannerLogic::get_banners($zone_id, $request->query('featured'));
+        $banners = BannerLogic::get_banners($zone_id, $request->query('featured'), 'app');
         $campaigns = [];
         if (!$request->featured) {
             $campaigns = Campaign::whereHas('module.zones', function ($query) use ($zone_id) {
@@ -51,7 +51,7 @@ class BannerController extends Controller
             return response()->json([], 200);
         }
     }
-    public function get_item_banners(Request $request)
+    public function get_item_banners(Request $request, $item_id)
     {
         // prx($request->all());
         if (!$request->hasHeader('zoneId')) {
@@ -63,8 +63,8 @@ class BannerController extends Controller
         }
         $zone_ids = json_decode($request->header('zoneId'), true);
 
-        $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'item_wise')->where('data', $request->item_id)
-            ->get();
+        $banners = DB::table('banners')->where('platform', 'app')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'item_wise')->where('data', $item_id)
+            ->select('id','title', 'image', 'default_link', 'created_at')->get();
         // prx($banners);
 
         foreach ($banners as $key => $value) {
@@ -152,7 +152,7 @@ class BannerController extends Controller
         }
         $zone_ids = json_decode($request->header('zoneId'), true);
 
-        $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'default')
+        $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'default')->where('platform', 'app')
             ->select("title", "image", "default_link", 'created_at')
             ->get();
 
@@ -163,7 +163,7 @@ class BannerController extends Controller
     }
     public function category_banners(Request $request, $ctId)
     {
-        $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('data', $ctId)
+        $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('platform', 'app')->where('data', $ctId)
             ->select("title", "image", "default_link", 'created_at')
             ->get();
         foreach ($banners as $key => $value) {
@@ -234,11 +234,16 @@ class BannerController extends Controller
         //         });
         // }
 
-        $banners = $banners->whereIn('zone_id', json_decode($zone_id, true))->whereHas('module', function ($query) {
-            $query->active();
-        })->where('data', $store_id)
-            ->select("title", "image", "default_link", 'created_at')
-            ->get();
+     $banners = $banners
+    ->whereIn('zone_id', json_decode($zone_id, true))
+    ->where('platform', 'app')
+    ->where('data', $store_id)
+    ->select("title", "image", "default_link", 'created_at')
+    ->get()
+    ->map(function ($banner) {
+        $banner->image = asset('storage/banner/' . $banner->image);
+        return $banner;
+    });
 
         return response()->json($banners, 200);
     }

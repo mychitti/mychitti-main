@@ -24,22 +24,30 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::post('otp-verify', 'CustomerController@verify_otp');
     Route::post('sendotp', 'CustomerController@sendotp')->name('sendotp');
     Route::get('searchbar', 'ItemController@searchbar')->name('searchbar');
-    Route::get('keywords-search', 'ItemController@keywords_searchbar'); 
-    Route::get('zone/list', 'ZoneController@get_zones'); 
+
+    Route::group(['prefix' => 'search'], function () {
+        Route::get('/', 'ItemController@search');
+        Route::get('save', 'ItemController@save_search');
+        Route::get('recent', 'ItemController@recent_search');
+        Route::get('clear-recent', 'ItemController@clear_recent_search');
+    });
+
+    Route::get('keywords-search', 'ItemController@keywords_searchbar');
+    Route::get('zone/list', 'ZoneController@get_zones');
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 
 
-    Route::group(['prefix' => 'banners'], function () { 
+    Route::group(['prefix' => 'banners'], function () {
         Route::get('offer/{store_id}', 'BannerController@get_offer_banners');
         Route::get('default', 'BannerController@get_default_banners');
         Route::get('category-banner/{id}', 'BannerController@category_banners');
         Route::get('paid-banners', 'BannerController@get_paid_banners');
+        Route::get('item-banner/{id}', 'BannerController@get_item_banners');
         Route::get('{store_id}/', 'BannerController@get_store_banners');
     });
 
     Route::group(['prefix' => 'banners2'], function () {
         Route::get('module-banner', 'BannerController@get_module_banners');
-        Route::get('item-banner', 'BannerController@get_item_banners');
     });
 
     Route::get('faqs', 'ConfigController@faqs');
@@ -532,7 +540,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 });
 
 WebSocketsRouter::webSocket('/delivery-man/live-location', DMLocationSocketHandler::class);
- 
+
 // ── AI Service internal API (called by the AI droplet) ───────────────────────
 Route::middleware('ai.internal')->prefix('ai-internal')->group(function () {
     Route::get('user/{userId}/service-bookings',  [\App\Http\Controllers\Api\AiInternalController::class, 'userServiceBookings']);
@@ -540,4 +548,3 @@ Route::middleware('ai.internal')->prefix('ai-internal')->group(function () {
     Route::get('services',                        [\App\Http\Controllers\Api\AiInternalController::class, 'listServices']);
     Route::post('user/{userId}/service-booking',  [\App\Http\Controllers\Api\AiInternalController::class, 'createServiceBooking']);
 });
- 

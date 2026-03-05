@@ -424,7 +424,6 @@ class UserController extends Controller
             'text' => 'required|string',
             'url' => 'required|url',
         ]);
-
         $user_id  =  auth('web')->user() ? auth('web')->user()->id : session()->get('guest_id');
 
         // Save the search item in the database
@@ -450,7 +449,7 @@ class UserController extends Controller
         $searches = UserRecentSearch::where('user_id', $userId)->where('trash', 0)
             ->latest()
             ->limit(10)
-            ->get(['text', 'url']);
+            ->get(['text', 'url', 'type', 'type_id']);
 
         return response()->json($searches);
     }

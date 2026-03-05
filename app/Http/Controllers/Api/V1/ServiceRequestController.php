@@ -165,7 +165,7 @@ class ServiceRequestController extends Controller
                     $data = [
                         'title' => "Service Request",
                         'description' => "Service Requested Successfully.",
-                        'order_id' => '',
+                        'order_id' => $request_id,
                         'image' => '',
                         'type' => 'block'
                     ];
@@ -173,6 +173,8 @@ class ServiceRequestController extends Controller
                     DB::table('user_notifications')->insert([
                         'data' => json_encode($data),
                         'user_id' => $user->user_id,
+                        'type' => 'service',
+                        'type_id' => $request_id,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);

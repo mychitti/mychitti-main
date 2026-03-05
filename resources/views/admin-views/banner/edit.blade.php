@@ -10,7 +10,7 @@
                 <span class="page-header-icon">
                     <img src="{{asset('public/assets/admin/img/edit.png')}}" class="w--26" alt="">
                 </span>
-                <span>
+                <span> 
                     {{translate('messages.update_banner')}}
                 </span>
             </h1>
@@ -93,6 +93,14 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
+                                        <label class="input-label">Platform</label>
+                                        <select name="platform" id="platform" class="form-control">
+                                            <option value="all" {{ ($banner->platform ?? 'all') == 'all' ? 'selected' : '' }}>All</option>
+                                            <option value="app" {{ $banner->platform == 'app' ? 'selected' : '' }}>App</option>
+                                            <option value="web" {{ $banner->platform == 'web' ? 'selected' : '' }}>Web</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.banner_type')}}</label>
                                         <select name="banner_type" id="banner_type" class="form-control">
                                             <option value="store_wise" {{$banner->type == 'store_wise'? 'selected':'' }}>{{translate('messages.store_wise')}}</option>
@@ -127,7 +135,7 @@
                                     <div class="h-100 d-flex flex-column">
                                         <label class="mt-auto mb-0 d-block text-center">
                                             {{translate('messages.banner_image')}}
-                                            <small class="text-danger">* ( {{translate('messages.ratio')}} 900x300 )</small>
+                                            <small class="text-danger">* ( {{translate('messages.ratio')}} <span id="ratio_hint">{{ $banner->platform == 'app' ? '12:5' : '3:1' }}</span> )</small>
                                         </label>
                                         <div class="text-center py-3 my-auto">
                                             <img class="img--vertical onerror-image" id="viewer" data-onerror-image="{{asset('public/assets/admin/img/900x400/img1.jpg')}}" src="{{\App\CentralLogics\Helpers::onerror_image_helper($banner['image'], asset('storage/app/public/banner/').'/'.$banner['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'banner/') }}"
@@ -161,6 +169,14 @@
     <script src="{{asset('public/assets/admin')}}/js/view-pages/banner-edit.js"></script>
     <script>
         "use strict";
+
+        $("#platform").on('change', function(){
+            if($(this).val() == 'app'){
+                $("#ratio_hint").text('12:5');
+            } else {
+                $("#ratio_hint").text('3:1');
+            }
+        });
 
         var zone_id = {{$banner->zone_id}};
 

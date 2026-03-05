@@ -213,7 +213,7 @@ class AiInternalController extends Controller
                 $fcmData = [
                     'title'       => 'Service Request',
                     'description' => 'Service Requested Successfully.',
-                    'order_id'    => '',
+                    'order_id'    => $serviceReq->id,
                     'image'       => '',
                     'type'        => 'block',
                 ];
@@ -221,6 +221,8 @@ class AiInternalController extends Controller
                 DB::table('user_notifications')->insert([
                     'data'       => json_encode($fcmData),
                     'user_id'    => $userRow->user_id,
+                    'type'       => 'service',
+                    'type_id'    => $serviceReq->id,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

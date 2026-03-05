@@ -16,7 +16,7 @@ use App\Mail\PlaceOrder;
 use Illuminate\Support\Facades\Validator;
 use App\Mail\OrderVerificationMail;
 use Illuminate\Support\Facades\Mail;
-use App\CentralLogics\ProductLogic;
+use App\CentralLogics\ProductLogic; 
 use App\Http\Controllers\Api\V1\CategoryController as V1CategoryController;
 use App\Models\BlogCategory;
 use App\Models\BusinessSetting;
@@ -368,7 +368,7 @@ class FrontController extends Controller
         $data['popular_services'] = _getPopularService($zone_id) ?? [];
 
         // prx($data['popular_services']);
-        $data['banners'] = BannerLogic::get_all_module_banners($zone_id, 0, $type = 'default');
+        $data['banners'] = BannerLogic::get_all_module_banners($zone_id, 0, $type = 'default', null, 'web');
         return view('front-views.home', compact('stores', 'zone_id', 'data', 'modules'));
     }
 
@@ -639,7 +639,7 @@ class FrontController extends Controller
         )
         ORDER BY relevance_score DESC
         LIMIT 20
-    ";
+      ";
 
         $params = array_merge(
             // Products
@@ -2366,7 +2366,7 @@ class FrontController extends Controller
         }
         $data['store_config'] = StoreConfig::where('store_id', $store->id)->first();
         $data['galleries'] = StoreGallery::where('store_id', $store->id)->get();
-        $data['banners'] = DB::table('banners')->where('type', 'store_wise')->where('data',  $store->id)->where('status', 1)->get();
+        $data['banners'] = DB::table('banners')->where('type', 'store_wise')->where('data',  $store->id)->where('status', 1)->whereIn('platform', ['web', 'all'])->get();
         $data['reviews'] = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->take(3)->get();
         $data['review_count'] = DB::table('store_reviews')
             ->join('stores', 'stores.id', 'store_reviews.store_id')
@@ -2408,7 +2408,7 @@ class FrontController extends Controller
             return back();
         }
         // prx($item->id);
-        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'item_wise',  $item->id);
+        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'item_wise',  $item->id, 'web');
         // prx($data['banners']);
         $stores = [];
         // if (Config::get('module.current_module_id') == 5) {
@@ -2619,7 +2619,7 @@ class FrontController extends Controller
         if ($cat) {
             $module = $cat->module_id;
         }
-        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'category_wise',  $cat->id);
+        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'category_wise',  $cat->id, 'web');
         $catDetails = Category::where('slug', $slug)
             ->where('module_id', $module)
             ->first();

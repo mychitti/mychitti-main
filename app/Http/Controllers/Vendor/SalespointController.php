@@ -511,6 +511,7 @@ class SalespointController extends Controller
                 }
             }
         }
+        
         // + $gstAmountTotal
         $total = $subtotal  + $gstAmountTotal;
 

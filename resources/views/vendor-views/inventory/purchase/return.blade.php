@@ -306,7 +306,7 @@
                             </thead>
 
                             <tbody id="set-rows"> 
-                                @foreach ($return_slip as $key => $slip)
+                                @foreach ($return_slips as $key => $slip)
                                     <tr>
                                         <td>{{ $loop->iteration }}</td>
                                         <td>

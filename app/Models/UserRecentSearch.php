@@ -11,5 +11,5 @@ class UserRecentSearch extends Model
     // use SoftDeletes;
 
     protected $table = 'user_recent_searches'; // Explicitly define the table name
-    protected $fillable = ['text', 'url', 'user_id']; // Specify the fields that are mass assignable
+    protected $fillable = ['text', 'url', 'user_id', 'type', 'type_id']; // Specify the fields that are mass assignable
 }

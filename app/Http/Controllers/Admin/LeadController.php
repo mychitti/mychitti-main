@@ -190,7 +190,7 @@ class LeadController extends Controller
                 $data = [
                     'title' => "New Lead Created",
                     'description' => "New Lead Created from MyChitti for ".$item->name.".",
-                    'order_id' => '',
+                    'order_id' => $request_id,
                     'image' => '',
                     'type'=> 'block'
                 ];
@@ -199,6 +199,8 @@ class LeadController extends Controller
                 DB::table('user_notifications')->insert([
                     'data' => json_encode($data),
                     'user_id' => $user->id,
+                    'type' => 'service',
+                    'type_id' => $request_id,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);

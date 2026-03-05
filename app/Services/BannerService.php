@@ -11,7 +11,7 @@ class BannerService
 {
     use FileManagerTrait;
 
-    public function getAddData(Object $request): array
+    public function getAddData(Object $request): array 
     {
         if($request->user_id){ // if paid banner
             $data_datetime = new DateTime(date('Y-m-d H:i:s'));
@@ -36,6 +36,7 @@ class BannerService
             'data' => $request->banner_type == 'category_wise' ? $request->category_id :  ($request->banner_type == 'module_wise' ? $request->module_id : ( ($request->banner_type == 'store_wise')?$request->store_id:(($request->banner_type == 'item_wise')?$request->item_id:''))) ,
             'module_id' => Config::get('module.current_module_id'),
             'default_link' => $request->default_link,
+            'platform' => $request->platform ?? 'all',
             'user_id' => $request->user_id ?? null,
             'paid' =>  $request->user_id ? 1 : 0,
             'price' => $request->user_id ?   $request->price : null ,
@@ -53,7 +54,8 @@ class BannerService
             'image' => $request->has('image') ? $this->updateAndUpload('banner/', $banner->image, 'png', $request->file('image')) : $banner->image,
             'data' => ($request->banner_type == 'store_wise')?$request->store_id:(($request->banner_type == 'item_wise')?$request->item_id:''),
             'module_id' => Config::get('module.current_module_id'),
-            'default_link' => $request->default_link
+            'default_link' => $request->default_link,
+            'platform' => $request->platform ?? $banner->platform,
         ];
     }
 

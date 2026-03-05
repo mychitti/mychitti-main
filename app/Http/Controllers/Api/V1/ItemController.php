@@ -15,6 +15,7 @@ use App\CentralLogics\ProductLogic;
 use App\Http\Controllers\Controller;
 use App\Models\ServiceKeyword;
 use App\Models\Store;
+use App\Models\UserRecentSearch;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -226,16 +227,291 @@ class ItemController extends Controller
             return response()->json(['status' => false, 'html' => $html]);
         }
     }
-    public function keywords_searchbar(Request $request)
+    public function save_search(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'text' => 'required|string',
+            'type' => 'required|string',
+            'id' => 'required|integer',
+            'user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $validated = $validator->validated();
+        $user_id  =  $request->user_id;
+
+        // Save the search item in the database
+        $exists = UserRecentSearch::where('user_id', $user_id)
+            ->where('type', $validated['type'])
+            ->where('type_id', $validated['id'])
+            ->exists();
+
+        if (!$exists) {
+            UserRecentSearch::create([
+                'user_id' => $user_id,
+                'text' => $validated['text'],
+                'type' => $validated['type'],
+                'type_id' => $validated['id']
+            ]);
+        }
+
+        return response()->json([translate('messages.search_saved_successfully')], 200);
+    }
+    public function search(Request $request)
+    {
+
+        $validator = Validator::make($request->all(), [
+            'keyword' => 'required|min:3',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json([
+                'errors' => $errors
+            ], 403);
+        }
+        $zone_id =  json_decode($request->header('zoneId'), true);
+
+        $keyword = $request->keyword;
+        $searchTerm = '%' . $keyword . '%';
+        $startsWithTerm = strtolower($keyword) . '%';
+        $lowerKeyword = strtolower($keyword);
+        $zoneIdPlaceholders = implode(',', array_fill(0, count($zone_id), '?'));
+
+        // Optimized: Pre-filter stores by zone, then join
+        $sql = "
+        (
+            SELECT 
+                i.image,
+                i.name,
+                i.id,
+                NULL as keyword_text,
+                'service' as result_type,
+                CASE 
+                    WHEN LOWER(i.name) = ? THEN 100
+                    WHEN LOWER(i.name) LIKE ? THEN 80
+                    ELSE 50
+                END as relevance_score
+            FROM items i
+            STRAIGHT_JOIN categories c ON c.id = i.category_id
+            WHERE LOWER(i.name) LIKE ?
+                AND i.is_approved = 1
+                AND i.status = 1
+                AND i.module_id = 6
+                AND EXISTS (
+                    SELECT 1 
+                    FROM stores s 
+                    WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    LIMIT 1
+                )
+            GROUP BY i.id
+            LIMIT 8
+        )
+        UNION ALL
+        (
+            SELECT 
+               i.image,
+                i.name,
+                i.id,
+                sk.keyword as keyword_text,
+                'keyword' as result_type,
+                CASE 
+                    WHEN LOWER(sk.keyword) = ? THEN 95
+                    WHEN LOWER(sk.keyword) LIKE ? THEN 75
+                    ELSE 48
+                END as relevance_score
+            FROM service_keywords sk
+            STRAIGHT_JOIN items i ON i.id = sk.service_id
+            STRAIGHT_JOIN categories c ON c.id = i.category_id
+            WHERE LOWER(sk.keyword) LIKE ?
+                AND i.is_approved = 1
+                AND i.status = 1
+                AND i.module_id = 6
+                AND EXISTS (
+                    SELECT 1 
+                    FROM stores s 
+                    WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    LIMIT 1
+                )
+            GROUP BY sk.id
+            LIMIT 6
+        )
+        UNION ALL
+        (
+            SELECT 
+              image,
+                name,
+                id,
+                NULL as keyword_text,
+                'category' as result_type,
+                CASE 
+                    WHEN LOWER(name) = ? THEN 90
+                    WHEN LOWER(name) LIKE ? THEN 70
+                    ELSE 45
+                END as relevance_score
+            FROM categories
+            WHERE LOWER(name) LIKE ?
+                AND module_id = 6
+                AND position = 0
+                AND status = 1
+            LIMIT 3
+        )
+        UNION ALL
+        (
+            SELECT 
+               logo,
+                name,
+                id,
+                NULL as keyword_text,
+                'store' as result_type,
+                CASE 
+                    WHEN LOWER(name) = ? THEN 92
+                    WHEN LOWER(name) LIKE ? THEN 72
+                    ELSE 46
+                END as relevance_score
+            FROM stores
+            WHERE LOWER(name) LIKE ?
+                AND module_id = 6
+                AND status = 1
+                AND zone_id IN ({$zoneIdPlaceholders})
+            LIMIT 3
+        )
+        ORDER BY relevance_score DESC
+        LIMIT 20
+      ";
+
+        $params = array_merge(
+            // Products
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id,
+            // Keywords
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id,
+            // Categories
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            // Stores
+            [$lowerKeyword, $startsWithTerm, $searchTerm],
+            $zone_id
+        );
+
+        $allResults = DB::select($sql, $params);
+
+        if (empty($allResults)) {
+            return response()->json([
+                'status' => false,
+                'data'   => []
+            ]);
+        }
+
+        $data = [];
+
+        foreach ($allResults as $result) {
+
+            switch ($result->result_type) {
+
+                case 'service':
+                    $data[] = [
+                        'id'    => $result->id,
+                        'type'  => 'service',
+                        'image' => $result->image
+                            ? asset('storage/products/' . $result->image)
+                            : null,
+                        'name'  => $result->name,
+                    ];
+                    break;
+
+                case 'keyword':
+                    $data[] = [
+                        'id'    => $result->id,
+                        'type'  => 'service',   // or keyword if you prefer
+                        'image' => $result->image
+                            ? asset('storage/services/' . $result->image)
+                            : null,
+                        'name'  => $result->keyword_text . ' - ' . $result->name,
+                    ];
+                    break;
+
+                case 'category':
+                    $data[] = [
+                        'id'    => $result->id,
+                        'type'  => 'category',
+                        'image' => $result->image
+                            ? asset('storage/categories/' . $result->image)
+                            : null,
+                        'name'  => $result->name,
+                    ];
+                    break;
+
+                case 'store':
+                    $data[] = [
+                        'id'    => $result->id,
+                        'type'  => 'store',
+                        'image' => $result->image
+                            ? asset('storage/stores/' . $result->image)
+                            : null,
+                        'name'  => $result->name,
+                    ];
+                    break;
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data,
+        ]);
+    }
+
+    public function clear_recent_search(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $userId  =  $request->user_id;
+        UserRecentSearch::where('user_id', $userId)->delete();
+
+        return response()->json([
+            'message'   => translate('messages.recent_search_cleared_successfully'),
+        ], 200);
+    }
+    public function recent_search(Request $request)
+    {
+        $userId  =  $request->user_id;
+        $searches = null;
+        if ($userId) {
+            $searches = UserRecentSearch::where('user_id', $userId)->where('trash', 0)->whereNotNull('type')->whereNotNull('type_id')
+                ->latest()
+                ->limit(10)
+                ->get(['text', 'type', 'type_id']);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data'   => $searches,
+        ]);
+    }
+    public function keywords_searchbar_old2(Request $request)
     {
 
         $validator = Validator::make($request->all(), [
             'keyword' => 'required',
         ]);
-        $keyword = $request['keyword'];
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+        $keyword = $request['keyword'];
 
         if (!$request->hasHeader('zoneId')) {
             $errors = [];

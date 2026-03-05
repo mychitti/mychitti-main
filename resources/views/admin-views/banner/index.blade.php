@@ -9,7 +9,7 @@
 @section('content')
     <div class="content container-fluid">
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header"> 
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <img src="{{asset('public/assets/admin/img/banner.png')}}" class="w--26" alt="">
@@ -29,9 +29,9 @@
                         >
                             @csrf
                             <div class="row g-3">
-                                <div class="col-lg-6">
+                                <div class="col-lg-8 row">
                                     
-                                    <div id="default-form">
+                                    <div id="default-form" class="col-md-6">
                                         <div class="form-group">
                                             <label class="input-label"
                                                 for="exampleFormControlInput1">{{ translate('messages.title') }} ({{ translate('messages.default') }})</label>
@@ -41,7 +41,7 @@
                                         <input type="hidden" name="lang[]" value="default">
                                     </div>
                                   
-                                    <div class="form-group">
+                                    <div class="form-group col-md-6">
                                         <label class="input-label" for="title">City</label>
                                         <select name="zone_id" id="zone" class="form-control js-select2-custom">
                                             <option disabled selected>---{{translate('messages.select')}}---</option>
@@ -56,7 +56,14 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label">Platform</label>
+                                        <select name="platform" id="platform" class="form-control">
+                                            <option value="web">Web</option>
+                                            <option value="app">App</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.banner_type')}}</label>
                                         <select name="banner_type" id="banner_type" class="form-control">
                                             <option value="store_wise">{{translate('messages.store_wise')}}</option>
@@ -67,7 +74,7 @@
                                             <option value="self">Self Banner</option>
                                         </select>
                                     </div>
-                                    <!-- <div class="form-group">
+                                    <!-- <div class="form-group col-md-6">
                                         <div class="form-check">
                                         <input class="form-check-input bill_to_type" type="radio" name="bill_to_type" value="vendor" id="bill_to_store" checked>
                                         <label class="form-check-label" for="flexRadioDefault1">
@@ -82,27 +89,27 @@
                                     </div>
                                         </div> -->
 
-                                    <div class="form-group mb-0" id="store_wise">
+                                    <div class="form-group col-md-6 " id="store_wise">
                                         <label class="input-label" for="exampleFormControlSelect1">{{translate('messages.store')}}<span
                                                 class="input-label-secondary"></span></label>
                                         <select name="store_id" id="store_id" class="js-data-example-ajax form-control"  title="{{translate('messages.select_store')}}">
                                             <option disabled selected>---{{translate('messages.select_store')}}---</option>
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="item_wise">
+                                    <div class="form-group col-md-6 " id="item_wise">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_item')}}</label>
                                         <select name="item_id" id="choice_item" class="form-control js-select2-custom" placeholder="{{translate('messages.select_item')}}">
 
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="module_wise">
+                                    <div class="form-group col-md-6 " id="module_wise">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_module')}}</label>
                                         <select name="module_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_module')}}">
                                             <option value="6">MY CITY</option>
                                             <option value="5">SHOPPING</option>
                                         </select>
                                     </div>
-                                    <div class="form-group paid_field " style="display: none;" id="customer_wise"> 
+                                    <div class="form-group col-md-6 paid_field " style="display: none;" id="customer_wise"> 
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.bill_to')}}</label>
                                         <select name="user_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_user')}}">
                                             <option value=""></option>
@@ -111,11 +118,11 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group paid_field " id="">
+                                    <div class="form-group col-md-6  paid_field " id="">
                                         <label class="input-label" for="exampleFormControlInput1">Price</label>
                                         <input name="price" required type="number" class="form-control" placeholder="Price">
                                     </div>
-                                    <div class="form-group paid_field" id="">
+                                    <div class="form-group col-md-6 paid_field" id="">
                                         <label class="input-label" for="exampleFormControlInput1">Validity</label>
                                         <div class="row px-3">
                                             <input name="validity_count" type="number" class="form-control col-6" placeholder="Validity">
@@ -126,7 +133,7 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="form-group paid_field" id="">
+                                    <div class="form-group col-md-6  paid_field" id="">
                                         <label class="input-label" for="exampleFormControlInput1">GST</label>
                                         <div class="row px-3">
 
@@ -136,7 +143,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="form-group mb-0" id="category_wise">
+                                    <div class="form-group col-md-6 " id="category_wise">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_category')}}</label>
                                         <select name="category_id" id="" class="form-control js-select2-custom" placeholder="{{translate('messages.select_category')}}">
                                             @foreach($categories as $cat)
@@ -144,15 +151,15 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="">
+                                    <div class="form-group col-md-6 " id="">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.default_link')}}({{ translate('messages.optional') }})</label>
                                         <input type="text" name="default_link" class="form-control" placeholder="{{translate('messages.default_link')}}">
                                     </div>
                                 </div>
-                                <div class="col-lg-6">
+                                <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">
-                                        <label class="mt-auto mb-0 d-block text-center">{{translate('messages.banner_image')}} <small class="text-danger">* ( {{translate('messages.ratio')}} 3:1 )</small></label>
-                                        <div class="text-center py-3 my-auto">
+                                        <label class=" mb-0 d-block text-center">{{translate('messages.banner_image')}} <small class="text-danger">* ( {{translate('messages.ratio')}} <span id="ratio_hint">3:1</span> )</small></label>
+                                        <div class="text-center py-3 ">
                                             <img class="img--vertical" id="viewer"
                                                 src="{{asset('public/assets/admin/img/900x400/img1.jpg')}}" alt="banner image"/>
                                         </div>
@@ -215,6 +222,7 @@
                                 <tr>
                                     <th class="border-0">{{ translate('messages.SL') }}</th>
                                     <th class="border-0">{{translate('messages.title')}}</th>
+                                    <th class="border-0">Platform</th>
                                     <th class="border-0">{{translate('messages.type')}}</th>
                                     <th class="border-0 text-center">{{translate('messages.featured')}} <span class="input-label-secondary"
                                         data-toggle="tooltip" data-placement="right" data-original-title="{{translate('if_you_turn/off_on_this_featured,_it_will_effect_on_website_&_user_app')}}"><img src="{{asset('public/assets/admin/img/info-circle.svg')}}"
@@ -240,6 +248,7 @@
 
                                     </span>
                                     </td>
+                                    <td><span class="badge badge-soft-{{ $banner->platform == 'app' ? 'info' : ($banner->platform == 'web' ? 'success' : 'secondary') }}">{{ ucfirst($banner->platform ?? 'all') }}</span></td>
                                     <td>{{translate('messages.'.$banner['type'])}}</td>
 
                                     <td  >
@@ -365,7 +374,7 @@
             $('.js-data-example-ajax').select2({
                 ajax: {
                     @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
-                    url: '{{url('/')}}/store/get-stores',
+                    url: '{{url('/')}}/admin/store/get-stores',
                     @else 
                     url: '{{url('/')}}/store/get-stores',
                     @endif
@@ -439,6 +448,14 @@
         $('#choice_item').val(null).trigger('change');
         $('#viewer').attr('src','{{asset('public/assets/admin/img/900x400/img1.jpg')}}');
     })
+
+    $("#platform").on('change', function(){
+        if($(this).val() == 'app'){
+            $("#ratio_hint").text('12:5');
+        } else {
+            $("#ratio_hint").text('3:1');
+        }
+    });
 
     $("#banner_type").on('change', function(){
         if($(this).val() == 'store_wise'){

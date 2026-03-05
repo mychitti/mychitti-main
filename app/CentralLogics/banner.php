@@ -10,11 +10,14 @@ use App\Models\Category;
 
 class BannerLogic
 {
-    public static function get_banners($zone_id, $featured = false)
+    public static function get_banners($zone_id, $featured = false, $platform = null)
     {
         $banners = Banner::active()
             ->when($featured, function ($query) {
-                $query->featured();
+                $query->featured(); 
+            })
+            ->when($platform, function ($query) use ($platform) {
+                $query->platform($platform);
             });
         if (config('module.current_module_data')) {
             $banners = $banners->whereHas('zone.modules', function ($query) {
@@ -94,7 +97,7 @@ class BannerLogic
         }
         return $data;
     }
-    public static function get_all_module_banners($zone_id,  $featured = false, $type = null, $data = null)
+    public static function get_all_module_banners($zone_id,  $featured = false, $type = null, $data = null, $platform = null)
     {
         $banners = Banner::active()
             ->when($featured, function ($query) {
@@ -105,6 +108,9 @@ class BannerLogic
             })
             ->when($data, function ($query) use ($data) {
                 $query->where('data', $data);
+            })
+            ->when($platform, function ($query) use ($platform) {
+                $query->platform($platform);
             });
 
         $banners = $banners->whereIn('zone_id', json_decode($zone_id, true))->whereHas('module', function ($query) {

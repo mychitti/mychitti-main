@@ -205,7 +205,7 @@ class LeadController extends Controller
             $data = [
                 'title' => "Service Status Update",
                 'description' => "Status of " . $item->name . " is changed to " . $stats->status . ".",
-                'order_id' => '',
+                'order_id' => $request_id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -213,6 +213,8 @@ class LeadController extends Controller
             DB::table('user_notifications')->insert([
                 'data' => json_encode($data),
                 'user_id' => $user->id,
+                'type' => 'service',
+                'type_id' => $request_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -245,7 +247,7 @@ class LeadController extends Controller
         $user = User::where('phone', $request->customer_phone)->first();
         if ($user) {
             $data = [
-                'order_id' => '',
+                'order_id' => $request->service_id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -257,7 +259,16 @@ class LeadController extends Controller
                 $data['description'] = "Your service has been completed.\nPlease confirm the job by sharing this OTP: " . $otp . "\nThank you for choosing us!";
             }
 
+
             Helpers::send_push_notif_to_device($user->cm_firebase_token, $data, '');
+            DB::table('user_notifications')->insert([
+                'data' => json_encode($data),
+                'user_id' => $user->id,
+                'type' => 'service',
+                'type_id' => $request->service_id,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]); 
         }
         _send_confirmation_sms('job_msg', $phone, $otp);
     }
@@ -408,7 +419,7 @@ class LeadController extends Controller
             $data = [
                 'title' => "New Quotaion",
                 'description' => "Recieved New Quotaion for " . $item->name . ".",
-                'order_id' => '',
+                'order_id' => $serviceReq->id,
                 'image' => '',
                 'type' => 'block'
             ];
@@ -416,6 +427,8 @@ class LeadController extends Controller
             DB::table('user_notifications')->insert([
                 'data' => json_encode($data),
                 'user_id' => $user->id,
+                'type' => 'service',
+                'type_id' => $serviceReq->id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);

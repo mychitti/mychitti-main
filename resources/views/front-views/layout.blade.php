@@ -1764,7 +1764,7 @@
             url: "{{ route('save-recent-search') }}", // Laravel route for saving the recent search
             data: {
                 text: text,
-                url: url
+                url: url,
             }
         });
     }

@@ -412,7 +412,8 @@
                                 @if (hasPermission('leads_manage', 'end_job'))
                                     <div class="action-card end-job start_job_btn end"
                                         data-url="{{ route('vendor.lead.start-job') }}" data-value="{{ $custDet->phone }}"
-                                        data-toggle="modal" data-target="#jobModal">
+                                        data-service-id="{{ $acceptanceDetails->service_request_id }}"
+                                        data-toggle="modal" data-target="#jobModal">  
                                         <i class="fas fa-stop"></i> End Job
                                     </div>
                                 @endif
@@ -421,6 +422,7 @@
                                     <!-- Start Job -->
                                     <div class="action-card start-job start_job_btn start"
                                         data-url="{{ route('vendor.lead.start-job') }}" data-value="{{ $custDet->phone }}"
+                                        data-service-id="{{ $acceptanceDetails->service_request_id }}"
                                         data-toggle="modal" data-target="#jobModal">
                                         <i class="fas fa-play"></i> Start Job
                                     </div>
@@ -1091,9 +1093,10 @@
             });
             $.post({
                 url: $(this).attr('data-url'),
-                data: {
+                data: { 
                     customer_phone: $(this).attr('data-value'),
-                    job_action: job_action
+                    job_action: job_action,
+                    service_id: $(this).attr('data-service-id')
                 },
                 success: function(data) {
                     $('#job_action').val(job_action)

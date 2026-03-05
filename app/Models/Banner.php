@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
-/**
+/** 
  * Class Banner
  *
  * @property int $id
@@ -46,6 +46,7 @@ class Banner extends Model
         'featured',
         'default_link',
         'created_by',
+        'platform',
     ];
 
     /**
@@ -126,6 +127,11 @@ class Banner extends Model
     public function scopeFeatured($query): mixed
     {
         return $query->where('featured', '=', 1);
+    }
+
+    public function scopePlatform($query, $platform): mixed
+    {
+        return $query->whereIn('platform', [$platform, 'all']);
     }
 
     /**
