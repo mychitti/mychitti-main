@@ -277,7 +277,7 @@
     max-height: 80vh;
     overflow-y: auto;
 }
-.pos-cat-btn {
+/* .pos-cat-btn {
     background: white;
     border: 1px solid #ddd;
     border-radius: 25px;
@@ -288,7 +288,7 @@
     transition: all 0.2s;
     text-overflow: ellipsis;
     width: 100%;
-}
+} */
 .pos-cat-btn.active,
 .pos-cat-btn:hover {
     background: var(--primary-orange);
