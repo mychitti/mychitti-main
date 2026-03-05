@@ -514,9 +514,9 @@
 
 
      <link rel="stylesheet" href="{{ asset('public/assets/admin/css/select2custom.css') }}">
-     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/') }}{{ $data['design'] }}">
+     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/') }}{{ $data['design'] }}?v={{ filemtime(public_path('assets/admin/css/' . $data['design'])) }}">
  @endpush
-
+ 
  @section('content')
 
      {{-- @include('vendor-views/sub-module/partials/salary') --}}
@@ -654,14 +654,13 @@
                                      <div class="pos-category-sidenav" style="display:flex;flex-direction:column;gap:5px;">
                                          <button class="pos-cat-btn active" data-category="">All</button>
                                          @foreach ($data['categories'] as $category)
-                                             <button class="pos-cat-btn"
+                                             <button class="pos-cat-btnq"
                                                  data-category="{{ $category->id }}">{{ ucfirst($category->name) }}</button>
                                          @endforeach
                                      </div>
                                  </div>
                              @endif
                              <div class="col-10">
-
                                  @foreach ($data['branchWiseItems'] as $branchName => $items)
                                      <h2 class="card-title align-items-center d-flex mb-3">{{ ucfirst($branchName) }}
                                          Menu<span class="badge badge-soft-dark ml-2"
