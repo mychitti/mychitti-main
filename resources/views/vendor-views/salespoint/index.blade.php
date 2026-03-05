@@ -644,7 +644,7 @@
                                  </select>
                              </div>
 
-                         </div>
+                         </div> 
                      </div>
 
                      <div class="coffee-tab-content active" id="tab_">
