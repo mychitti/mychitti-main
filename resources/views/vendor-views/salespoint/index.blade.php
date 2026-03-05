@@ -654,7 +654,7 @@
                                      <div class="pos-category-sidenav" style="display:flex;flex-direction:column;gap:5px;">
                                          <button class="pos-cat-btn active" data-category="">All</button>
                                          @foreach ($data['categories'] as $category)
-                                             <button class="pos-cat-btnq"
+                                             <button class="pos-cat-btn"
                                                  data-category="{{ $category->id }}">{{ ucfirst($category->name) }}</button>
                                          @endforeach
                                      </div>
