@@ -7,6 +7,7 @@ use App\Exports\POSItemsExport;
 use App\Exports\POSReportExport;
 use App\Exports\TokenExport;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessTokenPostSave;
 use App\Imports\InvItemImport;
 use App\Imports\POSInvItemImport;
 use App\Imports\POSItemImport;
@@ -14,10 +15,10 @@ use App\Models\Account;
 use App\Models\AccountDetail;
 use App\Models\AccountOption;
 use App\Models\Branch;
-use App\Models\BranchInventoryItem;
-use App\Models\Category;
+use App\Models\BranchInventoryItem; 
+use App\Models\Category; 
 use App\Models\InventoryItem;
-use App\Models\InvoiceItem;
+use App\Models\InvoiceItem; 
 use App\Models\Item;
 use App\Models\ManualInvoice;
 use App\Models\OrderType;
@@ -446,26 +447,23 @@ class SalespointController extends Controller
             PosTokenItem::where('token_id', $request->token_id)->delete();
         }
 
+        // Batch-fetch all items to avoid N+1 queries
+        $itemIds = $request->item_id;
+        $branch_id = $request->branch_id ?? null;
+        $branchItems = DB::table('branch_inventory_item')
+            ->where('branch_id', $branch_id)
+            ->whereIn('inventory_item_id', $itemIds)
+            ->get()
+            ->keyBy('inventory_item_id');
+        $inventoryNames = InventoryItem::whereIn('id', $itemIds)->pluck('item_name', 'id');
+
+        $lowStockItems = [];
+
         foreach ($request->item_id as $key => $item_id) {
-            $type = $request->item_type[$key];
             $qty = (float) $request->item_qty[$key];
 
-            $itemQuery  = DB::table('inventory_items as ii')
-                ->join('branch_inventory_item as bi', 'ii.id', '=', 'bi.inventory_item_id')
-                ->join('branches as b', 'bi.branch_id', '=', 'b.id')
-                ->where('bi.inventory_item_id', $item_id);
-
-            // if (auth('vendor')->check()) {
-            $branch_id = $request->branch_id ?? null;
-            // } else {
-            //     $branch_id = Helpers::get_loggedin_user()->branch_id;
-            // }
-            $itemQuery->where('b.id', $branch_id);
-            // prx($branch_id);
-            $itemRow = (clone $itemQuery)
-                ->select('bi.*')
-                ->first();
-
+            $itemRow = $branchItems[$item_id] ?? null;
+            if (!$itemRow) continue;
 
             $priceRow = $itemRow->price;        // GST inclusive price
             $gst_percent = $itemRow->gst_percent;
@@ -473,16 +471,13 @@ class SalespointController extends Controller
             $gstAmount = ($priceRow * $gst_percent) / (100 + $gst_percent);
             $basePrice = $priceRow - $gstAmount; // Price without GST
 
-            $item_det = InventoryItem::where('id', $item_id)->first();
-            $item_name = $item_det ? $item_det->item_name : '';
-
+            $item_name = $inventoryNames[$item_id] ?? '';
 
             $unit_price = (float) $basePrice;
             $item_total = $qty * $unit_price;
             $subtotal += $item_total;
 
-            $gstAmount = ($priceRow * $gst_percent) / (100 + $gst_percent);
-            $gstAmountTotal += $gstAmount * $qty; // For display only, not added to total
+            $gstAmountTotal += $gstAmount * $qty;
 
             // Save token item
             $token_item = new PosTokenItem();
@@ -498,16 +493,16 @@ class SalespointController extends Controller
             $token_item->save();
 
             if (!$request->token_id) { // stock already updated for dine-in orders
-
-                // Calculate new stock
                 $qty_left = $itemRow->qty_left - $token_item->qty;
 
                 if ($qty_left >= 0) {
-                    // Update using the original query builder
-                    $itemQuery->update(['bi.qty_left' => $qty_left]);
+                    DB::table('branch_inventory_item')
+                        ->where('branch_id', $branch_id)
+                        ->where('inventory_item_id', $item_id)
+                        ->update(['qty_left' => $qty_left]);
                 }
                 if ($qty_left < 5) {
-                    _notifLowStock($itemRow, $qty_left); // send notification of low stock
+                    $lowStockItems[] = ['item' => $itemRow, 'qty_left' => $qty_left];
                 }
             }
         }
@@ -566,48 +561,24 @@ class SalespointController extends Controller
 
         // daybook and account entry
         if ($request->payment_status == 'paid') {
-
             if (!$store_config || $store_config->pos_daybook_entry == 'token_generate') {
                 $daybook_entry = true;
             }
-            if (!$store_config || $store_config->pos_account_entry == 'token_generate') {
-                $account = new Account();
-                $account->store_id = $store_id;
-                $account->account_type = 'vendor';
-                $account->user_type_id = $store_id;
-                $account->user_type = 'vendor';
-                $account->date = date('Y-m-d');
-                $account->type = 'income';
-                $account->status = 'completed';
-                $account->payment_mode = 'cash';
-                $account->category = 'POS Token';
-                $account->description = 'POS Token Sales';
-                $account->purpose = 'Sales';
-                $account->gst_amount = 0;
-                $account->ledger_account_type = 9;
-                $account->amount = $pos_token->total;
-                $account->save();
-            }
         }
+
+        // Dispatch account entry and low stock notifications to queue
+        $shouldCreateAccount = $request->payment_status == 'paid' && (!$store_config || $store_config->pos_account_entry == 'token_generate');
+        ProcessTokenPostSave::dispatch($store_id, $pos_token->total, $request->payment_status, $lowStockItems, $shouldCreateAccount);
 
         $token = PosToken::with('tokenItems')
             ->where('id', $pos_token->id)
-            ->first(); 
+            ->first();
 
-        // Disable Laravel Debugbar if it exists, otherwise it forcefully injects 
-        // a massive Javascript payload (Sfdump, PHPDebugBar CSS) right into our tiny POS receipt HTML, 
-        // completely destroying the iframe layout and spilling raw JS text onto the page.
-        if (class_exists('\Barryvdh\Debugbar\Facades\Debugbar')) {
-            \Barryvdh\Debugbar\Facades\Debugbar::disable();
-        }
-
-        $data =  Helpers::generatePOSToken($token); 
-
-        // Generate HTML for native silent printing on mobile/desktop browsers 
+        // Generate print HTML (fast - just Blade rendering)
         $store = Helpers::get_store_data();
         $store_config = StoreConfig::where('store_id', $store->id)->first();
         $template_id = $store_config && $store_config->pos_token_template ? $store_config->pos_token_template : 1;
-        
+
         $print_html_array = [];
         if ($token->token_type == 'token' || $token->token_type == 'both') {
             $kitchen = false;
@@ -618,11 +589,16 @@ class SalespointController extends Controller
             $print_html_array['kitchen'] = \Illuminate\Support\Facades\View::make('document_templates/pos_token/token_' . $template_id, compact('store', 'store_config', 'token', 'kitchen'))->render();
         }
 
-        if ($store_config->auto_invoice_pos ?? 0) {    
+        // Generate PDF synchronously
+        if (class_exists('\Barryvdh\Debugbar\Facades\Debugbar')) {
+            \Barryvdh\Debugbar\Facades\Debugbar::disable();
+        }
+
+        $data = Helpers::generatePOSToken($token);
+
+        if ($store_config->auto_invoice_pos ?? 0) {
             $invoice = $this->convert_to_bill($request, $token->id, false);
             if ($invoice) {
-                // master ledger entry 
-                //ledger entry 
                 $customer = StoreCustomer::find($invoice->bill_to);
                 $credit_account = Helpers::ensureSalesAccount();
                 if ($customer) {
@@ -632,25 +608,36 @@ class SalespointController extends Controller
                 }
                 $data2 = [
                     'date' => now(),
-                    'amount' => $invoice->total_amount, 
+                    'amount' => $invoice->total_amount,
                     'voucher_type' => 'Sales',
                     'invoice_id' => 'manual-' . $invoice->id,
                     'status' => $invoice->payment_status == 'Paid' ? 'approved' : 'pending',
                     'description' => 'Sales Invoice',
                 ];
-                $voucher =   _masterLedgerEntry($data2, $credit_account, $debit_account, 'customer', 'store', null);
+                $voucher = _masterLedgerEntry($data2, $credit_account, $debit_account, 'customer', 'store', null);
                 if ($daybook_entry) {
-
                     _saveDayBookEntry($invoice->total_amount, 'credit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id);
                 }
-            } 
+            }
         }
-        session()->flash('clear_cart', true); 
+
+        if ($request->ajax()) {
+            if (isset($data['success']) && $data['success']) {
+                return response()->json([
+                    'success' => true,
+                    'pdf_url' => $data['url'],
+                    'print_html_array' => $print_html_array,
+                ]);
+            }
+            return response()->json(['success' => false, 'message' => 'Failed to generate POS token'], 500);
+        }
+
+        session()->flash('clear_cart', true);
         if (isset($data['success']) && $data['success']) {
             return redirect()->back()->with([
                 'pdf_url' => $data['url'],
                 'print_html_array' => $print_html_array
-            ]); 
+            ]);
         } else {
             Toastr::error("Failed to generate POS token");
             return back();
@@ -659,7 +646,7 @@ class SalespointController extends Controller
     public function openTable(Request $request)
     {
         $request->validate([
-            'table_id' => 'required',
+            'table_id' => 'required', 
             'item_id' => 'required|array', 
             'item_qty' => 'required|array',
             'item_type' => 'required|array',

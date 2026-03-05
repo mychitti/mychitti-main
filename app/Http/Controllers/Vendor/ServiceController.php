@@ -15,7 +15,7 @@ use App\Models\GatePassItem;
 use App\Models\InServiceQuotation;
 use App\Models\Salary;
 use App\Models\VendorEmpJob;
-use App\Models\Store;
+use App\Models\Store; 
 use App\Models\ServiceInvoice;
 use App\Models\InvoiceItem;
 use App\Models\LeadCharge;

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Front;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use App\Models\Vendor;
@@ -56,12 +55,7 @@ class GoogleController extends Controller
             $loginType = session('google_login_type', 'user');
 
             session()->forget('google_login_type'); // cleanup
-            $fullName = $googleUser->getName();
-            $nameParts = explode(' ', $fullName);
-
-            $firstName = $nameParts[0] ?? '';
-            $lastName  = isset($nameParts[1]) ? implode(' ', array_slice($nameParts, 1)) : '';
-            /*
+            /* 
         |--------------------------------------------------------------------------
         | USER LOGIN FLOW
         |--------------------------------------------------------------------------
@@ -72,16 +66,11 @@ class GoogleController extends Controller
                 $user = User::where('email', $googleUser->getEmail())->first();
 
                 if (!$user) {
-                    $user = User::create([
-                        'f_name'    => $firstName,
-                        'l_name'    => $lastName,
-                        'email'     => $googleUser->getEmail(),
-                        'password'  => bcrypt(str()->random(12)),
-                        'google_id' => $googleUser->getId(),
-                    ]);
+                    Toastr::error('No account found with this email. Please sign up first.');
+                    return redirect('/login');
                 }
 
-                Auth::guard('web')->login($user);
+                Auth::guard('web')->login($user); 
 
                 return redirect('/');
             }

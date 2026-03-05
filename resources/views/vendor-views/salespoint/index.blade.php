@@ -9,7 +9,7 @@
              cursor: pointer;
              border-width: 1px;
              border-radius: 6px !important;
-         }
+         } 
 
          .dine-table-card.active {
              background-color: var(--primary-orange);
@@ -18,8 +18,8 @@
              box-shadow: 0 0 0 2px var(--primary-orange);
          }
 
-         .desk_p2 {
-             padding: 0.5rem !important;
+         .desk_p2 { 
+             padding: 0.5rem !important; 
          }
 
          .small_field {
@@ -1408,18 +1408,14 @@
              $('#online_amount_input').val(Math.max(0, total - cash).toFixed(2));
          });  
 
-         $('.order-btn').on('click', function() { 
+         $('.order-btn').on('click', function() {
              let orderType = $('input[class="order_type"]:checked').val();
 
              if (orderType === 'dine_in') {
-
                  if (!$('#dine_table_id').val()) {
                      toastr.error('Please select table');
                      return false;
                  }
-                 console.log('fd2')
-
-                 console.log($('#dine_waiter_id').val())
                  if (!$('#dine_waiter_id').val()) {
                      toastr.error('Please select waiter');
                      return false;
@@ -1429,9 +1425,41 @@
              if ($('.price-display').length) {
                  $('.order_type[value="take_away"]').prop('checked', true);
                  $("#dineInPanel").hide();
-                 {{-- $(".inner_cart").hide(); --}}
                  $('#x_client_input').val(window.ReactNativeWebView ? 'app' : 'web');
-                $("#cartForm").submit();
+
+                 var btn = $(this);
+                 btn.prop('disabled', true);
+
+                 $.ajax({
+                     url: $("#cartForm").attr('action'),
+                     type: 'POST',
+                     data: $("#cartForm").serialize(),
+                     headers: {
+                         'X-Requested-With': 'XMLHttpRequest'
+                     },
+                     success: function(res) {
+                         if (res.success) {
+                             toastr.success('Token generated successfully!');
+                             printInvoice(res.pdf_url, true, res.print_html_array);
+                             resetCart();
+                         } else {
+                             toastr.error('Failed to generate token');
+                         }
+                     },
+                     error: function(xhr) {
+                         var msg = 'Something went wrong';
+                         if (xhr.responseJSON) {
+                             if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                             if (xhr.responseJSON.errors) {
+                                 msg = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                             }
+                         }
+                         toastr.error(msg);
+                     },
+                     complete: function() {
+                         btn.prop('disabled', false);
+                     }
+                 });
              } else {
                  toastr.error('Please add atleast one item');
              }

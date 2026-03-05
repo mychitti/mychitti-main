@@ -44,9 +44,9 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
     'openai' => [
-        'key' => env('OPENAI_API_KEY'),
+        'key' => env('OPENAI_API_KEY'), 
     ],
-    'google' => [
+    'gemini' => [
         'key' => env('GEMINI_API_KEY'),
     ],
     'custom_ai' => [

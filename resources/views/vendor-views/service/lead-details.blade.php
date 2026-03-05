@@ -17,7 +17,7 @@
             padding: 10px 15px;
             border-radius: 8px;
             cursor: pointer;
-            text-align: center;
+            text-align: center; 
             font-weight: 500;
             display: flex;
             align-items: center;

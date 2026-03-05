@@ -73,7 +73,7 @@
                         <a href="{{ route('google.login') }}" class="google-btn border text-dark"  type="button">
                             <img src="https://img.icons8.com/color/48/000000/google-logo.png" style="width: 17px;"
                                 alt="Google">
-                            Continue with Google
+                            Login with Google
                         </a>
 
                         <small>Don't have an account? <a href="{{ route('user-signup') }}">Signup</a></small><br>

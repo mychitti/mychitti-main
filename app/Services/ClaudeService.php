@@ -154,7 +154,7 @@ class ClaudeService
     private function chatGemini(array $messages, string $system, int $maxTokens, ?string $model): string
     {
         $model  = $model ?? 'gemini-1.5-pro';
-        $apiKey = config('services.google.key');
+        $apiKey = config('services.gemini.key');
 
         $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
