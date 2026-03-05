@@ -514,6 +514,7 @@
 
 
      <link rel="stylesheet" href="{{ asset('public/assets/admin/css/select2custom.css') }}">
+     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/') }}{{ $data['design'] }}">
  @endpush
 
  @section('content')
