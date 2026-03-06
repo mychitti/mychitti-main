@@ -6,7 +6,7 @@ use App\CentralLogics\Helpers;
 use App\Exports\POSItemsExport;
 use App\Exports\POSReportExport;
 use App\Exports\TokenExport;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Controller; 
 use App\Jobs\ProcessTokenPostSave;
 use App\Imports\InvItemImport;
 use App\Imports\POSInvItemImport;
@@ -384,6 +384,7 @@ class SalespointController extends Controller
 
         $pos_token->store_id = $store_id;
         $pos_token->branch_id = $branch_id;
+        $pos_token->staff_id = auth('vendor_employee')->check() ? auth('vendor_employee')->id() : 0;
         $pos_token->customer_id = $request->customer_id;
 
         $pos_token->payment_method = $request->payment_method;
@@ -1087,12 +1088,17 @@ class SalespointController extends Controller
         $paymentMethod = $request->payment_method ?? null;
         $upiAccountFilter = $request->upi_account_id ?? null;
 
-        $query =  PosToken::with('client', 'invoice', 'upiAccount')
+        $staffFilter = $request->staff_id ?? null;
+
+        $query =  PosToken::with('client', 'invoice', 'upiAccount', 'staff')
             ->when($paymentMethod && $paymentMethod !== 'all', function ($q) use ($paymentMethod) {
                 $q->where('payment_method', $paymentMethod);
             })
             ->when($upiAccountFilter && $upiAccountFilter !== 'all', function ($q) use ($upiAccountFilter) {
                 $q->where('upi_account_id', $upiAccountFilter);
+            })
+            ->when($staffFilter && $staffFilter !== 'all', function ($q) use ($staffFilter) {
+                $q->where('staff_id', $staffFilter);
             })
             ->where('store_id', Helpers::get_store_id());
         if ($request->has('search') && $request->search != '') {
@@ -1103,10 +1109,10 @@ class SalespointController extends Controller
                 $query->where('branch_id', $request->branch);
             }
         }
-        if (!auth('vendor')->check()) {
-            $branch_id = Helpers::get_loggedin_user()->branch_id;
-            $tokens = $query->where('branch_id', $branch_id);
-        }
+        // if (!auth('vendor')->check()) {
+        //     $branch_id = Helpers::get_loggedin_user()->branch_id;
+        //     $tokens = $query->where('branch_id', $branch_id);
+        // }
 
         $branches = Branch::where('store_id', Helpers::get_store_id())->get();
         $upiAccounts = AccountDetail::where('user_type', 'vendor')
@@ -1115,11 +1121,13 @@ class SalespointController extends Controller
             ->where('payment_type', 'upi')
             ->orderByDesc('id')
             ->get();
+        $staffList = VendorEmployee::where('store_id', Helpers::get_store_id())->where('status', 1)->get();
 
+        $totalAmount = (clone $query)->sum('total');
         $tokens = $query->orderBy('id', 'desc')->paginate(50);
-        return view('vendor-views.salespoint.token_list', compact('branches', 'preset', 'tokens', 'upiAccounts'));
+        return view('vendor-views.salespoint.token_list', compact('branches', 'preset', 'tokens', 'upiAccounts', 'totalAmount', 'staffList'));
     }
-    public function calendar_export(Request $request)
+    public function calendar_export(Request $request) 
     {
         $query = DB::table('pos_tokens as pt')
             ->where('store_id', Helpers::get_store_id())

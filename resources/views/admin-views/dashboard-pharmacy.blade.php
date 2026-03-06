@@ -1904,6 +1904,36 @@
                                 placeholder="Leave blank to use platform default key" value="{{ $a->api_key_override }}">
                             <span class="fh">Only set if using your own API key for this specific agent</span>
                         </div>
+
+                        {{-- ── TTS Voice (OpenAI only) ── --}}
+                        <div class="fg" id="tts-voice-wrap" style="{{ $a->ai_provider && $a->ai_provider !== 'openai' ? 'display:none' : '' }}">
+                            <label class="fl">🔊 TTS Voice <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">(OpenAI Text-to-Speech)</span></label>
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
+                                @php 
+                                    $ttsVoices = [
+                                        'alloy'   => ['🎙️', 'Alloy',   'Neutral, versatile'],
+                                        'echo'    => ['🎤', 'Echo',    'Warm, conversational'],
+                                        'fable'   => ['📖', 'Fable',   'British, storytelling'],
+                                        'onyx'    => ['💎', 'Onyx',    'Deep, authoritative'],
+                                        'nova'    => ['✨', 'Nova',    'Bright & friendly'],
+                                        'shimmer' => ['🌟', 'Shimmer', 'Soft, expressive'],
+                                    ];
+                                    $selectedVoice = $a->tts_voice ?? 'nova';
+                                @endphp
+                                @foreach ($ttsVoices as $vKey => [$vIcon, $vName, $vDesc])
+                                    <div class="tts-voice-card {{ $selectedVoice === $vKey ? 'on' : '' }}"
+                                         data-voice="{{ $vKey }}"
+                                         onclick="selectTtsVoice('{{ $vKey }}', this)"
+                                         style="border:1.5px solid {{ $selectedVoice === $vKey ? '#e3342f' : '#e5e8ef' }};border-radius:9px;padding:10px 11px;cursor:pointer;transition:all .15s;background:{{ $selectedVoice === $vKey ? '#fff8f8' : '#fff' }}">
+                                        <div style="font-size:17px;margin-bottom:4px">{{ $vIcon }}</div>
+                                        <div style="font-size:12px;font-weight:700;color:{{ $selectedVoice === $vKey ? '#e3342f' : '#111827' }}">{{ $vName }}</div>
+                                        <div style="font-size:10.5px;color:#9ca3af;margin-top:1px">{{ $vDesc }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <input type="hidden" id="ag-tts-voice" value="{{ $selectedVoice }}">
+                            <span class="fh" style="margin-top:4px">Only applies when this agent uses Text-to-Speech output</span>
+                        </div>
                     </div>
 
                     <!-- ④ LOGIN STATE & AUTH -->
@@ -2769,6 +2799,7 @@
                     temperature: document.getElementById('ag-temp').value,
                     top_p: document.getElementById('ag-topp').value, 
                     api_key_override: document.getElementById('ag-apikey').value,
+                    tts_voice: document.getElementById('ag-tts-voice').value,
                     requires_auth: document.getElementById('ag-auth').value === 'yes' ? 1 : 0,
                     session_validation: document.getElementById('ag-sess').value,
                     allowed_roles: getAllowedRoles(), 
@@ -2907,9 +2938,34 @@
             if (provSel) {
                 provSel.addEventListener('change', function () {
                     updateModelSelect(this.value, '');
+                    // Show/hide TTS voice section based on provider
+                    const ttsWrap = document.getElementById('tts-voice-wrap');
+                    if (ttsWrap) {
+                        ttsWrap.style.display = this.value === 'openai' ? '' : 'none';
+                    }
                 });
             }
         });
+
+        // ── TTS Voice card selector ──
+        function selectTtsVoice(voice, el) {
+            // Deselect all cards
+            document.querySelectorAll('.tts-voice-card').forEach(card => {
+                card.classList.remove('on');
+                card.style.border = '1.5px solid #e5e8ef';
+                card.style.background = '#fff';
+                const nameEl = card.querySelector('div:nth-child(2)');
+                if (nameEl) nameEl.style.color = '#111827';
+            });
+            // Select clicked card
+            el.classList.add('on');
+            el.style.border = '1.5px solid #e3342f';
+            el.style.background = '#fff8f8';
+            const nameEl = el.querySelector('div:nth-child(2)');
+            if (nameEl) nameEl.style.color = '#e3342f';
+            // Update hidden input
+            document.getElementById('ag-tts-voice').value = voice;
+        }
 
         function switchRpTab(tab) {
             document.querySelectorAll('.ai-rp .card[data-tab]').forEach(c => {

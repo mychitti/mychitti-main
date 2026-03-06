@@ -91,7 +91,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(\OpenAI\Client::class, function () {
-            return \OpenAI::client(config('services.openai.key'));
+            return (new \OpenAI\Factory())
+                ->withApiKey(config('services.openai.key'))
+                ->make(); 
         });
 
         $host = request()->getHost();

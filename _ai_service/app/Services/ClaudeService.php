@@ -264,7 +264,7 @@ class ClaudeService
 
         if ($followResponse->failed()) {
             Log::error('Claude tool follow-up error', ['status' => $followResponse->status(), 'body' => $followResponse->body()]);
-            throw new \Exception('Claude API error2: ' . $followResponse->body());
+            throw new \Exception('Claude API error: ' . $followResponse->body());
         }
 
         $followUp = $followResponse->json();

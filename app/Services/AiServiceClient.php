@@ -17,7 +17,7 @@ class AiServiceClient
         $this->key = config('services.ai_service.key', ''); 
     }
 
-    public function chat(int $userId , string $guard, string $message, ?array $fileContent = null, ?int $agentId = null, ?string $systemPrompt = null, ?array $modelConfig = null): array
+    public function chat(int $userId , string $guard, string $message, ?array $fileContent = null, ?int $agentId = null, ?string $systemPrompt = null, ?array $modelConfig = null, string $type = 'text'): array
     {
         // Auto-resolve agent_id from system_prompts if not explicitly provided
         if ($agentId === null && $guard !== 'agent_test') {
@@ -54,6 +54,7 @@ class AiServiceClient
             'user_id' => $userId,
             'guard'   => $guard,
             'message' => $message,
+            'type'    => $type,
         ];
 
         if ($agentId !== null) {

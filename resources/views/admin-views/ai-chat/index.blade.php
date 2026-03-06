@@ -14,7 +14,7 @@
 
                 <div id="chat-box"
                     style="height:420px;overflow-y:auto;border:1px solid #e5e5e5;padding:15px;border-radius:6px;margin-bottom:15px;background:#fafafa">
-                    <div class="text-muted text-center">Loading chat…</div>
+                    <div class="text-muted text-center">Loading chat…</div> 
                 </div>
 
                 <form id="chat-form" enctype="multipart/form-data">
@@ -173,8 +173,15 @@ $('#chat-form').off('submit').on('submit', function(e){
         processData: false,
         contentType: false,
         success: function(res){
-            if (res.success) renderMessage('assistant', res.message);
-            else alert(res.message || 'Something went wrong.');
+            if (res.success) {
+                renderMessage('assistant', res.message);
+                if (res.audio_url) {
+                    var audio = new Audio(res.audio_url);
+                    audio.play();
+                }
+            } else {
+                alert(res.message || 'Something went wrong.');
+            }
         },
         error: function(){
             alert('Upload failed.');
@@ -186,24 +193,65 @@ $('#chat-form').off('submit').on('submit', function(e){
 <script>
     const chatBox = $('#chat-box');
 
+    var adminCurrentAudio = null;
+
     function renderMessage(role, content, time = null) {
         let isUser = role === 'user';
         let align  = isUser ? 'text-right' : 'text-left';
         let label  = isUser ? 'You' : 'AI';
+        let listenBtn = !isUser ? `<button class="btn btn-sm btn-link p-0 ml-1 admin-tts-btn" style="font-size:12px;opacity:0.6;" title="Listen">&#128264;</button>` : '';
         let body   = isUser
             ? `<span class="badge badge-primary" style="white-space:pre-wrap;font-size:0.9rem;">${$('<div>').text(content).html()}</span>`
             : `<div class="ai-message-body" style="text-align:left;">${marked.parse(content)}</div>`;
 
         let html = `
-           <div class="mb-3 ${align}">
+           <div class="mb-3 ${align}" ${!isUser ? 'data-text="' + $('<div>').text(content).html() + '"' : ''}>
                ${body}
-               <div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${label}</div>
+               <div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${label} ${listenBtn}</div>
            </div>
        `;
 
         chatBox.append(html);
         chatBox.scrollTop(chatBox[0].scrollHeight);
     }
+
+    $(document).on('click', '.admin-tts-btn', function() {
+        var $btn = $(this);
+        var $msg = $btn.closest('[data-text]');
+        var text = $msg.attr('data-text');
+        if (!text) return;
+
+        if (adminCurrentAudio && !adminCurrentAudio.paused) {
+            adminCurrentAudio.pause();
+            adminCurrentAudio = null;
+            $('.admin-tts-btn').html('&#128264;').css('opacity', '0.6');
+            return;
+        }
+
+        var plainText = text.replace(/[#*_`~\[\]()>|\\-]/g, '').substring(0, 4096);
+        $btn.html('&#9203;').css('opacity', '1');
+
+        $.post({
+            url: "{{ route('admin.ai-chat.tts') }}",
+            data: { _token: "{{ csrf_token() }}", text: plainText },
+            success: function(res) {
+                if (res.success && res.audio_url) {
+                    adminCurrentAudio = new Audio(res.audio_url);
+                    adminCurrentAudio.play();
+                    $btn.html('&#9209;');
+                    adminCurrentAudio.onended = function() {
+                        $btn.html('&#128264;').css('opacity', '0.6');
+                        adminCurrentAudio = null;
+                    };
+                } else {
+                    $btn.html('&#128264;').css('opacity', '0.6');
+                }
+            },
+            error: function() {
+                $btn.html('&#128264;').css('opacity', '0.6');
+            }
+        });
+    });
 
     function loadHistory() {
         chatBox.html('<div class="text-muted text-center">Loading chat…</div>');

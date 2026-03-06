@@ -6,10 +6,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
-    Route::group(['prefix' => 'file', 'as' => 'file.'], function () {
+    Route::group(['prefix' => 'file', 'as' => 'file.'], function () { 
         Route::get('add', 'FileController@add')->name('add');
         Route::post('store', 'FileController@store')->name('store');
-    });
+    }); 
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
     Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
@@ -41,8 +41,13 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
             Route::get('/', 'AIChatController@index')->name('index');
             Route::post('send', 'AIChatController@chat')->name('send');
-            Route::get('history', 'AIChatController@history')->name('history');
+            Route::get('history', 'AIChatController@history')->name('history'); 
             Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+            Route::post('tts', 'AIChatController@tts')->name('tts'); 
+            Route::get('logs', 'AIChatController@chatLogs')->name('logs');
+            Route::get('logs/{type}/{id}', 'AIChatController@chatLogDetail')->name('logs.detail');
+            Route::get('analytics', 'AIChatController@analytics')->name('analytics');
+            Route::get('analytics/export', 'AIChatController@exportChatLogs')->name('analytics.export');
         });
  
         Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['module:ai_agent']], function () {
@@ -126,10 +131,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         Route::group(['prefix' => 'lead', 'as' => 'lead.', 'middleware' => ['planwise:leads_manage']], function () {
             Route::post('save-comment', 'LeadController@save_comment')->name('save-comment');
-            Route::get('list', 'LeadController@index')->name('list');
-            Route::get('add', 'LeadController@add')->name('add');
+            Route::get('list', 'LeadController@index')->name('list'); 
+            Route::get('add', 'LeadController@add')->name('add'); 
             Route::post('status-change', 'LeadController@status_change')->name('status-change');
             Route::post('save-info', 'LeadController@save_info')->name('save-info');
+            Route::get('search-vendors', 'LeadController@search_vendors')->name('search-vendors');
+            Route::get('search-clients', 'LeadController@search_clients')->name('search-clients');
+            Route::get('search-services', 'LeadController@search_services')->name('search-services');
+            Route::get('search-zones', 'LeadController@search_zones')->name('search-zones');
             Route::post('lead_approval', 'LeadController@lead_approval')->name('lead_approval');
             Route::get('delete/{id}', 'LeadController@delete')->name('delete');
             Route::get('manage/{id}', 'LeadController@manage')->name('manage');

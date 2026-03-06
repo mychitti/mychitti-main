@@ -1,11 +1,19 @@
 @extends('layouts.admin.app')
 
-@section('title', translate('Lead List'))
+@section('title', translate('Add Lead '))
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
+        .select2-container .select2-selection--single {
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #e9e9e9 !important;
+        }
+
         .form-row {
             margin-top: 6px;
         }
@@ -144,7 +152,7 @@
             var status = $(this).attr('data-id');
             $.ajax({
                 url: '{{ url('
-                                                            admin / lead / lead_approval ') }}',
+                                                                                            admin / lead / lead_approval ') }}',
                 type: "POST",
                 data: {
                     _token: $('[name="_token"]').val(),
@@ -191,19 +199,14 @@
                     <div class="card h-100">
                         <!-- <h4 class="m-3 mb-0">Client Details</h4> -->
                         <div class="card-body row">
-                            <div class="form-row col-6">
+                            <div class="form-row col-3">
                                 <label for="exampleInputEmail1">Client</label>
-                                <!-- <input type="text" name="client_name" placeholder="Client Name" class="form-control"> -->
-                                <select name="client_name" id="" class="form-control js-select2-custom">
-                                    <option value=""></option>
-                                    @foreach ($customers as $cust)
-                                        <option value="{{ $cust->id }}">
-                                            {{ $cust->phone . ' | ' . $cust->f_name . ' ' . $cust->l_name }}</option>
-                                    @endforeach
+                                <select name="client_name" id="client_select" class="form-control">
+                                    <option value="">Select Client</option>
                                 </select>
                             </div>
 
-                            <div class="form-row col-6">
+                            <div class="form-row col-3">
                                 <label for="inputState">
                                     @if (Config::get('module.current_module_id') == 6)
                                         Service
@@ -211,31 +214,28 @@
                                         Product
                                     @endif
                                 </label>
-                                <select name="service" id="" class="form-control js-select2-custom">
-                                    <option value=""></option>
-                                    @foreach ($services as $service)
-                                        <option value="{{ $service->id }}">{{ $service->name }}</option>
-                                    @endforeach
+                                <select name="service" id="service_select" class="form-control">
+                                    <option value="">Select Service</option>
                                 </select>
                             </div>
-                            <div class="form-row col-6">
+                            <div class="form-row col-3">
                                 <label for="">City</label>
-                                <select name="zone" id="" class="form-control js-select2-custom">
-                                    <option value=""></option>
-                                    @foreach ($zones as $zone)
-                                        <option value="{{ $zone->id }}">{{ $zone->name }}</option>
-                                    @endforeach
+                                <select name="zone" id="zone_select" class="form-control">
+                                    <option value="">Select City</option>
+                                </select>
+                            </div>
+                            <div class="form-row col-3">
+                                <label for="">Vendor</label>
+                                <select name="vendor_id" id="vendor_select" class="form-control">
+                                    <option value="">Select Vendor</option>
                                 </select>
                             </div>
                         </div>
+                        <div class="mx-3 mb-2 d-flex justify-content-end">
+                            <button class="btn   btn--primary">Save</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-row">
-
-                    <div class="col my-2">
-                        <button class="btn  btn--primary btn-outline-primary">Save</button>
-                    </div>
                 </div>
             </form>
         </div>
@@ -244,4 +244,112 @@
 @endsection
 
 @push('script_2')
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.full.min.js"></script>
+    <script>
+        $('#client_select').select2({
+            placeholder: 'Search client by name or phone',
+            allowClear: true,
+            ajax: {
+                url: '{{ route('admin.lead.search-clients') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(client) {
+                            return {
+                                id: client.id,
+                                text: (client.phone || '') + ' | ' + (client.f_name || '') + ' ' + (
+                                    client.l_name || '')
+                            };
+                        })
+                    };
+                }
+            },
+            minimumInputLength: 2
+        });
+
+        $('#service_select').select2({
+            placeholder: 'Search service by name',
+            allowClear: true,
+            ajax: {
+                url: '{{ route('admin.lead.search-services') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(item) {
+                            return {
+                                id: item.id,
+                                text: item.name
+                            };
+                        })
+                    };
+                }
+            },
+            minimumInputLength: 2
+        });
+
+        $('#zone_select').select2({
+            placeholder: 'Search city by name',
+            allowClear: true,
+            ajax: {
+                url: '{{ route('admin.lead.search-zones') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(zone) {
+                            return {
+                                id: zone.id,
+                                text: zone.name
+                            };
+                        })
+                    };
+                }
+            },
+            minimumInputLength: 1
+        });
+
+        $('#vendor_select').select2({
+            placeholder: 'Search vendor by name or phone',
+            allowClear: true,
+            ajax: {
+                url: '{{ route('admin.lead.search-vendors') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(vendor) {
+                            return {
+                                id: vendor.id,
+                                text: vendor.name + (vendor.phone ? ' | ' + vendor.phone : '')
+                            };
+                        })
+                    };
+                }
+            },
+            minimumInputLength: 2
+        });
+    </script>
 @endpush

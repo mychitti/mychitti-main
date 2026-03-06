@@ -291,7 +291,8 @@ use Illuminate\Http\Request;
         $fields = $request->only([
             'name', 'description', 'user_type', 'skill_type', 'status', 'prompt', 'settings',
             'ai_provider', 'ai_model', 'max_tokens', 'temperature', 'top_p', 'api_key_override',
-            'requires_auth', 'session_validation', 'allowed_roles',
+            'tts_voice',
+            'requires_auth', 'session_validation', 'allowed_roles', 
             'trigger_type', 'cron_schedule', 'webhook_url', 'event_name', 'run_as_user', 'timeout_seconds',
             'conv_history_enabled', 'cross_session_memory', 'inject_vendor_profile',
             'max_history_messages', 'context_window',

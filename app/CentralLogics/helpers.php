@@ -2445,6 +2445,35 @@ class Helpers
 
         if (empty($storeIds)) return [];
 
+        // Step 2.5: Filter stores with minimum wallet balance of 101
+        $walletData = DB::table('store_wallets')
+            ->whereIn('vendor_id', $storeIds)
+            ->pluck('total_earning', 'vendor_id')
+            ->toArray();
+
+        // print_r([
+        //     'msg' => 'Lead Distribution - Wallet Balances',
+        //     'store_ids' => $storeIds,
+        //     'wallet_balances' => $walletData,
+        //     'min_required' => 101,
+        // ]);
+
+        $walletQualifiedIds = collect($walletData)
+            ->filter(fn($balance) => $balance >= 101)
+            ->keys()
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+
+        $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
+
+        // prx( [
+        //     'msg' => 'Lead Distribution - After Wallet Filter',
+        //     'qualified_store_ids' => $storeIds,
+        // ]);
+        // die;
+
+        if (empty($storeIds)) return [];
+
         // Step 3: Track usage
         $oldIds = _getIdsFrist($item_id);
         _trackStoreIds('get_store_range', implode(',', $storeIds), $item_id, '-', $user_id . '_user', $oldIds);

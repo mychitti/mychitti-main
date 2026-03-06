@@ -1,21 +1,25 @@
 <div id="sidebarMain" class="d-none">
-    <aside class="js-navbar-vertical-aside navbar navbar-vertical-aside navbar-vertical navbar-vertical-fixed navbar-expand-xl navbar-bordered  ">
+    <aside
+        class="js-navbar-vertical-aside navbar navbar-vertical-aside navbar-vertical navbar-vertical-fixed navbar-expand-xl navbar-bordered  ">
         <div class="navbar-vertical-container">
             <div class="navbar-brand-wrapper justify-content-between">
                 <!-- Logo -->
                 @php($store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
                 <a class="navbar-brand" href="{{ route('admin.dashboard') }}" aria-label="Front">
-                       <img class="navbar-brand-logo initial--36 onerror-image onerror-image" data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                    src="{{\App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/').'/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg') ,'business/' )}}"
-                    alt="Logo">
-                    <img class="navbar-brand-logo-mini initial--36 onerror-image onerror-image" data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                    src="{{\App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/').'/' . $store_logo, asset('public/assets/admin/img/160x160/img2.jpg') ,'business/' )}}"
-                    alt="Logo">
+                    <img class="navbar-brand-logo initial--36 onerror-image onerror-image"
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                        alt="Logo">
+                    <img class="navbar-brand-logo-mini initial--36 onerror-image onerror-image"
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'business/') }}"
+                        alt="Logo">
                 </a>
-                <!-- End Logo --> 
+                <!-- End Logo -->
 
                 <!-- Navbar Vertical Toggle -->
-                <button type="button" class="js-navbar-vertical-aside-toggle-invoker navbar-vertical-aside-toggle btn btn-icon btn-xs btn-ghost-dark">
+                <button type="button"
+                    class="js-navbar-vertical-aside-toggle-invoker navbar-vertical-aside-toggle btn btn-icon btn-xs btn-ghost-dark">
                     <i class="tio-clear tio-lg"></i>
                 </button>
                 <!-- End Navbar Vertical Toggle -->
@@ -24,9 +28,9 @@
                     <!-- Navbar Vertical Toggle -->
                     <button type="button" class="js-navbar-vertical-aside-toggle-invoker close">
                         <i class="tio-first-page navbar-vertical-aside-toggle-short-align" data-toggle="tooltip"
-                        data-placement="right" title="Collapse"></i>
+                            data-placement="right" title="Collapse"></i>
                         <i class="tio-last-page navbar-vertical-aside-toggle-full-align"
-                        data-template='<div class="tooltip d-none d-sm-block" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'></i>
+                            data-template='<div class="tooltip d-none d-sm-block" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'></i>
                     </button>
                     <!-- End Navbar Vertical Toggle -->
                 </div>
@@ -37,12 +41,53 @@
             <div class="navbar-vertical-content bg-white" id="navbar-vertical-content">
 
                 <ul class="navbar-nav navbar-nav-lg nav-tabs">
+                   <li class="nav-item">
+                        <small class="nav-subtitle" title="{{ translate('Agents') }}">Agents</small>
+                    </li>
                     <!-- Agent Design -->
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.dashboard') }}?module_id={{Config::get('module.current_module_id')}}" title="{{ translate('messages.dashboard') }}">
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('/') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.dashboard') }}?module_id={{ Config::get('module.current_module_id') }}"
+                            title="{{ translate('messages.dashboard') }}">
                             <i class="tio-robot nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                 {{ translate('messages.agent_design') }}
+                            </span>
+                        </a>
+                    </li>
+                    <!-- Analyzing Tools --> 
+
+                    <li class="nav-item">
+                        <small class="nav-subtitle" title="{{ translate('Analyzing Tools') }}">Analyzing Tools</small>
+                    </li>
+
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat') && !Request::is('admin/ai-chat/logs*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.ai-chat.index') }}?module_id={{ Config::get('module.current_module_id') }}">
+                            <i class="tio-message nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                AI Chat
+                            </span>
+                        </a>
+                    </li>
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat/logs*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.ai-chat.logs') }}?module_id={{ Config::get('module.current_module_id') }}">
+                            <i class="tio-history  nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Chat Logs
+                            </span>
+                        </a>
+                    </li>
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat/analytics*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.ai-chat.analytics') }}?module_id={{ Config::get('module.current_module_id') }}">
+                            <i class="tio-chart-bar-4 nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Chat Analytics
                             </span>
                         </a>
                     </li>
@@ -56,49 +101,51 @@
                                     }'>
                                 <div class="cmn--media right-dropdown-icon d-flex align-items-center">
                                     <div class="avatar avatar-sm avatar-circle">
-                                       <img class="avatar-img onerror-image"
-                                        data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
-                                        src="{{\App\CentralLogics\Helpers::onerror_image_helper(auth('admin')->user()->image, asset('storage/app/public/admin/').'/'.auth('admin')->user()->image, asset('public/assets/admin/img/160x160/img1.jpg') ,'admin/')}}"
-                                        alt="Image Description">
+                                        <img class="avatar-img onerror-image"
+                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper(auth('admin')->user()->image, asset('storage/app/public/admin/') . '/' . auth('admin')->user()->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'admin/') }}"
+                                            alt="Image Description">
                                         <span class="avatar-status avatar-sm-status avatar-status-success"></span>
                                     </div>
                                     <div class="media-body pl-3">
                                         <span class="card-title h5">
-                                            {{auth('admin')->user()->f_name}}
-                                            {{auth('admin')->user()->l_name}}
+                                            {{ auth('admin')->user()->f_name }}
+                                            {{ auth('admin')->user()->l_name }}
                                         </span>
-                                        <span class="card-text">{{auth('admin')->user()->email}}</span>
+                                        <span class="card-text">{{ auth('admin')->user()->email }}</span>
                                     </div>
                                 </div>
                             </a>
 
                             <div id="accountNavbarDropdown"
-                                    class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-right navbar-dropdown-menu navbar-dropdown-account min--240">
+                                class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-right navbar-dropdown-menu navbar-dropdown-account min--240">
                                 <div class="dropdown-item-text">
                                     <div class="media align-items-center">
                                         <div class="avatar avatar-sm avatar-circle mr-2">
                                             <img class="avatar-img onerror-image"
-                                        data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
-                                        src="{{\App\CentralLogics\Helpers::onerror_image_helper(auth('admin')->user()->image, asset('storage/app/public/admin/').'/'.auth('admin')->user()->image, asset('public/assets/admin/img/160x160/img1.jpg') ,'admin/')}}"
-                                        alt="Image Description">
+                                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(auth('admin')->user()->image, asset('storage/app/public/admin/') . '/' . auth('admin')->user()->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'admin/') }}"
+                                                alt="Image Description">
                                         </div>
                                         <div class="media-body">
-                                            <span class="card-title h5">{{auth('admin')->user()->f_name}}</span>
-                                            <span class="card-text">{{auth('admin')->user()->email}}</span>
+                                            <span class="card-title h5">{{ auth('admin')->user()->f_name }}</span>
+                                            <span class="card-text">{{ auth('admin')->user()->email }}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="dropdown-divider"></div>
 
-                                <a class="dropdown-item" href="{{route('admin.settings')}}">
-                                    <span class="text-truncate pr-2" title="Settings">{{translate('messages.settings')}}</span>
+                                <a class="dropdown-item" href="{{ route('admin.settings') }}">
+                                    <span class="text-truncate pr-2"
+                                        title="Settings">{{ translate('messages.settings') }}</span>
                                 </a>
 
                                 <div class="dropdown-divider"></div>
 
-                               <a class="dropdown-item log-out" href="javascript:">
-                                    <span class="text-truncate pr-2" title="Sign out">{{translate('messages.sign_out')}}</span>
+                                <a class="dropdown-item log-out" href="javascript:">
+                                    <span class="text-truncate pr-2"
+                                        title="Sign out">{{ translate('messages.sign_out') }}</span>
                                 </a>
                             </div>
                         </div>
@@ -116,25 +163,25 @@
 
 
 @push('script_2')
-<script>
-    $(window).on('load' , function() {
-        if($(".navbar-vertical-content li.active").length) {
-            $('.navbar-vertical-content').animate({
-                scrollTop: $(".navbar-vertical-content li.active").offset().top - 150
-            }, 10);
-        }
-    });
+    <script>
+        $(window).on('load', function() {
+            if ($(".navbar-vertical-content li.active").length) {
+                $('.navbar-vertical-content').animate({
+                    scrollTop: $(".navbar-vertical-content li.active").offset().top - 150
+                }, 10);
+            }
+        });
 
-    var $rows = $('#navbar-vertical-content li');
-    $('#search-sidebar-menu').keyup(function() {
-        var val = $.trim($(this).val()).replace(/ +/g, ' ').toLowerCase();
+        var $rows = $('#navbar-vertical-content li');
+        $('#search-sidebar-menu').keyup(function() {
+            var val = $.trim($(this).val()).replace(/ +/g, ' ').toLowerCase();
 
-        $rows.show().filter(function() {
-            var text = $(this).text().replace(/\s+/g, ' ').toLowerCase();
-            return !~text.indexOf(val);
-        }).hide();
-    });
-    $(document).ready(function() {
+            $rows.show().filter(function() {
+                var text = $(this).text().replace(/\s+/g, ' ').toLowerCase();
+                return !~text.indexOf(val);
+            }).hide();
+        });
+        $(document).ready(function() {
             const $searchInput = $('#search');
             const $suggestionsList = $('#search-suggestions');
             const $rows = $('#navbar-vertical-content li');
@@ -197,5 +244,5 @@
             $searchInput.on('focusout', hideSuggestions);
             $searchInput.on('focus', showSuggestions);
         });
-</script>
+    </script>
 @endpush

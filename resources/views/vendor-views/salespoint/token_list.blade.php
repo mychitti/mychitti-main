@@ -25,6 +25,40 @@
             </h1>
         </div>
         <!-- End Page Header -->
+        <div class="row g-3 mb-3">
+            <div class="col-sm-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="avatar avatar-sm bg-primary text-white rounded-circle"
+                                style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                                <i class="tio-money"></i>
+                            </span>
+                            <div>
+                                <span class="text-muted d-block" style="font-size:12px;">Total Amount</span>
+                                <h4 class="mb-0">{{ _price($totalAmount ?? 0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="avatar avatar-sm bg-success text-white rounded-circle"
+                                style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                                <i class="tio-receipt-outlined"></i>
+                            </span>
+                            <div>
+                                <span class="text-muted d-block" style="font-size:12px;">Total Tokens</span>
+                                <h4 class="mb-0">{{ $tokens->total() }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card mt-3">
             <div class="card-header py-2 border-0 flex-wrap d-flex gap-1">
                 <div class="search--button-wrapper">
@@ -50,10 +84,14 @@
                     </select>
 
                     @if (!empty($upiAccounts) && $upiAccounts->count() > 0)
-                        <select class="form-control mx-1 js-select2-custom" name="upi_account_id" onchange="this.form.submit()">
-                            <option value="all" {{ request()->upi_account_id == 'all' || !request()->upi_account_id ? 'selected' : '' }}>All UPI IDs</option>
+                        <select class="form-control mx-1 js-select2-custom" name="upi_account_id"
+                            onchange="this.form.submit()">
+                            <option value="all"
+                                {{ request()->upi_account_id == 'all' || !request()->upi_account_id ? 'selected' : '' }}>
+                                All UPI IDs</option>
                             @foreach ($upiAccounts as $upi)
-                                <option value="{{ $upi->id }}" {{ request()->upi_account_id == $upi->id ? 'selected' : '' }}>
+                                <option value="{{ $upi->id }}"
+                                    {{ request()->upi_account_id == $upi->id ? 'selected' : '' }}>
                                     {{ $upi->upi_id }}
                                 </option>
                             @endforeach
@@ -70,6 +108,16 @@
                             @endforeach
                         </select>
                     @endif
+                    <select class="form-control mx-1 js-select2-custom" name="staff_id" onchange="this.form.submit()">
+                        <option value="all"
+                            {{ request()->staff_id == 'all' || !request()->staff_id ? 'selected' : '' }}>All Staff</option>
+                        <option value="0" {{ request()->staff_id === '0' ? 'selected' : '' }}>Self</option>
+                        @foreach ($staffList as $staff)
+                            <option value="{{ $staff->id }}" {{ request()->staff_id == $staff->id ? 'selected' : '' }}>
+                                {{ $staff->name }}
+                            </option>
+                        @endforeach
+                    </select>
                     <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning mx-1"
                         type="button" data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
 
@@ -110,6 +158,7 @@
                                 <th class="border-0 ">Payment Method</th>
                                 <th class="border-0 ">UPI ID</th>
                                 <th class="border-0 ">Payment Status</th>
+                                <th class="border-0 ">Staff</th>
                                 <th class="border-0 ">Order Type</th>
                                 <th class="border-0 ">Created At</th>
                                 <th class="border-0 ">Action</th>
@@ -175,6 +224,7 @@
                                             <span class="badge badge-soft-danger">Cancelled</span>
                                         @endif
                                     </td>
+                                    <td>{{ $token->staff_id == 0 ? 'Self' : $token->staff->name ?? '—' }}</td>
                                     <td>{{ ucfirst($token->order_from) }}</td>
                                     <td>{{ $token->created_at }}</td>
                                     <td>

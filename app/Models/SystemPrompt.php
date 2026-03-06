@@ -61,10 +61,13 @@ class SystemPrompt extends Model
         // Versioning & env
         'current_version',
         'environment',
+
+        // TTS (Text-to-Speech)
+        'tts_voice',
     ];
 
     protected $casts = [
-        'settings'             => 'array',
+        'settings'             => 'array', 
         'allowed_roles'        => 'array',
         'escalation_rules'     => 'array',
         'notification_settings'=> 'array',

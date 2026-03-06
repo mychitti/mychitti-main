@@ -11,7 +11,7 @@ class OpenAIService
     public function __construct(private \OpenAI\Client $client) 
     {
         $this->model = config('services.openai.model', 'gpt-4o');
-    }
+    } 
 
     /**
      * Proxy to the underlying OpenAI client's audio resource (e.g. Whisper transcription).
@@ -179,6 +179,28 @@ class OpenAIService
                 ],
             ],
         ];
+    }
+
+    /**v
+     * Convert text to speech using OpenAI TTS API. Returns the audio file path.
+     */
+    public function textToSpeech(string $text, string $voice = 'nova'): string
+    {
+        $response = $this->client->audio()->speech([
+            'model' => 'tts-1',
+            'input' => $text,
+            'voice' => $voice,
+        ]);
+
+        $filename = 'tts_' . uniqid() . '.mp3';
+        $dir = storage_path('app/public/tts');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $path = $dir . '/' . $filename;
+        file_put_contents($path, $response);
+
+        return $filename;
     }
 
     /**

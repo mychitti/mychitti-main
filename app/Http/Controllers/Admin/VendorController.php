@@ -1495,9 +1495,9 @@ class VendorController extends Controller
         $hasAddress      = !empty($store->address) && !empty($store->latitude);
         $hasCoverPic     = !empty($store->cover_photo);
         $hasLogo         = !empty($store->logo);
-        $hasProfile      = $hasAddress && $hasCoverPic && $hasLogo;
+        $hasProfile      = $hasAddress && $hasCoverPic && $hasLogo; 
         $hasSub          = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
-        $walletRecharged = isset($wallet) && (($wallet->total_earning ?? 0) > 0 || ($wallet->balance ?? 0) > 0);
+        $walletRecharged = isset($wallet) && ($wallet->balance ?? 0) >= 101;
 
         $completionChecks   = [$hasDoc, $hasService, $hasProfile, $hasSub, $walletRecharged];
         $completionDone     = collect($completionChecks)->filter()->count();
@@ -1511,10 +1511,10 @@ class VendorController extends Controller
             ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $hasService],
             ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $hasProfile],
             ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $hasSub],
-            ['icon' => '💰', 'label' => 'Wallet Recharged',         'done' => $walletRecharged],
+            ['icon' => '💰', 'label' => 'Wallet Min Balance ₹101',   'done' => $walletRecharged],
         ];
 
-        return view('admin-views.vendor.view.index', compact(
+        return view('admin-views.vendor.view.index', compact( 
             'store', 'wallet', 'categories',
             'completionPercent', 'completionDone', 'completionTotal',
             'completionRing', 'completionCircumf', 'completionOffset', 'completionItems'

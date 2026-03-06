@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; 
 use App\Models\Item;
 use App\Models\Store;
 use App\Models\Lead;
@@ -174,13 +174,26 @@ class LeadController extends Controller
             $serviceReq->status = 'new';
             $serviceReq->created_at = date('Y-m-d H:i:s');
             $serviceReq->accepted = 1;
+            if ($request->vendor_id) {
+                $serviceReq->accepted_by = $request->vendor_id;
+                $serviceReq->sent_to = $request->vendor_id;
+            }
             $uDet = User::find($request->client_name);
             if ($serviceReq->save()) {
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $serviceReq->id,
-                    'status' => 'My Chitti Created Lead For ' . $uDet->f_name . " " . $uDet->l_name ,
+                    'status' => 'My Chitti Created Lead For ' . $uDet->f_name . " " . $uDet->l_name,
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
+
+                if ($request->vendor_id) {
+                    $acceptance = new AcceptedServiceRequest();
+                    $acceptance->vendor_id = $request->vendor_id;
+                    $acceptance->current_status = 'Confirmation Request Sent';
+                    $acceptance->service_request_id = $serviceReq->id;
+                    $acceptance->created_at = date('Y-m-d H:i:s');
+                    $acceptance->save();
+                }
             }
             $request_id = $serviceReq->id;
             $item = DB::table('items')->where('id',  $request->service )->first();
@@ -212,6 +225,63 @@ class LeadController extends Controller
         }
         $request->session()->flash('msg', 'Lead Information saved successfully');
         return back();
+    }
+
+    public function search_clients(Request $request)
+    {
+        $query = $request->get('q', '');
+        $clients = User::where('status', 1)
+            ->where(function ($q) use ($query) {
+                $q->where('f_name', 'like', "%{$query}%")
+                  ->orWhere('l_name', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%");
+            })
+            ->select('id', 'f_name', 'l_name', 'phone')
+            ->limit(20)
+            ->get();
+
+        return response()->json($clients);
+    }
+
+    public function search_services(Request $request)
+    {
+        $query = $request->get('q', '');
+        $services = DB::table('items')
+            ->where('status', 1)
+            ->where('module_id', Config::get('module.current_module_id'))
+            ->where('name', 'like', "%{$query}%")
+            ->select('id', 'name')
+            ->limit(20)
+            ->get();
+
+        return response()->json($services);
+    }
+
+    public function search_zones(Request $request)
+    {
+        $query = $request->get('q', '');
+        $zones = Zone::active() 
+            ->where('name', 'like', "%{$query}%")
+            ->select('id', 'name')
+            ->limit(20)
+            ->get();
+
+        return response()->json($zones);
+    }
+
+    public function search_vendors(Request $request)
+    {
+        $query = $request->get('q', '');
+        $vendors = Store::where('status', 1)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%");
+            })
+            ->select('id', 'name', 'phone')
+            ->limit(20)
+            ->get();
+
+        return response()->json($vendors);
     }
 
     public function lead_approval(Request $request)

@@ -11,7 +11,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
-
+ 
     // mc vendorhub routes 
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
@@ -1170,8 +1170,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('send', 'AIChatController@chat')->name('send');
         Route::get('history', 'AIChatController@history')->name('history');
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+        Route::post('tts', 'AIChatController@tts')->name('tts');
     });
-    
+
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {

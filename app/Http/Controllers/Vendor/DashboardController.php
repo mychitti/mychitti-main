@@ -243,10 +243,10 @@ class DashboardController extends Controller
             $completionHasProfile = $completionHasAddress && $completionHasCover && $completionHasLogo;
             $completionHasSub     = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
             $storeWallet          = StoreWallet::where('vendor_id', $vendorId)->first();
-            $completionWallet     = $storeWallet && (($storeWallet->total_earning ?? 0) > 0 || ($storeWallet->balance ?? 0) > 0);
+            $completionWallet     = $storeWallet && ($storeWallet->balance ?? 0) >= 101;
 
             $cChecks          = [$completionHasDoc, $completionHasService, $completionHasProfile, $completionHasSub, $completionWallet];
-            $completionDone    = collect($cChecks)->filter()->count();
+            $completionDone    = collect($cChecks)->filter()->count(); 
             $completionTotal   = count($cChecks);
             $completionPercent = (int) round(($completionDone / $completionTotal) * 100);
             $completionRing    = $completionPercent >= 80 ? '#1cc88a' : ($completionPercent >= 50 ? '#f6c23e' : '#e74a3b');
@@ -257,8 +257,8 @@ class DashboardController extends Controller
                 ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $completionHasService],
                 ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $completionHasProfile],
                 ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $completionHasSub],
-                ['icon' => '💰', 'label' => 'Wallet Recharged',         'done' => $completionWallet],
-            ];
+                ['icon' => '💰', 'label' => 'Wallet Min Balance ₹101',   'done' => $completionWallet],
+            ];  
 
             $inactiveWarning = \App\Models\InAppNotification::where('reciever', \App\CentralLogics\Helpers::get_store_id())
                 ->where('message', 'inactive_warning')

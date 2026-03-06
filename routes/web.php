@@ -12,7 +12,7 @@ use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\BkashPaymentController;
 use App\Http\Controllers\CronController;
 use App\Http\Controllers\FlutterwaveV3Controller;
-use App\Http\Controllers\Front\CartController;
+use App\Http\Controllers\Front\CartController; 
 use App\Http\Controllers\PaypalPaymentController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\SslCommerzPaymentController;
@@ -102,6 +102,8 @@ Route::get('approve/job-card/{id}', 'Vendor\DocumentsController@job_card_approve
 
 Route::post('phone-save', [FrontUserController::class, 'phone_save'])->name('phone-save');
 Route::post('verify-phone-otp', [FrontUserController::class, 'verify_otp'])->name('verify-phone-otp');
+Route::post('send-login-otp', [FrontUserController::class, 'send_login_otp'])->name('user.send-login-otp');
+Route::post('verify-login-otp', [FrontUserController::class, 'verify_login_otp'])->name('user.verify-login-otp');
 
 
 
@@ -220,6 +222,7 @@ Route::group(['middleware' => ['loginuser']], function () {
 Route::post('ai-chat/send',    [FrontAIChatController::class, 'chat'])->name('ai-chat.send');
 Route::get('ai-chat/history',  [FrontAIChatController::class, 'history'])->name('ai-chat.history');
 Route::post('ai-chat/clear',   [FrontAIChatController::class, 'clearMemory'])->name('ai-chat.clear');
+Route::post('ai-chat/tts',     [FrontAIChatController::class, 'tts'])->name('ai-chat.tts');
 Route::get('delete-account/{id}', [FrontUserController::class, 'delete_account'])->name('delete-account');
 
 Route::group(['prefix' => 'service', 'as' => 'service.'], function () {

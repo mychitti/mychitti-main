@@ -13,7 +13,7 @@
     <meta content="@yield('meta_keywords')" name="keywords">
     <meta content="@yield('meta_description')" name="description">
     @if (\Illuminate\Support\Str::contains(request()->getHost(), 'staging.mychitti.net'))
-        <meta name="robots" content="noindex, nofollow"> <!-- no indexing of staging -->
+        <meta name="robots" content="noindex, nofollow"> <!-- no indexing of staging  -->
     @endif
 
     <!-- Google tag (gtag.js) -->
@@ -661,6 +661,25 @@
             color: #999;
             border: 1px dashed #ddd;
             background: #fafafa
+        }
+
+        .ai-tts-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 6px;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .ai-tts-btn:hover {
+            opacity: 1;
+        }
+
+        .ai-tts-btn.playing {
+            opacity: 1;
+            color: #4f46e5;
         }
 
         .ai-chat-input-area {
@@ -1954,14 +1973,19 @@
             }, 50);
         }
 
+        let currentAudio = null;
+
         function renderMsg(role, text) {
             let body;
             if (role === 'assistant') {
-                body = '<div class="ai-msg-body">' + marked.parse(text) + '</div>';
+                let listenBtn = '<button class="ai-tts-btn" title="Listen" onclick="aiTtsPlay(this)">&#128264;</button>';
+                body = '<div class="ai-msg-body">' + marked.parse(text) + '</div>' + listenBtn;
             } else {
                 body = $('<div>').text(text).html().replace(/\n/g, '<br>');
             }
-            $box.append('<div class="ai-msg ' + role + '">' + body + '</div>');
+            let $msg = $('<div class="ai-msg ' + role + '">' + body + '</div>');
+            if (role === 'assistant') $msg.attr('data-text', text);
+            $box.append($msg);
             scrollBottom();
         }
 
@@ -2021,10 +2045,17 @@
                 data: formData,
                 processData: false,  
                 contentType: false,
-                success: function(res) { 
+                success: function(res) {
                     $('#ai-typing').remove();
-                    if (res.success) renderMsg('assistant', res.message);
-                    else renderMsg('assistant', res.message || 'Something went wrong.');
+                    if (res.success) {
+                        renderMsg('assistant', res.message);
+                        if (res.audio_url) {
+                            var audio = new Audio(res.audio_url);
+                            audio.play(); 
+                        }
+                    } else {
+                        renderMsg('assistant', res.message || 'Something went wrong.');
+                    }
                 },
                 error: function() {
                     $('#ai-typing').remove();
@@ -2137,6 +2168,49 @@
             });
         });
     })();
+
+    // TTS Play (global scope for onclick)
+    var aiCurrentAudio = null;
+    function aiTtsPlay(btn) {
+        var $btn = $(btn);
+        var $msg = $btn.closest('.ai-msg');
+        var text = $msg.attr('data-text');
+        if (!text) return;
+
+        // If already playing, stop
+        if (aiCurrentAudio && !aiCurrentAudio.paused) {
+            aiCurrentAudio.pause();
+            aiCurrentAudio = null;
+            $('.ai-tts-btn').removeClass('playing').html('&#128264;');
+            return;
+        }
+
+        // Strip markdown for cleaner TTS
+        var plainText = text.replace(/[#*_`~\[\]()>|\\-]/g, '').substring(0, 4096);
+
+        $btn.addClass('playing').html('&#9203;');
+
+        $.post({
+            url: "{{ route('ai-chat.tts') }}",
+            data: { _token: '{{ csrf_token() }}', text: plainText },
+            success: function(res) {
+                if (res.success && res.audio_url) {
+                    aiCurrentAudio = new Audio(res.audio_url);
+                    aiCurrentAudio.play();
+                    $btn.html('&#9209;');
+                    aiCurrentAudio.onended = function() {
+                        $btn.removeClass('playing').html('&#128264;');
+                        aiCurrentAudio = null;
+                    };
+                } else {
+                    $btn.removeClass('playing').html('&#128264;');
+                }
+            },
+            error: function() {
+                $btn.removeClass('playing').html('&#128264;');
+            }
+        });
+    }
 </script>
 
 </html>

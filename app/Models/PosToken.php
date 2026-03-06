@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PosToken extends Model
 {
   use HasFactory;
-  protected $fillable =[
+  protected $fillable =[ 
     'payment_status',
   ];
 
@@ -31,5 +31,9 @@ class PosToken extends Model
   public function upiAccount()
   {
     return $this->belongsTo(AccountDetail::class, 'upi_account_id', 'id');
+  }
+  public function staff()
+  {
+    return $this->belongsTo(VendorEmployee::class, 'staff_id', 'id');
   }
 }

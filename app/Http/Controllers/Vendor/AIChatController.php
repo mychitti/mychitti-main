@@ -15,8 +15,8 @@ class AIChatController extends Controller
     ) {}
  
     public function index()
-    {
-        return view('vendor-views.ai-chat.index');
+    { 
+        return view('vendor-views.ai-chat.index'); 
     }
 
     public function chat(Request $request)
@@ -85,7 +85,22 @@ class AIChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Empty message.'], 422);
         }
 
-        $result = $this->aiService->chat($vendorId, 'vendor', $finalMessage, $fileContent);
+        $msgType = $request->hasFile('voice') ? 'voice' : ($request->hasFile('file') ? 'file' : 'text');
+        $result = $this->aiService->chat($vendorId, 'vendor', $finalMessage, $fileContent, type: $msgType);
+
+        if ($request->hasFile('voice') && !empty($result['success']) && !empty($result['message'])) {
+            try {
+                $plainText = preg_replace('/[#*_`~\[\]()>|\\\\-]/', '', $result['message']);
+                // Resolve the configured TTS voice for this user type's active agent
+                $ttsVoice = \Illuminate\Support\Facades\DB::table('system_prompts')
+                    ->where('user_type', 'vendor')
+                    ->where('status', 'active')
+                    ->orderByDesc('updated_at')
+                    ->value('tts_voice') ?? 'nova';
+                $filename = $this->openai->textToSpeech(mb_substr($plainText, 0, 4096), $ttsVoice);
+                $result['audio_url'] = asset('storage/tts/' . $filename);
+            } catch (\Exception $e) {}
+        } 
 
         return response()->json($result);
     }
@@ -94,6 +109,26 @@ class AIChatController extends Controller
     {
         $result = $this->aiService->history(auth('vendor')->id(), 'vendor');
         return response()->json($result);
+    }
+
+    public function tts(Request $request)
+    {
+        $request->validate(['text' => 'required|string|max:4096']);
+
+        try {
+            $ttsVoice = \Illuminate\Support\Facades\DB::table('system_prompts')
+                ->where('user_type', 'vendor')
+                ->where('status', 'active')
+                ->orderByDesc('updated_at')
+                ->value('tts_voice') ?? 'nova';
+            $filename = $this->openai->textToSpeech($request->input('text'), $ttsVoice);
+            return response()->json([
+                'success'   => true,
+                'audio_url' => asset('storage/tts/' . $filename),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'TTS failed.'], 500);
+        }
     }
 
     public function clearMemory()

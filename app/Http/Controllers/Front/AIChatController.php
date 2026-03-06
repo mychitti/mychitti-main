@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 class AIChatController extends Controller
 {
     public function __construct( 
-        private OpenAIService $openai,
-        private AiServiceClient $aiService
+        private OpenAIService $openai,  
+        private AiServiceClient $aiService 
     ) {}
 
     // ── Resolve user ID: real auth ID or session-based guest pseudo-ID ────
@@ -108,7 +108,24 @@ class AIChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Empty message.'], 422);
         }
 
-        $result = $this->aiService->chat($userId, $guard, $finalMessage, $fileContent);
+        $msgType = $request->hasFile('voice') ? 'voice' : ($request->hasFile('file') ? 'file' : 'text');
+        $result = $this->aiService->chat($userId, $guard, $finalMessage, $fileContent, type: $msgType);
+
+        // Auto-generate TTS when input was voice
+        if ($request->hasFile('voice') && !empty($result['success']) && !empty($result['message'])) {
+            try {
+                $plainText = preg_replace('/[#*_`~\[\]()>|\\\\-]/', '', $result['message']);
+                $ttsVoice = \Illuminate\Support\Facades\DB::table('system_prompts')
+                    ->where('user_type', 'user')
+                    ->where('status', 'active')
+                    ->orderByDesc('updated_at')
+                    ->value('tts_voice') ?? 'nova';
+                $filename = $this->openai->textToSpeech(mb_substr($plainText, 0, 4096), $ttsVoice);
+                $result['audio_url'] = asset('storage/tts/' . $filename);
+            } catch (\Exception $e) {
+                // TTS failure shouldn't block the response
+            }
+        } 
 
         return response()->json($result);
     }
@@ -119,6 +136,30 @@ class AIChatController extends Controller
     {
         $result = $this->aiService->history($this->resolveUserId(), $this->resolveGuard());
         return response()->json($result);
+    }
+
+    // ── Text to Speech ──────────────────────────────────────────────────
+
+    public function tts(Request $request)
+    {
+        $request->validate([
+            'text' => 'required|string|max:4096',
+        ]);
+
+        try {
+            $ttsVoice = \Illuminate\Support\Facades\DB::table('system_prompts')
+                ->where('user_type', 'user')
+                ->where('status', 'active')
+                ->orderByDesc('updated_at')
+                ->value('tts_voice') ?? 'nova';
+            $filename = $this->openai->textToSpeech($request->input('text'), $ttsVoice);
+            return response()->json([
+                'success'   => true,
+                'audio_url' => asset('storage/tts/' . $filename),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'TTS failed.'], 500);
+        }
     }
 
     // ── Clear memory ──────────────────────────────────────────────────────
