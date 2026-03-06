@@ -11,7 +11,7 @@ class AIChatController extends Controller
 {
     public function __construct(
         private OpenAIService $openai,
-        private AiServiceClient $aiService
+        private AiServiceClient $aiService 
     ) {}
  
     public function index()

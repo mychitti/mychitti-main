@@ -38,7 +38,7 @@ class AIChatController extends Controller
             $agentId      = $request->input('agent_id') ? (int) $request->input('agent_id') : null;
             $finalMessage = trim($request->input('message', ''));
             $fileContent  = $request->input('attachment');
-            $msgType      = $request->input('type', 'text');
+            $msgType      = $request->input('type', 'text'); 
             $incomingModelConfig = $request->input('model_config');
 
             if ($finalMessage === '' && !$fileContent) {

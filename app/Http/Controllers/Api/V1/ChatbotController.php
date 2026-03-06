@@ -102,7 +102,7 @@ class ChatbotController extends Controller
 
         $finalMessage = trim($message);
 
-        if ($finalMessage === '' && !$fileContent) {
+        if ($finalMessage === '' && !$fileContent) { 
             return response()->json(['error' => 'Empty message.'], 422);
         }
 

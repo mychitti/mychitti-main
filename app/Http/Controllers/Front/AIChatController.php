@@ -128,7 +128,7 @@ class AIChatController extends Controller
         } 
 
         return response()->json($result);
-    }
+    } 
 
     // ── History ───────────────────────────────────────────────────────────
 
