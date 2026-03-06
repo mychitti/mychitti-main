@@ -17,7 +17,7 @@ class AIChatController extends Controller
     public function index()
     { 
         return view('vendor-views.ai-chat.index'); 
-    }
+    } 
 
     public function chat(Request $request)
     {

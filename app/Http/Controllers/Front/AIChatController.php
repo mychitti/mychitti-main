@@ -18,7 +18,7 @@ class AIChatController extends Controller
 
     private function resolveUserId(): int
     {
-        if ($id = auth('web')->id()) {
+        if ($id = auth('web')->id()) { 
             return $id;
         }
 

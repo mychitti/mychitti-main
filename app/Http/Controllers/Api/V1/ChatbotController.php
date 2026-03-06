@@ -17,7 +17,7 @@ class ChatbotController extends Controller
 
     public function __construct(AiServiceClient $ai, OpenAIService $openai)
     {
-        $this->ai = $ai;
+        $this->ai = $ai; 
         $this->openai = $openai;
     }
 

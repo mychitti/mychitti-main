@@ -16,7 +16,7 @@ class AIChatController extends Controller
         private AiServiceClient $aiService
     ) {}
  
-    public function index() 
+    public function index()  
     {
         return view('admin-views.ai-chat.index');
     }

@@ -15,7 +15,7 @@ class AiServiceClient
     {
         $this->url = rtrim(config('services.ai_service.url', ''), '/');
         $this->key = config('services.ai_service.key', ''); 
-    }
+    } 
 
     public function chat(int $userId , string $guard, string $message, ?array $fileContent = null, ?int $agentId = null, ?string $systemPrompt = null, ?array $modelConfig = null, string $type = 'text'): array
     {

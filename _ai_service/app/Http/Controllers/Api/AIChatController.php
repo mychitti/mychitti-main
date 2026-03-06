@@ -16,7 +16,7 @@ class AIChatController extends Controller
         private MemoryService $memory
     ) {}
 
-    public function chat(Request $request)
+    public function chat(Request $request) 
     {
         try {
             $request->validate([
