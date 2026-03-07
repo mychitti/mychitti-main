@@ -2477,7 +2477,11 @@ class Helpers
             ->keys()
             ->map(fn($id) => (int) $id)
             ->toArray();
-
+    prx( [ 
+            'msg' => 'Lead Distribution - After Wallet Filter',
+            'qualified_wallet_ids' => $walletQualifiedIds,
+        ]);
+        die;
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
         prx( [ 
             'msg' => 'Lead Distribution - After Wallet Filter',
