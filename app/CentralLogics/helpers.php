@@ -2461,12 +2461,12 @@ class Helpers
         $walletQualifiedIds = collect($walletData)
             ->filter(fn($balance) => $balance >= 101)
             ->keys()
-            ->map(fn($id) => (int) $id)
+            ->map(fn($id) => (int) $id) 
             ->toArray();
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
-
-        // prx( [
+        prx($storeIds); 
+        // prx( [ 
         //     'msg' => 'Lead Distribution - After Wallet Filter',
         //     'qualified_store_ids' => $storeIds,
         // ]);

@@ -95,10 +95,13 @@
                 <li class="nav-item">
                     <a class="nav-link  {{request('tab')=='actions' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'actions'])}}"  aria-disabled="true">{{translate('messages.actions')}}</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{request('tab')=='monetization' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'monetization'])}}" aria-disabled="true">Spends Monetization</a>
+                </li>
             </ul>
             <!-- End Nav -->
         </div>
         <!-- End Nav Scroller -->
-        @endif
+        @endif 
     </div>
     <!-- End Page Header -->

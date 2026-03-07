@@ -10,7 +10,9 @@ use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
 use App\Models\Store;
 use App\Models\StoreWallet;
+use App\Models\VendorSubscription;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Brian2694\Toastr\Facades\Toastr;
 
 
@@ -23,7 +25,7 @@ class VendorWalletController extends Controller
     public function recharge(Request $request)
     {
         $request->validate([
-            'store_id' => 'required|exists:stores,id',
+            'store_id' => 'required|exists:stores,id', 
             'amount'   => 'required|numeric|min:1',
         ]);
 

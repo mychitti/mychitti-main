@@ -25,7 +25,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::group(['prefix' => 'pr-file', 'as' => 'pr-file.', 'middleware' => ['module:protected_file']], function () {
         Route::post('upload', 'ProtectedFileController@upload_file')->name('upload');
     });
-
+ 
     Route::post('send-vendor-otp', 'VendorController@send_vendor_otp')->name('send-vendor-otp');
     Route::post('mark-notif-read', 'DashboardController@mark_notif_read')->name('mark-notif-read');
     // Route::get('common-dashboard/google-ads', 'DashboardController@google_ads')->name('common-dashboard.google-ads')->middleware('module:google_ads');

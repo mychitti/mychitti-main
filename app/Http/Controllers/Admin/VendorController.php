@@ -24,7 +24,7 @@ use App\Models\Translation;
 use Illuminate\Support\Str;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
-use App\Models\StoreSchedule;
+use App\Models\StoreSchedule; 
 use App\CentralLogics\Helpers;
 use App\Models\WithdrawRequest;
 use App\Exports\StoreListExportNew;
@@ -1464,6 +1464,42 @@ class VendorController extends Controller
                 })
                 ->latest()->paginate(config('default_pagination'));
             return view('admin-views.vendor.view.disbursement', compact('store', 'disbursements'));
+        } else if ($tab == 'monetization') {
+            $vendor_id = $store->vendor_id;
+
+            $recharges = AccountTransaction::where('from_type', 'store')
+                ->where('from_id', $store->id)
+                ->where('action', 'credit')
+                ->where('reason', 'Wallet Recharge')
+                ->orderByDesc('created_at')
+                ->paginate(15, ['*'], 'recharge_page');
+
+            $spends = AccountTransaction::where('from_type', 'store')
+                ->where('from_id', $vendor_id)
+                ->where('action', 'debit')
+                ->orderByDesc('created_at')
+                ->paginate(15, ['*'], 'spend_page');
+
+            $subscriptions = VendorSubscription::with('plan')
+                ->where('vendor_id', $store->id)
+                ->orderByDesc('created_at')
+                ->paginate(15, ['*'], 'sub_page');
+
+            $totalRecharges = AccountTransaction::where('from_type', 'store')
+                ->where('from_id', $store->id)->where('action', 'credit')
+                ->where('reason', 'Wallet Recharge')->sum('amount');
+
+            $totalSpends = AccountTransaction::where('from_type', 'store')
+                ->where('from_id', $vendor_id)->where('action', 'debit')->sum('amount');
+
+            $totalSubscriptions = VendorSubscription::where('vendor_id', $store->id)->sum('purchased_at');
+
+            $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
+
+            return view('admin-views.vendor.view.monetization', compact(
+                'store', 'recharges', 'spends', 'subscriptions',
+                'totalRecharges', 'totalSpends', 'totalSubscriptions', 'wallet'
+            ));
         }
         $categories = [];
 
