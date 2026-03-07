@@ -2458,13 +2458,13 @@ class Helpers
         //     'min_required' => 101,
         // ]);
 
+        prx($walletData); 
         $walletQualifiedIds = collect($walletData)
             ->filter(fn($balance) => $balance >= 101)
             ->keys()
             ->map(fn($id) => (int) $id) 
             ->toArray();
 
-            prx($walletQualifiedIds); 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
         // prx( [ 
         //     'msg' => 'Lead Distribution - After Wallet Filter',
