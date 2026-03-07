@@ -2446,10 +2446,18 @@ class Helpers
         if (empty($storeIds)) return [];
 
         // Step 2.5: Filter stores with minimum wallet balance of 101
-        $walletData = DB::table('store_wallets')
-            ->whereIn('vendor_id', $storeIds)
-            ->pluck('total_earning', 'vendor_id')
+        // Resolve vendor_id for each store_id (wallet is keyed by vendor_id)
+        $storeVendorMap = DB::table('stores')
+            ->whereIn('id', $storeIds)
+            ->pluck('vendor_id', 'id') // [store_id => vendor_id]
             ->toArray();
+
+        $vendorIds = array_values($storeVendorMap);
+
+        $walletData = DB::table('store_wallets')
+            ->whereIn('vendor_id', $vendorIds)
+            ->pluck('total_earning', 'vendor_id') // [vendor_id => total_earning]
+            ->toArray(); 
 
         // print_r([
         //     'msg' => 'Lead Distribution - Wallet Balances',
@@ -2458,18 +2466,25 @@ class Helpers
         //     'min_required' => 101,
         // ]);
 
-        $walletQualifiedIds = collect($walletData)
+        // Get vendor_ids with sufficient balance, then map back to store_ids
+        $qualifiedVendorIds = collect($walletData)
             ->filter(fn($balance) => $balance >= 101)
             ->keys()
-            ->map(fn($id) => (int) $id) 
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+
+        $walletQualifiedIds = collect($storeVendorMap)
+            ->filter(fn($vendorId) => in_array((int) $vendorId, $qualifiedVendorIds))
+            ->keys()
+            ->map(fn($id) => (int) $id)
             ->toArray();
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
-        // prx( [ 
-        //     'msg' => 'Lead Distribution - After Wallet Filter',
-        //     'qualified_store_ids' => $storeIds,
-        // ]);
-        // die;
+        prx( [ 
+            'msg' => 'Lead Distribution - After Wallet Filter',
+            'qualified_store_ids' => $storeIds,
+        ]);
+        die;
 
         if (empty($storeIds)) return [];
 
