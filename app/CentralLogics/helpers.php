@@ -2458,7 +2458,6 @@ class Helpers
             ->whereIn('vendor_id', $vendorIds)
             ->pluck('total_earning', 'vendor_id') // [vendor_id => total_earning]
             ->toArray(); 
-
         // print_r([
         //     'msg' => 'Lead Distribution - Wallet Balances',
         //     'store_ids' => $storeIds,
