@@ -2442,8 +2442,7 @@ class Helpers
             ->toArray();
 
         $storeIds = array_values(array_intersect($storeIds, $existingStoreIds));
-        echo 'fds';
-prx($storeIds);
+      
         if (empty($storeIds)) return [];
 
         // Step 2.5: Filter stores with minimum wallet balance of 101
@@ -2459,7 +2458,6 @@ prx($storeIds);
         //     'min_required' => 101,
         // ]);
 
-        prx($walletData); 
         $walletQualifiedIds = collect($walletData)
             ->filter(fn($balance) => $balance >= 101)
             ->keys()
