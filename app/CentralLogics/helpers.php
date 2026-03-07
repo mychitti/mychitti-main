@@ -2451,44 +2451,27 @@ class Helpers
             ->whereIn('id', $storeIds)
             ->pluck('vendor_id', 'id') // [store_id => vendor_id]
             ->toArray();
+        prx(['1_storeVendorMap (store_id => vendor_id)' => $storeVendorMap]); 
 
-        $vendorIds = array_values($storeVendorMap);
-
-        $walletData = DB::table('store_wallets')
-            ->whereIn('vendor_id', $vendorIds)
-            ->pluck('total_earning', 'vendor_id') // [vendor_id => total_earning]
-            ->toArray(); 
-        // print_r([
-        //     'msg' => 'Lead Distribution - Wallet Balances',
-        //     'store_ids' => $storeIds,
-        //     'wallet_balances' => $walletData,
-        //     'min_required' => 101,
-        // ]);
-
-        // Get vendor_ids with sufficient balance, then map back to store_ids
-        $qualifiedVendorIds = collect($walletData)
-            ->filter(fn($balance) => $balance >= 101)
-            ->keys()
+        // Get vendor_ids that have total_earning >= 101 directly in SQL
+        $qualifiedVendorIds = DB::table('store_wallets')
+            ->whereIn('vendor_id', array_values($storeVendorMap))
+            ->where('total_earning', '>=', 101)
+            ->pluck('vendor_id')
             ->map(fn($id) => (int) $id)
             ->toArray();
+        prx(['2_qualifiedVendorIds (wallet >= 101)' => $qualifiedVendorIds]);
 
-            prx($qualifiedVendorIds);
-
-        $walletQualifiedIds = collect($storeVendorMap)
+        // Map qualified vendor_ids back to store_ids
+        $walletQualifiedStoreIds = collect($storeVendorMap)
             ->filter(fn($vendorId) => in_array((int) $vendorId, $qualifiedVendorIds))
             ->keys()
             ->map(fn($id) => (int) $id)
             ->toArray();
-    prx( [ 
-            'msg' => 'Lead Distribution - After Wallet Filter',
-            'qualified_wallet_ids' => $walletQualifiedIds,
-        ]);
-        die;
-        $storeIds = array_values(array_intersect($storeIds, $walletQualifiedIds));
-        prx( [ 
-            'msg' => 'Lead Distribution - After Wallet Filter',
-            'qualified_store_ids' => $storeIds,
-        ]);
+        prx(['3_walletQualifiedStoreIds' => $walletQualifiedStoreIds]);
+
+        $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
+        prx(['4_final_storeIds_after_wallet_filter' => $storeIds]);
         die;
 
         if (empty($storeIds)) return [];
