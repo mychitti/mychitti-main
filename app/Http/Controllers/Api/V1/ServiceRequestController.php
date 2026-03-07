@@ -294,7 +294,7 @@ class ServiceRequestController extends Controller
         //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
         $serviceRequest = ServiceRequest::with([
             'leadStatus:service_request_id,status,created_at',
-            'accepted:id,service_request_id,quoted_price,current_status,service_request_id,coupon_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,assigned_status,cancel_reason,cancelled_by',
+            'accepted:id,service_request_id,quoted_price,current_status,service_request_id,coupon_id,vendor_id,id as acceptance_id,assigned_type,assigned_to,assigned_status,cancel_reason,cancelled_by,file as completion_file,tieup,confirmed_at',
             'accepted.store:id,name,phone,email,logo,address',
             'accepted.coupon:id,title,code,start_date,expire_date,min_purchase,discount,limit',
 
@@ -357,6 +357,7 @@ class ServiceRequestController extends Controller
         }
         // add role
         if ($serviceRequest->accepted) {
+            $serviceRequest->accepted->completion_file = $serviceRequest->accepted?->completion_file ? ($filesPath . '/store/orders/' . $serviceRequest->accepted->completion_file) : null;
             if ($serviceRequest->accepted?->assigned_type == 'vendor') {
                 $serviceRequest->accepted->staff->role = 'Vendor';
             } elseif ($serviceRequest->accepted?->staff) {
@@ -366,7 +367,8 @@ class ServiceRequestController extends Controller
                 }
             }
             if ($serviceRequest->accepted?->staff?->image) {
-                $serviceRequest->accepted->staff->image = $filesPath . '/vendor/' .  $serviceRequest->accepted->staff->image;
+                $imageDir = $serviceRequest->accepted->assigned_type == 'vendor' ? '/store/' : '/vendor/';
+                $serviceRequest->accepted->staff->image = $filesPath . $imageDir .  $serviceRequest->accepted->staff->image;
             }
 
 

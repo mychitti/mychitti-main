@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\ProductLogic;
 use App\Models\AcceptedServiceRequest;
-use App\Models\CommonServiceIssue; 
+use App\Models\CommonServiceIssue;
 use App\Models\ItemCampaign;
 use App\Models\LeadOrder;
 use App\Models\LeadOrderDetail;
@@ -163,20 +163,23 @@ class LeadController extends Controller
                 $serviceReq->file = Helpers::upload('store/orders/', $extension, $request->file('file'));
             }
             $serviceReq->update();
-
+ 
             $empJob = VendorEmpJob::where('service_id', $serviceReq->service_request_id)->first();
             $empJob->ended_at = NOW();
             $empJob->update();
 
             $serviceReq->accepted_by_staff = 1;
         } else if ($stts_id == 12) { // completed
-        
-        $serviceReq->current_status = 'Completed';
-        $serviceReq->completed_at = NOW();
-        $serviceReq->update();
+            if ($request->hasFile('file')) {
+                $extension = $request->file('file')->getClientOriginalExtension();
+                $serviceReq->file = Helpers::upload('store/orders/', $extension, $request->file('file'));
+            }
+            $serviceReq->current_status = 'Completed';
+            $serviceReq->completed_at = NOW();
+            $serviceReq->update();
 
-        $serviceReq->coupon_id = Helpers::alotServiceCoupon($serviceReq->service_request_id);
-        $serviceReq->update();
+            $serviceReq->coupon_id = Helpers::alotServiceCoupon($serviceReq->service_request_id);
+            $serviceReq->update();
             // send sms here
             // get user mobile 
             $userPhone = User::find($serviceReq->user_id);
@@ -268,7 +271,7 @@ class LeadController extends Controller
                 'type_id' => $request->service_id,
                 'created_at' => now(),
                 'updated_at' => now()
-            ]); 
+            ]);
         }
         _send_confirmation_sms('job_msg', $phone, $otp);
     }
@@ -278,7 +281,7 @@ class LeadController extends Controller
         $service_id = $request->service_id;
         $serviceDet = DB::table('service_requests')->where('id', $service_id)->first();
         $phone = User::where('id', $serviceDet->user_id)->first()->phone;
-      
+
         $cm_firebase_token = User::where('id', $serviceDet->user_id)->first()->cm_firebase_token;
 
         $data = [
@@ -501,15 +504,15 @@ class LeadController extends Controller
         $lead->save();
 
         Toastr::success('Converted Successfully');
-        if($task->parent_id){
+        if ($task->parent_id) {
             return redirect()->route('vendor.task.subtask.detail', [$task->id]);
-        }else{
+        } else {
             return redirect()->route('vendor.task.detail', [$task->id]);
         }
     }
     public function convert_to_order(Request $request, $id)
     {
-        $lead = ServiceRequest::with('item')->where('id',$id)->first();
+        $lead = ServiceRequest::with('item')->where('id', $id)->first();
         // prx($lead);
         return view('vendor-views.lead.convert_to_order', compact('lead'));
     }

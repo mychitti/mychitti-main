@@ -1129,12 +1129,15 @@
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
+                } 
             });
-            $.post({
+            var formData = new FormData(this);
+            $.ajax({
                 url: $(this).attr('action'),
-                data: $(this).serialize(), // Serializing form data
-
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(data) {
                     console.log(data)
                     if (data.status) {
