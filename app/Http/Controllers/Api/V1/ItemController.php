@@ -456,7 +456,7 @@ class ItemController extends Controller
                         'id'    => $result->id,
                         'type'  => 'store',
                         'image' => $result->image
-                            ? asset('storage/stores/' . $result->image)
+                            ? asset('storage/store/' . $result->image)
                             : null,
                         'name'  => $result->name,
                     ];
