@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $zone_id
  */
 class Notification extends Model
-{
+{ 
     /**
      * The attributes that are mass assignable.
      *
@@ -74,6 +74,11 @@ class Notification extends Model
     public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id');
     }
 
     /**

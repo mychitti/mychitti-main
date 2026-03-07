@@ -151,10 +151,14 @@ class StoreController extends Controller
             'user_id' => 'required',
             'store_id' => 'required',
             'acceptance_id' => 'required',
-            'comment' => 'required',
+            'comment' => 'required', 
             'rating' => 'required|numeric|max:5',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-
+     if ($validator->errors()->count() > 0) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }   
         $order = AcceptedServiceRequest::find($request->acceptance_id);
         if (isset($order) == false) {
             $validator->errors()->add('acc_id', translate('messages.service_data_not_found'));
@@ -179,13 +183,11 @@ class StoreController extends Controller
             $review = new StoreReview;
         }
 
-        if ($validator->errors()->count() > 0) {
-            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
-        }
+   
 
         $image_array = [];
-        if (!empty($request->file('attachment'))) {
-            foreach ($request->file('attachment') as $image) {
+        if (!empty($request->file('attachments'))) {
+            foreach ($request->file('attachments') as $image) {
                 if ($image != null) {
                     if (!Storage::disk('public')->exists('review')) {
                         Storage::disk('public')->makeDirectory('review');

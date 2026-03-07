@@ -3670,18 +3670,18 @@ class Helpers
     {
         $storage = [];
         $baseUrl = asset('storage/store') . '/';
-        if ($multi_data == true) { 
+        if ($multi_data == true) {  
             foreach ($data as $item) {
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 // $item['positive_rating'] = $ratings['positive_rating'];
-                $item['logo'] = $item['logo'] ? $baseUrl . $item['logo'] : null;
-                $item['cover_photo'] = $item['cover_photo'] ? $baseUrl . '/cover/'. $item['cover_photo'] : null;
+                $item['logo'] = self::onerror_image_helper($item['logo'], $baseUrl . $item['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
+                $item['cover_photo'] = self::onerror_image_helper($item['cover_photo'], $baseUrl . 'cover/' . $item['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
                 array_push($storage, $item);
             }
             $data = $storage;
         } else {
-            $data['logo'] = $data['logo'] ? $baseUrl . $data['logo'] : null;
-            $data['cover_photo'] = $data['cover_photo'] ? $baseUrl .  'cover/'.  $data['cover_photo'] : null;
+            $data['logo'] = self::onerror_image_helper($data['logo'], $baseUrl . $data['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
+            $data['cover_photo'] = self::onerror_image_helper($data['cover_photo'], $baseUrl . 'cover/' . $data['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
             // unset($data['rating']);
             $data['avg_rating'] = $ratings['rating'];
@@ -3689,7 +3689,7 @@ class Helpers
             // $data['positive_rating'] = $ratings['positive_rating'];
             unset($data['positive_rating']);
         }
-
+ 
         return $data;
     }
     public static function store_data_formatting($data, $multi_data = false)

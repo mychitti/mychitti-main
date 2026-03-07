@@ -66,6 +66,23 @@ class NotificationController extends Controller
             return response()->json([], 200);
         }
     } 
+    public function get_ad_details(Request $request, $id){
+
+        $notification = Notification::active()->where('id', $id)
+            ->select('id', 'title', 'description', 'image', 'created_at', 'zone_id', 'vendor_id as store_id')
+            ->with(['zone:id,name', 'store:id,name'])
+            ->first();
+        if (!$notification) {
+            return response()->json(['message' => 'Ad not found!'], 404);
+        }
+        if ($notification->image) {
+            $notification->image = asset('storage/notification/' . ltrim($notification->image, '/'));
+        }
+        $notification->zone_name = $notification->zone->name ?? null; 
+        $notification->store_name = $notification->store->name ?? null;
+        unset($notification->zone, $notification->store);
+        return response()->json($notification, 200);
+    }
     public function get_ads(Request $request){
  
         if (!$request->hasHeader('zoneId')) {
