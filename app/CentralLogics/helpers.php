@@ -2451,7 +2451,7 @@ class Helpers
             ->whereIn('id', $storeIds)
             ->pluck('vendor_id', 'id') // [store_id => vendor_id]
             ->toArray();
-        print_r(['1_storeVendorMap (store_id => vendor_id)' => $storeVendorMap]); 
+        // print_r(['1_storeVendorMap (store_id => vendor_id)' => $storeVendorMap]); 
 
         // Get vendor_ids that have total_earning >= 101 directly in SQL
         $qualifiedVendorIds = DB::table('store_wallets')
@@ -2460,7 +2460,7 @@ class Helpers
             ->pluck('vendor_id')
             ->map(fn($id) => (int) $id)
             ->toArray();
-        print_r(['2_qualifiedVendorIds (wallet >= 101)' => $qualifiedVendorIds]);
+        // print_r(['2_qualifiedVendorIds (wallet >= 101)' => $qualifiedVendorIds]);
 
         // Map qualified vendor_ids back to store_ids
         $walletQualifiedStoreIds = collect($storeVendorMap)
@@ -2468,11 +2468,11 @@ class Helpers
             ->keys()
             ->map(fn($id) => (int) $id)
             ->toArray();
-        print_r(['3_walletQualifiedStoreIds' => $walletQualifiedStoreIds]);
+        // print_r(['3_walletQualifiedStoreIds' => $walletQualifiedStoreIds]);
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
-        print_r(['4_final_storeIds_after_wallet_filter' => $storeIds]);
-        die;
+        // print_r(['4_final_storeIds_after_wallet_filter' => $storeIds]);
+        // die;
 
         if (empty($storeIds)) return [];
 
