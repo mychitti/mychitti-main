@@ -2472,6 +2472,8 @@ class Helpers
             ->map(fn($id) => (int) $id)
             ->toArray();
 
+            prx($qualifiedVendorIds);
+
         $walletQualifiedIds = collect($storeVendorMap)
             ->filter(fn($vendorId) => in_array((int) $vendorId, $qualifiedVendorIds))
             ->keys()
