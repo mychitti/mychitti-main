@@ -471,14 +471,15 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post('discount/{store}', 'VendorController@discountSetup')->name('discount');
                 Route::post('update-settings/{store}', 'VendorController@updateStoreSettings')->name('update-settings');
                 Route::post('update-meta-data/{store}', 'VendorController@updateStoreMetaData')->name('update-meta-data');
-                Route::delete('delete/{store}', 'VendorController@destroy')->name('delete');
+                 Route::delete('delete/{store}', 'VendorController@destroy')->name('delete');
                 Route::delete('clear-discount/{store}', 'VendorController@cleardiscount')->name('clear-discount');
-                // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
+                 // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
                 Route::get('disbursement-export/{id}/{type}', 'VendorController@disbursement_export')->name('disbursement-export');
                 Route::get('view/{store}/{tab?}/{sub_tab?}', 'VendorController@view')->name('view');
+                Route::get('activation-plan/{store}', 'VendorController@activationPlan')->name('activation-plan');
                 Route::get('pending-requests', 'VendorController@pending_requests')->name('pending-requests');
                 Route::get('deny-requests', 'VendorController@deny_requests')->name('deny-requests');
-                Route::post('search', 'VendorController@search')->name('search');
+                 Route::post('search', 'VendorController@search')->name('search');
                 Route::get('duplicates', 'VendorController@duplicates')->name('duplicates');
                 Route::get('export', 'VendorController@export')->name('export');
                 Route::get('store-wise-reviwe-export', 'VendorController@store_wise_reviwe_export')->name('store_wise_reviwe_export');

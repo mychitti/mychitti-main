@@ -1525,6 +1525,167 @@ class VendorController extends Controller
             }
         } 
 
+        // --- Business Intelligence ---
+        $vendorId = $store->vendor->id;
+        $storeId  = $store->id;
+
+        // Total leads sent to this vendor (this year)
+        $totalLeads = DB::table('service_requests')
+            ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
+            ->whereBetween('created_at', [now()->startOfYear(), now()])
+            ->count();
+ 
+        // Leads this month
+        $leadsThisMonth = DB::table('service_requests')
+            ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
+            ->whereBetween('created_at', [now()->startOfMonth(), now()])
+            ->count();
+
+        // Conversion: completed leads / total leads (this year)
+        $completedLeads = DB::table('accepted_service_requests')
+            ->where('vendor_id', $storeId)
+            ->where('current_status', 'Completed')
+            ->whereBetween('created_at', [now()->startOfYear(), now()])
+            ->count();
+        $conversionRate = $totalLeads > 0 ? round(($completedLeads / $totalLeads) * 100) : 0;
+
+        // Wallet balance
+        $walletBalance = $wallet->balance ?? 0;
+
+        // Last login
+        $lastLoginAt = $store->vendor->last_login_at;
+        $lastLoginDays = $lastLoginAt ? (int) $lastLoginAt->diffInDays(now()) : null;
+
+        // Subscription status
+        $activeSubscription = VendorSubscription::where('vendor_id', $storeId)
+            ->where('plan_expiry', '>=', now())
+            ->latest('plan_expiry')
+            ->first();
+        $subscriptionExpired = !$activeSubscription;
+
+        // Lead trend - last 6 months
+        $leadTrend = collect();
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $count = DB::table('accepted_service_requests')
+                ->where('vendor_id', $storeId)
+                ->whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->count();
+            $leadTrend->push([
+                'label' => $month->format('M'),
+                'count' => $count,
+            ]);
+        }
+        $leadTrendLabels = $leadTrend->pluck('label')->toJson();
+        $leadTrendData   = $leadTrend->pluck('count')->toJson();
+
+        // Conversion change (this month vs last month)
+        $lastMonthLeads = DB::table('accepted_service_requests')
+            ->where('vendor_id', $storeId)
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->count();
+        $lastMonthCompleted = DB::table('accepted_service_requests')
+            ->where('vendor_id', $storeId)
+            ->where('current_status', 'Completed')
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->count();
+        $lastMonthConversion = $lastMonthLeads > 0 ? round(($lastMonthCompleted / $lastMonthLeads) * 100) : 0;
+
+        $thisMonthCompleted = DB::table('accepted_service_requests')
+            ->where('vendor_id', $storeId)
+            ->where('current_status', 'Completed') 
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+        $thisMonthConversion = $leadsThisMonth > 0 ? round(($thisMonthCompleted / $leadsThisMonth) * 100) : 0;
+        $conversionChange = $thisMonthConversion - $lastMonthConversion;
+ 
+        // Revenue generated from service invoices
+        $revenueGenerated = DB::table('service_invoices')
+            ->where('vendor_id', $storeId)
+            ->sum('total_amount');
+
+        // AI Insight
+        $biInsights = [];
+        if ($lastLoginDays !== null && $lastLoginDays > 14) {
+            $biInsights[] = "Vendor inactive for {$lastLoginDays} days.";
+        }
+        if ($walletBalance < 200) {
+            $biInsights[] = "Wallet is low.";
+        }
+        if ($conversionRate < 20 && $totalLeads > 0) {
+            $biInsights[] = "Conversion below average.";
+        }
+        if ($subscriptionExpired) {
+            $biInsights[] = "Subscription expired.";
+        }
+        if ($lastLoginDays !== null && $lastLoginDays > 14 && $totalLeads > 5) {
+            $biInsights[] = "High potential for reactivation.";
+        }
+        if (empty($biInsights)) {
+            $biInsights[] = "Vendor is active and performing well.";
+        }
+        $biInsightText = implode(' ', $biInsights);
+
+        // Leads missed (sent but expired, not accepted, not cancelled)
+        $leadExpMinutes = Helpers::get_lead_exp_minutes();
+        $leadsMissed = DB::table('service_requests')
+            ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
+            ->where('created_at', '>=', now()->startOfYear())
+            ->where('created_at', '<', now()->subMinutes($leadExpMinutes))
+            ->where(function ($q) use ($storeId) {
+                $q->whereRaw('NOT FIND_IN_SET(?, accepted_by)', [$storeId])
+                  ->orWhereNull('accepted_by');
+            }) 
+            ->whereNotIn('id', function ($q) use ($storeId) {
+                $q->select('service_request_id')
+                  ->from('accepted_service_requests')
+                  ->where('vendor_id', $storeId);
+            })
+            ->whereNotIn('id', function ($q) use ($storeId) {
+                $q->select('service_request_id')
+                  ->from('cancelled_service_requests')
+                  ->where('vendor_id', $storeId);
+            })
+            ->count();
+
+        // --- Reactivation Score (0-100) ---
+        $reactivationScore = 100;
+        $reactivationIssues = [];
+
+        if ($lastLoginDays !== null && $lastLoginDays > 7) {
+            $reactivationScore -= min(30, (int) ($lastLoginDays / 3));
+            $reactivationIssues[] = "Inactive for {$lastLoginDays} days";
+        }
+        if ($walletBalance < 101) {
+            $reactivationScore -= 20;
+            $reactivationIssues[] = "Wallet balance low";
+        }
+        if ($leadsMissed > 0) {
+            $reactivationScore -= min(20, $leadsMissed * 5);
+            $reactivationIssues[] = "{$leadsMissed} leads missed";
+        }
+        if ($subscriptionExpired) {
+            $reactivationScore -= 15;
+            $reactivationIssues[] = "Subscription expired";
+        }
+        $reactivationScore = max(0, min(100, $reactivationScore));
+
+        if ($reactivationScore >= 70) {
+            $reactivationLabel = 'Active';
+        } elseif ($reactivationScore >= 40) {
+            $reactivationLabel = 'Dormant';
+        } else {
+            $reactivationLabel = 'At Risk';
+        }
+
+        if (empty($reactivationIssues)) {
+            $reactivationIssues[] = "Vendor is performing well";
+        }
+
         // --- Profile completion ---
         $hasDoc          = !empty($store->gst_doc) || !empty($store->id_doc);
         $hasService      = $store->services_1 || $store->services_2 ;
@@ -1549,12 +1710,98 @@ class VendorController extends Controller
             ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $hasSub],
             ['icon' => '💰', 'label' => 'Wallet Min Balance ₹101',   'done' => $walletRecharged],
         ];
-
-        return view('admin-views.vendor.view.index', compact( 
+ 
+        return view('admin-views.vendor.view.index', compact(
             'store', 'wallet', 'categories',
             'completionPercent', 'completionDone', 'completionTotal',
-            'completionRing', 'completionCircumf', 'completionOffset', 'completionItems'
+            'completionRing', 'completionCircumf', 'completionOffset', 'completionItems',
+            'totalLeads', 'leadsThisMonth', 'conversionRate', 'walletBalance',
+            'lastLoginDays', 'subscriptionExpired', 'activeSubscription',
+            'leadTrendLabels', 'leadTrendData', 'biInsightText',
+            'conversionChange', 'revenueGenerated', 'leadsMissed',
+            'reactivationScore', 'reactivationLabel', 'reactivationIssues'
         ));
+    } 
+
+    public function activationPlan($storeId)
+    {
+        $store = Store::withoutGlobalScopes()->findOrFail($storeId);
+        $wallet = StoreWallet::where('vendor_id', $storeId)->first();
+        $walletBalance = $wallet->balance ?? 0;
+        $lastLoginAt = $store->vendor->last_login_at;
+        $lastLoginDays = $lastLoginAt ? (int) $lastLoginAt->diffInDays(now()) : null;
+        $subscriptionExpired = !$store->subscriptions()->where('plan_expiry', '>=', now())->exists();
+
+        $leadExpMinutes = Helpers::get_lead_exp_minutes();
+        $leadsMissed = DB::table('service_requests')
+            ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
+            ->where('created_at', '>=', now()->startOfYear())
+            ->where('created_at', '<', now()->subMinutes($leadExpMinutes))
+            ->where(function ($q) use ($storeId) {
+                $q->whereRaw('NOT FIND_IN_SET(?, accepted_by)', [$storeId])
+                  ->orWhereNull('accepted_by');
+            })
+            ->whereNotIn('id', function ($q) use ($storeId) {
+                $q->select('service_request_id')->from('accepted_service_requests')->where('vendor_id', $storeId);
+            })
+            ->whereNotIn('id', function ($q) use ($storeId) {
+                $q->select('service_request_id')->from('cancelled_service_requests')->where('vendor_id', $storeId);
+            })
+            ->count();
+ 
+        $hasDoc = !empty($store->gst_doc) || !empty($store->id_doc);
+        $hasService = $store->services_1 || $store->services_2;
+        $hasAddress = !empty($store->address) && !empty($store->latitude);
+        $hasCoverPic = !empty($store->cover_photo);
+        $hasLogo = !empty($store->logo);
+        $steps = [];
+
+         // Profile issues
+        if (!$hasDoc) {
+            $steps[] = ['priority' => 'High', 'action' => 'Upload GST or ID documents for verification.'];
+        }
+        if (!$hasService) {
+            $steps[] = ['priority' => 'High', 'action' => 'Add at least one service offering to start receiving leads.'];
+        }
+        if (!$hasAddress || !$hasLogo || !$hasCoverPic) {
+            $missing = [];
+            if (!$hasAddress) $missing[] = 'address';
+            if (!$hasLogo) $missing[] = 'logo';
+            if (!$hasCoverPic) $missing[] = 'cover photo';
+            $steps[] = ['priority' => 'Medium', 'action' => 'Complete profile: add ' . implode(', ', $missing) . '.'];
+        }
+
+        // Subscription
+        if ($subscriptionExpired) {
+            $steps[] = ['priority' => 'High', 'action' => 'Renew subscription to continue receiving leads.'];
+        }
+
+        // Wallet
+        if ($walletBalance < 101) {
+            $steps[] = ['priority' => 'High', 'action' => "Recharge wallet (current: ₹" . round($walletBalance) . "). Minimum ₹101 required."];
+        } elseif ($walletBalance < 500) {
+            $steps[] = ['priority' => 'Low', 'action' => "Wallet balance is ₹" . round($walletBalance) . ". Consider recharging for uninterrupted service."];
+        }
+
+        // Inactivity
+        if ($lastLoginDays !== null && $lastLoginDays > 30) {
+            $steps[] = ['priority' => 'High', 'action' => "Vendor hasn't logged in for {$lastLoginDays} days. Reach out via call/SMS."];
+        } elseif ($lastLoginDays !== null && $lastLoginDays > 7) {
+            $steps[] = ['priority' => 'Medium', 'action' => "Last login was {$lastLoginDays} days ago. Send a reminder notification."];
+        }
+
+        // Missed leads
+        if ($leadsMissed > 10) {
+            $steps[] = ['priority' => 'High', 'action' => "{$leadsMissed} leads missed this year. Schedule a training call on lead management."];
+        } elseif ($leadsMissed > 3) {
+            $steps[] = ['priority' => 'Medium', 'action' => "{$leadsMissed} leads missed. Advise vendor to respond faster to incoming leads."];
+        }
+
+        if (empty($steps)) {
+            $steps[] = ['priority' => 'None', 'action' => 'Vendor is in good shape! No immediate actions needed.'];
+        }
+
+        return response()->json(['steps' => $steps]);
     }
 
     public function verify_doc(Request $request, $id)
@@ -3206,13 +3453,13 @@ class VendorController extends Controller
                 'type' =>  Config::get('module.current_module_id')
             ],
         );
-        $data->value =  $status == 1 ? 0 : 1;
+        $data->value =  $status == 1 ? 0 : 1; 
         $data->save();
 
         Toastr::success(translate('messages.store_shuffle_status_updated'));
         return back();
     }
-
+ 
     // ─────────────────────────────────────────────────────────────
     //  INACTIVE VENDOR MANAGEMENT
     // ─────────────────────────────────────────────────────────────

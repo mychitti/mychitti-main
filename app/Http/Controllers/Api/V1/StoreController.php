@@ -8,7 +8,7 @@ use App\CentralLogics\CategoryLogic;
 use App\Http\Controllers\Controller;
 use App\Models\AcceptedServiceRequest;
 use App\Models\Category;
-use App\Models\Item;
+use App\Models\Item; 
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -134,14 +134,19 @@ class StoreController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $multi_review = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.id', $request->store_id)->select('users.f_name', 'users.l_name', 'users.image as profile_image',  'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating')->where('store_reviews.status', 1)->get();
+        $multi_review = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.id', $request->store_id)->select('users.f_name', 'users.l_name', 'users.image as profile_image',  'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.reply', DB::raw('CASE WHEN store_reviews.reply IS NULL THEN NULL ELSE store_reviews.replied_at END as replied_at'))->where('store_reviews.status', 1)->get();
 
         foreach ($multi_review as $key => $value) {
             $attachment = json_decode($value->attachment);
             if (!empty($attachment)) {
-                $multi_review[$key]->attachment = asset('storage/app/public/') . '/' .  $attachment[0];
+                $multi_review[$key]->attachment = array_map(function ($file) {
+                    return asset('storage/') . '/' . $file; 
+                }, $attachment);
+            } else {
+                $multi_review[$key]->attachment = [];
             }
-        }
+            $multi_review[$key]->profile_image = $value->profile_image ? asset('storage/profile') . '/' . $value->profile_image : null;
+        } 
 
         return response()->json(['message' => translate('messages.data_retrieved_successfully'), 'data' => $multi_review], 200);
     }

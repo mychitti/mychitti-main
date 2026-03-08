@@ -348,7 +348,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('most-tips', 'OrderController@most_tips');
     Route::get('stores/details/{id}', 'StoreController@get_details');
     Route::get('stores/details-limited/{id}', 'StoreController@get_details_limited');
-
+ 
+    Route::group(['prefix' => 'app-config'], function () {
+        Route::get('/', 'AppConfigController@index');
+        Route::post('update', 'AppConfigController@update');
+        });
     Route::group(['prefix' => 'customer'], function () {
         Route::get('delete-reasons', 'CustomerController@delete_reasons');
  

@@ -3676,6 +3676,7 @@ class Helpers
                 // $item['positive_rating'] = $ratings['positive_rating'];
                 $item['logo'] = self::onerror_image_helper($item['logo'], $baseUrl . $item['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
                 $item['cover_photo'] = self::onerror_image_helper($item['cover_photo'], $baseUrl . 'cover/' . $item['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
+             
                 array_push($storage, $item);
             }
             $data = $storage;
@@ -3683,10 +3684,11 @@ class Helpers
             $data['logo'] = self::onerror_image_helper($data['logo'], $baseUrl . $data['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
             $data['cover_photo'] = self::onerror_image_helper($data['cover_photo'], $baseUrl . 'cover/' . $data['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
-            // unset($data['rating']);
+            unset($data['rating']);
             $data['avg_rating'] = $ratings['rating'];
             $data['rating_count'] = $ratings['total'];
             // $data['positive_rating'] = $ratings['positive_rating'];
+          
             unset($data['positive_rating']);
         }
  
