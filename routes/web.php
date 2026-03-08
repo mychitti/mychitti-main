@@ -88,8 +88,10 @@ Route::group(['prefix' => 'mc-vendor', 'as' => 'mc-vendor.'], function () {
 Route::get('/generate-sitemap', [SitemapController::class, 'generate'])->name('generate-sitemap');
 Route::get('/health-check', fn() => response('OK'));
 Route::get('icons', 'Front\FrontController@icons_view');
-
-
+Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');
+Route::post('app-config/update', [FrontController::class, 'app_config_update'])->name('app-config.update');
+ 
+ 
 // Route::get('/', 'FrontController@index')->name('home');
 Route::get('check_depreciation', [CronController::class, 'check_depreciation']);
 Route::get('closing-balance', [CronController::class, 'bank_account_closing_balance']);

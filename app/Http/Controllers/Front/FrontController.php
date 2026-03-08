@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
-use App\CentralLogics\OrderLogic;
+use App\CentralLogics\OrderLogic;  
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\DMVehicle;
@@ -2684,5 +2684,34 @@ class FrontController extends Controller
             $terms_and_conditions =  BusinessSetting::where('key', 'service_vendor_tnc')->first();
         }
         return view('front-views.store-terms-and-conditions', compact('terms_and_conditions'));
+    }
+
+    public function app_config()
+    {
+        $app_config = DB::table('app_configs')->first();
+        $columns = DB::getSchemaBuilder()->getColumnListing('app_configs');
+        $columns = array_diff($columns, ['id', 'created_at', 'updated_at']);
+        return view('front-views.app-config', compact('app_config', 'columns'));
+    }
+
+    public function app_config_update(Request $request)
+    {
+        $data = $request->except(['_token', '_method']);
+
+        if (empty($data)) {
+            return back()->with('error', 'No data provided to update');
+        }
+
+        $appConfig = DB::table('app_configs')->first();
+        $data['updated_at'] = Carbon::now();
+
+        if (!$appConfig) {
+            $data['created_at'] = Carbon::now();
+            DB::table('app_configs')->insert($data);
+        } else {
+            DB::table('app_configs')->where('id', $appConfig->id)->update($data);
+        }
+
+        return back()->with('success', 'App config updated successfully');
     }
 }
