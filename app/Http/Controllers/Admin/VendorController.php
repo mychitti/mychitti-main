@@ -465,9 +465,9 @@ class VendorController extends Controller
             info($ex->getMessage());
         }
         if ($request->post('plan_select') != NULL) {
-            $buyplan =   $this->buyPlan($store->id, $request->post('plan_select'));
+            $buyplan =  $this->buyPlan($store->id, $request->post('plan_select'));
         }
-        if ($request->module_id == 5) {
+        // if ($request->module_id == 5) {
             // services  offered 1
             if ($request->services_1 && count($request->services_1)) {
 
@@ -497,7 +497,7 @@ class VendorController extends Controller
                     _trackStoreIds('admin_vendor_create_service2', $newStoreString, $value, '-', '_admin',  $oldIds);
                 }
             }
-        }
+        // }
         // echo 2 . ' - '; 
         // print_r($newStoreString);
         // echo 'saved';
