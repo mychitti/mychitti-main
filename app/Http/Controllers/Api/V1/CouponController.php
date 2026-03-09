@@ -74,10 +74,10 @@ class CouponController extends Controller
     }
     public function user(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required',
-        ]);
-        $user_id = $request->user_id;
+        // $validator = Validator::make($request->all(), [
+        //     'user_id' => 'required',
+        // ]);
+        $user_id =  $request->user()->id ??  $request->user_id;
         $coupons = Coupon::withoutGlobalScopes()
             ->with('store:id,name')
             ->active()

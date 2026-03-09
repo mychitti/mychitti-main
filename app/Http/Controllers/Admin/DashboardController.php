@@ -460,7 +460,7 @@ class DashboardController extends Controller
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereDate('created_at', Carbon::now());
                 $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('accepted_service_requests')->get();
+                $service_leads = DB::table('service_requests')->get();
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -490,7 +490,7 @@ class DashboardController extends Controller
 
                 $total_items = DB::table('items')->where('module_id', $module_id)->get();
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereYear('created_at', now()->format('Y'));
-                $service_leads = DB::table('accepted_service_requests')->whereYear('created_at', now()->format('Y'));
+                $service_leads = DB::table('service_requests')->whereYear('created_at', now()->format('Y'));
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -520,7 +520,7 @@ class DashboardController extends Controller
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
                 $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('accepted_service_requests')->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
+                $service_leads = DB::table('service_requests')->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -551,7 +551,7 @@ class DashboardController extends Controller
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
                 $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('accepted_service_requests')->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
+                $service_leads = DB::table('service_requests')->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -581,7 +581,7 @@ class DashboardController extends Controller
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereDate('created_at', '>=', now()->subDays(30)->format('Y-m-d'));
                 $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('accepted_service_requests')->get();
+                $service_leads = DB::table('service_requests')->get();
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -612,7 +612,7 @@ class DashboardController extends Controller
 
                 $new_items = DB::table('items')->whereDate('created_at', '>=', now()->subDays(30)->format('Y-m-d'));
                 $total_items = DB::table('items')->where('module_id', 6)->get();
-                $service_leads = DB::table('accepted_service_requests')->get();
+                $service_leads = DB::table('service_requests')->get();
             }
             $total_stores = Store::all();
             $total_customers = User::all();

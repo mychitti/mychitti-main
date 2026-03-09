@@ -352,6 +352,7 @@
                                             </span>
                                         </span>
                                     </div>
+                                    <div class="staff-dash-punch-time staff-dash-hidden" id="staffDashPunchTimeDisplay"></div>
                                 @endif
                             </div>
                             @if (_clockedInEmployee())
@@ -613,33 +614,36 @@
                 }
                 // Update every second
                 setInterval(staffDashUpdateDateTime, 1000);
+                @else
+                // set punch in time in punch in time display
+                $('#staffDashPunchTimeDisplay').text('Punched in at: ' + staffDashPunchInTime);
             @endif
+
 
 
             $('#staffDashPunchBtn').on('click', function() {
                 staffDashIsPunchedIn = !staffDashIsPunchedIn;
-                const currentTime = new Date().toLocaleTimeString();
+                const currentTime = new Date().toLocaleTimeString(); 
+
 
                 if (staffDashIsPunchedIn) {
                     staffDashPunchInTime = new Date(); // Record punch in time
                     $(this).removeClass('staff-dash-punch-in').addClass('staff-dash-punch-out');
                     $('#staffDashPunchIcon').text('■');
                     $('#staffDashPunchText').text('Punch Out');
-                    $('#staffDashPunchTimeDisplay').text('Punched in at: ' + currentTime).removeClass(
-                        'staff-dash-hidden');
+                    $('#staffDashCurrentDateTime').html('Punched in at: ' + currentTime);
                 } else {
                     staffDashPunchInTime = null; // Reset punch in time
                     $(this).removeClass('staff-dash-punch-out').addClass('staff-dash-punch-in');
                     $('#staffDashPunchIcon').text('▶');
                     $('#staffDashPunchText').text('Punch In');
-                    $('#staffDashPunchTimeDisplay').removeClass('staff-dash-hidden');
+                    $('#staffDashCurrentDateTime').html('<span class="remaining-time">Not Clocked In</span>');
                     if (typeof staffDashUpdateDateTime === 'function') {
                         staffDashUpdateDateTime();
                     }
                 }
                 clock(staffDashIsPunchedIn ? 'in' : 'out')
             });
-
         });
 
         function clock(action) {

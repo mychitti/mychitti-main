@@ -24,7 +24,7 @@
                         </div>
                     </div>
                 </div>
-                   <div class="mb-2 mb-sm-0">
+                <div class="mb-2 mb-sm-0">
                  <a target="_blank" href="{{route('generate-sitemap')}}" class="btn btn-primary">Update Sitemap </a>
                 </div>
                 <div class="col-sm-auto min--280">
