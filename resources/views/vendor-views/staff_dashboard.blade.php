@@ -5,7 +5,7 @@
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-        :root {
+        :root { 
             --staff-dash-primary: var(--primary);
             --staff-dash-secondary: var(--primary-light-theme); 
         }
