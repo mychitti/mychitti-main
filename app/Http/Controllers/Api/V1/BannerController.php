@@ -163,9 +163,16 @@ class BannerController extends Controller
     }
     public function category_banners(Request $request, $ctId)
     {
+        if (!$request->hasHeader('zoneId')) {
+            $errors = [];
+            array_push($errors, ['code' => 'zoneId', 'message' => translate('messages.zone_id_required')]);
+            return response()->json(['errors' => $errors], 403);
+        }
+        $zone_ids = json_decode($request->header('zoneId'), true);
         $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('platform', 'app')->where('data', $ctId)
+            ->whereIn('zone_id', $zone_ids)
             ->select("title", "image", "default_link", 'created_at')
-            ->get();
+            ->get(); 
         foreach ($banners as $key => $value) {
             $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
         }
