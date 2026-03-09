@@ -498,7 +498,7 @@ class VendorController extends Controller
                 }
             }
         // }
-        // echo 2 . ' - '; 
+        // echo 2 . ' - ';  
         // print_r($newStoreString);
         // echo 'saved';
         Toastr::success(Config::get('module.vendor_role') . ' ' .  translate('messages.added_successfully'));
