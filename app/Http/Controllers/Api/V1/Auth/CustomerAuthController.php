@@ -377,14 +377,20 @@ class CustomerAuthController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        // otp in db 
-        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
-        if ($dbOtp) {
-            if ($dbOtp->otp != $request->otp) {
+        // Allow hardcoded OTP 1234 for a specific test phone number
+        $testPhone = '7022806288'; // Replace with your phone number
+        if ($request->phone == $testPhone && $request->otp == '1234') {
+            // skip OTP verification for this phone
+        } else {
+            // otp in db 
+            $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
+            if ($dbOtp) {
+                if ($dbOtp->otp != $request->otp) {
+                    return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
+                }
+            } else {
                 return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
             }
-        } else {
-            return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
         }
 
         $user = User::where('phone', $request->phone)->first();
