@@ -80,7 +80,7 @@ jobs:
 
         chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
         chmod -R 775 storage/framework storage/logs bootstrap/cache && \
-
+ 
         mkdir -p storage/app/secure_files && \
         chown -R apache:apache storage/app/secure_files && \
         find storage/app/secure_files -type d -exec chmod 755 {} \;
