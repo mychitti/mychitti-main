@@ -571,6 +571,8 @@ class VendorController extends Controller
         $finalData = [];
         $today = now()->toDateString();
         $ids = [];
+        $invoiceTotalAmount = 0;
+        $invoice_items = [];
 
         foreach ($selectedModules as $item) {
 
@@ -617,10 +619,6 @@ class VendorController extends Controller
 
             // DB::table('temp_module_purchases')->insert($finalData);
 
-
-            $invoiceTotalAmount = 0;
-            // $invoice_items = [];
-            // foreach (explode(',', $module_ids) as $value) {
             // $module = SubModule::where('id', $module->id)->first();
 
             $planDetails = Plan::where('key', $module->Key)->first();
@@ -696,7 +694,7 @@ class VendorController extends Controller
             $invoice->payment_status =  'Unpaid';
             $invoice->reminder_date = null;
             $invoice->payment_date =  date('Y-m-d');
-            $invoice->generated_by =  'admin';
+            $invoice->generated_by =  'admin'; 
             $invoice->save();
 
             // ledger entry 
