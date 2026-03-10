@@ -10,7 +10,7 @@ use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;  
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\User; 
 use App\Models\DMVehicle;
 use App\Mail\PlaceOrder;
 use Illuminate\Support\Facades\Validator;
@@ -153,19 +153,18 @@ class FrontController extends Controller
     {
         return view('vendor-views.documents.approve_success');
     }
-    public function testing(Request $request, $type = 'vendor')
+    public function testing(Request $request)
     {
-       $user_fcm = "c6OlQVe3R7GC1RNRrSQWK0:APA91bEuGoq1NFvPjLo4i4Br2uTbV-KvhaJant7Tdxv5CIihaV70HqPcVqqLb9qzwMOeO5u78H-T62M0W7JQ3iTA91oVNuf1xeNMs18E1jqwS1wKh-8UaXs";
-    //    prx(  _send_confirmation_sms('otp',  8897228124, 1234));
+        $user_fcm = $request->fcm_token;
   $data = [
-                'title' => translate('messages.order_push_title'),
-                'description' => "We’re sorry for the inconvenience, but the Seller was unable to accept your order request at this moment. Please Try again after Some Time.",
+                'title' => translate('messages.test_notification') ,
+                'description' => "Test Notification",
                 'order_id' => 3,
                 'image' => '',
                 'type' => 'order_status',
             ];
-          echo 'd'.  Helpers::send_push_notif_to_device($user_fcm, $data);
-    die;
+          Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
+
      $bookings = ServiceRequest::where('user_id', 925)
             ->with([
                 'item:id,name',
@@ -2720,5 +2719,27 @@ class FrontController extends Controller
         }
 
         return back()->with('success', 'App config updated successfully');
+    }
+
+    public function test_push_view()
+    {
+        return view('test-push');
+    }
+
+    public function test_push_send(Request $request)
+    {
+        $request->validate(['fcm_token' => 'required']);
+
+        $user_fcm = $request->fcm_token;
+        $data = [
+            'title' => translate('messages.order_push_title'),
+            'description' => "We're sorry for the inconvenience, but the Seller was unable to accept your order request at this moment. Please Try again after Some Time.",
+            'order_id' => 3,
+            'image' => '',
+            'type' => 'order_status',
+        ];
+        Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
+
+        return back()->with('success', 'Push notification sent!');
     }
 }

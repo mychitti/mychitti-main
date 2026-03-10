@@ -4104,7 +4104,7 @@ class Helpers
     }
 
 
-    public static function send_push_notif_to_device($fcm_token, $data, $web_push_link = null)
+    public static function send_push_notif_to_device($fcm_token, $data, $web_push_link = null, $testing = false)
     {
         // Get OAuth 2.0 access token
         $accessToken = self::getAccessToken();
@@ -4173,7 +4173,10 @@ class Helpers
             curl_close($ch);
             return 'cURL Error: ' . $error;
         } else {
-            prx($result);
+            if($testing) {
+                 prx($result);
+            }
+             //
         }
 
         // Close cURL and return the result

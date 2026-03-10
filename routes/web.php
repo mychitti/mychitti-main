@@ -109,12 +109,14 @@ Route::post('send-login-otp', [FrontUserController::class, 'send_login_otp'])->n
 Route::post('verify-login-otp', [FrontUserController::class, 'verify_login_otp'])->name('user.verify-login-otp');
 
 
-
+ 
 Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
 
 Route::get('registration-successfull', [FrontController::class, 'registration_success'])->name('registration-successfull');
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
+Route::get('test-push', [FrontController::class, 'test_push_view'])->name('test-push');
+Route::post('test-push', [FrontController::class, 'test_push_send'])->name('test-push.send');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');
 
 // only if domain is mychitti.net or staging.mychitti.net
