@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
-use App\Models\AdminFeature;
+use App\Models\AdminFeature; 
 use App\Models\AdminPromotionalBanner;
 use App\Models\AdminSpecialCriteria;
 use App\Models\AdminTestimonial;
