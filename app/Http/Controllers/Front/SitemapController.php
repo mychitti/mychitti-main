@@ -62,4 +62,14 @@ class SitemapController extends Controller
  
         return response()->json(['message' => 'Sitemap updated successfully!']);
     }
+ 
+    public function show()
+    {
+        if (!Storage::disk('public')->exists('sitemap.xml')) {
+            abort(404);
+        }
+
+        return response(Storage::disk('public')->get('sitemap.xml'), 200)
+            ->header('Content-Type', 'application/xml');
+    }
 }
