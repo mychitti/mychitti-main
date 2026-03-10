@@ -62,7 +62,7 @@ class SitemapController extends Controller
             'cancellation_policy' => '/cancellation-policy',
             'refund_policy' => '/refund-policy',
             'shipping_policy' => '/shipping-policy',
-        ];
+        ]; 
         $policySettings = DB::table('data_settings')
             ->where('type', 'admin_landing_page')
             ->whereIn('key', array_keys($policyPages)) 
