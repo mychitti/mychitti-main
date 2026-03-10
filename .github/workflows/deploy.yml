@@ -59,6 +59,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no root@${{ matrix.host }} "
         set -e && \
         cd ${{ matrix.path }} && \
+        composer dump-autoload --no-interaction && \
         php artisan config:clear && \
         php artisan route:clear && \
         php artisan view:clear && \
