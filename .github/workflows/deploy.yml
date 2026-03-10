@@ -56,7 +56,7 @@ jobs:
         echo 'Restoring server composer files...' && \
         mv /tmp/composer.json.bak composer.json || true && \
         mv /tmp/composer.lock.bak composer.lock || true && \
-
+ 
         php artisan config:clear && \
         php artisan route:clear && \
         php artisan view:clear && \
@@ -86,9 +86,9 @@ jobs:
         find storage/app/secure_files -type d -exec chmod 755 {} \;
         find storage/app/secure_files -type f -exec chmod 644 {} \;
 
-        touch ${{ matrix.path }}/sitemap.xml && \
-        chown apache:apache ${{ matrix.path }}/sitemap.xml && \
-        chmod 664 ${{ matrix.path }}/sitemap.xml && \
+        touch ${{ matrix.path }}/public/sitemap.xml && \
+        chown apache:apache ${{ matrix.path }}/public/sitemap.xml && \
+        chmod 664 ${{ matrix.path }}/public/sitemap.xml && \
 
         echo ' Deployment completed successfully!'
         "

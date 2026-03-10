@@ -82,10 +82,11 @@ Route::get('/test-attendance-job', function () {
 Route::group(['prefix' => 'mc-vendor', 'as' => 'mc-vendor.'], function () {
     Route::get('contact', [McVendorController::class, 'contact'])->name('contact');
     Route::post('send-message', [McVendorController::class, 'send_message'])->name('send-message');
-});
+}); 
 // Route::get('/', [UserController::class,'index']);
 // Route::get('expire', [UserController::class,'expire']);
 Route::get('/generate-sitemap', [SitemapController::class, 'generate'])->name('generate-sitemap');
+Route::get('/sitemap.xml', [SitemapController::class, 'show'])->name('sitemap');
 Route::get('/health-check', fn() => response('OK'));
 Route::get('icons', 'Front\FrontController@icons_view');
 Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');

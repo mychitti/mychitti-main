@@ -30,13 +30,22 @@ class SitemapController extends Controller
 
         // Add dynamic URLs from the database
         foreach ($items as $item) {
-            $xml .= '<url><loc>' . url('/item/' . $item->slug) . '</loc></url>';
+            $xml .= '<url><loc>' . url('/tirupati/' . $item->slug) . '</loc></url>';
+        }
+        foreach ($items as $item) {
+            $xml .= '<url><loc>' . url('/hyderabad/' . $item->slug) . '</loc></url>';
         }
         foreach ($categories as $cat) {
-            $xml .= '<url><loc>' . url('/category/' . $cat->slug) . '</loc></url>';
+            $xml .= '<url><loc>' . url('/category/' . $cat->slug . '/tirupati') . '</loc></url>';
+        }
+        foreach ($categories as $cat) {
+            $xml .= '<url><loc>' . url('/category/' . $cat->slug . '/hyderabad') . '</loc></url>';
         }
         foreach ($stores as $store) {
-            $xml .= '<url><loc>' . url('/store/' . $store->slug) . '</loc></url>';
+            $xml .= '<url><loc>' . url('/tirupati/store/' . $store->slug) . '</loc></url>';
+        }
+        foreach ($stores as $store) {
+            $xml .= '<url><loc>' . url('/hyderabad/store/' . $store->slug) . '</loc></url>';
         }
          // Add static URLs
          $xml .= '<url><loc>' . url('/dashboard') . '</loc></url>';
@@ -48,16 +57,11 @@ class SitemapController extends Controller
 
         $xml .= '</urlset>';
 
-        $sitemapPath = base_path('sitemap.xml');
- 
-        // Delete the old sitemap if it exists
-        if (file_exists($sitemapPath)) {
-            unlink($sitemapPath);
-        }
-
-        // Save the sitemap to the public folder
+        $sitemapPath = public_path('sitemap.xml');
+  
+        // Save the sitemap to the public folder (overwrites if exists)
         file_put_contents($sitemapPath, $xml);
-
+ 
         return response()->json(['message' => 'Sitemap updated successfully!']);
     }
 }
