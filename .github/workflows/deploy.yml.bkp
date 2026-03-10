@@ -56,28 +56,35 @@ jobs:
         echo 'Restoring server composer files...' && \
         mv /tmp/composer.json.bak composer.json || true && \
         mv /tmp/composer.lock.bak composer.lock || true && \
- 
-        echo 'Fixing permissions...' && \
-        chown -R apache:apache storage bootstrap/cache && \
-        chmod -R 775 storage bootstrap/cache && \
-        mkdir -p storage/app/tmp storage/app/mpdf_temp storage/app/secure_files && \
-        chown -R apache:apache storage/app/tmp storage/app/mpdf_temp storage/app/secure_files && \
 
-        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/tmp(/.*)?' && \
-        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/mpdf_temp(/.*)?' && \
-        restorecon -Rv ${{ matrix.path }}/storage/app/tmp && \
-        restorecon -Rv ${{ matrix.path }}/storage/app/mpdf_temp && \
-
-        find storage/app/secure_files -type d -exec chmod 755 {} \; && \
-        find storage/app/secure_files -type f -exec chmod 644 {} \; && \
-
-        echo 'Clearing and rebuilding caches...' && \
         php artisan config:clear && \
         php artisan route:clear && \
         php artisan view:clear && \
         php artisan cache:clear && \
         php artisan config:cache && \
         php artisan view:cache && \
+
+        mkdir -p storage/app/tmp && \ 
+        chown -R apache:apache storage/app/tmp && \
+        chmod -R 775 storage/app/tmp && \
  
+        mkdir -p storage/app/mpdf_temp && \
+        chown -R apache:apache storage/app/mpdf_temp && \
+        chmod -R 775 storage/app/mpdf_temp && \
+        
+        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/tmp(/.*)?' && \
+        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/mpdf_temp(/.*)?' && \
+
+        restorecon -Rv ${{ matrix.path }}/storage/app/tmp && \
+        restorecon -Rv ${{ matrix.path }}/storage/app/mpdf_temp && \
+
+        chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
+        chmod -R 775 storage/framework storage/logs bootstrap/cache && \
+
+        mkdir -p storage/app/secure_files && \
+        chown -R apache:apache storage/app/secure_files && \
+        find storage/app/secure_files -type d -exec chmod 755 {} \;
+        find storage/app/secure_files -type f -exec chmod 644 {} \;
+
         echo 'Deployment completed successfully!'
         "
