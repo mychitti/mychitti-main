@@ -11,7 +11,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
+        } 
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -249,33 +249,27 @@
                             <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
                                 <label class="pc-label">Select Duration:</label>
                                 <div class="pc-duration-grid">
-                                    @php
-                                        $durations = [
-                                            ['months' => 1, 'label' => '1 Month', 'discount' => $module->discount_1_month ?? 0],
-                                            ['months' => 3, 'label' => '3 Months', 'discount' => $module->discount_3_month ?? 0],
-                                            ['months' => 6, 'label' => '6 Months', 'discount' => $module->discount_6_month ?? 0],
-                                            ['months' => 12, 'label' => '12 Months', 'discount' => $module->discount_12_month ?? 0],
-                                        ];
-                                    @endphp
+                                    @php $plan_durations = _planDurations(); @endphp
 
-                                    @foreach($durations as $duration)
+                                    @foreach($plan_durations as $duration)
                                         @php
-                                            $basePrice = $module->price_per_month * $duration['months'];
-                                            $discountAmount = ($basePrice * $duration['discount']) / 100;
+                                            $dur_discount = _moduleDiscount($module->id, $duration->id);
+                                            $basePrice = $module->price_per_month * $duration->months;
+                                            $discountAmount = ($basePrice * $dur_discount) / 100;
                                             $finalPrice = $basePrice - $discountAmount;
                                         @endphp
-                                        <div class="pc-duration-card" 
-                                             data-module-id="{{ $module->id }}" 
-                                             data-months="{{ $duration['months'] }}"
+                                        <div class="pc-duration-card"
+                                             data-module-id="{{ $module->id }}"
+                                             data-months="{{ $duration->months }}"
                                              data-base-price="{{ $basePrice }}"
-                                             data-discount="{{ $duration['discount'] }}"
+                                             data-discount="{{ $dur_discount }}"
                                              data-discount-amount="{{ $discountAmount }}"
                                              data-final-price="{{ $finalPrice }}">
-                                            <div class="pc-duration-title">{{ $duration['label'] }}</div>
+                                            <div class="pc-duration-title">{{ $duration->label }}</div>
                                             <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}</div>
                                             <div class="pc-duration-save">
-                                                @if($duration['discount'] > 0)
-                                                    Save {{ $duration['discount'] }}%
+                                                @if($dur_discount > 0)
+                                                    Save {{ $dur_discount }}%
                                                 @else
                                                     No discount
                                                 @endif

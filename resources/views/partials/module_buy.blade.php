@@ -35,13 +35,13 @@
                   </div>
 
                   @endif
+                  @php $plan_durations = _planDurations(); @endphp
                   <div class="pc-global-duration mb-3">
                       <label class="pc-label"><b>Select Plan Duration</b></label>
                       <div class="pc-duration-grid">
-                          <div class="pc-global-duration-card pc-selected" data-months="1">Monthly</div>
-                          <div class="pc-global-duration-card" data-months="3">Quarterly</div>
-                          {{-- <div class="pc-global-duration-card" data-months="6">6 Months</div> --}}
-                          <div class="pc-global-duration-card" data-months="12">Annually</div>
+                          @foreach($plan_durations as $i => $dur)
+                          <div class="pc-global-duration-card {{ $i == 0 ? 'pc-selected' : '' }}" data-months="{{ $dur->months }}">{{ $dur->label }}</div>
+                          @endforeach
                       </div>
                   </div>
 
@@ -63,49 +63,34 @@
                               <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
                                   <label class="pc-label">Select Duration:</label>
                                   <div class="pc-duration-grid">
-                                      @php
-                                          $durations = [
-                                              [
-                                                  'months' => 1,
-                                                  'label' => 'Monthly',
-                                                  'discount' => $module->discount_1_month ?? 0,
-                                              ],
-                                              [
-                                                  'months' => 3,
-                                                  'label' => 'Quarterly',
-                                                  'discount' => $module->discount_3_month ?? 0,
-                                              ],
-
-                                              [
-                                                  'months' => 12,
-                                                  'label' => 'Annually',
-                                                  'discount' => $module->discount_12_month ?? 0,
-                                              ],
-                                          ];
-
-                                      @endphp
-
-                                      @foreach ($durations as $duration)
+                                      @foreach ($plan_durations as $duration)
                                           @php
-                                              $basePrice = $module->price_per_month * $duration['months'];
-                                              $discountAmount = ($basePrice * $duration['discount']) / 100;
+                                              $duration = (object) [
+                                                  'months' => $duration->months,
+                                                  'label' => $duration->label,
+                                                  'discount' => _moduleDiscount($module->id, $duration->id),
+                                              ];
+                                          @endphp 
+                                          @php
+                                              $basePrice = $module->price_per_month * $duration->months;
+                                              $discountAmount = ($basePrice * $duration->discount) / 100;
                                               $finalPrice = $basePrice - $discountAmount;
                                           @endphp
                                           <div class="pc-duration-card" data-module-id="{{ $module->id }}"
-                                              data-months="{{ $duration['months'] }}"
+                                              data-months="{{ $duration->months }}"
                                               data-base-price="{{ $basePrice }}"
-                                              data-discount="{{ $duration['discount'] }}"
+                                              data-discount="{{ $duration->discount }}"
                                               data-discount-amount="{{ $discountAmount }}"
                                               data-final-price="{{ $finalPrice }}">
-                                              <div class="pc-duration-title">{{ $duration['label'] }}</div>
-                                              <div class="p5 {{ $duration['discount'] > 0 ? 'mrp-cut' : '' }}">
+                                              <div class="pc-duration-title">{{ $duration->label }}</div>
+                                              <div class="p5 {{ $duration->discount > 0 ? 'mrp-cut' : '' }}">
                                                   ₹{{ number_format($basePrice, 2) }}
                                               </div>
                                               <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}
                                               </div>
                                               <div class="pc-duration-save">
-                                                  @if ($duration['discount'] > 0)
-                                                      Save {{ $duration['discount'] }}%
+                                                  @if ($duration->discount > 0)
+                                                      Save {{ $duration->discount }}%
                                                   @else
                                                       {{-- No discount --}}
                                                   @endif

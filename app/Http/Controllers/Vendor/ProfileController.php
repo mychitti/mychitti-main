@@ -23,6 +23,7 @@ use App\Library\Receiver;
 use App\Models\Store;
 use App\Models\StoreConfig;
 use App\Models\SubModule;
+use App\Models\SubModuleDiscount;
 use App\Models\TempModulePurchase;
 use App\Models\VendorEmployee;
 use App\Models\Zone;
@@ -152,17 +153,9 @@ class ProfileController extends Controller
             $months = (int) $item['months'];
             $basePrice = $module->price_per_month * $months;
 
-            if ($months == 1) {
-                $discountPercent = $module->discount_1_month;
-            } elseif ($months == 3) {
-                $discountPercent = $module->discount_3_month;
-            } elseif ($months == 6) {
-                $discountPercent = $module->discount_6_month;
-            } elseif ($months == 12) {
-                $discountPercent = $module->discount_12_month;
-            } else {
-                $discountPercent = 0;
-            }
+            $discountPercent = SubModuleDiscount::where('sub_module_id', $module->id)
+                ->whereHas('duration', fn($q) => $q->where('months', $months))
+                ->value('discount') ?? 0;
 
             $discountAmount = ($basePrice * $discountPercent) / 100;
             $finalPrice = $basePrice - $discountAmount;
@@ -303,7 +296,7 @@ class ProfileController extends Controller
     //     return back();
     // }
     public function buyModule($vendorId = NULL, $module_ids = NULL)
-    {
+    { 
         $invoiceTotalAmount = 0;
         $invoice_items = [];
         // prx($module_ids);

@@ -8,7 +8,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
     Route::group(['prefix' => 'file', 'as' => 'file.'], function () { 
         Route::get('add', 'FileController@add')->name('add');
-        Route::post('store', 'FileController@store')->name('store');
+        Route::post('store', 'FileController@store')->name('store'); 
     }); 
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
     Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
@@ -174,20 +174,26 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             // ===============================
             Route::post('buy-plan', 'VendorController@buyPlan')->name('buy-plan');
             Route::get('store-modules/{store_id}', 'VendorController@store_enabled_modules')->name('store-modules');
+            Route::delete('delete-subscription/{id}', 'VendorController@delete_subscription')->name('delete-subscription');
             Route::post('buy-module', 'VendorController@buyModule')->name('buy-module');
             Route::post('buy-plan-store', 'VendorController@buy_plan_for_store')->name('buy-plan-store');
             Route::post('edit-plan-store', 'VendorController@edit_plan_for_store')->name('edit-plan-store');
             Route::get('buy-module-store', 'VendorController@buy_module_for_store')->name('module-store');
             Route::get('all-plans', 'VendorController@allPlans')->name('all-plans');
             // ===============================
-
+ 
             Route::get('add-new/{type?}/{req_id?}', 'PlanController@index')->name('add-new');
             Route::get('status/{id}/{status}', 'PlanController@status')->name('status');
             Route::get('list', 'PlanController@list')->name('list');
             Route::get('requests', 'PlanController@plan_requests')->name('requests');
             Route::get('module-pricing', 'PlanController@module_pricing')->name('module-pricing');
+            Route::post('update-modules', 'VendorController@update_modules')->name('update-modules');
+            Route::post('duration/store', 'VendorController@store_duration')->name('duration.store');
+            Route::post('duration/update/{id}', 'VendorController@update_duration')->name('duration.update');
+            Route::get('duration/delete/{id}', 'VendorController@delete_duration')->name('duration.delete');
+            Route::post('duration/toggle/{id}', 'VendorController@toggle_duration')->name('duration.toggle');
             Route::get('stores', 'PlanController@stores')->name('stores');
-            Route::post('store', 'PlanController@store')->name('store');
+            Route::post('store', 'PlanController@store')->name('store'); 
         });
         Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['module:account']], function () {
             Route::get('report', 'AccountController@report')->name('report');

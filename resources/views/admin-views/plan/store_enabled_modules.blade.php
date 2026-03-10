@@ -27,25 +27,14 @@
                                     <div class="pm-price">{{ $sub->duration_count }} {{ $sub->duration_type }}</div>
                                     <div class="pm-duration">{{ _price($sub->purchased_at) }}</div>
                                 </div>
+                                <form action="{{ route('admin.plan.delete-subscription', $sub->id) }}" method="POST" class="pm-delete-form" onsubmit="return confirm('Are you sure you want to delete this subscription?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="tio-delete"></i></button>
+                                </form>
                             </div>
                         </div>
-
-
-                        {{-- <div class="pc-module-item" >
-                                <div class="pc-module-top">
-                                    <div class="pc-module-name">{{ $sub->plan?->title ?? $sub->permitted_modules }}</div>
-                                    <div class="pc-price-amount">
-                                        ₹{{ number_format($sub->purchased_at) }}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Duration  {{ $sub->duration_count }} {{$sub->duration_type}}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Expiry  {{ $sub->plan_expiry }}
-                                    </div>
-                                </div>
-                            </div> --}}
-                    @endforeach
+                    @endforeach 
                 @else
                     <p style="color: #666; text-align: center; padding: 40px;">No modules enabled yet.</p>
                 @endif
@@ -66,30 +55,19 @@
                                         <h6 class="pm-title">{{ $sub->plan?->title ?? $sub->permitted_modules }}</h6>
                                         <p class="pm-expiry">Expires on:
                                             <strong>{{ _formatted_datetime($sub->plan_expiry) }}</strong>
-                                        </p>
+                                        </p> 
                                     </div>
                                     <div class="pm-right">
                                         <div class="pm-price">{{ $sub->duration_count }} {{ $sub->duration_type }}</div>
                                         <div class="pm-duration">{{ _price($sub->purchased_at) }}</div>
                                     </div>
+                                    <form action="{{ route('admin.plan.delete-subscription', $sub->id) }}" method="POST" class="pm-delete-form" onsubmit="return confirm('Are you sure you want to delete this subscription?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="tio-delete"></i></button>
+                                    </form>
                                 </div>
-                            </div>
-
-
-                            {{-- <div class="pc-module-item" >
-                                <div class="pc-module-top">
-                                    <div class="pc-module-name">{{ $sub->plan?->title ?? $sub->permitted_modules }}</div>
-                                    <div class="pc-price-amount">
-                                        ₹{{ number_format($sub->purchased_at) }}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Duration  {{ $sub->duration_count }} {{$sub->duration_type}}
-                                    </div>
-                                    <div class="pc-price-amount">
-                                      Expiry  {{ $sub->plan_expiry }}
-                                    </div>
-                                </div>
-                            </div> --}}
+                            </div> 
                         @endforeach
                     @endif
 

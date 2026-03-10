@@ -229,6 +229,25 @@
     justify-content: space-between;
     align-items: center;
     transition: 0.2s;
+    position: relative;
+}
+
+.pm-delete-form {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+}
+
+.pm-delete-form .btn {
+    padding: 1px 5px;
+    font-size: 11px;
+    line-height: 1; 
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+.pm-card:hover .pm-delete-form .btn {
+    opacity: 1;
 }
 
 .pm-card:hover {

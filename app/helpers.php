@@ -1233,8 +1233,19 @@ function selected_menu($key, $menu_type = 'sidebar')
     }
 }
 function _subMoudles()
-{
+{ 
     return DB::table('sub_modules')->get();
+}
+function _planDurations()
+{
+    return DB::table('plan_durations')->where('is_active', 1)->orderBy('sort_order')->get();
+}
+function _moduleDiscount($subModuleId, $planDurationId)
+{
+    return DB::table('sub_module_discounts')
+        ->where('sub_module_id', $subModuleId)
+        ->where('plan_duration_id', $planDurationId)
+        ->value('discount') ?? 0;
 }
 function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnly = false, $quotation = false, $heading = '')
 {

@@ -23,6 +23,8 @@ use App\Scopes\StoreScope;
 use App\Models\Translation;
 use App\Models\VendorSubscription;
 use App\Models\SubscriptionPlanRequest;
+use App\Models\PlanDuration; 
+use App\Models\SubModuleDiscount;
 use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
@@ -147,9 +149,12 @@ class PlanController extends Controller
     {
         $features = DB::table('subscription_modules')->where('status', 1)->get();
         $allPlanRequests = SubscriptionPlanRequest::with('store')->get();
-        return view('admin-views.plan.module_pricing', compact('allPlanRequests', 'features'));
+        $sub_modules = DB::table('sub_modules')->get();
+        $plan_durations = PlanDuration::orderBy('sort_order')->get();
+        $sub_module_discounts = SubModuleDiscount::all()->groupBy('sub_module_id');
+        return view('admin-views.plan.module_pricing', compact('allPlanRequests', 'features', 'sub_modules', 'plan_durations', 'sub_module_discounts'));
     }
-    public function list()
+    public function list() 
     {
         $allPlans = Plan::all();
         return view('admin-views.plan.list', compact('allPlans'));

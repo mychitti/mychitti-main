@@ -522,14 +522,14 @@
                                 <span class="text-truncate"> Subscription Requests</span>
                             </a>
                         </li>
-                        {{-- <li class="nav-item {{ Request::is('plan/module-pricing') ? 'active' : '' }}">
-                            <a class="nav-link " href="{{ route('admin.plan.module-pricing') }}" title="requests List">
+                        <li class="nav-item {{ Request::is('plan/module-pricing') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.plan.module-pricing') }}" title="Module Pricing">
                                 <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate"> Module Pricing</span>
+                                <span class="text-truncate">Module Pricing</span>
                             </a>
-                        </li> --}}
+                        </li>
                     </ul>
-                </li>
+                </li> 
                 @endif
                 {{-- STORE WALLET  =========================== --}}
                   @if (\App\CentralLogics\Helpers::module_permission_check('store_wallet'))

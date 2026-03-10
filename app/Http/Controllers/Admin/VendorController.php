@@ -18,6 +18,8 @@ use App\Models\Plan;
 use App\Models\VendorSubscription;
 use App\Models\DataSetting;
 use App\Models\StoreConfig;
+use App\Models\PlanDuration;
+use App\Models\SubModuleDiscount;
 use App\Models\StoreWallet;
 use App\Models\TempProduct;
 use App\Models\Translation;
@@ -81,17 +83,16 @@ class VendorController extends Controller
             return view('admin-views.vendor.index', compact('allPlans', 'module_categories', 'business_types'));
         }
     }
-    public function types()
-    {
+    public function types() 
+    { 
         $module_id  = Config::get('module.current_module_id') ?? 6;
         $store_types = StoreType::where('module_id', $module_id)->get();
         $sub_modules = DB::table('sub_modules')->get();
-        // prx($sub_modules);
 
         return view('admin-views.vendor.store_types', compact('store_types', 'sub_modules'));
     }
     public function assignManualTrial(Request $request)
-    {
+    { 
         $request->validate([
             'store_id' => 'required|exists:users,id',
             'submodule_id' => 'required|exists:plans,id',
@@ -124,17 +125,23 @@ class VendorController extends Controller
 
         Toastr::success(translate('messages.updated_successfully'));
         return redirect()->back();
-    }
+    } 
     public function update_modules(Request $request)
     {
         $subModule = SubModule::find($request->module_id);
         $subModule->name = $request->name;
         $subModule->price_per_month = $request->price_per_month;
-        $subModule->discount_1_month = $request->discount_1_month;
-        $subModule->discount_3_month = $request->discount_3_month;
-        $subModule->discount_6_month = $request->discount_6_month;
-        $subModule->discount_12_month = $request->discount_12_month;
         $subModule->save();
+
+        // Save dynamic duration discounts
+        if ($request->has('discounts')) {
+            foreach ($request->discounts as $durationId => $discount) {
+                SubModuleDiscount::updateOrCreate(
+                    ['sub_module_id' => $subModule->id, 'plan_duration_id' => $durationId],
+                    ['discount' => $discount ?? 0]
+                );
+            }
+        }
 
         Toastr::success(translate('messages.updated_successfully'));
         return redirect()->back();
@@ -533,6 +540,55 @@ class VendorController extends Controller
             ->where('plan_expiry', '<', now())->get();
         return view('admin-views.plan.store_enabled_modules', compact('subscriptions', 'history', 'store'));
     }
+    public function delete_subscription($id)
+    {
+        $subscription = VendorSubscription::findOrFail($id);
+        $subscription->delete();
+        Toastr::success(translate('messages.deleted_successfully'));
+        return redirect()->back();
+    } 
+
+    public function store_duration(Request $request)
+    {
+        PlanDuration::create([
+            'months' => $request->months,
+            'label' => $request->label,
+            'is_active' => 1,
+            'sort_order' => $request->sort_order ?? 0,
+        ]);
+        Toastr::success(translate('messages.added_successfully'));
+        return redirect()->back();
+    }
+
+    public function update_duration(Request $request, $id)
+    {
+        $duration = PlanDuration::findOrFail($id);
+        $duration->update([
+            'months' => $request->months,
+            'label' => $request->label,
+            'sort_order' => $request->sort_order ?? $duration->sort_order,
+        ]);
+        Toastr::success(translate('messages.updated_successfully'));
+        return redirect()->back();
+    }
+
+    public function delete_duration($id)
+    {
+        $duration = PlanDuration::findOrFail($id);
+        SubModuleDiscount::where('plan_duration_id', $id)->delete();
+        $duration->delete();
+        Toastr::success(translate('messages.deleted_successfully'));
+        return redirect()->back();
+    }
+
+    public function toggle_duration($id)
+    {
+        $duration = PlanDuration::findOrFail($id);
+        $duration->update(['is_active' => !$duration->is_active]);
+        Toastr::success(translate('messages.updated_successfully'));
+        return redirect()->back();
+    }
+
     public function buy_module_for_store()
     {
 
@@ -586,17 +642,9 @@ class VendorController extends Controller
             $months = (int) $item['months'];
             $basePrice = $module->price_per_month * $months;
 
-            if ($months == 1) {
-                $discountPercent = $module->discount_1_month;
-            } elseif ($months == 3) {
-                $discountPercent = $module->discount_3_month;
-            } elseif ($months == 6) {
-                $discountPercent = $module->discount_6_month;
-            } elseif ($months == 12) {
-                $discountPercent = $module->discount_12_month;
-            } else {
-                $discountPercent = 0;
-            }
+            $discountPercent = SubModuleDiscount::where('sub_module_id', $module->id)
+                ->whereHas('duration', fn($q) => $q->where('months', $months))
+                ->value('discount') ?? 0;
 
             $discountAmount = ($basePrice * $discountPercent) / 100;
             $finalPrice = $basePrice - $discountAmount;
