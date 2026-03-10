@@ -85,6 +85,12 @@ jobs:
         chown -R apache:apache storage/app/secure_files && \
         find storage/app/secure_files -type d -exec chmod 755 {} \;
         find storage/app/secure_files -type f -exec chmod 644 {} \;
+ 
+        touch public/sitemap.xml && \
+        chown apache:apache public/sitemap.xml && \
+        chmod 664 public/sitemap.xml && \
+        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/public/sitemap.xml' || true && \
+        restorecon -v ${{ matrix.path }}/public/sitemap.xml && \
 
         echo ' Deployment completed successfully!'
         "
