@@ -55,12 +55,10 @@ class SitemapController extends Controller
          $xml .= '<url><loc>' . url('/refund-policy') . '</loc></url>';
          $xml .= '<url><loc>' . url('/shipping-policy') . '</loc></url>';
 
-        $xml .= '</urlset>';
+        $xml .= '</urlset>'; 
 
-        $sitemapPath = public_path('sitemap.xml');
-  
-        // Save the sitemap to the public folder (overwrites if exists)
-        file_put_contents($sitemapPath, $xml);
+        // Save to storage/app/public (accessible via public/storage symlink)
+        Storage::disk('public')->put('sitemap.xml', $xml);
  
         return response()->json(['message' => 'Sitemap updated successfully!']);
     }
