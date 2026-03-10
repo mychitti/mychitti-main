@@ -86,9 +86,6 @@ jobs:
         find storage/app/secure_files -type d -exec chmod 755 {} \;
         find storage/app/secure_files -type f -exec chmod 644 {} \;
 
-        touch ${{ matrix.path }}/public/sitemap.xml && \
-        chown apache:apache ${{ matrix.path }}/public/sitemap.xml && \
-        chmod 664 ${{ matrix.path }}/public/sitemap.xml && \
-
         echo ' Deployment completed successfully!'
         "
+ 

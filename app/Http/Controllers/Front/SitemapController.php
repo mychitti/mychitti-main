@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Front;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class SitemapController extends Controller
 {
@@ -36,7 +35,7 @@ class SitemapController extends Controller
 
         // Add dynamic URLs from the database
         foreach ($items as $item) {
-            $xml .= '<url><loc>' . $baseUrl . '/tirupati3/' . $item->slug . '</loc></url>';
+            $xml .= '<url><loc>' . $baseUrl . '/tirupati/' . $item->slug . '</loc></url>';
         }
         foreach ($items as $item) {
             $xml .= '<url><loc>' . $baseUrl . '/hyderabad/' . $item->slug . '</loc></url>';
@@ -63,18 +62,19 @@ class SitemapController extends Controller
 
         $xml .= '</urlset>'; 
 
-        // Save to storage/app/public (accessible via public/storage symlink)
-        Storage::disk('public')->put('sitemap.xml', $xml);
- 
+        // Save directly to public/ directory
+        file_put_contents(public_path('sitemap.xml'), $xml);
+
         return response()->json(['message' => 'Sitemap updated successfully!']);
     }
- 
+
     public function show()
     {
-        if (!Storage::disk('public')->exists('sitemap.xml')) {
+        $path = public_path('sitemap.xml');
+        if (!file_exists($path)) {
             abort(404);
         }
-        return response(Storage::disk('public')->get('sitemap.xml'), 200)
+        return response(file_get_contents($path), 200)
             ->header('Content-Type', 'application/xml');
     }
 }

@@ -25,11 +25,11 @@
                     </div>
                 </div>
                  <div class="mb-2 mb-sm-0">
-                 <a target="_blank" href="{{route('generate-sitemap')}}" class="btn btn-primary">Update Sitemap </a>
+                 <a target="_blank" href="https://mychitti.net/generate-sitemap" class="btn btn-primary">Update Sitemap </a>
                 </div>
 
-                <div class="col-sm-auto min--280">
-
+                <div class="col-sm-auto min--280"> 
+ 
                     <select name="zone_id" class="form-control js-select2-custom fetch_data_zone_wise">
                         <option value="all">{{ translate('messages.All_Zones') }}</option>
                         @foreach(\App\Models\Zone::orderBy('name')->get() as $zone)
