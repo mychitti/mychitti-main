@@ -4376,7 +4376,7 @@ if (!function_exists('_nearbyStoresOptimized')) {
                 sin(radians(stores.latitude))
             ))
         ))
-    ";
+       ";
 
         return Store::select('stores.*')
             ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
