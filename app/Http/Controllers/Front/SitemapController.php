@@ -30,7 +30,7 @@ class SitemapController extends Controller
 
         // Add dynamic URLs from the database
         foreach ($items as $item) {
-            $xml .= '<url><loc>' . url('/tirupati/' . $item->slug) . '</loc></url>';
+            $xml .= '<url><loc>' . url('/tirupati3/' . $item->slug) . '</loc></url>';
         }
         foreach ($items as $item) {
             $xml .= '<url><loc>' . url('/hyderabad/' . $item->slug) . '</loc></url>';
