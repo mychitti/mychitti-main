@@ -155,9 +155,16 @@ class FrontController extends Controller
     }
     public function testing(Request $request, $type = 'vendor')
     {
-       
+       $user_fcm = "c6OlQVe3R7GC1RNRrSQWK0:APA91bEuGoq1NFvPjLo4i4Br2uTbV-KvhaJant7Tdxv5CIihaV70HqPcVqqLb9qzwMOeO5u78H-T62M0W7JQ3iTA91oVNuf1xeNMs18E1jqwS1wKh-8UaXs";
     //    prx(  _send_confirmation_sms('otp',  8897228124, 1234));
-
+  $data = [
+                'title' => translate('messages.order_push_title'),
+                'description' => "We’re sorry for the inconvenience, but the Seller was unable to accept your order request at this moment. Please Try again after Some Time.",
+                'order_id' => 3,
+                'image' => '',
+                'type' => 'order_status',
+            ];
+          echo 'd'.  Helpers::send_push_notif_to_device($user_fcm, $data);
     die;
      $bookings = ServiceRequest::where('user_id', 925)
             ->with([

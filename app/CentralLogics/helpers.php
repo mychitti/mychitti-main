@@ -4173,7 +4173,7 @@ class Helpers
             curl_close($ch);
             return 'cURL Error: ' . $error;
         } else {
-            // prx($result);
+            prx($result);
         }
 
         // Close cURL and return the result

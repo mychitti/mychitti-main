@@ -58,7 +58,7 @@ class SitemapController extends Controller
          $xml .= '<url><loc>' . $baseUrl . '/terms-and-conditions</loc></url>';
          $xml .= '<url><loc>' . $baseUrl . '/privacy-policy</loc></url>';
          $xml .= '<url><loc>' . $baseUrl . '/cancellation-policy</loc></url>';
-         $xml .= '<url><loc>' . $baseUrl . '/refund-policy</loc></url>';
+        $xml .= '<url><loc>' . $baseUrl . '/refund-policy</loc></url>';
          $xml .= '<url><loc>' . $baseUrl . '/shipping-policy</loc></url>';
 
         $xml .= '</urlset>'; 
@@ -74,7 +74,6 @@ class SitemapController extends Controller
         if (!Storage::disk('public')->exists('sitemap.xml')) {
             abort(404);
         }
-die('fsds');
         return response(Storage::disk('public')->get('sitemap.xml'), 200)
             ->header('Content-Type', 'application/xml');
     }
