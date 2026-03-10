@@ -2732,8 +2732,8 @@ class FrontController extends Controller
 
         $user_fcm = $request->fcm_token;
         $data = [
-            'title' => translate('messages.order_push_title'),
-            'description' => "We're sorry for the inconvenience, but the Seller was unable to accept your order request at this moment. Please Try again after Some Time.",
+            'title' => translate('messages.test_push_notification'),
+            'description' => "Test Notification.",
             'order_id' => 3,
             'image' => '',
             'type' => 'order_status',
