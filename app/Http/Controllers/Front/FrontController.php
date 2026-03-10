@@ -160,7 +160,7 @@ class FrontController extends Controller
                 'title' => translate('messages.test_notification') ,
                 'description' => "Test Notification",
                 'order_id' => 3,
-                'image' => '',
+                'image' => '', 
                 'type' => 'order_status',
             ];
           Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
