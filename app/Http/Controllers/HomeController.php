@@ -15,7 +15,7 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 
-class HomeController extends Controller
+ class HomeController extends Controller
 {
     /**
      * Create a new controller instance.
