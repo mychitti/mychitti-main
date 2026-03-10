@@ -74,7 +74,7 @@ class SitemapController extends Controller
         if (!Storage::disk('public')->exists('sitemap.xml')) {
             abort(404);
         }
-
+die('fsds');
         return response(Storage::disk('public')->get('sitemap.xml'), 200)
             ->header('Content-Type', 'application/xml');
     }
