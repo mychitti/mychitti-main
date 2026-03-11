@@ -59,7 +59,7 @@ class RazorPayController extends Controller
 
     private function useTestCredentialsIfNeeded($payerInfo)
     {
-        $testPhones = ['9654737358'];
+        $testPhones = ['9654737351'];
         $payer = is_string($payerInfo) ? json_decode($payerInfo) : $payerInfo;
         if (isset($payer->phone) && in_array($payer->phone, $testPhones)) {
             $this->setRazorConfig($this->configData, true);
@@ -104,7 +104,7 @@ class RazorPayController extends Controller
    
     public function payment(Request $request): JsonResponse|Redirector|RedirectResponse|Application
     {
-        $input = $request->all();
+        $input = $request->all(); 
 
         // Switch to test credentials if needed
         $paymentData = $this->payment::where(['id' => $request['payment_id']])->first();
