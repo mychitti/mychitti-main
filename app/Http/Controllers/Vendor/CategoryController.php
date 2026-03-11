@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Exports\StoreCategoryExport;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
-use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Facades\Excel; 
 use Rap2hpoutre\FastExcel\FastExcel;
 use App\Exports\StoreSubCategoryExport;
 use App\Models\Store;
@@ -144,6 +144,11 @@ class CategoryController extends Controller
             $store->update();
         }
 
+        // Save dedicated leads setting
+        if ($store->module_id == 6) {
+            $store->dedicated_leads = $request->has('dedicated_leads') ? 1 : 0;
+            $store->save();
+        }
 
         Toastr::success('Updated successfully');
         return back();

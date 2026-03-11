@@ -142,7 +142,7 @@ class ServiceController extends Controller
             ->where('item_id', $leadinfo->item_id)->first()
             ?? LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
             ->whereNull('item_id')->first();
-        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
+        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first(); 
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
@@ -1633,16 +1633,14 @@ class ServiceController extends Controller
             $empJob->update();
 
             $serviceReq->accepted_by_staff = 1;
-        } else if ($stts_id == 12) { // completed
+        } else if ($stts_id == 12) { // completed 
 
             $service_id = $request->service_id;
-            // $serviceReq->current_status = 'Completed';
             $serviceReq->completed_at = NOW();
             $serviceReq->update();
 
-
             // send sms here
-            // get user mobile 
+            // get user mobile
             $userPhone = User::find($serviceReq->user_id);
             if ($userPhone) {
                 $otp  = rand(1000, 9999);

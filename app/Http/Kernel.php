@@ -44,6 +44,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\Localization::class,
              \App\Http\Middleware\ResolveStoreByDomain::class,
+             \App\Http\Middleware\RedirectWww::class
         ],
 
         'api' => [

@@ -62,7 +62,7 @@ class ServiceController extends Controller
                     ?? LeadCharge::where('category_id', $catId)->where('zone_id', $zoneId)
                     ->whereNull('item_id')->first();
                 $confirmationCharges = $leadChargeInfo->confirmation_charge;
-
+ 
                 $applyCharges = true;
             } catch (\Throwable $th) {
             }

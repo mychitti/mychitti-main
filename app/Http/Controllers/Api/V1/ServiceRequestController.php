@@ -635,7 +635,7 @@ class ServiceRequestController extends Controller
                     ->whereNull('item_id')->first();
                 $confirmationCharges = $leadChargeInfo->confirmation_charge;
 
-                // apply charges 
+                // apply charges  
                 $applyCharges = true;
             } catch (\Throwable $th) {
                 //throw $th;

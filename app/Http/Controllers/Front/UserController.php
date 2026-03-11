@@ -422,7 +422,6 @@ class UserController extends Controller
         }
         $storeId = $request->storeId ?? false;
         $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
-
         $serviceReq = new ServiceRequest();
         $serviceReq->user_id = $user_id;
         $serviceReq->item_id = $request->serviceId;

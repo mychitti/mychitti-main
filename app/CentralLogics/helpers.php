@@ -152,7 +152,8 @@ class Helpers
 
 
 
-    public static function get_staff_list(){
+    public static function get_staff_list()
+    {
         $store_id = self::get_store_id();
         $staffList = VendorEmployee::where('store_id', $store_id)->where('status', 1)->get();
         return $staffList;
@@ -2421,6 +2422,22 @@ class Helpers
 
     public static function get_store_range($item_id, $zone_ids, $user_id, $storeId = null)
     {
+        $forcedStoreId = null;
+
+        // If storeId provided, check if store has dedicated_leads enabled
+        if ($storeId) {
+            $dedicatedStore = DB::table('stores')->where('id', $storeId)->where('status', 1)->first();
+            if ($dedicatedStore) {
+                if ($dedicatedStore->dedicated_leads) {
+                    // dedicated_leads = true → send to this store ONLY
+                    return [(int)$storeId];
+                } else {
+                    // dedicated_leads = false → prioritize but include others
+                    $forcedStoreId = (int)$storeId;
+                }
+            }
+        }
+
         $store_limit = Helpers::get_settings('leads_distribut_vendor');
         $zId = json_decode($zone_ids, true);
 
@@ -2430,7 +2447,7 @@ class Helpers
 
         // Step 1: Clean store IDs
         $storeIds = array_unique(array_filter(explode(',', trim($item->store_ids))));
-        $storeIds = array_map('intval', $storeIds); // Ensure all are integers
+        $storeIds = array_map('intval', $storeIds);
 
         // Step 2: Get only active, zone-matching stores
         $existingStoreIds = DB::table('stores')
@@ -2442,37 +2459,34 @@ class Helpers
             ->toArray();
 
         $storeIds = array_values(array_intersect($storeIds, $existingStoreIds));
-      
+
         if (empty($storeIds)) return [];
 
         // Step 2.5: Filter stores with minimum wallet balance of 101
-        // Resolve vendor_id for each store_id (wallet is keyed by vendor_id)
         $storeVendorMap = DB::table('stores')
             ->whereIn('id', $storeIds)
-            ->pluck('vendor_id', 'id') // [store_id => vendor_id]
+            ->pluck('vendor_id', 'id')
             ->toArray();
-        // print_r(['1_storeVendorMap (store_id => vendor_id)' => $storeVendorMap]); 
 
-        // Get vendor_ids that have total_earning >= 101 directly in SQL
         $qualifiedVendorIds = DB::table('store_wallets')
             ->whereIn('vendor_id', array_values($storeVendorMap))
             ->where('total_earning', '>=', 101)
             ->pluck('vendor_id')
             ->map(fn($id) => (int) $id)
             ->toArray();
-        // print_r(['2_qualifiedVendorIds (wallet >= 101)' => $qualifiedVendorIds]);
 
-        // Map qualified vendor_ids back to store_ids
         $walletQualifiedStoreIds = collect($storeVendorMap)
             ->filter(fn($vendorId) => in_array((int) $vendorId, $qualifiedVendorIds))
             ->keys()
             ->map(fn($id) => (int) $id)
             ->toArray();
-        // print_r(['3_walletQualifiedStoreIds' => $walletQualifiedStoreIds]);
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
-        // print_r(['4_final_storeIds_after_wallet_filter' => $storeIds]);
-        // die;
+
+        // Force-inject the prioritized store if it was filtered out by wallet/zone checks
+        if ($forcedStoreId && !in_array($forcedStoreId, $storeIds)) {
+            array_unshift($storeIds, $forcedStoreId);
+        }
 
         if (empty($storeIds)) return [];
 
@@ -2480,7 +2494,7 @@ class Helpers
         $oldIds = _getIdsFrist($item_id);
         _trackStoreIds('get_store_range', implode(',', $storeIds), $item_id, '-', $user_id . '_user', $oldIds);
 
-        // Step 4: Get last distribution
+        // Step 4: Get last distribution and calculate rotation index
         $lastDistribution = DB::table('leads_distributions')
             ->where('item_id', $item_id)
             ->orderBy('id', 'desc')
@@ -2499,36 +2513,32 @@ class Helpers
         // Step 5: Prepare store chunk
         $prioritized = [];
 
-        // Check if storeId is valid and exists in the filtered list
-        if ($storeId && in_array((int)$storeId, $storeIds)) {
-            $prioritized[] = (int)$storeId;
-            // Remove storeId from the list to avoid duplication
-            $storeIds = array_values(array_diff($storeIds, [$storeId]));
-
-            // Start rotation after the prioritized storeId
-            $index = array_search((int)$storeId, $storeIds);
-            $index = $index === false ? 0 : ($index + 1) % count($storeIds);
+        if ($forcedStoreId && in_array($forcedStoreId, $storeIds)) {
+            $prioritized[] = $forcedStoreId;
+            $storeIds = array_values(array_diff($storeIds, [$forcedStoreId]));
+            if (!empty($storeIds)) {
+                $index = $index % count($storeIds); // re-clamp, preserve rotation
+            }
         }
+        // Rotate remaining stores using preserved Step 4 index
+        $rotated = !empty($storeIds)
+            ? array_merge(array_slice($storeIds, $index), array_slice($storeIds, 0, $index))
+            : [];
 
-        // Rotate the remaining store IDs based on last distribution index
-        $rotated = array_merge(array_slice($storeIds, $index), array_slice($storeIds, 0, $index));
-
-        // Fill the rest of the chunk after prioritizing
-        $chunkSize = $store_limit - count($prioritized);
-        $storesChunk = array_merge($prioritized, array_slice($rotated, 0, $chunkSize));
-
-        $storesChunk = array_unique($storesChunk);
-
-        $storesChunk = array_unique($storesChunk);
-        $id_from = reset($storesChunk);
-        $id_to = end($storesChunk);
+        $chunkSize    = $store_limit - count($prioritized);
+        $rotationChunk = array_slice($rotated, 0, $chunkSize); // ← keep reference separately
+        $storesChunk  = array_unique(array_merge($prioritized, $rotationChunk));
 
         // Step 6: Save
+        // to_id = end of rotated chunk so next call rotation advances correctly
+        $id_from = reset($storesChunk);
+        $id_to   = !empty($rotationChunk) ? end($rotationChunk) : reset($storesChunk);
+
         $data = [
-            'from_id' => $id_from,
-            'to_id' => $id_to,
-            'item_id' => $item_id,
-            'store_ids' => implode(',', $storesChunk),
+            'from_id'    => $id_from,
+            'to_id'      => $id_to,
+            'item_id'    => $item_id,
+            'store_ids'  => implode(',', $storesChunk),
             'updated_at' => now(),
         ];
 
@@ -2541,7 +2551,6 @@ class Helpers
 
         return $storesChunk;
     }
-
 
     public static function clean_item_store_ids($item_id)
     {
@@ -3670,13 +3679,13 @@ class Helpers
     {
         $storage = [];
         $baseUrl = asset('storage/store') . '/';
-        if ($multi_data == true) {  
+        if ($multi_data == true) {
             foreach ($data as $item) {
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 // $item['positive_rating'] = $ratings['positive_rating'];
                 $item['logo'] = self::onerror_image_helper($item['logo'], $baseUrl . $item['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
                 $item['cover_photo'] = self::onerror_image_helper($item['cover_photo'], $baseUrl . 'cover/' . $item['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
-             
+
                 array_push($storage, $item);
             }
             $data = $storage;
@@ -3688,10 +3697,10 @@ class Helpers
             $data['avg_rating'] = $ratings['rating'];
             $data['rating_count'] = $ratings['total'];
             // $data['positive_rating'] = $ratings['positive_rating'];
-          
+
             unset($data['positive_rating']);
         }
- 
+
         return $data;
     }
     public static function store_data_formatting($data, $multi_data = false)
@@ -4173,10 +4182,10 @@ class Helpers
             curl_close($ch);
             return 'cURL Error: ' . $error;
         } else {
-            if($testing) {
-                 prx($result);
+            if ($testing) {
+                prx($result);
             }
-             //
+            //
         }
 
         // Close cURL and return the result
@@ -4665,7 +4674,7 @@ class Helpers
             $data = ["status" => "0", "message" => "", 'translations' => []];
         }
 
-        if ($data) { 
+        if ($data) {
             if ($data['status'] == 0) {
                 return 0;
             }
@@ -4677,7 +4686,7 @@ class Helpers
 
     public static function send_order_place_notification($order)
     {
-        $fcm_token = User::find($order->user_id)?->cm_firebase_token; 
+        $fcm_token = User::find($order->user_id)?->cm_firebase_token;
         $value = self::order_status_update_message($order->order_status, 'ecommerce', 'en');
         $value = self::text_variable_data_format(value: $value, store_name: $order->store?->name, order_id: $order->id, user_name: "{$order?->customer?->f_name} {$order?->customer?->l_name}", delivery_man_name: "{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
         $data = [
@@ -5102,7 +5111,7 @@ class Helpers
             }
             Storage::disk('public')->putFileAs($dir, $image, $imageName);
         } else {
-            $imageName = 'def.png'; 
+            $imageName = 'def.png';
         }
         return $imageName;
     }
@@ -5601,7 +5610,7 @@ class Helpers
                 return auth('vendor')->user()->stores[0]->reviews_section;
             } else if ($mod_name == 'deliveryman') {
                 return auth('vendor')->user()->stores[0]->self_delivery_system;
-            // } else if ($mod_name == 'pos') {
+                // } else if ($mod_name == 'pos') {
                 // return auth('vendor')->user()->stores[0]->pos_system;
             } else if ($mod_name == 'addon') {
                 return config('module.' . auth('vendor')->user()->stores[0]->module->module_type)['add_on'];
@@ -5614,8 +5623,8 @@ class Helpers
                     return auth('vendor_employee')->user()->store->reviews_section;
                 } else if ($mod_name == 'deliveryman') {
                     return auth('vendor_employee')->user()->store->self_delivery_system;
-                // } else if ($mod_name == 'pos') {
-                //     return auth('vendor_employee')->user()->store->pos_system;
+                    // } else if ($mod_name == 'pos') {
+                    //     return auth('vendor_employee')->user()->store->pos_system;
                 } else if ($mod_name == 'addon') {
                     return config('module.' . auth('vendor_employee')->user()->store->module->module_type)['add_on'];
                 }

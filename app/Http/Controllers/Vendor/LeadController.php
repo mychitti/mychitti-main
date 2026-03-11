@@ -30,8 +30,11 @@ use App\Scopes\StoreScope;
 use App\Models\Translation;
 use App\Models\User;
 use App\Models\VendorEmpJob;
+use App\Models\LeadCharge;
+use App\Models\StoreWallet;
+use App\Models\AccountTransaction;
 use DateTime;
-use Carbon\Carbon;
+use Carbon\Carbon; 
 use Illuminate\Support\Facades\Config;
 
 class LeadController extends Controller
@@ -167,7 +170,7 @@ class LeadController extends Controller
             $empJob = VendorEmpJob::where('service_id', $serviceReq->service_request_id)->first();
             $empJob->ended_at = NOW();
             $empJob->update();
-
+ 
             $serviceReq->accepted_by_staff = 1;
         } else if ($stts_id == 12) { // completed
             if ($request->hasFile('file')) {
@@ -180,8 +183,49 @@ class LeadController extends Controller
 
             $serviceReq->coupon_id = Helpers::alotServiceCoupon($serviceReq->service_request_id);
             $serviceReq->update();
+
+            // Apply completion charges
+            try {
+                $store = Store::withoutGlobalScopes()->find($serviceReq->vendor_id);
+                $zoneId = $store->zone_id;
+                $vendorId = $store->vendor_id;
+                $svcReq = ServiceRequest::where('service_requests.id', $serviceReq->service_request_id)
+                    ->join('items', 'items.id', '=', 'service_requests.item_id')
+                    ->select('items.category_id', 'service_requests.item_id')
+                    ->first();
+
+                $leadChargeInfo = LeadCharge::where('category_id', $svcReq->category_id)
+                    ->where('zone_id', $zoneId)
+                    ->where('item_id', $svcReq->item_id)->first()
+                    ?? LeadCharge::where('category_id', $svcReq->category_id)
+                    ->where('zone_id', $zoneId)
+                    ->whereNull('item_id')->first();
+
+                $completionCharges = $leadChargeInfo ? $leadChargeInfo->completion_charge : 0;
+
+                if ($completionCharges > 0) {
+                    $wallet = StoreWallet::where('vendor_id', $vendorId)->first();
+                    $wallet->decrement('total_earning', $completionCharges);
+                    $wallet->increment('total_withdrawn', $completionCharges);
+                    $wallet->refresh();
+ 
+                    $account_transaction = new AccountTransaction();
+                    $account_transaction->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
+                    $account_transaction->from_type = 'store';
+                    $account_transaction->amount = $completionCharges;
+                    $account_transaction->from_id = $vendorId;
+                    $account_transaction->method = 'wallet';
+                    $account_transaction->action = 'debit';
+                    $account_transaction->reason = 'Lead Completion Charges';
+                    $account_transaction->created_by = 'store';
+                    $account_transaction->save();
+                }
+            } catch (\Throwable $th) {
+                info('Completion charges error: ' . $th->getMessage());
+            }
+
             // send sms here
-            // get user mobile 
+            // get user mobile
             $userPhone = User::find($serviceReq->user_id);
             if ($userPhone) {
                 _send_confirmation_sms('mobile_verification', $userPhone->phone);
