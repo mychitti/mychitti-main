@@ -59,7 +59,7 @@ class PaymentController extends Controller
         ];
 
         $payment_info = new PaymentInfo(
-            success_hook: 'wallet_recharge',
+            success_hook: 'wallet_recharge', 
             failure_hook: 'wallet_recharge_fail',
             currency_code: $currency,
             payment_method: 'razor_pay',
@@ -68,8 +68,8 @@ class PaymentController extends Controller
             receiver_id: '100',
             additional_data: $additional_data,
             payment_amount: $info->amount + $info->gst,
-            external_redirect_link: 'wallet/wallet-payment-list', 
-            attribute: 'wallet_recharge',
+            external_redirect_link: route('vendor.wallet.index'),
+            attribute: 'wallet_recharge', 
             attribute_id: $store->id
         );
 

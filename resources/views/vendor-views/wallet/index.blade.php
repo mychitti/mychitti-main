@@ -296,5 +296,18 @@ $('.payment-warning').on('click',function (event ){
                 });
         });
 
+        $(".amount_btn_outer").on('click', function() {
+            var amount = $(this).find('.amount_btn').text().trim();
+            $(".amount_input").val(amount);
+        });
+
     </script>
+    @if (request()->has('flag'))
+        @if (request('flag') == 'success') 
+            <script>toastr.success('Recharged Successfully');</script>
+        @else
+            <script>toastr.error('Some error occurred');</script>
+        @endif
+        <script>history.replaceState({}, '', '{{ route('vendor.wallet.index') }}');</script>
+    @endif
 @endpush

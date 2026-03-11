@@ -2174,7 +2174,7 @@ function wallet_recharge($data)
         $wallet->total_withdrawn = 0.0;
         $wallet->pending_withdraw = 0.0;
         $wallet->created_at = now();
-        $wallet->updated_at = now();
+        $wallet->updated_at = now(); 
         $wallet->save();
     }
 
@@ -2240,6 +2240,12 @@ function wallet_recharge($data)
         //
     }
     $info = TmpWallet::where('store_id', $store_id)->delete();
+}
+
+function wallet_recharge_fail($data)
+{ 
+    $store_id = $data->attribute_id;
+    TmpWallet::where('store_id', $store_id)->delete();
 }
 function _getInvoicePrefix($tax_type, $store = null)
 {

@@ -799,7 +799,7 @@
                 <div class="col-sm mb-2 mb-sm-0">
                     <h1 class="page-header-title d-block d-md-none">{{ translate('messages.welcome') }},
                         {{ auth('vendor')->user()->f_name }}.</h1>
-                    <p class="page-header-text">{{ translate('messages.employee_welcome_message') }}</p>
+                    <p class="page-header-text">Welcome to MyChitti Dashboard</p>
                 </div>
                 <form action="" class="d-flex date-range-form">
                     @include('vendor-views/form_modals/date_range')

@@ -102,10 +102,32 @@
                                 </a>
                             </li>
 
+                    </ul>
+                    </li>
+                    @endif 
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('ticket*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;">
+                            <i class="tio-support nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Support Tickets</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ Request::is('ticket*') ? 'block' : 'none' }}">
+                            <li class="nav-item {{ Request::is('ticket') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.ticket.index') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">All Tickets</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ Request::is('ticket/create') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.ticket.create') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Create Ticket</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
-                    @endif
-                    
+
+
 
                 <!-- Marketing section -->
                  @if (\App\CentralLogics\Helpers::module_permission_check('banner') || \App\CentralLogics\Helpers::module_permission_check('coupon'))

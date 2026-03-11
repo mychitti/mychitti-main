@@ -68,7 +68,7 @@ class SitemapController extends Controller
             ->whereIn('key', array_keys($policyPages)) 
             ->pluck('updated_at', 'key');
 
-        foreach ($policyPages as $key => $path) {
+        foreach ($policyPages as $key => $path) { 
             $lastmod = $policySettings[$key] ?? '2025-01-01';
             $xml .= $this->urlTag($baseUrl . $path, $lastmod, 'yearly', '0.3');
         }

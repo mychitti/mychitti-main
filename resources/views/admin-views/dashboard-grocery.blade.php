@@ -96,6 +96,14 @@
                             <div class="subtxt">{{ $data['new_customers'] }} {{ translate('newly added') }}</div>
                         </div>
                     </a>
+                    <a href="{{route('admin.ticket.index', ['status' => 'open'])}}" class="col-sm-6 col-lg-3">
+                        <div class="__dashboard-card-2" style="border-left: 3px solid #ff6b6b;">
+                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/items.svg')}}" alt="dashboard/grocery">
+                            <h6 class="name">Open Tickets</h6>
+                            <h3 class="count">{{ $data['open_tickets'] ?? 0 }}</h3>
+                            <div class="subtxt">{{ translate('support tickets need attention') }}</div>
+                        </div>
+                    </a> 
                     <div class="col-12 d-none">
                         <div class="row g-2">
                             <div class="col-sm-6 col-lg-3 d-none">
@@ -376,7 +384,7 @@
             <div class="row align-items-center">
                 <div class="col-sm mb-2 mb-sm-0">
                     <h1 class="page-header-title">{{translate('messages.welcome')}}, {{auth('admin')->user()->f_name}}.</h1>
-                    <p class="page-header-text">{{translate('messages.employee_welcome_message')}}</p>
+                    <p class="page-header-text">Welcome to MyChitti Dashboard</p>
                 </div>
             </div>
         </div>

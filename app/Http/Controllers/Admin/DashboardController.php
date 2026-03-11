@@ -1285,6 +1285,11 @@ class DashboardController extends Controller
         $dash_data['commission'] = $commission;
         $dash_data['delivery_commission'] = $delivery_commission;
         $dash_data['label'] = $label;
+
+        // Support Tickets - open count for dashboard widget
+        $dash_data['open_tickets'] = \App\Models\SupportTicket::whereIn('status', ['open', 'reopened'])->count();
+
         return $dash_data;
     }
 }
+ 

@@ -195,6 +195,18 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('stores', 'PlanController@stores')->name('stores');
             Route::post('store', 'PlanController@store')->name('store'); 
         });
+        Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () { 
+            Route::get('/', 'SupportTicketController@index')->name('index');
+            Route::get('create', 'SupportTicketController@create')->name('create');
+            Route::post('store', 'SupportTicketController@store')->name('store');
+            Route::get('show/{id}', 'SupportTicketController@show')->name('show');
+            Route::post('reply/{id}', 'SupportTicketController@reply')->name('reply');
+            Route::post('status/{id}', 'SupportTicketController@updateStatus')->name('status');
+            Route::post('assign/{id}', 'SupportTicketController@assign')->name('assign');
+            Route::delete('delete/{id}', 'SupportTicketController@delete')->name('delete');
+            Route::get('search-customers', 'SupportTicketController@searchCustomers')->name('search-customers');
+            Route::get('search-vendors', 'SupportTicketController@searchVendors')->name('search-vendors');
+        }); 
         Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['module:account']], function () {
             Route::get('report', 'AccountController@report')->name('report');
             Route::get('list', 'AccountController@index')->name('list');
@@ -203,7 +215,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('delete/{id}', 'AccountController@delete')->name('delete');
             Route::get('edit/{id}', 'AccountController@edit')->name('edit');
         });
-
+ 
         Route::get('get-all-stores', 'VendorController@get_all_stores')->name('get_all_stores');
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
         Route::get('settings', 'SystemController@settings')->name('settings');

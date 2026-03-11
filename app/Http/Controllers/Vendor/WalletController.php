@@ -70,7 +70,7 @@ class WalletController extends Controller
         $tmpWallet->amount = $request->amount;
         $tmpWallet->gst = $gst;
         $tmpWallet->save();
-
+ 
         return redirect('wallet/payment-wallet/' . $tmpWallet->id);
     }
 

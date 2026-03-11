@@ -59,6 +59,10 @@ class RazorPayController extends Controller
 
         $data = $this->payment::where(['id' => $request['payment_id']])->where(['is_paid' => 0])->first();
         if (!isset($data)) {
+            $paid = $this->payment::where(['id' => $request['payment_id']])->where(['is_paid' => 1])->first();
+            if ($paid && $paid->external_redirect_link) {
+                return redirect($paid->external_redirect_link . '?flag=success'); 
+            }
             return response()->json($this->response_formatter(GATEWAYS_DEFAULT_204), 200);
         }
         $payer = json_decode($data['payer_information']);
@@ -96,7 +100,7 @@ class RazorPayController extends Controller
                 'transaction_id' => $input['razorpay_payment_id'],
             ]);
           
-       
+        
           
             $data = $this->payment::where(['id' => $request['payment_id']])->first();
             if (isset($data) && function_exists($data->success_hook)) {
