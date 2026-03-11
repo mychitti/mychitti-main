@@ -10,7 +10,7 @@
         }
     </style>
 @endpush
-
+ 
 @section('content')
         <div class="content container-fluid">
             <!-- Page Header -->
@@ -56,13 +56,20 @@
                                     </select>
                                 </div>
                                 <div class="form-row col-2">
+                                    <label for="exampleInputEmail1">Service <small class="text-muted">(Optional)</small></label>
+                                    <select name="item_id" id="item_id" class="form-control">
+                                        <option value="">All Services (Category level)</option>
+                                    </select>
+                                    <small class="text-muted">Leave empty for category-level charges</small>
+                                </div>
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Confirmation Charges</i> </label>
                                     <input type="text" name="confirmation_charge" required placeholder="Amount"
                                         class="form-control">
                                 </div>
-                              
-                            
-                                
+
+
+
                                 <div class="section-header  col-12 my-5">
                                      <h4>Different Charges</h4>
                                        <small> <i>If more than <span class="ven_count">30</span> vendors available in particular zone and category, below mentioned charges will be applied</i></small>
@@ -129,6 +136,19 @@
                         var count = $('#vendor_count').val()
                     }
                    $('.ven_count').text(count)
-                })
+                });
+
+                $('select[name="category"]').on('change', function(){
+                    var catId = $(this).val();
+                    var $itemSelect = $('#item_id');
+                    $itemSelect.html('<option value="">All Services (Category level)</option>');
+                    if(catId) {
+                        $.get("{{ url('admin/service/get-items-by-category') }}/" + catId, function(data){
+                            data.forEach(function(item){
+                                $itemSelect.append('<option value="'+item.id+'">'+item.name+'</option>');
+                            });
+                        });
+                    }
+                });
             </script>
             @endpush

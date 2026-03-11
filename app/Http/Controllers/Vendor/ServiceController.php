@@ -116,7 +116,7 @@ class ServiceController extends Controller
             ->join('categories', 'categories.id', '=', 'items.category_id')
             ->where('service_requests.id', '=', $serviceRequestId)
             ->where('service_requests.expired',  0)
-            ->select('categories.id as cat_id', 'service_requests.created_at')
+            ->select('categories.id as cat_id', 'service_requests.item_id', 'service_requests.created_at')
             ->first();
         if (!$leadinfo) {
             DB::table('service_requests')->where('id', $serviceRequestId)->delete();
@@ -135,10 +135,13 @@ class ServiceController extends Controller
         }
         $zoneId = \App\CentralLogics\Helpers::get_store_data()->zone_id;
         $store_id = \App\CentralLogics\Helpers::get_store_id();
-        $vendor_id = \App\CentralLogics\Helpers::get_vendor_id();
+        $vendor_id = \App\CentralLogics\Helpers::get_vendor_id(); 
 
-        
-        $leadChargeInfo =  LeadCharge::where('category_id', $cat_id)->where('zone_id',  $zoneId)->first();
+        // Try service-specific charge first, then fall back to category-level
+        $leadChargeInfo = LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
+            ->where('item_id', $leadinfo->item_id)->first()
+            ?? LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
+            ->whereNull('item_id')->first();
         $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');

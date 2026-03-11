@@ -12,7 +12,7 @@ use App\Models\Review;
 use App\Models\Category;
 use App\Models\ServiceStatus;
 use App\Scopes\StoreScope;
-use App\Models\TempProduct;
+use App\Models\TempProduct; 
 use App\Models\Translation;
 use Illuminate\Support\Str;
 use App\Models\ItemCampaign;
@@ -1315,10 +1315,11 @@ class ItemController extends Controller
     {
         $exist = LeadCharge::where('category_id', $request->category)
             ->where('zone_id', $request->zone)
+            ->where('item_id', $request->item_id ?: null)
             ->exists();
 
         if ($exist) {
-            Toastr::error('Charges already exists for this zone and category');
+            Toastr::error('Charges already exists for this zone and category' . ($request->item_id ? '/service' : ''));
             return back();
         }
 
@@ -1340,6 +1341,7 @@ class ItemController extends Controller
         $charge  = new LeadCharge();
         $charge->zone_id = $request->zone;
         $charge->category_id = $request->category;
+        $charge->item_id = $request->item_id ?: null;
         $charge->vendor_count = $request->vendor_count;
         $charge->ven_1_charges = $request->first_ven_charge;
         $charge->ven_2_charges = $request->sec_ven_charge;
@@ -1397,7 +1399,8 @@ class ItemController extends Controller
         $charges = DB::table('lead_charges')
             ->join('categories', 'categories.id', '=', 'lead_charges.category_id')
             ->join('zones', 'zones.id', '=',  'lead_charges.zone_id')
-            ->select('lead_charges.*', 'categories.name as cat_name', 'zones.name as zone_name')
+            ->leftJoin('items', 'items.id', '=', 'lead_charges.item_id')
+            ->select('lead_charges.*', 'categories.name as cat_name', 'zones.name as zone_name', 'items.name as item_name')
             ->get();
         return view('admin-views.service.charges-list', compact('charges'));
     }
@@ -1406,13 +1409,20 @@ class ItemController extends Controller
     {
         $charges = LeadCharge::find($id);
         $categories =  Category::where('module_id', 6)->get();
+        $items = $charges->category_id ? Item::where('category_id', $charges->category_id)->get() : collect();
 
         $zones = DB::table('zones')
             ->join('module_zone', 'module_zone.zone_id', '=', 'zones.id')
             ->where('module_zone.module_id', 6)
             ->select('zones.*')
             ->get();
-        return view('admin-views.service.charge-edit', compact('categories', 'zones', 'charges'));
+        return view('admin-views.service.charge-edit', compact('categories', 'zones', 'charges', 'items'));
+    }
+
+    public function get_items_by_category($category_id)
+    {
+        $items = Item::where('category_id', $category_id)->select('id', 'name')->get();
+        return response()->json($items);
     }
 
     public function get_categories(Request $request)

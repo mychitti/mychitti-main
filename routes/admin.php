@@ -15,7 +15,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
         ->name('secure.download')->middleware('signed'); 
-
+ 
     Route::group(['prefix' => 'prompt', 'as' => 'prompt.', 'middleware' => ['module:ai_agent']], function () {
         Route::get('/', 'SystemPromptController@index')->name('index');
         Route::post('store', 'SystemPromptController@store')->name('store');
@@ -122,6 +122,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('lead-charge', 'ItemController@lead_charge')->name('lead-charge');
             Route::get('lead-charges', 'ItemController@lead_charge_list')->name('lead-charge-list');
             Route::get('edit-charges/{id}', 'ItemController@edit_charges')->name('edit-charges');
+            Route::get('get-items-by-category/{category_id}', 'ItemController@get_items_by_category')->name('get-items-by-category');
             Route::get('list', 'ServiceController@lead_list')->name('lead-list');
             Route::get('detail/{id}', 'ServiceController@lead_detail')->name('lead-detail');
             Route::get('lead-timeline/{id}', 'ServiceController@lead_timeline')->name('lead-timeline');

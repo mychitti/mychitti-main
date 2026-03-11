@@ -621,11 +621,18 @@ class ServiceRequestController extends Controller
             $confirmationCharges = 0;
             try {
                 $zoneId = Store::withoutGlobalScopes()->where('id', $acceptedReq->vendor_id)->value('zone_id');
-                $catId = ServiceRequest::where('service_requests.id', $request->service_id)
+                $serviceReq = ServiceRequest::where('service_requests.id', $request->service_id)
                     ->join('items', 'items.id', '=', 'service_requests.item_id')
-                    ->value('items.category_id');
+                    ->select('items.category_id', 'service_requests.item_id')
+                    ->first(); 
+                $catId = $serviceReq->category_id;
+                $itemId = $serviceReq->item_id;
 
-                $leadChargeInfo =  LeadCharge::where('category_id', $catId)->where('zone_id',  $zoneId)->first();
+                // Try service-specific charge first, then fall back to category-level
+                $leadChargeInfo = LeadCharge::where('category_id', $catId)->where('zone_id', $zoneId)
+                    ->where('item_id', $itemId)->first()
+                    ?? LeadCharge::where('category_id', $catId)->where('zone_id', $zoneId)
+                    ->whereNull('item_id')->first();
                 $confirmationCharges = $leadChargeInfo->confirmation_charge;
 
                 // apply charges 

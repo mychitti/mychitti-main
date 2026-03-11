@@ -82,6 +82,7 @@
                     <tr>
                         <th class="border-0">{{translate('sl')}}</th>
                         <th class="border-0">Category</th>
+                        <th class="border-0">Service</th>
                         <th class="border-0">Zone</th>
                         <th class="border-0">Charges</th>
                         <th class="text-center border-0">{{translate('messages.action')}}</th>
@@ -93,6 +94,7 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{$lead->cat_name}}</td>
+                            <td>{{ $lead->item_name ?? 'All Services' }}</td>
                             <td>{{$lead->zone_name}}</td>
                             <td>
                                 <div class="info">

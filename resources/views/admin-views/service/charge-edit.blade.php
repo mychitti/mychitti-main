@@ -11,7 +11,7 @@
     </style>
 @endpush
 
-@section('content')
+@section('content') 
         <div class="content container-fluid">
             <!-- Page Header -->
             <div class="page-header">
@@ -55,7 +55,16 @@
                                            @endforeach
                                     </select>
                                 </div>
-                                   <div class="form-row col-2">
+                                <div class="form-row col-2">
+                                    <label for="exampleInputEmail1">Service <small class="text-muted">(Optional)</small></label>
+                                    <select name="item_id" id="item_id" class="form-control" disabled>
+                                        <option value="">All Services (Category level)</option>
+                                        @foreach($items as $item)
+                                            <option value="{{ $item->id }}" {{ $charges->item_id == $item->id ? 'selected' : '' }}>{{ $item->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="form-row col-2">
                                     <label for="exampleInputEmail1">Confirmation Charges</i> </label>
                                     <input type="text" value="{{$charges->confirmation_charge ?? 0}}" name="confirmation_charge" required placeholder="Amount"
                                         class="form-control">

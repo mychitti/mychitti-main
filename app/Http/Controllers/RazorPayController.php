@@ -87,29 +87,28 @@ class RazorPayController extends Controller
         $payment = $api->payment->fetch($input['razorpay_payment_id']);
 
         if (count($input) && !empty($input['razorpay_payment_id'])) {
-          
-         
-          
-            $response = $api->payment->fetch($input['razorpay_payment_id'])->capture(array('amount' => $payment['amount']));
-          
-          
+
+            // Capture payment — skip if already auto-captured by Razorpay
+            if ($payment['status'] !== 'captured') {
+                try { 
+                    $api->payment->fetch($input['razorpay_payment_id'])->capture(array('amount' => $payment['amount']));
+                } catch (\Exception $e) {
+                    // Payment already captured — safe to continue
+                    info('Razorpay capture skipped: ' . $e->getMessage());
+                }
+            }
 
             $this->payment::where(['id' => $request['payment_id']])->update([
                 'payment_method' => 'razor_pay',
-                'is_paid' => 1,
+                'is_paid' => 1, 
                 'transaction_id' => $input['razorpay_payment_id'],
             ]);
-          
-        
-          
+
             $data = $this->payment::where(['id' => $request['payment_id']])->first();
             if (isset($data) && function_exists($data->success_hook)) {
                 call_user_func($data->success_hook, $data);
             }
-          
-            // echo "<pre>";
-       //  print_r($data);
-       // exit;
+
             return $this->payment_response($data, 'success');
         }
         $payment_data = $this->payment::where(['id' => $request['payment_id']])->first();

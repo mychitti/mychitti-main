@@ -8,4 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 class LeadCharge extends Model
 {
     use HasFactory;
+
+    protected $guarded = ['id'];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(Item::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
+    }
 }
