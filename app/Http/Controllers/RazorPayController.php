@@ -59,7 +59,7 @@ class RazorPayController extends Controller
 
     private function useTestCredentialsIfNeeded($payerInfo)
     {
-        $testPhones = ['9654737351'];
+        $testPhones = ['9654737358'];
         $payer = is_string($payerInfo) ? json_decode($payerInfo) : $payerInfo;
         if (isset($payer->phone) && in_array($payer->phone, $testPhones)) {
             $this->setRazorConfig($this->configData, true);

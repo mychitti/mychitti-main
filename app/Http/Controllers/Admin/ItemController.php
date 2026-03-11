@@ -10,7 +10,7 @@ use App\Models\LeadCharge;
 use App\Models\Store;
 use App\Models\Review;
 use App\Models\Category;
-use App\Models\ServiceStatus;
+use App\Models\ServiceStatus; 
 use App\Scopes\StoreScope;
 use App\Models\TempProduct; 
 use App\Models\Translation;
@@ -1349,6 +1349,7 @@ class ItemController extends Controller
         $charge->ven_other_charges = $request->other_ven_charge;
         $charge->ven_same_charges = $request->same_charge;
         $charge->confirmation_charge = $request->confirmation_charge;
+        $charge->completion_charge = $request->completion_charge;
         $charge->created_at = date('Y-m-d H:i:s');
         if ($charge->save()) {
             Toastr::success('Lead charges saved successfully');
@@ -1387,6 +1388,7 @@ class ItemController extends Controller
         $charge->ven_other_charges = $request->other_ven_charge;
         $charge->ven_same_charges = $request->same_charge;
         $charge->confirmation_charge = $request->confirmation_charge;
+        $charge->completion_charge = $request->completion_charge;
 
         if ($charge->update()) {
             Toastr::success('Lead charges updated successfully');
@@ -1421,7 +1423,7 @@ class ItemController extends Controller
 
     public function get_items_by_category($category_id)
     {
-        $items = Item::where('category_id', $category_id)->select('id', 'name')->get();
+        $items = Item::withoutGlobalScopes()->where('category_id', $category_id)->select('id', 'name')->get();
         return response()->json($items);
     }
 

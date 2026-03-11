@@ -11,7 +11,7 @@
     </style>
 @endpush
  
-@section('content')
+@section('content') 
         <div class="content container-fluid">
             <!-- Page Header -->
             <div class="page-header">
@@ -33,90 +33,115 @@
                     @csrf
                     <div class="col-md-12">
                         <div class="card h-100">
-                            <small>All fields are mandatory</small>
-                            <div class="card-body row">
-                                 <div class="form-row col-3">
-                                    <label for="exampleInputEmail1">Category <span class="text-danger">*</span></label>
-                                    <select name="category" class="form-control js-select2-custom">
-                                        <option value=""></option>
-                                        
-                                        @foreach($categories as $cat)
-                                        <option value="{{$cat->id}}">{{$cat->name}}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-row col-3">
-                                    <label for="exampleInputEmail1">Zone <span class="text-danger">*</span></label>
-                                    <select required name="zone" class="form-control js-select2-custom">
-                                           <!--<option value="" selected disabled>Zone</option>-->
-                                           <option value=""></option>
-                                           @foreach($zones as $zone)
-                                          <option value="{{$zone->id}}">{{$zone->name}}</option>
-                                           @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Service <small class="text-muted">(Optional)</small></label>
-                                    <select name="item_id" id="item_id" class="form-control">
-                                        <option value="">All Services (Category level)</option>
-                                    </select>
-                                    <small class="text-muted">Leave empty for category-level charges</small>
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Confirmation Charges</i> </label>
-                                    <input type="text" name="confirmation_charge" required placeholder="Amount"
-                                        class="form-control">
-                                </div>
-
-
-
-                                <div class="section-header  col-12 my-5">
-                                     <h4>Different Charges</h4>
-                                       <small> <i>If more than <span class="ven_count">30</span> vendors available in particular zone and category, below mentioned charges will be applied</i></small>
-                                </div>
-                               
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">First Vendor<span class="text-danger">*</span></label>
-                                    <input type="number" name="first_ven_charge" required placeholder="Amount"
-                                        class="form-control">
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Second Vendor <span class="text-danger">*</span></label>
-                                    <input type="number" name="sec_ven_charge" required placeholder="Amount"
-                                        class="form-control">
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Third Vendor<span class="text-danger">*</span></label>
-                                    <input type="number" name="third_ven_charge" required placeholder="Amount"
-                                        class="form-control">
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Other Vendors</i> <span class="text-danger">*</span></label>
-                                    <input type="text" name="other_ven_charge" required placeholder="Amount"
-                                        class="form-control">
-                                </div>
-                                
-                                  <div class="section-header  col-12 my-5">
-                                 <h4>Same Charges</h4>
-                               <small> <i>If <span class="ven_count">30</span> or less vendors available in particular zone and category, below mentioned charges will be applied</i></small>
-                                  </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Amount <span class="text-danger">*</span></label>
-                                    <input type="number" name="same_charge" required placeholder="Amount" class="form-control">
-                                </div>
-                                <div class="form-row col-2">
-                                    <label for="exampleInputEmail1">Vendors Count<span class="text-danger">*</span></label>
-                                    <input type="number" value="30" id="vendor_count" name="vendor_count" required placeholder="Count"
-                                        class="form-control">
-                                </div>
-                               
-                               
-                                <div class="form-row col-12">
-                                    <div class="col my-2">
-                                        <button class="btn  btn--primary btn-outline-primary">Save</button>
+                            <div class="card-body">
+                                <!-- Basic Info -->
+                                <div class="row mb-4">
+                                    <div class="col-3">
+                                        <label>Category <span class="text-danger">*</span></label>
+                                        <select name="category" class="form-control js-select2-custom">
+                                            <option value=""></option>
+                                            @foreach($categories as $cat)
+                                            <option value="{{$cat->id}}">{{$cat->name}}</option>
+                                            @endforeach
+                                        </select> 
+                                    </div>
+                                    <div class="col-3">
+                                        <label>Zone <span class="text-danger">*</span></label>
+                                        <select required name="zone" class="form-control js-select2-custom">
+                                            <option value=""></option>
+                                            @foreach($zones as $zone)
+                                            <option value="{{$zone->id}}">{{$zone->name}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-3">
+                                        <label>Service <small class="text-muted">(Optional)</small></label>
+                                        <select name="item_id" id="item_id" class="form-control">
+                                            <option value="">All Services (Category level)</option>
+                                        </select>
+                                        <small class="text-muted">Leave empty for category-level charges</small>
                                     </div>
                                 </div>
 
+                                <hr>
+
+                                <!-- 1. Lead Acceptance Charges -->
+                                <div class="mb-4">
+                                    <h5 class="mb-1"><span class="badge badge-soft-primary mr-1">1</span> Lead Acceptance Charges</h5>
+                                    <small class="text-muted d-block mb-3">Charged to vendor when they accept a lead</small>
+
+                                    <div class="p-3 bg-light rounded mb-3">
+                                        <h6 class="text-muted mb-2">When more than <span class="badge badge-warning ven_count">30</span> vendors available in this zone & category</h6>
+                                        <div class="row">
+                                            <div class="col-3">
+                                                <label>1st Vendor <span class="text-danger">*</span></label>
+                                                <input type="number" name="first_ven_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                            <div class="col-3">
+                                                <label>2nd Vendor <span class="text-danger">*</span></label>
+                                                <input type="number" name="sec_ven_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                            <div class="col-3">
+                                                <label>3rd Vendor <span class="text-danger">*</span></label>
+                                                <input type="number" name="third_ven_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                            <div class="col-3">
+                                                <label>Other Vendors <span class="text-danger">*</span></label>
+                                                <input type="text" name="other_ven_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-3 bg-light rounded">
+                                        <h6 class="text-muted mb-2">When <span class="badge badge-warning ven_count">30</span> or fewer vendors available</h6>
+                                        <div class="row">
+                                            <div class="col-3">
+                                                <label>Amount (same for all) <span class="text-danger">*</span></label>
+                                                <input type="number" name="same_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                            <div class="col-3">
+                                                <label>Vendor Count Threshold <span class="text-danger">*</span></label>
+                                                <input type="number" value="30" id="vendor_count" name="vendor_count" required placeholder="Count" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <!-- 2. Confirmation & Completion Charges -->
+                                <div class="mb-4">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded h-100">
+                                                <h5 class="mb-1"><span class="badge badge-soft-success mr-1">2</span> Confirmation Charges</h5>
+                                                <small class="text-muted d-block mb-3">Charged when user confirms the lead after vendor acceptance</small>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <label>Amount <span class="text-danger">*</span></label>
+                                                        <input type="text" name="confirmation_charge" required placeholder="Amount" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded h-100">
+                                                <h5 class="mb-1"><span class="badge badge-soft-info mr-1">3</span> Completion Charges</h5>
+                                                <small class="text-muted d-block mb-3">Charged when the lead is marked as completed</small>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <label>Amount <span class="text-danger">*</span></label>
+                                                        <input type="text" name="completion_charge" required placeholder="Amount" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 w-100 d-flex justify-content-end">
+                                    <button class="btn btn--primary btn-primary">Save</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -129,6 +154,11 @@
 
             @push('script_2')
             <script>
+                $('#item_id').select2({
+                    placeholder: 'All Services (Category level)',
+                    allowClear: true
+                });
+
                 $('#vendor_count').on('keyup', function(){
                     if($('#vendor_count').val() == ''){
                         var count= 1;
@@ -139,14 +169,15 @@
                 });
 
                 $('select[name="category"]').on('change', function(){
-                    var catId = $(this).val();
+                    var catId = $(this).val(); 
                     var $itemSelect = $('#item_id');
-                    $itemSelect.html('<option value="">All Services (Category level)</option>');
+                    $itemSelect.html('<option value="">All Services (Category level)</option>').trigger('change');
                     if(catId) {
-                        $.get("{{ url('admin/service/get-items-by-category') }}/" + catId, function(data){
+                        $.get("{{ route('admin.service.get-items-by-category', '') }}/" + catId, function(data){
                             data.forEach(function(item){
                                 $itemSelect.append('<option value="'+item.id+'">'+item.name+'</option>');
                             });
+                            $itemSelect.trigger('change');
                         });
                     }
                 });
