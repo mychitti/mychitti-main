@@ -312,8 +312,9 @@ class SalespointController extends Controller
             ->where('type', 'pos')
             ->orderByDesc('id')
             ->get();
+        $last_generated_amount = DB::table('pos_tokens')->where('store_id', $store_id)->whereNot('payment_status', 'cancelled')->latest()->value('total');
 
-        return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id', 'store_config'));
+        return view('vendor-views.salespoint.index', compact('delivery_gst', 'data', 'branch_id', 'store_config', 'last_generated_amount'));
     }
 
     public function calendar(Request $request)

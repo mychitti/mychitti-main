@@ -532,7 +532,10 @@
                  <div class="col-lg-9 p-2 ">
                      <!-- Header -->
                      <div class="coffee-header mb-2">
+                     <div class="d-flex flex-column">
                          <h2 class="coffee-title">Token Generate</h2>
+                         <p class="text-dark small mb-0">Last Token Amount: <strong>₹{{ $last_generated_amount }}</strong></p>
+                     </div>
                          <div class="d-flex gap-2 flex-wrap align-items-center">
                              <div class="pos--payment-options order-type-toggle m-0">
                                  <ul>
