@@ -1153,7 +1153,7 @@
         $('#choice_zones').on('change', function() {
             let id = $(this).val();
             $.get({
-                url: 'https://admin.mychitti.net/admin/zone/get-coordinates/' + id,
+                url: 'zone/get-coordinates/' + id,
                 dataType: 'json',
                 success: function(data) {
                     console.log(data);

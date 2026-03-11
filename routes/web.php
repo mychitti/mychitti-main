@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\Zone\ZoneController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaytmController;
 use App\Http\Controllers\LiqPayController;
@@ -208,6 +209,7 @@ Route::get('test_dbbackup', 'CronController@test_dbbackup')->name('test_dbbackup
 Route::get('unavailable-provider', 'CronController@unavailable_provider')->name('unavailable-provider');
 Route::get('fetch-subcategory', [FrontController::class, 'fetch_subcategory'])->name('fetch-subcategory');
 Route::get('fetch-categories', [FrontController::class, 'fetch_categories'])->name('fetch-categories');
+Route::get('zone/get-coordinates/{id}', [ZoneController::class, 'getCoordinates'])->name('zone.get-coordinates');
 
 Route::get('change-variation', [FrontController::class, 'change_variation'])->name('change-variation');
 
