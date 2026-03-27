@@ -591,7 +591,6 @@ class VendorController extends Controller
 
     public function buy_module_for_store()
     {
-
         return view('admin-views.plan.buy-for-store');
     }
     public function get_matches(Request $request)

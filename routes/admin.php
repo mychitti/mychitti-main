@@ -1633,18 +1633,38 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('delete/{id}', 'AttendanceController@delete')->name('delete');
                 Route::get('manage/{id}', 'LeaveController@manage')->name('manage');
             });
-            Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
-                Route::get('list', 'SalaryController@index')->name('list');
-                Route::post('get-info', 'SalaryController@get_info')->name('get-info');
+            // Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
+            //     Route::get('list', 'SalaryController@index')->name('list');
+            //     Route::post('get-info', 'SalaryController@get_info')->name('get-info');
 
-                Route::get('add', 'SalaryController@add')->name('add-new');
-                Route::get('status/{id}/{status}', 'SalaryController@status')->name('status');
-                Route::post('save-info', 'SalaryController@save_info')->name('save');
-                Route::get('delete/{id}', 'SalaryController@delete')->name('delete');
-                Route::get('edit/{id}', 'SalaryController@edit')->name('edit');
-            });
+            //     Route::get('add', 'SalaryController@add')->name('add-new');
+            //     Route::get('status/{id}/{status}', 'SalaryController@status')->name('status');
+            //     Route::post('save-info', 'SalaryController@save_info')->name('save');
+            //     Route::get('delete/{id}', 'SalaryController@delete')->name('delete');
+            //     Route::get('edit/{id}', 'SalaryController@edit')->name('edit');
+            // });
 
+  Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::get('generate-monthly/{month}', 'SalaryController@generate_monthly')->name('generate-monthly')->middleware('permission:salary_manage,generate');
+            Route::get('mark-paid/{month}', 'SalaryController@mark_paid')->name('mark-paid')->middleware('permission:salary_manage,mark_paid');
+            Route::get('report', 'SalaryController@report')->name('report');
+            Route::get('export-salaries', 'SalaryController@export_salaries')->name('export-salaries')->middleware('permission:salary_manage,export');
+            Route::get('list', 'SalaryController@index')->name('list');
+            Route::get('export', 'SalaryController@export')->name('export')->middleware('permission:salary_manage,export');
+            Route::post('get-info', 'SalaryController@get_info')->name('get-info');
+            Route::post('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
 
+            Route::post('pay', 'SalaryController@pay')->name('pay')->middleware('permission:salary_manage,mark_paid');
+            Route::get('add', 'SalaryController@add')->name('add-new')->middleware('permission:salary_manage,add');
+            Route::get('status/{id}/{status}', 'SalaryController@status')->name('status')->middleware('permission:salary_manage,status_change');
+            Route::post('save-info', 'SalaryController@save_info')->name('save')->middleware('permission:salary_manage,edit');
+            Route::get('delete/{id}', 'SalaryController@delete')->name('delete')->middleware('permission:salary_manage,delete');
+            Route::get('edit/{id}', 'SalaryController@edit')->name('edit')->middleware('permission:salary_manage,edit');
+
+            Route::get('all-advance-requests', 'SalaryController@all_advance_requests')->name('all-advance-requests')->middleware('permission:advance_requests,list');
+            Route::get('approve-advance/{id}', 'SalaryController@approve_advance_payment')->name('approve-advance')->middleware('permission:advance_requests,approve');
+            Route::get('reject-advance/{id}', 'SalaryController@reject_advance_payment')->name('reject-advance')->middleware('permission:advance_requests,reject');
+        });
 
 
             // Subscribed customer Routes
