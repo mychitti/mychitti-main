@@ -645,7 +645,7 @@
                                         </li>
                                     @endif
                                 @endif
-                                {{ 'fjd' . hasPermission('billing', 'list')}}
+                                {{ 'per ' . hasPermission('billing', 'list')}}
                                 @if (hasAnyPermission(['billing.list', 'billing.export', 'billing.import']))
 
                                     <li
