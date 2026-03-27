@@ -155,7 +155,9 @@ class FrontController extends Controller
     }
     public function testing(Request $request) 
     {
-        prx(now());
+hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
+
+    die;
         $user_fcm = $request->fcm_token;
   $data = [
                 'title' => translate('messages.test_notification') ,
