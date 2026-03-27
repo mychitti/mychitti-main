@@ -83,6 +83,16 @@
                         </li>
                     @endif
 
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel/analytics*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('vendor.analytics.index') }}" title="Analytics">
+                            <span class="tio-chart-bar-1 nav-icon"></span>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Analytics
+                            </span>
+                        </a>
+                    </li>
+
                     @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_leads'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">

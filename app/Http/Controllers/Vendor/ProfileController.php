@@ -178,6 +178,15 @@ class ProfileController extends Controller
         // ✅ Save all subscriptions safely
         DB::table('temp_module_purchases')->insert($finalData);
 
+        // Apply GST to payment amount
+        $gstSettings = _planGstSettings(); 
+        $gstPercent = floatval($gstSettings['gst_percent'] ?? 0);
+        $gstMode = $gstSettings['gst_mode'] ?? 'exclude';
+        $paymentAmount = $grandTotal;
+        if ($gstPercent > 0 && $gstMode === 'exclude') {
+            $paymentAmount = $grandTotal + ($grandTotal * $gstPercent / 100);
+        } 
+
         $vendor =  Vendor::find(Helpers::get_vendor_id());
         $payer = new Payer($vendor['f_name'] . ' ' . $vendor['l_name'], $vendor['email'], $vendor['phone'], '');
         $currency = BusinessSetting::where(['key' => 'currency'])->first()->value;
@@ -201,10 +210,10 @@ class ProfileController extends Controller
             payer_id: Helpers::get_store_id(),
             receiver_id: 100,
             additional_data: $additional_data,
-            payment_amount: $grandTotal,
+            payment_amount: $paymentAmount,
             external_redirect_link: $external_redirect_link,
             attribute: 'store_subscription',
-            attribute_id: implode(',', $ids),
+            attribute_id: implode(',', $ids), 
         );
 
         $receiver_info = new Receiver('Admin', 'example.png');
@@ -353,12 +362,39 @@ class ProfileController extends Controller
                 'price' => $subscription->purchased_at,
                 'hsn' => '',
                 'tax' => 0
-            ];
+            ]; 
             $invoiceTotalAmount += $tempPurchase->purchased_at;
             if ($tempPurchase) {
                 $tempPurchase->delete();
             }
         }
+
+        // Apply GST settings from data_settings
+        $gstSettings = _planGstSettings();
+        $gstPercent = floatval($gstSettings['gst_percent'] ?? 0);
+        $gstMode = $gstSettings['gst_mode'] ?? 'exclude';
+        $hsnCode = $gstSettings['hsn'] ?? '';
+
+        $taxableAmount = $invoiceTotalAmount; 
+        $gstAmount = 0; 
+
+        if ($gstPercent > 0) {
+            if ($gstMode === 'exclude') {
+                $gstAmount = ($taxableAmount * $gstPercent) / 100; 
+            } else {
+                $gstAmount = $taxableAmount - ($taxableAmount * 100) / (100 + $gstPercent);
+                $taxableAmount = $invoiceTotalAmount - $gstAmount;
+            }
+        }
+
+        // Update invoice items with HSN and tax
+        foreach ($invoice_items as &$invItem) {
+            $invItem['hsn'] = $hsnCode;
+            $invItem['tax'] = $gstPercent;
+        }
+        unset($invItem);
+
+        $grandTotalWithGst = ($gstMode === 'exclude') ? $invoiceTotalAmount + $gstAmount : $invoiceTotalAmount;
 
         $zone_name = 'Tirupati';
         $zone_id  = auth('vendor')->check() ?  Helpers::get_store_data()->zone_id : 21;
@@ -367,7 +403,7 @@ class ProfileController extends Controller
             $zone_name = $zone->name;
         }
 
-        // create bill 
+        // create bill
         $invoice = new ManualInvoice();
         $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
         $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
@@ -375,7 +411,7 @@ class ProfileController extends Controller
         $invoice->bill_to = auth('vendor')->check() ?  Helpers::get_store_id() : ($vendorId ?? null);
         $invoice->bill_to_type = 'vendor';
         $invoice->module_id =  Helpers::get_store_data()->module_id;
-        $invoice->total_amount =  $invoiceTotalAmount;
+        $invoice->total_amount =  $grandTotalWithGst;
         $invoice->payment_method = 'Online';
         $invoice->payment_mode = 'Online';
         $invoice->tax_type =  'gst';

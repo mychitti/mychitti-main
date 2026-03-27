@@ -48,110 +48,9 @@ class DashboardController extends Controller
     {
         $storeId = Helpers::get_store_id();
         if (auth('vendor')->check()) {
+
             // Track last panel login
             auth('vendor')->user()->update(['last_login_at' => now()]);
-
-            // $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
-            // if ($request->has('date_range')) {
-            //     Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
-            // }
-            // $custom = request('custom_date_range') ?? null;
-            // $range = Helpers::calculatePresetDates($preset, $custom);
-            // $formatted_from  = $range['start'];
-            // $formatted_to = $range['end'];
-            // $from = $range['start']->toDateString();
-            // $to  = $range['end']->toDateString();
-
-            // $earning = [];
-            // $commission = [];
-            // $expenses = [];
-
-
-            // // ===================== LEADS =============================
-            // $baseQuery = DB::table('service_requests')
-            //     ->join('items', 'service_requests.item_id', '=', 'items.id')
-            //     ->join('categories', 'items.category_id', '=', 'categories.id')
-            //     ->join('users', 'service_requests.user_id', '=', 'users.id')
-            //     ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-            //     ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
-            //     ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
-
-            // $leadStatistics['new'] = (clone $baseQuery)
-            //     ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
-            //     ->distinct('service_requests.id')
-            //     ->count();
-
-            // $leadStatistics['in_progress'] = (clone $baseQuery)
-            //     ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            //     ->where('accepted_service_requests.current_status', 9)
-            //     ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-            //     ->distinct('service_requests.id')
-            //     ->count();
-
-            // $completedBase = DB::table('accepted_service_requests')
-            //     ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            //     ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-            //     ->join('items', 'items.id', 'service_requests.item_id')
-            //     ->where('stores.id', Helpers::get_store_id())
-            //     ->where('accepted_service_requests.current_status', 'Completed')
-            //     ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-            //     ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
-
-            // $leadStatistics['completed'] = (clone $completedBase)->count();
-
-            // // =================== TASKS ==================================
-            // $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
-            // $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
-            // $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
-            // $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
-            //     'in progress',
-            //     'in_progress',
-            //     'inprogress',
-            // ])->count();
-
-            // // ====================== INVENTORY =====================
-            // $inventory_items = InventoryItem::where('store_id', $storeId);
-            // $inventoryStats['total'] = (clone $inventory_items)->count();
-            // $inventoryStats['products'] = (clone $inventory_items)->where('item_type', 'product')->count();
-            // $inventoryStats['services'] = (clone $inventory_items)->where('item_type', 'service')->count();
-
-            // // ================ ACCOUNT SUMMARY ==================
-            // // $accountBaseQ = StoreVoucher::where('store_id', $storeId)
-            // //     ->whereBetween("voucher_date", [$formatted_from, $formatted_to]);
-            // // $accountstats['expense'] = (clone $accountBaseQ)->where('status', 'approved')->where('debit_entity_type', 'store')->sum('total_amount');
-            // // $accountstats['income'] = (clone $accountBaseQ)->where('status', 'approved')->where('credit_entity_type', 'store')->sum('total_amount');
-            // // $accountstats['pending_payments'] = (clone $accountBaseQ)->where('status', 'pending')->sum('total_amount');
-
-
-            // $baseQuery = StoreLedgerEntry::where('store_id', $storeId)
-            //     ->whereHas('voucher', function ($q) {
-            //         $q->where(function ($q2) {
-            //             $q2->where('debit_entity_type', 'store')
-            //                 ->orWhere('credit_entity_type', 'store');
-            //         });
-            //     });
-            // $accountstats['income'] = (clone $baseQuery)
-            //     ->whereHas('voucher', function ($q) {
-            //         $q->where('credit_entity_type', 'store');
-            //     })
-            //     ->where('credit', '>', 0)
-            //     ->sum('credit');
-            // $accountstats['expense'] = (clone $baseQuery)
-            //     ->whereHas('voucher', function ($q) {
-            //         $q->where('debit_entity_type', 'store');
-            //     })
-            //     ->where('debit', '>', 0)
-            //     ->sum('debit');
-
-            // $accountstats['pending_payments'] = (clone $baseQuery)
-            //     ->where('status', 'pending')
-            //     ->sum(DB::raw('credit - debit'));
-
-            // // ================= EMPLOYEE ACTIVITY ===================
-            // $empBaseQ = VendorEmployee::where('store_id', $storeId);
-            // $empStats['total_employees'] = (clone $empBaseQ)->count();
-            // $empStats['present_employees'] = _clockedInEmployee(true);
-
 
             // ==================== NEW DATA =======================
 
@@ -235,6 +134,7 @@ class DashboardController extends Controller
 
             // --- Profile completion ---
             $store = Helpers::get_store_data();
+            
             $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
             $completionHasService = $store->services_1 || $store->services_2;
             $completionHasAddress = !empty($store->address) && !empty($store->latitude);

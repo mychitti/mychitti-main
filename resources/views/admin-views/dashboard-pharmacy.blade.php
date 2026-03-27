@@ -1577,69 +1577,77 @@
                         <option value="staging" @selected($env === 'staging')>🟡 Staging</option>
                         <option value="sandbox" @selected($env === 'sandbox')>🟢 Sandbox</option>
                     </select>
+                    @if(hasPermission('ai_agent', 'test'))
                     <button class="btn-t" onclick="openTest()">▶ Test Agent</button>
+                    @endif
+                    @if(hasPermission('ai_agent', 'add'))
                     <button class="btn-n" onclick="openNewSkillModal()">+ New Skill</button>
+                    @endif
                 </div>
             </div>
         </div>
 
         <div class="ai-agent-wrap">
 
-            <!-- ═══ LEFT SKILL PANEL ═══ -->
-            <div class="ai-lp">
-                <div class="ai-tabs">
-                    <a class="ai-tab {{ $userType === 'admin' ? 'on' : '' }}" style="text-decoration:none"
-                        href="{{ route('admin.agent.index', ['user_type' => 'admin']) }}">Admin <span
-                            class="ai-bdg g">{{ $counts['admin'] }}</span></a>
-                    <a class="ai-tab {{ $userType === 'user' ? 'on' : '' }}" style="text-decoration:none"
-                        href="{{ route('admin.agent.index', ['user_type' => 'user']) }}">User <span
-                            class="ai-bdg b">{{ $counts['user'] }}</span></a>
-                    <a class="ai-tab {{ $userType === 'vendor' ? 'on' : '' }}" style="text-decoration:none"
-                        href="{{ route('admin.agent.index', ['user_type' => 'vendor']) }}">Vendor <span
-                            class="ai-bdg">{{ $counts['vendor'] }}</span></a>
-                </div>
-                <div class="ai-sh">
-                    <span class="ai-sh-l" id="skill-section-label">{{ ucfirst($userType) }} Skills</span>
-                    <span class="ai-sh-r" id="skill-count-label">{{ $agents->count() }}
-                        {{ Str::plural('skill', $agents->count()) }}</span>
-                </div>
-                <div id="skill-list">
-                    @forelse($agents as $agent)
-                        @php
-                            $sDot = match ($agent->status) {
-                                'active' => 'ac',
-                                'inactive' => 'er',
-                                default => 'dr',
-                            };
-                            $sTagClass = match ($agent->status) {
-                                'active' => 'at',
-                                'inactive' => 'er',
-                                default => 'dt',
-                            };
-                            $sTagLabel = match ($agent->status) {
-                                'active' => 'ACTIVE',
-                                'inactive' => 'INACTIVE',
-                                default => 'DRAFT',
-                            };
-                        @endphp
-                        <a class="ai-si {{ $a && $a->id == $agent->id ? 'on' : '' }}" style="text-decoration:none"
-                            href="{{ route('admin.agent.index', ['user_type' => $userType, 'agent_id' => $agent->id]) }}">
-                            <div class="ai-sinfo">
-                                <span class="ai-sdot {{ $sDot }}"></span>
-                                <div>
-                                    <span class="ai-sn">{{ $agent->name }}</span>
-                                    <span class="ai-ss">{{ $agent->skill_type }}</span>
+            @if(hasPermission('ai_agent', 'list'))
+                <!-- ═══ LEFT SKILL PANEL ═══ -->
+                <div class="ai-lp">
+                    <div class="ai-tabs">
+                        <a class="ai-tab {{ $userType === 'admin' ? 'on' : '' }}" style="text-decoration:none"
+                            href="{{ route('admin.agent.index', ['user_type' => 'admin']) }}">Admin <span
+                                class="ai-bdg g">{{ $counts['admin'] }}</span></a>
+                        <a class="ai-tab {{ $userType === 'user' ? 'on' : '' }}" style="text-decoration:none"
+                            href="{{ route('admin.agent.index', ['user_type' => 'user']) }}">User <span
+                                class="ai-bdg b">{{ $counts['user'] }}</span></a>
+                        <a class="ai-tab {{ $userType === 'vendor' ? 'on' : '' }}" style="text-decoration:none"
+                            href="{{ route('admin.agent.index', ['user_type' => 'vendor']) }}">Vendor <span
+                                class="ai-bdg">{{ $counts['vendor'] }}</span></a>
+                    </div>
+                    <div class="ai-sh">
+                        <span class="ai-sh-l" id="skill-section-label">{{ ucfirst($userType) }} Skills</span>
+                        <span class="ai-sh-r" id="skill-count-label">{{ $agents->count() }}
+                            {{ Str::plural('skill', $agents->count()) }}</span>
+                    </div>
+                    <div id="skill-list">
+                        @forelse($agents as $agent)
+                            @php
+                                $sDot = match ($agent->status) {
+                                    'active' => 'ac',
+                                    'inactive' => 'er',
+                                    default => 'dr',
+                                };
+                                $sTagClass = match ($agent->status) {
+                                    'active' => 'at',
+                                    'inactive' => 'er',
+                                    default => 'dt',
+                                };
+                                $sTagLabel = match ($agent->status) {
+                                    'active' => 'ACTIVE',
+                                    'inactive' => 'INACTIVE',
+                                    default => 'DRAFT',
+                                };
+                            @endphp
+                            <a class="ai-si {{ $a && $a->id == $agent->id ? 'on' : '' }}" style="text-decoration:none"
+                                href="{{ route('admin.agent.index', ['user_type' => $userType, 'agent_id' => $agent->id]) }}">
+                                <div class="ai-sinfo">
+                                    <span class="ai-sdot {{ $sDot }}"></span>
+                                    <div>
+                                        <span class="ai-sn">{{ $agent->name }}</span>
+                                        <span class="ai-ss">{{ $agent->skill_type }}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <span class="ai-stag {{ $sTagClass }}">{{ $sTagLabel }}</span>
-                        </a>
-                    @empty
-                        <div style="padding:24px;text-align:center;color:#9ca3af;font-size:12px">No skills yet. Create your
-                            first one!</div>
-                    @endforelse
+                                <span class="ai-stag {{ $sTagClass }}">{{ $sTagLabel }}</span>
+                            </a>
+                        @empty
+                            <div style="padding:24px;text-align:center;color:#9ca3af;font-size:12px">No skills yet. Create your
+                                first one!</div>
+                        @endforelse
+                    </div>
+                    @if(hasPermission('ai_agent', 'add'))
+                    <div class="ai-add-s" onclick="openNewSkillModal()">+ Add Skill</div>
+                    @endif
                 </div>
-                <div class="ai-add-s" onclick="openNewSkillModal()">+ Add Skill</div>
-            </div>
+            @endif
 
             <!-- ═══ RIGHT CONTENT PANEL ═══ -->
             <div class="ai-rp">
@@ -1706,6 +1714,7 @@
 
                     <!-- RIGHT PANEL SECTION TABS -->
                     <div class="rp-tabs">
+                     @if(hasPermission('ai_agent', 'edit'))
                         <button class="rp-tab-btn active" data-tab="basic" onclick="switchRpTab('basic')">
                             <span class="rp-tab-icon">📋</span> Basic Info
                         </button>
@@ -1721,694 +1730,710 @@
                         <button class="rp-tab-btn" data-tab="tasks" onclick="switchRpTab('tasks')">
                             <span class="rp-tab-icon">✅</span> Tasks
                         </button>
-                        <button class="rp-tab-btn" data-tab="test" onclick="switchRpTab('test')">
+                    @endif
+                     @if(hasPermission('ai_agent', 'test'))
+                        <button class="rp-tab-btn {{!hasPermission('ai_agent', 'edit') ? 'active': ''}}" data-tab="test" onclick="switchRpTab('test')">
                             <span class="rp-tab-icon">⌨️</span> Test & Logs
                         </button>
+                    @endif
                     </div>
+                     @if(hasPermission('ai_agent', 'edit'))
 
-                    <!-- ① AGENT IDENTITY -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="ch">
-                            <div class="ch-l">
-                                <div class="av">🤖</div>
-                                <div>
-                                    <div class="ct" id="agent-title">{{ $a->name }}</div>
-                                    <div class="cm">{{ $a->user_type }} · {{ $a->skill_type }} · Last saved:
-                                        {{ $a->updated_at?->diffForHumans() ?? 'Never' }}</div>
+                        <!-- ① AGENT IDENTITY -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="ch">
+                                <div class="ch-l">
+                                    <div class="av">🤖</div>
+                                    <div>
+                                        <div class="ct" id="agent-title">{{ $a->name }}</div>
+                                        <div class="cm">{{ $a->user_type }} · {{ $a->skill_type }} · Last saved:
+                                            {{ $a->updated_at?->diffForHumans() ?? 'Never' }}</div>
+                                    </div>
+                                </div>
+                                <div class="ca">
+                                    <span class="sbig {{ $statusClass }}"
+                                        id="agent-status-badge">{{ strtoupper($a->status ?? 'draft') }}</span>
+                                    @if(hasPermission('ai_agent', 'delete'))
+                                    <button class="bdel" onclick="deleteAgent()">Delete</button>
+                                    @endif
+                                    @if(hasPermission('ai_agent', 'edit'))
+                                    <button class="bsav" onclick="saveAgent()">Save Changes</button>
+                                    @endif
                                 </div>
                             </div>
-                            <div class="ca">
-                                <span class="sbig {{ $statusClass }}"
-                                    id="agent-status-badge">{{ strtoupper($a->status ?? 'draft') }}</span>
-                                <button class="bdel" onclick="deleteAgent()">Delete</button>
-                                <button class="bsav" onclick="saveAgent()">Save Changes</button>
-                            </div>
-                        </div>
 
-                        <div class="ib {{ $envWarnClass }}" id="env-warn">{!! $envWarnMsg !!}</div>
+                            <div class="ib {{ $envWarnClass }}" id="env-warn">{!! $envWarnMsg !!}</div>
 
-                        <div class="fr c3">
-                            <div class="fg">
-                                <label class="fl">Agent User Type</label>
-                                <select class="fc" id="ag-utype">
-                                    <option value="vendor" @selected($a->user_type === 'vendor')>vendor</option>
-                                    <option value="admin" @selected($a->user_type === 'admin')>admin</option>
-                                    <option value="user" @selected($a->user_type === 'user')>user</option>
-                                </select>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Skill Type</label>
-                                <select class="fc" id="ag-stype">
-                                    @foreach (['analytics', 'chatbot', 'seo', 'pdf_analysis', 'excel_generator', 'inventory', 'billing', 'hr_assistant'] as $st)
-                                        <option value="{{ $st }}" @selected($a->skill_type === $st)>
-                                            {{ ucwords(str_replace('_', ' ', $st)) }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Status</label>
-                                <select class="fc" id="ag-status">
-                                    <option value="draft" @selected(($a->status ?? 'draft') === 'draft')>Draft</option>
-                                    <option value="active" @selected($a->status === 'active')>Active</option>
-                                    <option value="inactive" @selected($a->status === 'inactive')>Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="fr c2">
-                            <div class="fg">
-                                <label class="fl">Skill Name</label>
-                                <input class="fc" type="text" id="ag-name" value="{{ $a->name }}">
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Description</label>
-                                <input class="fc" type="text" id="ag-desc" value="{{ $a->description }}">
-                            </div>
-                        </div>
-                        <div class="fg">
-                            <label class="fl">System Prompt</label>
-                            <textarea class="fc" id="ag-prompt">{{ $a->prompt }}</textarea>
-                        </div>
-                        <label class="fl">Quick Skill Types</label>
-                        <div class="chips">
-                            @foreach (['Analytics' => 'analytics', 'Chatbot' => 'chatbot', 'SEO' => 'seo', 'PDF Analysis' => 'pdf_analysis', 'Excel Generator' => 'excel_generator', 'Billing' => 'billing', 'HR Assistant' => 'hr_assistant', 'Inventory' => 'inventory'] as $label => $val)
-                                <span class="chip {{ $a->skill_type === $val ? 'on' : '' }}"
-                                    onclick="setSkillType('{{ $val }}', this)">{{ $label }}</span>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <!-- ② AGENT VERSIONING -->
-                    <div class="card m-2" data-tab="versioning">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📦</div>
-                                <div>
-                                    <div class="st">Agent Versioning</div>
-                                    <div class="ss2">Track prompt changes — important for billing, pricing, legal
-                                        compliance</div>
+                            <div class="fr c3">
+                                <div class="fg">
+                                    <label class="fl">Agent User Type</label>
+                                    <select class="fc" id="ag-utype">
+                                        <option value="vendor" @selected($a->user_type === 'vendor')>vendor</option>
+                                        <option value="admin" @selected($a->user_type === 'admin')>admin</option>
+                                        <option value="user" @selected($a->user_type === 'user')>user</option>
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Skill Type</label>
+                                    <select class="fc" id="ag-stype">
+                                        @foreach (['analytics', 'chatbot', 'seo', 'pdf_analysis', 'excel_generator', 'inventory', 'billing', 'hr_assistant'] as $st)
+                                            <option value="{{ $st }}" @selected($a->skill_type === $st)>
+                                                {{ ucwords(str_replace('_', ' ', $st)) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Status</label>
+                                    <select class="fc" id="ag-status">
+                                        <option value="draft" @selected(($a->status ?? 'draft') === 'draft')>Draft</option>
+                                        <option value="active" @selected($a->status === 'active')>Active</option>
+                                        <option value="inactive" @selected($a->status === 'inactive')>Inactive</option>
+                                    </select>
                                 </div>
                             </div>
-                            <button class="badd ind" onclick="openVersionModal()">+ New Version</button>
-                        </div>
-                        <div class="ver-header">
-                            <div class="ver-num" id="ver-display">{{ $a->current_version ?? 'v1.0' }}</div>
-                            <div class="ver-info">
-                                <div class="ver-label">Current Version</div>
-                                <div class="ver-val" id="ver-updated">Last updated:
-                                    {{ $liveVer?->created_at?->format('M d, Y') ?? '—' }} · by
-                                    {{ $liveVer?->updated_by ?? 'Admin' }}</div>
+                            <div class="fr c2">
+                                <div class="fg">
+                                    <label class="fl">Skill Name</label>
+                                    <input class="fc" type="text" id="ag-name" value="{{ $a->name }}">
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Description</label>
+                                    <input class="fc" type="text" id="ag-desc" value="{{ $a->description }}">
+                                </div>
                             </div>
-                            <span class="pill ac">Live</span>
+                            <div class="fg">
+                                <label class="fl">System Prompt</label>
+                                <textarea class="fc" id="ag-prompt">{{ $a->prompt }}</textarea>
+                            </div>
+                            <label class="fl">Quick Skill Types</label>
+                            <div class="chips">
+                                @foreach (['Analytics' => 'analytics', 'Chatbot' => 'chatbot', 'SEO' => 'seo', 'PDF Analysis' => 'pdf_analysis', 'Excel Generator' => 'excel_generator', 'Billing' => 'billing', 'HR Assistant' => 'hr_assistant', 'Inventory' => 'inventory'] as $label => $val)
+                                    <span class="chip {{ $a->skill_type === $val ? 'on' : '' }}"
+                                        onclick="setSkillType('{{ $val }}', this)">{{ $label }}</span>
+                                @endforeach
+                            </div>
                         </div>
-                        @if ($a->versions->isNotEmpty())
-                            <div class="ver-history">
-                                @foreach ($a->versions->sortByDesc('created_at') as $ver)
-                                    <div class="vh-item">
-                                        <span class="vh-v">{{ $ver->version_tag }}</span>
-                                        <div class="vh-body">
-                                            <div class="vh-msg">{{ $ver->changelog }}</div>
-                                            <div class="vh-time">{{ $ver->created_at?->format('M d, Y') }} ·
-                                                {{ $ver->updated_by }}</div>
+
+                        <!-- ② AGENT VERSIONING -->
+                        <div class="card m-2" data-tab="versioning">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">📦</div>
+                                    <div>
+                                        <div class="st">Agent Versioning</div>
+                                        <div class="ss2">Track prompt changes — important for billing, pricing, legal
+                                            compliance</div>
+                                    </div>
+                                </div>
+                                <button class="badd ind" onclick="openVersionModal()">+ New Version</button>
+                            </div>
+                            <div class="ver-header">
+                                <div class="ver-num" id="ver-display">{{ $a->current_version ?? 'v1.0' }}</div>
+                                <div class="ver-info">
+                                    <div class="ver-label">Current Version</div>
+                                    <div class="ver-val" id="ver-updated">Last updated:
+                                        {{ $liveVer?->created_at?->format('M d, Y') ?? '—' }} · by
+                                        {{ $liveVer?->updated_by ?? 'Admin' }}</div>
+                                </div>
+                                <span class="pill ac">Live</span>
+                            </div>
+                            @if ($a->versions->isNotEmpty())
+                                <div class="ver-history">
+                                    @foreach ($a->versions->sortByDesc('created_at') as $ver)
+                                        <div class="vh-item">
+                                            <span class="vh-v">{{ $ver->version_tag }}</span>
+                                            <div class="vh-body">
+                                                <div class="vh-msg">{{ $ver->changelog }}</div>
+                                                <div class="vh-time">{{ $ver->created_at?->format('M d, Y') }} ·
+                                                    {{ $ver->updated_by }}</div>
+                                            </div>
+                                            <span class="vh-pill"
+                                                style="{{ $ver->is_live ? '' : 'background:#f3f4f6;color:#6b7280' }}">{{ $ver->is_live ? 'Live' : 'Archived' }}</span>
                                         </div>
-                                        <span class="vh-pill"
-                                            style="{{ $ver->is_live ? '' : 'background:#f3f4f6;color:#6b7280' }}">{{ $ver->is_live ? 'Live' : 'Archived' }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-
-                    <!-- ③ AI MODEL CONFIG -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">🧠</div>
-                                <div>
-                                    <div class="st">AI Model Configuration</div>
-                                    <div class="ss2">Choose AI model and tune response behavior</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="fr c3">
-                            <div class="fg">
-                                <label class="fl">AI Provider</label>
-                                <select class="fc" id="ag-provider">
-                                    @foreach ($aiProviders as $key => $value)
-                                        <option value="{{ $value->key }}" @selected($a->ai_provider === $value->key)>
-                                            {{ $value->name }}</option>
                                     @endforeach
-                                </select>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Model</label>
-                                <select class="fc" id="ag-model">
-                                    {{-- populated by updateModelSelect() JS below --}}
-                                </select>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Max Tokens</label>
-                                <input class="fc" type="number" id="ag-tokens"
-                                    value="{{ $a->max_tokens ?? 1024 }}">
-                                <span class="fh">Max response length</span>
-                            </div>
-                        </div>
-                        <button type="button"
-                            onclick="const p=document.getElementById('adv-params');const arrow=document.getElementById('adv-arrow');const open=p.style.display==='grid';p.style.display=open?'none':'grid';arrow.textContent=open?'▾':'▴';"
-                            style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1.5px solid #e5e8ef;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;width:100%;text-align:left;margin-bottom:10px">
-                            <span>⚙️</span>
-                            Advanced Settings
-                            <span style="font-size:10.5px;color:#9ca3af;font-weight:400">(temperature, top‑p)</span>
-                            <span id="adv-arrow" style="margin-left:auto;font-size:13px;color:#6b7280">▾</span>
-                        </button>
-                        <div id="adv-params" class="fr c2" style="display:none">
-                            <div class="fg">
-                                <label class="fl">Temperature — <span id="tv"
-                                        style="color:#e3342f;font-weight:700">{{ $a->temperature ?? 0.7 }}</span></label>
-                                <input class="slider" type="range" min="0" max="1" step="0.1"
-                                    id="ag-temp" value="{{ $a->temperature ?? 0.7 }}"
-                                    oninput="document.getElementById('tv').textContent=this.value">
-                                <div class="sl-lab"><span>Precise</span><span>Balanced</span><span>Creative</span></div>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Top-P — <span id="tpv"
-                                        style="color:#e3342f;font-weight:700">{{ $a->top_p ?? 0.9 }}</span></label>
-                                <input class="slider" type="range" min="0" max="1" step="0.05"
-                                    id="ag-topp" value="{{ $a->top_p ?? 0.9 }}"
-                                    oninput="document.getElementById('tpv').textContent=this.value">
-                                <div class="sl-lab"><span>Focused</span><span>Normal</span><span>Diverse</span></div>
-                            </div>
-                        </div>
-                        <div class="fg">
-                            <label class="fl">API Key Override (optional)</label>
-                            <input class="fc" type="password" id="ag-apikey"
-                                placeholder="Leave blank to use platform default key" value="{{ $a->api_key_override }}">
-                            <span class="fh">Only set if using your own API key for this specific agent</span>
+                                </div>
+                            @endif
                         </div>
 
-                        {{-- ── TTS Voice (OpenAI only) ── --}}
-                        <div class="fg" id="tts-voice-wrap" style="{{ $a->ai_provider && $a->ai_provider !== 'openai' ? 'display:none' : '' }}">
-                            <label class="fl">🔊 TTS Voice <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">(OpenAI Text-to-Speech)</span></label>
-                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
-                                @php 
-                                    $ttsVoices = [
-                                        'alloy'   => ['🎙️', 'Alloy',   'Neutral, versatile'],
-                                        'echo'    => ['🎤', 'Echo',    'Warm, conversational'],
-                                        'fable'   => ['📖', 'Fable',   'British, storytelling'],
-                                        'onyx'    => ['💎', 'Onyx',    'Deep, authoritative'],
-                                        'nova'    => ['✨', 'Nova',    'Bright & friendly'],
-                                        'shimmer' => ['🌟', 'Shimmer', 'Soft, expressive'],
-                                    ];
-                                    $selectedVoice = $a->tts_voice ?? 'nova';
-                                @endphp
-                                @foreach ($ttsVoices as $vKey => [$vIcon, $vName, $vDesc])
-                                    <div class="tts-voice-card {{ $selectedVoice === $vKey ? 'on' : '' }}"
-                                         data-voice="{{ $vKey }}"
-                                         onclick="selectTtsVoice('{{ $vKey }}', this)"
-                                         style="border:1.5px solid {{ $selectedVoice === $vKey ? '#e3342f' : '#e5e8ef' }};border-radius:9px;padding:10px 11px;cursor:pointer;transition:all .15s;background:{{ $selectedVoice === $vKey ? '#fff8f8' : '#fff' }}">
-                                        <div style="font-size:17px;margin-bottom:4px">{{ $vIcon }}</div>
-                                        <div style="font-size:12px;font-weight:700;color:{{ $selectedVoice === $vKey ? '#e3342f' : '#111827' }}">{{ $vName }}</div>
-                                        <div style="font-size:10.5px;color:#9ca3af;margin-top:1px">{{ $vDesc }}</div>
+                        <!-- ③ AI MODEL CONFIG -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">🧠</div>
+                                    <div>
+                                        <div class="st">AI Model Configuration</div>
+                                        <div class="ss2">Choose AI model and tune response behavior</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fr c3">
+                                <div class="fg">
+                                    <label class="fl">AI Provider</label>
+                                    <select class="fc" id="ag-provider">
+                                        @foreach ($aiProviders as $key => $value)
+                                            <option value="{{ $value->key }}" @selected($a->ai_provider === $value->key)>
+                                                {{ $value->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Model</label>
+                                    <select class="fc" id="ag-model">
+                                        {{-- populated by updateModelSelect() JS below --}}
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Max Tokens</label>
+                                    <input class="fc" type="number" id="ag-tokens"
+                                        value="{{ $a->max_tokens ?? 1024 }}">
+                                    <span class="fh">Max response length</span>
+                                </div>
+                            </div>
+                            <button type="button"
+                                onclick="const p=document.getElementById('adv-params');const arrow=document.getElementById('adv-arrow');const open=p.style.display==='grid';p.style.display=open?'none':'grid';arrow.textContent=open?'▾':'▴';"
+                                style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1.5px solid #e5e8ef;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;width:100%;text-align:left;margin-bottom:10px">
+                                <span>⚙️</span>
+                                Advanced Settings
+                                <span style="font-size:10.5px;color:#9ca3af;font-weight:400">(temperature, top‑p)</span>
+                                <span id="adv-arrow" style="margin-left:auto;font-size:13px;color:#6b7280">▾</span>
+                            </button>
+                            <div id="adv-params" class="fr c2" style="display:none">
+                                <div class="fg">
+                                    <label class="fl">Temperature — <span id="tv"
+                                            style="color:#e3342f;font-weight:700">{{ $a->temperature ?? 0.7 }}</span></label>
+                                    <input class="slider" type="range" min="0" max="1" step="0.1"
+                                        id="ag-temp" value="{{ $a->temperature ?? 0.7 }}"
+                                        oninput="document.getElementById('tv').textContent=this.value">
+                                    <div class="sl-lab"><span>Precise</span><span>Balanced</span><span>Creative</span></div>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Top-P — <span id="tpv"
+                                            style="color:#e3342f;font-weight:700">{{ $a->top_p ?? 0.9 }}</span></label>
+                                    <input class="slider" type="range" min="0" max="1" step="0.05"
+                                        id="ag-topp" value="{{ $a->top_p ?? 0.9 }}"
+                                        oninput="document.getElementById('tpv').textContent=this.value">
+                                    <div class="sl-lab"><span>Focused</span><span>Normal</span><span>Diverse</span></div>
+                                </div>
+                            </div>
+                            <div class="fg">
+                                <label class="fl">API Key Override (optional)</label>
+                                <input class="fc" type="password" id="ag-apikey"
+                                    placeholder="Leave blank to use platform default key" value="{{ $a->api_key_override }}">
+                                <span class="fh">Only set if using your own API key for this specific agent</span>
+                            </div>
+
+                            {{-- ── TTS Voice (OpenAI only) ── --}}
+                            <div class="fg" id="tts-voice-wrap" style="{{ $a->ai_provider && $a->ai_provider !== 'openai' ? 'display:none' : '' }}">
+                                <label class="fl">🔊 TTS Voice <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">(OpenAI Text-to-Speech)</span></label>
+                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">
+                                    @php 
+                                        $ttsVoices = [
+                                            'alloy'   => ['🎙️', 'Alloy',   'Neutral, versatile'],
+                                            'echo'    => ['🎤', 'Echo',    'Warm, conversational'],
+                                            'fable'   => ['📖', 'Fable',   'British, storytelling'],
+                                            'onyx'    => ['💎', 'Onyx',    'Deep, authoritative'],
+                                            'nova'    => ['✨', 'Nova',    'Bright & friendly'],
+                                            'shimmer' => ['🌟', 'Shimmer', 'Soft, expressive'],
+                                        ];
+                                        $selectedVoice = $a->tts_voice ?? 'nova';
+                                    @endphp
+                                    @foreach ($ttsVoices as $vKey => [$vIcon, $vName, $vDesc])
+                                        <div class="tts-voice-card {{ $selectedVoice === $vKey ? 'on' : '' }}"
+                                            data-voice="{{ $vKey }}"
+                                            onclick="selectTtsVoice('{{ $vKey }}', this)"
+                                            style="border:1.5px solid {{ $selectedVoice === $vKey ? '#e3342f' : '#e5e8ef' }};border-radius:9px;padding:10px 11px;cursor:pointer;transition:all .15s;background:{{ $selectedVoice === $vKey ? '#fff8f8' : '#fff' }}">
+                                            <div style="font-size:17px;margin-bottom:4px">{{ $vIcon }}</div>
+                                            <div style="font-size:12px;font-weight:700;color:{{ $selectedVoice === $vKey ? '#e3342f' : '#111827' }}">{{ $vName }}</div>
+                                            <div style="font-size:10.5px;color:#9ca3af;margin-top:1px">{{ $vDesc }}</div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <input type="hidden" id="ag-tts-voice" value="{{ $selectedVoice }}">
+                                <span class="fh" style="margin-top:4px">Only applies when this agent uses Text-to-Speech output</span>
+                            </div>
+                        </div>
+
+                        <!-- ④ LOGIN STATE & AUTH -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#0f766e,#0d9488)">🔐</div>
+                                    <div>
+                                        <div class="st">Login State & Access Control</div>
+                                        <div class="ss2">Authentication requirements and role restrictions for this agent
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ib amber">⚠️ Without login restriction, any unauthenticated user could trigger this
+                                agent.
+                                Always enable auth for write-capable agents.</div>
+                            <div class="fr c2">
+                                <div class="fg">
+                                    <label class="fl">Requires Authentication?</label>
+                                    <select class="fc" id="ag-auth">
+                                        <option value="yes" @selected($a->requires_auth)>Yes — Login Required</option>
+                                        <option value="no" @selected(!$a->requires_auth)>No — Public Access</option>
+                                        <option value="optional">Optional — Works Both Ways</option>
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Session Validation</label>
+                                    <select class="fc" id="ag-sess">
+                                        <option value="jwt" @selected(($a->session_validation ?? 'jwt') === 'jwt')>Validate JWT Token</option>
+                                        <option value="session" @selected($a->session_validation === 'session')>Check Active Session</option>
+                                        <option value="api_key" @selected($a->session_validation === 'api_key')>API Key Auth</option>
+                                        <option value="none" @selected($a->session_validation === 'none')>None</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <label class="fl">Allowed Roles — Who Can Trigger This Agent</label>
+                            <div class="role-grid">
+                                @foreach ($allRoles as $roleKey => $roleLabel)
+                                    @php $roleOn = in_array($roleKey, $allowedRoles); @endphp
+                                    <div class="role-item {{ $roleOn ? 'on' : '' }}" data-role="{{ $roleKey }}"
+                                        onclick="toggleRole(this)">
+                                        <div class="role-check">{!! $roleOn
+                                            ? '<svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+                                            : '' !!}</div>
+                                        <span class="role-label">{{ $roleLabel }}</span>
                                     </div>
                                 @endforeach
                             </div>
-                            <input type="hidden" id="ag-tts-voice" value="{{ $selectedVoice }}">
-                            <span class="fh" style="margin-top:4px">Only applies when this agent uses Text-to-Speech output</span>
                         </div>
-                    </div>
-
-                    <!-- ④ LOGIN STATE & AUTH -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#0f766e,#0d9488)">🔐</div>
-                                <div>
-                                    <div class="st">Login State & Access Control</div>
-                                    <div class="ss2">Authentication requirements and role restrictions for this agent
+    
+                        <!-- ⑥ MEMORY / CONTEXT -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">💾</div>
+                                    <div>
+                                        <div class="st">Memory & Context</div>
+                                        <div class="ss2">How the agent remembers conversations and data</div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="ib amber">⚠️ Without login restriction, any unauthenticated user could trigger this
-                            agent.
-                            Always enable auth for write-capable agents.</div>
-                        <div class="fr c2">
-                            <div class="fg">
-                                <label class="fl">Requires Authentication?</label>
-                                <select class="fc" id="ag-auth">
-                                    <option value="yes" @selected($a->requires_auth)>Yes — Login Required</option>
-                                    <option value="no" @selected(!$a->requires_auth)>No — Public Access</option>
-                                    <option value="optional">Optional — Works Both Ways</option>
-                                </select>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Session Validation</label>
-                                <select class="fc" id="ag-sess">
-                                    <option value="jwt" @selected(($a->session_validation ?? 'jwt') === 'jwt')>Validate JWT Token</option>
-                                    <option value="session" @selected($a->session_validation === 'session')>Check Active Session</option>
-                                    <option value="api_key" @selected($a->session_validation === 'api_key')>API Key Auth</option>
-                                    <option value="none" @selected($a->session_validation === 'none')>None</option>
-                                </select>
-                            </div>
-                        </div>
-                        <label class="fl">Allowed Roles — Who Can Trigger This Agent</label>
-                        <div class="role-grid">
-                            @foreach ($allRoles as $roleKey => $roleLabel)
-                                @php $roleOn = in_array($roleKey, $allowedRoles); @endphp
-                                <div class="role-item {{ $roleOn ? 'on' : '' }}" data-role="{{ $roleKey }}"
-                                    onclick="toggleRole(this)">
-                                    <div class="role-check">{!! $roleOn
-                                        ? '<svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-                                        : '' !!}</div>
-                                    <span class="role-label">{{ $roleLabel }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
- 
-                    <!-- ⑥ MEMORY / CONTEXT -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#06b6d4,#0891b2)">💾</div>
+                            <div class="mt-row">
                                 <div>
-                                    <div class="st">Memory & Context</div>
-                                    <div class="ss2">How the agent remembers conversations and data</div>
+                                    <div class="mt-l">Conversation History</div>
+                                    <div class="mt-h">Remember past messages in same session</div>
+                                </div>
+                                <div class="tog {{ $a->conv_history_enabled ? 'on' : '' }}" id="ag-convhist"
+                                    onclick="this.classList.toggle('on')"></div>
+                            </div>
+                            <div class="mt-row">
+                                <div>
+                                    <div class="mt-l">Cross-Session Memory</div>
+                                    <div class="mt-h">Remember vendor data across different sessions</div>
+                                </div>
+                                <div class="tog {{ $a->cross_session_memory ? 'on' : '' }}" id="ag-crossmem"
+                                    onclick="this.classList.toggle('on')"></div>
+                            </div>
+                            <div class="mt-row">
+                                <div>
+                                    <div class="mt-l">Inject Vendor Profile</div>
+                                    <div class="mt-h">Auto-load vendor business info into context</div>
+                                </div>
+                                <div class="tog {{ $a->inject_vendor_profile ? 'on' : '' }}" id="ag-inject"
+                                    onclick="this.classList.toggle('on')"></div>
+                            </div>
+                            <div class="fr c2" style="margin-top:11px">
+                                <div class="fg">
+                                    <label class="fl">Max History Messages</label>
+                                    <input class="fc" type="number" id="ag-maxhist"
+                                        value="{{ $a->max_history_messages ?? 10 }}">
+                                    <span class="fh">Last N messages in context</span>
+                                </div>
+                                <div class="fg">
+                                    <label class="fl">Context Window</label>
+                                    <select class="fc" id="ag-ctxwin">
+                                        <option value="4k" @selected($a->context_window === '4k')>4K tokens</option>
+                                        <option value="8k" @selected($a->context_window === '8k')>8K tokens</option>
+                                        <option value="32k" @selected(($a->context_window ?? '32k') === '32k')>32K tokens</option>
+                                        <option value="128k" @selected($a->context_window === '128k')>128K tokens</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-row">
-                            <div>
-                                <div class="mt-l">Conversation History</div>
-                                <div class="mt-h">Remember past messages in same session</div>
-                            </div>
-                            <div class="tog {{ $a->conv_history_enabled ? 'on' : '' }}" id="ag-convhist"
-                                onclick="this.classList.toggle('on')"></div>
-                        </div>
-                        <div class="mt-row">
-                            <div>
-                                <div class="mt-l">Cross-Session Memory</div>
-                                <div class="mt-h">Remember vendor data across different sessions</div>
-                            </div>
-                            <div class="tog {{ $a->cross_session_memory ? 'on' : '' }}" id="ag-crossmem"
-                                onclick="this.classList.toggle('on')"></div>
-                        </div>
-                        <div class="mt-row">
-                            <div>
-                                <div class="mt-l">Inject Vendor Profile</div>
-                                <div class="mt-h">Auto-load vendor business info into context</div>
-                            </div>
-                            <div class="tog {{ $a->inject_vendor_profile ? 'on' : '' }}" id="ag-inject"
-                                onclick="this.classList.toggle('on')"></div>
-                        </div>
-                        <div class="fr c2" style="margin-top:11px">
-                            <div class="fg">
-                                <label class="fl">Max History Messages</label>
-                                <input class="fc" type="number" id="ag-maxhist"
-                                    value="{{ $a->max_history_messages ?? 10 }}">
-                                <span class="fh">Last N messages in context</span>
-                            </div>
-                            <div class="fg">
-                                <label class="fl">Context Window</label>
-                                <select class="fc" id="ag-ctxwin">
-                                    <option value="4k" @selected($a->context_window === '4k')>4K tokens</option>
-                                    <option value="8k" @selected($a->context_window === '8k')>8K tokens</option>
-                                    <option value="32k" @selected(($a->context_window ?? '32k') === '32k')>32K tokens</option>
-                                    <option value="128k" @selected($a->context_window === '128k')>128K tokens</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- ⑦ API CALLS + TOOL-LEVEL PERMISSIONS -->
-                    <div class="card m-2" data-tab="api">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">🔌</div>
-                                <div>
-                                    <div class="st">API Calls & Tool-Level Permissions</div>
-                                    <div class="ss2">Control exactly what each API can do — action type, confirmation,
-                                        rate limits</div>
+                        <!-- ⑦ API CALLS + TOOL-LEVEL PERMISSIONS -->
+                        <div class="card m-2" data-tab="api">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">🔌</div>
+                                    <div>
+                                        <div class="st">API Calls & Tool-Level Permissions</div>
+                                        <div class="ss2">Control exactly what each API can do — action type, confirmation,
+                                            rate limits</div>
+                                    </div>
                                 </div>
+                                <button class="badd ind" onclick="addApi()">+ Add API</button>
                             </div>
-                            <button class="badd ind" onclick="addApi()">+ Add API</button>
-                        </div>
-                        <div class="ib red">🛡️ <strong>Write / Delete actions</strong> should always have <strong>Require
-                                Confirmation = Yes</strong> to prevent the AI from auto-executing destructive operations.
-                        </div>
-                        <div class="tw">
-                            <table class="tbl"> 
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>API Name</th>
-                                        <th>Endpoint</th>
-                                        <th>Method</th>
-                                        <th>Status</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="api-tb">
-                                    @forelse($a->apiTools as $i => $tool)
+                            <div class="ib red">🛡️ <strong>Write / Delete actions</strong> should always have <strong>Require
+                                    Confirmation = Yes</strong> to prevent the AI from auto-executing destructive operations.
+                            </div>
+                            <div class="tw">
+                                <table class="tbl"> 
+                                    <thead>
                                         <tr>
-                                            <td class="rn">{{ $i + 1 }}</td>
-                                            <td><input class="ti" type="text" value="{{ $tool->api_name }}"
-                                                    style="min-width:110px"></td>
-                                            <td><input class="ti" type="text" value="{{ $tool->endpoint }}"
-                                                    style="min-width:180px"></td>
-                                            <td><select class="ts" style="width:76px">
-                                                    <option @selected(($tool->method ?? 'POST') === 'GET')>GET</option>
-                                                    <option @selected(($tool->method ?? 'POST') === 'POST')>POST</option>
-                                                    <option @selected(($tool->method ?? 'POST') === 'PUT')>PUT</option>
-                                                    <option @selected(($tool->method ?? 'POST') === 'DELETE')>DELETE</option>
-                                                </select></td>
-                                            <td><span
-                                                    class="pill {{ $tool->status === 'active' ? 'ac' : 'dr' }}">{{ ucfirst($tool->status ?? 'active') }}</span>
-                                            </td>
-                                            <td><button class="brm" onclick="this.closest('tr').remove()">✕</button>
-                                            </td>
+                                            <th>#</th>
+                                            <th>API Name</th>
+                                            <th>Endpoint</th>
+                                            <th>Method</th>
+                                            <th>Status</th>
+                                            <th></th>
                                         </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="6"
-                                                style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No API
-                                                tools configured yet</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody id="api-tb">
+                                        @forelse($a->apiTools as $i => $tool)
+                                            <tr>
+                                                <td class="rn">{{ $i + 1 }}</td>
+                                                <td><input class="ti" type="text" value="{{ $tool->api_name }}"
+                                                        style="min-width:110px"></td>
+                                                <td><input class="ti" type="text" value="{{ $tool->endpoint }}"
+                                                        style="min-width:180px"></td>
+                                                <td><select class="ts" style="width:76px">
+                                                        <option @selected(($tool->method ?? 'POST') === 'GET')>GET</option>
+                                                        <option @selected(($tool->method ?? 'POST') === 'POST')>POST</option>
+                                                        <option @selected(($tool->method ?? 'POST') === 'PUT')>PUT</option>
+                                                        <option @selected(($tool->method ?? 'POST') === 'DELETE')>DELETE</option>
+                                                    </select></td>
+                                                <td><span
+                                                        class="pill {{ $tool->status === 'active' ? 'ac' : 'dr' }}">{{ ucfirst($tool->status ?? 'active') }}</span>
+                                                </td>
+                                                <td><button class="brm" onclick="this.closest('tr').remove()">✕</button>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="6"
+                                                    style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No API
+                                                    tools configured yet</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top:11px;font-size:11px;color:#6b7280">Tools are configured by API name with endpoint and HTTP method.</div>
+                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
+                                <button class="bsav" onclick="saveAgent()">💾 Save API Tools</button>
+                            </div>
                         </div>
-                        <div style="margin-top:11px;font-size:11px;color:#6b7280">Tools are configured by API name with endpoint and HTTP method.</div>
-                        <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                            <button class="bsav" onclick="saveAgent()">💾 Save API Tools</button>
-                        </div>
-                    </div>
 
-                    <!-- ⑧ FUNCTION SCHEMA (Tool Calling) -->
-                    <div class="card m-2" data-tab="schema">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#0f172a,#1e293b)">📐</div>
-                                <div>
-                                    <div class="st">Function Schema (Tool Calling)</div>
-                                    <div class="ss2">Required for OpenAI function calling & Claude tool use — define
-                                        parameters and validation</div>
+                        <!-- ⑧ FUNCTION SCHEMA (Tool Calling) -->
+                        <div class="card m-2" data-tab="schema">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#0f172a,#1e293b)">📐</div>
+                                    <div>
+                                        <div class="st">Function Schema (Tool Calling)</div>
+                                        <div class="ss2">Required for OpenAI function calling & Claude tool use — define
+                                            parameters and validation</div>
+                                    </div>
+                                </div>
+                                <button class="badd pur" onclick="addSchema()">+ Add Function</button>
+                            </div>
+                            <div class="ib blue">📌 Without a proper JSON schema, AI function calling is unstable. The model
+                                needs
+                                to know the exact parameter names, types, and which are required.</div>
+                            <div id="schema-list">
+                                @forelse($a->functions as $fn)
+                                    @php
+                                        $schId = 'schema-fn-' . $fn->id;
+                                        $resId = 'res-fn-' . $fn->id;
+                                    @endphp
+                                    <div class="schema-entry"
+                                        style="margin-bottom:16px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px">
+                                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+                                            <input class="fc" type="text" value="{{ $fn->function_name }}"
+                                                style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
+                                            <input class="fc" type="text" value="{{ $fn->description }}"
+                                                style="flex:2">
+                                            <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+                                        </div>
+                                        <div class="schema-box">
+                                            <span class="schema-lang">JSON SCHEMA</span>
+                                            <textarea class="schema-ta" id="{{ $schId }}">{{ is_array($fn->json_schema) ? json_encode($fn->json_schema, JSON_PRETTY_PRINT) : $fn->json_schema }}</textarea>
+                                        </div>
+                                        <div class="schema-actions">
+                                            <button class="schema-btn validate"
+                                                onclick="validateSchema('{{ $schId }}','{{ $resId }}')">✓
+                                                Validate JSON</button>
+                                            <button class="schema-btn format"
+                                                onclick="formatSchema('{{ $schId }}','{{ $resId }}')">⟳
+                                                Format</button>
+                                        </div>
+                                        <div class="schema-result" id="{{ $resId }}"></div>
+                                    </div>
+                                @empty
+                                    <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No function
+                                        schemas defined yet</div>
+                                @endforelse
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
+                                <button class="bsav" onclick="saveAgent()">💾 Save Functions</button>
+                            </div>
+                        </div>
+
+                        <!-- ⑨ TASKS + DESTRUCTIVE CONFIRMATION -->
+                        <div class="card m-2" data-tab="tasks">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#10b981,#059669)">✅</div>
+                                    <div>
+                                        <div class="st">Tasks</div>
+                                        <div class="ss2">Automated actions — enable approval for destructive operations
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="badd grn" onclick="addTask()">+ Add Task</button>
+                            </div>
+                            <div class="ib amber">🔒 Tasks marked <strong>Destructive</strong> (delete data, cancel bookings,
+                                deduct wallet) will show an approval prompt before execution.</div>
+                            <div class="tklist" id="task-list">
+                                @forelse($a->tasks as $task)
+                                    @php
+                                        $tIsDestr = (bool) $task->is_destructive;
+                                        $tStatCls = match ($task->status ?? 'active') {
+                                            'active' => 'ac',
+                                            'inactive' => 'er',
+                                            default => 'dr',
+                                        };
+                                        $tStatLbl = match ($task->status ?? 'active') {
+                                            'active' => 'Active',
+                                            'inactive' => 'Inactive',
+                                            default => 'Draft',
+                                        };
+                                    @endphp
+                                    <div class="tkrow {{ $tIsDestr ? 'destructive' : '' }}">
+                                        <div class="tk-top">
+                                            <span class="tk-drag">⠿</span>
+                                            <input class="ti tk-name" type="text" value="{{ $task->task_name }}"
+                                                style="flex:1;min-width:150px;font-weight:600">
+                                            <select class="ts" style="width:120px">
+                                                <option value="scheduled" @selected($task->trigger_type === 'scheduled')>Scheduled</option>
+                                                <option value="on_demand" @selected($task->trigger_type === 'on_demand')>On Demand</option>
+                                                <option value="trigger" @selected($task->trigger_type === 'trigger')>Trigger</option>
+                                                <option value="manual" @selected($task->trigger_type === 'manual')>Manual</option>
+                                            </select>
+                                            <select class="ts" style="width:100px">
+                                                <option value="analytics" @selected($task->skill_category === 'analytics')>Analytics</option>
+                                                <option value="pdf" @selected($task->skill_category === 'pdf')>PDF</option>
+                                                <option value="excel" @selected($task->skill_category === 'excel')>Excel</option>
+                                                <option value="chatbot" @selected($task->skill_category === 'chatbot')>Chatbot</option>
+                                                <option value="seo" @selected($task->skill_category === 'seo')>SEO</option>
+                                            </select>
+                                            <label
+                                                style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:{{ $tIsDestr ? '#ef4444' : '#6b7280' }};cursor:pointer;white-space:nowrap">
+                                                <div class="tog {{ $tIsDestr ? 'on' : '' }}"
+                                                    onclick="toggleDestructive(this)"></div> Destructive?
+                                            </label>
+                                            <span
+                                                class="pill {{ $tIsDestr ? 'er' : $tStatCls }}">{{ $tIsDestr ? 'Destructive' : $tStatLbl }}</span>
+                                            <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+                                        </div>
+                                        <input class="ti" type="text" value="{{ $task->description }}"
+                                            style="margin-top:6px;color:#6b7280;font-size:11.5px">
+                                        <div class="tk-warn" style="display:{{ $tIsDestr ? 'flex' : 'none' }}">⚠️ This task
+                                            is marked destructive. Vendor must approve before execution.</div>
+                                        <div class="tk-conf-row {{ $tIsDestr ? '' : 'hidden' }}">
+                                            <span style="font-size:13px">✅</span>
+                                            <span class="tk-conf-label">Require vendor approval before running this task</span>
+                                            <div class="tog gr {{ $task->require_approval ? 'on' : '' }}"
+                                                onclick="this.classList.toggle('on')"></div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No tasks defined
+                                        yet</div>
+                                @endforelse
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
+                                <button class="bsav" onclick="saveAgent()">💾 Save Tasks</button>
+                            </div>
+                        </div>
+
+                        <!-- ⑪ ERROR HANDLING STRATEGY -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#dc2626,#991b1b)">⚠️</div>
+                                    <div>
+                                        <div class="st">Error Handling Strategy</div>
+                                        <div class="ss2">What the agent does when API calls fail or timeout</div>
+                                    </div>
                                 </div>
                             </div>
-                            <button class="badd pur" onclick="addSchema()">+ Add Function</button>
-                        </div>
-                        <div class="ib blue">📌 Without a proper JSON schema, AI function calling is unstable. The model
-                            needs
-                            to know the exact parameter names, types, and which are required.</div>
-                        <div id="schema-list">
-                            @forelse($a->functions as $fn)
-                                @php
-                                    $schId = 'schema-fn-' . $fn->id;
-                                    $resId = 'res-fn-' . $fn->id;
-                                @endphp
-                                <div class="schema-entry"
-                                    style="margin-bottom:16px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px">
-                                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
-                                        <input class="fc" type="text" value="{{ $fn->function_name }}"
-                                            style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
-                                        <input class="fc" type="text" value="{{ $fn->description }}"
-                                            style="flex:2">
-                                        <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+                            <div class="eh-grid">
+                                <div class="eh-item">
+                                    <div class="eh-label">On API Failure</div>
+                                    <div class="fr c2" style="margin-bottom:10px">
+                                        <div class="fg">
+                                            <label class="fl">Retry Count</label>
+                                            <select class="fc" id="ag-retry">
+                                                <option value="0" @selected(($a->retry_count ?? 1) == 0)>0 — No retry</option>
+                                                <option value="1" @selected(($a->retry_count ?? 1) == 1)>1 — Retry once</option>
+                                                <option value="2" @selected($a->retry_count == 2)>2 — Retry twice</option>
+                                                <option value="3" @selected($a->retry_count == 3)>3 — Retry 3x</option>
+                                            </select>
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl">Backoff Strategy</label>
+                                            <select class="fc" id="ag-backoff">
+                                                <option value="none" @selected($a->backoff_strategy === 'none')>None</option>
+                                                <option value="linear" @selected(($a->backoff_strategy ?? 'linear') === 'linear')>Linear (2s)</option>
+                                                <option value="exponential" @selected($a->backoff_strategy === 'exponential')>Exponential</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="schema-box">
-                                        <span class="schema-lang">JSON SCHEMA</span>
-                                        <textarea class="schema-ta" id="{{ $schId }}">{{ is_array($fn->json_schema) ? json_encode($fn->json_schema, JSON_PRETTY_PRINT) : $fn->json_schema }}</textarea>
-                                    </div>
-                                    <div class="schema-actions">
-                                        <button class="schema-btn validate"
-                                            onclick="validateSchema('{{ $schId }}','{{ $resId }}')">✓
-                                            Validate JSON</button>
-                                        <button class="schema-btn format"
-                                            onclick="formatSchema('{{ $schId }}','{{ $resId }}')">⟳
-                                            Format</button>
-                                    </div>
-                                    <div class="schema-result" id="{{ $resId }}"></div>
+                                    <label class="fl" style="margin-bottom:6px">Fallback Message to Vendor</label>
+                                    <textarea class="fallback-ta" id="ag-fallback">{{ $a->fallback_message ?? "Sorry, I couldn't complete this action right now. Please try again in a moment or contact support." }}</textarea>
                                 </div>
-                            @empty
-                                <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No function
-                                    schemas defined yet</div>
-                            @endforelse
+                                <div class="eh-item">
+                                    <div class="eh-label">Escalation Rules</div>
+                                    @foreach ($allEscalations as $escKey => $escData)
+                                        @php $escOn = $escalation[$escKey] ?? ($escKey !== 'timeout'); @endphp
+                                        <div class="esc-row">
+                                            <div class="esc-icon">{{ $escData[0] }}</div>
+                                            <div class="esc-body">
+                                                <div class="esc-title">{{ $escData[1] }}</div>
+                                                <div class="esc-sub">{{ $escData[2] }}</div>
+                                            </div>
+                                            <div class="tog gr {{ $escOn ? 'on' : '' }}" id="esc-{{ $escKey }}"
+                                                onclick="this.classList.toggle('on')"></div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
-                        <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                            <button class="bsav" onclick="saveAgent()">💾 Save Functions</button>
-                        </div>
-                    </div>
 
-                    <!-- ⑨ TASKS + DESTRUCTIVE CONFIRMATION -->
-                    <div class="card m-2" data-tab="tasks">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#10b981,#059669)">✅</div>
-                                <div>
-                                    <div class="st">Tasks</div>
-                                    <div class="ss2">Automated actions — enable approval for destructive operations
+                        <!-- ⑫ NOTIFICATIONS & OUTPUT -->
+                        <div class="card m-2" data-tab="basic">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#f97316,#ea580c)">🔔</div>
+                                    <div>
+                                        <div class="st">Notifications & Output</div>
+                                        <div class="ss2">Where to send agent results and alerts</div>
                                     </div>
                                 </div>
                             </div>
-                            <button class="badd grn" onclick="addTask()">+ Add Task</button>
+                            <div class="ng">
+                                @foreach ($allNotifs as $notifKey => $notifData)
+                                    @php $notifOn = $notifSettings[$notifKey] ?? in_array($notifKey, ['telegram','email','in_app']); @endphp
+                                    <div class="ni">
+                                        <div class="nico" style="background:{{ $notifData[3] }}">{{ $notifData[0] }}
+                                        </div>
+                                        <div class="nb">
+                                            <div class="nl">{{ $notifData[1] }}</div>
+                                            <div class="nh">{{ $notifData[2] }}</div>
+                                        </div>
+                                        <div class="tog {{ $notifOn ? 'on' : '' }}" id="notif-{{ $notifKey }}"
+                                            onclick="this.classList.toggle('on')"></div>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
-                        <div class="ib amber">🔒 Tasks marked <strong>Destructive</strong> (delete data, cancel bookings,
-                            deduct wallet) will show an approval prompt before execution.</div>
-                        <div class="tklist" id="task-list">
-                            @forelse($a->tasks as $task)
-                                @php
-                                    $tIsDestr = (bool) $task->is_destructive;
-                                    $tStatCls = match ($task->status ?? 'active') {
-                                        'active' => 'ac',
-                                        'inactive' => 'er',
-                                        default => 'dr',
-                                    };
-                                    $tStatLbl = match ($task->status ?? 'active') {
-                                        'active' => 'Active',
-                                        'inactive' => 'Inactive',
-                                        default => 'Draft',
-                                    };
-                                @endphp
-                                <div class="tkrow {{ $tIsDestr ? 'destructive' : '' }}">
-                                    <div class="tk-top">
-                                        <span class="tk-drag">⠿</span>
-                                        <input class="ti tk-name" type="text" value="{{ $task->task_name }}"
-                                            style="flex:1;min-width:150px;font-weight:600">
-                                        <select class="ts" style="width:120px">
-                                            <option value="scheduled" @selected($task->trigger_type === 'scheduled')>Scheduled</option>
-                                            <option value="on_demand" @selected($task->trigger_type === 'on_demand')>On Demand</option>
-                                            <option value="trigger" @selected($task->trigger_type === 'trigger')>Trigger</option>
-                                            <option value="manual" @selected($task->trigger_type === 'manual')>Manual</option>
-                                        </select>
-                                        <select class="ts" style="width:100px">
-                                            <option value="analytics" @selected($task->skill_category === 'analytics')>Analytics</option>
-                                            <option value="pdf" @selected($task->skill_category === 'pdf')>PDF</option>
-                                            <option value="excel" @selected($task->skill_category === 'excel')>Excel</option>
-                                            <option value="chatbot" @selected($task->skill_category === 'chatbot')>Chatbot</option>
-                                            <option value="seo" @selected($task->skill_category === 'seo')>SEO</option>
-                                        </select>
-                                        <label
-                                            style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:{{ $tIsDestr ? '#ef4444' : '#6b7280' }};cursor:pointer;white-space:nowrap">
-                                            <div class="tog {{ $tIsDestr ? 'on' : '' }}"
-                                                onclick="toggleDestructive(this)"></div> Destructive?
-                                        </label>
+@endif
+                     @if(hasPermission('ai_agent', 'test'))
+                        <!-- ⑬ TEST CONSOLE --> 
+                        <div class="card m-2" id="test-section" data-tab="test">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:#1e1e2e">⌨️</div>
+                                    <div>
+                                        <div class="st">Test Agent</div>
+                                        <div class="ss2">Send a test message and preview the live response</div>
+                                    </div>
+                                </div> 
+                                <span class="pill {{ $env === 'prod' ? 'er' : ($env === 'staging' ? 'dr' : 'ac') }}"
+                                    id="env-badge">{{ ucfirst($env) }}</span>
+                            </div>
+                            <div class="console">
+                                <div class="con-label">Your Message</div>
+                                <textarea class="con-in" id="con-in" placeholder="e.g. Show me vendor sales for last month..."></textarea>
+                                <button class="con-run" onclick="runTest()">▶ Run Agent</button>
+                                <div class="con-label" style="margin-top:13px">Agent Response</div>
+                                <div class="con-out" id="con-out">// Response will appear here after running the agent...
+                                </div>
+                            </div>
+                        </div>
+                    
+    
+                        <!-- ⑭ RUN LOGS -->
+                        <div class="card m-2" data-tab="test">
+                            <div class="sch">
+                                <div class="sch-l">
+                                    <div class="ico" style="background:linear-gradient(135deg,#374151,#1f2937)">📋</div>
+                                    <div>
+                                        <div class="st">Run Logs</div>
+                                        <div class="ss2">Recent execution history</div>
+                                    </div>
+                                </div>
+                                <span style="font-size:11.5px;color:#9ca3af">Last 5 runs</span>
+                            </div>
+                            <div class="log-list">
+                                @forelse($a->runLogs as $log)
+                                    @php
+                                        $logIcCls = match ($log->status) {
+                                            'success' => 'ok',
+                                            'failed' => 'fa',
+                                            default => 'wa',
+                                        };
+                                        $logIcTxt = match ($log->status) {
+                                            'success' => '✓',
+                                            'failed' => '✕',
+                                            default => '!',
+                                        };
+                                        $logPill = match ($log->status) {
+                                            'success' => 'ac',
+                                            'failed' => 'er',
+                                            default => 'dr',
+                                        };
+                                        $logPillLbl = match ($log->status) {
+                                            'success' => 'OK',
+                                            'failed' => 'ERROR',
+                                            default => 'PENDING',
+                                        };
+                                    @endphp
+                                    <div class="log-i">
+                                        <div class="log-ic {{ $logIcCls }}">{{ $logIcTxt }}</div>
+                                        <div class="log-b">
+                                            <div class="log-t">{{ $log->message }}</div>
+                                            <div class="log-m">{{ $log->created_at?->format('M d, g:i A') }} ·
+                                                {{ $log->trigger_type }} · {{ $log->version_tag }}</div>
+                                        </div>
                                         <span
-                                            class="pill {{ $tIsDestr ? 'er' : $tStatCls }}">{{ $tIsDestr ? 'Destructive' : $tStatLbl }}</span>
-                                        <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
+                                            style="font-size:11px;font-weight:600;color:#6b7280">{{ $log->duration_ms ? round($log->duration_ms / 1000, 1) . 's' : '—' }}</span>
+                                        <span class="pill {{ $logPill }}"
+                                            style="margin-left:8px">{{ $logPillLbl }}</span>
                                     </div>
-                                    <input class="ti" type="text" value="{{ $task->description }}"
-                                        style="margin-top:6px;color:#6b7280;font-size:11.5px">
-                                    <div class="tk-warn" style="display:{{ $tIsDestr ? 'flex' : 'none' }}">⚠️ This task
-                                        is marked destructive. Vendor must approve before execution.</div>
-                                    <div class="tk-conf-row {{ $tIsDestr ? '' : 'hidden' }}">
-                                        <span style="font-size:13px">✅</span>
-                                        <span class="tk-conf-label">Require vendor approval before running this task</span>
-                                        <div class="tog gr {{ $task->require_approval ? 'on' : '' }}"
-                                            onclick="this.classList.toggle('on')"></div>
+                                @empty
+                                    <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No run logs yet
                                     </div>
-                                </div>
-                            @empty
-                                <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No tasks defined
-                                    yet</div>
-                            @endforelse
+                                @endforelse
+                            </div>
                         </div>
-                        <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                            <button class="bsav" onclick="saveAgent()">💾 Save Tasks</button>
-                        </div>
-                    </div>
+                        @endif
+                     @if(hasPermission('ai_agent', 'edit'))
 
-                    <!-- ⑪ ERROR HANDLING STRATEGY -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#dc2626,#991b1b)">⚠️</div>
-                                <div>
-                                    <div class="st">Error Handling Strategy</div>
-                                    <div class="ss2">What the agent does when API calls fail or timeout</div>
-                                </div>
-                            </div>
+                        <!-- Bottom bar (basic tab only) -->
+                        <div class="ai-bb">
+                            <button class="bsav" style="padding:9px 26px;font-size:13px" onclick="saveAgent()">💾 Save Agent</button>
                         </div>
-                        <div class="eh-grid">
-                            <div class="eh-item">
-                                <div class="eh-label">On API Failure</div>
-                                <div class="fr c2" style="margin-bottom:10px">
-                                    <div class="fg">
-                                        <label class="fl">Retry Count</label>
-                                        <select class="fc" id="ag-retry">
-                                            <option value="0" @selected(($a->retry_count ?? 1) == 0)>0 — No retry</option>
-                                            <option value="1" @selected(($a->retry_count ?? 1) == 1)>1 — Retry once</option>
-                                            <option value="2" @selected($a->retry_count == 2)>2 — Retry twice</option>
-                                            <option value="3" @selected($a->retry_count == 3)>3 — Retry 3x</option>
-                                        </select>
-                                    </div>
-                                    <div class="fg">
-                                        <label class="fl">Backoff Strategy</label>
-                                        <select class="fc" id="ag-backoff">
-                                            <option value="none" @selected($a->backoff_strategy === 'none')>None</option>
-                                            <option value="linear" @selected(($a->backoff_strategy ?? 'linear') === 'linear')>Linear (2s)</option>
-                                            <option value="exponential" @selected($a->backoff_strategy === 'exponential')>Exponential</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <label class="fl" style="margin-bottom:6px">Fallback Message to Vendor</label>
-                                <textarea class="fallback-ta" id="ag-fallback">{{ $a->fallback_message ?? "Sorry, I couldn't complete this action right now. Please try again in a moment or contact support." }}</textarea>
-                            </div>
-                            <div class="eh-item">
-                                <div class="eh-label">Escalation Rules</div>
-                                @foreach ($allEscalations as $escKey => $escData)
-                                    @php $escOn = $escalation[$escKey] ?? ($escKey !== 'timeout'); @endphp
-                                    <div class="esc-row">
-                                        <div class="esc-icon">{{ $escData[0] }}</div>
-                                        <div class="esc-body">
-                                            <div class="esc-title">{{ $escData[1] }}</div>
-                                            <div class="esc-sub">{{ $escData[2] }}</div>
-                                        </div>
-                                        <div class="tog gr {{ $escOn ? 'on' : '' }}" id="esc-{{ $escKey }}"
-                                            onclick="this.classList.toggle('on')"></div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                        @endif
 
-                    <!-- ⑫ NOTIFICATIONS & OUTPUT -->
-                    <div class="card m-2" data-tab="basic">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#f97316,#ea580c)">🔔</div>
-                                <div>
-                                    <div class="st">Notifications & Output</div>
-                                    <div class="ss2">Where to send agent results and alerts</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="ng">
-                            @foreach ($allNotifs as $notifKey => $notifData)
-                                @php $notifOn = $notifSettings[$notifKey] ?? in_array($notifKey, ['telegram','email','in_app']); @endphp
-                                <div class="ni">
-                                    <div class="nico" style="background:{{ $notifData[3] }}">{{ $notifData[0] }}
-                                    </div>
-                                    <div class="nb">
-                                        <div class="nl">{{ $notifData[1] }}</div>
-                                        <div class="nh">{{ $notifData[2] }}</div>
-                                    </div>
-                                    <div class="tog {{ $notifOn ? 'on' : '' }}" id="notif-{{ $notifKey }}"
-                                        onclick="this.classList.toggle('on')"></div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <!-- ⑬ TEST CONSOLE --> 
-                    <div class="card m-2" id="test-section" data-tab="test">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:#1e1e2e">⌨️</div>
-                                <div>
-                                    <div class="st">Test Agent</div>
-                                    <div class="ss2">Send a test message and preview the live response</div>
-                                </div>
-                            </div> 
-                            <span class="pill {{ $env === 'prod' ? 'er' : ($env === 'staging' ? 'dr' : 'ac') }}"
-                                id="env-badge">{{ ucfirst($env) }}</span>
-                        </div>
-                        <div class="console">
-                            <div class="con-label">Your Message</div>
-                            <textarea class="con-in" id="con-in" placeholder="e.g. Show me vendor sales for last month..."></textarea>
-                            <button class="con-run" onclick="runTest()">▶ Run Agent</button>
-                            <div class="con-label" style="margin-top:13px">Agent Response</div>
-                            <div class="con-out" id="con-out">// Response will appear here after running the agent...
-                            </div>
-                        </div>
-                    </div>
- 
-                    <!-- ⑭ RUN LOGS -->
-                    <div class="card m-2" data-tab="test">
-                        <div class="sch">
-                            <div class="sch-l">
-                                <div class="ico" style="background:linear-gradient(135deg,#374151,#1f2937)">📋</div>
-                                <div>
-                                    <div class="st">Run Logs</div>
-                                    <div class="ss2">Recent execution history</div>
-                                </div>
-                            </div>
-                            <span style="font-size:11.5px;color:#9ca3af">Last 5 runs</span>
-                        </div>
-                        <div class="log-list">
-                            @forelse($a->runLogs as $log)
-                                @php
-                                    $logIcCls = match ($log->status) {
-                                        'success' => 'ok',
-                                        'failed' => 'fa',
-                                        default => 'wa',
-                                    };
-                                    $logIcTxt = match ($log->status) {
-                                        'success' => '✓',
-                                        'failed' => '✕',
-                                        default => '!',
-                                    };
-                                    $logPill = match ($log->status) {
-                                        'success' => 'ac',
-                                        'failed' => 'er',
-                                        default => 'dr',
-                                    };
-                                    $logPillLbl = match ($log->status) {
-                                        'success' => 'OK',
-                                        'failed' => 'ERROR',
-                                        default => 'PENDING',
-                                    };
-                                @endphp
-                                <div class="log-i">
-                                    <div class="log-ic {{ $logIcCls }}">{{ $logIcTxt }}</div>
-                                    <div class="log-b">
-                                        <div class="log-t">{{ $log->message }}</div>
-                                        <div class="log-m">{{ $log->created_at?->format('M d, g:i A') }} ·
-                                            {{ $log->trigger_type }} · {{ $log->version_tag }}</div>
-                                    </div>
-                                    <span
-                                        style="font-size:11px;font-weight:600;color:#6b7280">{{ $log->duration_ms ? round($log->duration_ms / 1000, 1) . 's' : '—' }}</span>
-                                    <span class="pill {{ $logPill }}"
-                                        style="margin-left:8px">{{ $logPillLbl }}</span>
-                                </div>
-                            @empty
-                                <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No run logs yet
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <!-- Bottom bar (basic tab only) -->
-                    <div class="ai-bb">
-                        <button class="bsav" style="padding:9px 26px;font-size:13px" onclick="saveAgent()">💾 Save Agent</button>
-                    </div>
                 @else
                     <!-- Empty state -->
                     <div
                         style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60%;color:#9ca3af">
                         <div style="font-size:48px;margin-bottom:16px">🤖</div>
                         <div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:8px">No Agent Selected</div>
-                        <div style="font-size:13px">Create a new skill or select one from the left panel</div>
-                        <button class="btn-n" style="margin-top:20px" onclick="openNewSkillModal()">+ Create New
-                            Skill</button>
+                        @if(hasPermission('ai_agent', 'add'))
+                            <div style="font-size:13px">Create a new skill or select one from the left panel</div>
+                            <button class="btn-n" style="margin-top:20px" onclick="openNewSkillModal()">+ Create New
+                                Skill</button>
+                        @endif
                     </div>
                 @endif
 

@@ -153,7 +153,7 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
 
         $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'default')->where('platform', 'app')
-            ->select("title", "image", "default_link", 'created_at')
+            ->select("id", "title", "image", "default_link", 'created_at')
             ->get();
 
         foreach ($banners as $key => $value) {
@@ -171,7 +171,7 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
         $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('platform', 'app')->where('data', $ctId)
             ->whereIn('zone_id', $zone_ids)
-            ->select("title", "image", "default_link", 'created_at')
+            ->select("id","title", "image", "default_link", 'created_at')
             ->get(); 
         foreach ($banners as $key => $value) {
             $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
@@ -245,7 +245,7 @@ class BannerController extends Controller
     ->whereIn('zone_id', json_decode($zone_id, true))
     ->where('platform', 'app')
     ->where('data', $store_id)
-    ->select("title", "image", "default_link", 'created_at')
+    ->select("id","title", "image", "default_link", 'created_at')
     ->get()
     ->map(function ($banner) {
         $banner->image = asset('storage/banner/' . $banner->image);

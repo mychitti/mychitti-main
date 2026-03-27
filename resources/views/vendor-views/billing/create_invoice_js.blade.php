@@ -1,4 +1,10 @@
  <script>
+     let invoiceDeleteRowUrl = "{{ route('vendor.invoice.delete-row') }}";
+     let inventoryGetItemInfoUrl = "{{ route('vendor.inventory.get-item-info') }}";
+     let customerFetchDetailsUrl = "{{ route('vendor.customer.fetch-details') }}";
+     let invoiceValidateInvoiceNumUrl = "{{ route('vendor.invoice.validate-invoicenum') }}";
+     let businessSettingsTncFetchUrl = "{{ route('vendor.business-settings.tnc.fetch', ':id') }}";
+     let businessSettingsSignatureFetchUrl = "{{ route('vendor.business-settings.signature.fetch') }}";
      $('.submit_btn').on('click', function() {
          if ($('.item_row').length) {
              $("#invoice_form").submit();
@@ -11,7 +17,7 @@
          console.log(val)
          if (val == 'Cash and Online') {
              $(".partial_payment").show()
-         } else {
+         } else { 
              $(".partial_payment").hide()
          }
      })

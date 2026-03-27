@@ -242,23 +242,25 @@
                             <div class="__nav-module-body">
                                 <div class="__nav-module-items">
                                     @foreach ($modules as $module)
-                                        <a href="javascript:"
+                                        @if($module->id != 9 || hasMasterModulePermission('ai_agent'))
+                                            <a href="javascript:"
 
-                                            data-module-id="{{ $module->id }}"
-                                            data-url="{{route('admin.dashboard')}}"
-                                            data-filter="module_id"
+                                                data-module-id="{{ $module->id }}"
+                                                data-url="{{route('admin.dashboard')}}"
+                                                data-filter="module_id"
 
-                                        class="__nav-module-item set-module {{ !_isCommonDashboard() && Config::get('module.current_module_id') == $module->id ?'active':''}}">
-                                            <div class="img w--70px ">
-                                                <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($module?->icon, asset('storage/app/public/'. ($module->thumbnail_path ?? 'module/') ).'/' . $module?->icon, asset('public/assets/admin/img/new-img/module/e-shop.svg') ,($module->thumbnail_path ?? 'module/') )}}"
-                                                     data-onerror-image="{{asset('public/assets/admin/img/new-img/module/e-shop.svg')}}"
-                                                alt="new-img" class="mw-100 onerror-image">
-                                            </div>
-                                            <div>
-                                                {{ $module->module_name }}
-                                            </div>
-                                        </a>
-                                        @endforeach
+                                                class="__nav-module-item set-module {{ !_isCommonDashboard() && Config::get('module.current_module_id') == $module->id ?'active':''}}">
+                                                <div class="img w--70px ">
+                                                    <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($module?->icon, asset('storage/app/public/'. ($module->thumbnail_path ?? 'module/') ).'/' . $module?->icon, asset('public/assets/admin/img/new-img/module/e-shop.svg') ,($module->thumbnail_path ?? 'module/') )}}"
+                                                        data-onerror-image="{{asset('public/assets/admin/img/new-img/module/e-shop.svg')}}"
+                                                    alt="new-img" class="mw-100 onerror-image">
+                                                </div>
+                                                <div>
+                                                    {{ $module->module_name }}
+                                                </div>
+                                            </a>
+                                        @endif
+                                    @endforeach
                                         @php($logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
                                         <a href="{{ route('admin.common-dashboard') }}"
                                                 class="__nav-module-item {{ _isCommonDashboard() ? 'active':'' }} ">

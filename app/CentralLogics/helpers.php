@@ -209,7 +209,7 @@ class Helpers
             'url' => asset('storage/app/public/inventory/gatepass') . '/' . $pdfName
         ];
     }
-    public static function generateInventoryGatepass($invoice, $driver_data, $type, $request = null)
+    public static function generateInventoryGatepass($invoice, $driver_data, $type, $request = null, $storeId = null)
     {
         $gatepassNum = Helpers::invGatepassNumber($type);
         $gatePassNumber = $gatepassNum['gp_id'];
@@ -219,7 +219,7 @@ class Helpers
         $pass->type = $type;
         $pass->gatepass_number = $gatePassNumber;
         $pass->serial_number = $gatePassSerial;
-        $pass->store_id = Helpers::get_store_id();
+        $pass->store_id = $storeId ??  Helpers::get_store_id();
         $pass->invoice_id = $invoice ? $invoice->invoice_id : null;
         $pass->driver_data = json_encode($driver_data);
         $pass->route = $request ? $request->route : null;
@@ -251,7 +251,7 @@ class Helpers
                     $gpItem->gatepass_id = $pass->id;
                     $gpItem->name = $value;
                     $gpItem->qty = $request->item_qty[$key];
-                    $gpItem->unit = $request->item_unit[$key];
+                    $gpItem->unit = isset($request->item_unit[$key]) ? $request->item_unit[$key] : null;
                     $gpItem->price = $request->item_price[$key];
                     $gpItem->save();
 
@@ -263,8 +263,22 @@ class Helpers
         $pass->save();
         $gpItems = InventoryGatepassItem::where('gatepass_id', $pass->id)->get();
         // prx($driver_data);
-        $store = Helpers::get_store_data();
-        $html = View::make('document_templates/inventory_gatepass', compact('pass', 'gpItems', 'driver_data', 'pass', 'store', 'gatePassNumber'))->render();
+        if (auth('admin')->check()) {
+            $store_data = [
+                'name' => BusinessSetting::where('key', 'business_name')->first()?->value,
+                'phone' =>  BusinessSetting::where('key', 'phone')->first()?->value,
+                'email' =>  BusinessSetting::where('key', 'email')->first()?->value,
+            ];
+        } else {
+            $store = Helpers::get_store_data();
+            $store_data = [
+                'name' => $store->name,
+                'phone' => $store->phone,
+                'email' => $store->email,
+            ];
+        }
+
+        $html = View::make('document_templates/inventory_gatepass', compact('pass', 'gpItems', 'driver_data', 'pass', 'store_data', 'gatePassNumber'))->render();
         $tempDir = storage_path('app/mpdf_temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0775, true);
@@ -371,7 +385,7 @@ class Helpers
 
         // if ($supplyOrder->store_id) {
         // $supplyOrder->store_id
-        $uDetails = Store::withoutGlobalScopes()->where('id', Helpers::get_store_id())->first();
+        $uDetails = Helpers::get_store_data();
         $bill_to['address']  = $uDetails->address;
         $bill_to['logo']  = $uDetails->logo;
         $shipping_address->address = $uDetails->address;
@@ -526,11 +540,37 @@ class Helpers
         $nextNumber =  str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
         return $nextNumber;
     }
+    public static function ensureAdminDefaultExpensesAccount()
+    {
+        $storeId = self::get_store_id();
+        $defaultExpLedger = StoreAccount::where('store_id', $storeId)
+            ->where('name', 'Default Expenses')
+            ->where('entity_type', 'admin')
+            ->first();
+
+        if (!$defaultExpLedger) {
+            $expenseTypeId = LedgerAccountType::where('name', 'Expenses')->first()->id ?? 1;
+            $defaultExpLedger = StoreAccount::create([
+                'store_id' => $storeId,
+                'ledger_account_type_id' => $expenseTypeId,
+                'parent_id' => null,
+                'code' => _accountCode($expenseTypeId, null),
+                'name' => 'Default Expenses',
+                'description' => 'Default Expenses',
+                'level' => 1,
+                'entity_type' => 'admin'
+            ]);
+        }
+
+        return $defaultExpLedger;
+    }
     public static function ensureDefaultExpensesAccount()
     {
         $storeId = self::get_store_id();
         $defaultExpLedger = StoreAccount::where('store_id', $storeId)
             ->where('name', 'Default Expenses')
+            ->where('entity_type', 'store')
+            
             ->first();
 
         if (!$defaultExpLedger) {
@@ -597,9 +637,9 @@ class Helpers
 
         return $salaryLedger;
     }
-    public static function ensureDepartmentLedger($department)
+    public static function ensureDepartmentLedger($department, $storeId = null)
     {
-        $storeId = Helpers::get_store_id();
+        $storeId = $storeId ?? Helpers::get_store_id();
 
         $salaryLedger = self::ensureSalaryLedger($storeId);
 
@@ -916,12 +956,12 @@ class Helpers
 
         return $subscriptionRevenue;
     }
-    public static function ensureEmployeeLedger($employee)
+    public static function ensureEmployeeLedger($employee, $storeId = null)
     {
-        $storeId = Helpers::get_store_id();
+        $storeId = $storeId ?? Helpers::get_store_id();
         $fullName = trim($employee->f_name . ' ' . $employee->l_name);
 
-        $deptAccount = self::ensureDepartmentLedger($employee->department);
+        $deptAccount = self::ensureDepartmentLedger($employee->department, $storeId);
 
         $ledger = StoreAccount::find($employee->ledger_account_id);
 
@@ -1018,6 +1058,41 @@ class Helpers
 
         return $ledger;
     }
+    public static function ensureStoreLedger($customer)
+    {
+        $storeId = 0;
+        $fullName = trim($customer->name );
+
+        $parentAccount = self::ensureAccountsReceivableLedger();
+
+        $ledger = StoreAccount::find($customer->ledger_account_id);
+        $expenseTypeId = LedgerAccountType::where('name', 'Assets')->first()->id ?? 1;
+
+        if (!$ledger) {
+            $ledger = StoreAccount::create([
+                'store_id' => $storeId,
+                'parent_id' => $parentAccount->id,
+                'account_type' => 'common',
+                'acc_type' => 'debit',
+                'code' => _accountCode($expenseTypeId, $parentAccount->id),
+                'name' =>  $fullName,
+                'ledger_account_type_id' => $expenseTypeId,
+                'description' => "Ledger for Customer {$fullName}",
+                'level' => $parentAccount->level + 1,
+                'status' => 1,
+                'entity_type' => 'customer'
+            ]);
+
+            $customer->update(['ledger_account_id' => $ledger->id]);
+        } else {
+            $ledger->update([
+                'name' => $fullName,
+                'description' => "Ledger for Customer {$fullName}",
+            ]);
+        }
+
+        return $ledger;
+    }
     public static function ensureCustomerLedger($customer)
     {
         $storeId = Helpers::get_store_id();
@@ -1071,12 +1146,12 @@ class Helpers
         return preg_match('/^\d{1,3}\d{10}$/', $phone) === 1;
     }
 
-    public static function _generateTaskId($increment = false)
+    public static function _generateTaskId($increment = false, $storeId = null)
     {
-        $storeId = Helpers::get_store_id();
+        $storeId = $storeId ?? Helpers::get_store_id();
         $store = Helpers::get_store_data();
 
-        $storeConfig = StoreConfig::where("store_id", $store->id)->first();
+        $storeConfig = StoreConfig::where("store_id", $storeId)->first();
 
         $prefix = $storeConfig && $storeConfig->task_id_format !== null ? $storeConfig->task_id_format : self::storePrefix() . '-';
         $next_serial = $storeConfig ? $storeConfig->task_id_serial : 1;
@@ -1116,11 +1191,16 @@ class Helpers
         $prefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $store->name), 0, 3));
         return $prefix;
     }
-    public static function generatePoNumber($gst_type)
+    public static function generatePoNumber($gst_type, $storeId = null)
     {
-        $store = Helpers::get_store_data();
-        $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3);
-        $storeId = Helpers::get_store_id();
+        if ($storeId !== null) {
+            $store_name = BusinessSetting::where('key', 'business_name')->first()?->value;
+        } else {
+            $store = Helpers::get_store_data();
+            $storeId = Helpers::get_store_id();
+            $store_name = $store->name;
+        }
+        $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store_name)), 0, 3);
 
         $column = $gst_type == 'gst' ? 'gst_serial_number' : 'nongst_serial_number';
 
@@ -1978,14 +2058,18 @@ class Helpers
         return $structured;
     }
 
-    public static function bank_transactions_calendar($bank_account_id = null)
+    public static function bank_transactions_calendar($bank_account_id = null, $store_id = null)
     {
+        if ($store_id === null) {
+            $store_id = Helpers::get_store_id();
+        }
+
         if ($bank_account_id == 0) {
-            $data = StoreBankTransaction::where('store_id', Helpers::get_store_id())
+            $data = StoreBankTransaction::where('store_id', $store_id)
                 ->get();
         } else {
             $data = StoreBankTransaction::where('bank_id', $bank_account_id)
-                ->where('store_id', Helpers::get_store_id())
+                ->where('store_id', $store_id)
                 ->get();
         }
 
@@ -2087,6 +2171,21 @@ class Helpers
     }
     public static function generate_RR_serial_number($store = null, $action2 = 'view', $custom_number = null)
     {
+        if (auth('admin')->check()) {
+            $setting = DB::table('business_settings')->where('key', 'receivable_receipt_serial_number')->first();
+            $receipt_number = $custom_number ?? (int) ($setting->value ?? 1);
+            if ($action2 === 'view') {
+                return $custom_number ?? $receipt_number;
+            }
+            $new_num = $custom_number ? $custom_number + 1 : $receipt_number + 1;
+            DB::table('business_settings')
+                ->updateOrInsert( 
+                    ['key' => 'receivable_receipt_serial_number'],
+                    ['value' => $new_num]
+                );
+            return $custom_number ?? $receipt_number;
+        }
+
         if (!$store) {
             $store = DB::table('stores')->where('id', Helpers::get_store_id())->first();
         }
@@ -2367,7 +2466,7 @@ class Helpers
         return $invoice_id;
     }
 
-    public static function generateInvoiceIdAdmin($module = 6)
+    public static function generateInvoiceIdAdmin($module = 6, $save = true)
     {
         if ($module == 6) {
             $prefix = 'MSM';
@@ -2388,8 +2487,10 @@ class Helpers
         $invoice_id = $prefix . '_' . $year . '_' .  $serial;
 
         // Increment the value
-        $setting->value = (int) $setting->value + 1;
-        $setting->save();
+        if ($save) {
+            $setting->value = (int) $setting->value + 1;
+            $setting->save();
+        }
 
         return $invoice_id;
     }
@@ -3685,7 +3786,6 @@ class Helpers
                 // $item['positive_rating'] = $ratings['positive_rating'];
                 $item['logo'] = self::onerror_image_helper($item['logo'], $baseUrl . $item['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
                 $item['cover_photo'] = self::onerror_image_helper($item['cover_photo'], $baseUrl . 'cover/' . $item['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
-
                 array_push($storage, $item);
             }
             $data = $storage;
@@ -3694,6 +3794,7 @@ class Helpers
             $data['cover_photo'] = self::onerror_image_helper($data['cover_photo'], $baseUrl . 'cover/' . $data['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
             unset($data['rating']);
+
             $data['avg_rating'] = $ratings['rating'];
             $data['rating_count'] = $ratings['total'];
             // $data['positive_rating'] = $ratings['positive_rating'];
@@ -3711,6 +3812,8 @@ class Helpers
                 $item->load('storeConfig');
                 $ratings = StoreLogic::calculate_store_rating($item['rating']);
                 unset($item['rating']);
+                $item['phone'] = null;
+                $item['secondary_phone'] = null;
                 $item['avg_rating'] = $ratings['rating'];
                 $item['rating_count'] = $ratings['total'];
                 $item['positive_rating'] = $ratings['positive_rating'];
@@ -3736,6 +3839,9 @@ class Helpers
             }
             $ratings = StoreLogic::calculate_store_rating($data['rating']);
             unset($data['rating']);
+            $data['phone'] = null;
+            $data['secondary_phone'] = null;
+
             $data['avg_rating'] = $ratings['rating'];
             $data['rating_count'] = $ratings['total'];
             $data['positive_rating'] = $ratings['positive_rating'];
@@ -5090,12 +5196,29 @@ class Helpers
             return auth('vendor')->user();
         } else if (auth('vendor_employee')->check()) {
             return auth('vendor_employee')->user();
+        } else if (auth('admin')->check()) {
+            return auth('admin')->user();
         }
         return 0;
     }
 
     public static function get_store_data()
     {
+        if (auth('admin')->check()) {
+            return (object) [
+                'name' => BusinessSetting::where('key', 'business_name')->first()?->value ?? 'Admin',
+                'phone' => BusinessSetting::where('key', 'phone')->first()?->value,
+                'email' => BusinessSetting::where('key', 'email_address')->first()?->value,
+                'address' => BusinessSetting::where('key', 'address')->first()?->value,
+                'logo' => BusinessSetting::where('key', 'logo')->first()?->value,
+                'prefix_status' => BusinessSetting::where('key', 'emp_prefix_status')->first()?->value ?? 0,
+                'emp_prefix' => BusinessSetting::where('key', 'emp_prefix')->first()?->value ?? '',
+                'emp_id_serial' => (int)(BusinessSetting::where('key', 'emp_id_serial')->first()?->value ?? 0),
+                'task_statuses' => BusinessSetting::where('key', 'task_statuses')->first()?->value ?? '',
+                'gst' => BusinessSetting::where('key', 'gst_number')->first()?->value ?? '',
+                'pin_code' => BusinessSetting::where('key', 'pin_code')->first()?->value ?? '',
+            ];
+        }
         if (auth('vendor_employee')->check()) {
             return auth('vendor_employee')->user()->store;
         }
@@ -5576,9 +5699,9 @@ class Helpers
     public static function quoteId($storeId = null)
     {
         $storeId = $storeId ?? Helpers::get_store_id();
-        return (Quotation::where('vendor_id', $storeId)->max('quotation_id') ?? 0) + 1;
+        $max = DB::selectOne("SELECT MAX(CAST(quotation_id AS UNSIGNED)) as max_id FROM quotations WHERE vendor_id = ?", [$storeId]);
+        return ($max->max_id ?? 0) + 1;
     }
-
 
     public static function module_permission_check($mod_name)
     {
@@ -5590,14 +5713,44 @@ class Helpers
             return false;
         }
 
+        if (auth('admin')->user()->role_id == 1) {
+            return true;
+        }
+
         $permission = auth('admin')->user()->role->modules;
 
         if (isset($permission) && in_array($mod_name, (array)json_decode($permission))) {
             return true;
         }
 
-        if (auth('admin')->user()->role_id == 1) {
-            return true;
+        // Fallback: check granular permissions (new system)
+        // Map old module names to new master_module values
+        $moduleMapping = [
+            'employee' => 'hr_manage',
+            'employee_role' => 'hr_manage',
+            'attendance' => 'hr_manage',
+            'leave' => 'hr_manage',
+            'salary' => 'hr_manage',
+        ];
+        $masterModule = $moduleMapping[$mod_name] ?? $mod_name;
+
+        try {
+            $hasGranularPermission = DB::table('admin_role_feature_permissions as arfp')
+                ->join('feature_permissions as fp', 'arfp.feature_permission_id', '=', 'fp.id')
+                ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                ->where('arfp.admin_role_id', auth('admin')->user()->role_id)
+                ->where(function ($q) use ($mod_name, $masterModule) {
+                    $q->where('f.master_module', $masterModule)
+                      ->orWhere('f.master_module', $mod_name)
+                      ->orWhere('f.name', $mod_name);
+                })
+                ->exists();
+
+            if ($hasGranularPermission) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Table may not exist yet
         }
 
         return false;

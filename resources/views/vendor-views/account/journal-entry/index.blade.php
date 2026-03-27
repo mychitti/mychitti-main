@@ -270,10 +270,10 @@
                         class=" btn_sm btn btn-outline-primary">Import
                     </button>
                 @endif --}}
-                @if (hasPermission('boa_journal_entry', 'export'))
+                {{-- @if (hasPermission('boa_journal_entry', 'export'))
                     <a class="btn btn-outline-primary  btn_sm " href="{{ route('vendor.account.journal-entry.export') }}">
                         Export </a>
-                @endif
+                @endif --}}
             </div>
         </div>
         <!-- End Page Header -->

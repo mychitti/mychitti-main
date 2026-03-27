@@ -90,6 +90,7 @@ Route::get('/generate-sitemap', [SitemapController::class, 'generate'])->name('g
 Route::get('/sitemap.xml', [SitemapController::class, 'show'])->name('sitemap');
 Route::get('/health-check', fn() => response('OK'));
 Route::get('icons', 'Front\FrontController@icons_view');
+Route::post('track-banner-click', 'Front\FrontController@trackBannerClick')->name('track.banner.click');
 Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');
 Route::post('app-config/update', [FrontController::class, 'app_config_update'])->name('app-config.update');
  
@@ -246,11 +247,12 @@ Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
     });
 });
 Route::group(['middleware' => ['frontuser']], function () {
-    Route::get('/', [FrontController::class, 'index'])->name('home');
+    Route::get('/', [FrontController::class, 'index'])->name('home'); 
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
     Route::get('contact', [FrontController::class, 'contact'])->name('contact');
     Route::get('cart', [FrontController::class, 'cart'])->name('cart');
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
+    Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
     Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first

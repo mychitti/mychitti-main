@@ -6,7 +6,7 @@
 <style>
     .tk-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
     .tk-info-item label { font-size: 12px; color: #8c98a4; margin-bottom: 2px; display: block; }
-    .tk-info-item span { font-weight: 600; font-size: 14px; }
+    .tk-info-item span { font-weight: 600; font-size: 14px; } 
     .tk-reply { padding: 16px; border-radius: 8px; margin-bottom: 12px; }
     .tk-reply-admin { background: #e8f4fd; border-left: 3px solid #0d6efd; }
     .tk-reply-other { background: #f8f9fa; border-left: 3px solid #6c757d; }
@@ -18,10 +18,10 @@
 @endpush
 
 @section('content') 
-    <div class="content container-fluid">
-        <div class="page-header">
+    <div class="content container-fluid"> 
+        <div class="page-header"> 
             <div class="row align-items-center">
-                <div class="col-sm mb-2 mb-sm-0">
+                <div class="col-sm mb-2 mb-sm-0"> 
                     <h1 class="page-header-title">
                         <span class="page-header-icon"><i class="tio-support"></i></span>
                         <span>{{ $ticket->ticket_id }}</span>
@@ -34,6 +34,7 @@
                     </h1>
                 </div>
                 <div class="col-sm-auto d-flex gap-2">
+                    @if(hasPermission('support_ticket', 'status'))
                     @if($ticket->status != 'closed')
                         <form action="{{ route('admin.ticket.status', $ticket->id) }}" method="POST" class="d-inline">
                             @csrf
@@ -51,6 +52,7 @@
                                 <i class="tio-refresh"></i> Reopen
                             </button>
                         </form>
+                    @endif
                     @endif
                     <a href="{{ route('admin.ticket.index') }}" class="btn btn-sm btn-outline-primary">
                         <i class="tio-back-ui"></i> Back
@@ -95,6 +97,7 @@
                             <p class="text-muted text-center py-3">No replies yet.</p>
                         @endforelse
 
+                        @if(hasPermission('support_ticket', 'reply'))
                         <hr>
                         <form action="{{ route('admin.ticket.reply', $ticket->id) }}" method="POST">
                             @csrf
@@ -108,6 +111,7 @@
                                 </button>
                             </div>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -180,6 +184,7 @@
                 </div>
 
                 {{-- Assign Staff --}}
+                @if(hasPermission('support_ticket', 'assign'))
                 <div class="card">
                     <div class="card-header"><h5 class="card-title mb-0">Assign Staff</h5></div>
                     <div class="card-body">
@@ -199,6 +204,7 @@
                         </form>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

@@ -1,147 +1,199 @@
 @extends('layouts.admin.app')
 
-@section('title', 'Employee List')
+@section('title', 'Staff List')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 @endpush
 
 @section('content')
+
+
     <div class="content container-fluid">
         <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Employee <span class="badge badge-soft-dark ml-2"
+        <div class="page-header d-flex align-items-center justify-content-between w-100">
+            <h1 class="page-header-title"><i class="tio-filter-list"></i> Staff <span class="badge badge-soft-dark ml-2"
                     id="itemCount">{{ count($staff) }}</span></h1>
-            <div class="page-header-select-wrapper">
+            <div class="">
+                @if (hasPermission('leave_manage', 'settings'))
+                    <button type="button" class="btn btn_sm btn--primary" data-toggle="modal" data-target="#leaveModal">Edit
+                        Leave
+                        Allowance</button>
+                    <div class="modal fade" id="leaveModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Leave Allowance</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="{{ route('admin.business-settings.edit-leaves') }}" method="post">
+                                        @csrf
+                                        <div class="form-group">
+                                            <label for="exampleInputEmail1">Casual Leaves</label>
+                                            <input name="cl"
+                                                value="{{ isset($store_config) ? $store_config->cl_for_employees : '' }}"
+                                                type="number" class="form-control" id="exampleInputEmail1"
+                                                aria-describedby="emailHelp">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="exampleInputEmail1">Sick Leaves</label>
+                                            <input name="sl"
+                                                value="{{ isset($store_config) ? $store_config->sl_for_employees : '' }}"
+                                                type="number" class="form-control" id="exampleInputEmail1"
+                                                aria-describedby="emailHelp">
+                                        </div>
+                                        <div class="d-flex justify-content-end w-100 gap-2">
+                                            <button type="button" class="btn btn-secondary"
+                                                data-dismiss="modal">Close</button>
+                                            <button type="submit" class="btn btn-primary">Save changes</button>
+                                        </div>
+                                    </form>
+                                </div>
 
-                @if (!isset(auth('vendor')->user()->zone_id))
-                    <div class="select-item">
-                        <select name="zone_id" class="form-control js-select2-custom"
-                            onchange="set_filter('{{ url()->full() }}',this.value,'zone_id')">
-                            <option value="" {{ !request('zone_id') ? 'selected' : '' }}>
-                                {{ translate('messages.All_Zones') }}</option>
-                            @foreach (\App\Models\Zone::orderBy('name')->get() as $z)
-                                <option value="{{ $z['id'] }}"
-                                    {{ isset($zone) && $zone->id == $z['id'] ? 'selected' : '' }}>
-                                    {{ $z['name'] }}
-                                </option>
-                            @endforeach
-                        </select>
+                            </div>
+                        </div>
                     </div>
                 @endif
             </div>
         </div>
         <!-- End Page Header -->
 
-
-
         <!-- Card -->
-        <div class="card">
-            <!-- Header -->
-            <div class="card-header py-2">
-                <div class="search--button-wrapper">
-                    <h5 class="card-title">Employee List</h5>
-                    <form action="javascript:" id="search-form" class="search-form">
-                        <!-- Search -->
-                        @csrf
-                        <div class="input-group input--group">
-                            <input id="datatableSearch_" type="search" name="search" class="form-control"
-                                placeholder="Search Employee" aria-label="{{ translate('messages.search') }}" required>
-                            <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
+        @if (hasPermission('leave_manage', 'list'))
 
-                        </div>
-                        <!-- End Search -->
-                    </form>
+            <div class="card">
+                <!-- Header -->
+                <div class="card-header py-2">
+                    <div class="search--button-wrapper">
+                        <h5 class="card-title">Staff List</h5>
+                        <form action="javascript:" id="search-form" class="search-form">
+                            <!-- Search -->
+                            @csrf
+                            <div class="input-group input--group">
+                                <input id="datatableSearch_" type="search" name="search" class="form-control"
+                                    placeholder="Search Staff" aria-label="{{ translate('messages.search') }}" required>
+                                <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
 
-                    <!-- End Unfold -->
+                            </div>
+                            <!-- End Search -->
+                        </form>
+
+                        <!-- End Unfold -->
+                    </div>
                 </div>
-            </div>
-            <!-- End Header -->
+                <!-- End Header -->
 
-            <!-- Table -->
-            <div class="table-responsive datatable-custom">
-                <table id="columnSearchDatatable"
-                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
-                    data-hs-datatables-options='{
+                <!-- Table -->
+                <div class="table-responsive datatable-custom">
+                    <table id="columnSearchDatatable"
+                        class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                        data-hs-datatables-options='{
                             "order": [],
                             "orderCellsTop": true,
                             "paging":false
 
                         }'>
-                    <thead class="thead-light">
-                        <tr>
-                            <th class="border-0">{{ translate('sl') }}</th>
-                            <th class="border-0">Info</th>
-                            <th class="border-0">Mobile</th>
-                            <th class="border-0">Role</th>
-                            <th class="text-uppercase border-0">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="set-rows">
-                        @foreach ($staff as $lead)
+                        <thead class="thead-light">
                             <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td>
-                                    <div>
-                                        <a href="#" class="table-rest-info" alt="view store">
-
-                                            <div class="info">
-                                                <div class="text--title">
-                                                    {{ $lead->f_name . ' ' . $lead->l_name }}
-                                                </div>
-                                             
-                                                <div class="font-light">
-                                                    {{ $lead->email }}
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="d-block font-size-sm text-body">
-                                       {{ $lead->phone }}
-                                    </span>
-
-                                </td>
-                                <td>
-                                    <div>
-                                       @php
-                                    $roleNm = _getWhere('admin_roles', ['id' => $lead->role_id]);
-                                    if (isset($roleNm[0])) {
-                                        echo $roleNm[0]->name;
-                                } @endphp
-                                    </div>
-                                </td>
-                        
-                               
-
-                                <td>
-                                    <span class="d-block font-size-sm text-body">
-                                        <a style="min-width:50px;" class="btn  btn--primary btn-outline-primary"
-                                        href="{{route('admin.users.leave.manage',[$lead['id']])}}"title="{{translate('messages.edit')}} Employee">Manage Leave
-                                        </a>
-                                    </span>
-                                </td>
+                                <th class="border-0">{{ translate('sl') }}</th>
+                                <th class="border-0">Info</th>
+                                <th class="border-0">Department</th>
+                                <th class="border-0">Role</th>
+                                <th class="text-uppercase border-0">Action</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @if (count($staff))
-                    <hr>
-                @else
-                    <div class="page-area">
-                    </div>
-                    <div class="empty--data">
-                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                        <h5>
-                            {{ translate('no_data_found') }}
-                        </h5>
-                    </div>
-                @endif
+                        </thead>
+
+                        <tbody id="set-rows">
+                            @foreach ($staff as $lead)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>
+                                        <div>
+                                            <a href="#" class="table-rest-info" alt="view store">
+
+                                                <div class="info">
+                                                    <div class="text--title">
+                                                        {{ $lead->f_name . ' ' . $lead->l_name }}
+                                                    </div>
+                                                    <div class="font-light">
+                                                        {{ $lead->phone }}
+                                                    </div>
+                                                    <div class="font-light">
+                                                        {{ $lead->email }}
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="d-block font-size-sm text-body">
+                                            @php
+                                                // print_r( _getWhere('departments', ['id'=> $lead->department_id])[0]);
+                                                $depNm = _getWhere('departments', ['id' => $lead->department_id]);
+                                                if (isset($depNm[0])) {
+                                                    echo $depNm[0]->title;
+                                            } @endphp
+                                        </span>
+
+                                    </td>
+                                    <td>
+                                        <div>
+                                            @php
+                                                // print_r( _getWhere('departments', ['id'=> $lead->department_id])[0]);
+                                                $roleNm = _getWhere('employee_roles', [
+                                                    'id' => $lead->employee_role_id,
+                                                ]);
+                                                if (isset($roleNm[0])) {
+                                                    echo $roleNm[0]->name;
+                                            } @endphp
+                                        </div>
+                                    </td>
+
+
+
+                                    <td>
+                                        @if (hasPermission('leave_manage', 'view'))
+                                            <span class="d-block font-size-sm text-body">
+                                                <a style="min-width:50px;" class="btn  btn--primary btn-outline-primary"
+                                                    href="{{ route('admin.leave.manage', [$lead['id']]) }}"title="{{ translate('messages.edit') }} Staff">Manage
+                                                    Leave
+                                                    @if (_pendingLeavesCount($lead['id']))
+                                                        <span class="badge badge-danger"
+                                                            style="    position: absolute;
+                                            min-width: fit-content;
+                                            top: -4px;
+                                            border-radius: 50%;
+                                            padding: 4px 8px;
+                                            right: -4px;">{{ _pendingLeavesCount($lead['id']) }}</span>
+                                                    @endif
+                                                </a>
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @if (count($staff))
+                        <hr>
+                    @else
+                        <div class="page-area">
+                        </div>
+                        <div class="empty--data">
+                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
+                            <h5>
+                                {{ translate('no_data_found') }}
+                            </h5>
+                        </div>
+                    @endif
+                </div>
+                <!-- End Table -->
             </div>
-            <!-- End Table -->
-        </div>
+        @endif
         <!-- End Card -->
     </div>
 

@@ -27,7 +27,8 @@ class TaskSalaryCategoryController extends Controller
 {
     public function index()
     {
-        $categories = TaskSalaryCategory::paginate(10);
+        $storeId = Helpers::get_store_id();
+        $categories = TaskSalaryCategory::where('store_id', $storeId)->paginate(10);
         return view('vendor-views.task_salary_categories.index', compact('categories'));
     }
     public function show($id)

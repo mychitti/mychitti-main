@@ -157,8 +157,8 @@ class SettingsController extends Controller
                 ($children->get($store_data->category_2, collect()))->pluck('id')->toArray()
             );
 
-            $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->get();
-            $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->get();
+            $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->whereNull("inventory_item_id")->get();
+            $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->whereNull("inventory_item_id")->get();
             $module_categories = Category::where('module_id', $store_data->module_id)->where('position', 0)->where('status', 1)->get();
 
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_data', 'items_1', 'items_2', 'module_categories'));

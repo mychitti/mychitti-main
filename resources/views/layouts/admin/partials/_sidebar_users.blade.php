@@ -18,8 +18,8 @@
                 <!-- Navbar Vertical Toggle -->
                 <button type="button" class="js-navbar-vertical-aside-toggle-invoker navbar-vertical-aside-toggle btn btn-icon btn-xs btn-ghost-dark">
                     <i class="tio-clear tio-lg"></i>
-                </button>
-                <!-- End Navbar Vertical Toggle -->
+                </button> 
+                <!-- End Navbar Vertical Toggle --> 
 
                 <div class="navbar-nav-wrap-content-left">
                     <!-- Navbar Vertical Toggle -->
@@ -252,7 +252,14 @@
 
                     </ul>
                 </li>
-                @endif 
+                @endif
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('users/employee-department*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.employee-department.all') }}" title="Departments">
+                        <i class="tio-category nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Departments</span>
+                    </a>
+                </li>
                 <!-- End Employee -->
                 
                    @if (\App\CentralLogics\Helpers::permission_check('att_manage')  && \App\CentralLogics\Helpers::module_permission_check('attendance') )
@@ -292,7 +299,7 @@
                         </a>
                     </li>
                     @endif
-                    
+
                     @if (\App\CentralLogics\Helpers::permission_check('salary_manage') && \App\CentralLogics\Helpers::module_permission_check('salary'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('salary*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="Salary">
@@ -313,8 +320,37 @@
                                     <span class="text-truncate">View</span>
                                 </a>
                             </li>
+                            @if (\App\CentralLogics\Helpers::permission_check('advance_requests'))
+                            <li class="nav-item {{ Request::is('*all-advance-requests*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.users.salary.all-advance-requests') }}" title="Advance Requests">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Advance Requests</span>
+                                </a>
+                            </li>
+                            @endif
 
-
+                        </ul>
+                    </li>
+                    @endif
+                    @if(auth('admin')->user()->role_id != 1)
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('*salary-history*') || Request::is('*advance-payment*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="My Salary">
+                            <i class="tio-money nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Salary</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ Request::is('*salary-history*') || Request::is('*advance-payment*') ? 'block' : 'none' }}">
+                            <li class="nav-item {{ Request::is('*salary-history*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.salary-history') }}" title="Salary History">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Salary History</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ Request::is('*advance-payment*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.advance-payment') }}" title="Advance History">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Advance History</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     @endif

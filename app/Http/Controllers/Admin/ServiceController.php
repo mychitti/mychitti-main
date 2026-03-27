@@ -16,8 +16,15 @@ use Brian2694\Toastr\Facades\Toastr;
 use App\CentralLogics\Helpers;
 use App\Models\Category;
 use App\Models\CommonServiceIssue;
+use App\Models\InvoiceItem;
+use App\Models\ManualInvoice;
+use App\Models\ServiceInvoice;
 use App\Models\ServiceRequest;
 use App\Models\Store;
+use App\Models\StoreCustomer;
+use App\Models\StoreLedgerEntry;
+use App\Models\StoreTask;
+use App\Models\StoreVoucher;
 use App\Models\TempStoreStatus;
 use App\Models\User;
 
@@ -84,7 +91,267 @@ class ServiceController extends Controller
         }
         return view('admin-views.service.leads-list', compact('leads', 'type'));
     }
+     public function mark_paid2(Request $request)
+    {
+        $type = $request->type;
+        if ($type == 'service') {
+            $invoice = ServiceInvoice::find($request->id);
+        } else {
+            $invoice = ManualInvoice::find($request->id);
+        }
+        if ($request->payment_mode == 'Cash and Online' && ($invoice->total_amount != ($request->cash_amount + $request->online_amount))) {
+            Toastr::error('Amount Mismatched');
+            return back();
+        }
+        // voucher update
+        $voucher = StoreVoucher::where('invoice_id', $type . '-' . $invoice->id)->first();
+        if ($voucher) {
+            $voucher->status = 'approved';
+            $voucher->completed_at = now();
+            $voucher->save();
 
+            // ledger entries update 
+            $ledger_entries = StoreLedgerEntry::where('voucher_id', $voucher->id)->get();
+            foreach ($ledger_entries as $key => $value) {
+                $value->status = 'approved';
+                $value->completed_at = now();
+                $value->save();
+            }
+        }
+        $invoice->cash_amount = $request->cash_amount;
+        $invoice->online_amount = $request->online_amount;
+        $invoice->payment_status = 'Paid';
+        $invoice->payment_date = date('Y-m-d');
+        $invoice->save();
+        
+        $data = _createBillPdf($invoice, 'admin');
+        $invoice->update(['pdf' => $data['pdf']]);
+
+        Toastr::success("Payment status changed successfully");
+        return back();
+    }
+    public function save_manual_invoice(Request $request, $task_id = null)
+    {
+        // prx($request->all());
+        $request->validate([
+            'item_name.*' => 'required',
+        ]);
+
+        if ($request->payment_stts == 'Unpaid') {
+            $request->validate([
+                'payment_date' => 'required',
+                'reminder_date' => 'required',
+            ]);
+        }
+        if (
+            $request->payment_stts == 'Paid' && $request->payment_mode == 'Cash and Online'
+            && $request->final_total_amount != $request->cash_amount + $request->online_amount
+        ) {
+            Toastr::error("Amount Mismatched");
+            return  back();
+        }
+
+        $rules = [];
+        $messages = [];
+        $bill_to = null;
+        $customer_rule = 'required';
+
+        if ($request->filled('bill_to')) {
+            $bill_to = $request->bill_to;
+        } elseif ($request->filled('customer_id')) {
+            $bill_to = $request->customer_id;
+            $customer_rule = 'nullable';
+        } elseif (!empty($task_id)) {
+            $task = StoreTask::find($task_id);
+            if ($task && $task->user_id) {
+                $customer_rule = 'nullable';
+                $bill_to = $task->user_id;
+            }
+        }
+
+        if (!$request->has('bill_from')) {
+            $rules['bill_to'] = $customer_rule;
+            $messages['bill_to.required'] = 'Customer field is required';
+            $prefixe = _getInvoicePrefix($request->tax_type);
+        } else {
+            $rules['bill_from'] = 'required';
+            $messages['bill_from.required'] = 'Seller field is required';
+
+            $store = DB::table('stores')->find($request->bill_from);
+            $prefixe = _getInvoicePrefix($request->tax_type, $store);
+        }
+
+        $request->validate($rules, $messages);
+
+        if (!$request->filled('bill_to') && $bill_to) {
+            $request->merge(['bill_to' => $bill_to]);
+        }
+
+
+        // check invoice number 
+        if (is_serial_number_used($request->number, $prefixe,  $request->tax_type)) {
+            Toastr::error("Serial Number Already Used");
+            return  back();
+        }
+
+        $totalPrice = 0;
+        if ($request->has('item_name')) {
+            foreach ($request->item_price as $key => $price) {
+                $totalPrice += _taxIncludedPrice($price, $request->item_tax[$key], 'actual') * $request->item_qty[$key];
+            }
+        }
+        if (isset($request->item_price_new)) {
+            foreach ($request->item_price_new as $key => $price) {
+                $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key], 'actual') * $request->item_qty_new[$key];
+            }
+        }
+
+
+        if ($request->has('number')) {
+            $invoice_id = Helpers::generateInvoiceIdAdmin(6); // M = manual
+        } else {
+            $invoice_id = Helpers::generateInvoiceIdAdmin(6); // M = manual
+        }
+        if ($request->has('bill_from') && $request->bill_from) {
+            $store_id = $request->bill_from;
+            $bill_to = Helpers::get_store_id();
+            $bill_to_type =   'vendor';
+            $user_type =  'vendor';
+        } else {
+            $store_id = Helpers::get_store_id();
+            $bill_to = $bill_to ?? $request->bill_to;
+            $bill_to_type =  'user';
+            $userTypeInfo = StoreCustomer::find($bill_to)->user_type;
+            $user_type =  $userTypeInfo == 'customer' ? 'store_user' : 'store_vendor';
+        }
+
+
+        $invoice = new ManualInvoice;
+        $invoice->task_id =  $task_id;
+        $invoice->invoice_id = $invoice_id;
+        $invoice->reference_number = $request->reference_number;
+        $invoice->vendor_id = $store_id;
+        $invoice->bill_to = $bill_to;
+        $invoice->bill_to_type = $bill_to_type;
+        $invoice->user_type = $user_type;
+        $invoice->module_id =  6;
+        $invoice->total_amount =  $totalPrice;
+        $invoice->tax_type =  $request->tax_type;
+        $invoice->payment_method =  $request->payment_mode;
+        $invoice->payment_mode = $request->payment_mode;
+
+        if ($request->payment_stts == 'Paid' && $request->payment_mode == 'Cash and Online') {
+            $invoice->cash_amount = $request->cash_amount;
+            $invoice->online_amount = $request->online_amount;
+        }
+        $invoice->invoice_date = $request->invoice_date;
+        $invoice->payment_status =  $request->payment_stts;
+        $invoice->payment_date =  $request->payment_date;
+        $invoice->reminder_date =  $request->reminder_date;
+        $invoice->reminder_freq =  $request->reminder_freq;
+        $invoice->reminder_freq_unit =  $request->reminder_freq_unit;
+        $invoice->created_by = auth('admin')->id();
+        $invoice->save();
+
+        if ($request->has('item_name')) {
+            foreach ($request->item_name as $key => $name) {
+                $InvoiceItem = new InvoiceItem();
+                $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->name = $request->item_name[$key];
+                $InvoiceItem->qty = $request->item_qty[$key];
+                $InvoiceItem->price = $request->item_price[$key];
+                $InvoiceItem->unit = $request->item_unit[$key];
+                $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax[$key] ?? 0) : 0;
+                $InvoiceItem->hsn = $request->item_hsn[$key];
+                $InvoiceItem->save();
+            }
+        }
+        $inv_items = 0;
+        if ($request->has('invoice_item_new')) { // insert new items to invoice
+            foreach ($request->invoice_item_new as $key => $id) {
+                $InvoiceItem = new InvoiceItem();
+                $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->name = $request->item_name_new[$key];
+                $InvoiceItem->price = $request->item_price_new[$key];
+                $InvoiceItem->qty = $request->item_qty_new[$key];
+                $InvoiceItem->unit = $request->item_unit_new[$key] ?? null;
+                $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
+                $InvoiceItem->hsn = $request->item_hsn_new[$key];
+                $InvoiceItem->inv_id = $request->inventory_item_id_new[$key] ?? null;
+                $InvoiceItem->save();
+                if ($request->inventory_item_id_new[$key]) {
+                    $inv_items++;
+                }
+
+                if ($request->inventory_item_id_new[$key]) {
+                    _updateInventoryStock($request->inventory_item_id_new[$key], $request->item_qty_new[$key], $request->item_unit_new[$key]);
+                }
+            }
+        }
+        // RECHECK AMOUNT 
+        // if ($request->payment_mode == 'Cash and Online' && ($invoice->final_total_amount != $request->cash_amount + $request->online_amount)) {
+        //     $invoice->payment_status = 'Unpaid';
+        //     $invoice->save();
+        // }
+
+        // PETTY CASHBOOK ENTRY 
+        if ($invoice->payment_status == 'Paid') {
+            if ($request->payment_mode == 'Cash' || $request->payment_mode == 'Cash and Online') {
+                if ($request->payment_mode == 'Cash and Online') {
+                    $amount = $invoice->cash_amount;
+                } else {
+                    $amount = $totalPrice;
+                }
+            } else {
+                $amount = $request->cash_amount;
+            }
+            _savePettyCashBookEntry($amount, 'Received', 'Invoice Payment', $request->invoice_date, $invoice->invoice_id);
+        }
+
+        // master ledger entry 
+        $data = [
+            'date' => $request->invoice_date ?? now(),
+            'amount' => $totalPrice,
+            'status' => $invoice->payment_status == 'Paid' ? 'approved' : 'pending',
+            'payment_mode' => 'cash',
+            'invoice_id' => 'manual-' . $invoice->id,
+            'voucher_type' => 'Sales',
+            'invoice_id' => 'manual-' . $invoice->id,
+            'file' => $request->hasFile('file') ?? null,
+        ];
+
+        $customer = StoreCustomer::where('store_id', Helpers::get_store_id())->where('id', $request->bill_to)->first();
+        $debit_account = Helpers::ensureCustomerLedger($customer);
+        $credit_account = Helpers::ensureSalesAccount();
+        $voucher =  _masterLedgerEntry(
+            $data,
+            $credit_account,
+            $debit_account,
+            'customer',
+            'store',
+            null
+        );
+
+        if ($invoice->payment_status == 'Paid') {
+            _saveDayBookEntry($totalPrice, 'credit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id, $invoice->invoice_date, $invoice->reference_number, $request->payment_mode);
+        }
+
+        _auditLogs('Created Invoice : ' . $invoice->invoice_id);
+        $docData = Helpers::generateInventoryGatepass($invoice, (object)[], 'sale');
+
+        // Inventory order 
+        if ($inv_items) {
+            Helpers::_placeInventoryOrder($invoice);
+        }
+        $data = _createBillPdf($invoice, 'vendor');
+        $invoice->update(['pdf' => $data['pdf']]);
+        try {
+            return redirect($data['url']);
+        } catch (\Throwable $th) {
+            //
+        }
+        // return redirect()->route('vendor.invoice.manual-invoice-view', ['manual', $invoice->invoice_id]);
+    }
     public function common_issue_delete(Request $request)
     {
         CommonServiceIssue::destroy($request->id);

@@ -11,11 +11,12 @@ use BeyondCode\LaravelWebSockets\Facades\WebSocketsRouter;
 |
 | Here is where you can register API routes for your application. These
 | routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
+| is assigned the "api" middleware group. Enjoy building your API! 
 |
 */
 
 Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function () {
+    Route::post('log-error', 'AppErrorController@store');
     Route::get('fetch-services/{category_id?}', 'ItemController@fetch_services');
     Route::group(['prefix' => 'services'], function () {
         Route::get('popular', 'ItemController@popular_services');
@@ -348,14 +349,14 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('most-tips', 'OrderController@most_tips');
     Route::get('stores/details/{id}', 'StoreController@get_details');
     Route::get('stores/details-limited/{id}', 'StoreController@get_details_limited');
- 
+
     Route::group(['prefix' => 'app-config'], function () {
         Route::get('/', 'AppConfigController@index');
         Route::post('update', 'AppConfigController@update');
-        });
+    });
     Route::group(['prefix' => 'customer'], function () {
         Route::get('delete-reasons', 'CustomerController@delete_reasons');
- 
+
         Route::post('get-bills', 'CustomerController@get_bills');
         Route::post('download-bill', 'CustomerController@download_bill');
         Route::post('download-service-bill', 'CustomerController@download_service_bill');
@@ -363,9 +364,11 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::group(['middleware' => ['module-check']], function () {
         Route::group(['prefix' => 'customer', 'middleware' => 'auth:api'], function () {
+            Route::post('increment-count', 'AnalyticsController@incrementCount');
+
             Route::get('notifications', 'NotificationController@get_notifications');
-            Route::get('ads', 'NotificationController@get_ads');   
-            Route::get('ad-details/{id}', 'NotificationController@get_ad_details'); 
+            Route::get('ads', 'NotificationController@get_ads');
+            Route::get('ad-details/{id}', 'NotificationController@get_ad_details');
             Route::get('info', 'CustomerController@info');
             Route::get('update-zone', 'CustomerController@update_zone');
             Route::post('update-profile', 'CustomerController@update_profile');
@@ -482,6 +485,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('get-service-list', 'StoreController@get_services_list');
             Route::post('add-review', 'StoreController@add_review');
             Route::post('get-review', 'StoreController@get_review');
+            Route::post('unmask-phone', 'StoreController@unmask_phone')->middleware('auth:api');
         });
         Route::get('get-combined-data', 'SearchController@get_combined_data');
 

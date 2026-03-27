@@ -973,7 +973,7 @@ class InventoryController extends Controller
             $inventory_item->landing_price = $request->main_landing_price;
             $inventory_item->selling_price = $request->main_selling_price;
             $inventory_item->storage_unit_id = $request->storage_unit_id;
-            $inventory_item->description = $request->description;
+            // $inventory_item->description = $request->description;
             $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
             $inventory_item->specifications = $specifications;
         }

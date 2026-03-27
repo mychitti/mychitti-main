@@ -2,16 +2,27 @@
             <div class="js-nav-scroller hs-nav-scroller-horizontal mt-2">
                 <!-- Nav -->
                 <ul class="nav nav-tabs border-0 nav--tabs nav--pills">
+                    @if(hasPermission('action_logs', 'view'))
                     <li class="nav-item">
-                        <a class="nav-link  {{ Request::is('admin/logs/action-logs') ? 'active' : '' }}"
-                            href="{{ route('admin.logs.action-logs', ['tab' => 'admin-actions']) }}"
+                        <a class="nav-link  {{ Request::routeIs('admin.logs.action-logs') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.action-logs') }}"
                             aria-disabled="true">Common Actions</a>
                     </li>
+                    @endif
+                    @if(hasPermission('admin_actions', 'view'))
                     <li class="nav-item">
-                        <a class="nav-link  {{ Request::is('admin/logs/action-logs/admin-actions') ? 'active' : '' }}"
-                            href="{{ route('admin.logs.action-logs', ['tab' => 'admin-actions']) }}"
+                        <a class="nav-link  {{ Request::routeIs('admin.logs.action-logs.admin') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.action-logs.admin') }}"
                             aria-disabled="true">Admin Action Requests</a>
+                    </li> 
+                    @endif
+                    @if(hasPermission('error_logs', 'view'))
+                    <li class="nav-item">
+                        <a class="nav-link  {{ Request::routeIs('admin.logs.action-logs.errors') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.action-logs.errors') }}"
+                            aria-disabled="true">App Error Logs</a>
                     </li>
+                    @endif
                 </ul>
                 <!-- End Nav -->
             </div>

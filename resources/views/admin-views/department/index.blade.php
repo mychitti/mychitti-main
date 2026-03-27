@@ -18,7 +18,7 @@
                     <select name="module_id" class="form-control js-select2-custom"
                             onchange="set_filter('{{url()->full()}}',this.value,'module_id')" title="{{translate('messages.select')}} {{translate('messages.modules')}}">
                         <option value="" {{!request('module_id') ? 'selected':''}}>{{translate('messages.all')}} {{translate('messages.modules')}}</option>
-                        @foreach (\App\Models\Module::notParcel()->get() as $module)
+                        @foreach (\App\Models\Module::notParcel()->get() as $module) 
                             <option
                                 value="{{$module->id}}" {{request('module_id') == $module->id?'selected':''}}>
                                 {{$module['module_name']}}
@@ -39,7 +39,7 @@
 
                 </div>
             </div>
-            <form class="w-100" action="{{ route('admin.staff-department.save') }}" method="post">
+            <form class="w-100" action="{{ route('admin.employee-department.save') }}" method="post">
                 @csrf
                 <input type="hidden" id="lead_id" name="lead_id" value="">
                 <div class="col-md-12">
@@ -127,7 +127,7 @@
                             
                                 <td>
                                     <form id="status-form{{ $lead->id }}" method="post"
-                                        action="{{ route('admin.staff-department.status-change') }}">
+                                        action="{{ route('admin.employee-department.status-change') }}">
                                         @csrf
                                         <input type="hidden" name="d_id" value="{{ $lead->id }}">
                                         <select name="status" class="form-control js-select2-custom"
@@ -145,7 +145,7 @@
                                 <td>
                                     <div class="btn--container justify-content-center">
                                         <a style="min-width:50px;" class="btn  btn--danger btn-outline-danger"
-                                            href="{{ route('admin.staff-department.delete', [$lead->id]) }}"
+                                            href="{{ route('admin.employee-department.delete', [$lead->id]) }}"
                                             title="{{ translate('messages.delete') }} Department"><i
                                                 class="tio-delete-outlined"></i>
                                         </a>

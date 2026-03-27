@@ -288,7 +288,7 @@
     <div class="gate-pass">
         <div class="header">
             <h2>GATE PASS</h2>
-            <h1>{{ $store->name }}</h1>
+            <h1>{{ $store_data['name'] }}</h1>
             {{-- <div class="pass-number">VEHICLE NO: ______________</div> --}}
         </div>
 
@@ -413,7 +413,7 @@
 
         <div class="footer">
             {{-- <p><strong>Note:</strong> This is a computer generated gate pass. Please verify all items before dispatch.</p> --}}
-            <p>{{ $store->name }} | Contact: {{ $store->phone }} | Email: {{ $store->email }}</p>
+            <p>{{ $store_data['name'] }} | Contact: {{ $store_data['phone'] }} | Email: {{ $store_data['email'] }}</p>
         </div>
     </div>
 </body>

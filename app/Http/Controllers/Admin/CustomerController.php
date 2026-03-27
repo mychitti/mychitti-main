@@ -19,6 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\EmailVerification;
 use App\Models\Cart;
 use App\Models\Store;
+use App\Models\StoreCustomer;
 use App\Models\WalletTransaction;
 use App\Models\Wishlist;
 use Brian2694\Toastr\Facades\Toastr;
@@ -36,6 +37,31 @@ class CustomerController extends Controller
     {
         DB::statement("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
     }
+     public function get_matches(Request $request)
+    {
+        $query = $request->get('q');
+        $user_type = $request->user_type ?? 'customer';
+
+        $customers = StoreCustomer::where(function ($q) use ($query) {
+            $q->where('f_name', 'like', "%{$query}%")
+                ->orWhere('phone', 'like', "%{$query}%");
+        })
+        ->when($user_type && $user_type != 'both', function($q) use ($user_type){
+            $q->where('user_type', $user_type);
+        })
+            ->where('store_id', 0)
+            ->select('id', 'f_name', 'phone', 'user_type')
+            ->limit(10)
+            ->get();
+
+            return $customers;
+    }
+
+    public function fetch_details(Request $request)
+    {
+        return StoreCustomer::where('id', $request->id)->where('store_id', 0)->first();
+    }
+
     public function customer_list(Request $request)
     {
         // mark all as checked

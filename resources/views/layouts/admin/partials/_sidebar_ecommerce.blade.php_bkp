@@ -549,14 +549,14 @@
                             
                            
                             {{-- <li class="nav-item {{ Request::is('admin/staff/add') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.staff.add') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }} Lead">
+                                <a class="nav-link " href="{{ route('admin.employee.add') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }} Lead">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">{{ translate('messages.add') }}
                                         {{ translate('messages.new') }}</span>
                                 </a>
                             </li>
                             <li class="nav-item {{ Request::is('admin/staff/list') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.staff.list') }}" title="Lead {{ translate('messages.list') }}">
+                                <a class="nav-link " href="{{ route('admin.employee.list') }}" title="Lead {{ translate('messages.list') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">{{ translate('messages.list') }}</span>
                                 </a>
@@ -564,14 +564,14 @@
 
 
                             <li class="nav-item {{ Request::is('admin/staff/add-new') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.staff.add-new') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }} {{ translate('messages.Employee') }}">
+                                <a class="nav-link " href="{{ route('admin.employee.add-new') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }} {{ translate('messages.Employee') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">{{ translate('messages.add') }}
                                         {{ translate('messages.new') }}</span>
                                 </a>
                             </li>
                             <li class="nav-item {{ Request::is('admin/staff/list') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.staff.list') }}" title="Staff {{ translate('messages.list') }}">
+                                <a class="nav-link " href="{{ route('admin.employee.list') }}" title="Staff {{ translate('messages.list') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">{{ translate('messages.list') }}</span>
                                 </a>

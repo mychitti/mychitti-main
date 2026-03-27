@@ -209,21 +209,30 @@
 
                         <td style="width: 20%;">
                             <div class="logo-section">
-                                @php  $store_logo = $data['store']->logo; @endphp
-                                <img width="100" class=""
-                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                                    alt="Logo">
+                               @php
+                            if(auth('admin')->check()){
+                                 $logo_file = \App\Models\BusinessSetting::where('key', 'logo')->first()?->value;
+                                 $logo = asset('storage/business/') . '/' . $logo_file  ;
+                                 $logo_dir = 'business/' ;
+                            }else{
+                                $logo_file = \App\CentralLogics\Helpers::get_store_data()->logo;
+                            $logo =  asset('storage/store/') . '/' .  $logo_file; 
+                            $logo_dir = 'store/';
+                            }@endphp
+                            <img width="100" class=""
+                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($logo_file, $logo, asset('public/assets/admin/img/160x160/img1.jpg'),$logo_dir) }}"
+                                alt="Logo">
                             </div>
                         </td>
                         <td style="text-align: center;width: 80%;">
                             <div class="company-info">
                                 <div class="report-title">SERVICE REPORT</div>
-                                <div class="company-name">{{ $data['store']->name }}</div>
-                                <div class="address">{{ $data['store']->address }}.
+                                <div class="company-name">{{ auth('admin')->check()  ? \App\Models\BusinessSetting::where('key', 'business_name')->first()?->value : $data['store']->name }}</div>
+                                <div class="address">{{ auth('admin')->check()  ? \App\Models\BusinessSetting::where('key', 'address')->first()?->value : $data['store']->address }}.
                                 </div>
-                                <div class="contact">Phone: {{ $data['store']->phone }}. Email:
-                                    {{ $data['store']->email }}</div>
+                                <div class="contact">Phone: {{ auth('admin')->check()  ? \App\Models\BusinessSetting::where('key', 'phone')->first()?->value :$data['store']->phone  }}. Email:
+                                    {{ auth('admin')->check()  ? \App\Models\BusinessSetting::where('key', 'email_address')->first()?->value : $data['store']->email  }}</div>
                             </div>
                         </td>
                         <td style="width: 20%;text-align: right;">

@@ -234,7 +234,7 @@
                                             </div> {{ $e->name }}
                                     </td>
                                     <td><a
-                                            href="{{ hasPermission('staff_manage', 'view') && $e->team_lead ? route('vendor.employee.view', [$e->team_lead]) : '#' }}">{{ $e->team_leader?->f_name . ' ' . $e->team_leader?->f_name }}</a>
+                                            href="{{ hasPermission('staff_manage', 'view') && $e->team_lead ? route('vendor.employee.view', [$e->team_lead]) : '#' }}">{{ $e->team_leader?->f_name . ' ' . $e->team_leader?->l_name }}</a>
                                     </td>
                                     <td class="text-capitalize text-break">
                                         <div class="members-container">

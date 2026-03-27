@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $password
  * @property string|null $remember_token
  * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property Carbon|null $updated_at  
  * @property int|null $role_id
  * @property int|null $zone_id
  * @property bool $is_logged_in
@@ -35,16 +35,24 @@ class Admin extends Authenticatable
      * @var array
      */
     protected $fillable = [
+        'employee_id',
         'f_name',
         'l_name',
         'phone',
         'email',
         'image',
         'password',
-        'remember_token',
+        'remember_token', 
         'role_id',
         'zone_id',
         'is_logged_in',
+        'salary_type',
+        'base_salary',
+        'skills',
+        'store_shift_id',
+        'education',
+        'experience',
+        'documents',
     ];
 
     /**
@@ -61,7 +69,7 @@ class Admin extends Authenticatable
      */
     public function role(): BelongsTo
     {
-        return $this->belongsTo(AdminRole::class,'role_id');
+        return $this->belongsTo(AdminRole::class, 'role_id');
     }
 
     /**
@@ -69,7 +77,24 @@ class Admin extends Authenticatable
      */
     public function zones(): BelongsTo
     {
-        return $this->belongsTo(Zone::class,'zone_id');
+        return $this->belongsTo(Zone::class, 'zone_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+    public function storeShift()
+    {
+        return $this->belongsTo(StoreShift::class, 'store_shift_id');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+    public function comments()
+    {
+        return $this->hasMany(StoreEmployeeComment::class, 'employee_id', 'id');
     }
 
     /**
@@ -78,8 +103,7 @@ class Admin extends Authenticatable
      */
     public function scopeZone($query): mixed
     {
-        if(isset(auth('admin')->user()->zone_id))
-        {
+        if (isset(auth('admin')->user()->zone_id)) {
             return $query->where('zone_id', auth('admin')->user()->zone_id);
         }
         return $query;

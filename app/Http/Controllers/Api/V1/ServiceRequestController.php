@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\AccountTransaction;
 use App\Models\BusinessSetting;
-use App\Models\CustomerAddress;
+use App\Models\CustomerAddress; 
 use App\Models\DataSetting;
 use App\Models\EmployeeRole;
 use App\Models\GatePassItem;
@@ -109,11 +109,19 @@ class ServiceRequestController extends Controller
         // prx($storeId);
         $storesChunk = Helpers::get_store_range($request->item_id, $request->header('zoneId'), $request->user_id, $storeId);
 
+        // Check if this is a dedicated lead
+        $isDedicated = false;
+        if ($storeId) {
+            $dedicatedCheck = DB::table('stores')->where('id', $storeId)->value('dedicated_leads');
+            $isDedicated = $dedicatedCheck ? true : false;
+        }
+
         $city = $request->city;
         $serviceReq = new ServiceRequest;
         $serviceReq->user_id = $request->user_id;
         $serviceReq->item_id = $request->item_id;
         $serviceReq->sent_to = implode(',', $storesChunk);
+        $serviceReq->is_dedicated = $isDedicated ? 1 : 0;
         $serviceReq->qty = 1;
         $serviceReq->requirements = $request->requirements;
         $serviceReq->module_id = 6;

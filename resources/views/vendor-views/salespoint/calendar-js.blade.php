@@ -150,15 +150,15 @@
               [currentMonth][day]) {
               const data = sampleData[currentYear][currentMonth][day];
               const dayData = document.createElement('div');
-              dayElement.classList.add(data.category);
+              dayElement.classList.add(data.category); 
               dayData.className = 'day-data';
-              if (window.currentRoute.startsWith("vendor.account.")) {
+              if (window.currentRoute.startsWith("vendor.account.") || window.currentRoute.startsWith("admin.account.")) {
                   dayData.innerHTML = `
         <div class="sale-amount credit">Credit: ₹${data.credit.toLocaleString()}</div>
         <div class="sale-amount debit">Debit: ₹${data.debit.toLocaleString()}</div>
     `;
-              } else if (window.currentRoute.startsWith("vendor.task.")) {
-                  dayData.innerHTML = `
+              } else if (window.currentRoute.startsWith("vendor.task.") || window.currentRoute.startsWith("admin.task.")) {
+                  dayData.innerHTML = ` 
         <div class="sale-amount">Created : ${data.created_task}</div>
         <div class="sale-amount">Completed : ${data.completed_task}</div>
         <div class="sale-amount">Pending : ${data.pending_task}</div>
@@ -166,10 +166,10 @@
     `;
               } else {
                   dayData.innerHTML = `
-        <div class="sale-amount">₹${data.amount.toLocaleString()}</div>
-        <div class="token-count">🎫 ${data.tokens}</div>
+        <div class="sale-amount">₹${(data.amount ?? 0).toLocaleString()}</div>
+        <div class="token-count">🎫 ${data.tokens ?? 0}</div>
     `;
-              }
+              } 
               dayElement.appendChild(dayData);
           }
 
@@ -202,17 +202,17 @@
               // Calculate month totals
               let totalSales = 0;
               let totalTokens = 0;
-              if (window.currentRoute.startsWith("vendor.task.")) {
+              if (window.currentRoute.startsWith("vendor.task.") || window.currentRoute.startsWith("admin.task.")) {
                   if (sampleData[currentYear] && sampleData[currentYear][month]) {
                       Object.values(sampleData[currentYear][month]).forEach(day => {
 
                           totalSales += day.task;
                       });
                   }
-                  monthStats.innerHTML = `
+                  monthStats.innerHTML = ` 
                     <div>Tasks: ${totalSales}</div>
                 `;
-              } else if (!window.currentRoute.startsWith("vendor.account.")) {
+              } else if (!window.currentRoute.startsWith("vendor.account.") && !window.currentRoute.startsWith("admin.account.")) {
                   if (sampleData[currentYear] && sampleData[currentYear][month]) {
                       Object.values(sampleData[currentYear][month]).forEach(day => {
 

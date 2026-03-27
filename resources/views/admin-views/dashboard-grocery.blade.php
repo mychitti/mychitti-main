@@ -4,6 +4,70 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+    
+        /* Upcoming Events */
+        .events-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px; 
+    padding-bottom: 0px; 
+        }
+
+        .view-all-btn {
+            background: linear-gradient(45deg, #ffa500, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .view-all-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .events-date {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        .event-card {
+              padding: 8px;
+    font-size: 11px;
+    margin: 4px 7px;
+    border-radius: 12px;
+    /* margin-bottom: 6px; */
+    color: white;
+    position: relative;
+    overflow: hidden;
+        }
+
+        .event-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), transparent);
+            pointer-events: none;
+        }
+
+        .event-card.design-review {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+        }
+
+       
+        .event-card.design-review-5 {
+            color: black;
+            background: linear-gradient(135deg, #def5ff 0%, #f0f9ffdf 100%);
+        }</style>
 @endpush
 
 @section('content')
@@ -39,8 +103,81 @@
                     </select>
                 </div>
             </div>
-        </div>
+        </div> 
         <!-- End Page Header -->
+
+          @if(auth('admin')->user()->role_id != 1)
+        <div class="row">
+            <div class="card mb-3 col-md-4" >
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center h-100">
+                        <div>
+                            @if (_clockedInEmployee())
+                                @if (_clockedInEmployeeDutyHours())
+                                    <div class="d-flex align-items-center" style="gap: 8px;">
+                                        <span style="font-size: 26px;">&#9200;</span>
+                                        <span id="staffDashCurrentDateTime">
+                                            <div style="text-align: center;"> 
+                                                <span style="font-weight: 600; font-size: 16px;">Remaining Time</span><br>
+                                                <span id="staffRemainingTime" style="font-size: 22px; font-weight: 600;">Loading...</span>
+                                            </div>
+                                        </span>
+                                    </div>
+                                @endif
+                                <div style="margin-top: 8px; font-size: 13px;" id="staffDashPunchTimeDisplay">
+                                    Punched in at: {{ date('H:i:s', strtotime(_inTime('timestamp'))) }}
+                                </div>
+                            @else
+                                <div class="d-flex align-items-center" style="gap: 8px;">
+                                    <span style="font-size: 26px;">&#9200;</span>
+                                    <span id="staffDashCurrentDateTime">
+                                        <span id="staffRemainingTime" style="font-size: 18px; font-weight: 600; color: #999;">Not Clocked In</span>
+                                    </span>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 13px; display:none;" id="staffDashPunchTimeDisplay"></div>
+                            @endif
+                        </div>
+                        @if (_clockedInEmployee())
+                            <button class="btn btn-danger" id="staffDashPunchBtn" style="padding: 12px 24px; font-weight: 600;">
+                                <span id="staffDashPunchIcon">&#9632;</span>
+                                <span id="staffDashPunchText">Punch Out</span>
+                            </button>
+                        @else
+                            <button class="btn btn-success" id="staffDashPunchBtn" style="padding: 12px 24px; font-weight: 600;">
+                                <span id="staffDashPunchIcon">&#9654;</span>
+                                <span id="staffDashPunchText">Punch In</span>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                 <div class="card content-card">
+                    <div class="events-header">  
+                        <h5 class="section-title">Timecards</h5>
+                        <a href="{{ route('admin.employee.timecards', [auth('admin')->id()]) }}" class="text-underline">View All
+                            Timecards</a>
+                    </div> 
+                    @if(isset($recentTimecards) && count($recentTimecards) > 0)
+                        @foreach($recentTimecards as $tc)
+                            <div class="event-card design-review-5">
+                                <div class="event-header">
+                                    <div class="event-title">{{ $tc->date }}</div> 
+                                </div>
+                                <div class="event-time">
+                                    In: {{ explode(' ', $tc->in_time)[1] }} | Out: {{ explode(' ', $tc->out_time)[1] }}
+                                    | Duration: {{ (new \DateTime($tc->in_time))->diff(new \DateTime($tc->out_time))->format('%hh %im') }}
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <p class="text-muted">No timecards found</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @endif
 
         <!-- Stats -->
         <div class="card mb-3">
@@ -64,161 +201,7 @@
                     </div>
                 </div>
                 <div class="row g-2" id="order_stats">
-                    <a href="{{route('admin.item.list')}}" class="col-sm-6 col-lg-3">
-                        <div class="__dashboard-card-2">
-                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/items.svg')}}" alt="dashboard/grocery">
-                            <h6 class="name">Services</h6>
-                            <h3 class="count">{{ $data['total_items'] }}</h3>
-                            <div class="subtxt">{{ $data['new_items'] }} {{ translate('newly added') }}</div>
-                        </div>
-                    </a>
-                    <a href="{{route('admin.service.lead-list')}}" class="col-sm-6 col-lg-3">
-                        <div class="__dashboard-card-2">
-                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/items.svg')}}" alt="dashboard/grocery">
-                            <h6 class="name">Service Leads</h6>
-                            <h3 class="count">{{ $data['service_leads'] }}</h3>
-                            <div class="subtxt">{{ $data['service_leads'] }} {{ translate('newly added') }}</div>
-                        </div>
-                    </a>
-                    <a href="{{route('admin.store.list')}}"  class="col-sm-6 col-lg-3">
-                        <div class="__dashboard-card-2">
-                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/stores.svg')}}" alt="dashboard/grocery">
-                            <h6 class="name">{{ translate('Service Stores') }}</h6>
-                            <h3 class="count">{{ $data['total_stores'] }}</h3>
-                            <div class="subtxt">{{ $data['new_stores'] }} {{ translate('newly added') }}</div>
-                        </div>
-                    </a>
-                    <a href="{{route('admin.users.customer.list')}}?zone_id=all" class="col-sm-6 col-lg-3">
-                        <div class="__dashboard-card-2">
-                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/customers.svg')}}" alt="dashboard/grocery">
-                            <h6 class="name">{{ translate('messages.customers') }}</h6>
-                            <h3 class="count">{{ $data['total_customers'] }}</h3>
-                            <div class="subtxt">{{ $data['new_customers'] }} {{ translate('newly added') }}</div>
-                        </div>
-                    </a>
-                    <a href="{{route('admin.ticket.index', ['status' => 'open'])}}" class="col-sm-6 col-lg-3">
-                        <div class="__dashboard-card-2" style="border-left: 3px solid #ff6b6b;">
-                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/items.svg')}}" alt="dashboard/grocery">
-                            <h6 class="name">Open Tickets</h6>
-                            <h3 class="count">{{ $data['open_tickets'] ?? 0 }}</h3>
-                            <div class="subtxt">{{ translate('support tickets need attention') }}</div>
-                        </div>
-                    </a> 
-                    <div class="col-12 d-none">
-                        <div class="row g-2">
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['searching_for_deliverymen'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/unassigned.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('messages.unassigned_orders')}}</span>
-                                        </h6>
-                                        <span class="card-title text-3F8CE8">
-                                            {{$data['searching_for_dm']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['accepted'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/accepted.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('Accepted by Delivery Man')}}</span>
-                                        </h6>
-                                        <span class="card-title text-success">
-                                            {{$data['accepted_by_dm']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['processing'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/packaging.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('Packaging')}}</span>
-                                        </h6>
-                                        <span class="card-title text-FFA800">
-                                            {{$data['preparing_in_rs']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['item_on_the_way'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/out-for.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('Out for Delivery')}}</span>
-                                        </h6>
-                                        <span class="card-title text-success">
-                                            {{$data['picked_up']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['delivered'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/dashboard/grocery/delivered.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('messages.delivered')}}</span>
-                                        </h6>
-                                        <span class="card-title text-success">
-                                            {{$data['delivered']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3 d-none">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['canceled'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/order-status/canceled.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('messages.canceled')}}</span>
-                                        </h6>
-                                        <span class="card-title text-danger">
-                                            {{$data['canceled']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['refunded'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/order-status/refunded.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('messages.refunded')}}</span>
-                                        </h6>
-                                        <span class="card-title text-danger">
-                                            {{$data['refunded']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-3">
-                                <a class="order--card h-100" href="{{route('admin.order.list',['failed'])}}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="card-subtitle d-flex justify-content-between m-0 align-items-center">
-                                            <img src="{{asset('/public/assets/admin/img/order-status/payment-failed.svg')}}" alt="dashboard" class="oder--card-icon">
-                                            <span>{{translate('messages.payment_failed')}}</span>
-                                        </h6>
-                                        <span class="card-title text-danger">
-                                            {{$data['refund_requested']}}
-                                        </span>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
+                    @include('admin-views.partials._dashboard-grocery-stats', ['data' => $data])
                 </div>
             </div>
         </div>
@@ -227,9 +210,25 @@
         <div class="row g-2">
             <div class="col-lg-8 col--xl-8">
                 <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Analytics Overview</h5>
+                        <div class="d-flex align-items-center">
+                            <select id="analytics-days" class="form-control form-control-sm" style="width:auto;">
+                                <option value="7">Last 7 Days</option>
+                                <option value="15">Last 15 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                            </select>
+                            <a href="{{ route('admin.analytics.index') }}" class="btn btn-sm btn-outline-primary ml-2">View All</a>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <div class="d-flex flex-wrap justify-content-between align-items-center __gap-12px">
-                            <div class="__gross-amount" id="gross_sale">
+                        @if(hasPermission('analytics', 'view'))
+                            <canvas id="analyticsChart" height="80"></canvas>
+                        @endif
+
+                            {{-- <div class="__gross-amount" id="gross_sale">
                                 <h6>{{\App\CentralLogics\Helpers::format_currency(array_sum($total_sell))}}</h6>
                                 <span>{{ translate('messages.Gross Sale') }}</span>
                             </div>
@@ -252,12 +251,12 @@
                                     value="this_week" {{$params['commission_overview'] == 'this_week'?'selected':''}}>
                                     {{translate('This week')}}
                                 </option>
-                            </select>
+                            </select> --}}
                         </div>
-                        <div id="commission-overview-board">
+                        {{-- <div id="commission-overview-board">
 
                             <div id="grow-sale-chart"></div>
-                        </div>
+                        </div> --}}
                     </div>
                 </div>
             </div>
@@ -378,6 +377,32 @@
             </div>
 
         </div>
+
+        {{-- Analytics Chart --}}
+        @if(hasPermission('analytics', 'view'))
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Analytics Overview</h5>
+                        <div class="d-flex align-items-center">
+                            <select id="analytics-days" class="form-control form-control-sm" style="width:auto;">
+                                <option value="7">Last 7 Days</option>
+                                <option value="15">Last 15 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                            </select>
+                            <a href="{{ route('admin.analytics.index') }}" class="btn btn-sm btn-outline-primary ml-2">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="analyticsChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         @else
         <!-- Page Header -->
         <div class="page-header">
@@ -406,6 +431,98 @@
 
 
 @push('script_2')
+
+    {{-- Analytics Chart --}}
+    @if(hasPermission('analytics', 'view'))
+    <script>
+        var analyticsChart = null;
+
+        function loadAnalyticsChart(days) {
+            $.get("{{ route('admin.analytics.chart-data') }}", { days: days }, function(data) {
+                if (analyticsChart) {
+                    analyticsChart.destroy();
+                }
+
+                var ctx = document.getElementById('analyticsChart');
+                if (!ctx) return;
+
+                analyticsChart = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: 'Store Visits',
+                                data: data.store_visits,
+                                borderColor: '#45b6fe',
+                                backgroundColor: 'rgba(69,182,254,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'Banner Clicks',
+                                data: data.banner_clicks,
+                                borderColor: '#ff6b6b',
+                                backgroundColor: 'rgba(255,107,107,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'Ad Clicks',
+                                data: data.ad_clicks,
+                                borderColor: '#ffa500',
+                                backgroundColor: 'rgba(255,165,0,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'Location Views', 
+                                data: data.location_views,
+                                borderColor: '#9b59b6',
+                                backgroundColor: 'rgba(155,89,182,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            { 
+                                label: 'Phone Unmasks',
+                                data: data.phone_unmasks,
+                                borderColor: '#51cf66',
+                                backgroundColor: 'rgba(81,207,102,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            yAxes: [{
+                                ticks: { beginAtZero: true, precision: 0 }
+                            }]
+                        },
+                        tooltips: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                });
+            });
+        }
+
+        $(document).ready(function() {
+            loadAnalyticsChart(30);
+
+            $('#analytics-days').on('change', function() {
+                loadAnalyticsChart($(this).val());
+            });
+        });
+    </script>
+    @endif
 
     <!-- Dognut Pie Chart -->
     <script>
@@ -556,13 +673,14 @@
                 success: function (data) {
                     insert_param('zone_id', zone_id);
                     $('#order_stats').html(data.order_stats);
-                    $('#user-overview-boarde').html(data.user_overview);
+                    $('#user-overview-board').html(data.user_overview);
                     $('#monthly-earning-graph').html(data.monthly_graph);
                     $('#popular-restaurants-view').html(data.popular_restaurants);
                     $('#top-deliveryman-view').html(data.top_deliveryman);
                     $('#top-rated-foods-view').html(data.top_rated_foods);
                     $('#top-restaurants-view').html(data.top_restaurants);
                     $('#top-selling-foods-view').html(data.top_selling_foods);
+                    $('#top-customer-view').html(data.top_customers);
                     $('#stat_zone').html(data.stat_zone);
                 },
                 complete: function () {
@@ -656,4 +774,85 @@
             window.history.pushState('page2', 'Title', '{{url()->current()}}?' + params);
         }
     </script>
+
+    @if(auth('admin')->user()->role_id != 1)
+    <script>
+        $(document).ready(function() {
+            let staffDashIsPunchedIn = @json(_clockedInEmployee() ?? 0);
+            let staffDashPunchInTime = @json(_inTime('timestamp') ?? null);
+            let staffDashDutyHours = @json(_clockedInEmployeeDutyHours() ?? 8);
+
+            if (staffDashPunchInTime) staffDashPunchInTime = new Date(staffDashPunchInTime);
+
+            @if (_clockedInEmployeeDutyHours())
+            function staffDashUpdateDateTime() {
+                const now = new Date(); 
+                if (staffDashIsPunchedIn && staffDashPunchInTime) {
+                    const elapsedMs = now - staffDashPunchInTime;
+                    const totalDutyMs = staffDashDutyHours * 60 * 60 * 1000;
+                    const remainingMs = totalDutyMs - elapsedMs;
+ 
+                    if (remainingMs > 0) {
+                        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+                        const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const remainingSeconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+                        $('#staffDashCurrentDateTime').html(
+                            `<span style="font-weight: 600;">Remaining Time </span><br> <span style="font-size: 22px;"> ${String(remainingHours).padStart(2,'0')}:${String(remainingMinutes).padStart(2,'0')}:${String(remainingSeconds).padStart(2,'0')}</span>`
+                        );
+                    } else {
+                        const overtimeMs = Math.abs(remainingMs);
+                        const overtimeHours = Math.floor(overtimeMs / (1000 * 60 * 60));
+                        const overtimeMinutes = Math.floor((overtimeMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const overtimeSeconds = Math.floor((overtimeMs % (1000 * 60)) / 1000);
+                        $('#staffDashCurrentDateTime').html(
+                            `<span style="color: #22c55e; font-weight: 600;">Duty Completed!</span> | ` +
+                            `<span style="color: #F59E0B; font-weight: 600;">Overtime: ${String(overtimeHours).padStart(2,'0')}:${String(overtimeMinutes).padStart(2,'0')}:${String(overtimeSeconds).padStart(2,'0')}</span>`
+                        );
+                    }
+                }
+            }
+            setInterval(staffDashUpdateDateTime, 1000);
+            @endif
+
+            $('#staffDashPunchBtn').on('click', function() {
+                staffDashIsPunchedIn = !staffDashIsPunchedIn;
+                const currentTime = new Date().toLocaleTimeString();
+
+                if (staffDashIsPunchedIn) {
+                    staffDashPunchInTime = new Date();
+                    $(this).removeClass('btn-success').addClass('btn-danger');
+                    $('#staffDashPunchIcon').html('&#9632;');
+                    $('#staffDashPunchText').text('Punch Out');
+                    $('#staffDashPunchTimeDisplay').show().text('Punched in at: ' + currentTime);
+                } else {
+                    staffDashPunchInTime = null;
+                    $(this).removeClass('btn-danger').addClass('btn-success');
+                    $('#staffDashPunchIcon').html('&#9654;');
+                    $('#staffDashPunchText').text('Punch In');
+                    $('#staffDashCurrentDateTime').html('<span style="font-size: 18px; font-weight: 600; color: #999;">Not Clocked In</span>');
+                }
+                adminClock(staffDashIsPunchedIn ? 'in' : 'out');
+            });
+        });
+
+        function adminClock(action) {
+            var url = action == 'in' ? '{{ route("admin.employee.clockin") }}' : '{{ route("admin.employee.clockout") }}';
+            $.ajaxSetup({
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+            });
+            $.get({
+                url: url,
+                data: { action: action },
+                beforeSend: function() { $('#loading').show() },
+                success: function(data) {
+                    if (action == 'out') {
+                        $("#staffDashCurrentDateTime").html('<span style="font-size: 18px; font-weight: 600; color: #999;">Not Clocked In</span>');
+                    }
+                    $('#loading').hide();
+                },
+                complete: function() {}
+            });
+        }
+    </script>
+    @endif
 @endpush

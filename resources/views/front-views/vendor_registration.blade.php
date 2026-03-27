@@ -1435,8 +1435,6 @@
             });
         });
 
-
-
         function checkboxCheck(checkec) {
             if ($(this).prop('checked') == true && $('#module_select').val() != '5') {
                 $('.gst_elem').hide()

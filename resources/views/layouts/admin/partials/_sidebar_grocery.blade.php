@@ -10,16 +10,16 @@
                     alt="Logo">
                     <img class="navbar-brand-logo-mini initial--36 onerror-image onerror-image" data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
                     src="{{\App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/').'/' . $store_logo, asset('public/assets/admin/img/160x160/img2.jpg') ,'business/' )}}"
-                    alt="Logo">
+                    alt="Logo"> 
                 </a>
                 <!-- End Logo -->
 
                 <!-- Navbar Vertical Toggle -->
                 <button type="button" class="js-navbar-vertical-aside-toggle-invoker navbar-vertical-aside-toggle btn btn-icon btn-xs btn-ghost-dark">
                     <i class="tio-clear tio-lg"></i>
-                </button>
+                </button> 
                 <!-- End Navbar Vertical Toggle -->
-
+ 
                 <div class="navbar-nav-wrap-content-left">
                     <!-- Navbar Vertical Toggle -->
                     <button type="button" class="js-navbar-vertical-aside-toggle-invoker close">
@@ -53,80 +53,213 @@
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                 {{ translate('messages.dashboard') }}
                             </span>
-                        </a>
+                        </a> 
                     </li>
                     @endif
-                 @if (\App\CentralLogics\Helpers::module_permission_check('billing'))
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('billing') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.billing.index') }}" title="{{ translate('messages.dashboard') }}">
-                            <i class="tio-home-vs-1-outlined nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Billing
-                            </span>
-                        </a>
-                    </li>
+                
+                    @include('admin-views/partials/billing_nav')
+                    @include('admin-views/partials/account_nav')
+                    @include('admin-views/partials/hr_nav')
+                    @include('admin-views/partials/inventory_nav')
+                     {{-- =============================== TASK Management=========================== --}}
+
+                    @if (hasMasterModulePermission('task_manage'))
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('task*') && !Request::is('task-salary-categories') && !Request::is('task/assigned-tasks') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Task Management">
+                                 <i class="tio-all-done nav-icon"></i>
+
+
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Task
+                                    Management</span>
+                            </a>
+
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('task*') && !Request::is('task-salary-categories') ? 'block' : 'none' }}">
+
+                                @if (hasAnyPermission(['task.list', 'task.export', 'task.add']))
+                                    <li class="nav-item {{ Request::is('task/list') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.task.list') }}"
+                                            title="list Project">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Tasks</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasPermission('task', 'settings'))
+                                    <li class="nav-item {{ Request::is('task/setting') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.task.setting') }}"
+                                            title="Task Settings">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Task Settings</span>
+                                        </a>
+                                    </li>
+                                @endif
+                            </ul>
+                        </li>
+                    @endif
+                    {{-- =============================== PROJECT Management=========================== --}}
+                    @if ( hasMasterModulePermission('projects_manage'))
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('project*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Project Management">
+                                <i class="tio-tabs nav-icon"></i>
+
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Project
+                                    Management</span>
+                            </a>
+
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('project*') ? 'block' : 'none' }}">
+                        
+                                @if (hasPermission('project', 'add'))
+                                    <li class="nav-item {{ Request::is('project/add') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.project.add') }}"
+                                            title="{{ translate('messages.add') }} {{ translate('messages.new') }} Project">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('messages.add') }}
+                                                {{ translate('messages.new') }} Project</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasPermission('project', 'list'))
+                                    <li class="nav-item {{ Request::is('project/list') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.project.all') }}"
+                                            title="list Project">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Projects List</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasPermission('project', 'settings'))
+                                    <li class="nav-item {{ Request::is('project/settings') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.project.settings') }}"
+                                            title="list Project">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Project Settings</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                
+                            </ul>
+                        </li>
                     @endif
 
-                    @if (\App\CentralLogics\Helpers::module_permission_check('account_manage'))
-                    <!--<li class="nav-item">-->
-                    <!--    <small class="nav-subtitle" title="Accounts Management">Accounts Management</small>-->
-                    <!--    <small class="tio-more-horizontal nav-subtitle-replacer"></small>-->
-                    <!--</li>-->
+                    {{-- =============================== CLIENT Management=========================== --}}
+                    @if( hasMasterModulePermission('client_manage'))          
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Client Management">
+                                <i class="tio-user-outlined nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Client
+                                    Management
+                                </span>
+                            </a>
+
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('client*') ? 'block' : 'none' }}">
+                                @if (hasPermission('client_manage', 'add'))
+                                    <li
+                                        class="navbar-vertical-aside-has-menu {{ Request::is('customer/add') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.client.add') }}"
+                                            title="Add New Client">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class=" text-truncate">Add New Client</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['client_manage.list', 'client_manage.import', 'client_manage.export']))
+                                    <li
+                                        class="navbar-vertical-aside-has-menu {{ Request::is('client/list') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.client.list') }}"
+                                            title="{{ translate('messages.clients') }} Management">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class=" text-truncate">{{ translate('messages.clients') }}
+                                                List</span>
+                                        </a>
+                                    </li>
+                                @endif
+                              
+                            </ul>
+                        </li>
+                    @endif
 
 
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('account*') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="Leads">
-                            <i class="tio-money-vs nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Account Management</span>
-                        </a>
-
-                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ Request::is('account*') ? 'block' : 'none' }}">
-                           
-                            <li class="nav-item {{ Request::is('account/report') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.account.report') }}" title="Report">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Report</span>
-                                </a>
-                            </li>
-                            <li class="nav-item {{ Request::is('account/add') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.account.add') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }}">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">{{ translate('messages.add') }}
-                                        {{ translate('messages.new') }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item {{ Request::is('account/list') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('admin.account.list') }}" title="Lead {{ translate('messages.list') }}">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">{{ translate('messages.list') }}</span>
-                                </a>
-                            </li>
-
-                    </ul>
-                    </li>
-                    @endif 
-
+                    @if(hasMasterModulePermission('support_ticket'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('ticket*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;">
                             <i class="tio-support nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Support Tickets</span>
                         </a>
                         <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ Request::is('ticket*') ? 'block' : 'none' }}">
+                            @if(hasPermission('support_ticket', 'list'))
                             <li class="nav-item {{ Request::is('ticket') ? 'active' : '' }}">
                                 <a class="nav-link" href="{{ route('admin.ticket.index') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">All Tickets</span>
                                 </a>
                             </li>
+                            @endif
+                            @if(hasPermission('support_ticket', 'add'))
                             <li class="nav-item {{ Request::is('ticket/create') ? 'active' : '' }}">
                                 <a class="nav-link" href="{{ route('admin.ticket.create') }}">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">Create Ticket</span>
                                 </a>
                             </li>
+                            @endif 
                         </ul>
                     </li>
+                    @endif
 
+                   
+                       {{-- =============================== QUOTATION Management=========================== --}}
+                    @if (hasMasterModulePermission('quotaiton_manage') )
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('quotation*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Quotation Management">
+                                <i class="tio-document nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Quotation
+                                    Management</span>
+                            </a>
+
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('quotation*') ? 'block' : 'none' }}">
+                                @if (hasPermission('quotaiton_manage', 'add'))
+                                    <li class="nav-item {{ Request::is('quotation/add') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.quotation.add') }}"
+                                            title="{{ translate('messages.add') }} {{ translate('messages.new') }} Quotation">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('messages.add') }}
+                                                {{ translate('messages.new') }} Quotation</span>
+                                        </a>
+                                    </li>
+                                @endif
+
+                                @if (hasAnyPermission(['quotaiton_manage.list']))
+                                    <li class="nav-item {{ Request::is('quotation/list') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('admin.quotation.list') }}"
+                                            title="Quotation {{ translate('messages.list') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Quotations List</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasPermission('quotaiton_manage', 'settings') ||
+                                        hasAnyModulePermission(['quotation_bank_account', 'quotation_sign', 'quotation_tnc']))
+                                    <li class="nav-item {{ Request::is('quotation/settings') ? 'active' : '' }}"
+                                        style="margin-top:0 !important;">
+                                        <a class="nav-link " href="{{ route('admin.quotation.settings') }}"
+                                            title="Quotation Settings">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Quotation Settings</span>
+                                        </a>
+                                    </li>
+                                @endif
+                            </ul>
+                        </li>
+                    @endif
 
 
                 <!-- Marketing section -->
@@ -420,15 +553,12 @@
                 </li>
                 @endif
                 
-
+                @if (\App\CentralLogics\Helpers::module_permission_check('store'))
                 <!-- Store Store -->
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('messages.store_section') }}">{{ translate('messages.store_management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
                 </li>
-
-               
-                @if (\App\CentralLogics\Helpers::module_permission_check('store'))
 
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('store/pending-requests') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.pending-requests') }}" title="{{ translate('messages.pending_requests') }}">
@@ -458,8 +588,29 @@
                         <span class="tio-layout nav-icon"></span>
                         <span class="text-truncate">{{ translate('messages.stores') }}
                             {{ translate('list') }}</span>
+                    </a> 
+                </li>
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('store/removal-requests') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.removal-requests') }}" title="Removal Requests">
+                        <span class="tio-delete nav-icon"></span>
+                        <span class="text-truncate position-relative overflow-visible">
+                            Removal Requests
+                            @php($pending_removals = \Illuminate\Support\Facades\DB::table('store_removal_requests')->where('status', 'pending')->count())
+                            @if($pending_removals > 0)
+                            <span class="btn-status btn-status-danger border-0 size-8px"></span>
+                            @endif
+                        </span> 
                     </a>
                 </li>
+                   <li class="navbar-vertical-aside-has-menu {{ Request::is('store-monetization*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.store-monetization.dashboard') }}" title="Store Monetization">
+                            <i class="tio-chart-bar-4 nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Store Monetization
+                            </span>
+                        </a>
+                    </li>
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/store/types')  }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.types') }}" title="{{ translate('messages.stores_config') }}">
                         <span class="tio-layout nav-icon"></span>
@@ -473,6 +624,7 @@
                         <span class="text-truncate text-capitalize">{{ translate('Recommended_Store') }}</span>
                     </a>
                 </li>
+               
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('store/bulk-import') ? 'active' : '' }}">
                     <a class="nav-link " href="{{ route('admin.store.bulk-import') }}" title="{{ translate('messages.bulk_import') }}">
                         <span class="tio-publish nav-icon"></span>
@@ -565,7 +717,7 @@
                 {{-- STORE WALLET END =========================== --}}
 
                   
-                     @if (\App\CentralLogics\Helpers::module_permission_check('quotaiton_manage'))
+                     {{-- @if (\App\CentralLogics\Helpers::module_permission_check('quotaiton_manage'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('quotation*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="Leads">
                             <i class="tio-money nav-icon"></i>
@@ -607,25 +759,8 @@
 
                         </ul>
                     </li>
-                    @endif
-            
-                
-                    @if (\App\CentralLogics\Helpers::module_permission_check('projects_manage'))
-                    <li class="nav-item">
-                        <small class="nav-subtitle" title="Project Management">Project Management</small>
-                        <small class="tio-more-horizontal nav-subtitle-replacer"></small>
-                    </li>
-
-
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('project*') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.project.all') }}" title="Project">
-                            <i class="tio-incognito nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Project Management</span>
-                        </a>
-                    </li>
-
-                    @endif
-                
+                    @endif --}}
+                  
                 <!-- End Store -->
 
                 <li class="nav-item py-5">

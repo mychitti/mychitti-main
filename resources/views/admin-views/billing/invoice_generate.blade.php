@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title', 'Bill Generate')
+@section('title', 'Bills')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -65,7 +65,7 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>Bill Generate</h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>Bills</h1>
             <div class="page-header-select-wrapper">
                 <!-- Button trigger modal -->
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
@@ -104,7 +104,7 @@
 
 
 
-        <div class="row ">
+        {{-- <div class="row ">
             <form class="w-100" action="{{ route('admin.billing.save-manual-invoice') }}" method="post">
                 @csrf
                 <input type="hidden" id="service_id" name="service_id" value="">
@@ -249,18 +249,10 @@
                     <button class="btn btn-primary my-2">Generate Bill</button>
                 </div>
             </form>
-        </div>
-    </div>
-    <div class="content container-fluid">
+        </div> --}}
+   
         <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title">
-
-                <span>
-                    Invoices
-                </span>
-            </h1>
-        </div>
+      
         <!-- End Page Header -->
 
 
@@ -527,7 +519,7 @@
 
             $('.rows_parent').append(html)
         }
-        $(".bill_to_type").on('change', function() {
+        $(".bill_to_type").on('change', function() { 
             if ($(this).val() == 'user' && $(this).prop('checked') == true) {
                 console.log('user');
                 $('#store_list').hide();

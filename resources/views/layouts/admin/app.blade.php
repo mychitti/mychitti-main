@@ -114,14 +114,14 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <!-- Builder -->
     @include('layouts.admin.partials._front-settings')
     <!-- End Builder -->
- 
+
     <!-- JS Preview mode only -->
     @include('layouts.admin.partials._header')
-    @if (Request::is('payment/configuration*') || Request::is('sms/configuration*'))
+    @if (Request::is('payment/configuration*') || Request::is('sms/configuration*') || Request::is('*business-settings*'))
         @php($module_type = 'settings')
     @elseif(Request::is('prompt*') || Request::is('admin/prompt*'))
         @php($module_type = 'settings')
-    @elseif(_isCommonDashboard()|| Request::is('file*')|| Request::is('admin/file*'))
+    @elseif(_isCommonDashboard() || Request::is('file*') || Request::is('admin/file*'))
         @php($module_type = 'dashboard')
     @endif
 
@@ -288,7 +288,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
-       
+
         <div class="modal fade" id="action_verify_modal" tabindex="-1" aria-labelledby="exampleModalLabel"
             aria-hidden="true">
             <div class="modal-dialog">
@@ -324,7 +324,23 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 </div>
             </div>
         </div>
-
+        <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add New <span
+                                class="user_typ_text">Customer</span> </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        @include('admin-views.forms.customer_add')
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- ========== END MAIN CONTENT ========== -->
 
         <!-- ========== END SECONDARY CONTENTS ========== -->
@@ -372,6 +388,148 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         <audio id="myAudio">
             <source src="{{ asset('public/assets/admin/sound/notification.mp3') }}" type="audio/mpeg">
         </audio>
+        <script>
+            function saveAddress(addr_type) {
+                if (addr_type == 'billing') {
+                    if ($("#ba_address1").val().trim() == '') {
+                        $(".ba_address1_error").text('Address line 1 is required')
+                        return false;
+                    }
+                    $(".ba_address1_error").text('')
+                    if ($('#ba_state').val() === '' || $('#ba_state').val() === null) {
+                        $(".ba_state_error").text('State is required')
+                        return false;
+                    }
+                    $(".ba_state_error").text('')
+
+                    var html = '';
+                    html += `<b> Address Line 1 </b>` + $("#ba_address1").val() + `<br> <b> Address Line 2 </b>` + $(
+                            "#ba_address2").val() + `<br> <b> State </b>` + $("#ba_state").val() +
+                        `<br> <b> City </b>` + $("#ba_city").val() + `<br> <b> Pin Code </b>` + $("#ba_pincode").val()
+                    $("#billing_address_show").html(html)
+                    $("#billing_address_add").hide();
+                    $("#billing_address_remove").show();
+                }
+                if (addr_type == 'shipping') {
+                    if ($("#sa_address1").val().trim() == '') {
+                        $(".sa_address1_error").text('Address line 1 is required')
+                        return false;
+                    }
+                    $(".sa_address1_error").text('')
+                    if ($('#sa_state').val() === '' || $('#ba_state').val() === null) {
+                        $(".sa_state_error").text('State is required')
+                        return false;
+                    }
+                    $(".sa_state_error").text('')
+
+                    var html = '';
+                    html += `<b> Address Line 1 </b>` + $("#sa_address1").val() + `<br> <b> Address Line 2 </b>` + $(
+                            "#sa_address2").val() + `<br> <b> State </b>` + $("#sa_state").val() +
+                        `<br> <b> City </b>` + $("#sa_city").val() + `<br> <b> Pin Code </b>` + $("#sa_pincode").val()
+                    $("#shipping_address_show").html(html)
+                    $("#shipping_address_add").hide();
+                    $("#shipping_address_remove").show();
+                }
+            }
+
+            function removeAddress(addr_type) {
+                if (addr_type == 'billing') {
+                    $("#billing_address_show").html('');
+                    $("#billing_address_remove").hide();
+                    $("#billing_address_add").show();
+                    $("#ba_address1").val('')
+                    $("#ba_address2").val('')
+                    $("#ba_pincode").val('')
+                    $("#ba_city").val('')
+                    $("#ba_state").val('')
+                } else if (addr_type == 'shipping') {
+                    $("#shipping_address_remove").hide();
+                    $("#shipping_address_add").show();
+                    $("#shipping_address_show").html('');
+                    $("#sa_address1").val('')
+                    $("#sa_address2").val('')
+                    $("#sa_pincode").val('')
+                    $("#sa_city").val('')
+                    $("#sa_state").val('')
+                }
+            }
+            $(".rm_btn").on('click', function() {
+                var data_id = $(this).attr('data-id');
+                var className = data_id.replace(/^rm_/, '');
+                console.log(className)
+                $('.' + className).hide(); // hide element with the resulting class name
+                $('.inp_' + className).val('');
+                $('button[data-label="' + className + '"]').show();
+            });
+            $(document).ready(function() {
+                console.log("{{ Route::currentRouteName() }}")
+
+                user_type = 'both';
+                if ($('#customer_id').hasClass('get_vendor')) {
+                    user_type = 'vendor';
+                }
+                let userTypeText = (user_type == 'customer' ? 'Client' : 'Vendor');
+                $(".user_typ_text").text(userTypeText)
+
+                let url =
+                    "{{ route('admin.client.get-matches') }}?user_type=" + user_type; // website or store
+
+                $('#customer_id').select2({
+                    placeholder: 'Search for a client',
+                    minimumInputLength: 3,
+                    ajax: {
+                        url: url,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return {
+                                q: params.term
+                            };
+                        },
+                        processResults: function(data) {
+                            let results = data.map(customer => ({
+                                id: customer.id,
+                                text: customer.f_name + (customer.user_type ? ' | ' + customer
+                                    .user_type : '') + ' (' + customer.phone + ')'
+                            }));
+
+                        @if(hasPermission('client_manage', 'add'))
+                            // Add "+ Add New Client" at bottom
+                            results.push({
+                                id: 'add_new',
+                                text: '+ Add New ' + userTypeText
+                            });
+                        @endif
+
+                            return {
+                                results: results
+                            };
+                        },
+                        cache: true
+                    }
+                });
+
+                // Add "Walk In" immediately in default dropdown if no search yet
+             
+            });
+
+            $(document).on('change', '#customer_id', function() {
+                var selectedVal = $(this).val();
+                if (selectedVal === 'add_new') {
+                    $('#addCustomerModal').modal('show');
+                    return;
+                }
+            });
+            $(document).ready(function() {
+                $('#custom-buttons2').on('click', 'button', function() {
+                    console.log('clicked')
+                    const label = $(this).data('label');
+                    $("." + label).show()
+                    console.log(label)
+
+                })
+            })
+        </script>
 
         <script>
             var audio = document.getElementById("myAudio");
@@ -506,7 +664,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 })
             }
 
-            $('.form-alert').on('click', function() {
+            $(document).on('click', '.form-alert',function() {
                 let id = $(this).data('id')
                 let message = $(this).data('message')
                 Swal.fire({

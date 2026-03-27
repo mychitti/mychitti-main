@@ -144,7 +144,7 @@
                                                             data-id="returned-{{ $item['id'] }}"
                                                             data-message="{{ translate('Want to mark this order item as returned ') }}"
                                                             title="{{ translate('messages.returned') }}"></i>
-                                                            <i class="tio-replay"></i> Returned
+                                                            <i class="tio-replay"></i> Return
                                                         </a>
                                                         <form
                                                             action="{{ route('vendor.inventory.sale.order-status', [$item->id, 'returned']) }}"

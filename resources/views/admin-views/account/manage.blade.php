@@ -48,7 +48,7 @@
                             </div>
                             <div class="form-row col-4">
                                 <label for="exampleInputEmail1">Base Salary<span class="text-danger">*</span></label>
-                                <input type="number" name="base_salary"  step="0.001" required placeholder="Base Salary" class="form-control">
+                                <input type="number" name="base_salary" step="0.001" required placeholder="Base Salary" class="form-control">
                             </div>
                             <div class="form-row col-4">
                                 <label for="exampleInputEmail1">Pay Frequency <span class="text-danger">*</span></label>
@@ -67,7 +67,7 @@
                             </div>
                             <div class="form-row col-6">
                                 <label for="exampleInputEmail1">Bonus/Incentives</label>
-                                <input type="number" name="bonus_incentives"  step="0.001"  placeholder="Bonus/Incentives" class="form-control">
+                                <input type="number" name="bonus_incentives"  step="0.001" placeholder="Bonus/Incentives" class="form-control">
                             </div>
                             <div class="form-row col-6">
                                 <label for="exampleInputEmail1">Allowances</label>
@@ -75,7 +75,7 @@
                             </div>
                             <div class="form-row col-6">
                                 <label for="exampleInputEmail1">Deductions</label>
-                                <input type="number" name="deductions"  step="0.001" placeholder="Deductions" class="form-control">
+                                <input type="number" name="deductions" step="0.001"  placeholder="Deductions" class="form-control">
                             </div>
                             <div class="form-row col-6">
                                 <label for="exampleInputEmail1">Work Hours</label>
@@ -158,7 +158,7 @@
 
             $('#emp_select').on('change', function(){
                 $.ajax({
-                    url: "{{ route('vendor.salary.get-info', [$('#emp_select').val()]) }}",
+                    url: "{{ route('vendor.salary.get-info', ':id') }}".replace(':id', $('#emp_select').val()),
                     type: 'GET',
                     success: function (data) {
                        consol.log(data)

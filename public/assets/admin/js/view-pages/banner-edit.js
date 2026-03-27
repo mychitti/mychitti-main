@@ -23,47 +23,26 @@ $('#banner_type').on('change', function () {
     banner_type_change(order_type);
 })
 function banner_type_change(order_type) {
-    if(order_type=='item_wise')
-    {
-        $('#store_wise').hide();
-        $('#item_wise').show();
-        $('#default').hide();
-        $('#module_wise').hide();
-    }
-    else if(order_type=='store_wise')
-    {
+    // Hide all first
+    $('#store_wise, #item_wise, #default, #module_wise, #category_wise').hide();
+    // Show/hide customer_wise based on store_wise
+    if(order_type=='store_wise'){
         $('#store_wise').show();
-        $('#item_wise').hide();
-        $('#default').hide();
-        $('#module_wise').hide();
+        $('#customer_wise').hide();
+    } else {
+        $('#customer_wise').show();
     }
-    else if(order_type=='default')
-    {
+
+    if(order_type=='item_wise'){
+        $('#item_wise').show();
+    } else if(order_type=='store_wise'){
+        $('#store_wise').show();
+    } else if(order_type=='default'){
         $('#default').show();
-        $('#store_wise').hide();
-        $('#item_wise').hide();
-        $('#module_wise').hide();
-    }
-    else if(order_type=='module_wise')
-    {
+    } else if(order_type=='module_wise'){
         $('#module_wise').show();
-        $('#default').hide();
-        $('#store_wise').hide();
-        $('#item_wise').hide();
-    }
-    else if(order_type=='category_wise')
-    {
-        $('#module_wise').hide();
-        $('#default').hide();
-        $('#store_wise').hide();
-        $('#item_wise').hide();
+    } else if(order_type=='category_wise'){
         $('#category_wise').show();
-    }
-    else{
-        $('#module_wise').hide();
-        $('#item_wise').hide();
-        $('#store_wise').hide();
-        $('#default').hide();
     }
 }
 

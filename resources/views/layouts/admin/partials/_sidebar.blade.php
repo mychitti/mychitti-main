@@ -1083,7 +1083,7 @@
                     </a>
                     <ul class="js-navbar-vertical-aside-submenu nav nav-sub"  style="display:{{ Request::is('employee*') ? 'block' : 'none' }}">
                         <li class="nav-item {{ Request::is('employee/add-new') ? 'active' : '' }}">
-                            <a class="nav-link " href="{{ route('admin.employee.add-new') }}" title="{{ translate('messages.add_new_Employee') }}">
+                            <a class="nav-link " href="{{ route('admin.users.employee.add-new') }}" title="{{ translate('messages.add_new_Employee') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>
                                 <span class="text-truncate">{{ translate('messages.add_new') }}</span>
                             </a>

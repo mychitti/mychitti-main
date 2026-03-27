@@ -14,4 +14,9 @@ class StoreSignature extends Model
     {
         return $this->belongsTo(VendorEmployee::class, 'staff_id');
     }
-}
+
+    public function adminEmployee()
+    {
+        return $this->belongsTo(Admin::class, 'staff_id');
+    }
+} 

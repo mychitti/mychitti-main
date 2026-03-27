@@ -51,6 +51,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('submit-reply', 'ReviewController@submit_reply')->name('submit-reply');
         Route::get('site_direction', 'BusinessSettingsController@site_direction_vendor')->name('site_direction');
 
+        Route::group(['prefix' => 'analytics', 'as' => 'analytics.'], function () {
+            Route::get('/', 'AnalyticsController@index')->name('index');
+            Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data');
+        });
+
         Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
             Route::get('/', 'NotificationController@index')->name('add-new');
             Route::post('store', 'NotificationController@store')->name('store');

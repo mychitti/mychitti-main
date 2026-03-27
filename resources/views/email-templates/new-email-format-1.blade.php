@@ -149,8 +149,10 @@ width: 24px;
             <tr>
                 <td class="main-table-td">
                     <img class="mail-img-1"
-                    @if ($data?->logo)
-                    src="{{ asset('storage/app/public/email_template/') }}/{{ $data['logo']??'' }}"
+                    @php $logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value; @endphp
+                    @if ($logo)
+                    {{-- src="{{ asset('storage/app/public/email_template/') }}/{{ $data['logo']??'' }}" --}}
+                    src="{{ asset('storage/business/') }}/{{ $logo??'' }}"
                     @else
                     src='{{ asset('/public/assets/admin/img/blank1.png') }}'
                     @endif
@@ -178,7 +180,7 @@ width: 24px;
                 </td>
             </tr>
             <tr>
-                <td>
+                <td> 
                     <span class="privacy">
                         @php($landing_data =\App\Models\DataSetting::where('type', 'admin_landing_page')->whereIn('key', ['shipping_policy_status','refund_policy_status','cancellation_policy_status'])->pluck('value','key')->toArray())
                         <a href="{{ route('privacy-policy') }}" id="privacy-check" style="{{ (isset($data['privacy']) && $data['privacy'] == 1)?'':'display:none;' }}">{{ translate('Privacy_Policy')}}</a>

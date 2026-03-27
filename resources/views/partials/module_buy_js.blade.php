@@ -3,13 +3,16 @@
 
             let selections = {};
             let globalMonths = 1;
+            @php $gst_settings_js = _planGstSettings(); @endphp
+            const gstPercent = {{ $gst_settings_js['gst_percent'] ?? 0 }};
+            const gstMode = '{{ $gst_settings_js['gst_mode'] ?? 'exclude' }}';
 
             $('.pc-global-duration-card').on('click', function() {
-
+ 
                 $('.pc-global-duration-card').removeClass('pc-selected');
-                $(this).addClass('pc-selected');
+                $(this).addClass('pc-selected'); 
 
-                globalMonths = parseInt($(this).data('months'));
+                globalMonths = parseInt($(this).data('months')); 
 
                 $('.pc-duration-card').removeClass('pc-selected');
                 $(`.pc-duration-card[data-months="${globalMonths}"]`).addClass('pc-selected');
@@ -84,14 +87,32 @@
                     });
                 });
 
-                const total = totalBase - totalDiscount;
+                let subtotal = totalBase - totalDiscount;
+                let gstAmount = 0;
+                let total = subtotal;
 
-                $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', {
+                if (gstPercent > 0) {
+                    if (gstMode === 'exclude') {
+                        gstAmount = (subtotal * gstPercent) / 100;
+                        total = subtotal + gstAmount;
+                    } else {
+                        // GST inclusive: extract GST from the total
+                        gstAmount = subtotal - (subtotal * 100) / (100 + gstPercent);
+                        total = subtotal;
+                    }
+                }
+
+                $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', { 
                     minimumFractionDigits: 2
                 }));
                 $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', {
                     minimumFractionDigits: 2
                 }));
+                if (gstPercent > 0) {
+                    $('#pcGst').text('₹' + gstAmount.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2
+                    }));
+                }
                 $('#pcTotal').text('₹' + total.toLocaleString('en-IN', {
                     minimumFractionDigits: 2
                 }));
@@ -100,6 +121,7 @@
 
                 $('#selectedModulesInput').val(JSON.stringify(selectedModules));
                 $('#grandTotalInput').val(total.toFixed(2));
+                $('#gstAmountInput').val(gstAmount.toFixed(2));
             }
 
         });

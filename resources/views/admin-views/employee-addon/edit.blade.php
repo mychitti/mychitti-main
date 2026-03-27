@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+@extends('layouts.admin.app')
 @section('title',translate('messages.Employee Edit'))
 
 @section('content')
@@ -14,7 +14,7 @@
             </span>
         </h1>
     </div>
-
+ 
     <!-- Content Row -->
     <form action="{{route('vendor.employee.update',[$e['id']])}}" method="post" enctype="multipart/form-data" class="js-validate">
         @csrf
@@ -60,9 +60,23 @@
                                     <option value="" selected disabled>{{translate('messages.select')}} Department</option>
                                     @foreach($department as $dep)
                                         <option
-                                            value="{{$dep->id}}" {{$dep['id']==$e['employee_role_id']?'selected':''}}>{{$dep->title}}</option>
+                                            value="{{$dep->id}}" {{$dep['id']==$e['department_id']?'selected':''}}>{{$dep->title}}</option>
                                     @endforeach
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label text-capitalize" for="salary_type">Salary Type</label>
+                            <select name="salary_type" id="salary_type" class="form-control">
+                                <option value="">Select</option>
+                                <option value="Monthly" {{ ($e['salary_type'] ?? '') == 'Monthly' ? 'selected' : '' }}>Monthly</option>
+                                <option value="Hourly" {{ ($e['salary_type'] ?? '') == 'Hourly' ? 'selected' : '' }}>Hourly</option>
+                                <option value="Task-Wise" {{ ($e['salary_type'] ?? '') == 'Task-Wise' ? 'selected' : '' }}>Task-Wise</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="base_salary_group">
+                            <label class="input-label text-capitalize" for="base_salary">Base Salary</label>
+                            <input type="number" name="base_salary" placeholder="Ex : 42000" step="0.01"
+                                value="{{ $e['base_salary'] ?? old('base_salary') }}" class="form-control" id="base_salary">
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -177,5 +191,12 @@
                 $('#reset_btn').click(function(){
                     $('#viewer').attr('src','{{asset('storage/app/public/vendor')}}/{{$e['image']}}');
                 })
+                $('#salary_type').on('change', function() {
+                    if ($(this).val() == 'Task-Wise') {
+                        $('#base_salary_group').hide();
+                    } else {
+                        $('#base_salary_group').show();
+                    }
+                }).trigger('change');
             </script>
 @endpush

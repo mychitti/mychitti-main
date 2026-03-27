@@ -37,6 +37,8 @@ class InventoryItem extends Model
         'variations',
         'choice_options',
         'attributes',
+        'stock',
+        'selling_price'
     ];
  
     public function purchaseOrders()

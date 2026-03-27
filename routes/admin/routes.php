@@ -13,7 +13,7 @@ use App\Enums\ViewPaths\Admin\Employee;
 use App\Enums\ViewPaths\Admin\Module;
 use App\Enums\ViewPaths\Admin\Notification;
 use App\Enums\ViewPaths\Admin\Unit;
-use App\Enums\ViewPaths\Admin\WalletBonus;
+use App\Enums\ViewPaths\Admin\WalletBonus; 
 use App\Enums\ViewPaths\Admin\Zone;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\Coupon\CouponController;
@@ -181,7 +181,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
         Route::group(['prefix' => 'users', 'as' => 'users.'], function () {
-            Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.', 'middleware' => ['module:employee_role']], function () {
+            Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.', 'middleware' => ['planwise:hr_manage']], function () {
                 Route::get(CustomRole::ADD[URI], [CustomRoleController::class, 'index'])->name('create');
                 Route::post(CustomRole::ADD[URI], [CustomRoleController::class, 'add'])->name('create.post');
                 Route::get(CustomRole::EDIT[URI].'/{id}', [CustomRoleController::class, 'getUpdateView'])->name('edit');
@@ -190,7 +190,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post(CustomRole::SEARCH[URI], [CustomRoleController::class, 'search'])->name('search');
             });
 
-            Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['module:employee']], function () {
+            Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['planwise:hr_manage']], function () {
                 Route::get(Employee::INDEX[URI], [EmployeeController::class, 'index'])->name('list');
                 Route::get(Employee::ADD[URI], [EmployeeController::class, 'getAddView'])->name('add-new');
                 Route::post(Employee::ADD[URI], [EmployeeController::class, 'add'])->name('add-new.post');

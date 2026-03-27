@@ -710,7 +710,7 @@
                     </div>
                     <div class="schedule-row wed">
                         <div class="day-label">Tasks Tracker</div>
-                        <div>@if(hasPermission("ttask_manage", 'list'))<a href="{{ route('vendor.task.list') }}" class="btn btn-primary">-></a>@endif</div>
+                        <div>@if(hasPermission("task_manage", 'list'))<a href="{{ route('vendor.task.list') }}" class="btn btn-primary">-></a>@endif</div>
 
                     </div>
 

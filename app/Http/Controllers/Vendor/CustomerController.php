@@ -4,35 +4,24 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password as RulesPassword;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
-use App\CentralLogics\SMS_module;
 use App\Exports\CustomerLeadsExport;
 use App\Exports\CustomerTaskExport;
 use App\Exports\CustomerTransactionExport;
 use App\Exports\StoreUserExport;
 use App\Imports\CustomerImport;
-use App\Mail\EmailVerification;
-use App\Models\BusinessSetting;
-use App\Models\Cart;
-use App\Models\InvoiceItem;
 use App\Models\Project;
-use App\Models\StoreConfig;
 use App\Models\StoreCustomer;
 use App\Models\StoreTask;
 use App\Models\StoreUserComment;
 use App\Models\User;
 use App\Models\UserAddress;
-use App\Models\WalletTransaction;
 use Brian2694\Toastr\Facades\Toastr;
 use Faker\Extension\Helper;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use PHPUnit\TextUI\Help;
 
 class CustomerController extends Controller
 {

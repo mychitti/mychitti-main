@@ -365,7 +365,7 @@
 
     <div class="owl-carousel 3banner-carousel justify-content-center mt-2 store_banner">
         @foreach ($data['banners'] as $key => $value)
-            <a href="{{ $value->default_link ?? '#' }}"><img loading="lazy"
+            <a href="{{ $value->default_link ?? '#' }}" onclick="trackBannerClick({{ $value->id }})"><img loading="lazy"
                     src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner"></a>
         @endforeach
     </div>
@@ -796,6 +796,14 @@
 @endsection
 
 @push('script_2')
+    <script>
+        function trackBannerClick(bannerId) {
+            $.post("{{ route('track.banner.click') }}", {
+                banner_id: bannerId,
+                _token: '{{ csrf_token() }}'
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
     <script>

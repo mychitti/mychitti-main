@@ -7,20 +7,22 @@
         <div class="page-header">
             <div class="row align-items-center">
                 <div class="col-sm mb-2 mb-sm-0">
-                    <h1 class="page-header-title">
+                    <h1 class="page-header-title"> 
                         <span class="page-header-icon"><i class="tio-support"></i></span>
                         <span>Support Tickets</span>
                         <span class="badge badge-soft-dark ml-2">{{ $tickets->total() }}</span>
                     </h1>
                 </div>
                 <div class="col-sm-auto">
+                    @if(hasPermission('support_ticket', 'add'))
                     <a href="{{ route('admin.ticket.create') }}" class="btn btn--primary">
                         <i class="tio-add"></i> Create Ticket
                     </a>
+                    @endif
                 </div>
-            </div>
-        </div>
-
+            </div> 
+        </div> 
+ 
         <div class="card mt-3"> 
             <div class="card-header border-0">
                 <div class="row w-100 align-items-center g-2">
@@ -72,7 +74,7 @@
                             <tr>
                                 <td>{{ $tickets->firstItem() + $key }}</td>
                                 <td>
-                                    <a href="{{ route('admin.ticket.show', $ticket->id) }}" class="font-weight-bold text-primary">
+                                    <a href="{{ hasPermission('support_ticket', 'view') ?  route('admin.ticket.show', $ticket->id) : '#'}}" class="font-weight-bold text-primary">
                                         {{ $ticket->ticket_id }}
                                     </a>
                                 </td>
@@ -107,9 +109,12 @@
                                 <td>{{ \Carbon\Carbon::parse($ticket->created_at)->format('d M Y') }}</td>
                                 <td class="text-center">
                                     <div class="d-flex justify-content-center gap-2">
+                                        @if(hasPermission('support_ticket', 'view'))
                                         <a href="{{ route('admin.ticket.show', $ticket->id) }}" class="btn btn-sm btn-outline-info" title="View">
                                             <i class="tio-visible"></i>
                                         </a>
+                                        @endif
+                                        @if(hasPermission('support_ticket', 'delete'))
                                         <form action="{{ route('admin.ticket.delete', $ticket->id) }}" method="POST" class="d-inline"
                                             onsubmit="return confirm('Delete this ticket?');">
                                             @csrf @method('DELETE')
@@ -117,6 +122,7 @@
                                                 <i class="tio-delete"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

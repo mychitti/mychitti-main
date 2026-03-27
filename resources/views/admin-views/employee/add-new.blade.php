@@ -11,17 +11,17 @@
         <h1 class="page-header-title">
             <span class="page-header-icon">
                 <img src="{{asset('public/assets/admin/img/role.png')}}" class="w--26" alt="">
-            </span>
+            </span> 
             <span>
                 {{translate('messages.add_new_employee')}}
             </span>
-        </h1>
+        </h1>  
     </div>
     <!-- Content Row -->
     <form action="{{route('admin.users.employee.add-new.post')}}" method="post" enctype="multipart/form-data" class="js-validate">
         @csrf
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header"> 
                 <h5 class="card-title">
                     <span class="card-header-icon">
                         <i class="tio-user"></i>
@@ -33,7 +33,16 @@
                 <div class="row g-3">
                     <div class="col-md-8">
                         <div class="row g-3">
-                            <div class="col-sm-6">
+                            <div class="col-sm-4">
+                                <label class="input-label text-capitalize" for="emp_id_field">{{ translate('messages.employee_id') }}
+                                    @if (hasPermission('staff_manage', 'settings'))
+                                        <span class="text-danger"><a href="{{ route('admin.staff.settings') }}" class="text-underline">Edit Prefix?</a></span>
+                                    @endif
+                                </label>
+                                <input type="text" name="" class="form-control" id="emp_id_field"
+                                    placeholder="Auto Generated" readonly value="{{ _newEmpId() }}">
+                            </div>
+                            <div class="col-sm-4"> 
                                 <label class="input-label qcont" for="fname">{{translate('messages.first_name')}}<span class="form-label-secondary text-danger"
                                                         data-toggle="tooltip" data-placement="right"
                                                         data-original-title="{{ translate('messages.Required.')}}"> *
@@ -83,6 +92,17 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="col-sm-6">
+                                <div>
+                                    <label class="input-label" for="department_id">{{translate('messages.department')}}</label>
+                                    <select class="form-control js-select2-custom w-100" name="department_id" id="department_id">
+                                        <option value="" selected>{{translate('messages.select')}} {{translate('messages.department')}}</option>
+                                        @foreach($departments as $department)
+                                            <option value="{{$department->id}}" {{ old('department_id') == $department->id ? 'selected' : '' }}>{{$department->title}}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
                             <div class="col-md-6">
                                 <label class="input-label qcont" for="phone">{{translate('messages.phone')}}<span class="form-label-secondary text-danger"
                                                         data-toggle="tooltip" data-placement="right"
@@ -95,6 +115,20 @@
                             <div class="col-md-6">
                                 <label class="input-label qcont" for="documents">{{translate('messages.documents')}}</label>
                                 <input type="file" name="documents[]" multiple class="form-control" id="documents">
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="input-label text-capitalize" for="salary_type">Salary Type</label>
+                                <select name="salary_type" id="salary_type" class="form-control">
+                                    <option value="">Select</option>
+                                    <option value="Monthly" {{ old('salary_type') == 'Monthly' ? 'selected' : '' }}>Monthly</option>
+                                    <option value="Hourly" {{ old('salary_type') == 'Hourly' ? 'selected' : '' }}>Hourly</option>
+                                    <option value="Task-Wise" {{ old('salary_type') == 'Task-Wise' ? 'selected' : '' }}>Task-Wise</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6" id="base_salary_group">
+                                <label class="input-label text-capitalize" for="base_salary">Base Salary</label>
+                                <input type="number" name="base_salary" placeholder="Ex : 42000" step="0.01"
+                                    value="{{ old('base_salary') }}" class="form-control" id="base_salary">
                             </div>
                             </div>
                         </div>
@@ -118,6 +152,125 @@
                 </div>
             </div>
         </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <span class="card-header-icon">
+                        <i class="tio-user"></i>
+                    </span>
+                    <span>Skills &amp; Shift</span>
+                </h5> 
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="input-label text-capitalize" for="skills">Skill Set</label>
+                        <select class="js-example-tags" name="skills[]" multiple="multiple">
+                            <option value="Communication">Communication</option>
+                            <option value="Teamwork">Teamwork</option>
+                            <option value="Problem Solving">Problem Solving</option>
+                            <option value="Time Management">Time Management</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="input-label text-capitalize" for="shift">Shift</label>
+                        <select name="shift" id="shift" class="form-control js-select2-custom">
+                            <option value=""></option>
+                            @php $shifts = _getStoreShifts(); @endphp
+                            @foreach ($shifts as $key => $shift)
+                                <option value="{{ $shift->id }}">
+                                    {{ $shift->name . ' (' . $shift->start_time . ' to ' . $shift->end_time . ')' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <a data-toggle="collapse" href="#collapse3" role="button" aria-expanded="false" aria-controls="collapse3">
+                <div class="card-header" style="background-color: #ffddc6;">
+                    <h5 class="card-title">
+                        <span class="card-header-icon"><i class="tio-user"></i></span>
+                        <span>Educational Information <i class="tio-arrow-drop-down-circle-outlined"></i></span>
+                    </h5>
+                </div>
+            </a>
+            <div class="collapse" id="collapse3">
+                <div class="card-body p-2" style="border: 2px solid #ffddc6;">
+                    <table class="table edu_tabel table-responsive">
+                        <thead style="background:rgb(244, 244, 244);">
+                            <tr>
+                                <th scope="col">School Name</th>
+                                <th scope="col">Degree/Diploma</th>
+                                <th scope="col">Fields(s) of Study</th>
+                                <th scope="col">Start Month</th>
+                                <th scope="col">End Month</th>
+                                <th scope="col">Additional Notes</th>
+                                <th scope="col" style="padding:7px;"><button type="button" class="btn btn-dark btn-sm add_more_btn" onclick="addMoreRowEmp('education')">Add More</button></th>
+                            </tr>
+                        </thead>
+                        <tbody class="rows_parent">
+                            <tr class="item_row_education" data-id="1">
+                                <td><input type="text" name="school_name[]" placeholder="School Name" class="form-control"></td>
+                                <td><input type="text" name="degree_diploma[]" placeholder="Degree / Diploma / Certificate" class="form-control"></td>
+                                <td><input type="text" name="field_of_study[]" placeholder="Field of Study" class="form-control"></td>
+                                <td><input type="date" name="start_month[]" class="form-control"></td>
+                                <td><input type="date" name="end_month[]" class="form-control"></td>
+                                <td><input type="text" name="additional_notes[]" placeholder="Additional Notes" class="form-control"></td>
+                                <td><a onclick="deleteNewRowEmp(1)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <a data-toggle="collapse" href="#collapse4" role="button" aria-expanded="false" aria-controls="collapse4">
+                <div class="card-header" style="background-color: #e3efe2;">
+                    <h5 class="card-title">
+                        <span class="card-header-icon"><i class="tio-user"></i></span>
+                        <span>Experience <i class="tio-arrow-drop-down-circle-outlined"></i></span>
+                    </h5>
+                </div>
+            </a>
+            <div class="collapse" id="collapse4">
+                <div class="card-body p-2" style="border: 2px solid #c0e9e6;">
+                    <table class="table expr_tabel table-responsive">
+                        <thead style="background:rgb(243, 243, 243);">
+                            <tr>
+                                <th scope="col">Company Name</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Summary</th>
+                                <th scope="col">Start Date</th>
+                                <th scope="col">End Date</th>
+                                <th scope="col">Experience Letter</th>
+                                <th scope="col" style="padding:7px;"><button type="button" class="btn btn-dark btn-sm add_more_btn" onclick="addMoreRowEmp('experience')">Add More</button></th>
+                            </tr>
+                        </thead>
+                        <tbody class="rows_parent_experience">
+                            <tr class="item_row_experience" data-id="1">
+                                <td><input type="text" name="company_name[]" placeholder="Company Name" class="form-control"></td>
+                                <td><input type="text" name="occupation[]" placeholder="Role" class="form-control"></td>
+                                <td><textarea name="summary[]" class="form-control" placeholder="Summary"></textarea></td>
+                                <td>
+                                    <input type="date" name="exp_start_date[]" class="form-control">
+                                    <input type="hidden" class="hidden_check" name="currently_working[1]" value="0">
+                                    <input type="checkbox" onchange="tillPresent(this, 1)" class="till_present_1" name="currently_working[1]" value="1">
+                                    <label>Till Present</label>
+                                </td>
+                                <td><input type="date" name="exp_end_date[]" class="form-control end_month_1"></td>
+                                <td><input type="file" name="experience_letter[0]" class="form-control"></td>
+                                <td><a onclick="deleteNewRowExp(1)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title">
@@ -231,5 +384,74 @@
             $('#zone_id').val(null).trigger('change');
             $('#role_id').val(null).trigger('change');
         })
+        $('#salary_type').on('change', function() {
+            if ($(this).val() == 'Task-Wise') {
+                $('#base_salary_group').hide();
+            } else {
+                $('#base_salary_group').show();
+            }
+        }).trigger('change');
+
+        // Select2 tags for skills
+        $(document).ready(function() {
+            $('.js-example-tags').select2({
+                tags: true,
+                placeholder: "Select or add tags",
+            });
+        });
+
+        // Dynamic education/experience rows
+        function tillPresent(elem, dataId) { 
+            if ($(elem).prop('checked') == true) {
+                $('.end_month_' + dataId).attr('readonly', true).val('');
+            } else {
+                $('.end_month_' + dataId).removeAttr('readonly');
+            }
+        }
+
+        function deleteNewRowEmp(rowId) {
+            $(".item_row_education[data-id='" + rowId + "']").remove();
+        }
+
+        function deleteNewRowExp(rowId) {
+            $(".item_row_experience[data-id='" + rowId + "']").remove();
+        }
+
+        function addMoreRowEmp(section) {
+            var $lastItemRow = $('.item_row_' + section).last();
+            if (!$lastItemRow.length) {
+                var dataId = 1;
+            } else {
+                var dataId = Number($lastItemRow.data('id')) + 1;
+            }
+
+            if (section == 'education') {
+                var html = `<tr class="item_row_` + section + `" data-id="` + dataId + `">
+                    <td><input type="text" name="school_name[]" placeholder="School Name" class="form-control"></td>
+                    <td><input type="text" name="degree_diploma[]" placeholder="Degree / Diploma / Certificate" class="form-control"></td>
+                    <td><input type="text" name="field_of_study[]" placeholder="Field of Study" class="form-control"></td>
+                    <td><input type="date" name="start_month[]" class="form-control"></td>
+                    <td><input type="date" name="end_month[]" class="form-control"></td>
+                    <td><input type="text" name="additional_notes[]" placeholder="Additional Notes" class="form-control"></td>
+                    <td><a onclick="deleteNewRowEmp(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                </tr>`;
+                $('.rows_parent').append(html);
+            } else if (section == 'experience') {
+                var html = `<tr class="item_row_` + section + `" data-id="` + dataId + `">
+                    <td><input type="text" name="company_name[]" placeholder="Company Name" class="form-control"></td>
+                    <td><input type="text" name="occupation[]" placeholder="Role" class="form-control"></td>
+                    <td><textarea name="summary[]" class="form-control" placeholder="Summary"></textarea></td>
+                    <td><input type="date" name="exp_start_date[]" class="form-control">
+                        <input type="hidden" class="hidden_check" name="currently_working[` + dataId + `]" value="0">
+                        <input type="checkbox" onchange="tillPresent(this, ` + dataId + `)" class="till_present_` + dataId + `" name="currently_working[` + dataId + `]" value="1">
+                        <label>Till Present</label>
+                    </td>
+                    <td><input type="date" name="exp_end_date[]" class="form-control end_month_` + dataId + `"></td>
+                    <td><input type="file" name="experience_letter[` + (dataId - 1) + `]" class="form-control"></td>
+                    <td><a onclick="deleteNewRowExp(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                </tr>`;
+                $('.rows_parent_experience').append(html);
+            }
+        }
     </script>
 @endpush

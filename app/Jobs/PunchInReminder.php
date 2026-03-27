@@ -40,6 +40,8 @@ class PunchInReminder implements ShouldQueue
 
             $timeCard = EmployeeTimeCard::where('emp_id', $employee->id)
                 ->whereDate('date', $today)
+                ->where('vendor_id', Helpers::get_store_id() )
+
                 ->first();
 
             if (!$timeCard && now()->greaterThan($lateLimit)) {

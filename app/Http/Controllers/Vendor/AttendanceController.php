@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\VendorEmployee;
 use DateInterval;
 use DatePeriod;
-use DateTime;
+use DateTime; 
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
 
@@ -56,7 +56,7 @@ class AttendanceController extends Controller
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'vendor_employee')->get()->toArray();
+                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'vendor_employee')->where('vendor_id', Helpers::get_store_id())->get()->toArray();
                 if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
                     $lev++;
                 }
@@ -101,7 +101,7 @@ class AttendanceController extends Controller
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->get()->toArray();
+                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'vendor_employee')->where('vendor_id', Helpers::get_store_id())->get()->toArray();
                 if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
                     $lev++;
                 }
@@ -213,6 +213,8 @@ class AttendanceController extends Controller
         $attendanceLogs = EmployeeTimeCard::where('emp_id', $id)
             ->where('date', '>=', $currentmonth . '-01')
             ->where('date', '<=', $currentmonth . '-31')
+                ->where('vendor_id', Helpers::get_store_id() )
+
             ->whereNotNull('out_time')
             ->whereNotNull('in_time')->get();
 
@@ -294,7 +296,7 @@ class AttendanceController extends Controller
         $id = $request->post('emp_id');
         // prx($request->all());
 
-        Attendance::where(['month' => $request->post('month'), 'employee_id' => $id, 'employee_type' => 'vendor_employee', 'year' =>  $request->post('year')])->delete();
+        Attendance::where(['month' => $request->post('month'), 'employee_id' => $id, 'employee_type' => 'vendor_employee', 'vendor_id' => Helpers::get_store_id(), 'year' =>  $request->post('year')])->delete();
 
 
         $v_id = \App\CentralLogics\Helpers::get_store_id();
@@ -302,6 +304,7 @@ class AttendanceController extends Controller
         foreach ($request->post('daysArr') as $key => $value) {
             $att = new Attendance;
             $att->vendor_id = $v_id;
+            $att->employee_type = 'vendor_employee';
             $att->employee_id = $request->post('emp_id');
             $att->date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('daysArr')[$key];
             $att->label = $request->post('statusArr')[$key];

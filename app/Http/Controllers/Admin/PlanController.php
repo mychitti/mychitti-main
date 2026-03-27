@@ -25,6 +25,7 @@ use App\Models\VendorSubscription;
 use App\Models\SubscriptionPlanRequest;
 use App\Models\PlanDuration; 
 use App\Models\SubModuleDiscount;
+use App\Models\DataSetting;
 use DateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
@@ -152,7 +153,30 @@ class PlanController extends Controller
         $sub_modules = DB::table('sub_modules')->get();
         $plan_durations = PlanDuration::orderBy('sort_order')->get();
         $sub_module_discounts = SubModuleDiscount::all()->groupBy('sub_module_id');
-        return view('admin-views.plan.module_pricing', compact('allPlanRequests', 'features', 'sub_modules', 'plan_durations', 'sub_module_discounts'));
+        $gst_settings = DataSetting::where('type', 'plan_gst') 
+            ->whereIn('key', ['gst_mode', 'gst_percent', 'hsn'])
+            ->pluck('value', 'key')
+            ->toArray();
+        return view('admin-views.plan.module_pricing', compact('allPlanRequests', 'features', 'sub_modules', 'plan_durations', 'sub_module_discounts', 'gst_settings'));
+    }
+
+    public function save_gst_settings(Request $request)
+    {
+        $settings = [
+            'gst_mode' => $request->gst_mode ?? 'exclude',
+            'gst_percent' => $request->gst_percent ?? 0,
+            'hsn' => $request->hsn ?? '',
+        ];
+
+        foreach ($settings as $key => $value) {
+            DataSetting::updateOrCreate(
+                ['key' => $key, 'type' => 'plan_gst'],
+                ['value' => $value]
+            );
+        }
+
+        Toastr::success('GST settings updated successfully');
+        return back();
     }
     public function list() 
     {

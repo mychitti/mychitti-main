@@ -79,10 +79,21 @@
             @endif
         </td>
         <td style="width: 30%; text-align: right;">
-            @php  $store_logo = $data['store']['logo']; @endphp
-            <img width="100" class="" data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                alt="Logo">
+            @if (auth('admin')->check())
+                @php  $store_logo = $data['store']->logo; @endphp
+                <img width="100" class=""
+                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                    alt="Logo">
+            @else
+                @php  $store_logo = $data['store']['logo']; @endphp
+
+                <img width="100" class=""
+                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                    alt="Logo">
+            @endif
+
         </td>
     </tr>
 </table>
@@ -199,7 +210,7 @@
     <tr>
         <td><strong>Date:</strong> {{ date('d/m/Y') }}</td>
         <td align="right">
-            @if ((!isset($data['approved']) || !$data['approved'])  && isset($data['rr_id']) && $data['rr_id'])
+            @if ((!isset($data['approved']) || !$data['approved']) && isset($data['rr_id']) && $data['rr_id'])
                 <a class="approve_btn" href="{{ route('receivable-receipt.approve', [$data['rr_id']]) }}">
                     &nbsp; &nbsp; Approve &nbsp;&nbsp;
                 </a>
@@ -208,8 +219,7 @@
                     &nbsp; &nbsp; Approved &nbsp;&nbsp;
                 </a><br>
                 <br>
-                <span><b>Approved By :</b>{{$data['approved_by'] ?? ''}} {{$data['approved_phone'] ?? ''}}</span>
-
+                <span><b>Approved By :</b>{{ $data['approved_by'] ?? '' }} {{ $data['approved_phone'] ?? '' }}</span>
             @endif
         </td>
     </tr>

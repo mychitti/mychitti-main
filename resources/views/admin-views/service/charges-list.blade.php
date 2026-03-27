@@ -11,7 +11,7 @@
         <!-- Page Header -->
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{count($charges)}}</span></h1>
-            <div class="page-header-select-wrapper">
+            <div class="page-header-select-wrapper"> 
  
                 {{-- <div class="select-item">
                     <select name="module_id" class="form-control js-select2-custom"
@@ -103,6 +103,7 @@
                                     <b>2nd : </b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_2_charges}}, &nbsp;
                                     <b>3rd : </b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_3_charges}}, &nbsp;
                                     <b>Others :</b>{{\App\CentralLogics\Helpers::currency_symbol() . $lead->ven_other_charges}}, &nbsp;
+                                    <b>Dedicated :</b>{{\App\CentralLogics\Helpers::currency_symbol() . ($lead->dedicated_lead_charge ?? 0)}}, &nbsp;
                                     <b>Confirmation :</b>{{\App\CentralLogics\Helpers::currency_symbol() . ($lead->confirmation_charge ?? 0)}}, &nbsp;
                                     <b>Completion :</b>{{\App\CentralLogics\Helpers::currency_symbol() . ($lead->completion_charge ?? 0)}}
                                     </div>

@@ -15,7 +15,7 @@
         .header-table {
             width: 100%;
             margin-bottom: 25px;
-            border-bottom: 2px solid #ccc;
+            border-bottom: 2px solid #ccc; 
             padding-bottom: 15px;
         }
 
@@ -201,16 +201,14 @@
                 <p><strong>Phone:</strong> {{ $store->phone }}</p>
                 <p><strong>Email:</strong> {{ $store->email }}</p>
                 <p><strong>GST No:</strong>
-                    {{ ($gst = json_decode($store['gst'], true)) && isset($gst['code']) ? $gst['code'] : $bill_from['gst'] }}
+                    {{ ($gst = json_decode($store->gst, true)) && isset($gst['code']) ? $gst['code'] :  ''}}
                 </p>
             </td>
             <td class="logo-cell">
                 <div class="logo-box">
-                    @php  $store_logo = $store['logo']; @endphp
-
                     <img width="80" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, $store->logo_path, asset('public/assets/admin/img/160x160/img1.jpg'), $store->logo_dir) }}"
                         alt="Logo">
                 </div>
             </td>
@@ -272,9 +270,16 @@
                         </div>
                     </td>
                     <td>{{ $invoice->invoice_date ?? $invoice->created_at }}</td>
-                    <td>{{ ($customer = $invoice->invoice?->storeCustomer)
-                        ? $customer->f_name . ' ' . $customer->l_name
-                        : 'Customer Deleted' }}
+                    <td>
+                        @if ($invoice->invoice?->bill_to_type == 'vendor' && $invoice->invoice?->websiteVendor)
+                            {{ $invoice->invoice->websiteVendor->name }}
+                        @elseif ($invoice->invoice?->bill_to_type == 'user' && $invoice->invoice?->websiteUser)
+                            {{ $invoice->invoice->websiteUser->f_name . ' ' . $invoice->invoice->websiteUser->l_name }}
+                        @elseif ($invoice->invoice?->storeCustomer)
+                            {{ $invoice->invoice->storeCustomer->f_name . ' ' . $invoice->invoice->storeCustomer->l_name }}
+                        @else
+                            Customer Deleted
+                        @endif
                     </td>
                     <td><span class="badge badge-soft-success">{{ _price($invoice->total_amount) }}</span>
                     </td>

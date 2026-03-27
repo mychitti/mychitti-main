@@ -6,26 +6,26 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
-    Route::group(['prefix' => 'file', 'as' => 'file.'], function () { 
+    Route::group(['prefix' => 'file', 'as' => 'file.'], function () {
         Route::get('add', 'FileController@add')->name('add');
-        Route::post('store', 'FileController@store')->name('store'); 
+        Route::post('store', 'FileController@store')->name('store');
     }); 
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
-    Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
+    Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp'); 
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
         ->name('secure.download')->middleware('signed'); 
  
     Route::group(['prefix' => 'prompt', 'as' => 'prompt.', 'middleware' => ['module:ai_agent']], function () {
-        Route::get('/', 'SystemPromptController@index')->name('index');
-        Route::post('store', 'SystemPromptController@store')->name('store');
-        Route::post('update', 'SystemPromptController@update')->name('update');
-        Route::delete('delete/{prompt}', 'SystemPromptController@delete')->name('delete');
+        Route::get('/', 'SystemPromptController@index')->name('index')->middleware('permission:system_prompt,list');
+        Route::post('store', 'SystemPromptController@store')->name('store')->middleware('permission:system_prompt,add');
+        Route::post('update', 'SystemPromptController@update')->name('update')->middleware('permission:system_prompt,edit');
+        Route::delete('delete/{prompt}', 'SystemPromptController@delete')->name('delete')->middleware('permission:system_prompt,delete');
     });
     Route::group(['prefix' => 'pr-file', 'as' => 'pr-file.', 'middleware' => ['module:protected_file']], function () {
         Route::post('upload', 'ProtectedFileController@upload_file')->name('upload');
     });
- 
+
     Route::post('send-vendor-otp', 'VendorController@send_vendor_otp')->name('send-vendor-otp');
     Route::post('mark-notif-read', 'DashboardController@mark_notif_read')->name('mark-notif-read');
     // Route::get('common-dashboard/google-ads', 'DashboardController@google_ads')->name('common-dashboard.google-ads')->middleware('module:google_ads');
@@ -39,51 +39,61 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::group(['middleware' => ['admin', 'current-module']], function () {
 
         Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
-            Route::get('/', 'AIChatController@index')->name('index');
-            Route::post('send', 'AIChatController@chat')->name('send');
-            Route::get('history', 'AIChatController@history')->name('history'); 
-            Route::post('clear', 'AIChatController@clearMemory')->name('clear');
-            Route::post('tts', 'AIChatController@tts')->name('tts'); 
-            Route::get('logs', 'AIChatController@chatLogs')->name('logs');
-            Route::get('logs/{type}/{id}', 'AIChatController@chatLogDetail')->name('logs.detail');
-            Route::get('analytics', 'AIChatController@analytics')->name('analytics');
-            Route::get('analytics/export', 'AIChatController@exportChatLogs')->name('analytics.export');
+            Route::get('/', 'AIChatController@index')->name('index')->middleware('permission:ai_chat,view');
+            Route::post('send', 'AIChatController@chat')->name('send')->middleware('permission:ai_chat,send');
+            Route::get('history', 'AIChatController@history')->name('history')->middleware('permission:ai_chat,view');
+            Route::post('clear', 'AIChatController@clearMemory')->name('clear')->middleware('permission:ai_chat,send');
+            Route::post('tts', 'AIChatController@tts')->name('tts')->middleware('permission:ai_chat,send');
+            Route::get('logs', 'AIChatController@chatLogs')->name('logs')->middleware('permission:ai_chat,logs');
+            Route::get('logs/{type}/{id}', 'AIChatController@chatLogDetail')->name('logs.detail')->middleware('permission:ai_chat,logs');
+            Route::get('analytics', 'AIChatController@analytics')->name('analytics')->middleware('permission:ai_chat,analytics');
+            Route::get('analytics/export', 'AIChatController@exportChatLogs')->name('analytics.export')->middleware('permission:ai_chat,analytics');
         });
- 
+
         Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['module:ai_agent']], function () {
             // Dashboard / index
-            Route::get('/', 'AIAgentSkillController@index')->name('index');
- 
+            Route::get('/', 'AIAgentSkillController@index')->name('index')->middleware('permission:ai_agent,list');
+
             // Agent CRUD
-            Route::post('store',          'AIAgentSkillController@store')->name('store');
-            Route::get('{id}',            'AIAgentSkillController@show')->name('show');
-            Route::post('{id}/update',    'AIAgentSkillController@update')->name('update');
-            Route::delete('{id}',         'AIAgentSkillController@destroy')->name('destroy');
+            Route::post('store',          'AIAgentSkillController@store')->name('store')->middleware('permission:ai_agent,add');
+            Route::get('{id}',            'AIAgentSkillController@show')->name('show')->middleware('permission:ai_agent,view');
+            Route::post('{id}/update',    'AIAgentSkillController@update')->name('update')->middleware('permission:ai_agent,edit');
+            Route::delete('{id}',         'AIAgentSkillController@destroy')->name('destroy')->middleware('permission:ai_agent,delete');
 
             // Test console
-            Route::post('{id}/test',      'AIAgentSkillController@test')->name('test');
- 
+            Route::post('{id}/test',      'AIAgentSkillController@test')->name('test')->middleware('permission:ai_agent,test');
+
             // Versioning
-            Route::post('{id}/version',   'AIAgentSkillController@bumpVersion')->name('version.bump');
+            Route::post('{id}/version',   'AIAgentSkillController@bumpVersion')->name('version.bump')->middleware('permission:ai_agent,edit');
 
             // API Tools
-            Route::post('{agentId}/tools',         'AIAgentSkillController@storeApiTool')->name('tools.store');
-            Route::post('tools/{toolId}/update',   'AIAgentSkillController@updateApiTool')->name('tools.update');
-            Route::delete('tools/{toolId}',        'AIAgentSkillController@destroyApiTool')->name('tools.destroy');
+            Route::post('{agentId}/tools',         'AIAgentSkillController@storeApiTool')->name('tools.store')->middleware('permission:ai_agent,edit');
+            Route::post('tools/{toolId}/update',   'AIAgentSkillController@updateApiTool')->name('tools.update')->middleware('permission:ai_agent,edit');
+            Route::delete('tools/{toolId}',        'AIAgentSkillController@destroyApiTool')->name('tools.destroy')->middleware('permission:ai_agent,delete');
 
             // Function Schemas
-            Route::post('{agentId}/functions',         'AIAgentSkillController@storeFunction')->name('functions.store');
-            Route::post('functions/{fnId}/update',     'AIAgentSkillController@updateFunction')->name('functions.update');
-            Route::delete('functions/{fnId}',          'AIAgentSkillController@destroyFunction')->name('functions.destroy');
+            Route::post('{agentId}/functions',         'AIAgentSkillController@storeFunction')->name('functions.store')->middleware('permission:ai_agent,edit');
+            Route::post('functions/{fnId}/update',     'AIAgentSkillController@updateFunction')->name('functions.update')->middleware('permission:ai_agent,edit');
+            Route::delete('functions/{fnId}',          'AIAgentSkillController@destroyFunction')->name('functions.destroy')->middleware('permission:ai_agent,delete');
 
             // Tasks
-            Route::post('{agentId}/tasks',         'AIAgentSkillController@storeTask')->name('tasks.store');
-            Route::post('tasks/{taskId}/update',   'AIAgentSkillController@updateTask')->name('tasks.update');
-            Route::delete('tasks/{taskId}',        'AIAgentSkillController@destroyTask')->name('tasks.destroy');
+            Route::post('{agentId}/tasks',         'AIAgentSkillController@storeTask')->name('tasks.store')->middleware('permission:ai_agent,edit');
+            Route::post('tasks/{taskId}/update',   'AIAgentSkillController@updateTask')->name('tasks.update')->middleware('permission:ai_agent,edit');
+            Route::delete('tasks/{taskId}',        'AIAgentSkillController@destroyTask')->name('tasks.destroy')->middleware('permission:ai_agent,delete');
+        });
+
+        Route::group(['prefix' => 'analytics', 'as' => 'analytics.'], function () {
+            Route::get('/', 'AnalyticsController@index')->name('index')->middleware('permission:analytics,view');
+            Route::get('detail/{type}/{id}', 'AnalyticsController@detail')->name('detail')->middleware('permission:analytics,view');
+            Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data')->middleware('permission:analytics,view');
         });
 
         Route::group(['prefix' => 'logs', 'as' => 'logs.'], function () {
-            Route::get('action-logs/{tab?}', 'DashboardController@action_logs')->name('action-logs');
+            Route::get('action-logs', 'DashboardController@action_logs')->name('action-logs')->middleware('permission:action_logs,view');
+            Route::get('action-logs/error-logs', 'DashboardController@action_logs')->name('action-logs.errors')->middleware('permission:error_logs,view');
+            Route::get('action-logs/admin', 'DashboardController@action_logs')->name('action-logs.admin')->middleware('permission:admin_actions,view');
+            Route::post('error-logs/{id}/status', 'DashboardController@update_error_status')->name('error-logs.update-status')->middleware('permission:error_logs,view');
+            Route::post('error-logs/bulk-delete', 'DashboardController@bulk_delete_errors')->name('error-logs.bulk-delete')->middleware('permission:error_logs,view');
         });
 
 
@@ -132,8 +142,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         Route::group(['prefix' => 'lead', 'as' => 'lead.', 'middleware' => ['planwise:leads_manage']], function () {
             Route::post('save-comment', 'LeadController@save_comment')->name('save-comment');
-            Route::get('list', 'LeadController@index')->name('list'); 
-            Route::get('add', 'LeadController@add')->name('add'); 
+            Route::get('list', 'LeadController@index')->name('list');
+            Route::get('add', 'LeadController@add')->name('add');
             Route::post('status-change', 'LeadController@status_change')->name('status-change');
             Route::post('save-info', 'LeadController@save_info')->name('save-info');
             Route::get('search-vendors', 'LeadController@search_vendors')->name('search-vendors');
@@ -182,7 +192,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('buy-module-store', 'VendorController@buy_module_for_store')->name('module-store');
             Route::get('all-plans', 'VendorController@allPlans')->name('all-plans');
             // ===============================
- 
+
             Route::get('add-new/{type?}/{req_id?}', 'PlanController@index')->name('add-new');
             Route::get('status/{id}/{status}', 'PlanController@status')->name('status');
             Route::get('list', 'PlanController@list')->name('list');
@@ -193,30 +203,198 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('duration/update/{id}', 'VendorController@update_duration')->name('duration.update');
             Route::get('duration/delete/{id}', 'VendorController@delete_duration')->name('duration.delete');
             Route::post('duration/toggle/{id}', 'VendorController@toggle_duration')->name('duration.toggle');
+            Route::post('gst-settings', 'PlanController@save_gst_settings')->name('gst-settings');
             Route::get('stores', 'PlanController@stores')->name('stores');
-            Route::post('store', 'PlanController@store')->name('store'); 
-        });
-        Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () { 
-            Route::get('/', 'SupportTicketController@index')->name('index');
-            Route::get('create', 'SupportTicketController@create')->name('create');
-            Route::post('store', 'SupportTicketController@store')->name('store');
-            Route::get('show/{id}', 'SupportTicketController@show')->name('show');
-            Route::post('reply/{id}', 'SupportTicketController@reply')->name('reply');
-            Route::post('status/{id}', 'SupportTicketController@updateStatus')->name('status');
-            Route::post('assign/{id}', 'SupportTicketController@assign')->name('assign');
-            Route::delete('delete/{id}', 'SupportTicketController@delete')->name('delete');
+            Route::post('store', 'PlanController@store')->name('store');
+        }); 
+        Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () {
+            Route::get('/', 'SupportTicketController@index')->name('index')->middleware('permission:support_ticket,list');
+            Route::get('create', 'SupportTicketController@create')->name('create')->middleware('permission:support_ticket,add');
+            Route::post('store', 'SupportTicketController@store')->name('store')->middleware('permission:support_ticket,add');
+            Route::get('show/{id}', 'SupportTicketController@show')->name('show')->middleware('permission:support_ticket,view');
+            Route::post('reply/{id}', 'SupportTicketController@reply')->name('reply')->middleware('permission:support_ticket,reply');
+            Route::post('status/{id}', 'SupportTicketController@updateStatus')->name('status')->middleware('permission:support_ticket,status');
+            Route::post('assign/{id}', 'SupportTicketController@assign')->name('assign')->middleware('permission:support_ticket,assign');
+            Route::delete('delete/{id}', 'SupportTicketController@delete')->name('delete')->middleware('permission:support_ticket,delete');
             Route::get('search-customers', 'SupportTicketController@searchCustomers')->name('search-customers');
             Route::get('search-vendors', 'SupportTicketController@searchVendors')->name('search-vendors');
-        }); 
-        Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['module:account']], function () {
-            Route::get('report', 'AccountController@report')->name('report');
-            Route::get('list', 'AccountController@index')->name('list');
-            Route::get('add', 'AccountController@add')->name('add');
+        });
+        // Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['module:account']], function () {
+        //     Route::get('report', 'AccountController@report')->name('report');
+        //     Route::get('list', 'AccountController@index')->name('list');
+        //     Route::get('add', 'AccountController@add')->name('add');
+        //     Route::post('save-info', 'AccountController@save_info')->name('save');
+        //     Route::get('delete/{id}', 'AccountController@delete')->name('delete');
+        //     Route::get('edit/{id}', 'AccountController@edit')->name('edit');
+        // });
+        Route::group(['prefix' => 'asset', 'as' => 'asset.'], function () {
+            Route::post('return', 'AssetsController@return_asset')->name('return');
+            Route::get('alotted', 'AssetsController@alotted_assets')->name('alotted');
+        });
+        Route::group(['prefix' => 'asset', 'as' => 'asset.', 'middleware' => ['planwise:account_manage']], function () { // add middleware
+            Route::get('/', 'AssetsController@index')->name('index');
+            Route::post('store', 'AssetsController@store')->name('store');
+            Route::post('alot', 'AssetsController@alotToStaff')->name('alot');
+            Route::get('delete/{id}', 'AssetsController@delete')->name('delete');
+            Route::post('get-alotment-details', 'AssetsController@get_alotment_details')->name('get-alotment-details');
+        });
+
+        //  ============================= ACCOUNT MANAGEMENT =================================
+        Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['planwise:account_manage']], function () {
+            Route::post('reset_accounts_module', 'AccountController@reset_accounts_module')->name('reset_accounts_module')->middleware('permission:settings_common,reset');
+            Route::post('send_otp', 'AccountController@send_otp')->name('send_otp');
+            Route::post('fetchEmployees', 'AccountController@fetchEmployees')->name('fetchEmployees');
+            Route::get('management/{tab?}', 'AccountController@add')->name('add')->middleware('permission:boa_master_ledger,add');
+            Route::get('status/{id}/{status}', 'AccountController@status')->name('status');
             Route::post('save-info', 'AccountController@save_info')->name('save');
             Route::get('delete/{id}', 'AccountController@delete')->name('delete');
             Route::get('edit/{id}', 'AccountController@edit')->name('edit');
+            Route::get('mark-as-paid/{id}', 'AccountController@mark_as_paid')->name('mark-as-paid');
+            Route::get('list', 'AccountController@index')->name('list');
+            Route::get('approvals', 'AccountRequestFormController@approvals')->name('approvals');
+            Route::post('request_rule_store', 'AccountRequestFormController@request_rule_store')->name('request_rule_store')->middleware('permission:approvals,add');
+            Route::get('request_rule_delete/{id}', 'AccountRequestFormController@request_rule_delete')->name('request_rule_delete')->middleware('permission:approvals,delete');
+            Route::get('request_rule_edit/{id}', 'AccountRequestFormController@request_rule_edit')->name('request_rule_edit')->middleware('permission:approvals,edit');
+            Route::post('request_rule_update', 'AccountRequestFormController@request_rule_update')->name('request_rule_update')->middleware('permission:approvals,edit');
+            Route::post('forward_permission_store', 'AccountRequestFormController@forward_permission_store')->name('forward_permission_store')->middleware('permission:approvals,add');
+            Route::get('test-notif', 'AccountController@send_push_notif_to_device')->name('send_push_notif_to_device');
+            Route::get('setting', 'AccountController@setting')->name('setting')->middleware('permission:settings_account_type,edit');
+            Route::post('ledger_account_type-store', 'AccountController@ledger_account_type_store')->name('ledger_account_type.store');
+            Route::post('category-store', 'AccountController@category_store')->name('category.store');
+            Route::get('dashboard', 'AccountController@dashboard')->name('dashboard')->middleware('permission:dashboard,view');
+            Route::get('report', 'AccountController@report')->name('report');
+
+
+            Route::group(['prefix' => 'monthly-finance', 'as' => 'monthly-finance.'], function () {
+                Route::get('property-valuation', 'MonthlyFinanceController@property_valuation')->name('property-valuation')->middleware('permission:rmf_maintenance_requests,list');
+                Route::get('monthly-maintanance', 'MonthlyFinanceController@monthly_maintanance')->name('monthly-maintanance')->middleware('permission:rmf_property_valuation,list');
+            });
+
+            // STATEMENTS
+            Route::group(['prefix' => 'statement', 'as' => 'statement.'], function () {
+                Route::get('trial-balance', 'AccountStatementController@trial_balance')->name('trial-balance')->middleware('permission:statements_trial_balance,list');
+            });
+            // BANK ACCOUNTS
+            Route::group(['prefix' => 'banking', 'as' => 'banking.'], function () {
+                // BANK ACCOUNT
+                Route::group(['prefix' => 'bank-account', 'as' => 'bank-account.'], function () {
+                    Route::get('/', 'BankingController@bank_account')->name('index');
+                    Route::get('detail/{id}', 'BankingController@bank_account_detail')->name('detail')->middleware('permission:banking_bank_accounts,view');
+                    Route::get('detail-main', 'BankingController@bank_account_detail_main')->name('detail-main')->middleware('permission:banking_bank_accounts,view');
+                    Route::post('store', 'BankingController@bank_account_store')->name('store')->middleware('permission:banking_bank_accounts,add');
+                    Route::post('update/{id}', 'BankingController@bank_account_update')->name('update')->middleware('permission:banking_bank_accounts,edit');
+                    Route::get('delete/{id}', 'BankingController@delete')->name('delete')->middleware('permission:banking_bank_accounts,delete');
+                    Route::get('delete-file/{id}', 'BankingController@delete_file')->name('delete-file')->middleware('permission:banking_bank_accounts,transaction_file_delete');
+                    Route::post('transaction-import', 'BankingController@transaction_import')->name('transaction-import')->middleware('permission:banking_bank_accounts,upload_transactions');
+                    Route::get('export/{bank_id?}', 'BankingController@transaction_export')->name('transaction-export')->middleware('permission:banking_bank_accounts,export_transactions');
+                });
+                // CASH BOOK
+                Route::group(['prefix' => 'cash-book', 'as' => 'cash-book.'], function () {
+                    Route::get('/', 'CashBookController@index')->name('index');
+                    Route::post('entry', 'CashBookController@entry')->name('entry')->middleware('permission:banking_cash_book,add');
+                    Route::post('import-excel', 'CashBookController@import')->name('import')->middleware('permission:banking_cash_book,import');
+                    Route::get('export', 'CashBookController@export')->name('export')->middleware('permission:banking_cash_book,export');
+                });
+                // BANK RECONCILIATION
+                Route::group(['prefix' => 'bank-reconciliation', 'as' => 'bank-reconciliation.'], function () {
+                    Route::get('/', 'BankReconciliationController@index')->name('index')->middleware('permission:banking_bank_reconciliation,list');
+                });
+            });
+
+            // SETTING
+            Route::group(['prefix' => 'setting', 'as' => 'setting.'], function () {
+                Route::get('common-settings', 'AccountSettingController@common_settings')->name('common-settings');
+                Route::post('all_update', 'AccountSettingController@all_update')->name('all_update')->middleware('permission:settings_common,edit');
+                Route::post('account-option-update', 'AccountSettingController@account_option_update')->name('account-option-update')->middleware('permission:settings_common,edit');
+                Route::get('account-option-delete/{id}', 'AccountSettingController@account_option_delete')->name('account-option-delete')->middleware('permission:settings_common,edit');
+
+                // CHART OF ACCOUNT
+                Route::group(['prefix' => 'chart-of-account', 'as' => 'chart-of-account.'], function () {
+                    Route::get('/', 'AccountSettingController@chart_of_account')->name('index');
+                    Route::post('account-store', 'AccountSettingController@account_store')->name('account-store')->middleware('permission:assets_chart_of_accounts,add');
+                    Route::post('account-update', 'AccountSettingController@account_update')->name('account-update')->middleware('permission:assets_chart_of_accounts,edit');
+                    Route::get('account-delete/{id}', 'AccountSettingController@account_delete')->name('account-delete')->middleware('permission:assets_chart_of_accounts,delete');
+                    Route::get('detail/{parent?}/{ledger_type_id?}', 'AccountSettingController@chart_of_account_detail')->name('detail')->middleware('permission:assets_chart_of_accounts,view');
+                });
+            });
+
+            // REQUEST FORM
+            Route::group(['prefix' => 'request-form', 'as' => 'request-form.'], function () {
+
+                // MASTER LEDGER REQUEST FORM 
+                Route::group(['prefix' => 'master-ledger', 'as' => 'master-ledger.'], function () {
+                    Route::post('store', 'AccountRequestFormController@master_ledger_rf_store')->name('store')->middleware('permission:apporval_form_master_ledger,add');
+                    Route::post('update', 'AccountRequestFormController@master_ledger_rf_update')->name('update')->middleware('permission:apporval_form_master_ledger,edit');
+                    Route::get('/{id?}/{tab?}', 'AccountRequestFormController@master_ledger')->name('index');
+                });
+
+                // JOURNAL ENTRY REQUEST FORM
+                Route::group(['prefix' => 'journal-entry', 'as' => 'journal-entry.'], function () {
+                    Route::get('/{id?}', 'AccountRequestFormController@journal_entry')->name('index');
+                    Route::post('store', 'AccountRequestFormController@journal_entry_rf_store')->name('store')->middleware('permission:apporval_form_journal_entry,add');
+                    Route::post('update', 'AccountRequestFormController@journal_entry_rf_update')->name('update')->middleware('permission:apporval_form_journal_entry,edit');
+                });
+                Route::get('detail/{id}', 'AccountRequestFormController@incoming_rf_details')->name('incoming_rf_details');
+
+                Route::get('incoming-requests', 'AccountRequestFormController@incoming_requests')->name('incoming-requests')->middleware('permission:apporval_form_incoming_requests,list');
+                Route::get('incoming-request-reject/{id}', 'AccountRequestFormController@incoming_requests_reject')->name('incoming-requests-reject');
+                Route::post('incoming-requests-close', 'AccountRequestFormController@incoming_requests_close')->name('incoming-requests-close');
+                Route::post('incoming-request-forward', 'AccountRequestFormController@incoming_request_forward')->name('incoming-requests-forward');
+            });
+
+            // MASTER LEDGER 
+            Route::group(['prefix' => 'master-ledger', 'as' => 'master-ledger.'], function () {
+                Route::post('get-entry-details', 'MasterLedgerController@get_entry_details')->name('get-entry-details');
+                Route::post('entry', 'MasterLedgerController@entry')->name('entry');
+                Route::get('export', 'MasterLedgerController@export')->name('export');
+                Route::post('import', 'MasterLedgerController@import')->name('import');
+            });
+
+            // JOURNAL ENTRY 
+            Route::group(['prefix' => 'petty-cashbook', 'as' => 'petty-cashbook.'], function () {
+                Route::get('/', 'AccountController@petty_cashbook')->name('index');
+            });
+
+            Route::group(['prefix' => 'journal-entry', 'as' => 'journal-entry.'], function () {
+                Route::get('/', 'AccountController@journal_entry')->name('index');
+                Route::get('export', 'AccountController@journal_entry_export')->name('export')->middleware('permission:boa_journal_entry,export');
+                Route::post('import', 'AccountController@journal_entry_import')->name('import')->middleware('permission:boa_journal_entry,import');
+            });
+            Route::group(['prefix' => 'taxation', 'as' => 'taxation.'], function () {
+                Route::get('gst/{action?}', 'TaxationController@gst')->name('gst');
+            });
+
+
+            Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
+                Route::get('tax/{action?}', 'AccountReportController@tax')->name('tax')->middleware('permission:reports_tax_report,list');
+                Route::get('audit-logs/{action?}', 'AccountReportController@audit_logs')->name('audit-logs')->middleware('permission:reports_audit_logs,list');
+            });
+
+            Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
+                Route::post('update', 'AccountSettingController@update')->name('update')->middleware('permission:settings_account_type,edit');
+            });
+
+            Route::group(['prefix' => 'maintenance', 'as' => 'maintenance.'], function () {
+                Route::get('/', 'MaintananceController@index')->name('index');
+                Route::get('create', 'MaintananceController@create')->name('create')->middleware('permission:boa_monthly_maintenance,add');
+                Route::post('store', 'MaintananceController@store')->name('store')->middleware('permission:boa_monthly_maintenance,add');
+                Route::get('edit/{id}', 'MaintananceController@edit')->name('edit')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::post('update', 'MaintananceController@update')->name('update')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::post('update-entry-price', 'MaintananceController@update_entry_price')->name('update-entry-price')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::delete('delete/{id}', 'MaintananceController@destroy')->name('delete')->middleware('permission:boa_monthly_maintenance,delete');
+                Route::get('status/{id}/{status}', 'MaintananceController@status')->name('status')->middleware('permission:boa_monthly_maintenance,edit');
+                Route::get('mark-paid/{id}', 'MaintananceController@mark_paid')->name('mark-paid')->middleware('permission:boa_monthly_maintenance,mark_paid');
+                Route::get('export', 'MaintananceController@export')->name('export')->middleware('permission:boa_monthly_maintenance,export');
+                Route::post('import', 'MaintananceController@import')->name('import')->middleware('permission:boa_monthly_maintenance,import');
+            });
+            Route::group(['prefix' => 'day-book', 'as' => 'day-book.'], function () {
+                Route::get('/', 'AccountController@day_book')->name('index');
+                Route::post('import-excel', 'AccountController@day_book_excel_import')->name('import-excel')->middleware('permission:boa_day_book,import');
+                Route::get('export', 'AccountController@day_book_excel_export')->name('export')->middleware('permission:boa_day_book,export');
+            });
         });
- 
+        Route::resource('task-salary-categories', TaskSalaryCategoryController::class);
+
         Route::get('get-all-stores', 'VendorController@get_all_stores')->name('get_all_stores');
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
         Route::get('settings', 'SystemController@settings')->name('settings');
@@ -228,9 +406,216 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('/', 'DashboardController@dashboard')->name('dashboard');
         Route::get('common-dashboard', 'DashboardController@common_dashboard')->name('common-dashboard');
 
+        // GALLERY 
+
+        Route::group(['prefix' => 'gallery', 'as' => 'gallery.'], function () {
+            // Route::get('/', 'DashboardController@gallery')->name('all');
+            // Route::post('store', 'DashboardController@gallery_store')->name('store');
+            // Route::post('delete', 'DashboardController@gallery_delete')->name('delete');
+            Route::post('bulk-delete', 'DashboardController@gallery_bulk_delete')->name('bulk-delete');
+        });
+        // INVENTORY 
+        Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
+        Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage']], function () {
+            Route::get('settings', 'InventoryController@settings')->name('settings')->middleware('permission:inventory,settings');
+            Route::post('settings-save', 'InventoryController@settings_save')->name('settings-save')->middleware('permission:inventory,settings_save');
+            Route::get('dashboard', 'InventoryController@dashboard')->name('dashboard')->middleware('permission:inventory,dashboard');
+            Route::get('/', 'InventoryController@inventory_management')->name('index');
+            Route::post('get_my_fee_amount', 'InventoryController@get_my_fee_amount')->name('get_my_fee_amount');
+            Route::post('get_item_details', 'InventoryController@get_item_details')->name('get_item_details');
+            Route::post('get_variation_details', 'InventoryController@get_variation_details')->name('get_variation_details');
+            Route::get('entries', 'InventoryController@entries')->name('entries');
+            Route::post('save-item', 'InventoryController@save_item')->name('item.save')->middleware('permission:inventory_item,add');
+            Route::post('update-item', 'InventoryController@update_item')->name('item.update')->middleware('permission:inventory_item,edit');;
+            Route::get('edit-item/{id}', 'InventoryController@edit_item')->name('edit-item')->middleware('permission:inventory_item,edit');;
+            Route::post('variation-store', 'InventoryController@variation_store')->name('item.variation-store');
+            Route::post('save-entry', 'InventoryController@save_entry')->name('entry.save')->middleware('permission:inventory_item_entry,add');;
+            Route::post('save-entry-pdf', 'InventoryController@save_entry_pdf')->name('entry.save-pdf');
+            Route::get('item-images', 'InventoryController@item_images')->name('item-images');
+            Route::post('item-images-store', 'InventoryController@item_images_store')->name('item-images-store');
+            Route::post('import', 'InventoryController@items_import')->name('import')->middleware('permission:inventory_item,import');
+            Route::get('storage-spaces', 'InventoryController@storage_spaces')->name('storage-spaces');
+            Route::group(['prefix' => 'entry', 'as' => 'entry.'], function () {
+                Route::get('export-selected', 'InventoryController@entry_export_selected')->name('export-selected')->middleware('permission:inventory_item_entry,export');
+                Route::post('bulk-delete', 'InventoryController@entry_bulk_delete')->name('bulk-delete')->middleware('permission:inventory_item_entry,delete');
+                Route::post('import', 'InventoryController@entry_import')->name('import')->middleware('permission:inventory_item_entry,import');
+                Route::get('export', 'InventoryController@entry_export')->name('export')->middleware('permission:inventory_item_entry,export');
+            });
+
+            Route::group(['prefix' => 'item', 'as' => 'item.'], function () {
+                Route::get('scan-barcode', 'InventoryController@scan_barcode')->name('scan-barcode');
+                Route::post('fetch-by-sku', 'InventoryController@fetch_item_by_sku')->name('fetch-by-sku');
+                Route::post('update-variant-combination', 'InventoryController@update_variant_combination')->name('update-variant-combination');
+                Route::get('remove-image/{item_id}/{photo}', 'InventoryController@remove_item_image')->name('remove-image')->middleware('permission:inventory_item,edit');
+                Route::get('show_on_website/{id}/{status}', 'InventoryController@show_on_website')->name('show_on_website')->middleware('permission:inventory_item,show_on_website');
+                Route::get('delete/{id}', 'InventoryController@item_delete')->name('delete')->middleware('permission:inventory_item,delete');
+                Route::post('bulk-delete', 'InventoryController@item_bulk_delete')->name('bulk-delete')->middleware('permission:inventory_item,delete');
+                Route::get('export', 'InventoryController@item_export')->name('export')->middleware('permission:inventory_item,export');
+                Route::get('export-selected', 'InventoryController@item_export_selected')->name('export-selected')->middleware('permission:inventory_item,export');
+                Route::get('detail/{id}', 'InventoryController@item_detail')->name('detail')->middleware('permission:inventory_item,view');
+                Route::post('variant-combination', 'InventoryController@variant_combination')->name('variant-combination');
+                Route::get('print/{item_id}/{type}', 'InventoryController@print')->name('print');
+            });
+            Route::group(['prefix' => 'storage-unit', 'as' => 'storage-unit.'], function () {
+                Route::get('get-stands', 'InventoryController@get_stands')->name('get-stands');
+                Route::post('store', 'InventoryController@storage_spaces_store')->name('store')->middleware('permission:inventory_storage_units,add');
+                Route::post('update', 'InventoryController@storage_spaces_update')->name('update')->middleware('permission:inventory_storage_units,edit');
+                Route::post('delete/{id}', 'InventoryController@storage_spaces_delete')->name('delete')->middleware('permission:inventory_storage_units,delete');
+            });
+            Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+                Route::get('{tab}', 'InventoryGatepassController@gatepass_list')->name('list');
+                Route::post('store', 'InventoryPurchaseController@store')->name('store');
+                Route::get('return/{id}', 'InventoryGatepassController@return')->name('return');
+                Route::post('return-store', 'InventoryGatepassController@return_store')->name('return-store');
+            });
+            Route::group(['prefix' => 'purchase', 'as' => 'purchase.'], function () {
+                Route::post('items-in-invoice', 'InventoryPurchaseController@items_in_invoice')->name('items-in-invoice')->middleware('permission:inventory_purchase_return,add');;
+                Route::get('orders', 'InventoryPurchaseController@purchase_orders')->name('orders')->middleware('permission:inventory_purchase_order,list');;
+                Route::get('export_orders', 'InventoryPurchaseController@export_purchase_orders')->name('export-orders')->middleware('permission:inventory_purchase_order,export');;
+                Route::post('order-place', 'InventoryPurchaseController@order_place')->name('order-place')->middleware('permission:inventory_purchase_order,add');;
+                Route::get('return', 'InventoryPurchaseController@return')->name('return')->middleware('permission:inventory_purchase_return,add');
+                Route::post('return-store', 'InventoryPurchaseController@return_store')->name('return-store')->middleware('permission:inventory_purchase_return,add');
+            });
+            Route::group(['prefix' => 'stock', 'as' => 'stock.'], function () {
+                Route::get('stock-in-out', 'InventoryStockController@stock_in_out')->name('stock-in-out')->middleware('permission:inventory_stock_in_out,list');;
+            });
+            Route::group(['prefix' => 'sale', 'as' => 'sale.'], function () {
+                Route::get('orders', 'InventoryOrderController@sale_orders')->name('orders');;
+                Route::get('order-status/{id}/{status}', 'InventoryOrderController@sale_order_status')->name('order-status')->middleware('permission:inventory_sale_order,status_change');
+                Route::get('order-export/{return?}', 'InventoryOrderController@sale_order_export')->name('order-export');
+                Route::get('orders-return', 'InventoryOrderController@order_return')->name('orders-return')->middleware('permission:inventory_sale_return,add');
+                Route::post('order-details-fetch', 'InventoryOrderController@order_details_fetch')->name('order-details-fetch');
+            });
+            Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
+                Route::get('gst/{export?}/{file_type?}', 'InventoryReportController@gst')->name('gst');
+                Route::get('sale/{export?}/{file_type?}', 'InventoryReportController@sale')->name('sale');
+                Route::get('profit-and-loss/{export?}/{file_type?}', 'InventoryReportController@profit_and_loss')->name('profit-and-loss');
+                Route::get('purchase/{export?}/{file_type?}', 'InventoryReportController@purchase')->name('purchase');
+                Route::get('stock/{export?}/{file_type?}', 'InventoryReportController@stock')->name('stock');
+            });
+            Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
+                Route::get('/', 'InventoryController@category')->name('index');
+                Route::post('store', 'InventoryController@storage_spaces_store')->name('store');
+                Route::post('update', 'InventoryController@storage_spaces_update')->name('update');
+                Route::post('delete/{id}', 'InventoryController@storage_spaces_delete')->name('delete');
+            });
+        });
+
+        Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
+
+     
+        Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.'], function () {
+            Route::post('signature-save', 'BusinessSettingsController@signature_save')->name('signature.save')->middleware('permission:billing_signatures,add');;
+            Route::get('signature-delete/{id}', 'BusinessSettingsController@signature_delete')->name('signature.delete')->middleware('permission:billing_signatures,delete');;
+            Route::post('signature-fetch', 'BusinessSettingsController@signature_fetch')->name('signature.fetch');
+            Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:billing_bank_account,add');;
+            Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:billing_bank_account,delete');;
+            Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
+            Route::post('tnc-fetch/{id}', 'BusinessSettingsController@tnc_fetch')->name('tnc.fetch');
+            Route::post('tnc-save', 'BusinessSettingsController@tnc_save')->name('tnc.save')->middleware('permission:billing_tnc,add');
+            Route::get('tnc-delete/{id}', 'BusinessSettingsController@tnc_delete')->name('tnc.delete')->middleware('permission:billing_tnc,delete');
+            Route::post('tnc-update', 'BusinessSettingsController@tnc_update')->name('tnc.update')->middleware('permission:billing_tnc,edit');
+            Route::post('terms-and-conditions-save', 'BusinessSettingsController@terms_and_conditions_save')->name('terms-and-conditions.save');
+        });
+
+        // QUOTATION MANAGEMENT 
+        Route::group(['prefix' => 'quotation', 'as' => 'quotation.', 'middleware' => ['planwise:quotaiton_manage']], function () {
+            Route::get('convert-to-bill/{id}', 'QuoteController@convert_to_bill')->name('convert-to-bill')->middleware('permission:quotaiton_manage,convert_to_bill');
+            Route::get('list', 'QuoteController@index')->name('list');
+            Route::get('send-quote/{id}', 'QuoteController@send_quote')->name('send-quote');
+            Route::post('send-quote-email', 'QuoteController@send_quote_email')->name('send-quote-email');
+            Route::get('check-email', 'QuoteController@check_email')->name('check-email');
+            Route::get('quotation_number_validation', 'QuoteController@quotation_number_validation')->name('quotation_number_validation')->middleware('permission:quotaiton_manage,add');
+            Route::get('add', 'QuoteController@add')->name('add')->middleware('permission:quotaiton_manage,add');
+            Route::post('status-change', 'QuoteController@status_change')->name('status-change')->middleware('permission:quotaiton_manage,status_change');
+            Route::post('save-info', 'QuoteController@save_info')->name('save-info')->middleware('permission:quotaiton_manage,add');
+            Route::post('lead_approval', 'QuoteController@lead_approval')->name('lead_approval');
+            Route::get('delete/{id}', 'QuoteController@delete')->name('delete')->middleware('permission:quotaiton_manage,delete');
+            Route::get('manage/{id}', 'QuoteController@manage')->name('manage')->middleware('permission:quotaiton_manage,edit');
+            Route::get('settings', 'SettingsController@quotation_settings')->name('settings')->middleware('permission:quotaiton_manage,settings');
+
+            Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
+            Route::post('signature-save', 'BusinessSettingsController@signature_save')->name('signature.save')->middleware('permission:quotation_sign,add');
+            Route::get('signature-delete/{id}', 'BusinessSettingsController@signature_delete')->name('signature.delete')->middleware('permission:quotation_sign,delete');
+            Route::post('signature-fetch', 'BusinessSettingsController@signature_fetch')->name('signature.fetch')->middleware('permission:quotation_sign,list');
+            Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:quotation_bank_account,add');;
+            Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:quotation_bank_account,delete');;
+        });
+
+        // LIBRARY 
+        Route::group(['prefix' => 'library', 'as' => 'library.'], function () {
+            Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+                Route::get('add/{type}', 'DocumentsController@add_gatepass')->name('add');
+                Route::post('store', 'DocumentsController@store_gatepass')->name('store');
+            });
+        });
+
+        //DOCUMENTS 
+        Route::group(['prefix' => 'documents', 'as' => 'documents.', 'middleware' => ['module:documents']], function () {
+            Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+                Route::get('list/{tab}', 'InventoryGatepassController@gatepass_list')->name('list');
+                Route::get('delete/{id}', 'InventoryGatepassController@gatepass_delete')->name('delete');
+            });
+        });
+
+        // NEW BILLING  
+        Route::group(['prefix' => 'billing', 'as' => 'billing.', 'middleware' => ['module:billing']], function () {
+            Route::get('manual-bill', 'BillingController@manual_bill')->name('manual-bill');
+            Route::post('mark-paid2', 'ServiceController@mark_paid2')->name('mark-paid2');
+            Route::get('reminder/{type}/{status}/{id}', 'ServiceController@reminder_status')->name('reminder')->middleware('permission:billing,reminder_update');
+
+            Route::get('create-invoice', 'BillingController@create_invoice')->name('create-invoice');
+            Route::get('list', 'BillingController@invoice_list')->name('list');
+            Route::get('purchase-bills', 'BillingController@my_bills')->name('my-bills');
+            Route::get('settings', 'BillingController@invoice_settings')->name('settings');
+            Route::post('validate-invoicenum', 'BillingController@validate_invoicenum')->name('validate-invoicenum');
+            Route::get('edit/{id}', 'BillingController@edit')->name('edit');
+            Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice');
+            Route::post('service-update-invoice', 'BillingController@service_update_invoice')->name('service-update-invoice');
+            Route::get('edit-service-invoice/{id}', 'BillingController@edit_service_invoice')->name('edit-service-invoice');
+            Route::post('save-new-manual-invoice', 'BillingController@save_new_manual_invoice')->name('save-new-manual-invoice');
+            Route::post('import-sheet', 'BillingController@importInvoiceSheet')->name('import-sheet');
+            Route::post('export', 'BillingController@exportInvoiceSheet')->name('export');
+            Route::post('purchase-invoice/save', 'BillingController@save_purchase_invoice')->name('save-purchase-invoice');
+            Route::post('purchase-invoice/import', 'BillingController@importPurchaseInvoices')->name('import-purchase-invoices');
+            Route::get('purchase-bill/search-bill-from', 'BillingController@search_bill_from')->name('purchase-bill.search-bill-from');
+            Route::get('pay-bill/{id}', 'BillingController@pay_bill')->name('pay-bill');
+            Route::get('make-payment/{id}', 'BillingController@make_payment')->name('make-payment');
+            Route::get('delete/{type}/{id}', 'BillingController@delete')->name('delete');
+            Route::get('view-invoice/{id}', 'BillingController@view_invoice')->name('view-invoice');
+            Route::get('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor');
+            Route::post('delete-row', 'ServiceController@delete_row')->name('delete-row');
+            Route::get('view-invoice/{type}/{invoice_id}', 'BillingController@manual_invoice_view')->name('manual-invoice-view')->middleware('permission:billing,view');
+
+            // PURCHASE INVOICE
+            Route::group(['prefix' => 'purchase-invoice', 'as' => 'purchase-invoice.'], function () {
+                Route::post('save', 'BillingController@save_purchase_invoice')->name('save')->middleware('permission:purchase_bill,add');
+                Route::post('import', 'BillingController@importPurchaseInvoices')->name('import')->middleware('permission:purchase_bill,import');
+            });
+        });
+        Route::get('search-mychitti-clients', 'MychittiClientController@searchMychittiClients')->name('search-mychitti-clients');
+        
+        Route::group(['prefix' => 'client', 'as' => 'client.'], function () {
+            Route::post('fetch-details', 'CustomerController@fetch_details')->name('fetch-details');
+            Route::get('get-matches', 'CustomerController@get_matches')->name('get-matches');
+        });
+        Route::group(['prefix' => 'client', 'as' => 'client.', 'middleware' => ['module:client_manage']], function () {
+            Route::get('list/{tab?}', 'MychittiClientController@list')->name('list');
+            Route::get('add-new', 'MychittiClientController@add_new')->name('add');
+            Route::post('save', 'MychittiClientController@save')->name('save');
+            Route::get('edit/{id}', 'MychittiClientController@edit')->name('edit');
+            Route::post('update', 'MychittiClientController@update')->name('update');
+            Route::get('view/{id}', 'MychittiClientController@view')->name('view');
+            Route::post('delete/{id}', 'MychittiClientController@delete')->name('delete');
+            Route::post('bulk-delete', 'MychittiClientController@bulk_delete')->name('bulk-delete');
+            Route::get('export', 'MychittiClientController@export')->name('export');
+            Route::post('upload-excel', 'MychittiClientController@upload_excel')->name('upload-excel');
+            Route::post('comment-save', 'MychittiClientController@comment_save')->name('comment-save');
+            // Route::post('fetch-details', 'MychittiClientController@fetch_details')->name('fetch-details');
+        });
         Route::group(['prefix' => 'billing', 'as' => 'billing.', 'middleware' => ['module:billing']], function () {
             Route::get('/', 'BillingController@billing')->name('index');
-            Route::post('save-manual-invoice', 'BillingController@save_invoice')->name('save-manual-invoice');
+            Route::post('save-manual-invoice', 'BillingController@save_manual_invoice')->name('save-manual-invoice');
             Route::get('test-invoice', 'BillingController@test_invoice')->name('test-invoice');
             Route::get('invoice-view/{id}', 'BillingController@invoice_view')->name('invoice-view');
             Route::get('invoice-delete/{type}/{id}', 'BillingController@invoice_delete')->name('invoice-delete');
@@ -238,20 +623,305 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('invoice-correction', 'BillingController@invoice_correction')->name('invoice-correction');
         });
 
+        // POS ======================================
+        Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
+            Route::get('report/{action?}', 'SalespointController@report')->name('report')->middleware('permission:pos,report');
+
+            Route::get('calendar-export', 'SalespointController@calendar_export')->name('calendar-export')->middleware('permission:pos,report');
+        });
+
+        // Store Monetization
+        Route::group(['prefix' => 'store-monetization', 'as' => 'store-monetization.'], function () {
+            Route::get('/', 'StoreMonetizationController@dashboard')->name('dashboard');
+            Route::get('store/{id}', 'StoreMonetizationController@storeDetail')->name('store-detail');
+        });
+
         Route::get('maintenance-mode', 'SystemController@maintenance_mode')->name('maintenance-mode');
         Route::get('landing-page', 'SystemController@landing_page')->name('landing-page');
 
 
-        Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['module:employee']], function () {
-            Route::get('add-new', 'EmployeeController@add_new')->name('add-new');
-            Route::post('add-new', 'EmployeeController@store');
-            Route::get('list', 'EmployeeController@list')->name('list');
-            Route::get('edit/{id}', 'EmployeeController@edit')->name('edit');
-            Route::delete('delete/{id}', 'EmployeeController@distroy')->name('delete');
-            Route::post('update/{id}', 'EmployeeController@update')->name('update');
-            Route::post('search', 'EmployeeController@search')->name('search');
-            Route::get('list-export', 'EmployeeController@list_export')->name('export-employee');
+        // =================== HR MANAGEMENT ======================================       
+        Route::get('hr/dashboard', 'HRController@dashboard')->name('hr.dashboard')->middleware('permission:hr_manage,dashboard');;
+
+        // STAFF 
+        Route::group(['prefix' => 'staff', 'as' => 'staff.', 'middleware' => ['planwise:hr_manage']], function () {
+            //     Route::get('edit/{id}', 'EmployeeController@edit')->name('edit')->middleware('permission:staff_manage,edit');
+            //     Route::delete('delete/{id}', 'EmployeeController@distroy')->name('delete')->middleware('permission:staff_manage,delete');
+            //     Route::get('add-new', 'EmployeeController@add_new')->name('add-new')->middleware('permission:staff_manage,add');
+            //     Route::post('save-info', 'StaffController@save_info')->name('save')->middleware('permission:staff_manage,add');
+            //     Route::get('add', 'StaffController@add')->name('add')->middleware('permission:staff_manage,add');
+            //     Route::get('list', 'EmployeeController@list')->name('list');
+            Route::get('settings', 'StaffController@settings')->name('settings')->middleware('permission:staff_manage,settings');
+            Route::post('save-settings', 'StaffController@save_settings')->name('settings.save')->middleware('permission:staff_manage,settings');
+            //     Route::get('status/{id}/{status}', 'StaffController@status')->name('status')->middleware('permission:staff_manage,status_change');
+            Route::group(['prefix' => 'team', 'as' => 'team.'], function () {
+                Route::get('/', 'StaffController@teams')->name('index');
+                Route::post('save', 'StaffController@team_save')->name('save')->middleware('permission:staff_team,add');
+                Route::get('delete/{id}', 'StaffController@team_delete')->name('delete')->middleware('permission:staff_team,delete');
+                Route::get('member-delete/{id}', 'StaffController@team_member_delete')->name('member.delete')->middleware('permission:staff_team,edit');
+                Route::get('edit/{id}', 'StaffController@team_edit')->name('edit')->middleware('permission:staff_team,edit');
+                Route::post('update', 'StaffController@team_update')->name('update')->middleware('permission:staff_team,edit');
+                Route::get('view/{id}', 'StaffController@team_edit')->name('view')->middleware('permission:staff_team,view');
+            });
         });
+        // STAFF DEPARTMENT 
+        Route::group(['prefix' => 'staff-department', 'as' => 'staff-department.'], function () {
+            Route::get('/', 'StaffController@departments')->name('all');
+            Route::post('save', 'StaffController@store_department')->name('save')->middleware('permission:staff_department,add');
+            Route::get('d-delete/{id}', 'StaffController@delete_department')->name('delete')->middleware('permission:staff_department,delete');
+            Route::post('status-change', 'StaffController@status_change')->name('status-change')->middleware('permission:staff_department,status_change');
+        });
+        // SHIFTS 
+        Route::group(['prefix' => 'shifts', 'as' => 'shifts.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::get('/', 'ShiftController@index')->name('index');
+            Route::post('store', 'ShiftController@store')->name('store')->middleware('permission:shift_manage,add');
+            Route::get('delete/{id}', 'ShiftController@delete')->name('delete')->middleware('permission:shift_manage,delete');
+            Route::post('update', 'ShiftController@update')->name('update')->middleware('permission:shift_manage,edit');
+        });
+        // ATTENDANCE 
+        Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::get('report', 'AttendanceController@report')->name('report');
+            Route::get('export', 'AttendanceController@export')->name('export')->middleware('permission:attendance_report,export');
+            Route::get('list', 'AttendanceController@index')->name('all')->middleware('permission:attendance_manage,list');
+            Route::post('save', 'AttendanceController@save_att')->name('save')->middleware('permission:attendance_manage,edit');
+            Route::get('manage/{id}', 'AttendanceController@manage')->name('manage')->middleware('permission:attendance_manage,view');
+        });
+        // EMPLOYEE 
+        Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::post('comment-save', 'Employee\EmployeeController@comment_save')->name('comment-save')->middleware('permission:staff_manage,comment');
+            Route::get('view/{id}', 'Employee\EmployeeController@view')->name('view')->middleware('permission:staff_manage,view');
+            Route::get('view-id-card/{id}', 'Employee\EmployeeController@view_id_card')->name('view-id-card')->middleware('permission:staff_manage,view');
+            Route::post('resign/{id}', 'Employee\EmployeeController@resign')->name('resign')->middleware('permission:staff_manage,resignation');
+            Route::get('terminate/{id}', 'Employee\EmployeeController@terminate')->name('terminate')->middleware('permission:staff_manage,terminate');
+            Route::get('resignation-action/{id}/{action}', 'Employee\EmployeeController@resignation_action')->name('resignation-action')->middleware('permission:staff_manage,resignation');
+            Route::get('timecards/{id}', 'Employee\EmployeeController@timecards')->name('timecards')->middleware('permission:staff_manage,view');
+        });
+        Route::get('employee/clock-in', 'Employee\EmployeeController@clock_in')->name('employee.clockin');
+        Route::get('employee/clock-out', 'Employee\EmployeeController@clock_out')->name('employee.clockout');
+
+        // SALARY MANAGMENT      
+        Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::get('generate-monthly/{month}', 'SalaryController@generate_monthly')->name('generate-monthly')->middleware('permission:salary_manage,generate');
+            Route::get('mark-paid/{month}', 'SalaryController@mark_paid')->name('mark-paid')->middleware('permission:salary_manage,mark_paid');
+            Route::get('report', 'SalaryController@report')->name('report');
+            Route::get('export-salaries', 'SalaryController@export_salaries')->name('export-salaries')->middleware('permission:salary_manage,export');
+            Route::get('list', 'SalaryController@index')->name('list');
+            Route::get('export', 'SalaryController@export')->name('export')->middleware('permission:salary_manage,export');
+            Route::post('get-info', 'SalaryController@get_info')->name('get-info');
+            Route::post('pay', 'SalaryController@pay')->name('pay')->middleware('permission:salary_manage,mark_paid');
+            Route::get('add', 'SalaryController@add')->name('add-new')->middleware('permission:salary_manage,add');
+            Route::get('status/{id}/{status}', 'SalaryController@status')->name('status')->middleware('permission:salary_manage,status_change');
+            Route::post('save-info', 'SalaryController@save_info')->name('save')->middleware('permission:salary_manage,edit');
+            Route::get('delete/{id}', 'SalaryController@delete')->name('delete')->middleware('permission:salary_manage,delete');
+            Route::get('edit/{id}', 'SalaryController@edit')->name('edit')->middleware('permission:salary_manage,edit');
+
+            Route::get('all-advance-requests', 'SalaryController@all_advance_requests')->name('all-advance-requests')->middleware('permission:advance_requests,list');
+            Route::get('approve-advance/{id}', 'SalaryController@approve_advance_payment')->name('approve-advance')->middleware('permission:advance_requests,approve');
+            Route::get('reject-advance/{id}', 'SalaryController@reject_advance_payment')->name('reject-advance')->middleware('permission:advance_requests,reject');
+            Route::post('advance-request/store', 'SalaryController@advance_request_store')->name('advance-request.store');
+        });
+        Route::get('advance-payment', 'SalaryController@advance_payment')->name('advance-payment');
+        Route::get('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
+
+        // LEAVE MANAGEMENT 
+        Route::group(['prefix' => 'leave', 'as' => 'leave.', 'middleware' => ['planwise:hr_manage']], function () {
+            Route::get('list', 'LeaveController@index')->name('all');
+            Route::get('add', 'LeaveController@add')->name('add-new')->middleware('permission:leave_manage,add');
+            Route::get('status/{id}/{status}', 'LeaveController@status')->name('status')->middleware('permission:leave_manage,status_change');
+            Route::post('save-info', 'LeaveController@save_info')->name('save-info')->middleware('permission:leave_manage,add');
+            Route::post('save', 'LeaveController@save_leave')->name('save')->middleware('permission:leave_manage,add');
+            Route::get('manage/{id}', 'LeaveController@manage')->name('manage');
+        });
+
+        // HOLIDAYS
+        Route::group(['prefix' => 'holidays', 'as' => 'holidays.'], function () {
+            Route::get('/', 'SettingsController@holiday_settings')->name('index');
+            Route::get('add', 'SettingsController@holiday_add')->name('add');
+            Route::post('update', 'SettingsController@holiday_update')->name('update');
+            Route::get('delete/{id}', 'SettingsController@holiday_delete')->name('delete');
+        });
+        Route::group(['prefix' => 'jobcard', 'as' => 'jobcard.'], function () {
+            Route::post('view', 'LibraryController@job_card')->name('view'); // task, view/generate , id
+        });
+        Route::group(['prefix' => 'form-builder', 'as' => 'form-builder.'], function () {
+
+            Route::post('save-form', 'FormBuilderController@saveFields')->name('save-form');
+            Route::get('get-form/{form_type?}', 'FormBuilderController@getForm')->name('get-form');
+        });
+        // DOCUMENTS  ===================================
+        Route::group(['prefix' => 'documents', 'as' => 'documents.', 'middleware' => ['module:documents']], function () {
+            // Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+            //     Route::get('list/{tab}', 'InventoryGatepassController@gatepass_list')->name('list');
+            //     Route::get('delete/{id}', 'InventoryGatepassController@gatepass_delete')->name('delete');
+            // });
+            // Route::group(['prefix' => 'receivable-receipt', 'as' => 'receivable-receipt.'], function () {
+            //     Route::get('create', 'LibraryController@recievable_reciept_create')->name('create');
+            //     Route::post('preview', 'LibraryController@recievable_reciept')->name('preview');
+            //     Route::post('store/{action?}/{task_id?}', 'LibraryController@recievable_store')->name('store');
+            //     Route::get('list', 'DocumentsController@recievable_reciepts_list')->name('list');
+            //     Route::get('delete/{id}', 'DocumentsController@recievable_reciepts_delete')->name('delete');
+            // });
+            Route::group(['prefix' => 'job-card', 'as' => 'job-card.'], function () {
+                // Route::get('create', 'LibraryController@jobcard_create')->name('create');
+                Route::post('store/{action?}/{task_id?}', 'LibraryController@job_card_store')->name('store');
+                // Route::get('list', 'DocumentsController@job_cards_list')->name('list');
+                // Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
+            });
+             Route::group(['prefix' => 'service-report', 'as' => 'service-report.'], function () {
+                // Route::get('create', 'DocumentsController@jobcard_create')->name('create');
+                Route::post('store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('store');
+                // Route::get('list', 'DocumentsController@job_cards_list')->name('list');
+                // Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
+            }); 
+        });
+
+        // PROJECT MANAGEMENT ===========================
+        Route::group(['prefix' => 'project', 'as' => 'project.', 'middleware' => ['planwise:projects_manage']], function () {
+            Route::get('details/{id}/{tab?}', 'ProjectController@details')->name('details')->middleware('permission:project,view');
+            Route::get('settings', 'ProjectController@settings')->name('settings')->middleware('permission:project,settings');
+            Route::get('setting-update', 'ProjectController@setting_update')->name('setting.update')->middleware('permission:project,settings');
+
+            Route::get('list/{id?}', 'ProjectController@index')->name('all')->middleware('permission:project,list');
+            Route::get('dashboard', 'ProjectController@dashboard')->name('dashboard');
+            Route::get('add', 'ProjectController@add')->name('add')->middleware('permission:project,add');
+            Route::post('save-info', 'ProjectController@save_info')->name('save-info')->middleware('permission:project,add');
+            Route::get('edit/{id}', 'ProjectController@edit')->name('edit')->middleware('permission:project,edit');
+            Route::get('manage/{id}', 'ProjectController@manage')->name('manage')->middleware('permission:project,edit'); // update
+            Route::get('status-change/{id}/{status}', 'ProjectController@status_change')->name('status-change')->middleware('permission:project,status_change');
+            Route::get('progress-status-change/{id}', 'ProjectController@progress_status_change')->name('progress-status-change')->middleware('permission:project,status_change');
+            Route::get('delete/{id}', 'ProjectController@delete')->name('delete')->middleware('permission:project,delete');
+
+            Route::group(['prefix' => 'milestone', 'as' => 'milestone.'], function () {
+                Route::post('store', 'ProjectController@store_milestone')->name('store')->middleware('permission:project_milestone,add');
+                Route::get('status-change/{id}', 'ProjectController@milestone_status_change')->name('status-change')->middleware('permission:project_milestone,status_change');
+                Route::get('delete/{id}', 'ProjectController@milestone_delete')->name('delete')->middleware('permission:project_milestone,delete');
+            });
+            Route::group(['prefix' => 'note', 'as' => 'note.'], function () {
+                Route::post('store', 'ProjectController@store_note')->name('store')->middleware('permission:project_internal_note,add');;
+            });
+            Route::group(['prefix' => 'team', 'as' => 'team.'], function () {
+                Route::post('udpate-team', 'ProjectController@udpate_team')->name('update');
+            });
+
+            Route::group(['prefix' => 'task', 'as' => 'task.'], function () { // add middleware
+                Route::get('add/{project_id?}', 'ProjectTaskController@add')->name('add')->middleware('permission:project_task,add');
+                Route::post('store', 'ProjectTaskController@store')->name('store')->middleware('permission:project_task,add');
+                Route::get('edit/{id}', 'ProjectTaskController@edit')->name('edit')->middleware('permission:project_task,edit');
+                Route::post('update', 'ProjectTaskController@update')->name('update')->middleware('permission:project_task,edit');
+                Route::post('reassign', 'ProjectTaskController@reassign')->name('reassign')->middleware('permission:project_task,edit');
+                Route::get('list/{id?}', 'ProjectController@task_list')->name('list');
+                Route::get('detail/{id}', 'ProjectTaskController@detail')->name('detail')->middleware('permission:project_task,view');
+                Route::post('delete/{id}', 'ProjectTaskController@delete')->name('delete')->middleware('permission:project_task,delete');
+                Route::post('save-progress', 'ProjectTaskController@save_progress')->name('save-progress');
+                Route::post('status-update', 'ProjectTaskController@status_update')->name('status.update')->middleware('permission:project_task,status_change');
+                Route::post('status-new', 'ProjectTaskController@status_new_save')->name('status.save-new');
+                Route::get('export', 'ProjectTaskController@export')->name('export')->middleware('permission:project_task,export');
+                Route::get('setting', 'ProjectTaskController@setting')->name('setting')->middleware('permission:project_task,settings');
+
+                // Route::get('workflow-form', 'ProjectTaskController@workflow_form')->name('setting.workflow-form');
+                Route::post('setting-update', 'ProjectTaskController@setting_update')->name('setting.update')->middleware('permission:project_task,settings');
+                Route::group(['prefix' => 'comment', 'as' => 'comment.'], function () {
+                    Route::post('add', 'ProjectTaskController@comment_add')->name('add')->middleware('permission:project_task_update,add');
+                    Route::get('delete/{id}', 'ProjectTaskController@comment_delete')->name('delete')->middleware('permission:project_task_update,delete');
+                    Route::get('edit/{id}', 'ProjectTaskController@comment_edit')->name('edit')->middleware('permission:project_task_update,edit');
+                    Route::post('update', 'ProjectTaskController@comment_update')->name('update')->middleware('permission:project_task_update,edit');;
+                    Route::get('pic-delete/{comment_id}/{name}', 'ProjectTaskController@pic_delete')->name('pic-delete');
+                });
+                Route::group(['prefix' => 'subtask-update', 'as' => 'subtask-update.'], function () {
+                    Route::post('add', 'ProjectTaskController@comment_add')->name('add')->middleware('permission:project_subtask_update,add');;
+                    Route::get('delete/{id}', 'ProjectTaskController@comment_delete')->name('delete')->middleware('permission:project_subtask_update,delete');;
+                    Route::get('edit/{id}', 'ProjectTaskController@comment_edit')->name('edit')->middleware('permission:project_subtask_update,edit');
+                    Route::post('update', 'ProjectTaskController@comment_update')->name('update')->middleware('permission:project_subtask_update,edit');;
+                    Route::get('pic-delete/{comment_id}/{name}', 'ProjectTaskController@pic_delete')->name('pic-delete');
+                });
+                Route::group(['prefix' => 'subtask', 'as' => 'subtask.'], function () {
+                    Route::post('add', 'ProjectTaskController@subtask_add')->name('add')->middleware('permission:project_subtask,add');;
+                    Route::get('tasks/{id?}', 'ProjectTaskController@getTasks')->name('getTasks');
+                    Route::get('delete/{id}', 'ProjectTaskController@delete_subtask')->name('delete')->middleware('permission:project_subtask,delete');;
+                    Route::get('update-level', 'ProjectTaskController@update_level')->name('update-level');
+
+                    Route::get('edit/{id}', 'ProjectTaskController@edit')->name('edit')->middleware('permission:project_subtask,edit'); //done
+                    Route::post('update', 'ProjectTaskController@update')->name('update')->middleware('permission:project_subtask,edit');
+                    Route::get('detail/{id}', 'ProjectTaskController@detail')->name('detail')->middleware('permission:project_subtask,view');
+                    Route::post('status-update', 'ProjectTaskController@status_update')->name('status.update')->middleware('permission:project_subtask,status_change');
+                });
+            });
+        });
+        Route::post('documents/receivable-receipt/store/{action?}/{task_id?}', 'LibraryController@recievable_store')->name('documents.receivable-receipt.store-lead'); // for task receivable receipt save without module:documents check because it is used in task details page
+        Route::post('documents/service-report/store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('documents.service-report.store-lead'); // for task service report save without module:documents check because it is used in task details page
+        Route::post('quotation/save-info/{id}', 'QuoteController@save_info')->name('quotation.save-info-task'); // for lead quotation save without permission check because it is used in lead details page and we have given access to view lead details for some roles who don't have permission to manage quotation
+        Route::post('billing/save-manual-invoice/{id}', 'ServiceController@save_manual_invoice')->name('billing.save-manual-invoice-lead'); // for task invoice save without permission check because it is used in task details page and we have given access to view task details for some roles who don't have permission to manage billing
+        Route::group(['prefix' => 'task', 'as' => 'task.'], function () {
+            Route::get('assigned-tasks', 'TaskController@assigned_tasks')->name('assigned_tasks');
+            Route::post('otp-send', 'TaskController@task_otp_send')->name('job-otp-verify');
+            Route::get('accept/{id}', 'TaskController@accept')->name('accept');
+            Route::get('reject/{id}', 'TaskController@reject')->name('reject');
+        });
+
+         // TASK CONTROLLER
+        Route::group(['prefix' => 'task', 'as' => 'task.'], function () { // add middleware
+            // Route::get('add/{project_id?}', 'ProjectTaskController@add')->name('add')->middleware('permission:project_task,add');
+            // Route::post('store', 'ProjectTaskController@store')->name('store')->middleware('permission:project_task,add');
+            // Route::get('edit/{id}', 'ProjectTaskController@edit')->name('edit')->middleware('permission:project_task,edit');
+            // Route::post('update', 'ProjectTaskController@update')->name('update')->middleware('permission:project_task,edit');
+            // Route::post('reassign', 'ProjectTaskController@reassign')->name('reassign')->middleware('permission:project_task,edit');
+            Route::get('list/{id?}', 'ProjectController@task_list')->name('list');
+            // Route::get('detail/{id}', 'ProjectTaskController@detail')->name('detail')->middleware('permission:project_task,view');
+            // Route::post('delete/{id}', 'ProjectTaskController@delete')->name('delete')->middleware('permission:project_task,delete');
+            // Route::post('save-progress', 'ProjectTaskController@save_progress')->name('save-progress');
+            // Route::post('status-update', 'ProjectTaskController@status_update')->name('status.update')->middleware('permission:project_task,status_change');
+            // Route::post('status-new', 'ProjectTaskController@status_new_save')->name('status.save-new');
+            // Route::get('export', 'ProjectTaskController@export')->name('export')->middleware('permission:project_task,export');
+            // Route::get('setting', 'ProjectTaskController@setting')->name('setting')->middleware('permission:project_task,settings');
+        });
+
+
+        
+        // TASK MANAGEMENT =============================
+        Route::group(['prefix' => 'task', 'as' => 'task.', 'middleware' => ['planwise:task_manage']], function () { // add middleware
+            Route::get('add/{project_id?}', 'TaskController@add')->name('add')->middleware('permission:task,add');
+            Route::post('store', 'TaskController@store')->name('store')->middleware('permission:task,add');
+            Route::get('edit/{id}', 'TaskController@edit')->name('edit')->middleware('permission:task,edit');
+            Route::post('update', 'TaskController@update')->name('update')->middleware('permission:task,edit');
+            Route::post('reassign', 'TaskController@reassign')->name('reassign')->middleware('permission:task,edit');
+            Route::get('list/{id?}', 'TaskController@list')->name('list');
+            Route::get('detail/{id}', 'TaskController@detail')->name('detail')->middleware('permission:task,view');
+            Route::post('delete/{id}', 'TaskController@delete')->name('delete')->middleware('permission:task,delete');
+            Route::post('save-progress', 'TaskController@save_progress')->name('save-progress');
+            Route::post('status-update', 'TaskController@status_update')->name('status.update')->middleware('permission:task,status_change');
+            Route::post('status-new', 'TaskController@status_new_save')->name('status.save-new');
+            Route::get('export', 'TaskController@export')->name('export')->middleware('permission:task,export');
+            Route::get('setting', 'TaskController@setting')->name('setting')->middleware('permission:task,settings');
+
+            Route::post('setting-update', 'TaskController@setting_update')->name('setting.update')->middleware('permission:task,settings');
+            Route::group(['prefix' => 'comment', 'as' => 'comment.'], function () {
+                Route::post('add', 'TaskController@comment_add')->name('add')->middleware('permission:task_update,add');
+                Route::get('delete/{id}', 'TaskController@comment_delete')->name('delete')->middleware('permission:task_update,delete');
+                Route::get('edit/{id}', 'TaskController@comment_edit')->name('edit')->middleware('permission:task_update,edit');
+                Route::post('update', 'TaskController@comment_update')->name('update')->middleware('permission:task_update,edit');;
+                Route::get('pic-delete/{comment_id}/{name}', 'TaskController@pic_delete')->name('pic-delete');
+            });
+            Route::group(['prefix' => 'subtask-update', 'as' => 'subtask-update.'], function () {
+                Route::post('add', 'TaskController@comment_add')->name('add')->middleware('permission:subtask_update,add');;
+                Route::get('delete/{id}', 'TaskController@comment_delete')->name('delete')->middleware('permission:subtask_update,delete');;
+                Route::get('edit/{id}', 'TaskController@comment_edit')->name('edit')->middleware('permission:subtask_update,edit');
+                Route::post('update', 'TaskController@comment_update')->name('update')->middleware('permission:subtask_update,edit');;
+                Route::get('pic-delete/{comment_id}/{name}', 'TaskController@pic_delete')->name('pic-delete');
+            });
+            Route::group(['prefix' => 'subtask', 'as' => 'subtask.'], function () {
+                Route::post('add', 'TaskController@subtask_add')->name('add')->middleware('permission:subtask,add');;
+                Route::get('tasks/{id?}', 'TaskController@getTasks')->name('getTasks');
+                Route::get('delete/{id}', 'TaskController@delete_subtask')->name('delete')->middleware('permission:subtask,delete');;
+                Route::get('update-level', 'TaskController@update_level')->name('update-level');
+
+                Route::get('edit/{id}', 'TaskController@edit')->name('edit')->middleware('permission:subtask,edit'); //done
+                Route::post('update', 'TaskController@update')->name('update')->middleware('permission:subtask,edit');
+                Route::get('detail/{id}', 'TaskController@detail')->name('detail')->middleware('permission:subtask,view');
+                Route::post('status-update', 'TaskController@status_update')->name('status.update')->middleware('permission:subtask,status_change');
+            });
+        });
+
+       
 
 
         Route::group(['prefix' => 'parcel', 'as' => 'parcel.', 'middleware' => ['module:parcel']], function () {
@@ -490,15 +1160,17 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post('discount/{store}', 'VendorController@discountSetup')->name('discount');
                 Route::post('update-settings/{store}', 'VendorController@updateStoreSettings')->name('update-settings');
                 Route::post('update-meta-data/{store}', 'VendorController@updateStoreMetaData')->name('update-meta-data');
-                 Route::delete('delete/{store}', 'VendorController@destroy')->name('delete');
+                Route::delete('delete/{store}', 'VendorController@destroy')->name('delete');
                 Route::delete('clear-discount/{store}', 'VendorController@cleardiscount')->name('clear-discount');
-                 // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
+                // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
                 Route::get('disbursement-export/{id}/{type}', 'VendorController@disbursement_export')->name('disbursement-export');
                 Route::get('view/{store}/{tab?}/{sub_tab?}', 'VendorController@view')->name('view');
                 Route::get('activation-plan/{store}', 'VendorController@activationPlan')->name('activation-plan');
                 Route::get('pending-requests', 'VendorController@pending_requests')->name('pending-requests');
                 Route::get('deny-requests', 'VendorController@deny_requests')->name('deny-requests');
-                 Route::post('search', 'VendorController@search')->name('search');
+                Route::get('removal-requests', 'VendorController@removal_requests')->name('removal-requests');
+                Route::post('removal-request-action/{id}', 'VendorController@removal_request_action')->name('removal-request-action');
+                Route::post('search', 'VendorController@search')->name('search');
                 Route::get('duplicates', 'VendorController@duplicates')->name('duplicates');
                 Route::get('export', 'VendorController@export')->name('export');
                 Route::get('store-wise-reviwe-export', 'VendorController@store_wise_reviwe_export')->name('store_wise_reviwe_export');
@@ -602,6 +1274,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
         Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.'], function () {
+            Route::post('edit-leaves', 'BusinessSettingsController@edit_leaves')->name('edit-leaves');
             Route::get('homepage-config', 'BusinessSettingsController@homepage_config')->name('homepage-config');
             Route::post('homepage-config-update', 'BusinessSettingsController@homepage_config_update')->name('homepage-config.update');
             Route::get('vendor-homepage-config', 'BusinessSettingsController@vendor_homepage_config')->name('vendor-homepage-config');
@@ -804,8 +1477,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // Subscribed customer Routes
         Route::group(['prefix' => 'customer', 'as' => 'customer.'], function () {
 
-
-
             Route::group(['prefix' => 'wallet', 'as' => 'wallet.', 'middleware' => ['module:customer_wallet']], function () {
                 Route::get('add-fund', 'CustomerWalletController@add_fund_view')->name('add-fund');
                 Route::post('add-fund', 'CustomerWalletController@add_fund');
@@ -939,7 +1610,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
             // ADDONS =============
 
-            Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['module:attendance', 'planwise:att_manage']], function () {
+            Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['planwise:hr_manage']], function () {
                 Route::get('list', 'AttendanceController@index')->name('all');
                 Route::get('report', 'AttendanceController@report')->name('report');
                 Route::get('export', 'AttendanceController@export')->name('export');
@@ -952,7 +1623,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('manage/{id}', 'AttendanceController@manage')->name('manage');
             });
 
-            Route::group(['prefix' => 'leave', 'as' => 'leave.', 'middleware' => ['planwise:leave_manage', 'module:leave']], function () {
+            Route::group(['prefix' => 'leave', 'as' => 'leave.', 'middleware' => ['planwise:hr_manage']], function () {
                 Route::get('list', 'LeaveController@index')->name('all');
                 Route::get('add', 'LeaveController@add')->name('add-new');
                 Route::get('status/{id}/{status}', 'LeaveController@status')->name('status');
@@ -962,7 +1633,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('delete/{id}', 'AttendanceController@delete')->name('delete');
                 Route::get('manage/{id}', 'LeaveController@manage')->name('manage');
             });
-            Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:salary_manage', 'module:salary']], function () {
+            Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
                 Route::get('list', 'SalaryController@index')->name('list');
                 Route::post('get-info', 'SalaryController@get_info')->name('get-info');
 
@@ -1123,6 +1794,13 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('change-status/{id}/{status}', 'DeliveryManDisbursementController@statusById')->name('change-status');
                 Route::get('export/{id}/{type?}', 'DeliveryManDisbursementController@export')->name('export');
             });
+        });
+
+        Route::group(['prefix' => 'employee-department', 'as' => 'employee-department.'], function () {
+            Route::get('/', 'EmployeeController@departments')->name('all');
+            Route::post('save', 'EmployeeController@store_department')->name('save');
+            Route::get('d-delete/{id}', 'EmployeeController@delete_department')->name('delete');
+            Route::post('status-change', 'EmployeeController@department_status_change')->name('status-change');
         });
     });
 });

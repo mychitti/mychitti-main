@@ -12,7 +12,7 @@ use App\Models\AccountTransaction;
 use App\Models\GatePass;
 use App\Models\ServiceQuoteItem;
 use App\Models\GatePassItem;
-use App\Models\InServiceQuotation;
+use App\Models\InServiceQuotation; 
 use App\Models\Salary;
 use App\Models\VendorEmpJob;
 use App\Models\Store; 
@@ -159,8 +159,14 @@ class ServiceController extends Controller
             ->groupBy('stores.id', 'items.category_id')
             ->count();
 
+        // Check if this is a dedicated lead
+        $serviceReqCheck = ServiceRequest::find($serviceRequestId);
+        $isDedicatedLead = $serviceReqCheck && $serviceReqCheck->is_dedicated;
+
         if (!$leadChargeInfo) {
             $chargesToBeApplied = 0;
+        } elseif ($isDedicatedLead && $leadChargeInfo->dedicated_lead_charge > 0) {
+            $chargesToBeApplied = $leadChargeInfo->dedicated_lead_charge;
         } else {
             if ($totalVendors <= $leadChargeInfo->vendor_count) {
                 $chargesToBeApplied = $leadChargeInfo->ven_same_charges;
@@ -199,7 +205,7 @@ class ServiceController extends Controller
             $account_transaction->from_id = $vendor_id;
             $account_transaction->method = 'wallet';
             $account_transaction->action = 'debit';
-            $account_transaction->reason = 'Lead Charges';
+            $account_transaction->reason = $isDedicatedLead ? 'Dedicated Lead Charges' : 'Lead Charges';
             $account_transaction->created_by = 'store';
             $account_transaction->save();
         }

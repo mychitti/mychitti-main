@@ -23,8 +23,8 @@
                     <i class="tio-clear tio-lg"></i>
                 </button>
                 <!-- End Navbar Vertical Toggle -->
-
-                <div class="navbar-nav-wrap-content-left">
+  
+                <div class="navbar-nav-wrap-content-left"> 
                     <!-- Navbar Vertical Toggle -->
                     <button type="button" class="js-navbar-vertical-aside-toggle-invoker close">
                         <i class="tio-first-page navbar-vertical-aside-toggle-short-align" data-toggle="tooltip"
@@ -143,6 +143,8 @@
                         </a>
                     </li>
 
+
+                 
 
                     <li class="nav-item">
                         <small class="nav-subtitle"

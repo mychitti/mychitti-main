@@ -196,21 +196,19 @@
     <table class="header-table">
         <tr>
             <td class="store-info">
-                <h2>{{ $store->name }}</h2>
-                <p><strong>Address:</strong> {{ $store->address }}</p>
-                <p><strong>Phone:</strong> {{ $store->phone }}</p>
-                <p><strong>Email:</strong> {{ $store->email }}</p>
+                <h2>{{ $store_data->name }}</h2>
+                <p><strong>Address:</strong> {{ $store_data->address }}</p>
+                <p><strong>Phone:</strong> {{ $store_data->phone }}</p>
+                <p><strong>Email:</strong> {{ $store_data->email }}</p>
                 <p><strong>GST No:</strong>
-                    {{ ($gst = json_decode($store['gst'], true)) && isset($gst['code']) ? $gst['code'] : $bill_from['gst'] }}
+                    {{ ($gst = json_decode($store_data->gst, true)) && isset($gst['code']) ? $gst['code'] : '' }}
                 </p>
             </td>
             <td class="logo-cell">
                 <div class="logo-box">
-                    @php  $store_logo = $store['logo']; @endphp
-
                     <img width="80" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_data->logo,  $store_data->logo_path , asset('public/assets/admin/img/160x160/img1.jpg'), $store_data->logo_dir) }}"
                         alt="Logo">
                 </div>
             </td>

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(grep:*)",
-      "Bash(php -r \":*)"
+      "Bash(php -r \":*)",
+      "Bash(sqlite3 \"/d/Work Projects/mychitti-main/database/mychitti.db\" \".schema notifications\")"
     ]
   }
 }

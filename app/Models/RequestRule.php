@@ -23,6 +23,10 @@ class RequestRule extends Model
     {
         return $this->belongsTo(EmployeeRole::class, 'role_id');
     }
+    public function adminRole()
+    {
+        return $this->belongsTo(AdminRole::class, 'role_id');
+    }
 
     public function getNextLevelDepsAttribute()
     {
@@ -40,26 +44,33 @@ class RequestRule extends Model
             $roleIds = [$roleIds]; // single integer → array
         } elseif (!is_array($roleIds)) {
             $roleIds = [];
-        }
+        } 
 
+        if (!$this->store_id) { 
+            return AdminRole::whereIn('id', $roleIds)->get();
+        }
+ 
         return EmployeeRole::whereIn('id', $roleIds)->get();
     }
 
 
     public function getNextLevelEmpsAttribute()
-{
-    $empIds = $this->send_to_employee_id;
+    {
+        $empIds = $this->send_to_employee_id;
 
-    // Convert to array safely
-    if (is_string($empIds)) {
-        $empIds = array_filter(explode(',', $empIds));
-    } elseif (is_numeric($empIds)) {
-        $empIds = [$empIds]; // single integer → array
-    } elseif (!is_array($empIds)) {
-        $empIds = [];
+        // Convert to array safely
+        if (is_string($empIds)) {
+            $empIds = array_filter(explode(',', $empIds));
+        } elseif (is_numeric($empIds)) {
+            $empIds = [$empIds]; // single integer → array 
+        } elseif (!is_array($empIds)) {
+            $empIds = [];
+        }
+
+        if (!$this->store_id) {
+            return Admin::whereIn('id', $empIds)->get();
+        }
+
+        return VendorEmployee::whereIn('id', $empIds)->get();
     }
-
-    return VendorEmployee::whereIn('id', $empIds)->get();
-}
-
 }

@@ -14,15 +14,15 @@
             </span>
             <span>
                 {{translate('messages.Employee_update')}}
-            </span>
-        </h1>
+            </span> 
+        </h1> 
     </div>
     <!-- Page Heading -->
-    <!-- Content Row -->
+    <!-- Content Row --> 
     <form action="{{route('admin.users.employee.update',[$employee['id']])}}" method="post" enctype="multipart/form-data" class="js-validate">
         @csrf
 
-        <div class="card">
+        <div class="card"> 
             <div class="card-header">
                 <h5 class="card-title">
                     <span class="card-header-icon">
@@ -34,8 +34,17 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-8">
-                        <div class="row g-3">
-                            <div class="col-sm-6">
+                        <div class="row g-3"> 
+                            <div class="col-sm-4">
+                                <label class="input-label text-capitalize" for="emp_id_field">{{ translate('messages.employee_id') }}
+                                    @if (hasPermission('staff_manage', 'settings'))
+                                        <span class="text-danger"><a href="{{ route('admin.staff.settings') }}" class="text-underline">Edit Prefix?</a></span>
+                                    @endif
+                                </label>
+                                <input type="text" name="" class="form-control" id="emp_id_field"
+                                    placeholder="Employee ID" readonly value="{{ $employee['employee_id'] ?? '' }}">
+                            </div>
+                            <div class="col-sm-4">
                                 <label class="input-label qcont" for="name">{{translate('messages.first_name')}} <span class="form-label-secondary text-danger"
                             data-toggle="tooltip" data-placement="right"
                             data-original-title="{{ translate('messages.Required.')}}"> *
@@ -82,6 +91,17 @@
                                 </div>
                             </div>
                             <div class="col-sm-6">
+                                <div>
+                                    <label class="input-label" for="department_id">{{translate('messages.department')}}</label>
+                                    <select class="form-control js-select2-custom w-100" name="department_id" id="department_id">
+                                        <option value="">{{translate('messages.select')}} {{translate('messages.department')}}</option>
+                                        @foreach($departments as $department)
+                                            <option value="{{$department->id}}" {{$employee['department_id'] == $department->id ? 'selected' : ''}}>{{$department->title}}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
                                 <label class="input-label qcont" for="name">{{translate('messages.phone')}} <span class="form-label-secondary text-danger"
                             data-toggle="tooltip" data-placement="right"
                             data-original-title="{{ translate('messages.Required.')}}"> *
@@ -91,10 +111,24 @@
                             </div>
                             <div class="col-md-6">
                                         <label class="input-label text-capitalize"
-                                            for="documents">Documents   <a type="button"  data-toggle="modal" data-target="#imgModal" class="btn action-btn btn--danger btn-outline-danger "><i class="tio-visible-outlined"></i></a></label> 
-                                        <input type="file" multiple name="documents[]" 
+                                            for="documents">Documents   <a type="button"  data-toggle="modal" data-target="#imgModal" class="btn action-btn btn--danger btn-outline-danger "><i class="tio-visible-outlined"></i></a></label>
+                                        <input type="file" multiple name="documents[]"
                                             class="form-control" id="documents" >
                                     </div>
+                            <div class="col-sm-6">
+                                <label class="input-label text-capitalize" for="salary_type">Salary Type</label>
+                                <select name="salary_type" id="salary_type" class="form-control">
+                                    <option value="">Select</option>
+                                    <option value="Monthly" {{ ($employee['salary_type'] ?? '') == 'Monthly' ? 'selected' : '' }}>Monthly</option>
+                                    <option value="Hourly" {{ ($employee['salary_type'] ?? '') == 'Hourly' ? 'selected' : '' }}>Hourly</option>
+                                    <option value="Task-Wise" {{ ($employee['salary_type'] ?? '') == 'Task-Wise' ? 'selected' : '' }}>Task-Wise</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6" id="base_salary_group">
+                                <label class="input-label text-capitalize" for="base_salary">Base Salary</label>
+                                <input type="number" name="base_salary" placeholder="Ex : 42000" step="0.01"
+                                    value="{{ $employee['base_salary'] ?? old('base_salary') }}" class="form-control" id="base_salary">
+                            </div>
                                     <div class="modal fade" id="imgModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
@@ -143,6 +177,142 @@
                             </div>
                         </label>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <span class="card-header-icon">
+                        <i class="tio-user"></i>
+                    </span>
+                    <span>Skills &amp; Shift</span>
+                </h5>
+            </div> 
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="input-label text-capitalize" for="skills">Skill Set</label>
+                        <select class="js-example-tags" name="skills[]" multiple="multiple">
+                            @php $emp_skills = $employee['skills'] ? explode(',', $employee['skills']) : []; @endphp
+                            <option {{ in_array('Communication', $emp_skills) ? 'selected' : '' }} value="Communication">Communication</option>
+                            <option {{ in_array('Teamwork', $emp_skills) ? 'selected' : '' }} value="Teamwork">Teamwork</option>
+                            <option {{ in_array('Problem Solving', $emp_skills) ? 'selected' : '' }} value="Problem Solving">Problem Solving</option>
+                            <option {{ in_array('Time Management', $emp_skills) ? 'selected' : '' }} value="Time Management">Time Management</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="input-label text-capitalize" for="shift">Shift</label>
+                        <select name="shift" id="shift" class="form-control js-select2-custom">
+                            <option value=""></option>
+                            @php $shifts = _getStoreShifts(); @endphp
+                            @foreach ($shifts as $key => $shift)
+                                <option value="{{ $shift->id }}" {{ ($employee['store_shift_id'] ?? '') == $shift->id ? 'selected' : '' }}>
+                                    {{ $shift->name . ' (' . $shift->start_time . ' to ' . $shift->end_time . ')' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <a data-toggle="collapse" href="#collapse3" role="button" aria-expanded="false" aria-controls="collapse3">
+                <div class="card-header" style="background-color: #ffddc6;">
+                    <h5 class="card-title">
+                        <span class="card-header-icon"><i class="tio-user"></i></span>
+                        <span>Educational Information <i class="tio-arrow-drop-down-circle-outlined"></i></span>
+                    </h5>
+                </div>
+            </a>
+            <div class="collapse" id="collapse3">
+                <div class="card-body p-2" style="border: 2px solid #ffddc6;">
+                    <table class="table edu_tabel table-responsive">
+                        <thead style="background:rgb(244, 244, 244);">
+                            <tr>
+                                <th scope="col">School Name</th>
+                                <th scope="col">Degree/Diploma</th>
+                                <th scope="col">Fields(s) of Study</th>
+                                <th scope="col">Start Month</th>
+                                <th scope="col">End Month</th>
+                                <th scope="col">Additional Notes</th>
+                                <th scope="col" style="padding:7px;"><button type="button" class="btn btn-dark btn-sm add_more_btn" onclick="addMoreRowEmp('education')">Add More</button></th>
+                            </tr>
+                        </thead>
+                        <tbody class="rows_parent">
+                            @php $education = json_decode($employee['education']); @endphp
+                            @if ($education)
+                                @foreach ($education as $key => $value)
+                                    <tr class="item_row_education" data-id="{{ $key + 1 }}">
+                                        <td><input type="text" value="{{ $value->school_name ?? '' }}" name="school_name[]" placeholder="School Name" class="form-control"></td>
+                                        <td><input type="text" name="degree_diploma[]" value="{{ $value->degree_diploma ?? '' }}" placeholder="Degree / Diploma / Certificate" class="form-control"></td>
+                                        <td><input type="text" name="field_of_study[]" placeholder="Field of Study" value="{{ $value->field_of_study ?? '' }}" class="form-control"></td>
+                                        <td><input value="{{ $value->start_month ?? '' }}" type="date" name="start_month[]" class="form-control"></td>
+                                        <td><input value="{{ $value->end_month ?? '' }}" type="date" name="end_month[]" class="form-control"></td>
+                                        <td><input value="{{ $value->additional_notes ?? '' }}" type="text" name="additional_notes[]" placeholder="Additional Notes" class="form-control"></td>
+                                        <td><a onclick="deleteNewRowEmp({{ $key + 1 }})" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <a data-toggle="collapse" href="#collapse4" role="button" aria-expanded="false" aria-controls="collapse4">
+                <div class="card-header" style="background-color: #e3efe2;">
+                    <h5 class="card-title">
+                        <span class="card-header-icon"><i class="tio-user"></i></span>
+                        <span>Experience <i class="tio-arrow-drop-down-circle-outlined"></i></span>
+                    </h5>
+                </div>
+            </a>
+            <div class="collapse" id="collapse4">
+                <div class="card-body p-2" style="border: 2px solid #c0e9e6;">
+                    <table class="table expr_tabel table-responsive">
+                        <thead style="background:rgb(243, 243, 243);">
+                            <tr>
+                                <th scope="col">Company Name</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Summary</th>
+                                <th scope="col">Start Date</th>
+                                <th scope="col">End Date</th>
+                                <th scope="col">Experience Letter</th>
+                                <th scope="col" style="padding:7px;"><button type="button" class="btn btn-dark btn-sm add_more_btn" onclick="addMoreRowEmp('experience')">Add More</button></th>
+                            </tr>
+                        </thead>
+                        <tbody class="rows_parent_experience">
+                            @php $experience = json_decode($employee['experience']); @endphp
+                            @if ($experience)
+                                @foreach ($experience as $key => $value)
+                                    <tr class="item_row_experience" data-id="{{ $key + 1 }}">
+                                        <td><input value="{{ $value->company_name ?? '' }}" type="text" name="company_name[]" placeholder="Company Name" class="form-control"></td>
+                                        <td><input value="{{ $value->occupation ?? '' }}" type="text" name="occupation[]" placeholder="Role" class="form-control"></td>
+                                        <td><textarea name="summary[]" class="form-control" placeholder="Summary">{{ $value->summary ?? '' }}</textarea></td>
+                                        <td>
+                                            <input value="{{ $value->exp_start_date ?? '' }}" type="date" name="exp_start_date[]" class="form-control">
+                                            <input type="hidden" name="currently_working[{{ $key + 1 }}]" value="0">
+                                            <input {{ ($value->currently_working ?? 0) ? 'checked' : '' }} type="checkbox" onchange="tillPresent(this, {{ $key + 1 }})" class="till_present_{{ $key + 1 }}" name="currently_working[{{ $key + 1 }}]" value="{{ $key + 1 }}">
+                                            <label>Till Present</label>
+                                        </td>
+                                        <td><input value="{{ $value->exp_end_date ?? '' }}" {{ ($value->currently_working ?? 0) ? 'disabled' : '' }} type="date" name="exp_end_date[]" class="form-control end_month_{{ $key + 1 }}"></td>
+                                        <td>
+                                            <input type="file" name="experience_letter[{{ $key + 1 }}]" class="form-control">
+                                            <input type="hidden" name="existing_exp_letter[]" value="{{ $value->exp_letter ?? '' }}">
+                                            @if (isset($value->exp_letter) && $value->exp_letter)
+                                                <a target="_blank" href="{{ asset('storage/app/public/admin/emp_documents') . '/' . $value->exp_letter }}">View Current</a>
+                                            @endif
+                                        </td>
+                                        <td><a onclick="deleteNewRowExp({{ $key + 1 }})" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -254,5 +424,77 @@
             $('#zone_id').val("{{ $employee->zone_id  }}").trigger('change');
             $('#role_id').val("{{ $employee['role_id'] }}").trigger('change');
         })
+        $('#salary_type').on('change', function() {
+            if ($(this).val() == 'Task-Wise') {
+                $('#base_salary_group').hide();
+            } else {
+                $('#base_salary_group').show();
+            }
+        }).trigger('change');
+
+        // Select2 tags for skills
+        $(document).ready(function() {
+            $('.js-example-tags').select2({
+                tags: true,
+                placeholder: "Select or add tags",
+            });
+        }); 
+
+        // Dynamic education/experience rows
+        function tillPresent(elem, dataId) {
+            if ($(elem).prop('checked') == true) {
+                $('.end_month_' + dataId).attr('readonly', true).val('');
+            } else {
+                $('.end_month_' + dataId).removeAttr('readonly');
+            }
+        }
+
+        function deleteNewRowEmp(rowId) {
+            $(".item_row_education[data-id='" + rowId + "']").remove();
+        }
+
+        function deleteNewRowExp(rowId) {
+            $(".item_row_experience[data-id='" + rowId + "']").remove();
+        }
+
+        function addMoreRowEmp(section) {
+            var $lastItemRow = $('.item_row_' + section).last();
+            if (!$lastItemRow.length) {
+                var dataId = 1;
+            } else {
+                var dataId = Number($lastItemRow.data('id')) + 1;
+            }
+
+            if (section == 'education') {
+                var html = `<tr class="item_row_` + section + `" data-id="` + dataId + `">
+                    <td><input type="text" name="school_name[]" placeholder="School Name" class="form-control"></td>
+                    <td><input type="text" name="degree_diploma[]" placeholder="Degree / Diploma / Certificate" class="form-control"></td>
+                    <td><input type="text" name="field_of_study[]" placeholder="Field of Study" class="form-control"></td>
+                    <td><input type="date" name="start_month[]" class="form-control"></td>
+                    <td><input type="date" name="end_month[]" class="form-control"></td>
+                    <td><input type="text" name="additional_notes[]" placeholder="Additional Notes" class="form-control"></td>
+                    <td><a onclick="deleteNewRowEmp(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                </tr>`;
+                $('.rows_parent').append(html);
+            } else if (section == 'experience') {
+                var html = `<tr class="item_row_` + section + `" data-id="` + dataId + `">
+                    <td><input type="text" name="company_name[]" placeholder="Company Name" class="form-control"></td>
+                    <td><input type="text" name="occupation[]" placeholder="Role" class="form-control"></td>
+                    <td><textarea name="summary[]" class="form-control" placeholder="Summary"></textarea></td>
+                    <td><input type="date" name="exp_start_date[]" class="form-control">
+                        <input type="hidden" class="hidden_check" name="currently_working[` + dataId + `]" value="0">
+                        <input type="checkbox" onchange="tillPresent(this, ` + dataId + `)" class="till_present_` + dataId + `" name="currently_working[` + dataId + `]" value="1">
+                        <label>Till Present</label>
+                    </td>
+                    <td><input type="date" name="exp_end_date[]" class="form-control end_month_` + dataId + `"></td>
+                    <td>
+                        <input type="hidden" name="existing_exp_letter[]" value="">
+                        <input type="file" name="experience_letter[` + (dataId - 1) + `]" class="form-control">
+                    </td>
+                    <td><a onclick="deleteNewRowExp(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></a></td>
+                </tr>`;
+                $('.rows_parent_experience').append(html);
+            }
+        }
     </script>
 @endpush

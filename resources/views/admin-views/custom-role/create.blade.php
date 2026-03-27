@@ -14,11 +14,11 @@
             </span>
         </h1>
     </div>
-    <!-- End Page Header -->
+    <!-- End Page Header -->  
     <!-- Content Row -->
     <div class="row">
-        <div class="col-md-12">
-            <div class="card">
+        <div class="col-md-12">  
+            <div class="card">  
                 <div class="card-body">
                     <form action="{{route('admin.users.custom-role.create.post')}}" method="post">
                         @csrf
@@ -58,7 +58,7 @@
                             </div>
                         </div>
                         <div class="check--item-wrapper">
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="collect_cash" class="form-check-input"
                                            id="collect_cash">
@@ -71,10 +71,10 @@
                                            id="addon">
                                     <label class="form-check-label qcont text-dark" for="addon">{{translate('messages.addon')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="attendance" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="attendance" class="form-check-input granular_permission_check"
                                            id="attendance">
                                     <label class="form-check-label qcont text-dark" for="attendance">{{translate('messages.attendance')}}</label>
                                 </div>
@@ -95,7 +95,7 @@
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="billing" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="billing" class="form-check-input granular_permission_check"
                                            id="billing">
                                     <label class="form-check-label qcont text-dark" for="billing">{{translate('messages.billing')}}</label>
                                 </div>
@@ -107,13 +107,13 @@
                                     <label class="form-check-label qcont text-dark" for="blog">{{translate('messages.blog')}}</label>
                                 </div>
                             </div>
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="campaign" class="form-check-input"
                                            id="campaign">
                                     <label class="form-check-label qcont text-dark" for="campaign">{{translate('messages.campaign')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="category" class="form-check-input"
@@ -130,9 +130,9 @@
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="customer_management" class="form-check-input"
-                                           id="customer_management">
-                                    <label class="form-check-label qcont text-dark" for="customer_management">{{translate('messages.customer_management')}}</label>
+                                    <input type="checkbox" name="modules[]" value="client_manage" class="form-check-input granular_permission_check"
+                                           id="client_manage">
+                                    <label class="form-check-label qcont text-dark" for="client_manage">{{translate('messages.client_management')}}</label>
                                 </div>
                             </div>
                             <div class="check-item">
@@ -142,16 +142,16 @@
                                     <label class="form-check-label qcont text-dark" for="deliveryman">{{translate('messages.deliveryman')}}</label>
                                 </div>
                             </div>
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="provide_dm_earning" class="form-check-input"
                                            id="provide_dm_earning">
                                     <label class="form-check-label qcont text-dark" for="provide_dm_earning">{{translate('messages.provide_dm_earning')}}</label>
                                 </div>
-                            </div>
-                            <div class="check-item">
+                            </div> --}}
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="employee" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="employee" class="form-check-input granular_permission_check"
                                            id="employee">
                                     <label class="form-check-label qcont text-dark" for="employee">{{translate('messages.Employee')}}</label>
                                 </div>
@@ -162,21 +162,21 @@
                                            id="employee_role" >
                                     <label class="form-check-label qcont text-dark" for="employee_role">{{translate('messages.employee_role')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="item" class="form-check-input"
                                            id="item">
-                                    <label class="form-check-label qcont text-dark" for="item">{{translate('messages.item')}}</label>
+                                    <label class="form-check-label qcont text-dark" for="item">{{Config::get('module.current_module_id') == 6 ? 'Service' : 'Product'}}</label>
                                 </div>
                             </div>
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="leave" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="leave" class="form-check-input granular_permission_check"
                                            id="leave">
-                                    <label class="form-check-label qcont text-dark" for="leave">{{translate('messages.leave')}}</label>
+                                    <label class="form-check-label qcont text-dark" for="leave">{{ translate('messages.leave')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="notification" class="form-check-input"
@@ -184,20 +184,79 @@
                                     <label class="form-check-label qcont text-dark" for="notification">{{translate('messages.notification')}}</label>
                                 </div>
                             </div>
+                            @if (Config::get('module.current_module_id')== 5)
+                                <div class="check-item">
+                                    <div class="form-group form-check form--check">
+                                        <input type="checkbox" name="modules[]" value="orders" class="form-check-input" id="orders">
+                                        <label class="form-check-label text-dark " for="order">Orders</label>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="check-item">
+                                    <div class="form-group form-check form--check">
+                                        <input type="checkbox" name="modules[]" value="leads_manage"
+                                            class="form-check-input granular_permission_check" id="leads_manage">
+                                        <label class="form-check-label text-dark " for="leads_manage">Service Leads</label>
+                                    </div>
+                                </div>
+                            @endif
+                            
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="order" class="form-check-input"
-                                           id="order">
-                                    <label class="form-check-label qcont text-dark" for="order">{{translate('messages.order')}}</label>
+                                    <input type="checkbox" name="modules[]" value="inventory_manage"
+                                        class="form-check-input granular_permission_check" id="inventory_manage">
+                                    <label class="form-check-label text-dark" for="inventory_manage">Inventory Manage</label>
                                 </div>
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="salary" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="task_manage"
+                                        class="form-check-input granular_permission_check" id="task_manage">
+                                    <label class="form-check-label text-dark" for="task_manage">Task Management</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="projects_manage"
+                                        class="form-check-input granular_permission_check" id="projects_manage">
+                                    <label class="form-check-label text-dark" for="projects_manage">Project Management</label>
+                                </div>
+                            </div>
+                                                <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="hr_manage"
+                                        class="form-check-input granular_permission_check" id="hr_manage">
+                                    <label class="form-check-label  text-dark" for="hr_manage">HR Management</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="account_manage"
+                                        class="form-check-input granular_permission_check" id="account_manage">
+                                    <label class="form-check-label  text-dark" for="account_manage">Account Management</label>
+                                </div>
+                            </div>
+                            {{-- <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input"
+                                        id="staff_manage">
+                                    <label class="form-check-label input-label " for="staff_manage">Staff Management</label>
+                                </div>
+                            </div> --}}
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="client_manage"
+                                        class="form-check-input granular_permission_check" id="client_manage">
+                                    <label class="form-check-label  text-dark" for="client_manage">Client Management</label>
+                                </div>
+                            </div>
+                            {{-- <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="salary" class="form-check-input granular_permission_check"
                                            id="salary">
                                     <label class="form-check-label qcont text-dark" for="salary">{{translate('messages.salary')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="store" class="form-check-input"
@@ -221,9 +280,9 @@
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="service_billing" class="form-check-input"
-                                           id="service_billing">
-                                    <label class="form-check-label qcont text-dark" for="service_billing">Service Billing</label>
+                                    <input type="checkbox" name="modules[]" value="billing" class="form-check-input granular_permission_check"
+                                           id="billing">
+                                    <label class="form-check-label qcont text-dark" for="billing"> Billing</label>
                                 </div>
                             </div>
                             <div class="check-item">
@@ -235,16 +294,37 @@
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="quotaiton_manage" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="quotaiton_manage" class="form-check-input granular_permission_check"
                                            id="quotaiton_manage">
                                     <label class="form-check-label qcont text-dark" for="quotaiton_manage">Quotation Manage</label>
                                 </div>
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="projects_manage" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="projects_manage" class="form-check-input granular_permission_check"
                                            id="projects_manage">
                                     <label class="form-check-label qcont text-dark" for="projects_manage">Project Manage</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="support_ticket" class="form-check-input granular_permission_check"
+                                           id="support_ticket">
+                                    <label class="form-check-label qcont text-dark" for="support_ticket">Support Tickets</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="ai_agent" class="form-check-input granular_permission_check"
+                                           id="ai_agent">
+                                    <label class="form-check-label qcont text-dark" for="ai_agent">AI Agent</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="logs" class="form-check-input granular_permission_check"
+                                           id="logs">
+                                    <label class="form-check-label qcont text-dark" for="logs">Logs</label>
                                 </div>
                             </div>
                             <div class="check-item">
@@ -283,16 +363,16 @@
                                     <label class="form-check-label qcont text-dark" for="module_system">{{translate('messages.module')}}</label>
                                 </div>
                             </div>
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="parcel" class="form-check-input"
                                            id="parcel">
                                     <label class="form-check-label qcont text-dark" for="parcel">{{translate('messages.parcel')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="pos" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="pos" class="form-check-input granular_permission_check"
                                            id="pos">
                                     <label class="form-check-label qcont text-dark" for="pos">{{translate('messages.pos')}}</label>
                                 </div>
@@ -312,6 +392,93 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Granular Action-level Permissions --}}
+                        @php
+                            $modules = \App\Models\Feature::with(['permissions' => fn($q) => $q->orderBy('action')])
+                                ->orderBy('master_module')->orderBy('name')
+                                ->get()->groupBy('master_module');
+                        @endphp
+
+                        @if($modules->count() > 0)
+                        <div class="d-flex align-items-center my-3">
+                            <h4 class="mb-0">{{translate('messages.action_level_permissions')}}</h4>
+                            <div class="ml-auto form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAllPerms">
+                                <label class="form-check-label font-weight-bold" for="selectAllPerms">
+                                    {{ translate('select_all') }}
+                                </label>
+                            </div>
+                        </div>
+
+                        @foreach($modules as $moduleName => $features)
+                            @php
+                                $allActions = collect($features)
+                                    ->flatMap(fn($f) => $f->permissions->pluck('action'))
+                                    ->unique()->values()->sort()->all();
+                            @endphp
+
+                            <h5 class="mt-4 master_module_heading" data-master-module="{{ $moduleName }}" style="display:none;">
+                                {{ ucfirst(str_replace('_', ' ', $moduleName)) }}
+                            </h5>
+
+                            <div class="table-responsive master_module_table" data-master-module="{{ $moduleName }}" style="display:none;">
+                                <table class="table table-bordered table-sm align-middle module-table" data-module="{{ $moduleName }}">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th style="min-width:180px">{{translate('messages.feature')}}</th>
+                                            @foreach($allActions as $action)
+                                                <th class="text-center">
+                                                    <div class="form-check d-inline-flex align-items-center">
+                                                        <input class="form-check-input column-toggle" type="checkbox"
+                                                            id="col_{{ $moduleName }}_{{ $action }}"
+                                                            data-action="{{ $action }}" data-module="{{ $moduleName }}">
+                                                        <label class="form-check-label ml-1" for="col_{{ $moduleName }}_{{ $action }}">
+                                                            {{ ucfirst($action) }}
+                                                        </label>
+                                                    </div>
+                                                </th>
+                                            @endforeach
+                                            <th class="text-center" style="min-width:100px">{{translate('messages.row')}}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($features as $feature)
+                                            @php $byAction = $feature->permissions->keyBy('action'); @endphp
+                                            <tr>
+                                                <th>{{ $feature->display_name ?? ucfirst(str_replace('_', ' ', $feature->name)) }}</th>
+                                                @foreach($allActions as $action)
+                                                    @php $perm = $byAction->get($action); $pid = $perm->id ?? null; @endphp
+                                                    <td class="text-center">
+                                                        @if($pid)
+                                                            <div class="form-check d-inline-block">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox"
+                                                                    id="p_{{ $pid }}" name="permissions[]"
+                                                                    value="{{ $pid }}" data-feature="{{ $feature->name }}"
+                                                                    data-action="{{ $action }}" data-module="{{ $moduleName }}">
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted">-</span>
+                                                        @endif
+                                                    </td>
+                                                @endforeach
+                                                <td class="text-center">
+                                                    <div class="form-check d-inline-flex align-items-center">
+                                                        <input class="form-check-input row-toggle" type="checkbox"
+                                                            id="row_{{ $feature->name }}" data-feature="{{ $feature->name }}"
+                                                            data-module="{{ $moduleName }}"
+                                                            @unless($feature->permissions->count() > 0) disabled @endunless>
+                                                        <label class="form-check-label ml-1" for="row_{{ $feature->name }}">All</label>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endforeach
+                        @endif
+
                         <div class="btn--container justify-content-end mt-4">
                             <button type="reset" id="reset-btn" class="btn btn--reset">{{translate('messages.reset')}}</button>
                             <button type="submit" class="btn btn--primary">{{translate('messages.submit')}}</button>
@@ -424,6 +591,92 @@
 @push('script_2')
     <script src="{{asset('public/assets/admin')}}/js/view-pages/custom-role-index.js"></script>
 
+    <script>
+        // Show/hide granular permission tables when module checkbox is toggled
+        $(".granular_permission_check").on('change', function() {
+            var master_module = $(this).val();
+            if ($(this).prop('checked')) {
+                $('.master_module_heading[data-master-module="' + master_module + '"]').show();
+                $('.master_module_table[data-master-module="' + master_module + '"]').show();
+            } else {
+                $('.master_module_heading[data-master-module="' + master_module + '"]').hide();
+                $('.master_module_table[data-master-module="' + master_module + '"]').hide();
+                // Uncheck all permissions in hidden module
+                $('.master_module_table[data-master-module="' + master_module + '"] .perm-checkbox').prop('checked', false);
+                $('.master_module_table[data-master-module="' + master_module + '"] .row-toggle').prop('checked', false);
+                $('.master_module_table[data-master-module="' + master_module + '"] .column-toggle').prop('checked', false);
+            }
+        });
+    </script>
 
+    <script>
+        (function() {
+            const $$ = sel => Array.from(document.querySelectorAll(sel));
+            const $ = sel => Array.from(document.querySelectorAll(sel));
+
+            // Master select-all for permissions
+            const selectAllPerms = document.getElementById('selectAllPerms');
+            if (selectAllPerms) {
+                selectAllPerms.addEventListener('change', (e) => {
+                    $$('.perm-checkbox:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+                    $$('.row-toggle:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+                    $$('.column-toggle:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+                });
+            }
+
+            // Row "All" toggle
+            $$('.row-toggle').forEach(rowTgl => {
+                rowTgl.addEventListener('change', (e) => {
+                    const feature = e.target.dataset.feature;
+                    $(`input.perm-checkbox[data-feature="${feature}"]`).forEach(cb => {
+                        if (!cb.disabled) cb.checked = e.target.checked;
+                    });
+                    refreshHeaderStates();
+                });
+            });
+
+            // Column toggle (by action + module)
+            $$('.column-toggle').forEach(colTgl => {
+                colTgl.addEventListener('change', (e) => {
+                    const action = e.target.dataset.action;
+                    const mod = e.target.dataset.module;
+                    $(`input.perm-checkbox[data-action="${action}"][data-module="${mod}"]`).forEach(cb => {
+                        if (!cb.disabled) cb.checked = e.target.checked;
+                    });
+                    refreshHeaderStates();
+                });
+            });
+
+            // Individual checkbox changes
+            $$('.perm-checkbox').forEach(cb => {
+                cb.addEventListener('change', refreshHeaderStates);
+            });
+
+            function refreshHeaderStates() {
+                // Row states
+                $$('.row-toggle').forEach(rowTgl => {
+                    const feature = rowTgl.dataset.feature;
+                    const boxes = $(`input.perm-checkbox[data-feature="${feature}"]`).filter(cb => !cb.disabled);
+                    rowTgl.checked = boxes.length && boxes.every(cb => cb.checked);
+                });
+
+                // Column states
+                $$('.column-toggle').forEach(colTgl => {
+                    const action = colTgl.dataset.action;
+                    const mod = colTgl.dataset.module;
+                    const boxes = $(`input.perm-checkbox[data-action="${action}"][data-module="${mod}"]`).filter(cb => !cb.disabled);
+                    colTgl.checked = boxes.length && boxes.every(cb => cb.checked);
+                });
+
+                // Master
+                if (selectAllPerms) {
+                    const allBoxes = $$('.perm-checkbox').filter(cb => !cb.disabled);
+                    selectAllPerms.checked = allBoxes.length && allBoxes.every(cb => cb.checked);
+                }
+            }
+
+            refreshHeaderStates();
+        })();
+    </script>
 @endpush
 

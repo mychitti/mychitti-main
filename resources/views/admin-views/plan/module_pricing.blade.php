@@ -15,7 +15,7 @@
                 </span>
                 <span>Module Pricing & Durations</span>
             </h1>
-        </div>
+        </div> 
         <div class="row">
             {{-- Plan Durations Management --}}
             <div class="col-md-6">
@@ -242,6 +242,47 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- GST Settings --}}
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <span class="card-header-icon mr-1"><i class="tio-receipt"></i></span>
+                            <span>GST Settings</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('admin.plan.gst-settings') }}" method="POST">
+                            @csrf
+                            <div class="row">
+                                <div class="form-group col-md-4">
+                                    <label class="input-label">GST Include / Exclude</label>
+                                    <select class="form-control" name="gst_mode">
+                                        <option value="exclude" {{ ($gst_settings['gst_mode'] ?? 'exclude') == 'exclude' ? 'selected' : '' }}>Exclude GST</option>
+                                        <option value="include" {{ ($gst_settings['gst_mode'] ?? '') == 'include' ? 'selected' : '' }}>Include GST</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label class="input-label">GST Percent (%)</label>
+                                    <input class="form-control" type="number" step="0.01" name="gst_percent"
+                                        value="{{ $gst_settings['gst_percent'] ?? 0 }}" placeholder="e.g. 18">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label class="input-label">HSN Code</label>
+                                    <input class="form-control" type="text" name="hsn"
+                                        value="{{ $gst_settings['hsn'] ?? '' }}" placeholder="e.g. 998314">
+                                </div>
+                            </div>
+                            <div class="btn--container justify-content-end">
+                                <button type="submit" class="btn btn--primary">{{ translate('messages.save') }}</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

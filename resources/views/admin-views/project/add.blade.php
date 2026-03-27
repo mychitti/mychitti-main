@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+@extends('layouts.admin.app')
 
 @section('title', 'Projects')
 
@@ -30,7 +30,7 @@
             </div>
         @endif
         <div class="row g-2">
-            <form class="w-100" action="{{ route('vendor.staff.save') }}" method="post">
+            <form class="w-100" action="{{ route('admin.staff.save') }}" method="post">
                 @csrf
                 <input type="hidden" id="staff_id" name="staff_id" value="{{isset($staff->id ) ? $staff->id : ''}}">
                 <div class="col-md-12">

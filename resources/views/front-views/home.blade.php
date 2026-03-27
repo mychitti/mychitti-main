@@ -284,14 +284,14 @@
                     <div class="owl-carousel banner-carousel ">
                         @foreach ($data['banners'] as $key => $value)
                             @if ($value['link'])
-                                <a href="{{ $value['link'] }}">
-                                    <img 
+                                <a href="{{ $value['link'] }}" onclick="trackBannerClick({{ $value['id'] }})">
+                                    <img
                                         src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
                                         alt="">
                                 </a>
                             @else
-                                <img  src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
-                                    alt="">
+                                <img src="{{ asset('storage/app/public/banner/') . '/' . $value['image'] }}"
+                                    alt="" onclick="trackBannerClick({{ $value['id'] }})" style="cursor:pointer;">
                             @endif
                         @endforeach
                     </div>
@@ -756,4 +756,12 @@
     </div>
 @endsection
 @push('script_2')
+<script>
+    function trackBannerClick(bannerId) {
+        $.post("{{ route('track.banner.click') }}", {
+            banner_id: bannerId,
+            _token: '{{ csrf_token() }}'
+        });
+    }
+</script>
 @endpush

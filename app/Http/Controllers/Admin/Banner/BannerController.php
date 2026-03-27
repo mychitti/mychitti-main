@@ -121,7 +121,9 @@ class BannerController extends BaseController
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
-        return view(BannerViewPath::UPDATE[VIEW], compact('banner', 'language', 'defaultLang', 'zones'));
+        $categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
+        $users = User::where('status', 1)->get();
+        return view(BannerViewPath::UPDATE[VIEW], compact('banner', 'language', 'defaultLang', 'zones', 'categories', 'users'));
     }
 
     public function update(BannerUpdateRequest $request, $id): JsonResponse

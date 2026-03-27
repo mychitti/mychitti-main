@@ -472,7 +472,7 @@
                     @if (hasPermission('boa_master_ledger', 'add'))
                         <a href="{{ route('vendor.account.add', ['add']) }}" class="action-item">
                             <div class="action-icon expenses-icon">
-                                <i class="fas fa-receipt"></i>
+                                <i class="tio-receipt-outlined"></i>
                             </div>
                             <div class="action-text">Add Expenses</div>
                         </a>
@@ -481,7 +481,7 @@
                         <a href="{{ route('vendor.account.request-form.master-ledger.index', ['id' => 0, 'tab' => 'approvals']) }}"
                             class="action-item">
                             <div class="action-icon approvals-icon">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="tio-verified-outlined"></i>
                             </div>
                             <div class="action-text">Check Approvals</div>
                         </a>
@@ -489,13 +489,13 @@
 
                     <a href ="{{ route('vendor.invoice.manual-bill') }}" class="action-item">
                         <div class="action-icon bill-icon">
-                            <i class="fas fa-file-invoice"></i>
+                            <i class="tio-document-text"></i>
                         </div>
                         <div class="action-text">Add Bill</div>
                     </a>
                     <div class="action-item">
                         <div class="action-icon download-icon">
-                            <i class="fas fa-download"></i>
+                            <i class="tio-download-to"></i>
                         </div>
                         <div>
                             <div class="action-text">Download</div>

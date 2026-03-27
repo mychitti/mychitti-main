@@ -11,7 +11,7 @@
           enctype="multipart/form-data">
           @csrf
 
-          <div class="row">
+          <div class="row"> 
               <div class="pc-calc-section col-md-8">
                   <h2>Subscribe Modules</h2>
                   @if (Route::currentRouteName() == 'admin.plan.module-store')
@@ -46,9 +46,9 @@
                   </div>
 
                   <h3 style="color: var(--primary); margin-bottom: 12px; font-size: 16px;">Select Modules &
-                      Duration
+                      Duration 
                   </h3>
-                  @php $sub_modules = _subMoudles() @endphp
+                  @php $sub_modules = _subMoudles(); $gst_settings = _planGstSettings(); @endphp
                   @if (isset($sub_modules) && count($sub_modules) > 0)
                       @foreach ($sub_modules as $module)
                           <div class="pc-module-item" data-module-id="{{ $module->id }}">
@@ -119,6 +119,20 @@
                           <span>Discount:</span>
                           <span id="pcDiscount">₹0.00</span>
                       </div>
+                      @if(($gst_settings['gst_percent'] ?? 0) > 0) 
+                      <div class="pc-summary-row">
+                          <span>GST ({{ $gst_settings['gst_percent'] }}%)
+                              <small class="text-muted">[{{ ($gst_settings['gst_mode'] ?? 'exclude') == 'include' ? 'Incl.' : 'Excl.' }}]</small>
+                          </span>
+                          <span id="pcGst">₹0.00</span>
+                      </div>
+                      @if(!empty($gst_settings['hsn']))
+                      <div class="pc-summary-row">
+                          <span>HSN:</span>
+                          <span>{{ $gst_settings['hsn'] }}</span>
+                      </div>
+                      @endif
+                      @endif
                       <div class="pc-summary-row pc-total">
                           <span>Total:</span>
                           <span id="pcTotal">₹0.00</span>
@@ -140,6 +154,7 @@
           </div>
           <input type="hidden" name="selected_modules" id="selectedModulesInput">
           <input type="hidden" name="grand_total" id="grandTotalInput">
+          <input type="hidden" name="gst_amount" id="gstAmountInput">
       </form>
-
+ 
   </div>

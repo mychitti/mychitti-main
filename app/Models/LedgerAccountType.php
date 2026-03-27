@@ -16,4 +16,10 @@ class LedgerAccountType extends Model
             ->where('store_id', Helpers::get_store_id())
             ->with('children');
     }
+    public function adminAccount()
+    {
+        return $this->hasMany(StoreAccount::class, 'ledger_account_type_id')
+            ->where('store_id', 0)
+            ->with('children');
+    }
 }

@@ -2,7 +2,7 @@
 
  @section('title', 'POS Token')
 
- @push('css_or_js')
+ @push('css_or_js') 
      <meta name="csrf-token" content="{{ csrf_token() }}">
      <style>
          .dine-table-card {
@@ -15,7 +15,7 @@
              background-color: var(--primary-orange);
              border-color: var(--primary-orange) !important;
              color: white !important;
-             box-shadow: 0 0 0 2px var(--primary-orange);
+             box-shadow: 0 0 0 2px var(--primary-orange); 
          }
 
          .desk_p2 { 
@@ -1064,6 +1064,9 @@
                              </div>
                              <input type="hidden" name="token_id" id="current_token_id">
                              <button type="button" id="btn-print-bill" class="order-btn">Print Bill</button>
+                             <button type="button" id="btn-pair-printer" class="btn btn-outline-secondary btn-sm mt-1" title="Pair USB printer for silent printing">
+                                 <i class="tio-print"></i> <span id="printer-status">Pair Printer</span>
+                             </button>
                              <button type="button" class="btn btn-primary" id="btn-start-dine-order"
                                  style="display:none">
                                  Start order
@@ -1114,10 +1117,11 @@
             autoPrint:   {{ ($store_config?->printer_auto_print ?? 0) ? 'true' : 'false' }},
         };  
  
-        // ── Web Serial port reference (persisted across prints in same session) ──
-        let _serialPort = null;  
-        let _serialWriter = null;   
- 
+        // ── Port references (persisted across prints in same session) ──
+        let _serialPort = null;
+        let _usbDevice = null;
+        let _printerPaired = false;
+
         /**
          * ESC/POS helpers — minimal set for receipt printing
          */
@@ -1131,108 +1135,179 @@
         }
         function escposDoubleHeight(on){
             return new Uint8Array([ESC, 0x21, on ? 0x10 : 0x00]);
-        } 
- 
-        /**   
-         * Send raw bytes to a serial port (USB or Bluetooth-COM)
-         */
-        async function serialPrint(bytes, isAutoPrint = false) {
-            try {
-                if (!('serial' in navigator)) {
-                    throw new Error('Web Serial API not supported. Use Chrome or Edge.');
-                }
+        }
 
-                // 1. If we already have an open port, use it
-                if (_serialPort && _serialPort.readable && _serialPort.writable) {
-                    try {
-                        const writer = _serialPort.writable.getWriter();
-                        await writer.write(bytes);
-                        writer.releaseLock();
-                        return true;
-                    } catch (e) {
-                        console.warn('Existing port failed, will try reconnect...', e);
-                        _serialPort = null; // reset and try again 
-                    }
-                }
+        // ── Update the Pair Printer button status ──
+        function updatePrinterStatus(paired, label) {
+            const btn = document.getElementById('btn-pair-printer');
+            const status = document.getElementById('printer-status');
+            if (!btn || !status) return;
+            if (paired) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-outline-success');
+                status.textContent = label || 'Printer Connected';
+                _printerPaired = true;
+            } else {
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-outline-secondary');
+                status.textContent = 'Pair Printer';
+                _printerPaired = false;
+            }
+        }
 
-                // 2. See if we have previously authorized ports we can connect to silently
-                if (!_serialPort && isAutoPrint) {
+        // ── Try to auto-reconnect previously paired devices on page load ──
+        async function autoReconnectPrinter() {
+            // Try Web Serial first
+            if ('serial' in navigator) {
+                try {
                     const ports = await navigator.serial.getPorts();
                     if (ports.length > 0) {
                         _serialPort = ports[0];
+                        if (!_serialPort.readable) {
+                            await _serialPort.open({ baudRate: 9600 });
+                        }
+                        updatePrinterStatus(true, 'Printer Ready (Serial)');
+                        console.log('Auto-reconnected serial printer');
+                        return true;
                     }
+                } catch (e) {
+                    console.warn('Serial auto-reconnect failed:', e);
+                    _serialPort = null;
                 }
-
-                // 3. If still no port, we MUST request one.
-                // Requesting a port REQUIRES a user gesture. If this was an auto-print (no click), it will fail.
-                if (!_serialPort) {
-                    if (isAutoPrint) {
-                        // We cannot request port on page load without a click.
-                        // Show a big button to the user requesting they click to print.
-                        showManualPrintOverlay(bytes);
-                        return false; 
-                    } else {
-                        _serialPort = await navigator.serial.requestPort();
+            }
+            // Try WebUSB
+            if ('usb' in navigator) {
+                try {
+                    const devices = await navigator.usb.getDevices();
+                    if (devices.length > 0) {
+                        _usbDevice = devices[0];
+                        await openUsbDevice(_usbDevice);
+                        updatePrinterStatus(true, 'Printer Ready (USB)');
+                        console.log('Auto-reconnected USB printer');
+                        return true;
                     }
+                } catch (e) {
+                    console.warn('USB auto-reconnect failed:', e);
+                    _usbDevice = null;
                 }
+            }
+            return false;
+        }
 
-                // 4. Open the port if it's not open
-                if (_serialPort && !_serialPort.readable) {
-                    await _serialPort.open({ baudRate: 9600 });
+        // ── Pair Printer (user clicks button once per session) ──
+        async function pairPrinter() {
+            // Try Web Serial first
+            if ('serial' in navigator) {
+                try {
+                    _serialPort = await navigator.serial.requestPort();
+                    if (_serialPort && !_serialPort.readable) {
+                        await _serialPort.open({ baudRate: 9600 });
+                    }
+                    updatePrinterStatus(true, 'Printer Ready (Serial)');
+                    toastr.success('Printer paired! All prints will be silent now.');
+                    return true;
+                } catch (e) {
+                    console.warn('Serial pairing failed/cancelled:', e);
+                    _serialPort = null;
                 }
-
-                // 5. Write data
-                const writer = _serialPort.writable.getWriter();
-                await writer.write(bytes);
-                writer.releaseLock();
-                return true;
-
-            } catch (err) {
-                console.error('Serial print error:', err);
-                
-                // If the error is "Failed to open serial port" it usually means it's exclusively locked
-                if (err.message.includes('Failed to open serial port')) {
-                    toastr.error('Printer is busy or turned off. Please check connection.', 'Printer Error');
-                } else if (err.message.includes('No port selected')) {
-                     // user cancelled prompt, ignore
-                } else {
-                    toastr.error(err.message || 'Serial print failed');
+            }
+            // Fallback to WebUSB
+            if ('usb' in navigator) {
+                try {
+                    _usbDevice = await navigator.usb.requestDevice({
+                        filters: [{ classCode: 7 }] // USB Printer class
+                    });
+                    await openUsbDevice(_usbDevice);
+                    updatePrinterStatus(true, 'Printer Ready (USB)');
+                    toastr.success('Printer paired via USB! All prints will be silent now.');
+                    return true;
+                } catch (e) {
+                    console.warn('USB pairing failed/cancelled:', e);
+                    _usbDevice = null;
                 }
-                _serialPort = null; // force re-select next time
-                return false;
+            }
+            toastr.warning('No printer could be paired. Make sure printer is connected and turned on.');
+            return false;
+        }
+
+        // ── Open and configure a USB device ──
+        async function openUsbDevice(device) {
+            if (!device.opened) {
+                await device.open();
+            }
+            if (device.configuration === null) {
+                await device.selectConfiguration(1);
+            }
+            const iface = device.configuration.interfaces[0];
+            await device.claimInterface(iface.interfaceNumber);
+            if (iface.alternates.length > 1) {
+                await device.selectAlternateInterface(iface.interfaceNumber, 0);
             }
         }
 
-        // Render a manual print button if auto-print was blocked by browser security
-        function showManualPrintOverlay(bytes) {
-            let overlay = document.getElementById('pos-manual-print');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = 'pos-manual-print';
-                overlay.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#fff;padding:15px;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);z-index:9999;border-left:4px solid var(--primary-orange); display:flex; align-items:center; gap:15px;';
-                
-                const text = document.createElement('div');
-                text.innerHTML = '<b>Receipt Ready</b><br><small class="text-muted">Click to connect printer</small>';
-                
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-primary btn-sm';
-                btn.innerHTML = '<i class="tio-print"></i> Print Now';
-                btn.onclick = async () => {
-                    const ok = await serialPrint(bytes, false); // false = triggered by user click
-                    if (ok) overlay.remove();
-                };
-
-                const close = document.createElement('button');
-                close.className = 'btn btn-ghost-danger btn-sm px-2';
-                close.innerHTML = '<i class="tio-clear"></i>';
-                close.onclick = () => overlay.remove();
-
-                overlay.appendChild(text);
-                overlay.appendChild(btn);
-                overlay.appendChild(close);
-                document.body.appendChild(overlay);
+        // Find the bulk OUT endpoint number on a USB device
+        function findBulkOutEndpoint(device) {
+            const iface = device.configuration.interfaces[0];
+            const alt = iface.alternates[0];
+            for (const ep of alt.endpoints) {
+                if (ep.direction === 'out' && ep.type === 'bulk') {
+                    return ep.endpointNumber;
+                }
             }
+            return 1; // Fallback: endpoint 1 is common for POS printers
         }
+
+        /**
+         * Silent print — sends ESC/POS bytes to the paired printer.
+         * No dialogs, no popups. Printer must be paired first via the button.
+         */
+        async function silentPrint(bytes) {
+            // 1. Try serial port
+            if (_serialPort) {
+                try {
+                    if (!_serialPort.readable) {
+                        await _serialPort.open({ baudRate: 9600 });
+                    }
+                    const writer = _serialPort.writable.getWriter();
+                    await writer.write(bytes);
+                    writer.releaseLock();
+                    return true;
+                } catch (e) {
+                    console.error('Serial print failed:', e);
+                    _serialPort = null;
+                    updatePrinterStatus(false);
+                }
+            }
+
+            // 2. Try USB device
+            if (_usbDevice) {
+                try {
+                    if (!_usbDevice.opened) {
+                        await openUsbDevice(_usbDevice);
+                    }
+                    const ep = findBulkOutEndpoint(_usbDevice);
+                    await _usbDevice.transferOut(ep, bytes);
+                    return true;
+                } catch (e) {
+                    console.error('USB print failed:', e);
+                    _usbDevice = null;
+                    updatePrinterStatus(false);
+                }
+            }
+
+            // 3. No printer paired
+            toastr.warning('No printer paired. Click "Pair Printer" button first.', 'Printer');
+            return false;
+        }
+
+        // ── Pair Printer button click + auto-reconnect on load ──
+        document.addEventListener('DOMContentLoaded', function() {
+            const pairBtn = document.getElementById('btn-pair-printer');
+            if (pairBtn) {
+                pairBtn.addEventListener('click', pairPrinter);
+            }
+            autoReconnectPrinter();
+        });
 
         /**
          * Build a minimal ESC/POS receipt from the current cart total
@@ -1331,11 +1406,13 @@
                  return;
             }
 
-            if (type === 'bluetooth') {
+            // Silent print via paired printer (Serial or USB)
+            if (_printerPaired || type === 'bluetooth' || type === 'usb' || type === 'serial') {
                 const receipt = buildEscPosReceipt(url);
-                const ok = await serialPrint(receipt, isAutoPrint);
-                if (!ok) window.open(url, '_blank');
-                return;
+                const ok = await silentPrint(receipt);
+                if (ok) return;
+                // If silent print failed and printer was configured, don't fallback
+                if (type !== 'none') return;
             }
 
             if (isMobile && htmlData) {

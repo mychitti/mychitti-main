@@ -101,8 +101,10 @@ width: 24px;
         <tr>
             <td style="padding:30px 30px 0">
                 <img class="mail-img-2"
-                @if ($data && $data['icon'])
-                src="{{ asset('storage/app/public/email_template/') }}/{{ $data['icon']??'' }}"
+                 @php $logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value; @endphp
+                    @if ($logo)
+                    {{-- src="{{ asset('storage/email_template/') }}/{{ $data['logo']??'' }}" --}}
+                    src="{{ asset('storage/business/') }}/{{ $logo }}"
                 @else
                 src='{{ asset('/public/assets/admin/img/email-template-img.png') }}'
                 @endif
@@ -137,10 +139,10 @@ width: 24px;
                 <span class="d-block" style="margin-bottom:20px">{{ $company_name }}</span>
 
                 @if ($data?->logo)
-                <img style="width:100px;display:block;margin:10px auto" src="{{ asset('storage/app/public/email_template/') }}/{{ $data['logo']??'' }}" alt="public/img">
+                <img style="width:100px;display:block;margin:10px auto" src="{{ asset('storage/email_template/') }}/{{ $data['logo']??'' }}" alt="public/img">
                 @else
                 @php($store_logo = \App\Models\BusinessSetting::where(['key' => 'logo'])->first()->value)
-                <img style="width:100px;display:block;margin:10px auto" src='{{ asset('storage/app/public/business/' . $store_logo) }}'alt="public/img">
+                <img style="width:100px;display:block;margin:10px auto" src='{{ asset('storage/business/' . $store_logo) }}'alt="public/img">
                 @endif
                 <span class="privacy">
                     @php($landing_data =\App\Models\DataSetting::where('type', 'admin_landing_page')->whereIn('key', ['shipping_policy_status','refund_policy_status','cancellation_policy_status'])->pluck('value','key')->toArray())

@@ -154,7 +154,7 @@
                                             data-url="{{ route('vendor.invoice.mark-paid', ['type' => $conf->invoice_type, 'id' => $conf->id]) }}"
                                             data-message="{{ translate('messages.Do_you_want_to_mark_this_invoice_as_paid?') }}"
                                             href="javascript:;">Unpaid</a> --}}
-                                            @if (hasPermission('billing', 'mark_paid'))
+                                            @if (hasPermission('billing', 'pay'))
                                                 <a style="width: 74px;"
                                                     class="btn action-btn btn--warning btn-outline-warning mark_paid_btn"
                                                     data-toggle="modal" data-id ="{{ $conf->id }}"

@@ -161,19 +161,29 @@ function _getCreatedBy($created_by, $created_by_type)
 }
 function _updateFormStatus($form_id, $status,  $sent_to, $remark)
 {
+    if (auth('admin')->check()) {
+        $updated_by = auth('admin')->user()->id;
+    } else {
+        $updated_by = auth('vendor_employee')->check() ? Helpers::get_loggedin_user()->id : 0;
+    }
     $update = new RequestFormUpdate();
     $update->request_form_id = $form_id;
     $update->status = $status;
     $update->remark = $remark;
-    $update->updated_by = auth('vendor_employee')->check() ? Helpers::get_loggedin_user()->id : 0;
+    $update->updated_by = $updated_by;
     $update->sent_to = $sent_to;
     $update->save();
 }
-function _costCenters()
+function _costCenters($storeId = null)
 {
-    $cost_centers = StoreAccount::with('ledgerAccountType')->where('account_type', 'cost_center')->where('store_id', Helpers::get_store_id())->get();
-    return $cost_centers ?? [];
-}
+    $cost_centers = StoreAccount::with('ledgerAccountType')->where('account_type', 'cost_center')->where('store_id', $storeId ?? Helpers::get_store_id());
+    if (auth('admin')->check()) {
+        $cost_centers->where('entity_type', 'admin');
+    } else {
+        $cost_centers->where('entity_type', 'store');
+    }  
+    return $cost_centers->get();
+} 
 function _sendToPermission($form_type)
 {
     // prx($form_type);
@@ -197,9 +207,9 @@ function _formWiseRulePermissions($formType)
     $rule = RequestRule::where('department_id', $employee->department_id)->where("role_id", $employee->employee_role_id)->where('form_type', $formType)->first();
     return $rule->permissions ?? [];
 }
-function _requestFormNumber()
+function _requestFormNumber($storeId = null)
 {
-    $storeId = Helpers::get_store_id();
+    $storeId = $storeId ?? Helpers::get_store_id();
 
     $lastNumber = RequestForm::where('store_id', $storeId)
         ->max('request_number');
@@ -1082,12 +1092,14 @@ function processTableForMPDF($html)
 
 function _masterLedgerEntry($data,   $credit_account, $debit_account, $debit_entity_type, $credit_entity_type, $existing_voucher_id = null, $store_id = null)
 {
-
-
     try {
         $storeId   = $store_id ?? Helpers::get_store_id();
         $user      = Helpers::get_loggedin_user();
-        $user_type = auth('vendor')->check() ? 'vendor' : (auth('vendor_employee')->check() ? 'employee' : '');
+        if (auth('admin')->check()) {
+            $user_type = 'admin';
+        } else {
+            $user_type = auth('vendor')->check() ? 'vendor' : (auth('vendor_employee')->check() ? 'employee' : '');
+        }
 
         if ($existing_voucher_id) {
             $voucher = StoreVoucher::find($existing_voucher_id);
@@ -1233,7 +1245,7 @@ function selected_menu($key, $menu_type = 'sidebar')
     }
 }
 function _subMoudles()
-{ 
+{
     return DB::table('sub_modules')->get();
 }
 function _planDurations()
@@ -1247,6 +1259,15 @@ function _moduleDiscount($subModuleId, $planDurationId)
         ->where('plan_duration_id', $planDurationId)
         ->value('discount') ?? 0;
 }
+function _planGstSettings()
+{
+    return DB::table('data_settings')
+        ->where('type', 'plan_gst')
+        ->whereIn('key', ['gst_mode', 'gst_percent', 'hsn'])
+        ->pluck('value', 'key')
+        ->toArray();
+}
+
 function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnly = false, $quotation = false, $heading = '')
 {
     // to show task id on invoice
@@ -1282,7 +1303,6 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
     $bill_data['invoice_items'] = $quotation
         ? QuotationDetailItem::where('quotation_det_id', $invoice->id)->get()
         : InvoiceItem::with('unitId')->where('rand_invoice_id', $invoice->invoice_id)->get();
-
     [$bill_to, $shipping_address] = processBillToInfo($invoice, $shipping_address_id);
 
     $bill_from = processBillFromInfo($invoice, $from, $bill_data);
@@ -1317,11 +1337,13 @@ function processBillToInfo($invoice, $shipping_address_id)
     $bill_to = null;
     $shipping_address = null;
 
-    if ($invoice->bill_to_type === 'user' && $invoice->bill_to) {
+    if (($invoice->bill_to_type === 'user' || $invoice->bill_to_type === 'mychitti_client') && $invoice->bill_to) {
         $bill_to = processUserBillTo($invoice, $shipping_address_id);
         $shipping_address = processShippingAddress($invoice, $shipping_address_id);
     } elseif ($invoice->bill_to_type === 'vendor') {
         $bill_to = processVendorBillTo($invoice);
+    } elseif ($invoice->bill_to_type === 'admin') {
+        $bill_to = processAdminBillTo();
     }
 
     return [$bill_to, $shipping_address];
@@ -1330,7 +1352,6 @@ function processBillToInfo($invoice, $shipping_address_id)
 function processUserBillTo($invoice, $shipping_address_id)
 {
     $bill_to = ['address' => ''];
-
     if ($invoice->user_type === 'store_user' || $invoice->user_type === 'store_vendor') {
         $uDetails = StoreCustomer::with(['billing_address', 'shipping_address'])
             ->findOrFail($invoice->bill_to);
@@ -1394,7 +1415,7 @@ function processVendorBillTo($invoice)
 {
     $uDetails = DB::table('stores')->where('id', $invoice->bill_to)->first();
     $pin_code = extractPinCodeFromStore($uDetails);
-
+    // prx( $uDetails);
     return [
         'full_name' => $uDetails->name,
         'address' => $uDetails->address,
@@ -1404,6 +1425,19 @@ function processVendorBillTo($invoice)
         'phone' => $uDetails->phone,
         'email' => $uDetails->email,
         'logo' => $uDetails->logo,
+    ];
+}
+function processAdminBillTo()
+{
+    return [
+        'full_name' => BusinessSetting::where('key', 'business_name')->first()->value,
+        'address' => BusinessSetting::where('key', 'address')->first()->value,
+        'gst' => BusinessSetting::where('key', 'gst_number')->first()->value,
+        'state_code' => getStateCodeFromPincode(BusinessSetting::where('key', 'pin_code')->first()->value),
+        'pin_code' => BusinessSetting::where('key', 'pin_code')->first()->value,
+        'phone' => BusinessSetting::where('key', 'phone')->first()->value,
+        'email' => BusinessSetting::where('key', 'email_address')->first()->value,
+        'logo' => BusinessSetting::where('key', 'logo')->first()->value,
     ];
 }
 
@@ -2174,7 +2208,7 @@ function wallet_recharge($data)
         $wallet->total_withdrawn = 0.0;
         $wallet->pending_withdraw = 0.0;
         $wallet->created_at = now();
-        $wallet->updated_at = now(); 
+        $wallet->updated_at = now();
         $wallet->save();
     }
 
@@ -2243,16 +2277,21 @@ function wallet_recharge($data)
 }
 
 function wallet_recharge_fail($data)
-{ 
+{
     $store_id = $data->attribute_id;
     TmpWallet::where('store_id', $store_id)->delete();
 }
 function _getInvoicePrefix($tax_type, $store = null)
 {
     if (!$store) {
-        $store = Store::find(Helpers::get_store_id());
+        if (auth('admin')->check()) {
+            $store_name = BusinessSetting::where('key', 'business_name')->first()?->value;
+        } else {
+            $store = Helpers::get_store_data();
+            $store_name = $store->name;
+        }
     }
-    $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3);
+    $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store_name)), 0, 3);
     $infix = $infix ?? 'INV';
 
     $today = now();
@@ -2474,6 +2513,8 @@ if (!function_exists('_clockedInEmployee')) {
 
         $clockIn = \App\Models\EmployeeTimeCard::where('emp_id', $empId)
             ->whereDate('in_time', $today)
+            ->where('vendor_id', Helpers::get_store_id())
+
             ->orderBy('id', 'desc')
             ->first();
 
@@ -2517,6 +2558,8 @@ if (!function_exists('_inTime')) {
     {
         $empId = \App\CentralLogics\Helpers::get_loggedin_user()->id;
         $clockIn =  EmployeeTimeCard::where('emp_id', $empId)->orderBy('id', 'desc')
+            ->where('vendor_id', Helpers::get_store_id())
+
             ->limit(1)
             ->first();
 
@@ -2533,7 +2576,9 @@ if (!function_exists('_inTime')) {
 if (!function_exists('_todayInTime')) {
     function _todayInTime($empId)
     {
-        $clockIn =  EmployeeTimeCard::where('emp_id', $empId)->first();
+        $clockIn =  EmployeeTimeCard::where('emp_id', $empId)
+            ->where('vendor_id', Helpers::get_store_id())
+            ->first();
         if ($clockIn) {
             return  $clockIn->in_time;
         } else {
@@ -2544,7 +2589,9 @@ if (!function_exists('_todayInTime')) {
 if (!function_exists('_todayOutTime')) {
     function _todayOutTime($empId)
     {
-        $clockIn =  EmployeeTimeCard::where('emp_id', $empId)->first();
+        $clockIn =  EmployeeTimeCard::where('emp_id', $empId)
+            ->where('vendor_id', Helpers::get_store_id())
+            ->first();
         if ($clockIn) {
             return  $clockIn->out_time;
         } else {
@@ -2991,14 +3038,22 @@ if (!function_exists('_newEmpId')) {
     function _newEmpId($increment = false)
     {
         $store = Helpers::get_store_data();
+        $serial = (int)($store->emp_id_serial ?? 0);
         if ($store->prefix_status == 1 && $store->emp_prefix) {
-            $id = $store->emp_prefix . $store->emp_id_serial + 1;
+            $id = $store->emp_prefix . ($serial + 1);
         } else {
-            $id = $store->emp_id_serial + 1;
+            $id = $serial + 1;
         }
         if ($increment == true) {
-            $store->emp_id_serial = $store->emp_id_serial + 1;
-            $store->save();
+            if (auth('admin')->check()) {
+                BusinessSetting::updateOrInsert(
+                    ['key' => 'emp_id_serial'],
+                    ['value' => $serial + 1]
+                );
+            } else {
+                $store->emp_id_serial = $serial + 1;
+                $store->save();
+            }
         }
         return $id;
     }
@@ -3031,6 +3086,7 @@ if (!function_exists('_todayPayableSalary')) {
                 // Timecard logic for today
                 $records = DB::table('employee_time_cards')
                     ->where('emp_id', $emp->id)
+                    ->where('vendor_id', $storeId)
                     ->whereDate('in_time', $today)
                     ->get();
 
@@ -3089,6 +3145,10 @@ if (!function_exists('_todayPayableSalary')) {
 if (!function_exists('hasAnyPermission')) {
     function hasAnyPermission(array $permissions): bool
     {
+        if (auth('admin')->check() && auth('admin')->user()->role_id == 1) {
+            return true;
+        }
+
         foreach ($permissions as $perm) {
             [$f, $a] = explode('.', $perm);
             if (hasPermission($f, $a)) {
@@ -3101,6 +3161,24 @@ if (!function_exists('hasAnyPermission')) {
 if (! function_exists('hasAnyModulePermission')) {
     function hasAnyModulePermission(array $permissions): bool
     {
+        if (auth('admin')->check()) {
+            $admin = auth('admin')->user();
+            if ($admin->role_id == 1) {
+                return true;
+            }
+            // Non-super-admin: check if role has any of these features
+            try {
+                return DB::table('admin_role_feature_permissions as arfp')
+                    ->join('feature_permissions as fp', 'arfp.feature_permission_id', '=', 'fp.id')
+                    ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                    ->where('arfp.admin_role_id', $admin->role_id)
+                    ->whereIn('f.name', $permissions)
+                    ->exists();
+            } catch (\Exception $e) {
+                return true;
+            }
+        }
+
         // Vendor → allowed
         if (auth('vendor')->check()) {
             return true;
@@ -3125,12 +3203,12 @@ if (! function_exists('hasAnyModulePermission')) {
         }
 
         foreach ($rows as $row) {
-            // ✅ Free permission → allow immediately
+            //  Free permission → allow immediately
             if ((int) $row->free === 1) {
                 return true;
             }
 
-            // 🔒 Paid → check master module
+            //  Paid → check master module
             if (
                 ! empty($row->master_module) &&
                 Helpers::permission_check($row->master_module)
@@ -3146,6 +3224,24 @@ if (! function_exists('hasAnyModulePermission')) {
 if (!function_exists('hasMasterModulePermission')) {
     function hasMasterModulePermission(string $masterModule)
     {
+        if (auth('admin')->check()) {
+            $admin = auth('admin')->user();
+            if ($admin->role_id == 1) {
+                return true;
+            }
+            // Non-super-admin: check if role has any permission in this master module
+            try {
+                return DB::table('admin_role_feature_permissions as arfp')
+                    ->join('feature_permissions as fp', 'arfp.feature_permission_id', '=', 'fp.id')
+                    ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                    ->where('arfp.admin_role_id', $admin->role_id)
+                    ->where('f.master_module', $masterModule)
+                    ->exists();
+            } catch (\Exception $e) {
+                return true;
+            }
+        }
+
         $hasPermission =  DB::table('role_feature_permissions as rfp')
             ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')
             ->join('features as f', 'fp.feature_id', '=', 'f.id')
@@ -3156,7 +3252,7 @@ if (!function_exists('hasMasterModulePermission')) {
         if ($hasPermission) {
             if (auth('vendor')->check()) {
                 return true;
-            }elseif(auth('vendor_employee')->check() && Helpers::employee_module_permission_check($masterModule)){
+            } elseif (auth('vendor_employee')->check() && Helpers::employee_module_permission_check($masterModule)) {
                 return true;
             }
         }
@@ -3188,6 +3284,25 @@ if (!function_exists('hasPermission')) {
 
     function hasPermission($feature, $action)
     {
+
+        if (auth('admin')->check()) {
+            $admin = auth('admin')->user();
+            if ($admin->role_id == 1) {
+                return true;
+            }
+            // Granular check for non-super-admin
+            try {
+                return DB::table('admin_role_feature_permissions as arfp')
+                    ->join('feature_permissions as fp', 'arfp.feature_permission_id', '=', 'fp.id')
+                    ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                    ->where('f.name', $feature)
+                    ->where('fp.action', $action)
+                    ->where('arfp.admin_role_id', $admin->role_id)
+                    ->exists();
+            } catch (\Exception $e) {
+                return true;
+            }
+        }
 
         $masterModule = DB::table('features')
             ->where('name', $feature)
@@ -3260,6 +3375,11 @@ function _verifiedStoreBadge($store)
 {
     $verifiedDoc = $store->id_doc || $store->gst_doc;
     return $verifiedDoc ? '<img src="' . asset('storage/app/public/util/verified_badge.jpeg') . '" style="width:32px;    position: absolute2;left: 3px;top: -3px; aspect-ratio:1;" alt="">' : '';
+}
+function _isStoreVerified($store)
+{
+    $verified = $store->id_doc || $store->gst_doc;
+    return $verified;
 }
 function _manualInvoice($id)
 {
@@ -3495,11 +3615,20 @@ if (!function_exists('_unitNaneById')) {
     }
 }
 if (!function_exists('_auditLogs')) {
-    function _auditLogs($action)
+    function _auditLogs($action, $store_id = null)
     {
-        $created_by = auth('vendor_employee')->check() ? Helpers::get_loggedin_user()->id : 0;
+        if (!$store_id) {
+            $store_id =  Helpers::get_store_id();
+        } else {
+            $store_id = $store_id;
+        }
+        if (auth('admin')->check()) {
+            $created_by  = auth('admin')->id();
+        } else {
+            $created_by = auth('vendor_employee')->check() ? Helpers::get_loggedin_user()->id : 0;
+        }
         $log = new AuditLog();
-        $log->store_id = Helpers::get_store_id();
+        $log->store_id = $store_id;
         $log->created_by = $created_by;
         $log->action = $action;
         $log->save();
@@ -4353,6 +4482,9 @@ if (!function_exists('_getServiceAddrInfo')) {
 if (!function_exists('_isSubscription')) {
     function _isSubscription()
     {
+        if (auth('admin')->check()) {
+            return true;
+        }
         $store_id = Helpers::get_store_id();
         return DB::table('vendor_subscriptions')
             ->where('vendor_id', $store_id)
@@ -4736,7 +4868,11 @@ if (!function_exists('_sendSMSToAdmin')) {
 if (!function_exists('_getInventoryItems')) {
     function _getInventoryItems()
     {
-        $inventory_items = InventoryItem::where('store_id', Helpers::get_store_id())->get();
+        if (auth('admin')->check()) {
+            $inventory_items = InventoryItem::where('store_id', 0)->get();
+        } else {
+            $inventory_items = InventoryItem::where('store_id', Helpers::get_store_id())->get();
+        }
 
         return $inventory_items;
     }
@@ -4781,7 +4917,7 @@ if (!function_exists('_isCommonDashboard')) {
                 'admin/common-dashboard*',
                 'admin/modules-billing*',
                 'admin/services-billing*',
-                'admin/account*',
+                // 'admin/account*',
                 'admin/blog*',
                 // 'admin/banner*',
                 'admin/promotional-banner*',
@@ -4862,8 +4998,15 @@ if (!function_exists('_send_confirmation_sms')) {
     }
 }
 if (!function_exists('_storeEmployees')) {
-    function _storeEmployees()
+    function _storeEmployees($master_admin = false)
     {
+        if (auth('admin')->check()) {
+
+            $includeMasterAdmin = $master_admin && auth('admin')->user()->role_id == 1;
+            return Admin::when(!$includeMasterAdmin, function ($q) {
+                $q->where('role_id', '!=', 1);
+            })->whereNull('terminate')->where('status', 1)->get();
+        }
         return VendorEmployee::where('store_id', Helpers::get_store_id())->whereNot('terminate', 1)->get();
     }
 }
@@ -4974,6 +5117,9 @@ if (!function_exists('_inAppNotification')) {
             $fcm = $store?->vendor?->cm_firebase_token;
         } elseif ($user_typ == 'vendor_employee') {
             $employee = VendorEmployee::find($to);
+            $fcm = $employee?->cm_firebase_token;
+        } elseif ($user_typ == 'admin_employee') {
+            $employee = \App\Models\Admin::find($to);
             $fcm = $employee?->cm_firebase_token;
         }
         if (!empty($fcm)) {

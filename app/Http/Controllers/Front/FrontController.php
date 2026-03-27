@@ -2253,6 +2253,39 @@ class FrontController extends Controller
         // prx($store->galleries);
         return view('front-views.store_gallery', compact('store'));
     }
+    public function trackBannerClick(Request $request)
+    {
+        $bannerId = $request->banner_id;
+        $banner = DB::table('banners')->where('id', $bannerId)->first();
+        if (!$banner) {
+            return response()->json(['message' => 'Banner not found'], 404);
+        }
+
+        $ip = $request->ip();
+        $isUnique = !DB::table('analytics_logs')
+            ->where('screen_type', 'banner')
+            ->where('ref_id', $bannerId)
+            ->where('ip', $ip)
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+
+        DB::table('banners')->where('id', $bannerId)->increment('total_clicks');
+        if ($isUnique) {
+            DB::table('banners')->where('id', $bannerId)->increment('unique_clicks');
+        }
+
+        DB::table('analytics_logs')->insert([
+            'screen_type' => 'banner',
+            'sub_type' => 'web',
+            'ref_id' => $bannerId,
+            'user_id' => auth()->check() ? auth()->id() : null,
+            'ip' => $ip,
+            'created_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Banner click counted']);
+    }
+
     public function store_details(Request $request, $city, $slug)
     {
         $check_module = DB::table('stores')->where('slug', $slug)->first();
@@ -2276,6 +2309,29 @@ class FrontController extends Controller
 
 
         if ($store) {
+            // Increment store visit analytics
+            $ip = $request->ip();
+            $isUnique = !DB::table('analytics_logs')
+                ->where('screen_type', 'store')
+                ->where('ref_id', $store->id)
+                ->where('ip', $ip)
+                ->whereDate('created_at', now()->toDateString())
+                ->exists();
+
+            DB::table('stores')->where('id', $store->id)->increment('total_visits');
+            if ($isUnique) {
+                DB::table('stores')->where('id', $store->id)->increment('unique_visits');
+            }
+
+            DB::table('analytics_logs')->insert([
+                'screen_type' => 'store',
+                'sub_type' => 'web',
+                'ref_id' => $store->id,
+                'user_id' => auth()->check() ? auth()->id() : null,
+                'ip' => $ip,
+                'created_at' => now(),
+            ]);
+
             if ($module == 5) {
 
                 $keywordsData = DB::table('items')
@@ -2361,7 +2417,7 @@ class FrontController extends Controller
                         ->where('status', 1)
                         ->get();
                 }
-                $productdata = $productdata1->merge($invItemdata);
+                $productdata = $productdata1;
 
                 // print_r($productdata);
             }
@@ -2377,23 +2433,39 @@ class FrontController extends Controller
         $data['review_count'] = DB::table('store_reviews')
             ->join('stores', 'stores.id', 'store_reviews.store_id')
             ->where('stores.slug', $slug)
-            ->where('store_reviews.status', 1)
+            ->where('store_reviews.status', 1) 
             ->count();
-        if ($request->has('template') && $request->template) {
+            // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
+        if ($request->has('template') && $request->template ) {
             return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
-        // $templateId = 15;
-        // return view('front-views.store_details', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-2', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-3', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-4', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-5', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-6', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-7', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // return view('front-views.store_webpage.template-8', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+       
         return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+    }
+
+    public function store_removal_request(Request $request)
+    {
+        $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        DB::table('store_removal_requests')->insert([
+            'store_id' => $request->store_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'reason' => $request->reason,
+            'status' => 'pending',
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'Your removal request has been submitted. Our team will review it shortly.');
     }
 
     public function product_details(Request $request, $category_slug, $slug)

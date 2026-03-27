@@ -18,6 +18,7 @@ class StoreCustomer extends Model
         'address',
         'ledger_account_id',
         'pin_code',
+        'user_type',
     ];
 
     public function billing_address()

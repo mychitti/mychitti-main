@@ -75,6 +75,7 @@
             <div class="table-responsive datatable-custom">
                 <table id="columnSearchDatatable"
                 class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                data-hs-datatables-options='{"pageLength": 25}'
                >
                 <thead class="thead-light">
                     <tr>

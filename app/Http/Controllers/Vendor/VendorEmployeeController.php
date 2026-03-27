@@ -23,7 +23,7 @@ class VendorEmployeeController extends Controller
 {
 
     public function clock_in()
-    {
+    { 
         $emp_id = Helpers::get_loggedin_user()->id;
         $v_id = Helpers::get_store_id();
 
@@ -34,7 +34,7 @@ class VendorEmployeeController extends Controller
         $obj->date = date('Y-m-d');
         $obj->created_at = date('Y-m-d H:i:s');
 
-        $att = Attendance::where('employee_id', $emp_id)->where('date', date('Y-m-d'))->first();
+        $att = Attendance::where('employee_id', $emp_id)->where('employee_type', 'vendor_employee')->where('vendor_id', $v_id)->where('date', date('Y-m-d'))->first();
         if (!$att) {
             $att = new Attendance;
             $att->employee_id = $emp_id;
@@ -62,6 +62,8 @@ class VendorEmployeeController extends Controller
         $emp_id = Helpers::get_loggedin_user()->id;
         $v_id = Helpers::get_store_id();
         $today_attendance = EmployeeTimeCard::where('emp_id', $emp_id)
+                ->where('vendor_id', Helpers::get_store_id() )
+
             ->orderBy('id', 'desc')
             ->limit(1)
             ->first();
@@ -96,7 +98,7 @@ class VendorEmployeeController extends Controller
         } else {
             $filter_month = date('m');
         }
-        $attendance = Attendance::where(['vendor_id' => $v_id, 'employee_id' => $id, 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
+        $attendance = Attendance::where(['vendor_id' => $v_id, 'employee_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
         $leaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
         $day_data['absent'] = 0;
         $day_data['present'] = 0;
@@ -184,6 +186,8 @@ class VendorEmployeeController extends Controller
         $attendance = EmployeeTimeCard::where('emp_id', $emp_id)
             ->where('date', '>=', $currentmonth . '-01')
             ->where('date', '<=', $currentmonth . '-31')
+                ->where('vendor_id', Helpers::get_store_id() )
+
             ->whereNotNull('out_time')
             ->whereNotNull('in_time')->get();
 
@@ -208,7 +212,7 @@ class VendorEmployeeController extends Controller
     public function leave_approve(Request $request, $id)
     {
         $obj  =  Leave::find($id);
-        $att = Attendance::where('employee_id', $obj->emp_id)->where('date', date('Y-m-d'))->first();
+        $att = Attendance::where('employee_id', $obj->emp_id)->where('employee_type', 'vendor_employee')->where('vendor_id', $obj->vendor_id)->where('date', date('Y-m-d'))->first();
         if (!$att) {
             $att = new Attendance;
             $att->employee_id = $request->emp_id;
@@ -243,6 +247,7 @@ class VendorEmployeeController extends Controller
 
         $leave = new Leave;
         $leave->vendor_id = $v_id;
+        $leave->employee_type = 'vendor_employee';
         $leave->emp_id =  Helpers::get_loggedin_user()->id;
         $leave->day = $request->post('day');
         $leave->month = $request->post('month');

@@ -1432,7 +1432,7 @@
         <div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
             <div class="owl-carousel banner-carousel t13-zoom-in">
                 @foreach ($data['banners'] as $value)
-                    <a href="{{ $value->default_link ?? '#' }}">
+                    <a href="{{ $value->default_link ?? '#' }}" onclick="trackBannerClick({{ $value->id }})">
                         <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
                             alt="banner" style="border-radius: 16px; width: 100%;">
                     </a>
@@ -1444,16 +1444,124 @@
     <!-- Products Section -->
     <div class="t13-section" id="services" style="background: white;">
         <div class="t13-wrap">
-            @if ($data['store_config']?->inventory_items_position == 'above')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
-
             <div class="t13-section-header">
                 <div class="t13-section-tag">Our Offerings</div>
                 <h2 class="t13-section-title">Products & Services</h2>
             </div>
 
             @foreach ($productdata as $key => $cat)
+                <div style="" class="product_data">
+                    <h3 class="t13-slide-left cat_name" style="">{{ $cat->name }}</h3>
+
+                    <div class="t13-products">
+                        @foreach ($cat->items as $index => $pro)
+                            @php
+                                $variations = json_decode($pro->variations);
+                                $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
+                                if ($firstVr) {
+                                    $selling_price = json_decode($firstVr)->price;
+                                    $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
+                                } else {
+                                    $selling_price = $pro->price;
+                                    $mrp = $pro->mrp_price;
+                                }
+                            @endphp
+                            <div class="pr_{{ $pro->id }} t13-card {{ $index % 2 == 0 ? 't13-slide-left' : 't13-slide-right' }}"
+                                style="transition-delay: {{ $index * 0.06 }}s;">
+                                <div class="t13-card-img">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                        <img loading="lazy"
+                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                            alt="{{ $pro->name }}">
+                                    </a>
+
+                                    @if ($module == 5 && $store->delivery_time)
+                                        <div class="t13-card-time">
+                                            <i class="fas fa-bolt" style="color: var(--t13-accent);"></i>
+                                            {{ strtoupper($store->delivery_time) }}
+                                        </div>
+                                    @endif
+
+                                    @if ($pro->discount > 0)
+                                        <div class="t13-card-badge">
+                                            -{{ floor($pro->discount) }}{{ $pro->discount_type == 'percent' ? '%' : \App\CentralLogics\Helpers::currency_symbol() }}
+                                        </div>
+                                    @endif
+
+                                    <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
+                                        class="prHeart_{{ $pro->id }} t13-card-heart">
+                                        <i
+                                            class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                    </div>
+                                </div>
+
+                                <div class="t13-card-body">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                        <h4 class="t13-card-title" title="{{ ucfirst($pro->name) }}">
+                                            {{ ucfirst($pro->name) }}
+                                        </h4>
+                                    </a>
+
+                                    @if ($module == 5)
+                                        <p
+                                            style="font-size: 11px; color: var(--t13-gray); margin-bottom: 0.5rem; min-height: 16px;">
+                                            {{ !empty($variations) ? $variations[0]->type : '' }}
+                                        </p>
+
+                                        <div class="t13-card-price">
+                                            <div class="t13-price-now">{{ _price($selling_price) }}</div>
+                                            @if ($pro->discount > 0)
+                                                <div class="t13-price-was">{{ _price($mrp) }}</div>
+                                            @endif
+                                        </div>
+
+                                        <div class="cartSec_{{ $pro->id }}">
+                                            @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
+                                            @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                    class="t13-btn-card t13-btn-remove">
+                                                    <i class="fa fa-times"></i> Remove
+                                                </button>
+                                            @else
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                    class="t13-btn-card">
+                                                    <i class="fa fa-plus"></i> Add
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        @if ($pro->item_type == 'product')
+                                            <div class="t13-card-price">
+                                                <div class="t13-price-now">{{ _price($selling_price) }}</div>
+                                                @if ($pro->discount > 0 || $mrp > $selling_price)
+                                                    <div class="t13-price-was">{{ _price($mrp) }}</div>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        @if (auth('web')->user())
+                                            <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
+                                                class="t13-btn-card">
+                                                <i class="fas fa-paper-plane"></i> Enquire
+                                            </button>
+                                        @else
+                                            <button data-bs-toggle="modal" data-bs-target="#loginModal"
+                                                class="t13-btn-card">
+                                                <i class="fas fa-paper-plane"></i> Enquire
+                                            </button>
+                                        @endif
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+
+            @foreach ($invItemdata as $key => $cat)
                 <div style="" class="product_data">
                     <h3 class="t13-slide-left cat_name" style="">{{ $cat->name }}</h3>
 
@@ -1572,9 +1680,6 @@
                 </div>
             @endif
 
-            @if ($data['store_config']?->inventory_items_position == 'below')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
         </div>
     </div>
 
@@ -1764,9 +1869,18 @@
             </div>
         </div>
     </div>
+@include('front-views.partials._claim_remove_business')
 @endsection
 
 @push('script_2')
+    <script>
+        function trackBannerClick(bannerId) {
+            $.post("{{ route('track.banner.click') }}", {
+                banner_id: bannerId,
+                _token: '{{ csrf_token() }}'
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
 

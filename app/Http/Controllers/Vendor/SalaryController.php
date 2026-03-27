@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SalaryController extends Controller
-{
+{ 
 
     public function index(Request $request)
     {
@@ -67,7 +67,7 @@ class SalaryController extends Controller
                     'status' => 'approved',
                     'description' => 'Salary',
                 ];
-               $voucher =  _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'employee', null);
+                $voucher =  _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'employee', null);
             }
             _saveDayBookEntry($salary->total_payable, 'debit', Helpers::get_store_id(), "Salary Payment of " . $salary->employee->f_name . ' ' . $salary->employee->f_name, null, $voucher?->id);
 
@@ -121,6 +121,7 @@ class SalaryController extends Controller
 
             $records = DB::table('employee_time_cards')
                 ->where('emp_id', $empInfo->id)
+                ->where('vendor_id', Helpers::get_store_id())
                 ->whereBetween('in_time', [$startOfMonth, $endOfMonth])
                 ->get();
 
@@ -208,7 +209,7 @@ class SalaryController extends Controller
                 'status' => 'approved',
                 'description' => 'Salary',
             ];
-           $voucher  =  _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'other', null);
+            $voucher  =  _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'other', null);
         }
 
         // day book entry
@@ -253,7 +254,7 @@ class SalaryController extends Controller
     public function get_info(Request $request)
     {
         // echo $request->id; 
-        $salary_info = Salary::where('employee_id', $request->id)->get();
+        $salary_info = Salary::where('employee_id', $request->id)->where('employee_type', 'vendor_employee')->where('vendor_id', Helpers::get_store_id())->get();
         return response()->json(['data' => $salary_info]);
     }
     public function status(Request $request)
@@ -428,6 +429,7 @@ class SalaryController extends Controller
 
             // fetch time card records for current month
             $records = DB::table('employee_time_cards')
+                ->where('vendor_id', Helpers::get_store_id())
                 ->where('emp_id', $empInfo->id)
                 ->whereBetween('in_time', [$startOfMonth, $endOfMonth])
                 ->get();
@@ -537,10 +539,12 @@ class SalaryController extends Controller
                 if (
                     Salary::where('employee_id', $empInfo->id)
                     ->where('salary_month', "$year-$month")
+                    ->where('store_id', Helpers::get_store_id())
+                    ->where('employee_type', 'vendor_employee')
                     ->exists()
                 ) {
                     continue;
-                } 
+                }
                 /* -------------------------------------------------
              | COMMON VARIABLES
              ------------------------------------------------- */
@@ -591,6 +595,7 @@ class SalaryController extends Controller
                     $endOfMonth   = Carbon::create($year, $month)->endOfMonth();
 
                     $records = DB::table('employee_time_cards')
+                        ->where('vendor_id', Helpers::get_store_id())
                         ->where('emp_id', $empInfo->id)
                         ->whereBetween('in_time', [$startOfMonth, $endOfMonth])
                         ->get();
@@ -625,19 +630,17 @@ class SalaryController extends Controller
                 /* -------------------------------------------------
              | ALLOWANCES (MATCHES JS LOGIC)
              ------------------------------------------------- */
-$monthlyAllowances = [];
+                $monthlyAllowances = [];
 
-if (!empty($empInfo->monthly_allowances)) {
+                if (!empty($empInfo->monthly_allowances)) {
 
-    if (is_string($empInfo->monthly_allowances)) {
-        $decoded = json_decode($empInfo->monthly_allowances, true);
-        $monthlyAllowances = is_array($decoded) ? $decoded : [];
-    }
-
-    elseif (is_array($empInfo->monthly_allowances)) {
-        $monthlyAllowances = $empInfo->monthly_allowances;
-    }
-}
+                    if (is_string($empInfo->monthly_allowances)) {
+                        $decoded = json_decode($empInfo->monthly_allowances, true);
+                        $monthlyAllowances = is_array($decoded) ? $decoded : [];
+                    } elseif (is_array($empInfo->monthly_allowances)) {
+                        $monthlyAllowances = $empInfo->monthly_allowances;
+                    }
+                }
 
                 foreach ($monthlyAllowances as $item) {
                     $value = (float) ($item['amount'] ?? 0);

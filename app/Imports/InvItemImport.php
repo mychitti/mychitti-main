@@ -74,7 +74,15 @@ class InvItemImport implements ToCollection
                         } else {
                             $category = \App\Models\Category::whereRaw('LOWER(name) = ?', [strtolower(trim($row[18]))])->first();
                         }
-                        $category_id = $category ? $category->id : null;
+                        if (!$category) {
+                            $category = \App\Models\Category::create([ 
+                                'name' => trim($row[18]),
+                                'module_id' => 6,
+                                'status' => 1,
+                                'position' => 0,
+                            ]);
+                        }
+                        $category_id = $category->id;
                     }
                     // attributes and choice options 
                     // Attributes column (e.g. "30,91")

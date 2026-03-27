@@ -293,10 +293,10 @@
          console.log(dataId)
 
          var html = `<tr class="item_row_inv" data-id="` + dataId + `"
-         data-secondary-unit="${item?.secondary_unit ?? ''}"
-    data-primary-qty="${item?.primary_qty ?? 0}"
-    data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}">
+                        data-secondary-unit="${item?.secondary_unit ?? ''}"
+                        data-primary-qty="${item?.primary_qty ?? 0}"
+                        data-secondary-qty="${item?.secondary_qty ?? 0}"
+                        data-primary-price="${item?.selling_price ?? 0}">
 
                        <input type="hidden" name="inventory_item_id_new[]" value="` + item_id + `" >
                        <input type="hidden" name="invoice_item_new[]" value="1" >
@@ -304,10 +304,10 @@
                       <td style="width: 100px;"><input type="number" value="` + item_price + `" step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price"></td>
                       <td style="width: 58px;"><input type="number"  name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty"></td>
 
-                       <td style="width:140px;"><select name="item_unit_new[]" class="form-control js-select2-custom unit">
-            ${buildUnitOptions(item)}
-         </select>
-         </td>
+                                <td style="width:140px;"><select name="item_unit_new[]" class="form-control js-select2-custom unit">
+                        ${buildUnitOptions(item)}
+                    </select>
+                    </td>
                       <td style="width: 58px;" class="tax_inp_data ` + className +
              ` tax_field" ><input type="number" value="` + item_tax + `" name="item_tax_new[]" placeholder="Tax" class="form-control tax"></td>
                       <td style="width: 93px;" class="hsn_inp ` + className2 +

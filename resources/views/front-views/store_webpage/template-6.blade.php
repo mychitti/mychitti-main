@@ -549,7 +549,7 @@
 
     <div class="owl-carousel 3banner-carousel justify-content-center mt-2 store_banner">
         @foreach ($data['banners'] as $key => $value)
-            <a href="{{ $value->default_link ?? '#' }}"><img loading="lazy"
+            <a href="{{ $value->default_link ?? '#' }}" onclick="trackBannerClick({{ $value->id }})"><img loading="lazy"
                     src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}" alt="banner"></a>
         @endforeach
     </div>
@@ -606,9 +606,6 @@
             <div class="container">
 
                 <div class="" id="">
-                    @if ($data['store_config']?->inventory_items_position == 'above')
-                        @include('front-views.partials._inventoryItemsSection')
-                    @endif
                     <div class="section bg-white" id="services">
                         <div class="container">
 
@@ -664,12 +661,59 @@
                                 </div>
                             @endforeach
 
+                            @foreach ($invItemdata as $cat)
+                                <h5 class="mt-4">{{ $cat->name }}</h5>
+
+                                <div class="row g-4 mt-1">
+                                    @foreach ($cat->items as $pro)
+                                        <div class="col-xl-2 col-lg-3 col-md-4 col-6 product_card">
+                                            <div class="fruite-item shadow-soft">
+
+                                                <div class="position-relative">
+                                                    <img class="w-100" style="height:180px;object-fit:cover"
+                                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                            $pro->image,
+                                                            asset('storage/app/public/product/') . '/' . $pro->image,
+                                                            asset('public/assets/admin/img/160x160/img1.jpg'),
+                                                            'product/',
+                                                        ) }}">
+                                                    @if ($pro->discount > 0)
+                                                        <div class="discount_badge">
+                                                            {{ floor($pro->discount) }}%
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="p-2">
+                                                    <h6 class="product_name one-line-ellipsis">
+                                                        {{ ucfirst($pro->name) }}
+                                                    </h6>
+
+                                                    {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
+
+                                                    @auth
+                                                        <button
+                                                            onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
+                                                            class="btn btn-sm btn-outline-primary w-100">
+                                                            Enquiry
+                                                        </button>
+                                                    @else
+                                                        <button data-bs-toggle="modal" data-bs-target="#loginModal"
+                                                            class="btn btn-sm btn-outline-primary w-100">
+                                                            Enquiry
+                                                        </button>
+                                                    @endauth
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+
                         </div>
                     </div>
 
-                    @if ($data['store_config']?->inventory_items_position == 'below')
-                        @include('front-views.partials._inventoryItemsSection')
-                    @endif
                     @if (count($store->galleries))
                         <div>
                             <h3 class="sec_heading mt-5">A Peek Into Our Space</h3>
@@ -826,9 +870,18 @@
         </div>
         <!-- Fruits Shop End-->
     </div>
+@include('front-views.partials._claim_remove_business')
 @endsection
 
 @push('script_2')
+    <script>
+        function trackBannerClick(bannerId) {
+            $.post("{{ route('track.banner.click') }}", {
+                banner_id: bannerId,
+                _token: '{{ csrf_token() }}'
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
     <script>

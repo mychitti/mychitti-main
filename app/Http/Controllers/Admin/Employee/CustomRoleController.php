@@ -13,14 +13,15 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Brian2694\Toastr\Facades\Toastr;
+use Illuminate\Support\Facades\DB;
+use Brian2694\Toastr\Facades\Toastr; 
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
-class CustomRoleController extends BaseController
+ class CustomRoleController extends BaseController
 {
     public function __construct(
-        protected CustomRoleRepositoryInterface $roleRepo,
+        protected CustomRoleRepositoryInterface $roleRepo, 
         protected CustomRoleService $roleService,
         protected TranslationRepositoryInterface $translationRepo
     )
@@ -47,6 +48,10 @@ class CustomRoleController extends BaseController
     {
         $role = $this->roleRepo->add(data: $this->roleService->getAddData(request: $request));
         $this->translationRepo->addByModel(request: $request, model: $role, modelPath: 'App\Models\AdminRole', attribute: 'name');
+
+        // Sync granular permissions
+        $this->syncPermissions($role, $request);
+
         Toastr::success(translate('messages.role_added_successfully'));
         return back();
     }
@@ -59,9 +64,10 @@ class CustomRoleController extends BaseController
             return view('errors.404');
         }
         $role = $this->roleRepo->getFirstWithoutGlobalScopeWhere(params: ['id' => $id]);
+        $assignedPermissions = $role->permissions()->pluck('feature_permissions.id')->all();
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        return view(CustomRoleViewPath::UPDATE[VIEW], compact('role','language','defaultLang'));
+        return view(CustomRoleViewPath::UPDATE[VIEW], compact('role','language','defaultLang','assignedPermissions'));
     }
 
     public function update(CustomRoleUpdateRequest $request, $id): RedirectResponse|View
@@ -74,6 +80,10 @@ class CustomRoleController extends BaseController
 
         $role = $this->roleRepo->update(id: $id ,data: $this->roleService->getAddData(request: $request));
         $this->translationRepo->updateByModel(request: $request, model: $role, modelPath: 'App\Models\AdminRole', attribute: 'name');
+
+        // Sync granular permissions
+        $this->syncPermissions($role, $request);
+
         Toastr::success(translate('messages.role_updated_successfully'));
         return redirect()->route('admin.users.custom-role.create');
     }
@@ -97,5 +107,26 @@ class CustomRoleController extends BaseController
             'view'=>view(CustomRoleViewPath::SEARCH[VIEW],compact('roles'))->render(),
             'count'=>$roles->count()
         ]);
+    }
+
+    private function syncPermissions($role, Request $request): void
+    {
+        $permissions = $request->input('permissions', []);
+        $modules = $request->input('modules', []);
+        $allSyncedIds = [];
+
+        if (!empty($permissions) && !empty($modules)) {
+            foreach ($modules as $masterModule) {
+                $modulePermissionIds = DB::table('feature_permissions as fp')
+                    ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                    ->whereIn('fp.id', $permissions)
+                    ->where('f.master_module', $masterModule)
+                    ->pluck('fp.id')
+                    ->toArray();
+                $allSyncedIds = array_merge($allSyncedIds, $modulePermissionIds);
+            }
+        }
+
+        $role->permissions()->sync($allSyncedIds);
     }
 }

@@ -15,7 +15,6 @@ use App\Models\Admin;
 use App\Exports\AttendanceExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Leave;
-use App\Models\VendorEmployee;
 use DateInterval;
 use DatePeriod;
 use DateTime;
@@ -24,7 +23,7 @@ class AttendanceController extends Controller
 {
    
     
-    public function index(Request $request)
+    public function index(Request $request) 
     {
         $v_id = Helpers::get_store_id();
         
@@ -103,7 +102,7 @@ class AttendanceController extends Controller
             'days_in_month',
             'firstDayOfMonth',
             'sundays_in_month',
-            'daArr',
+            'daArr', 
             'labelArr'
             
             ));
@@ -115,7 +114,8 @@ class AttendanceController extends Controller
         $fromdate = $request->from ?? date('Y-m-d');
         $todate = $request->to ?? date('Y-m-d');
 
-        $staff = Admin::whereNot('role_id', 1)->get()->toArray();
+        $staff = Admin::where('role_id','!=', 1)->get()->toArray();
+        // prx($staff);
 
         $startDate = new DateTime($fromdate);
         $endDate = new DateTime($todate);
@@ -129,7 +129,7 @@ class AttendanceController extends Controller
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type' , 'admin_employee')->get()->toArray();
+                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'admin_employee')->where('vendor_id', 0)->get()->toArray();
                 if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
                     $lev++;
                 }
@@ -162,7 +162,7 @@ class AttendanceController extends Controller
         $fromdate = $request->from ?? date('Y-m-d');
         $todate = $request->to ?? date('Y-m-d');
 
-        $staff =  VendorEmployee::where('store_id', Helpers::get_store_id())->get()->toArray();
+        $staff =  Admin::where('role_id', '!=', 1)->get()->toArray();
 
         $startDate = new DateTime($fromdate);
         $endDate = new DateTime($todate);
@@ -176,7 +176,7 @@ class AttendanceController extends Controller
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->get()->toArray();
+                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'admin_employee')->where('vendor_id', 0)->get()->toArray();
                 if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
                     $lev++;
                 }
@@ -237,7 +237,7 @@ class AttendanceController extends Controller
             $att->created_at = date('Y-m-d H:i:s');
            $att->save();
 
-           $leave = Leave::where(['vendor_id' => $v_id, 'emp_id' => $request->post('emp_id'), 'day' => $request->post('daysArr')[$key] , 'month' =>$request->post('month'), 'year' => $request->post('year'), 'employee_type' => 'vendor_employee'])->exists();
+           $leave = Leave::where(['vendor_id' => $v_id, 'emp_id' => $request->post('emp_id'), 'day' => $request->post('daysArr')[$key] , 'month' =>$request->post('month'), 'year' => $request->post('year'), 'employee_type' => 'admin_employee'])->exists();
            if(!$leave && in_array($request->post('statusArr')[$key], ['SL', 'CL', 'HD'])){
                if($request->post('statusArr')[$key] == 'HD'){
                    $request->post('statusArr')[$key] = 'HDS';
@@ -310,7 +310,7 @@ class AttendanceController extends Controller
     public function add()
     {
         $departments = Department::where('status', '1')->get();
-        return view('vendor-views.staff.add', compact('departments'));
+        return view('admin-views.staff.add', compact('departments'));
     }
     public function save_info(Request $request)
     {

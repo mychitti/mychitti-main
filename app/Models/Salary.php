@@ -11,8 +11,9 @@ class Salary extends Model
     protected $fillable = [
         'vendor_id',
         'employee_id',
+        'employee_type',
         'base_salary',
-        'payable_salary',
+        'payable_salary', 
         'total_payable',
         'salary_month',
         'bonus_incentives',
@@ -25,6 +26,9 @@ class Salary extends Model
     ];
     public function employee()
     {
+        if ($this->vendor_id == 0) {
+            return $this->belongsTo(Admin::class, 'employee_id');
+        }
         return $this->belongsTo(VendorEmployee::class, 'employee_id');
     }
 }

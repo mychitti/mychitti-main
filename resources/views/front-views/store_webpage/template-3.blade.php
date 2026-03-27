@@ -1254,7 +1254,7 @@
             <div class="banner-container">
                 <div class="owl-carousel banner-carousel">
                     @foreach ($data['banners'] as $key => $value)
-                        <a href="{{ $value->default_link ?? '#' }}">
+                        <a href="{{ $value->default_link ?? '#' }}" onclick="trackBannerClick({{ $value->id }})">
                             <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
                                 alt="banner" style="border-radius: 16px; width: 100%;">
                         </a>
@@ -1277,11 +1277,136 @@
     <!-- Services Section -->
     <div class="services-section" id="services">
         <div class="section-container">
-            @if ($data['store_config']?->inventory_items_position == 'above')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
 
             @foreach ($productdata as $key => $cat)
+                <div class="section-header">
+                    <div class="category-badge">{{ $cat->name }}</div>
+                </div>
+
+                <div class="product-grid">
+                    @foreach ($cat->items as $pro)
+                        @php
+                            $variations = json_decode($pro->variations);
+                            $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
+                            if ($firstVr) {
+                                $selling_price = json_decode($firstVr)->price;
+                                $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
+                            } else {
+                                $selling_price = $pro->price;
+                                $mrp = $pro->mrp_price;
+                            }
+                        @endphp
+                        <div class="pr_{{ $pro->id }} product-card">
+                            <div class="product-image-container">
+                                <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                    <img loading="lazy" class="product-image"
+                                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                        alt="{{ $pro->name }}">
+                                </a>
+
+                                @if ($module == 5)
+                                    <div class="product-badge">
+                                        <i class="fas fa-fire" style="color: #f59e0b;"></i>
+                                        <span>{{ strtoupper($store->delivery_time) }}</span>
+                                    </div>
+                                @endif
+
+                                @if ($pro->discount > 0)
+                                    <div class="discount-badge">
+                                        {{ floor($pro->discount) }}{{ $pro->discount_type == 'percent' ? '% OFF' : \App\CentralLogics\Helpers::currency_symbol() . ' OFF' }}
+                                    </div>
+                                @endif
+
+                                <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
+                                    class="prHeart_{{ $pro->id }} wishlist-btn">
+                                    <i
+                                        class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                </div>
+                            </div>
+
+                            <div class="product-info">
+                                <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                    <h4 class="product-name" data-id="pr_{{ $pro->id }}"
+                                        title="{{ ucfirst($pro->name) }}">
+                                        {{ ucfirst($pro->name) }}
+                                    </h4>
+                                </a>
+
+                                @if ($module == 5)
+                                    <p class="product-variant">
+                                        {{ !empty($variations) ? $variations[0]->type : '' }}
+                                    </p>
+                                    @if (count($variations) > 1)
+                                        <span class="variant-badge">+{{ count($variations) - 1 }} more option(s)</span>
+                                    @endif
+
+                                    <div class="product-pricing">
+                                        <div class="price-group">
+                                            <div class="current-price">{{ _price($selling_price) }}</div>
+                                            <div class="original-price">
+                                                @if ($pro->discount > 0)
+                                                    {{ _price($mrp) }}
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="product-action cartSec_{{ $pro->id }}">
+                                        @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
+                                        @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
+                                            <button
+                                                onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                class="btn-remove-cart">
+                                                <i class="fa fa-times"></i>
+                                                Remove
+                                            </button>
+                                        @else
+                                            <button
+                                                onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                class="btn-add-cart">
+                                                <i class="fa fa-shopping-bag"></i>
+                                                Add to Cart
+                                            </button>
+                                        @endif
+                                    </div>
+                                @else
+                                    @if ($pro->item_type == 'product')
+                                        <div class="product-pricing">
+                                            <div class="price-group">
+                                                <div class="current-price">{{ _price($selling_price) }}</div>
+                                                <div class="original-price">
+                                                    @if ($pro->discount > 0 || $mrp > $selling_price)
+                                                        {{ _price($mrp) }}
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div class="product-action">
+                                        @if (auth('web')->user())
+                                            <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
+                                                class="btn-enquiry">
+                                                <i class="fas fa-user-cog"></i>
+                                                Enquiry Now
+                                            </button>
+                                        @else
+                                            <button data-bs-toggle="modal" data-bs-target="#loginModal"
+                                                class="btn-enquiry">
+                                                <i class="fas fa-user-cog"></i>
+                                                Enquiry Now
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+
+            @foreach ($invItemdata as $key => $cat)
                 <div class="section-header">
                     <div class="category-badge">{{ $cat->name }}</div>
                 </div>
@@ -1416,9 +1541,6 @@
                 </div>
             @endif
 
-            @if ($data['store_config']?->inventory_items_position == 'below')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
         </div>
     </div>
 
@@ -1608,9 +1730,18 @@
             </div>
         </div>
     </div>
+@include('front-views.partials._claim_remove_business')
 @endsection
 
 @push('script_2')
+    <script>
+        function trackBannerClick(bannerId) {
+            $.post("{{ route('track.banner.click') }}", {
+                banner_id: bannerId,
+                _token: '{{ csrf_token() }}'
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
 

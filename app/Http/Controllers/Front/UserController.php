@@ -15,7 +15,7 @@ use App\CentralLogics\StoreLogic;
 use App\Http\Controllers\Api\V1\ServiceRequestController;
 use App\Models\AcceptedServiceRequest;
 use App\Models\Coupon;
-use App\Models\User;
+use App\Models\User; 
 use App\Models\Order;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 use App\Models\Zone;
@@ -422,10 +422,17 @@ class UserController extends Controller
         }
         $storeId = $request->storeId ?? false;
         $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
+        // Check if this is a dedicated lead (store has dedicated_leads enabled)
+        $isDedicated = false;
+        if ($storeId) {
+            $dedicatedCheck = DB::table('stores')->where('id', $storeId)->value('dedicated_leads');
+            $isDedicated = $dedicatedCheck ? true : false;
+        }
         $serviceReq = new ServiceRequest();
         $serviceReq->user_id = $user_id;
         $serviceReq->item_id = $request->serviceId;
         $serviceReq->sent_to = implode(',', $storesChunk);
+        $serviceReq->is_dedicated = $isDedicated ? 1 : 0;
         $serviceReq->module_id = $this->module_id;
         $serviceReq->zone_id = $this->zone_id;
         $serviceReq->latitude = (float)$this->latitude;

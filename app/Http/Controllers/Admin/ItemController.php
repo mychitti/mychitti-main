@@ -11,7 +11,7 @@ use App\Models\Store;
 use App\Models\Review;
 use App\Models\Category;
 use App\Models\ServiceStatus; 
-use App\Scopes\StoreScope;
+use App\Scopes\StoreScope; 
 use App\Models\TempProduct; 
 use App\Models\Translation;
 use Illuminate\Support\Str;
@@ -1311,66 +1311,61 @@ class ItemController extends Controller
         return view('admin-views.service.charge-add', compact('categories', 'zones'));
     }
 
-    public function lead_charge_save(Request $request)
-    {
-        $exist = LeadCharge::where('category_id', $request->category)
-            ->where('zone_id', $request->zone)
-            ->where('item_id', $request->item_id ?: null)
-            ->exists();
+   public function lead_charge_save(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'zone' => 'required',
+        'category' => 'required',
+        'item_id' => 'required|array',
+        'first_ven_charge' => 'required|numeric',
+        'sec_ven_charge' => 'required|numeric',
+        'third_ven_charge' => 'required|numeric',
+        'other_ven_charge' => 'required|numeric',
+    ]);
 
-        if ($exist) {
-            Toastr::error('Charges already exists for this zone and category' . ($request->item_id ? '/service' : ''));
-            return back();
-        }
-
-        $validator = Validator::make($request->all(), [
-            'zone' => 'required',
-            'category' => 'required',
-            'vendor_count' => 'required|not_in:0',
-            'first_ven_charge' => 'required|numeric',
-            'sec_ven_charge' => 'required|numeric',
-            'third_ven_charge' => 'required|numeric',
-            'other_ven_charge' => 'required|numeric',
-            'same_charge' => 'required|numeric',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => Helpers::error_processor($validator)]);
-        }
-
-        $charge  = new LeadCharge();
-        $charge->zone_id = $request->zone;
-        $charge->category_id = $request->category;
-        $charge->item_id = $request->item_id ?: null;
-        $charge->vendor_count = $request->vendor_count;
-        $charge->ven_1_charges = $request->first_ven_charge;
-        $charge->ven_2_charges = $request->sec_ven_charge;
-        $charge->ven_3_charges = $request->third_ven_charge;
-        $charge->ven_other_charges = $request->other_ven_charge;
-        $charge->ven_same_charges = $request->same_charge;
-        $charge->confirmation_charge = $request->confirmation_charge;
-        $charge->completion_charge = $request->completion_charge;
-        $charge->created_at = date('Y-m-d H:i:s');
-        if ($charge->save()) {
-            Toastr::success('Lead charges saved successfully');
-        } else {
-
-            Toastr::error('Some Error Occured');
-        }
-
-        return redirect('admin/service/lead-charges');
+    if ($validator->fails()) {
+        return response()->json(['errors' => Helpers::error_processor($validator)]);
     }
+
+    foreach ($request->item_id as $itemId) {
+
+        LeadCharge::updateOrCreate(
+            [
+                'zone_id' => $request->zone,
+                'category_id' => $request->category,
+                'item_id' => $itemId
+            ],
+            [
+                'vendor_count' => $request->vendor_count,
+                'ven_1_charges' => $request->first_ven_charge,
+                'ven_2_charges' => $request->sec_ven_charge,
+                'ven_3_charges' => $request->third_ven_charge,
+                'ven_other_charges' => $request->other_ven_charge,
+                'ven_same_charges' => $request->same_charge,
+                'dedicated_lead_charge' => $request->dedicated_lead_charge,
+                'confirmation_charge' => $request->confirmation_charge,
+                'completion_charge' => $request->completion_charge,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+    }
+
+    Toastr::success('Lead charges saved/updated successfully');
+
+    return redirect('admin/service/lead-charges');
+}
 
     public function lead_charge_update(Request $request)
     {
 
         $validator = Validator::make($request->all(), [
-            'vendor_count' => 'required|not_in:0',
+            // 'vendor_count' => 'required|not_in:0',
             'first_ven_charge' => 'required|numeric',
             'sec_ven_charge' => 'required|numeric',
             'third_ven_charge' => 'required|numeric',
             'other_ven_charge' => 'required|numeric',
-            'same_charge' => 'required|numeric',
+            // 'same_charge' => 'required|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -1387,6 +1382,7 @@ class ItemController extends Controller
         $charge->ven_3_charges = $request->third_ven_charge;
         $charge->ven_other_charges = $request->other_ven_charge;
         $charge->ven_same_charges = $request->same_charge;
+        $charge->dedicated_lead_charge = $request->dedicated_lead_charge;
         $charge->confirmation_charge = $request->confirmation_charge;
         $charge->completion_charge = $request->completion_charge;
 
@@ -1411,8 +1407,7 @@ class ItemController extends Controller
     {
         $charges = LeadCharge::find($id);
         $categories =  Category::where('module_id', 6)->get();
-        $items = $charges->category_id ? Item::where('category_id', $charges->category_id)->get() : collect();
-
+        $items = $charges->category_id ? Item::withoutGlobalScopes()->where('category_id', $charges->category_id)->get() : collect();
         $zones = DB::table('zones')
             ->join('module_zone', 'module_zone.zone_id', '=', 'zones.id')
             ->where('module_zone.module_id', 6)

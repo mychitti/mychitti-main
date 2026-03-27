@@ -10,14 +10,22 @@
             <div class="d-flex justify-content-end">
                 <!-- List Dot -->
                 <ul class="list-inline list-separator">
-                    @if (auth('admin')->user()->role_id == 1)
+                    @if (hasPermission('action_logs', 'view'))
                         <li class="list-inline-item">
-                            <a class="list-separator-link" href="{{ route('admin.logs.action-logs') }}">Action Logs</a>
+                            <a class="list-separator-link" href="{{ route('admin.logs.action-logs') }}">Logs</a>
                         </li>
-                    @endif
+                    @elseif (hasPermission('error_logs', 'view'))
+                        <li class="list-inline-item">
+                            <a class="list-separator-link" href="{{ route('admin.logs.action-logs.errors') }}">Logs</a>
+                        </li>
+                    @elseif (hasPermission('admin_actions', 'view'))
+                        <li class="list-inline-item">
+                            <a class="list-separator-link" href="{{ route('admin.logs.action-logs.admin') }}">Logs</a>
+                        </li>
+                    @endif 
                     @if (!_onlyStoreAddEdit())
                         <li class="list-inline-item">
-                            <a class="list-separator-link"
+                            <a class="list-separator-link" 
                                 href="{{ route('admin.business-settings.business-setup') }}">{{ translate('messages.business_setup') }}</a>
                         </li>
                     @endif

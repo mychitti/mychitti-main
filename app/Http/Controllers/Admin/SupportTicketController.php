@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Store;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
 use App\Models\Vendor;
@@ -22,10 +23,12 @@ class SupportTicketController extends Controller
         $admin = auth('admin')->user(); 
 
         $tickets = SupportTicket::with(['assignedTo', 'vendor'])
-            ->when($admin->role_id != 1, fn($q) => $q->where('assigned_to', $admin->id))
+            ->when($admin->role_id != 1, fn($q) => $q->where(function($q2) use ($admin) {
+                $q2->where('assigned_to', $admin->id)->orWhere('created_by', $admin->id);
+            }))
             ->when($status, fn($q) => $q->where('status', $status))
             ->when($search, fn($q) => $q->where(function ($q2) use ($search) {
-                $q2->where('ticket_id', 'like', "%$search%")
+                $q2->where('ticket_id', 'like', "%$search%") 
                     ->orWhere('subject', 'like', "%$search%")
                     ->orWhere('guest_name', 'like', "%$search%")
                     ->orWhere('guest_phone', 'like', "%$search%");
@@ -152,19 +155,18 @@ class SupportTicketController extends Controller
     public function searchVendors(Request $request)
     {
         $search = $request->query('q', '');
-        $vendors = Vendor::where('status', 1)
+        $vendors = Store::withoutGlobalScopes()->where('status', 1)
             ->where(function ($q) use ($search) {
-                $q->where('f_name', 'like', "%{$search}%")
-                  ->orWhere('l_name', 'like', "%{$search}%")
+                $q->where('name', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             })
             ->limit(20)
-            ->get(['id', 'f_name', 'l_name', 'phone']);
+            ->get(['id', 'name', 'phone']);
 
         $results = $vendors->map(fn($v) => [
             'id' => $v->id,
-            'text' => $v->f_name . ' ' . $v->l_name . ' (' . $v->phone . ')',
+            'text' => $v->name .  ' (' . $v->phone . ')',
         ]);
 
         return response()->json(['results' => $results]);

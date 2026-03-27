@@ -13,18 +13,30 @@ class RequestForm extends Model
 
        public function requestedBy()
     {
+        if($this->store_id == 0){
+           return $this->belongsTo(Admin::class, 'requested_by');
+        }
         return $this->belongsTo(VendorEmployee::class, 'requested_by');
     }
        public function requestedTo()
     {
+          if($this->store_id == 0){
+           return $this->belongsTo(Admin::class, 'request_to');
+        }
         return $this->belongsTo(VendorEmployee::class, 'request_to');
     }
        public function createdBy()
     {
+          if($this->store_id == 0){
+           return $this->belongsTo(Admin::class, 'created_by');
+        }
         return $this->belongsTo(VendorEmployee::class, 'created_by');
     }
        public function forwardedTo()
     {
+          if($this->store_id == 0){
+           return $this->belongsTo(Admin::class, 'forwarded_to');
+        }
         return $this->belongsTo(VendorEmployee::class, 'forwarded_to');
     }
        public function debitAccount()

@@ -134,7 +134,7 @@ class LeaveController extends Controller
     {
 
         $v_id = \App\CentralLogics\Helpers::get_store_id();
-        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->exists();
+        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->where('vendor_id' ,0)->exists();
         if (!$leave) {
 
             $leave_date = sprintf('%04d-%02d-%02d',$request->post('year'),$request->post('month'),$request->post('day'));

@@ -13,9 +13,9 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $name
- * @property string|null $modules
+ * @property string|null $modules 
  * @property bool $status
- * @property Carbon|null $created_at
+ * @property Carbon|null $created_at 
  * @property Carbon|null $updated_at
  */
 class AdminRole extends Model
@@ -41,6 +41,16 @@ class AdminRole extends Model
     protected $casts = [
         'status' => 'boolean',
     ];
+
+    public function permissions()
+    {
+        return $this->belongsToMany(
+            Permission::class,
+            'admin_role_feature_permissions',
+            'admin_role_id',
+            'feature_permission_id'
+        )->withTimestamps();
+    }
 
     /**
      * @return MorphMany

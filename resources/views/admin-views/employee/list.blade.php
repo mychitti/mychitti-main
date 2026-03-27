@@ -85,6 +85,7 @@
                             <thead class="thead-light">
                             <tr>
                                 <th class="border-0">{{translate('sl')}}</th>
+                                <th class="border-0">{{translate('messages.employee_id')}}</th>
                                 <th class="border-0">{{translate('messages.name')}}</th>
                                 <th class="border-0">{{translate('messages.email')}}</th>
                                 <th class="border-0">{{translate('messages.phone')}}</th>
@@ -96,6 +97,7 @@
                             @foreach($employees as $k=>$employee)
                                 <tr>
                                     <th scope="row">{{$k+$employees->firstItem()}}</th>
+                                    <th>{{$employee['employee_id'] ?? $employee['id']}}</th>
                                     <td class="text-capitalize">{{$employee['f_name']}} {{$employee['l_name']}}</td>
                                     <td >
                                       {{$employee['email']}}
@@ -103,14 +105,21 @@
                                     <td>{{$employee['phone']}}</td>
                                     <td>{{$employee->role?$employee->role['name']:translate('messages.role_deleted')}}</td>
                                     <td>
-                                        @if (auth('admin')->id()  != $employee['id'])
                                         <div class="btn--container justify-content-center">
+                                         <a class="btn action-btn btn--warning btn-outline-warning"
+                                                href="{{route('admin.employee.view',[$employee['id']])}}" title="{{translate('messages.view_Employee')}}"><i class="tio-visible"></i>
+                                            </a>
+                                        @if (auth('admin')->id()  != $employee['id'])
                                             <a class="btn action-btn btn--primary btn-outline-primary"
                                                 href="{{route('admin.users.employee.edit',[$employee['id']])}}" title="{{translate('messages.edit_Employee')}}"><i class="tio-edit"></i>
                                             </a>
                                             <a class="btn action-btn btn--danger btn-outline-danger form-alert" href="javascript:" data-id="employee-{{$employee['id']}}" data-message="{{translate('messages.Want_to_delete_this_role')}}" title="{{translate('messages.delete_Employee')}}"><i class="tio-delete-outlined"></i>
                                             </a>
+                                        @endif
+
                                         </div>
+                                        @if (auth('admin')->id()  != $employee['id'])
+
                                         <form action="{{route('admin.users.employee.delete',[$employee['id']])}}"
                                                 method="post" id="employee-{{$employee['id']}}">
                                             @csrf @method('delete')

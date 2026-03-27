@@ -78,24 +78,24 @@
             </div>
             <div class="col-sm-6 col-lg-4">
                 <a href="{{ route('admin.users.employee.list',['zone_id' => $params['zone_id'] ?? null]) }}">
-                <div class="__user-dashboard-card" style="--theme-clr:#FFA800">
-                    <div class="__user-dashboard-card-thumbs">
-                        @php($total_employees = $employees->count())
-                        <div class="more-icon">
-                            +{{$total_employees >= 4 ? $total_employees - 2 : $total_employees}}
+                    <div class="__user-dashboard-card" style="--theme-clr:#FFA800">
+                        <div class="__user-dashboard-card-thumbs">
+                            @php($total_employees = $employees->count())
+                            <div class="more-icon">
+                                +{{$total_employees >= 4 ? $total_employees - 2 : $total_employees}}
+                            </div>
+                            @foreach ($employees as $key => $item)
+                            @if ($key == 2)
+                                @break
+                            @endif
+                            <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($item['image'], asset('storage/app/public/delivery-man/').'/'.$item['image'], asset('public/assets/admin/img/160x160/img2.jpg'), 'delivery-man/') }}"
+                                class="onerror-image" data-onerror-image="{{asset('public/assets/admin/img/160x160/img2.jpg')}}" alt="new-img">
+                            @endforeach
                         </div>
-                        @foreach ($employees as $key => $item)
-                        @if ($key == 2)
-                            @break
-                        @endif
-                        <img src="{{\App\CentralLogics\Helpers::onerror_image_helper($item['image'], asset('storage/app/public/delivery-man/').'/'.$item['image'], asset('public/assets/admin/img/160x160/img2.jpg'), 'delivery-man/') }}"
-                             class="onerror-image" data-onerror-image="{{asset('public/assets/admin/img/160x160/img2.jpg')}}" alt="new-img">
-                        @endforeach
+                        <h3 class="title">{{$total_employees}}</h3>
+                        <h5 class="subtitle text-capitalize">{{translate('messages.total_employee')}}</h5>
                     </div>
-                    <h3 class="title">{{$total_employees}}</h3>
-                    <h5 class="subtitle text-capitalize">{{translate('messages.total_employee')}}</h5>
-                </div>
-            </a>
+                </a>
             </div>
         </div>
 

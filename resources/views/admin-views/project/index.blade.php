@@ -4,6 +4,36 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('public/assets/admin/css/project-task.css') }}">
+    <style>
+        .lead-stats {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid #e3e6ea;
+            width: 100%;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .stat-row .label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stat-row .value {
+            font-weight: 500;
+            color: #555;
+        }
+    </style>
+
     <!--jquery-->
 @endpush
 
@@ -32,118 +62,288 @@
         </div>
         <!-- End Page Header -->
         <div class="row">
-            <div class="card col-12">
-                <!-- Header -->
-                <div class="card-header py-2">
-                    <div class="search--button-wrapper">
-                        <h5 class="card-title">Add Project</h5>
 
-                    </div>
-                </div>
-                <form class="w-100" action="{{ route('admin.project.save-info') }}" method="post">
-                    @csrf
-                    <input type="hidden" id="project_id" name="project_id" value="">
-                    <div class="col-md-12">
-                        <div class="card h-100">
-                            <div class="card-body row">
-                                <div class="form-row col-12">
-                                    <label for="exampleInputEmail1">Project Title<span class="text-danger">*</span></label>
-                                    <input type="text" name="title"  placeholder="Project Title" class="form-control">
-                                </div>
-                                <div class="form-row col-4">
-                                    <label for="exampleInputEmail1">Team Leader</label>
-                                    <select name="team_leader" class="form-control js-select2-custom">
-                                         <option value="" selected disabled>-- select --</option>
-                                          @foreach($employees as $emp)
-                                        <option value="{{$emp->id}}">{{$emp->f_name . ' ' . $emp->l_name}}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="form-row col-8">
-                                    <label for="exampleInputEmail1">Team Members<span class="text-danger">*</span></label>
-                                    <select name="team_members[]" class="form-control select2_tags" multiple="multiple">
-                                        @foreach($employees as $emp)
-                                        <option value="{{$emp->id}}">{{$emp->f_name . ' ' . $emp->l_name}}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+            @if (!$empId)
+                <div class="col-12">
+                    <div class="row col-12 align-items-end">
+                        <div class="col-md-3">
+                            <label for="prog_status">Status</label>
+                            @php $statuses = ['New', 'Open','In Progress' ,  'Completed', 'Cancelled', 'On Hold'  ]; @endphp
+                            <form action="">
 
+                                <select name="status" id="prog_status" data-placeholder="Status"
+                                    class="form-control js-select2-custom" onchange="this.form.submit()">
+                                    <option value="" selected disabled>--select--</option>
+                                    @foreach ($statuses as $key => $value)
+                                        <option {{ request('status') == $value ? 'selected' : '' }}
+                                            value="{{ $value }}">
+                                            {{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="project_type">Type</label>
+                            @php $types = ['Technical', 'Organizational','Economical' ,  'Social', 'Mixed' ]; @endphp
+                            <form action="">
 
+                                <select name="type" id="project_type" data-placeholder="Type"
+                                    onchange="this.form.submit()" class="form-control js-select2-custom">
+                                    <option value=""></option>
+                                    @foreach ($types as $key => $value)
+                                        <option {{ request('type') == $value ? 'selected' : '' }}
+                                            value="{{ $value }}">
+                                            {{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="project_size">Project Size</label>
+                            @php $sizes = ['Minor', 'Small','Medium' ,  'Large']; @endphp
+                            <form action="">
 
-                                <div class="form-row col-4">
-                                    <label for="inputState">Start Date<span class="text-danger">*</span></label>
-                                    <input type="date" name="start_date" id="" class="form-control">
-                                </div>
-                                <div class="form-row col-4">
-                                    <label for="inputState">End Date<span class="text-danger">*</span></label>
-                                    <input type="date" name="end_date" id="" class="form-control">
-                                </div>
+                                <select id="project_size" data-placeholder="Project Size" name="size"
+                                    onchange="this.form.submit()" class="form-control js-select2-custom">
+                                    <option value=""></option>
+                                    @foreach ($sizes as $key => $value)
+                                        <option {{ request('type') == $value ? 'selected' : '' }}
+                                            value="{{ strtolower($value) }}">
+                                            {{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </div>
+                        <div class="col-md-2">
 
-                                <div class="form-row col-4">
-                                    <label for="inputState">Cost Estimate</label>
-                                    <input type="number" placeholder="Ex: 1000" name="cost_est" id="" class="form-control">
-                                </div>
-                                <div class="form-row col-4">
-                                    <label for="inputState">Advance Pay</label>
-                                    <input type="number" placeholder="Ex: 1000" name="advance_pay" id="" class="form-control">
-                                </div>
-                               
-                                <div class="form-row col-4">
-                                    <label for="inputState">Progress Status</label>
-                                    <select name="prog_status" id="inputState" class="form-control js-select2-custom">
-                                        <option value="New">New</option>
-                                        <option value="Open">Open</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Cancelled">Cancelled</option>
-                                        <option value="On Hold">On Hold</option>
-                                    </select>
-                                </div>
-                                <div class="form-row col-4">
-                                    <label for="inputState">Progress (in %)</label>
-                                    <input type="number" placeholder="Ex: 99" name="prog_percent" max="100" id="myNumberInput"
-                                        class="form-control">
-                                </div>
-                                <div class="form-row col-4">
-                                    <label for="inputState">Status</label>
-                                    <select name="status" id="inputState" class="form-control js-select2-custom">
-                                        <option value="1">Active</option>
-                                        <option value="0">Inactive</option>
-                                    </select>
-                                </div>
-                                <div class="form-row d-flex align-items-end col-12 mt-2">
-                                    <button class="btn btn--primary ">Save</button>
-                                </div>
-                            </div>
+                            <form action="" class="date-range-form ">
+                                <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning"
+                                    type="button" data-toggle="modal"
+                                    data-target="#dateRangeModal">{{ translate($preset) }}</button>
+                                @include('admin-views/form_modals/date_range')
+
+                            </form>
                         </div>
                     </div>
-                </form>
-            </div>
-        
+                </div>
+            @endif
+
+
+
             <!-- Card -->
             <div class="card  col-12 my-3">
                 <!-- Header -->
                 <div class="card-header py-2">
                     <div class="search--button-wrapper">
-                        <h5 class="card-title">Projects List</h5>
-                        <form action="javascript:" id="search-form" class="search-form">
-                            <!-- Search -->
-                            @csrf
-                            <div class="input-group input--group">
-                                <input id="datatableSearch_" type="search" name="search" class="form-control"
-                                    placeholder="Search Project" aria-label="{{ translate('messages.search') }}" required>
-                                <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
-                            </div>
-                            <!-- End Search -->
-                        </form>
+                        <h5 class="card-title"></h5>
+                        @if (!$empId)
+                            <form action="" id="search-form" class="search-form">
+                                <!-- Search -->
+                                <div class="input-group input--group">
+                                    <input id="datatableSearch_" type="search" name="search" class="form-control"
+                                        placeholder="Search Project" aria-label="{{ translate('messages.search') }}"
+                                        value="{{ request('search') }}">
+                                    <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
+                                </div>
+                                <!-- End Search -->
+                            </form>
+                        @endif
 
                         <!-- End Unfold -->
                     </div>
                 </div>
                 <!-- End Header -->
+                <div class="ptask-wrapper">
+                    <div class="ptask-container">
+                        <div class="d-flex justify-content-between">
+
+                            {{-- @if (hasPermission('project_task', 'add'))
+                                <button class="btn btn-primary">Add Task</button>
+                            @endif --}}
+                        </div>
+
+                        <!-- Tasks Grid -->
+                        <div class="ptask-grid">
+                            @php $common_statuses = ['completed', 'in-progress', 'new', 'cancelled']; @endphp
+                            @foreach ($projects as $key => $lead)
+                                @php
+                                    $slug_status = \Illuminate\Support\Str::slug($lead->progress_status);
+                                $staus_class = in_array($slug_status, $common_statuses) ? $slug_status : 'other'; @endphp
+                                <div class="ptask-card" style="cursor:pointer;"
+                                    onclick="handleClick('{{ hasPermission('project', 'view') ? route('admin.project.details', [$lead->id]) : '#' }}', event)">
+                                    @if (hasAnyPermission(['project_task.list', 'project.view', 'project.edit', 'project.delete']))
+                                        <div class="dropdown">
+                                            <button class="btn p-1 dropdown-toggle"
+                                                style="position: absolute; right: -5px; top: -22px;" type="button"
+                                                data-toggle="dropdown" aria-expanded="false">
+                                                <img style="width: 24px; filter: contrast(0)"
+                                                    src="{{ asset('storage/app/public/util/10025520.png') }}"
+                                                    alt="action" />
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                @if (hasPermission('project', 'view'))
+                                                    <a href="{{ route('admin.project.details', [$lead->id]) }}"
+                                                        class="dropdown-item text-success" title="view">
+                                                        <i class="tio-visible-outlined"></i>
+                                                        View
+                                                    </a>
+                                                @endif
+                                                @if (hasPermission('project_task', 'list'))
+                                                    <a href="{{ route('admin.project.task.list', [$lead->id]) }}"
+                                                        class="dropdown-item text-warning" title="tasks">
+                                                        <i class="tio-notebook-bookmarked"></i>
+                                                        Tasks
+                                                    </a>
+                                                @endif
+                                                @if (hasPermission('project', 'edit'))
+                                                    @php
+                                                        $task_closed = in_array($lead->status, [
+                                                            'Completed',
+                                                            'Cancelled',
+                                                    ]); @endphp
+                                                    @if (
+                                                        !$task_closed &&
+                                                            hasPermission('project_task', 'edit') &&
+                                                            ($lead->employee_id == \App\CentralLogics\Helpers::get_loggedin_user()->id ||
+                                                                hasPermission('project_task', 'edit_others')))
+                                                        <a href="{{ route('admin.project.edit', [$lead->id]) }}"
+                                                            class="dropdown-item text-success" title="Edit">
+                                                            <i class="tio-edit"></i>
+                                                            Edit
+                                                        </a>
+                                                    @endif
+                                                @endif
+                                                @if (hasPermission('project', 'delete'))
+                                                    <a class="dropdown-item  text-danger form-alert " href="javascript:"
+                                                        data-id="task-{{ $lead['id'] }}"
+                                                        data-message="If you delete this project, all its tasks, milestones and other data will be deleted ?"
+                                                        title="{{ translate('messages.delete_project') }}"><i
+                                                            class="tio-delete-outlined"></i>
+                                                        Delete
+                                                    </a>
+                                                    <form action="{{ route('admin.project.delete', [$lead->id]) }}"
+                                                        method="get" id="task-{{ $lead['id'] }}">
+                                                        @csrf @method('get')
+                                                    </form>
+                                                @endif
+
+                                            </div>
+                                        </div>
+                                    @endif
+                                    <div class="ptask-card-top">
+
+                                    </div>
+                                    <div class="ptask-title one-line-ellipsis">{{ ucfirst($lead->project_title) }}
+                                    </div>
+                                    <div class="lead-stats mb-2">
+
+                                        <div class="stat-row">
+                                            <span class="label">Deadline:</span>
+                                            <span class="value">{{ $lead->end_date }}</span>
+                                        </div>
+
+                                        <div class="stat-row">
+                                            <span class="label">Total Tasks:</span>
+                                            <span class="value">{{ $lead->tasks->count() }}</span>
+                                        </div>
+
+                                        <div class="stat-row">
+                                            <span class="label">Pending Tasks:</span>
+                                            <span class="value">
+                                                {{ $lead->tasks->where('status', '!=', 'Completed')->count() }}
+                                            </span>
+                                        </div>
+
+                                        <div class="stat-row">
+                                            <span class="label">Completed Tasks:</span>
+                                            <span class="value">
+                                                {{ $lead->tasks->where('status', 'Completed')->count() }}
+                                            </span>
+                                        </div>
+
+                                        <div class="stat-row">
+                                            <span class="label">Team Members:</span>
+                                            <span class="value">{{ $lead->teamMembers->count() }}</span>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="ptask-meta">
+                                        <div class="ptask-meta-item">
+                                            <i class="fas fa-user"></i>
+                                            @php
+                                                if ($lead->project_manager) {
+                                                    $empInfo = _getWhere('admins', [
+                                                        'id' => $lead->project_manager,
+                                                    ]);
+                                                    if ($empInfo[0]) {
+                                                        echo $empInfo[0]->f_name .
+                                                            ' ' .
+                                                            $empInfo[0]->l_name .
+                                                            ' (ID: ' .
+                                                            $lead->project_manager .
+                                                            ')';
+                                                    }
+                                            } @endphp
+                                        </div>
+                                        <div class="ptask-meta-item">
+                                            <i class="fas fa-calendar"></i> {{ _formatted_date($lead->created_at) }}
+                                        </div>
+                                    </div>
+                                    <div class="ptask-actions align-items-center justify-content-between">
+                                        <div class="ptask-actions align-items-center">
+                                            <span
+                                                class="ptask-priority ptask-priority-medium">{{ $lead->prog_percent ?? 0 }}%</span>
+                                            @if ($lead->progress_status == 'Completed')
+                                                <span
+                                                    class="ptask-status-badge ptask-status-completed ">{{ $lead->progress_status }}</span>
+                                            @elseif ($lead->progress_status == 'Cancelled')
+                                                <span
+                                                    class="ptask-status-badge ptask-status-cancelled ">{{ $lead->progress_status }}</span>
+                                            @elseif (hasPermission('project', 'status_change'))
+                                                <form class="status_change_form"
+                                                    action="{{ route('admin.project.progress-status-change', [$lead->id]) }}">
+                                                    <select name="status" id="" data-placeholder="Status"
+                                                        onchange="this.form.submit()" class="js-select2-custom">
+                                                        <option value=""></option>
+                                                        <option {{ $lead->progress_status == 'New' ? 'selected' : '' }}
+                                                            value="New">New</option>
+                                                        <option {{ $lead->progress_status == 'Open' ? 'selected' : '' }}
+                                                            value="Open">Open</option>
+                                                        <option
+                                                            {{ $lead->progress_status == 'In Progress' ? 'selected' : '' }}
+                                                            value="In Progress">In Progress</option>
+                                                        <option
+                                                            {{ $lead->progress_status == 'Completed' ? 'selected' : '' }}
+                                                            value="Completed">Completed</option>
+                                                        <option
+                                                            {{ $lead->progress_status == 'Cancelled' ? 'selected' : '' }}
+                                                            value="Cancelled">Cancelled</option>
+                                                        <option {{ $lead->progress_status == 'On Hold' ? 'selected' : '' }}
+                                                            value="On Hold">On Hold</option>
+                                                    </select>
+                                                </form>
+                                            @endif
+                                        </div>
+
+                                        <span
+                                            class="ptask-priority ptask-priority-{{ $lead->priority }}">{{ ucfirst($lead->priority) }}
+                                            Priority</span>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @if (!count($projects))
+                            <div class="w-100 d-flex align-items-center justify-content-center flex-column">
+                                No Tasks Yet..
+                            </div>
+                        @endif
+                        <!-- Statistics -->
+                    </div>
+                </div>
 
                 <!-- Table -->
-                <div class="table-responsive datatable-custom">
+                {{-- <div class="table-responsive datatable-custom">
                     <table id="columnSearchDatatable"
                         class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
                         data-hs-datatables-options='{
@@ -156,11 +356,11 @@
                             <tr>
                                 <th class="border-0">{{ translate('sl') }}</th>
                                 <th class="border-0">Title</th>
-                                <th class="border-0">Team Leader</th>
+                                <th class="border-0">Project Manager</th>
+                                <th class="border-0">Client</th>
                                 <th class="border-0">Progress Status</th>
                                 <th class="border-0">Project Date</th>
                                 <th class="border-0">Cost Est.</th>
-                                <th class="border-0">Status</th>
                                 <th class="border-0">Action</th>
                             </tr>
                         </thead>
@@ -171,7 +371,8 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>
                                         <div>
-                                            <a href="javascript:;" class="table-rest-info" alt="view store">
+                                            <a href="{{ route('admin.project.details', [$lead->id]) }}"
+                                                class="table-rest-info" alt="view store">
 
                                                 <div class="info">
                                                     <div class="text--title">
@@ -187,16 +388,24 @@
 
                                                 <div class="info">
                                                     <div class="text--title">
-                                                        @php $empInfo = _getWhere('admins', ['id'=> $lead->team_leader]);
-                                                        if($empInfo[0]) 
-                                                        echo $empInfo[0]->f_name . ' ' . $empInfo[0]->l_name;  @endphp
-                                                        
-                                                       
+                                                        @php
+                                                            if ($lead->project_manager) {
+                                                                $empInfo = _getWhere('vendor_employees', [
+                                                                    'id' => $lead->project_manager,
+                                                                ]);
+                                                                if ($empInfo[0]) {
+                                                                    echo $empInfo[0]->f_name .
+                                                                        ' ' .
+                                                                        $empInfo[0]->l_name;
+                                                                }
+                                                        } @endphp
+
                                                     </div>
                                                 </div>
                                             </a>
                                         </div>
                                     </td>
+                                    <td>{{ $lead->client?->f_name }}</td>
                                     <td>
                                         <div>
                                             <a href="javascript:;" class="" alt="view store">
@@ -233,28 +442,48 @@
                                             </a>
                                         </div>
                                     </td>
-
-
                                     <td>
-                                        <label class="toggle-switch toggle-switch-sm"
-                                            for="couponCheckbox{{ $lead->id }}">
-                                            <input type="checkbox"
-                                                onclick="location.href='{{ route('admin.project.status-change', [$lead['id'], $lead->status ? 0 : 1]) }}'"
-                                                class="toggle-switch-input" id="couponCheckbox{{ $lead->id }}"
-                                                {{ $lead->status ? 'checked' : '' }}>
-                                            <span class="toggle-switch-label">
-                                                <span class="toggle-switch-indicator"></span>
-                                            </span>
-                                        </label>
-                                    </td>
+                                        <div class="dropdown">
+                                            <button class="btn p-1 dropdown-toggle"
+                                                style="position: absolute; right: -5px; top: -22px;" type="button"
+                                                data-toggle="dropdown" aria-expanded="false">
+                                                <img style="width: 24px; filter: contrast(0)"
+                                                    src="{{ asset('storage/app/public/util/10025520.png') }}"
+                                                    alt="action" />
+                                            </button>
+                                            <div class="dropdown-menu">
 
-                                    <td>
-                                        <div class="btn--container justify-content-center">
-                                            <a style="min-width:50px;" class="btn  btn--danger btn-outline-danger"
-                                                href="{{ route('admin.project.delete', [$lead->id]) }}"
-                                                title="{{ translate('messages.delete') }} Department"><i
-                                                    class="tio-delete-outlined"></i>
-                                            </a>
+                                                <a href="{{ route('admin.project.details', [$lead->id]) }}"
+                                                    class="dropdown-item text-success" title="view">
+                                                    <i class="tio-visible-outlined"></i>
+                                                    View
+                                                </a>
+                                                @if (hasPermission('project_task', 'list'))
+                                                    <a href="{{ route('admin.project.task.list', [$lead->id]) }}"
+                                                        class="dropdown-item text-warning" title="tasks">
+                                                        <i class="tio-notebook-bookmarked"></i>
+                                                        Tasks
+                                                    </a>
+                                                @endif
+                                                <a href="{{ route('admin.project.edit', [$lead->id]) }}"
+                                                    class="dropdown-item text-success" title="Edit">
+                                                    <i class="tio-edit"></i>
+                                                    Edit
+                                                </a>
+
+                                                <a class="dropdown-item  text-danger form-alert " href="javascript:"
+                                                    data-id="task-{{ $lead['id'] }}"
+                                                    data-message="{{ translate('Want_to_delete_this_project_?') }}"
+                                                    title="{{ translate('messages.delete_project') }}"><i
+                                                        class="tio-delete-outlined"></i>
+                                                    Delete
+                                                </a>
+                                                <form action="{{ route('admin.project.delete', [$lead->id]) }}"
+                                                    method="get" id="task-{{ $lead['id'] }}">
+                                                    @csrf @method('get')
+                                                </form>
+
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -273,7 +502,7 @@
                             </h5>
                         </div>
                     @endif
-                </div>
+                </div> --}}
                 <!-- End Table -->
             </div>
         </div>
@@ -283,6 +512,8 @@
 @endsection
 
 @push('script_2')
+    @include('admin-views/js/date_range')
+
     <script>
         function status_change_alert(url, message, e) {
             e.preventDefault();
@@ -302,102 +533,13 @@
                 }
             })
         }
-        $(document).on('ready', function() {
-            // INITIALIZATION OF DATATABLES
-            // =======================================================
-            var datatable = $.HSCore.components.HSDatatables.init($('#columnSearchDatatable'));
-
-            $('#column1_search').on('keyup', function() {
-                datatable
-                    .columns(1)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column2_search').on('keyup', function() {
-                datatable
-                    .columns(2)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column3_search').on('keyup', function() {
-                datatable
-                    .columns(3)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column4_search').on('keyup', function() {
-                datatable
-                    .columns(4)
-                    .search(this.value)
-                    .draw();
-            });
-
-
-            // INITIALIZATION OF SELECT2
-            // =======================================================
-            $('.js-select2-custom').each(function() {
-                var select2 = $.HSCore.components.HSSelect2.init($(this));
-            });
-           
-        });
     </script>
-
-    {{-- <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM="
-        crossorigin="anonymous"></script>
-
-    <!--select2 -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> --}}
-
-
     <script>
-        $(".select2_tags").select2({
-            placeholder: "Select Team Members",
-        });
-        $(".js-select2-custom").select2({
-            placeholder: "Select Team Members",
-        });
+        function handleClick(url, e) {
+            if ($(e.target).closest('.status_change_form, .dropdown-menu, .dropdown-toggle, button, a')
+                .length) {} else {
+                window.location.href = url;
+            }
+        }
     </script>
-    <style>
-        .select2-container--default .select2-selection--single{
-            height: 43px;
-            border: 1px solid #f0f0f0;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__rendered{
-            line-height
-        }
-        .select2-container--default.select2-container--focus .select2-selection--multiple {
-            border: solid #e4e4e4 1px;
-        }
-
-        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-            width: 17px;
-            outline: none;
-            height: 100%;
-        }
-
-        .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            padding: 5px !important;
-        }
-
-        .select2-container--default .select2-selection--multiple .select2-selection__choice__display {
-            padding-left: 15px;
-        }
-        .select2-container--default .select2-selection--multiple{
-            border:1px solid #dfdfdf;
-        }
-    </style>
-
-<script>
-    document.getElementById('myNumberInput').addEventListener('keydown', function(event) {
-        var value = parseInt(this.value + event.key);
-
-        if (value > 100) {
-            event.preventDefault();
-        }
-    });
-</script>
 @endpush

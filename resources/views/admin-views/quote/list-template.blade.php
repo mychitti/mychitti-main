@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+@extends('layouts.admin.app')
 
 @section('title',translate('Lead List'))
 

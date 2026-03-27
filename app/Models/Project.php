@@ -40,6 +40,9 @@ class Project extends Model
     }
     public function projectManager()
     {
+        if ($this->vendor_id == 0) {
+            return $this->belongsTo(Admin::class, 'project_manager');
+        }
         return $this->belongsTo(VendorEmployee::class, 'project_manager');
     }
     public function departments()
@@ -68,6 +71,4 @@ class Project extends Model
     {
         return $this->hasMany(ProjectAttachment::class);
     }
-
- 
 }

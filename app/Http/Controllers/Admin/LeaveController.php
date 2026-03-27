@@ -8,28 +8,29 @@ use Illuminate\Http\Request;
 use App\Models\Lead;
 use Brian2694\Toastr\Facades\Toastr;
 use App\CentralLogics\Helpers;
+use App\Models\Admin;
 use App\Models\Department;
 use App\Models\Staff;
 use App\Models\Leave;
-use App\Models\Admin;
 use App\Models\Attendance;
-use App\Models\BusinessSetting;
 use App\Models\StoreConfig;
-use App\Models\VendorEmployee;
 
 class LeaveController extends Controller
 {
-
 
     public function index(Request $request)
     {
         $v_id = 0;
 
-        $staff =  Admin::whereNot('role_id', 1)->latest()->paginate(config('default_pagination'));
-        return view('admin-views.leave.index', compact('staff'));
+        $store_config = StoreConfig::where('store_id', $v_id)->first();
+
+        $staff = Admin::where('role_id', '!=', 1)->get();
+        return view('admin-views.leave.index', compact('staff', 'store_config'));
     }
     public function manage(Request $request, $id)
     {
+        $totalLeaveBalance = 0;
+
         $v_id = 0;
         if (isset($request->year)) {
             $filter_year =   $request->year;
@@ -42,8 +43,10 @@ class LeaveController extends Controller
             $filter_month = date('m');
         }
         $staff = Admin::find($id);
-        $attendance = Attendance::where(['vendor_id' => $v_id, 'employee_id' => $id,  'employee_type' => 'admin_employee', 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
+        $departments = Department::where('status', 1)->where('vendor_id', $v_id)->get();
+        $attendance = Attendance::where(['vendor_id' => $v_id,  'employee_type' => 'admin_employee', 'employee_id' => $id, 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
         $leaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'admin_employee', 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
+        $pendingleaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'admin_employee',  'status' => 'pending'])->get()->toArray();
         $day_data['absent'] = 0;
         $day_data['present'] = 0;
         $day_data['holiday'] = 0;
@@ -56,12 +59,9 @@ class LeaveController extends Controller
         //leaves balance
         $clLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'admin_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'CL', 'status' => 'approved'])->get()->toArray();
         $slLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'admin_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->get()->toArray();
-        $cl_for_employees = BusinessSetting::where('key', 'cl_for_employees')->first();
-        $sl_for_employees = BusinessSetting::where('key', 'sl_for_employees')->first();
-        $monthlyClleaveBalance = ($cl_for_employees ? $cl_for_employees->value : 0) - count($clLeavesTaken);
-        $monthlySlleaveBalance = ($sl_for_employees ? $sl_for_employees->value : 0) - count($slLeavesTaken);
-
-        //  prx( $cl_for_employees); 
+        $store_config = StoreConfig::where('store_id', $v_id)->first();
+        $monthlyClleaveBalance = ($store_config ? $store_config->cl_for_employees : 0) - count($clLeavesTaken);
+        $monthlySlleaveBalance = ($store_config ? $store_config->sl_for_employees : 0) - count($slLeavesTaken);
 
 
         foreach ($attendance as $att) {
@@ -107,8 +107,12 @@ class LeaveController extends Controller
             $sundays_in_month = $day_data['sunday'];
         }
 
+
+        // die;
+        // print_r($attendance);die;
         return view('admin-views.leave.manage', compact(
             'staff',
+            'departments',
             'filter_year',
             'filter_month',
             'attendance',
@@ -119,34 +123,35 @@ class LeaveController extends Controller
             'daArr',
             'labelArr',
             'leaves',
+            'pendingleaves',
             'monthlyClleaveBalance',
-            'monthlySlleaveBalance'
-
+            'monthlySlleaveBalance',
+            'id'
         ));
     }
 
     public function save_leave(Request $request)
     {
 
-
-        $v_id = \App\CentralLogics\Helpers::get_store_id();
-        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->exists();
+        $v_id = 0;
+        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->where('vendor_id' ,0)->exists();
         if (!$leave) {
+
+            $leave_date = sprintf('%04d-%02d-%02d',$request->post('year'),$request->post('month'),$request->post('day'));
 
             $leave = new Leave;
             $leave->vendor_id = $v_id;
             $leave->emp_id = $request->post('emp_id');
-            $leave->employee_type = 'admin_employee';
             $leave->day = $request->post('day');
             $leave->status = 'approved';
-            $leave->added_by = 'admin';
+            $leave->added_by = auth('admin')->user()->role_id == 1 ? 'admin' : 'admin_employee';
             $leave->month = $request->post('month');
             $leave->year = $request->post('year');
-           
+            $leave->leave_date = $leave_date;
             $leave->leave_type = $request->post('leaveType');
             $leave->reason = $request->post('reason');
+            $leave->employee_type = 'admin_employee';
             $leave->created_at = date('Y-m-d H:i:s');
-            $leave->leave_date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('day');
             $leave->save();
 
             // attendance 
@@ -158,25 +163,23 @@ class LeaveController extends Controller
             $att = new Attendance;
             $att->vendor_id = $v_id;
             $att->employee_id = $request->post('emp_id');
-            $att->employee_type = 'admin_employee';
-            $att->date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('day');
+            $att->date = $leave_date;
             $att->label = $leaveType;
             $att->day =  $request->post('day');
             $att->month = $request->post('month');
             $att->year = $request->post('year');
             $att->created_at = date('Y-m-d H:i:s');
             $att->save();
-
-
             Toastr::success('Leave saved successfully');
-
-            $data['status'] = true;
-            $data['msg'] = 'Updated Successfully';
         } else {
             Toastr::warning('Leave already exists for this date');
-            $data['status'] = false;
-            $data['msg'] = 'Leave already exists for this date';
         }
+
+
+
+        $data['status'] = true;
+        $data['msg'] = 'Updated Successfully';
+
         echo json_encode($data);
     }
 
@@ -250,7 +253,7 @@ class LeaveController extends Controller
         } else {
             $staff = Staff::find($id);
         }
-        $v_id = \App\CentralLogics\Helpers::get_store_id();
+        $v_id =0;
         // echo $v_id;die;
 
         $staff->vendor_id = $v_id;

@@ -28,6 +28,7 @@ class CustomerImport implements ToCollection
             $phone = _cleanPhoneNumber($row[2]);
             $existingUser = StoreCustomer::where('phone', $phone)->where('store_id', $this->vendorId ?? Helpers::get_store_id())->where('user_type', $row[0])->first();
             if ($existingUser) {
+                // prx($existingUser);
                 $this->failedRows = true;
                 continue; // Skip if user already exists
             }

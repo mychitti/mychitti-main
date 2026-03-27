@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Models\BusinessSetting;
 use App\CentralLogics\StoreLogic;
-use App\Models\Admin;
+use App\Models\Admin; 
 use App\Models\Category;
 use App\Models\StoreDocument;
 use App\Models\StoreType;
@@ -292,14 +292,13 @@ class VendorController extends Controller
                 }
             }
             Translation::insert($data);
-            // try {
-            //     $admin = Admin::where('role_id', 1)->first();
-            //     Mail::to($admin['email'])->send(new \App\Mail\VendorSelfRegistration('pending', $vendor->f_name . ' ' . $vendor->l_name));
-            //     Mail::to($admin['email'])->send(new \App\Mail\StoreRegistration('pending', $vendor->f_name . ' ' . $vendor->l_name));
-            // } catch (\Exception $ex) {
-            //     // print_r($ex->getMessage());
-            //     info($ex->getMessage());
-            // }
+            try {
+                if ($vendor->email) { 
+                    Mail::to($vendor->email)->send(new \App\Mail\VendorSelfRegistration('pending', $store->name));
+                }
+            } catch (\Exception $ex) {
+                info('Vendor registration email error: ' . $ex->getMessage()); 
+            }
 
             StoreLogic::insert_schedule($store->id);
 

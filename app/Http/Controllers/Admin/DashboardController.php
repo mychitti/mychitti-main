@@ -11,17 +11,19 @@ use App\Models\Store;
 use App\Models\Module;
 use App\Models\Review;
 use App\Models\Wishlist;
-use App\Models\AdminRole;
+use App\Models\AdminRole; 
 use App\Scopes\ZoneScope;
-use App\Models\DeliveryMan;
+use App\Models\DeliveryMan; 
 use Illuminate\Http\Request;
-use App\CentralLogics\Helpers;
+use App\CentralLogics\Helpers; 
 use App\Models\OrderTransaction;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\AcceptedServiceRequest;
 use App\Models\ActionLog;
 use App\Models\AdminAction;
+use App\Models\AppError;
+use App\Models\EmployeeTimeCard;
 use App\Models\GoogleAd;
 use App\Models\InAppNotification;
 use App\Models\ServiceInvoice;
@@ -64,14 +66,44 @@ class DashboardController extends Controller
         Toastr::success('Updated successfully');
         return back();
     }
-    public function action_logs(Request $request, $tab = 'common')
+    public function update_error_status(Request $request, $id)
     {
-        if ($tab == 'common') {
-            $actions = ActionLog::with('admin')->latest()->paginate(10);
-            return view("admin-views.logs.action-logs", compact('actions'));
-        } else {
+        $error = AppError::findOrFail($id);
+        $error->status = $request->status;
+        $error->save();
+        return response()->json(['success' => true]);
+    }
+
+    public function bulk_delete_errors(Request $request)
+    {
+        $ids = $request->ids;
+        if (!$ids || !is_array($ids) || count($ids) == 0) {
+            return response()->json(['success' => false, 'message' => 'No items selected']);
+        }
+        AppError::whereIn('id', $ids)->delete();
+        return response()->json(['success' => true, 'message' => count($ids) . ' error(s) deleted']);
+    }
+
+    public function action_logs(Request $request)
+    {
+        $routeName = $request->route()->getName();
+
+        if ($routeName == 'admin.logs.action-logs.errors') {
+            $status = $request->get('status', 'all');
+            $query = AppError::leftJoin('users', 'app_errors.user_id', '=', 'users.id')
+                ->select('app_errors.*', 'users.f_name', 'users.l_name', 'users.phone as user_phone')
+                ->latest('app_errors.created_at');
+            if ($status != 'all') {
+                $query->where('app_errors.status', $status);
+            }
+            $app_errors = $query->paginate(10)->appends($request->query());
+            return view("admin-views.logs.error-logs", compact('app_errors', 'status'));
+        } elseif ($routeName == 'admin.logs.action-logs.admin') {
             $actions = AdminAction::with('admin')->latest()->paginate(10);
             return view("admin-views.logs.admin-action", compact('actions'));
+        } else {
+            $actions = ActionLog::with('admin')->latest()->paginate(10);
+            return view("admin-views.logs.action-logs", compact('actions'));
         }
     }
 
@@ -279,7 +311,11 @@ class DashboardController extends Controller
     {
         $module_type = Config::get('module.current_module_type');
 
-        if($module_type == 'pharmacy'){ 
+        if($module_type == 'pharmacy'){
+            if (!hasMasterModulePermission('ai_agent')) {
+                \Brian2694\Toastr\Facades\Toastr::error(translate('messages.access_denied'));
+                return back();
+            }
             return app(AIAgentSkillController::class)->index($request);
         }
         if (_onlyStoreAddEdit()) {
@@ -303,9 +339,18 @@ class DashboardController extends Controller
         if ($module_type == 'settings') {
             return redirect()->route('admin.business-settings.business-setup');
         }
+        if ($module_type == 'grocery') {
+              $recentTimecards = EmployeeTimeCard::where('emp_id', auth('admin')->id())
+                            ->where('vendor_id', 0)
+                            ->whereNotNull('in_time')
+                            ->whereNotNull('out_time')
+                            ->orderBy('id', 'desc')
+                            ->take(2)
+                            ->get(); 
+        }
 
         //   dd(session()->all());
-        return view("admin-views.dashboard-{$module_type}", compact('data', 'total_sell', 'commission', 'delivery_commission', 'label', 'params', 'module_type'));
+        return view("admin-views.dashboard-{$module_type}", compact('data','recentTimecards', 'total_sell', 'commission', 'delivery_commission', 'label', 'params', 'module_type'));
     }
 
     public function order(Request $request)
@@ -325,7 +370,11 @@ class DashboardController extends Controller
         }
         $data = self::order_stats_calc($params['zone_id'], $params['module_id']);
         $module_type = Config::get('module.current_module_type');
-        if ($params['module_id'] == 6) {
+        if ($module_type == 'grocery') {
+            return response()->json([
+                'view' => view('admin-views.partials._dashboard-grocery-stats', compact('data'))->render()
+            ], 200);
+        } elseif ($params['module_id'] == 6) {
             return response()->json([
                 'view' => view('admin-views.partials._dashboard-service-stats', compact('data'))->render()
             ], 200);
@@ -365,6 +414,19 @@ class DashboardController extends Controller
         $delivery_commission = $data['delivery_commission'];
         $module_type = Config::get('module.current_module_type');
 
+        // Determine the correct order_stats partial based on module type
+        if ($module_type == 'parcel') {
+            $order_stats_view = view('admin-views.partials._dashboard-order-stats-parcel', compact('data'))->render();
+        } elseif ($module_type == 'food') {
+            $order_stats_view = view('admin-views.partials._dashboard-order-stats-food', compact('data'))->render();
+        } elseif ($module_type == 'grocery') {
+            $order_stats_view = view('admin-views.partials._dashboard-grocery-stats', compact('data'))->render();
+        } elseif (Config::get('module.current_module_id') == 5) {
+            $order_stats_view = view('admin-views.partials._dashboard-order-stats', compact('data'))->render();
+        } else {
+            $order_stats_view = view('admin-views.partials._dashboard-service-stats', compact('data'))->render();
+        }
+
         return response()->json([
             'popular_restaurants' => view('admin-views.partials._popular-restaurants', compact('popular'))->render(),
             'top_deliveryman' => view('admin-views.partials._top-deliveryman', compact('top_deliveryman'))->render(),
@@ -372,9 +434,7 @@ class DashboardController extends Controller
             'top_restaurants' => view('admin-views.partials._top-restaurants', compact('top_restaurants'))->render(),
             'top_customers' => view('admin-views.partials._top-customer', compact('top_customers'))->render(),
             'top_selling_foods' => view('admin-views.partials._top-selling-foods', compact('top_sell'))->render(),
-
-            'order_stats' => $module_type == 'parcel' ? view('admin-views.partials._dashboard-order-stats-parcel', compact('data'))->render() : ($module_type == 'food' ? view('admin-views.partials._dashboard-order-stats-food', compact('data'))->render() : (Config::get('module.current_module_id') == 5 ? view('admin-views.partials._dashboard-order-stats', compact('data'))->render() : view('admin-views.partials._dashboard-service-stats', compact('data'))->render())),
-
+            'order_stats' => $order_stats_view,
             'user_overview' => view('admin-views.partials._user-overview-chart', compact('data'))->render(),
             'monthly_graph' => view('admin-views.partials._monthly-earning-graph', compact('total_sell', 'commission', 'delivery_commission'))->render(),
             'stat_zone' => view('admin-views.partials._zone-change', compact('data'))->render(),
@@ -459,8 +519,8 @@ class DashboardController extends Controller
                 $accepted_services = DB::table('accepted_service_requests')->where('assigned_status', 'Assigned')->where('module_id', $module_id)->whereDate('created_at', Carbon::now());
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereDate('created_at', Carbon::now());
-                $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('service_requests')->get();
+                $total_items = DB::table('items')->where('module_id', $module_id);
+                $service_leads = DB::table('service_requests');
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -488,7 +548,7 @@ class DashboardController extends Controller
                 $searching_for_dm = DB::table('accepted_service_requests')->whereNot('assigned_status', 'Assigned')->whereYear('created_at', now()->format('Y'));
                 $accepted_services  = DB::table('accepted_service_requests')->where('assigned_status', 'Assigned')->whereYear('created_at', now()->format('Y'));
 
-                $total_items = DB::table('items')->where('module_id', $module_id)->get();
+                $total_items = DB::table('items')->where('module_id', $module_id);
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereYear('created_at', now()->format('Y'));
                 $service_leads = DB::table('service_requests')->whereYear('created_at', now()->format('Y'));
             }
@@ -519,7 +579,7 @@ class DashboardController extends Controller
                 $accepted_services = DB::table('accepted_service_requests')->where('assigned_status', 'Assigned')->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
-                $total_items = DB::table('items')->where('module_id', $module_id)->get();
+                $total_items = DB::table('items')->where('module_id', $module_id);
                 $service_leads = DB::table('service_requests')->whereMonth('created_at', now()->format('m'))->whereYear('created_at', now()->format('Y'));
             }
             $total_stores = Store::where('module_id', $module_id);
@@ -550,7 +610,7 @@ class DashboardController extends Controller
                 $canceled = DB::table('accepted_service_requests')->where('current_status', 'Cancelled')->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
-                $total_items = DB::table('items')->where('module_id', $module_id)->get();
+                $total_items = DB::table('items')->where('module_id', $module_id);
                 $service_leads = DB::table('service_requests')->whereBetween('created_at', [now()->startOfWeek()->format('Y-m-d H:i:s'), now()->endOfWeek()->format('Y-m-d H:i:s')]);
             }
             $total_stores = Store::where('module_id', $module_id);
@@ -580,8 +640,8 @@ class DashboardController extends Controller
                 $delivered = DB::table('accepted_service_requests')->where('current_status', 'Completed');
 
                 $new_items = DB::table('items')->where('module_id', $module_id)->whereDate('created_at', '>=', now()->subDays(30)->format('Y-m-d'));
-                $total_items = DB::table('items')->where('module_id', $module_id)->get();
-                $service_leads = DB::table('service_requests')->get();
+                $total_items = DB::table('items')->where('module_id', $module_id);
+                $service_leads = DB::table('service_requests');
             }
             $total_stores = Store::where('module_id', $module_id);
             $total_customers = User::all();
@@ -611,13 +671,18 @@ class DashboardController extends Controller
                 $canceled = DB::table('accepted_service_requests')->where('current_status', 'Cancelled');
 
                 $new_items = DB::table('items')->whereDate('created_at', '>=', now()->subDays(30)->format('Y-m-d'));
-                $total_items = DB::table('items')->where('module_id', 6)->get();
+                $total_items = DB::table('items')->where('module_id', 6);
                 $service_leads = DB::table('service_requests')->get();
             }
             $total_stores = Store::all();
             $total_customers = User::all();
         }
         if (is_numeric($zone_id) && $module_id &&  !in_array($module_type, ['parcel'])) {
+            // Get store IDs in this zone for filtering items and service leads
+            $zoneStoreIds = Store::where('zone_id', $zone_id)->when(is_numeric($module_id), function ($q) use ($module_id) {
+                $q->where('module_id', $module_id);
+            })->pluck('id')->toArray();
+
             if (Config::get('module.current_module_id') == 5) {
                 $searching_for_dm = $searching_for_dm->StoreOrder()->OrderScheduledIn(30)->where('zone_id', $zone_id)->count();
                 $delivered = $delivered->StoreOrder()->where('zone_id', $zone_id)->count();
@@ -634,13 +699,26 @@ class DashboardController extends Controller
             $refund_requested = $refund_requested->StoreOrder()->where('zone_id', $zone_id)->count();
             $refunded = $refunded->StoreOrder()->where('zone_id', $zone_id)->count();
             $total_orders = $total_orders->StoreOrder()->where('zone_id', $zone_id)->count();
-            $total_items = $total_items->count();
             $total_stores = $total_stores->where('zone_id', $zone_id)->count();
-            $service_leads = $service_leads->count();
+
+            // Filter items by zone (items use store_ids with FIND_IN_SET)
+            if (!empty($zoneStoreIds)) {
+                $storeIdConditions = implode(' OR ', array_map(function ($sid) {
+                    return "FIND_IN_SET({$sid}, store_ids) > 0";
+                }, $zoneStoreIds));
+                $total_items = $total_items->whereRaw("({$storeIdConditions})")->count();
+                $new_items = $new_items->whereRaw("({$storeIdConditions})")->count();
+                // Filter service leads by zone (via item -> store)
+                $zoneItemIds = DB::table('items')->where('module_id', $module_id)->whereRaw("({$storeIdConditions})")->pluck('id')->toArray();
+                $service_leads = !empty($zoneItemIds) ? $service_leads->whereIn('item_id', $zoneItemIds)->count() : 0;
+            } else {
+                $total_items = 0;
+                $new_items = 0;
+                $service_leads = 0;
+            }
 
             $total_customers = $total_customers->count();
             $new_orders = $new_orders->StoreOrder()->where('zone_id', $zone_id)->count();
-            $new_items = $new_items->count();
             $new_stores = $new_stores->where('zone_id', $zone_id)->count();
             $new_customers = $new_customers->count();
         } elseif ($module_id && $module_type != 'parcel') {
@@ -771,6 +849,24 @@ class DashboardController extends Controller
             $data['service_leads'] = $service_leads;
             $data['accepted_services'] = $accepted_services;
         }
+
+        // Open tickets count (zone filtered for grocery dashboard)
+        $ticketQuery = \App\Models\SupportTicket::whereIn('status', ['open', 'reopened']);
+        if (is_numeric($zone_id)) {
+            $ticketQuery->where(function ($q) use ($zone_id) {
+                $q->whereHas('vendor', function ($vq) use ($zone_id) {
+                    $vq->whereHas('stores', function ($sq) use ($zone_id) {
+                        $sq->where('zone_id', $zone_id);
+                    });
+                })->orWhere(function ($q2) use ($zone_id) {
+                    $q2->whereNull('vendor_id')->whereHas('customer', function ($uq) use ($zone_id) {
+                        $uq->where('zone_id', $zone_id);
+                    });
+                });
+            });
+        }
+        $data['open_tickets'] = $ticketQuery->count();
+
         return $data;
     }
 
@@ -856,11 +952,9 @@ class DashboardController extends Controller
                     '=',
                     'request_counts.item_id'
                 )
-                // ->when(is_numeric($params['zone_id']), function ($q) use ($params) {
-                //     return $q->whereHas('store', function ($query) use ($params) {
-                //         return $query->where('zone_id', $params['zone_id']);
-                //     });
-                // })
+                ->when(is_numeric($params['zone_id']), function ($q) use ($params) {
+                    return $q->where('stores.zone_id', $params['zone_id']);
+                })
                 ->where('stores.active', 1)
                 ->whereHas('module', function ($query) {
                     $query->where('modules.id', 6);
@@ -1286,8 +1380,23 @@ class DashboardController extends Controller
         $dash_data['delivery_commission'] = $delivery_commission;
         $dash_data['label'] = $label;
 
-        // Support Tickets - open count for dashboard widget
-        $dash_data['open_tickets'] = \App\Models\SupportTicket::whereIn('status', ['open', 'reopened'])->count();
+        // Support Tickets - open count for dashboard widget (zone filtered)
+        $ticketQuery = \App\Models\SupportTicket::whereIn('status', ['open', 'reopened']);
+        if (is_numeric($params['zone_id'])) {
+            $zoneId = $params['zone_id'];
+            $ticketQuery->where(function ($q) use ($zoneId) {
+                $q->whereHas('vendor', function ($vq) use ($zoneId) {
+                    $vq->whereHas('stores', function ($sq) use ($zoneId) {
+                        $sq->where('zone_id', $zoneId);
+                    });
+                })->orWhere(function ($q2) use ($zoneId) {
+                    $q2->whereNull('vendor_id')->whereHas('customer', function ($uq) use ($zoneId) {
+                        $uq->where('zone_id', $zoneId);
+                    });
+                });
+            });
+        }
+        $dash_data['open_tickets'] = $ticketQuery->count();
 
         return $dash_data;
     }

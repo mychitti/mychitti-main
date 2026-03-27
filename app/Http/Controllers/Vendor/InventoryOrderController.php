@@ -91,7 +91,7 @@ class InventoryOrderController extends Controller
                     data-id="completed-' . $detail['id'] . '" 
                     data-message="Want to mark this order item as returned" 
                     title="Completed">
-                    <i class="tio-checkmark-circle-outlined"></i> Returned
+                    <i class="tio-checkmark-circle-outlined"></i> Return
                 </a>
                 <form action="' . route('vendor.inventory.sale.order-status', [$detail['id'], 'returned']) . '" 
                     method="get" 

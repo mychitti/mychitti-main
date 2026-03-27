@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Salary Rport')
+@section('title', 'Salary Report')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">

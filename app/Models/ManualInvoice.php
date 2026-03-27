@@ -50,6 +50,10 @@ class ManualInvoice extends Model
     {
         return $this->belongsTo(User::class, 'bill_to');
     }
+    public function websiteVendor()
+    {
+        return $this->belongsTo(Store::class, 'bill_to');
+    }
 
     public function storeCustomer()
     {

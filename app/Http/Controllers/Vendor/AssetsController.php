@@ -195,7 +195,7 @@ class AssetsController extends Controller
     }
     public function alotted_assets(Request $request)
     {
-        $assets = AssetAlotment::with('inventoryItem')->where('employee_id', Helpers::get_loggedin_user()->id)->paginate(10);
+        $assets = AssetAlotment::with('inventoryItem')->where('employee_id', Helpers::get_loggedin_user()->id)->where('store_id', Helpers::get_store_id())->paginate(10);
         // prx($assets);
         return view('vendor-views.assets.alotted', compact('assets'));
     }

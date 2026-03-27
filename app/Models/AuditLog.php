@@ -12,4 +12,7 @@ class AuditLog extends Model
     public function employee(){
         return $this->belongsTo(VendorEmployee::class , 'created_by');
     }
+    public function adminEmployee(){
+        return $this->belongsTo(Admin::class , 'created_by');
+    }
 }

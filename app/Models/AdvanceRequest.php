@@ -9,6 +9,7 @@ class AdvanceRequest extends Model
 {
     protected $fillable = [
         'employee_id',
+        'store_id',
         'requested_amount',
         'approved_amount',
         'status',
@@ -17,8 +18,11 @@ class AdvanceRequest extends Model
         'installments'
     ];
 
-    public function employee() 
-    {
+    public function employee()
+    { 
+        if ($this->store_id == 0) {
+            return $this->belongsTo(Admin::class, 'employee_id');
+        }
         return $this->belongsTo(VendorEmployee::class);
     }
 }

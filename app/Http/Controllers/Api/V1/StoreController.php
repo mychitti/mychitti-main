@@ -512,6 +512,47 @@ class StoreController extends Controller
 
         return response()->json($productdata, 200);
     }
+    public function unmask_phone(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|exists:stores,id',
+        ]);
+ 
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $user_id = $request->user()->id;
+        $store_id = $request->store_id;
+        $ip = $request->ip();
+
+        $isUnique = !DB::table('analytics_logs')
+            ->where('screen_type', 'call')
+            ->where('ref_id', $store_id)
+            ->where('ip', $ip)
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+
+        DB::table('analytics_logs')->insert([
+            'screen_type' => 'call',
+            'ref_id' => $store_id,
+            'user_id' => $user_id,
+            'ip' => $ip,
+            'created_at' => now(),
+        ]);
+
+        Store::where('id', $store_id)->increment('total_visits');
+        if ($isUnique) {
+            Store::where('id', $store_id)->increment('unique_visits');
+        }
+
+        $store = Store::find($store_id);
+
+        return response()->json([
+            'phone' => $store->phone,
+        ], 200);
+    }
+
     public function get_combined_data(Request $request)
     {
         if (!$request->hasHeader('zoneId')) {

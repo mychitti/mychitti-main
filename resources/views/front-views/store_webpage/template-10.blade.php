@@ -1346,7 +1346,7 @@
         <div style="" class="banner_parent">
             <div class="owl-carousel banner-carousel animate-on-scroll fade-in">
                 @foreach ($data['banners'] as $value)
-                    <a href="{{ $value->default_link ?? '#' }}">
+                    <a href="{{ $value->default_link ?? '#' }}" onclick="trackBannerClick({{ $value->id }})">
                         <img loading="lazy" src="{{ asset('storage/app/public/banner/') . '/' . $value->image }}"
                             alt="banner" style="border-radius: 20px; width: 100%;">
                     </a>
@@ -1358,10 +1358,6 @@
     <!-- Products Section -->
     <div class="section-animated" id="services" style="background: var(--light);">
         <div class="section-container">
-            @if ($data['store_config']?->inventory_items_position == 'above')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
-
             <div class="section-header-animated animate-on-scroll slide-up">
                 <span class="section-tag-animated">Our Offerings</span>
                 <h2 class="section-title-animated">Products & Services</h2>
@@ -1495,6 +1491,133 @@
                 </div>
             @endforeach
 
+            @foreach ($invItemdata as $key => $cat)
+                <div style="margin: 4rem 0;">
+                    <h3 class="animate-on-scroll slide-left"
+                        style="font-size: 2rem; font-weight: 800; margin-bottom: 2.5rem; color: var(--dark);">
+                        {{ $cat->name }}</h3>
+
+                    <div class="products-grid-animated">
+                        @foreach ($cat->items as $index => $pro)
+                            @php
+                                $variations = json_decode($pro->variations);
+                                $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
+                                if ($firstVr) {
+                                    $selling_price = json_decode($firstVr)->price;
+                                    $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
+                                } else {
+                                    $selling_price = $pro->price;
+                                    $mrp = $pro->mrp_price;
+                                }
+                            @endphp
+                            <div class="pr_{{ $pro->id }} product-card-animated stagger-item"
+                                style="transition-delay: {{ $index * 0.1 }}s;">
+                                <div class="product-img-wrapper">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                        <img loading="lazy"
+                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                                            alt="{{ $pro->name }}">
+                                    </a>
+
+                                    @if ($module == 5 && $store->delivery_time)
+                                        <div class="time-badge-animated">
+                                            <i class="fas fa-bolt" style="color: #f59e0b;"></i>
+                                            {{ strtoupper($store->delivery_time) }}
+                                        </div>
+                                    @endif
+
+                                    @if ($pro->discount > 0)
+                                        <div class="badge-animated">
+                                            -{{ floor($pro->discount) }}{{ $pro->discount_type == 'percent' ? '%' : \App\CentralLogics\Helpers::currency_symbol() }}
+                                        </div>
+                                    @endif
+
+                                    <div onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
+                                        class="prHeart_{{ $pro->id }} heart-animated">
+                                        <i
+                                            class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
+                                    </div>
+                                </div>
+
+                                <div class="product-details-animated">
+                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
+                                        <h4 class="product-title-animated" title="{{ ucfirst($pro->name) }}">
+                                            {{ ucfirst($pro->name) }}
+                                        </h4>
+                                    </a>
+
+                                    @if ($module == 5)
+                                        <p
+                                            style="font-size: 13px; color: var(--text); margin-bottom: 0.75rem; min-height: 20px;">
+                                            {{ !empty($variations) ? $variations[0]->type : '' }}
+                                        </p>
+                                        @if (count($variations) > 1)
+                                            <span
+                                                style="display: inline-block; background: var(--light); padding: 0.3rem 0.85rem; border-radius: 12px; font-size: 11px; font-weight: 600;">+{{ count($variations) - 1 }}
+                                                more</span>
+                                        @endif
+
+                                        <div style="display: flex; align-items: baseline; gap: 1rem; margin: 1.25rem 0;">
+                                            <div style="font-size: 1.75rem; font-weight: 900; color: var(--dark);">
+                                                {{ _price($selling_price) }}</div>
+                                            @if ($pro->discount > 0)
+                                                <div
+                                                    style="font-size: 1rem; color: var(--text); text-decoration: line-through;">
+                                                    {{ _price($mrp) }}</div>
+                                            @endif
+                                        </div>
+
+                                        <div class="cartSec_{{ $pro->id }}">
+                                            @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
+                                            @if (_itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')))
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'remove','{{ !empty($variations) ? 0 : '' }}',  {{ _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']')) }})"
+                                                    class="btn-product-animated"
+                                                    style="background: var(--secondary-gradient);">
+                                                    <i class="fa fa-times"></i> Remove
+                                                </button>
+                                            @else
+                                                <button
+                                                    onclick="updateCart({{ $pro->id }}, 'add','{{ !empty($variations) ? 0 : '' }}',  '')"
+                                                    class="btn-product-animated">
+                                                    <i class="fa fa-shopping-cart"></i> Add to Cart
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        @if ($pro->item_type == 'product')
+                                            <div
+                                                style="display: flex; align-items: baseline; gap: 1rem; margin: 1.25rem 0;">
+                                                <div style="font-size: 1.75rem; font-weight: 900; color: var(--dark);">
+                                                    {{ _price($selling_price) }}</div>
+                                                @if ($pro->discount > 0 || $mrp > $selling_price)
+                                                    <div
+                                                        style="font-size: 1rem; color: var(--text); text-decoration: line-through;">
+                                                        {{ _price($mrp) }}</div>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        @if (auth('web')->user())
+                                            <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
+                                                class="btn-product-animated" style="background: var(--success-gradient);">
+                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                            </button>
+                                        @else
+                                            <button data-bs-toggle="modal" data-bs-target="#loginModal"
+                                                class="btn-product-animated" style="background: var(--success-gradient);">
+                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                            </button>
+                                        @endif
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+
             @if (!count($productdata))
                 <div style="text-align: center; padding: 5rem 0; color: var(--text);">
                     <i class="fas fa-box-open" style="font-size: 5rem; margin-bottom: 2rem; opacity: 0.2;"></i>
@@ -1502,9 +1625,6 @@
                 </div>
             @endif
 
-            @if ($data['store_config']?->inventory_items_position == 'below')
-                @include('front-views.partials._inventoryItemsSection')
-            @endif
         </div>
     </div>
 
@@ -1707,9 +1827,18 @@ class="timeline-card {{ $index % 2 === 0 ? 'tl-right' : 'tl-left' }}"
             </div>
         </div>
     </div>
+@include('front-views.partials._claim_remove_business')
 @endsection
 
 @push('script_2')
+    <script>
+        function trackBannerClick(bannerId) {
+            $.post("{{ route('track.banner.click') }}", {
+                banner_id: bannerId,
+                _token: '{{ csrf_token() }}'
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/video/lg-video.umd.min.js"></script>
 

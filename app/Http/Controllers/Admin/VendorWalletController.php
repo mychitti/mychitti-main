@@ -167,7 +167,7 @@ $vendor_id = Store::where('id', $store_id)->value('vendor_id');
                 'voucher_type' => 'Purchase',
                 'status' => 'approved',
             ];
-            $voucher =  _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'admin', null);
+            $voucher =  _masterLedgerEntry($data, $credit_account, $debit_account, 'admin', 'admin', null);
             _saveDayBookEntry($invoice->total_amount, 'debit', $store_id, 'Wallet Recharge', $invoice->id, $voucher?->id);
             try {
                 $data = _createBillPdf($invoice, 'admin');

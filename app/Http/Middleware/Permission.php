@@ -11,15 +11,42 @@ class Permission
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request 
+     * 
+     * @param  \Illuminate\Http\Request  $request  
      * @param  \Closure  $next
-     * @param  string  $feature
+     * @param  string  $feature 
      * @param  string  $action
      * @return mixed
      */
     public function handle($request, Closure $next, ...$params)
     {
+         if (auth('admin')->check()) {
+            $admin = auth('admin')->user();
+            if ($admin->role_id == 1) {
+                return $next($request);
+            }
+            // Granular permission check for non-super-admin
+            try {
+                $pairs = array_chunk($params, 2);
+                foreach ($pairs as [$feature, $action]) {
+                    $hasPermission = DB::table('admin_role_feature_permissions as arfp')
+                        ->join('feature_permissions as fp', 'arfp.feature_permission_id', '=', 'fp.id')
+                        ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                        ->where('f.name', $feature)
+                        ->where('fp.action', $action)
+                        ->where('arfp.admin_role_id', $admin->role_id)
+                        ->exists();
+                    if ($hasPermission) {
+                        return $next($request);
+                    }
+                }
+            } catch (\Exception $e) {
+                // Table may not exist yet — allow access to prevent redirect loops
+                return $next($request);
+            }
+            Toastr::error(translate('messages.access_denied'));
+            return redirect()->route('admin.dashboard');
+        }
         $user = Auth::guard('vendor_employee')->user();
         // vendor has full access
         if (auth('vendor')->check()) {

@@ -7,136 +7,212 @@
 @endpush
 
 @section('content')
+
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Salary <span class="badge badge-soft-dark ml-2"
                     id="itemCount">{{ count($salary) }}</span></h1>
-            <div class="page-header-select-wrapper">
-
-                @if (!isset(auth('vendor')->user()->zone_id))
-                    <div class="select-item">
-                        <select name="zone_id" class="form-control js-select2-custom"
-                            onchange="set_filter('{{ url()->full() }}',this.value,'zone_id')">
-                            <option value="" {{ !request('zone_id') ? 'selected' : '' }}>
-                                {{ translate('messages.All_Zones') }}</option>
-                            @foreach (\App\Models\Zone::orderBy('name')->get() as $z)
-                                <option value="{{ $z['id'] }}"
-                                    {{ isset($zone) && $zone->id == $z['id'] ? 'selected' : '' }}>
-                                    {{ $z['name'] }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
-            </div>
         </div>
         <!-- End Page Header -->
 
-
-       
         <!-- Card -->
         <div class="card">
             <!-- Header -->
             <div class="card-header py-2">
                 <div class="search--button-wrapper">
-                    <h5 class="card-title">Salary List</h5>
-                    <form action="javascript:" id="search-form" class="search-form">
-                        <!-- Search -->
-                        @csrf
-                        <div class="input-group input--group">
-                            <input id="datatableSearch_" type="search" name="search" class="form-control"
-                                placeholder="Search Salary" aria-label="{{ translate('messages.search') }}" required>
-                            <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
-
-                        </div>
-                        <!-- End Search -->
+                    <h5 class="card-title">Salary List
+                        {{ isset($month_year) ? date('F Y', strtotime($month_year)) : date('F Y') }}</h5>
+                    <div class="d-flex align-items-start" style="gap:5px;">
+                        @if (isset($salary[0]) && $salary[0]->generated_at)
+                            @if (hasPermission('salary_manage', 'mark_paid'))
+                                <a href="{{ route('admin.salary.mark-paid', [$month_year ?? date('Y-m')]) }}"
+                                    class="btn btn_sm btn-outline-warning">Mark Paid</a>
+                            @endif
+                            @if (hasPermission('salary_manage', 'export'))
+                                <a href="{{ route('admin.salary.export-salaries', [$month_year ?? date('Y-m')]) }}"
+                                    class="btn btn_sm btn-outline-success">Export</a>
+                            @endif
+                        @else
+                            @if (hasPermission('salary_manage', 'generate'))
+                                <a href="{{ route('admin.salary.generate-monthly', [$month_year ?? date('Y-m')]) }}"
+                                    class="btn btn_sm btn-outline-success">{{ isset($salary[0]) && $salary[0]->generated_at ? 'Regenerate' : 'Generate' }}
+                                    Salaries</a>
+                            @endif
+                        @endif
+                        <form action="">
+                            <input onchange="this.form.submit()" type="month" value="{{ $month_year ?? date('Y-m') }}"
+                                name="month" class="form-control input_sm" id="">
+                    </div>
                     </form>
-
-                    <!-- End Unfold -->
                 </div>
             </div>
             <!-- End Header -->
-
-            <!-- Table -->
-            <div class="table-responsive datatable-custom">
-                <table id="columnSearchDatatable"
-                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
-                    data-hs-datatables-options='{
+            @if (hasPermission('salary_manage', 'list'))
+                <!-- Table -->
+                <div class="table-responsive datatable-custom">
+                    <table id="columnSearchDatatable"
+                        class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                        data-hs-datatables-options='{
                             "order": [],
                             "orderCellsTop": true,
                             "paging":false
 
                         }'>
-                    <thead class="thead-light">
-                        <tr>
-                            <th class="border-0">{{ translate('sl') }}</th>
-                            <th class="border-0">Employee</th>
-                            <th class="border-0">Salary</th>
-                            <th class="border-0">Pay Frequency</th>
-                            <th class="text-center border-0">{{ translate('messages.action') }}</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="set-rows">
-                        @foreach ($salary as $lead)
+                        @php
+                            $selectedMonth = $month_year ?? date('Y-m');
+                            $currentMonth = date('Y-m');
+                        @endphp
+                        <thead class="thead-light">
                             <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td>
-                                    <div>
-                                        <a href="#" class="table-rest-info" alt="view store">
-
-                                            <div class="info">
-                                                <div class="text--title">
-                                                @php 
-                                        $depNm = _getWhere('admins', ['id'=> $lead->employee_id]);
-                                        if(isset( $depNm[0])){ echo $depNm[0]->f_name . ' ' . $depNm[0]->l_name . ' #'. $lead->employee_id ; } @endphp
-                                                </div>
-                                               
-                                            </div>
-                                        </a>
-                                    </div>
-                                </td>
-                                <td>
-                                {{\App\CentralLogics\Helpers::format_currency($lead->base_salary)}}
-                               </td>
-                                <td>
-                                    {{ $lead->pay_frequency }}
-                                </td>
-                          
-                               
-                             
-                                <td>
-                                    <div class="btn--container justify-content-center">
-                                            <a style="min-width:50px;" class="btn  btn--primary btn-outline-primary"
-                                        href="{{route('admin.users.salary.edit',[$lead['id']])}}"title="{{translate('messages.edit')}} Salary"><i class="tio-edit"></i>
-                                        </a>
-                                        <a style="min-width:50px;" class="btn  btn--danger btn-outline-danger"
-                                            href="{{ route('admin.users.salary.delete', [$lead->id]) }}"
-                                            title="{{ translate('messages.delete') }} Salary"><i
-                                                class="tio-delete-outlined"></i>
-                                        </a>
-                                   
-                                    </div>
-                                </td>
+                                <th class="border-0">{{ translate('sl') }}</th>
+                                <th class="border-0">Employee</th>
+                                <th class="border-0">Base Salary</th>
+                                <th class="border-0">Salary Type</th>
+                                <th class="border-0">Payable Salary</th>
+                                <th class="border-0">Bonus</th>
+                                <th class="border-0">Allowance</th>
+                                <th class="border-0">Deductions</th>
+                                <th class="border-0">Advance Pay Deductions</th>
+                                <th class="border-0">Payable Total</th>
+                                <th class="border-0">Pay Status</th>
+                                <th class="text-center border-0">{{ translate('messages.action') }}</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @if (count($salary))
-                    <hr>
-                @else
-                    <div class="page-area">
-                    </div>
-                    <div class="empty--data">
-                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                        <h5>
-                            {{ translate('no_data_found') }}
-                        </h5>
-                    </div>
-                @endif
-            </div>
-            <!-- End Table -->
+                        </thead>
+
+                        <tbody id="set-rows">
+                            @foreach ($salary as $key => $lead)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>
+                                        <div>
+                                            @php
+                                            $empInfo = _getWhereOne('admins', [
+                                                                                                'id' => $lead->ven_id,
+                                                                                    ]); @endphp 
+                                            <a href="{{ hasPermission('staff_manage', 'view') ? route('admin.employee.view', [$empInfo?->id]) : '#' }}"
+                                                class="table-rest-info" alt="view employee">
+
+                                                @php
+
+                                                    if (isset($empInfo)) {
+                                                        echo $empInfo->f_name . ' ' . $empInfo->l_name;
+                                                } @endphp
+
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if ($empInfo->salary_type == 'Task-Wise')
+                                            -
+                                        @else
+                                            {{ _price($lead->base_salary ?? $empInfo->base_salary) }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $empInfo->salary_type }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->payable_salary) }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->bonus_incentives) }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->allowance_amount) }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->deductions) }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->advance_payment_deductions) }}
+                                    </td>
+                                    <td>
+                                        {{ _price($lead->total_payable) }}
+                                    </td>
+                                    <td>
+                                        @if ($lead->pay_status == 'paid')
+                                            <span class="badge badge-soft-success">Paid
+                                            </span>
+                                        @else
+                                            <span class="badge badge-soft-danger">Unpaid
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td>
+                                        <div class="btn--container justify-content-center">
+                                            @if ($selectedMonth !== $currentMonth)
+                                                <a class="btn action-btn btn--primary btn-outline-primary"
+                                                    href="{{ route('admin.salary.edit', [$lead->ven_id]) }}?month={{ $month_year ?? date('Y-m') }}"title="{{ translate('messages.edit') }} Salary"><i
+                                                        class="tio-edit"></i>
+                                                </a>
+                                            @endif
+
+                                            @if (hasPermission('salary_manage', 'mark_paid') && $lead->id && $lead->pay_status != 'paid')
+                                                <a data-toggle="modal" data-target="#markPaidModal{{ $key }}"
+                                                    style="min-width:fit-content; padding:0px 5px;"
+                                                    class="btn action-btn btn--primary btn-outline-primary" type="button"
+                                                    title="Pay Salary">Mark Paid
+                                                </a>
+                                                <div class="modal fade" id="markPaidModal{{ $key }}"
+                                                    tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title" id="exampleModalLabel">Document
+                                                                    Upload
+                                                                    (Optional)
+                                                                </h5>
+                                                                <button type="button" class="close" data-dismiss="modal"
+                                                                    aria-label="Close">
+                                                                    <span aria-hidden="true">&times;</span>
+                                                                </button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form enctype="multipart/form-data"
+                                                                    action="{{ route('admin.salary.pay') }}"
+                                                                    method="post">
+                                                                    @csrf
+                                                                    <input type="hidden" value="{{ $lead->id }}"
+                                                                        name="salary_id">
+                                                                    <label for="">Document (Optional)</label>
+                                                                    <input type="file" name="file" id=""
+                                                                        class="form-control">
+                                                                    <button
+                                                                        class="btn btn-primary float-right">Proceed</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @elseif(hasPermission('salary_manage', 'view_document') && $lead->pay_reciept)
+                                                <a target="_blank" style="min-width:fit-content; padding:0px 5px;"
+                                                    class="btn btn-outline-warning action-btn"
+                                                    href="{{ asset('storage/app/public/vendor/documents/') . '/' . $lead->pay_reciept }}">View
+                                                    Documemt</a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @if (count($salary))
+                        <hr>
+                    @else
+                        <div class="page-area">
+                        </div>
+                        <div class="empty--data">
+                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
+                            <h5>
+                                {{ translate('no_data_found') }}
+                            </h5>
+                        </div>
+                    @endif
+                </div>
+                <!-- End Table -->
+            @endif
         </div>
         <!-- End Card -->
     </div>

@@ -153,7 +153,7 @@
                 {{ $bill_from['cin_number'] ? 'CIN No: ' . $bill_from['cin_number'] : '' }}
             </td> --}}
             <td style="width: 70%;">
-                <h2>{{ $bill_to['name'] }}</h2><br>
+                <h2>{{ $bill_to['name'] ?? $bill_to['full_name'] }}</h2><br>
                 {{ $bill_to['address'] }}<br>
                 @if ($bill_data['tax_type'] != 'non-gst')
                     PAN NO:
@@ -163,15 +163,21 @@
                     {{ ($gst = json_decode($bill_to['gst'], true)) && isset($gst['code']) ? $gst['code'] : $bill_to['gst'] }}<br>
                 @endif
 
-                {{ $bill_to['cin_number'] ? 'CIN No: ' . $bill_to['cin_number'] : '' }}
+                {{ $bill_to['cin_number'] ?? null ? 'CIN No: ' . $bill_to['cin_number'] : '' }}
             </td>
             <td style="width: 30%; text-align: right;">
                 @php  $store_logo = $bill_to['logo']; @endphp
-                <img width="100" class=""
-                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                    alt="Logo">
-
+                @if (auth('admin')->check())
+                    <img width="100" class=""
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'business/') }}"
+                        alt="Logo">
+                @else
+                    <img width="100" class=""
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/store/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+                        alt="Logo">
+                @endif
             </td>
         </tr>
     </table>
@@ -208,7 +214,7 @@
                 </td>
                 <td style="width: 33.33%; vertical-align: top;">
                     <strong>Ship to :</strong><br><br>
-                    <h4> {{ $bill_to['name'] }}</h4>
+                    <h4> {{ $bill_to['name'] ?? $bill_to['full_name'] }}</h4>
                     {{ $bill_to['address'] }}<br>
                     {!! $shipping_address->email ? 'Email: ' . $shipping_address->email . '<br>' : '' !!}
                     Ph NO: {{ $shipping_address->contact_person_number }}<br>
@@ -351,7 +357,7 @@
     <table style="border: 1px dotted #999; border-collapse: collapse; width: 100%;  font-size: 10px; margin-top: 20px; "
         class="bottomo_sec">
         @php
-            $totalAmt = round($bill_data['total_amount'],3); // keep two decimals as float
+            $totalAmt = round($bill_data['total_amount'], 3); // keep two decimals as float
             $totalAmountRO = round($bill_data['total_amount']); // round to nearest integer
             $roundOff = number_format($totalAmt - $totalAmountRO, 3); // proper round off difference
         @endphp
@@ -466,7 +472,7 @@
                     <tr>
                         <td class="borderless_td" style="text-align: right; font-size:12px;"><b>Grand Total:</b></td>
                         <td class="borderless_td" style="text-align: right; font-size:12px;">
-                            <b>{{ \App\CentralLogics\Helpers::currency_symbol() . number_format($totalAmountRO,3) }}</b>
+                            <b>{{ \App\CentralLogics\Helpers::currency_symbol() . number_format($totalAmountRO, 3) }}</b>
                         </td>
                     </tr>
 

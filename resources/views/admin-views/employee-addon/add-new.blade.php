@@ -6,7 +6,7 @@
 
 @section('content')
     <div class="content container-fluid">
-        <!-- Page Heading -->
+        <!-- Page Heading --> 
         <div class="page-header">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
@@ -16,7 +16,7 @@
                     Add New Staff
                 </span>
             </h1>
-        </div>
+        </div> 
 
         <!-- Content Row -->
 
@@ -74,10 +74,21 @@
                                     </select>
                             </div>
                             
-                            
-                            
-                            
-                            
+
+                            <div class="form-group">
+                                <label class="input-label text-capitalize" for="salary_type">Salary Type</label>
+                                <select name="salary_type" id="salary_type" class="form-control">
+                                    <option value="">Select</option>
+                                    <option value="Monthly" {{ old('salary_type') == 'Monthly' ? 'selected' : '' }}>Monthly</option>
+                                    <option value="Hourly" {{ old('salary_type') == 'Hourly' ? 'selected' : '' }}>Hourly</option>
+                                    <option value="Task-Wise" {{ old('salary_type') == 'Task-Wise' ? 'selected' : '' }}>Task-Wise</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="base_salary_group">
+                                <label class="input-label text-capitalize" for="base_salary">Base Salary</label>
+                                <input type="number" name="base_salary" placeholder="Ex : 42000" step="0.01"
+                                    value="{{ old('base_salary') }}" class="form-control" id="base_salary">
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <div class="card h-100">
@@ -199,8 +210,14 @@
             $('#viewer').attr('src', '{{ asset('public/assets/admin/img/160x160/img1.jpg') }}');
         })
         $("#customFileUpload").change(function () {
-    readURL(this, 'viewer');
-});
-
+            readURL(this, 'viewer');
+        });
+        $('#salary_type').on('change', function() {
+            if ($(this).val() == 'Task-Wise') {
+                $('#base_salary_group').hide();
+            } else {
+                $('#base_salary_group').show();
+            }
+        }).trigger('change');
     </script>
 @endpush

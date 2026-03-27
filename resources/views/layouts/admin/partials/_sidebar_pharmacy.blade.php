@@ -14,9 +14,9 @@
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
                         src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_logo, asset('storage/app/public/business/') . '/' . $store_logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'business/') }}"
                         alt="Logo">
-                </a>
+                </a> 
                 <!-- End Logo -->
-
+ 
                 <!-- Navbar Vertical Toggle -->
                 <button type="button"
                     class="js-navbar-vertical-aside-toggle-invoker navbar-vertical-aside-toggle btn btn-icon btn-xs btn-ghost-dark">
@@ -45,6 +45,7 @@
                         <small class="nav-subtitle" title="{{ translate('Agents') }}">Agents</small>
                     </li>
                     <!-- Agent Design -->
+                    @if(hasPermission('ai_agent', 'list'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('/') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('admin.dashboard') }}?module_id={{ Config::get('module.current_module_id') }}"
@@ -55,12 +56,14 @@
                             </span>
                         </a>
                     </li>
-                    <!-- Analyzing Tools --> 
+                    @endif
+                    <!-- Analyzing Tools -->
 
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('Analyzing Tools') }}">Analyzing Tools</small>
                     </li>
 
+                    @if(hasPermission('ai_chat', 'view'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat') && !Request::is('admin/ai-chat/logs*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -71,6 +74,8 @@
                             </span>
                         </a>
                     </li>
+                    @endif
+                    @if(hasPermission('ai_chat', 'logs'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat/logs*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -81,6 +86,8 @@
                             </span>
                         </a>
                     </li>
+                    @endif
+                    @if(hasPermission('ai_chat', 'analytics'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('admin/ai-chat/analytics*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -91,6 +98,7 @@
                             </span>
                         </a>
                     </li>
+                    @endif
  
                     <li class="__sidebar-hs-unfold px-2" id="tourb-9">
                         <div class="hs-unfold w-100">

@@ -25,23 +25,26 @@
                             >
                             @csrf
                             <div class="row g-3">
-                                <div class="col-lg-6">
+                                <div class="col-lg-8 row">
+
                                     @if($language)
-                                        <ul class="nav nav-tabs mb-4">
-                                            <li class="nav-item">
-                                                <a class="nav-link lang_link active"
-                                                href="#"
-                                                id="default-link">{{translate('messages.default')}}</a>
-                                            </li>
-                                            @foreach ($language as $lang)
+                                        <div class="col-md-12">
+                                            <ul class="nav nav-tabs mb-4">
                                                 <li class="nav-item">
-                                                    <a class="nav-link lang_link"
-                                                        href="#"
-                                                        id="{{ $lang }}-link">{{ \App\CentralLogics\Helpers::get_language_name($lang) . '(' . strtoupper($lang) . ')' }}</a>
+                                                    <a class="nav-link lang_link active"
+                                                    href="#"
+                                                    id="default-link">{{translate('messages.default')}}</a>
                                                 </li>
-                                            @endforeach
-                                        </ul>
-                                        <div class="lang_form" id="default-form">
+                                                @foreach ($language as $lang)
+                                                    <li class="nav-item">
+                                                        <a class="nav-link lang_link"
+                                                            href="#"
+                                                            id="{{ $lang }}-link">{{ \App\CentralLogics\Helpers::get_language_name($lang) . '(' . strtoupper($lang) . ')' }}</a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                        <div class="lang_form col-md-6" id="default-form">
                                             <div class="form-group">
                                                 <label class="input-label" for="default_title">{{translate('messages.title')}} ({{translate('messages.default')}})</label>
                                                 <input type="text" name="title[]" id="default_title" class="form-control" placeholder="{{translate('messages.new_banner')}}" value="{{$banner?->getRawOriginal('title')}}">
@@ -60,7 +63,7 @@
                                                     }
                                                 }
                                             ?>
-                                            <div class="d-none lang_form" id="{{$lang}}-form">
+                                            <div class="d-none lang_form col-md-6" id="{{$lang}}-form">
                                                 <div class="form-group">
                                                     <label class="input-label" for="{{$lang}}_title">{{translate('messages.title')}} ({{strtoupper($lang)}})</label>
                                                     <input type="text" name="title[]" id="{{$lang}}_title" class="form-control" placeholder="{{translate('messages.new_banner')}}" value="{{$translate[$lang]['title']??''}}">
@@ -69,7 +72,7 @@
                                             </div>
                                         @endforeach
                                     @else
-                                    <div id="default-form">
+                                    <div id="default-form" class="col-md-6">
                                         <div class="form-group">
                                             <label class="input-label" for="exampleFormControlInput1">{{translate('messages.title')}} ({{ translate('messages.default') }})</label>
                                             <input type="text" name="title[]" class="form-control" placeholder="{{translate('messages.new_banner')}}" value="{{$banner['title']}}" maxlength="100">
@@ -77,10 +80,11 @@
                                         <input type="hidden" name="lang[]" value="default">
                                     </div>
                                     @endif
-                                    <div class="form-group">
+
+                                    <div class="form-group col-md-6">
                                         <label class="input-label" for="title">City</label>
                                         <select name="zone_id" id="zone" class="form-control js-select2-custom">
-                                            <option  disabled selected>---{{translate('messages.select')}}---</option>
+                                            <option disabled selected>---{{translate('messages.select')}}---</option>
                                             @foreach($zones as $zone)
                                                 @if(isset(auth('admin')->user()->zone_id))
                                                     @if(auth('admin')->user()->zone_id == $zone->id)
@@ -92,7 +96,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group col-md-6">
                                         <label class="input-label">Platform</label>
                                         <select name="platform" id="platform" class="form-control">
                                             <option value="all" {{ ($banner->platform ?? 'all') == 'all' ? 'selected' : '' }}>All</option>
@@ -100,18 +104,21 @@
                                             <option value="web" {{ $banner->platform == 'web' ? 'selected' : '' }}>Web</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group col-md-6">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.banner_type')}}</label>
                                         <select name="banner_type" id="banner_type" class="form-control">
                                             <option value="store_wise" {{$banner->type == 'store_wise'? 'selected':'' }}>{{translate('messages.store_wise')}}</option>
                                             <option value="item_wise" {{$banner->type == 'item_wise'? 'selected':'' }}>{{translate('messages.item_wise')}}</option>
+                                            <option value="module_wise" {{$banner->type == 'module_wise'? 'selected':'' }}>{{translate('messages.module_wise')}}</option>
+                                            <option value="category_wise" {{$banner->type == 'category_wise'? 'selected':'' }}>{{translate('messages.category_wise')}}</option>
                                             <option value="default" {{$banner->type == 'default'? 'selected':'' }}>{{translate('messages.default')}}</option>
+                                            <option value="self" {{$banner->type == 'self'? 'selected':'' }}>Self Banner</option>
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="store_wise">
+                                    <div class="form-group col-md-6" id="store_wise">
                                         <label class="input-label" for="exampleFormControlSelect1">{{translate('messages.store')}}<span
                                                 class="input-label-secondary"></span></label>
-                                        <select name="store_id" id="store_id" class="js-data-example-ajax" id="resturant_ids"  title="Select Restaurant">
+                                        <select name="store_id" id="store_id" class="js-data-example-ajax form-control" title="{{translate('messages.select_store')}}">
                                         @if($banner->type=='store_wise')
                                         @php($store = \App\Models\Store::where('id', $banner->data)->first())
                                             @if($store)
@@ -120,24 +127,70 @@
                                         @endif
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="item_wise">
+                                    <div class="form-group col-md-6" id="item_wise">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_item')}}</label>
                                         <select name="item_id" id="choice_item" class="form-control js-select2-custom" placeholder="{{translate('messages.select_item')}}">
 
                                         </select>
                                     </div>
-                                    <div class="form-group mb-0" id="default">
-                                        <label class="input-label" for="exampleFormControlInput1">{{translate('messages.default_link')}}</label>
+                                    <div class="form-group col-md-6" id="module_wise">
+                                        <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_module')}}</label>
+                                        <select name="module_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_module')}}">
+                                            <option value="6" {{ $banner->data == 6 && $banner->type == 'module_wise' ? 'selected' : '' }}>MY CITY</option>
+                                            <option value="5" {{ $banner->data == 5 && $banner->type == 'module_wise' ? 'selected' : '' }}>SHOPPING</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6 paid_field" style="display: none;" id="customer_wise">
+                                        <label class="input-label" for="exampleFormControlInput1">{{translate('messages.bill_to')}}</label>
+                                        <select name="user_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_user')}}">
+                                            <option value=""></option>
+                                            @foreach($users as $u)
+                                            <option value="{{$u->id}}">{{$u->phone . ' | ' . $u->f_name. ' ' . $u->l_name}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6 paid_field">
+                                        <label class="input-label" for="exampleFormControlInput1">Price</label>
+                                        <input name="price" type="number" class="form-control" placeholder="Price" value="{{ $banner->price ?? '' }}">
+                                    </div>
+                                    <div class="form-group col-md-6 paid_field">
+                                        <label class="input-label" for="exampleFormControlInput1">Validity</label>
+                                        <div class="row px-3">
+                                            <input name="validity_count" type="number" class="form-control col-6" placeholder="Validity" value="{{ $banner->validity_count ?? '' }}">
+                                            <select name="validity_type" class="form-control col-6">
+                                                <option value="Days" {{ ($banner->validity_type ?? '') == 'Days' ? 'selected' : '' }}>Days</option>
+                                                <option value="Months" {{ ($banner->validity_type ?? '') == 'Months' ? 'selected' : '' }}>Months</option>
+                                                <option value="Years" {{ ($banner->validity_type ?? '') == 'Years' ? 'selected' : '' }}>Years</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-6 paid_field">
+                                        <label class="input-label" for="exampleFormControlInput1">GST</label>
+                                        <div class="row px-3">
+                                            <input name="gst_percent" type="text" class="form-control col-6" placeholder="GST %" value="{{ $banner->gst_percent ?? '' }}">
+                                            <input name="hsn" type="text" class="form-control col-6" placeholder="HSN" value="{{ $banner->hsn ?? '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-6" id="category_wise">
+                                        <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_category')}}</label>
+                                        <select name="category_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_category')}}">
+                                            @foreach($categories as $cat)
+                                            <option value="{{$cat->id}}" {{ $banner->data == $cat->id && $banner->type == 'category_wise' ? 'selected' : '' }}>{{$cat->name}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label" for="exampleFormControlInput1">{{translate('messages.default_link')}} ({{ translate('messages.optional') }})</label>
                                         <input type="text" name="default_link" class="form-control" value="{{ $banner->default_link }}" placeholder="{{translate('messages.default_link')}}">
                                     </div>
                                 </div>
-                                <div class="col-lg-6">
+                                <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">
-                                        <label class="mt-auto mb-0 d-block text-center">
+                                        <label class="mb-0 d-block text-center">
                                             {{translate('messages.banner_image')}}
                                             <small class="text-danger">* ( {{translate('messages.ratio')}} <span id="ratio_hint">{{ $banner->platform == 'app' ? '12:5' : '3:1' }}</span> )</small>
                                         </label>
-                                        <div class="text-center py-3 my-auto">
+                                        <div class="text-center py-3">
                                             <img class="img--vertical onerror-image" id="viewer" data-onerror-image="{{asset('public/assets/admin/img/900x400/img1.jpg')}}" src="{{\App\CentralLogics\Helpers::onerror_image_helper($banner['image'], asset('storage/app/public/banner/').'/'.$banner['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'banner/') }}"
                                             alt="banner image"/>
                                         </div>
@@ -182,9 +235,13 @@
 
         var module_id = {{$banner->module_id}};
 
-        function get_items()
+         function get_items()
         {
+            @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
+            var nurl = '{{url('/')}}/admin/item/get-items?module_id='+module_id;
+            @else
             var nurl = '{{url('/')}}/item/get-items?module_id='+module_id;
+            @endif
 
             if(!Array.isArray(zone_id))
             {
@@ -201,6 +258,7 @@
         }
         $(document).on('ready', function () {
             banner_type_change('{{$banner->type}}');
+            get_items();
 
             $('#zone').on('change', function(){
                 if($(this).val())
@@ -215,6 +273,7 @@
             });
 
             $('.js-data-example-ajax').select2({
+                minimumInputLength: 2,
                 ajax: {
                     url: '{{url('/')}}/store/get-stores',
                     data: function (params) {

@@ -37,10 +37,13 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Lcobucci\JWT\Token\DataSet;
+use App\Models\StoreSignature;
+use App\Models\AccountDetail;
+use App\Models\StoreConfig; 
 
 class BusinessSettingsController extends Controller
 {
-    use Processor;
+    use Processor; 
 
     public function business_index(Request $request, $tab = 'business')
     {
@@ -96,6 +99,35 @@ class BusinessSettingsController extends Controller
         } else if ($tab == 'disbursement') {
             return view('admin-views.business-settings.disbursement-index');
         }
+    }
+       public function config_save(Request $request)
+    {
+        $storeId = 0;
+        $allowed = [
+            'quotation_footer_line',
+            'jrsdctn_quote_status',
+            'jrsdctn_quote_statement',
+            'jurisdiction_statement_status',
+            'returnable_rr_tnc',
+            'non_returnable_rr_tnc',
+            'returnable_rr_tnc_content',
+            'non_returnable_rr_tnc_content',
+            'reminder_day_before',
+        ];
+
+        $data = $request->only($allowed);
+
+        if (!empty($data)) {
+            StoreConfig::updateOrCreate(
+                ['store_id' => 0],
+                $data
+            );
+            Toastr::success('Updated Successfully');
+        } else {
+            Toastr::info('No fields to update');
+        }
+
+        return back();
     }
     public function vendor_modules(Request $request)
     {
@@ -2791,10 +2823,6 @@ class BusinessSettingsController extends Controller
     }
 
 
-    public function delete_account(Request $request)
-    {
-        prx($request->all());
-    }
     public function site_direction(Request $request)
     {
         if (env('APP_MODE') == 'demo') {
@@ -6791,7 +6819,191 @@ class BusinessSettingsController extends Controller
 
             $data->delete();
         }
-
         return true;
+    }
+
+    public function signature_delete(Request $request, $id)
+    {
+        StoreSignature::find($id)->delete();
+        Toastr::success('Deleted Successfully');
+        return back();
+    }
+    public function signature_fetch(Request $request)
+    {
+        $sign = StoreSignature::find($request->id);
+        return $sign ? asset('storage/app/public/store/signature/') . '/' .  $sign->image : '';
+    }
+    public function signature_save(Request $request)
+    {
+        $request->validate([
+            'image' => 'required',
+            'staff' => 'required',
+        ]);
+
+        $sign = new StoreSignature();
+        $sign->staff_id = $request->staff;
+        $sign->type = $request->type;
+        $sign->store_id = 0;
+        $sign->image = Helpers::upload('store/signature/', 'png', $request->file('image'));
+        $sign->save();
+        if ($request->form_type == 'ajax') {
+            return response()->json(['status' => true, 'msg' => "Added  Successfully", 'action' => 'add_sign']);
+        } else {
+            Toastr::success('Signature Saved Successfully');
+            return back();
+        }
+    }
+    public function new_bank_account(Request $request)
+    {
+        $type = $request->input('type', 'invoice');
+        $paymentType = $type === 'pos' ? $request->input('payment_type', 'bank') : 'bank';
+
+        $rules = [
+            'type' => 'nullable|string|in:invoice,quotation,pos',
+            'payment_type' => 'nullable|string|in:bank,upi',
+            'upi_id' => 'nullable|string|max:255',
+        ];
+
+        if ($paymentType === 'upi') {
+            $rules['upi_id'] = 'required|string|max:255';
+        } else {
+            $rules['bank_name'] = 'required|string|max:255';
+            $rules['account_holder_name'] = 'required|string|max:255';
+            $rules['account_number'] = 'required|string|max:255';
+            $rules['ifsc_code'] = 'required|string|max:255';
+        }
+
+        $request->validate($rules);
+
+        $account = new AccountDetail();
+        $account->user_type = 'vendor';
+        $account->type =  $type;
+        $account->user_id =  0;
+        $account->payment_type = $paymentType;
+        $account->account_holder_name = $paymentType === 'bank' ? $request->account_holder_name : null;
+        $account->account_number = $paymentType === 'bank' ? $request->account_number : null;
+        $account->bank_name = $paymentType === 'bank' ? $request->bank_name : null;
+        $account->ifsc_code  = $paymentType === 'bank' ? $request->ifsc_code : null;
+        $account->upi_id = $request->filled('upi_id') ? $request->upi_id : null;
+        if ($request->hasFile('upi_qr_code')) {
+            $account->upi_qr_code = Helpers::upload('store/documents/', 'png', $request->file('upi_qr_code'));
+        }
+        $account->save();
+        if ($request->form_type == 'ajax') {
+            return response()->json(['status' => true, 'msg' => "Added  Successfully", 'action' => 'add_bankaccount']);
+        } else {
+            Toastr::success('Added Successfully');
+            return back();
+        }
+    }
+    public function delete_account(Request $request)
+    {
+        AccountDetail::find($request->id)->delete();
+        Toastr::success('Deleted Successfully');
+        return back();
+    }
+    public function tnc_save(Request $request)
+    {
+        $tnc = new StoreTnc();
+        $tnc->store_id = 0;
+        $tnc->tnc_for = $request->for;
+        $tnc->content = $request->tnc_content;
+        $tnc->tnc_type = $request->tnc_type;
+        $tnc->save();
+
+        Toastr::success('Added Successfully');
+        return redirect()->back();
+    }
+    public function tnc_fetch(Request $request, $id)
+    {
+        $content = StoreTnc::find($id)?->content;
+        return $content;
+    }
+    public function tnc_delete(Request $request, $id)
+    {
+        StoreTnc::find($id)->delete();
+        Toastr::success('Deleted Successfully');
+        return back();
+    }
+    public function tnc_update(Request $request)
+    {
+        $tnc =  StoreTnc::find($request->tnc_id);
+        $tnc->tnc_for = $request->for;
+        $tnc->content = $request->tnc_content;
+        $tnc->save();
+
+        Toastr::success('Updated Successfully');
+        return redirect()->back();
+    }
+    public function terms_and_conditions_save(Request $request)
+    {
+        $storeId = 0;
+
+        // invoice settings update ==========================
+        $data = [
+            'invoice_footer_line'     => $request->invoice_footer_line ?? 0,
+            'jurisdiction_statement'  => $request->jurisdiction_statement,
+        ];
+
+        if ($request->hasFile('image')) {
+            $data['signature'] = Helpers::upload('store/signature/', 'png', $request->file('image'));
+        }
+        $store = \App\Models\Store::with('storeConfig')->where('id', $storeId)->first();
+        if($store) {
+            $store->update($data);
+    
+            $invoice_status = $request->invoice_sign_status ?? 0;
+            $jurisdiction_statement_status = $request->jurisdiction_statement_status ?? 0;
+            $tnc_invoice_status = $request->tnc_invoice_status ?? 0;
+            $tnc_quotation_status = $request->tnc_quotation_status ?? 0;
+            $jurisdiction_statement_status = $request->jurisdiction_statement_status ?? 0;
+            $bank_details_status = $request->bank_details_status ?? 0;
+    
+            $store->storeConfig()->updateOrCreate(
+                ['store_id' => $store->id],
+                [
+                    'invoice_sign_status' => $invoice_status,
+                    'jurisdiction_statement_status' => $jurisdiction_statement_status,
+                    'tnc_invoice_status' => $tnc_invoice_status,
+                    'tnc_quotation_status' => $tnc_quotation_status,
+                    'bank_details_status' => $bank_details_status,
+                ],
+            );
+        }
+
+        // terms and conditions update  ==========================
+        $types = [
+            'for_customer' => $request->content,
+            'for_quotation' => $request->content2,
+        ];
+
+        foreach ($types as $type => $content) {
+            $data = [
+                'vendor_id' => $storeId,
+                'type' => $type,
+                'terms_n_conditons' => $content,
+                'updated_at' => now(),
+            ];
+
+            $exists = DB::table('vendor_terms_conditions')
+                ->where('vendor_id', $storeId)
+                ->where('type', $type)
+                ->exists();
+
+            if ($exists) {
+                DB::table('vendor_terms_conditions')
+                    ->where('vendor_id', $storeId)
+                    ->where('type', $type)
+                    ->update($data);
+            } else {
+                $data['created_at'] = now();
+                DB::table('vendor_terms_conditions')->insert($data);
+            }
+        }
+        // terms and conditions update  end==========================
+
+
+        Toastr::success('Saved Successfully');
+        return back();
     }
 }

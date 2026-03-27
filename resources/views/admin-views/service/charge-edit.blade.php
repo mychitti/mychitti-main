@@ -11,7 +11,7 @@
     </style> 
 @endpush
  
-@section('content') 
+@section('content')  
         <div class="content container-fluid">
             <!-- Page Header -->
             <div class="page-header">
@@ -72,7 +72,7 @@
                                     <small class="text-muted d-block mb-3">Charged to vendor when they accept a lead</small>
 
                                     <div class="p-3 bg-light rounded mb-3">
-                                        <h6 class="text-muted mb-2">When more than <span class="badge badge-warning ven_count">{{ $charges->vendor_count}}</span> vendors available in this zone & category</h6>
+                                        {{-- <h6 class="text-muted mb-2">When more than <span class="badge badge-warning ven_count">{{ $charges->vendor_count}}</span> vendors available in this zone & category</h6> --}}
                                         <div class="row">
                                             <div class="col-3">
                                                 <label>1st Vendor <span class="text-danger">*</span></label>
@@ -93,7 +93,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="p-3 bg-light rounded">
+                                    {{-- <div class="p-3 bg-light rounded">
                                         <h6 class="text-muted mb-2">When <span class="badge badge-warning ven_count">{{ $charges->vendor_count}}</span> or fewer vendors available</h6>
                                         <div class="row">
                                             <div class="col-3">
@@ -105,17 +105,33 @@
                                                 <input type="number" value="{{ $charges->vendor_count}}" id="vendor_count" name="vendor_count" required placeholder="Count" class="form-control">
                                             </div>
                                         </div>
+                                    </div> --}}
+                                </div>
+
+                                <hr>
+
+                                <!-- 2. Dedicated Lead Charges -->
+                                <div class="mb-4">
+                                    <div class="p-3 bg-light rounded">
+                                        <h5 class="mb-1"><span class="badge badge-soft-warning mr-1">2</span> Dedicated Lead Acceptance Charges</h5>
+                                        <small class="text-muted d-block mb-3">Charged when vendor accepts a lead that came through their store page (dedicated lead)</small>
+                                        <div class="row">
+                                            <div class="col-3">
+                                                <label>Amount <span class="text-danger">*</span></label>
+                                                <input type="number" value="{{$charges->dedicated_lead_charge ?? 0}}" name="dedicated_lead_charge" required placeholder="Amount" class="form-control">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <hr>
 
-                                <!-- 2. Confirmation & Completion Charges -->
+                                <!-- 3. Confirmation & Completion Charges -->
                                 <div class="mb-4">
                                     <div class="row">
                                         <div class="col-6">
                                             <div class="p-3 bg-light rounded h-100">
-                                                <h5 class="mb-1"><span class="badge badge-soft-success mr-1">2</span> Confirmation Charges</h5>
+                                                <h5 class="mb-1"><span class="badge badge-soft-success mr-1">3</span> Confirmation Charges</h5>
                                                 <small class="text-muted d-block mb-3">Charged when user confirms the lead after vendor acceptance</small>
                                                 <div class="row">
                                                     <div class="col-6">
@@ -127,7 +143,7 @@
                                         </div>
                                         <div class="col-6">
                                             <div class="p-3 bg-light rounded h-100">
-                                                <h5 class="mb-1"><span class="badge badge-soft-info mr-1">3</span> Completion Charges</h5>
+                                                <h5 class="mb-1"><span class="badge badge-soft-info mr-1">4</span> Completion Charges</h5>
                                                 <small class="text-muted d-block mb-3">Charged when the lead is marked as completed</small>
                                                 <div class="row">
                                                     <div class="col-6">
