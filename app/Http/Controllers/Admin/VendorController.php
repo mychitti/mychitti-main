@@ -10,7 +10,7 @@ use App\Models\AddOn;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\Module;
-use App\Models\Vendor;
+use App\Models\Vendor; 
 use App\Models\Message;
 use App\Models\UserInfo;
 use App\Scopes\StoreScope;
@@ -720,6 +720,32 @@ class VendorController extends Controller
         }
 
         if ($request->billing) {
+            // Apply GST settings from data_settings
+            $gstSettings = _planGstSettings();
+            $gstPercent = floatval($gstSettings['gst_percent'] ?? 0);
+            $gstMode = $gstSettings['gst_mode'] ?? 'exclude';
+            $hsnCode = $gstSettings['hsn'] ?? ''; 
+
+            $taxableAmount = $invoiceTotalAmount;
+            $gstAmount = 0;
+
+            if ($gstPercent > 0) { 
+                if ($gstMode === 'exclude') {
+                    $gstAmount = ($taxableAmount * $gstPercent) / 100;
+                } else {
+                    // GST inclusive: extract tax from total
+                    $gstAmount = $taxableAmount - ($taxableAmount * 100) / (100 + $gstPercent);
+                    $taxableAmount = $invoiceTotalAmount - $gstAmount;
+                }
+            }
+
+            // Update invoice items with HSN and tax
+            foreach ($invoice_items as &$invItem) {
+                $invItem['hsn'] = $hsnCode;
+                $invItem['tax'] = $gstPercent;
+            }
+            unset($invItem);
+
             $zone_name = 'Tirupati';
             $zone_id  =  21;
             $zone = Zone::find($zone_id);
@@ -727,7 +753,9 @@ class VendorController extends Controller
                 $zone_name = $zone->name;
             }
 
-            // create bill 
+            $grandTotalWithGst = ($gstMode === 'exclude') ? $invoiceTotalAmount + $gstAmount : $invoiceTotalAmount;
+
+            // create bill
             $invoice = new ManualInvoice();
             $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
             $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
@@ -735,14 +763,14 @@ class VendorController extends Controller
             $invoice->bill_to =  $request->store_id;
             $invoice->bill_to_type = 'vendor';
             $invoice->module_id =  6;
-            $invoice->total_amount =  $invoiceTotalAmount;
+            $invoice->total_amount =  $grandTotalWithGst;
             $invoice->payment_method = 'Online';
             $invoice->payment_mode = 'Online';
             $invoice->tax_type =  'gst';
-            $invoice->payment_status =  'Unpaid';
+            $invoice->payment_status =  'Paid';
             $invoice->reminder_date = null;
             $invoice->payment_date =  date('Y-m-d');
-            $invoice->generated_by =  'admin'; 
+            $invoice->generated_by =  'admin';
             $invoice->save();
 
             // ledger entry 
@@ -757,7 +785,7 @@ class VendorController extends Controller
                 'voucher_type' => 'Purchase',
                 'status' => 'approved',
             ];
-            $voucher = _masterLedgerEntry($data, $credit_account, $debit_account, 'store', 'admin', null);
+            $voucher = _masterLedgerEntry($data, $credit_account, $debit_account, 'admin', 'admin', null);
             if ($invoice->payment_status == 'Paid') {
                 _saveDayBookEntry($invoice->total_amount, 'debit', $request->store_id, "Module Purchase", $invoice->id, $voucher?->id);
             }
@@ -1055,7 +1083,7 @@ class VendorController extends Controller
             'l_name' => 'nullable|max:100',
             'name' => 'required|max:191',
             // 'email' => 'required|unique:vendors,email,' . $vendorId,
-            'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20|unique:vendors,phone,' . $vendorId,
+            'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20|unique:vendors,phone,' . $vendorId . '|unique:stores,phone,' . $store->id,
             'zone_id' => 'required',
             'latitude' => 'required',
             'longitude' => 'required',
@@ -2239,6 +2267,46 @@ class VendorController extends Controller
     }
 
 
+    public function removal_requests(Request $request)
+    {
+        $status = $request->query('status', 'pending');
+        $requests = DB::table('store_removal_requests')
+            ->join('stores', 'stores.id', '=', 'store_removal_requests.store_id')
+            ->select('store_removal_requests.*', 'stores.name as store_name', 'stores.phone as store_phone')
+            ->when($status !== 'all', function ($query) use ($status) {
+                return $query->where('store_removal_requests.status', $status);
+            })
+            ->orderByDesc('store_removal_requests.created_at')
+            ->paginate(config('default_pagination'));
+        return view('admin-views.vendor.removal-requests', compact('requests', 'status'));
+    }
+
+    public function removal_request_action(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:approved,rejected',
+            'admin_remarks' => 'nullable|string|max:1000',
+        ]);
+
+        DB::table('store_removal_requests')->where('id', $id)->update([
+            'status' => $request->status,
+            'admin_remarks' => $request->admin_remarks,
+        ]);
+
+        if ($request->status === 'approved') { 
+            $removal = DB::table('store_removal_requests')->where('id', $id)->first();
+            if ($removal) {
+                $store = Store::find($removal->store_id);
+                if ($store) {
+                    $store->update(['status' => 0]);
+                    Vendor::where('id', $store->vendor_id)->update(['status' => 0]);
+                }
+            }  
+        }
+
+        return back()->with('success', 'Request ' . $request->status . ' successfully.');
+    }
+
     public function export(Request $request)
     {
 
@@ -2595,16 +2663,18 @@ class VendorController extends Controller
         // $buyplan =   $this->buyPlan($store->id, 6);
         // echo 'plan purchase';
         try {
-            if ($request->status == 1) {
-                $mail_status = Helpers::get_mail_status('approve_mail_status_store');
+            if ($request->status == 1) { 
+                // $mail_status = Helpers::get_mail_status('approve_mail_status_store'); 
+                $mail_status = 1; 
                 if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('approved', $store->vendor->f_name . ' ' . $store->vendor->l_name));
+                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('approved', $store->name));
                 }
-            } else {
-                $mail_status = Helpers::get_mail_status('deny_mail_status_store');
+            } else { 
+                // $mail_status = Helpers::get_mail_status('deny_mail_status_store');
+                $mail_status =1;
                 if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('denied', $store->vendor->f_name . ' ' . $store->vendor->l_name));
-                }
+                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('denied', $store->name));
+                } 
             }
         } catch (\Exception $ex) {
             info($ex->getMessage());
@@ -2627,12 +2697,12 @@ class VendorController extends Controller
             if ($request->status == 1) {
                 $mail_status = Helpers::get_mail_status('approve_mail_status_store');
                 if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('approved', $store->vendor->f_name . ' ' . $store->vendor->l_name));
+                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('approved', $store->name));
                 }
             } else {
                 $mail_status = Helpers::get_mail_status('deny_mail_status_store');
                 if (config('mail.status') && $mail_status == '1') {
-                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('denied', $store->vendor->f_name . ' ' . $store->vendor->l_name));
+                    Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('denied', $store->name));
                 }
             }
         } catch (\Exception $ex) {
