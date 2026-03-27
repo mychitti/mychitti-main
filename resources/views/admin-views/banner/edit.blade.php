@@ -271,11 +271,15 @@
                     zone_id = true;
                 }
             });
-
+            @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
+               var url = '{{url('/')}}/admin/store/get-stores';
+            @else
+              var  url = '{{ url('/') }}/store/get-stores';
+            @endif
             $('.js-data-example-ajax').select2({
                 minimumInputLength: 2,
                 ajax: {
-                    url: '{{url('/')}}/store/get-stores',
+                    url: url,
                     data: function (params) {
                         return {
                             q: params.term, // search term

@@ -60,8 +60,9 @@ class RestaurantController extends Controller
         $shop->latitude = $request->latitude;
         $shop->longitude = $request->longitude;
         $shop->zone_id = $request->zone_id;
+        $shop->gst_number = $request->gst;
+        $shop->gst = json_encode(['status'=> $request->gst_status , 'code'=>$request->gst]) ;
     
-
         $shop->logo = $request->has('image') ? Helpers::update('store/', $shop->logo, 'png', $request->file('image')) : $shop->logo;
 
         $shop->cover_photo = $request->has('photo') ? Helpers::update('store/cover/', $shop->cover_photo, 'png', $request->file('photo')) : $shop->cover_photo;
