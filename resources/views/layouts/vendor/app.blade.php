@@ -738,6 +738,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         $(document).on('click', '.form-alert', function() {
             let id = $(this).data('id')
             let message = $(this).data('message')
+            console.log('fsdddd84398439')
             Swal.fire({
                 title: '{{ translate('messages.Are you sure?') }}',
                 text: message,

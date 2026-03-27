@@ -3307,7 +3307,7 @@ if (!function_exists('hasPermission')) {
         $masterModule = DB::table('features')
             ->where('name', $feature)
             ->value('master_module');
-
+prx($masterModule);
         if (
             auth('vendor')->check() &&
             !empty($masterModule) &&

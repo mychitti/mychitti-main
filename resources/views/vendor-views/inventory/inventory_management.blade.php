@@ -297,19 +297,17 @@
                                                                         @endif
                                                                         @if (hasPermission('inventory_item', 'delete'))
                                                                             <a class="dropdown-item text-danger form-alert"
-                                                                                onclick="event.stopPropagation()"
                                                                                 href="javascript:;"
                                                                                 data-id="item-{{ $item['id'] }}"
                                                                                 data-message="{{ translate('messages.Want to delete this item') }}"
                                                                                 data-title="{{ $item->item_name }}"
-                                                                                title="{{ translate('messages.delete_item') }}"></i>
+                                                                                title="{{ translate('messages.delete_item') }}">
                                                                                 <i class="tio-delete-outlined"></i> Delete
                                                                             </a>
                                                                             <form
                                                                                 action="{{ route('vendor.inventory.item.delete', [$item['id']]) }}"
-                                                                                method="post"
+                                                                                method="get"
                                                                                 id="item-{{ $item['id'] }}">
-                                                                                @csrf @method('get')
                                                                             </form>
                                                                         @endif
 
