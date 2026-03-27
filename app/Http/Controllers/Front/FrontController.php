@@ -153,8 +153,9 @@ class FrontController extends Controller
     {
         return view('vendor-views.documents.approve_success');
     }
-    public function testing(Request $request)
+    public function testing(Request $request) 
     {
+        prx(now());
         $user_fcm = $request->fcm_token;
   $data = [
                 'title' => translate('messages.test_notification') ,
