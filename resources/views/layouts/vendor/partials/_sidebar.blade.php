@@ -645,9 +645,7 @@
                                         </li>
                                     @endif
                                 @endif
-                                {{ 'per ' . hasPermission('billing', 'list')}}
                                 @if (hasAnyPermission(['billing.list', 'billing.export', 'billing.import']))
-
                                     <li
                                         class="navbar-vertical-aside-has-menu {{ Request::is('billing/credit') ? 'active' : '' }}">
                                         <a class="nav-link " href="{{ route('vendor.invoice.list') }}"
