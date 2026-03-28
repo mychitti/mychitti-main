@@ -146,13 +146,15 @@
                                         </div>
                                         <div class="info-group customer_select_grp with_add_new ">
                                             <div class="customer_elem_inner">
-                                                <select id="customer_id" name="customer" data-placeholder="Select client"
+                                                <select id="customer_id" data-placeholder="Select client"
                                                     class="tf-select">
                                                 <option value=""></option>
                                                     <option value="add_new">+ Add New Client</option>
                                                 </select>
                                             </div>
                                         </div>
+                                        {{-- Submitted value: JS sets this after pick or after "Add New Client" (vendor pattern) --}}
+                                        <input type="hidden" id="selected_customer_id" name="customer" value="">
                                     </div>
                                 @endif
 
@@ -301,7 +303,7 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
+            <!-- Action Buttons --> 
             <div class="tf-actions">
                 @if (!$project && _isEnabled('task_recievable_receipt') && hasPermission('task', 'receivable_receipt'))
                     <button type="button" data-toggle="modal" data-target="#addReceivableRModal"
