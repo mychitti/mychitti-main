@@ -99,12 +99,13 @@ class BillingController extends Controller
             $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
             if ($exists) {
                 $bill_num['number']++;
-            }
+            } 
         } while ($exists);
 
         $customers = User::where('status', 1)->get();
         $stores = Store::where('status', 1)->where('module_id', Config::get('module.current_module_id'))->get();
-        return view('admin-views.billing.generate', compact('storage_units', 'stores', 'customers', 'bill_num'));
+        $tncs = StoreTnc::where('store_id', 0)->where('tnc_type', 'invoice')->get();
+        return view('admin-views.billing.generate', compact('storage_units', 'stores', 'customers', 'bill_num', 'tncs'));
     }
     public function invoice_list(Request $request)
     {

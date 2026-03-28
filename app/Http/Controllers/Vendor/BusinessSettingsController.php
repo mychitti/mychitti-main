@@ -349,12 +349,13 @@ class BusinessSettingsController extends Controller
         $bank_details_status = $request->bank_details_status ?? 0;
 
         $store->storeConfig()->updateOrCreate(
-            ['store_id' => $store->id],
+            ['store_id' => $store->id], 
             [
                 'invoice_sign_status' => $invoice_status,
                 'jurisdiction_statement_status' => $jurisdiction_statement_status,
                 'tnc_invoice_status' => $tnc_invoice_status,
                 'tnc_quotation_status' => $tnc_quotation_status,
+                'default_invoice_tnc_id' => $request->default_invoice_tnc_id ?: null,
                 'bank_details_status' => $bank_details_status,
             ],
         );

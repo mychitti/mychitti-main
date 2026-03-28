@@ -329,6 +329,17 @@
     </div>
 
     <div class="col-12 d-flex flex-column align-items-end justify-content-end">
+        @if(isset($tncs) && $tncs->count() > 0)
+        <div class="w-100 mb-2">
+            <label class="form-check-label mb-1 small"><strong>Default Terms & Conditions</strong></label>
+            <select name="tnc_id" id="tncSelect" class="form-control form-control-sm">
+                <option value="">-- None --</option>
+                @foreach($tncs as $tnc)
+                    <option value="{{ $tnc->id }}" data-content="{{ $tnc->content }}">{{ $tnc->tnc_for }}</option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <span class="text-danger amount_error"></span>
         <button class="btn btn-primary my-2 submit_btn">Generate Bill</button>
     </div>

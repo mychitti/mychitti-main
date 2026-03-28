@@ -545,6 +545,12 @@ class ServiceController extends Controller
         $invoice->reminder_freq =  $request->reminder_freq;
         $invoice->reminder_freq_unit =  $request->reminder_freq_unit;
         $invoice->created_by = auth('vendor')->check() ? 0 : Helpers::get_loggedin_user()->id;
+        if ($request->filled('tnc_id')) {
+            $tnc = \App\Models\StoreTnc::find($request->tnc_id);
+            if ($tnc) {
+                $invoice->terms_and_conditions = $tnc->content;
+            }
+        }
         $invoice->save();
 
         if ($request->has('item_name')) {
@@ -1035,7 +1041,8 @@ class ServiceController extends Controller
         } while ($exists);
 
         $customers = StoreCustomer::where('store_id', Helpers::get_store_id())->get();
-        return view('vendor-views.billing.invoice_generate', compact('storage_units', 'categories', 'customers', 'bill_num'));
+        $tncs = \App\Models\StoreTnc::where('store_id', Helpers::get_store_id())->where('tnc_type', 'invoice')->get();
+        return view('vendor-views.billing.invoice_generate', compact('storage_units', 'categories', 'customers', 'bill_num', 'tncs'));
     }
     public function generate_bill($service_id)
     {

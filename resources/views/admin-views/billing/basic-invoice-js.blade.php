@@ -1,7 +1,7 @@
 <script>
     $(".bill_to_type").on('change', function() {
         const val = $(this).val();
-
+        
         if (val === 'user' && $(this).prop('checked') == true) {
             $('#customer_list').show();
             $('#userSelect').attr('name', 'bill_to');

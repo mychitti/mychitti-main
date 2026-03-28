@@ -130,9 +130,16 @@
                             </div>
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="customer_management" class="form-check-input granular_permission_check"
+                                           id="customer_management">
+                                    <label class="form-check-label qcont text-dark" for="customer_management">{{translate('messages.customer_management')}}</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="client_manage" class="form-check-input granular_permission_check"
                                            id="client_manage">
-                                    <label class="form-check-label qcont text-dark" for="client_manage">{{translate('messages.client_management')}}</label>
+                                    <label class="form-check-label qcont text-dark" for="client_manage">{{translate('messages.mychitti_client_management')}}</label>
                                 </div>
                             </div>
                             <div class="check-item">
@@ -318,6 +325,13 @@
                                     <input type="checkbox" name="modules[]" value="ai_agent" class="form-check-input granular_permission_check"
                                            id="ai_agent">
                                     <label class="form-check-label qcont text-dark" for="ai_agent">AI Agent</label>
+                                </div>
+                            </div>
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="analytics" class="form-check-input granular_permission_check"
+                                           id="analytics">
+                                    <label class="form-check-label qcont text-dark" for="analytics">Analytics</label>
                                 </div>
                             </div>
                             <div class="check-item">

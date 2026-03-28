@@ -109,6 +109,7 @@ class DashboardController extends Controller
 
     public function user_dashboard(Request $request)
     {
+        // prx('herwee');
         $params = [
             'zone_id' => $request['zone_id'] ?? 'all',
             'module_id' => Config::get('module.current_module_id'),

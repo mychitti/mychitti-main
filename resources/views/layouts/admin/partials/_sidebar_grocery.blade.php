@@ -53,7 +53,7 @@
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                 {{ translate('messages.dashboard') }}
                             </span>
-                        </a> 
+                        </a>    
                     </li>
                     @endif
                 

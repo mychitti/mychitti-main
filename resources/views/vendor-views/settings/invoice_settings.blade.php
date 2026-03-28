@@ -112,7 +112,7 @@
                 </div>
             @endif
             @if (hasAnyModulePermission(['billing_signatures']))
-
+ 
                 <div class="card mb-1">
                     <div class="card-header  d-flex justify-content-between">
                         <h2 class="card-title h4">
@@ -193,11 +193,12 @@
             @endif
 
 
-            <form class="w-100 p-0 " enctype="multipart/form-data"
+           
+                @if (hasPermission('billing', 'settings'))
+                 <form class="w-100 p-0 " enctype="multipart/form-data"
                 action="{{ route('vendor.business-settings.terms-and-conditions.save') }}" method="post">
                 @csrf
                 <input type="hidden" id="" name="cType" value="for_customer">
-                @if (hasPermission('billing', 'settings'))
                     <div class="card mb-1">
                         <div class="card-header">
                             <h2 class="card-title h4">
@@ -251,13 +252,29 @@
                                     <input type="text" id="jurisdiction_statement" name="jurisdiction_statement"
                                         value="{{ $store->jurisdiction_statement }}" class="form-control">
                                 </div>
+                            </div> 
+                            <div class="col-sm-3 p-2 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="default_invoice_tnc_id">Default Terms & Conditions</label>
+                                    <select name="default_invoice_tnc_id" id="default_invoice_tnc_id"
+                                        class="form-control">
+                                        <option value="">-- None --</option>
+                                        @foreach ($tncs as $tnc)
+                                            <option value="{{ $tnc->id }}"
+                                                {{ (string) $store->storeConfig?->default_invoice_tnc_id === (string) $tnc->id ? 'selected' : '' }}>
+                                                {{ $tnc->tnc_for }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-12 d-flex justify-content-end w-100 mb-3">
                                 <button style="float:right" class="btn btn-primary my-2">Update</button>
                             </div>
 
                         </div>
                     </div>
+                     </form>
                 @endif
                 @if (hasAnyModulePermission(['billing_tnc']))
 
@@ -392,7 +409,7 @@
                     </div>
                 @endif
 
-            </form>
+           
 
         </div>
     </div>

@@ -265,7 +265,23 @@
         </div>
     </div>
 
-    <div class="col-12 d-flex flex-column align-items-end justify-content-end">
+    <input type="hidden" name="tnc_id" value="{{\App\CentralLogics\Helpers::get_store_data()->storeConfig?->default_invoice_tnc_id}}">
+
+    <div class="col-12 d-flex flex-column align-items-end justify-content-end" style=""> 
+        {{-- @if(isset($tncs) && $tncs->count() > 0)
+        <div class="w-100 mb-2">
+            <label class="form-check-label mb-1 small"><strong>Default Terms & Conditions</strong></label>
+            <select name="tnc_id" id="tncSelect" class="form-control form-control-sm">
+                <option value="">-- None --</option>
+                @foreach($tncs as $tnc)
+                    <option value="{{ $tnc->id }}" data-content="{{ $tnc->content }}"
+                        {{ (string) ( ?? '') === (string) $tnc->id ? 'selected' : '' }}>
+                        {{ $tnc->tnc_for }}
+                    </option>
+                @endforeach
+            </select> 
+        </div>
+        @endif --}}
         <span class="text-danger amount_error"></span>
         <button class="btn btn-primary my-2 submit_btn">Generate Bill</button>
     </div>

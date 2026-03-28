@@ -1644,7 +1644,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             //     Route::get('edit/{id}', 'SalaryController@edit')->name('edit');
             // });
 
-  Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
+        Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('generate-monthly/{month}', 'SalaryController@generate_monthly')->name('generate-monthly')->middleware('permission:salary_manage,generate');
             Route::get('mark-paid/{month}', 'SalaryController@mark_paid')->name('mark-paid')->middleware('permission:salary_manage,mark_paid');
             Route::get('report', 'SalaryController@report')->name('report');
