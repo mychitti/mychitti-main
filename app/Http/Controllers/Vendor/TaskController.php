@@ -190,7 +190,7 @@ class TaskController extends Controller
         $inventory_items = InventoryItem::where('store_id', $store_id)->get();
 
         // for invoice generated 
-        $store = Helpers::get_store_data();
+       $data['store'] = $store = Helpers::get_store_data();
 
         $upcoming_bill_number = Helpers::generateInvoiceId('M', $update = false); // only get .. not update
         $bill_number = $upcoming_bill_number; // Example: 'PJS_M_25-26_82'
