@@ -54,9 +54,9 @@
                     <div class="col-md-2 p-1">
                         <label class="form-check-label d-flex mb-1" for="flexRadioDefault2">Invoice Date</label>
                         <div>
-                            @php
+                            @php 
                                 $today = date('Y-m-d');
-                                $startOfFinancialYear = date('Y') - 1 . '-04-01';
+                                $startOfFinancialYear = (date('m') >= 4 ? date('Y') : date('Y') - 1) . '-04-01';
                             @endphp
                             <input type="date" name="invoice_date" class="form-control form-control-sm"
                                 min="{{ $startOfFinancialYear }}" value="{{ $today }}">

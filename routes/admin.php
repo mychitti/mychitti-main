@@ -133,6 +133,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('lead-charges', 'ItemController@lead_charge_list')->name('lead-charge-list');
             Route::get('edit-charges/{id}', 'ItemController@edit_charges')->name('edit-charges');
             Route::get('get-items-by-category/{category_id}', 'ItemController@get_items_by_category')->name('get-items-by-category');
+            Route::get('get-items-by-categories', 'ItemController@get_items_by_categories')->name('get-items-by-categories');
             Route::get('list', 'ServiceController@lead_list')->name('lead-list');
             Route::get('detail/{id}', 'ServiceController@lead_detail')->name('lead-detail');
             Route::get('lead-timeline/{id}', 'ServiceController@lead_timeline')->name('lead-timeline');
@@ -1122,7 +1123,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
 
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');
-            Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc');
+            Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc')->middleware('permission:store,documents');
 
 
             Route::post('update_id', 'VendorController@update_id')->name('update_id');
@@ -1137,14 +1138,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
 
             //  IF HAS EITHER store OR store_add_edit PERMISSION
-            Route::group(['middleware' => ['module:store,store_add_edit']], function () {
+            Route::group(['middleware' => ['module:store']], function () {
                 Route::post('import', 'VendorController@import')->name('import');
 
-                Route::get('add', 'VendorController@index')->name('add');
-                Route::post('store', 'VendorController@store')->name('store');
-                Route::get('edit/{id}', 'VendorController@edit')->name('edit');
-                Route::post('update/{store}', 'VendorController@update')->name('update');
-                Route::get('list', 'VendorController@list')->name('list');
+Route::get('add', 'VendorController@index')->name('add')->middleware('permission:store,add_basic,store,add_advanced');
+                Route::post('store', 'VendorController@store')->name('store')->middleware('permission:store,add_basic,store,add_advanced');
+                Route::get('edit/{id}', 'VendorController@edit')->name('edit')->middleware('permission:store,edit_basic,store,edit_advanced');
+                Route::post('update/{store}', 'VendorController@update')->name('update')->middleware('permission:store,edit_basic,store,edit_advanced');
+                Route::get('list', 'VendorController@list')->name('list')->middleware('permission:store,list');
             });
 
             //  IF HAS store PERMISSION

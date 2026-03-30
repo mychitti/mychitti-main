@@ -5262,10 +5262,10 @@ class Helpers
         if ($today->lt($financialYearStart)) {
             $financialYearStart->subYear();
         }
-
+ 
         $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March
 
-        $fyear = $financialYearStart->format('y') . '-' . $financialYearEnd->format('y');
+        $fyear = $financialYearStart->format('Y') . '-' . $financialYearEnd->format('Y');
 
         return $fyear;
     }

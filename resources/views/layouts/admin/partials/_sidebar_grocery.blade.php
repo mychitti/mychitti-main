@@ -575,6 +575,8 @@
                         </span>
                     </a>
                 </li>
+                @if(hasPermission('store', 'add_basic') || hasPermission('store', 'add_advanced'))
+
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('store/add') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.add') }}" title="{{ translate('messages.add_store') }}">
                         <span class="tio-add-circle nav-icon"></span>
@@ -583,6 +585,8 @@
                         </span>
                     </a>
                 </li>
+                @endif
+                @if(hasPermission('store', 'list'))
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('store/list')  ||  Request::is('store/view/*')  ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.list') }}" title="{{ translate('messages.stores_list') }}">
                         <span class="tio-layout nav-icon"></span>
@@ -590,6 +594,7 @@
                             {{ translate('list') }}</span>
                     </a> 
                 </li>
+                @endif
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('store/removal-requests') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.removal-requests') }}" title="Removal Requests">
                         <span class="tio-delete nav-icon"></span>
@@ -637,7 +642,7 @@
                         <span class="text-truncate text-capitalize">{{ translate('messages.bulk_export') }}</span>
                     </a>
                 </li>
-                @elseif(\App\CentralLogics\Helpers::module_permission_check('store_add_edit'))
+                {{-- @elseif(\App\CentralLogics\Helpers::module_permission_check('store_add_edit'))
                   <li class="navbar-vertical-aside-has-menu {{ Request::is('store/add') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.add') }}" title="{{ translate('messages.add_store') }}">
                         <span class="tio-add-circle nav-icon"></span>
@@ -652,7 +657,7 @@
                         <span class="text-truncate">{{ translate('messages.stores') }}
                             {{ translate('list') }}</span>
                     </a>
-                </li>
+                </li> --}}
                 @endif 
                 @if (\App\CentralLogics\Helpers::module_permission_check('terms_and_conditions'))
 

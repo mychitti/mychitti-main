@@ -17,7 +17,7 @@
         }
 
         /* Proper alignment of selected tags */
-        .select2-container--default .select2-selection__rendered {
+        .select2-container--default .select2-selection__rendered { 
             display: flex;
             flex-wrap: wrap;
             align-items: center;
@@ -64,8 +64,7 @@
                             <div class="row mb-4">
                                 <div class="col-md-3">
                                     <label>Category <span class="text-danger">*</span></label>
-                                    <select name="category" class="form-control js-select2-custom">
-                                        <option value=""></option>
+                                    <select name="category[]" id="category_select" class="form-control" multiple>
                                         @foreach ($categories as $cat)
                                             <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                                         @endforeach
@@ -211,6 +210,13 @@
 
 @push('script_2')
     <script>
+        $('#category_select').select2({
+            placeholder: 'Select Categories',
+            allowClear: true,
+            width: '100%',
+            multiple: true
+        });
+
         $('#item_id').select2({
             placeholder: 'All Services (Category level)',
             allowClear: true,
@@ -227,15 +233,15 @@
             $('.ven_count').text(count)
         });
 
-        $('select[name="category"]').on('change', function() {
-            var catId = $(this).val();
+        $('#category_select').on('change', function() {
+            var catIds = $(this).val();
             var $itemSelect = $('#item_id');
 
             // Clear all selected options and reset
             $itemSelect.val(null).html('').trigger('change');
 
-            if (catId) {
-                $.get("{{ route('admin.service.get-items-by-category', '') }}/" + catId, function(data) {
+            if (catIds && catIds.length > 0) {
+                $.get("{{ route('admin.service.get-items-by-categories') }}", { category_ids: catIds }, function(data) {
                     data.forEach(function(item) {
                         $itemSelect.append('<option value="' + item.id + '">' + item.name +
                             '</option>');

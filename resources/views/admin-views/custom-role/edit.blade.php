@@ -288,12 +288,12 @@
 
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
-                                    <input type="checkbox" name="modules[]" value="store" class="form-check-input"
+                                    <input type="checkbox" name="modules[]" value="store" class="form-check-input granular_permission_check"
                                            id="store"  {{in_array('store',(array)json_decode($role['modules']))?'checked':''}}>
                                     <label class="form-check-label qcont text-dark" for="store">{{translate('messages.store')}}</label>
                                 </div>
                             </div>
-                            <div class="check-item">
+                            {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="store_add_edit" class="form-check-input"
                                            {{in_array('store_add_edit',(array)json_decode($role['modules']))?'checked':''}} id="store_add_edit">
@@ -306,7 +306,7 @@
                                          {{in_array('store_documents',(array)json_decode($role['modules']))?'checked':''}}  id="store_documents">
                                     <label class="form-check-label qcont text-dark" for="store_documents">{{translate('messages.store_documents')}}</label>
                                 </div>
-                            </div>
+                            </div> --}}
                               <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="service_billing" class="form-check-input granular_permission_check"

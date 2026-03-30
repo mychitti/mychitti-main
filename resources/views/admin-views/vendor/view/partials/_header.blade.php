@@ -58,7 +58,7 @@
                 <li class="nav-item">
                     <a class="nav-link {{request('tab')=='account'?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'account'])}}" aria-disabled="true">{{translate('messages.account')}}</a>
                 </li>
-                 @if (\App\CentralLogics\Helpers::module_permission_check('store_documents'))
+                 @if (hasPermission('store', 'documents'))
                 <li class="nav-item">
                     <a class="nav-link {{request('tab')=='documents'?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'documents'])}}" aria-disabled="true">{{translate('messages.documents')}}</a>
                 </li>

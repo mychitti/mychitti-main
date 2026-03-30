@@ -17,7 +17,7 @@ use App\Models\Translation;
 use Illuminate\Support\Str;
 use App\Models\ItemCampaign;
 use Illuminate\Http\Request;
-use App\CentralLogics\Helpers;
+use App\CentralLogics\Helpers; 
 use App\Exports\ItemListExport;
 use App\Models\CommonCondition;
 use Illuminate\Validation\Rule;
@@ -1315,8 +1315,8 @@ class ItemController extends Controller
 {
     $validator = Validator::make($request->all(), [
         'zone' => 'required',
-        'category' => 'required',
-        'item_id' => 'required|array',
+        'category' => 'required|array',
+        'item_id' => 'nullable|array',
         'first_ven_charge' => 'required|numeric',
         'sec_ven_charge' => 'required|numeric',
         'third_ven_charge' => 'required|numeric',
@@ -1327,28 +1327,54 @@ class ItemController extends Controller
         return response()->json(['errors' => Helpers::error_processor($validator)]);
     }
 
-    foreach ($request->item_id as $itemId) {
+    $itemIds = $request->item_id ?? [];
 
-        LeadCharge::updateOrCreate(
-            [
-                'zone_id' => $request->zone,
-                'category_id' => $request->category,
-                'item_id' => $itemId
-            ],
-            [
-                'vendor_count' => $request->vendor_count,
-                'ven_1_charges' => $request->first_ven_charge,
-                'ven_2_charges' => $request->sec_ven_charge,
-                'ven_3_charges' => $request->third_ven_charge,
-                'ven_other_charges' => $request->other_ven_charge,
-                'ven_same_charges' => $request->same_charge,
-                'dedicated_lead_charge' => $request->dedicated_lead_charge,
-                'confirmation_charge' => $request->confirmation_charge,
-                'completion_charge' => $request->completion_charge,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+    foreach ($request->category as $categoryId) {
+        if (!empty($itemIds)) {
+            foreach ($itemIds as $itemId) {
+                LeadCharge::updateOrCreate(
+                    [
+                        'zone_id' => $request->zone,
+                        'category_id' => $categoryId,
+                        'item_id' => $itemId
+                    ],
+                    [
+                        'vendor_count' => $request->vendor_count,
+                        'ven_1_charges' => $request->first_ven_charge,
+                        'ven_2_charges' => $request->sec_ven_charge,
+                        'ven_3_charges' => $request->third_ven_charge,
+                        'ven_other_charges' => $request->other_ven_charge,
+                        'ven_same_charges' => $request->same_charge,
+                        'dedicated_lead_charge' => $request->dedicated_lead_charge,
+                        'confirmation_charge' => $request->confirmation_charge,
+                        'completion_charge' => $request->completion_charge,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        } else {
+            LeadCharge::updateOrCreate(
+                [
+                    'zone_id' => $request->zone,
+                    'category_id' => $categoryId,
+                    'item_id' => null
+                ],
+                [
+                    'vendor_count' => $request->vendor_count,
+                    'ven_1_charges' => $request->first_ven_charge,
+                    'ven_2_charges' => $request->sec_ven_charge,
+                    'ven_3_charges' => $request->third_ven_charge,
+                    'ven_other_charges' => $request->other_ven_charge,
+                    'ven_same_charges' => $request->same_charge,
+                    'dedicated_lead_charge' => $request->dedicated_lead_charge,
+                    'confirmation_charge' => $request->confirmation_charge,
+                    'completion_charge' => $request->completion_charge,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 
     Toastr::success('Lead charges saved/updated successfully');
@@ -1419,6 +1445,13 @@ class ItemController extends Controller
     public function get_items_by_category($category_id)
     {
         $items = Item::withoutGlobalScopes()->where('category_id', $category_id)->select('id', 'name')->get();
+        return response()->json($items);
+    }
+
+    public function get_items_by_categories(Request $request)
+    {
+        $categoryIds = $request->input('category_ids', []);
+        $items = Item::withoutGlobalScopes()->whereIn('category_id', $categoryIds)->select('id', 'name')->whereNull("inventory_item_id")->get();
         return response()->json($items);
     }
 

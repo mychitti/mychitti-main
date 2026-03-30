@@ -280,7 +280,9 @@
                                             value="{{ $store->longitude }}" required readonly>
                                     </div> --}}
                                     <div>
-                                        {{-- <div class="my-3">
+       @if(hasPermission('store', 'edit_advanced'))
+
+                                        <div class="my-3">
                                             <label class="input-label fw-bold" for="choice_zones">{{Config::get('module.vendor_role')}} Type</label>
                                             <input type="radio" {{ $store->vendor_type == 'regular' ? 'checked' : '' }}
                                                 name="vendor_type" value="regular" id="vendor_regular">
@@ -323,7 +325,8 @@
                                                     name="gst_num" class="form-control __form-control"
                                                     value="{{ $store->gst_number }}">
                                             </div>
-                                        </div> --}}
+                                        </div>
+                                        @endif
                                         @if (Config::get('module.current_module_id') == 5)
                                             <div class="mb-4" id="shop_business_type_elem">
                                                 <div class="form-group">
@@ -635,7 +638,8 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>--}}
+                @if(hasPermission('store', 'edit_advanced'))
                 <div class="col-lg-12">
                     <div class="card">
                         <div class="card-header">
@@ -716,7 +720,8 @@
                             </div>
                         </div>
                     </div>
-                </div> --}}
+                </div> 
+                @endif
 
                 <div class="col-lg-12">
                     <div class="btn--container justify-content-end">

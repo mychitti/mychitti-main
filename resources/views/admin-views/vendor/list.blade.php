@@ -199,11 +199,10 @@
                     <tbody id="set-rows">
                     @foreach($stores as $key=>$store)
                         <tr>
-                    
                             <td>{{$key+$stores->firstItem()}}</td>
                             <td>
                                 <div>
-                                    <a href="{{route('admin.store.view', $store->id)}}" class="table-rest-info" alt="view store">
+                                    <a href="{{ hasPermission('store', 'view') ? route('admin.store.view', $store->id) : '#' }}" class="table-rest-info" alt="view store">
                                     <img class="img--60 circle onerror-image" data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
 
                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
@@ -281,27 +280,32 @@
                               <td>{{$store->created_at}}</td>
                             <td>
                                 <div class="btn--container justify-content-center">
+                                @if(hasPermission('store', 'view'))
                                     <a class="btn action-btn btn--warning btn-outline-warning"
                                             href="{{route('admin.store.view', $store->id)}}"
                                             title="{{ translate('messages.view') }}"><i
                                                 class="tio-visible-outlined"></i>
                                         </a>
+                                        @endif
                                         @if($store->suspended == 1)
                                             <a style="pointer-events:none; color:#cccccc !important; border:1px solid #cccccc !important;" class="btn action-btn btn--secondary btn-outline-secondary"
                                     href="#" ><i class="tio-edit" ></i>
                                     </a>
                                           @else
+                                          @if(hasPermission('store', 'edit_basic') || hasPermission('store', 'edit_advanced'))
                                     <a class="btn action-btn btn--primary btn-outline-primary"
                                     href="{{route('admin.store.edit',[$store['id']])}}" title="{{translate('messages.edit_store')}}"><i class="tio-edit"></i>
                                     </a>
-                                  
+                                  @endif
                                     @endif
+                                    @if(hasPermission('store', 'delete'))
                                     <a class="btn action-btn btn--danger btn-outline-danger form-alert" href="javascript:"
                                     data-id="vendor-{{$store['id']}}" data-message="{{translate('You want to remove this store')}}" title="{{translate('messages.delete_store')}}"><i class="tio-delete-outlined"></i>
                                     </a>
                                     <form action="{{route('admin.store.delete',[$store['id']])}}" method="post" id="vendor-{{$store['id']}}">
                                         @csrf @method('delete')
                                     </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

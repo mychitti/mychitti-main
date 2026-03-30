@@ -12,8 +12,8 @@ use App\Models\StoreBankTransactionFile;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request; 
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Validation\Rule;
-use PHPUnit\TextUI\Help;
+use Illuminate\Validation\Rule; 
+
 
 class BankingController extends Controller
 {
@@ -166,8 +166,8 @@ class BankingController extends Controller
     public function bank_account_detail_main(Request $request)
     {
         $storeId = Helpers::get_store_id();
-
-        $year = $request->year ?? date('Y') . '-' . (date('Y') + 1);
+ 
+        $year = $request->year ?? Helpers::get_financial_year();
         list($startYear, $endYear) = explode('-', $year);
         $fyStart = $startYear . '-04-01';
         $fyEnd = $endYear . '-03-31';
@@ -259,11 +259,11 @@ class BankingController extends Controller
     public function delete(Request $request, $id)
     {
         $bank_account = StoreBankAccount::where(['id' => $id, 'store_id' => Helpers::get_store_id()])->first();
-        _auditLogs('Bank Account Deleted : ' . $bank_account->bank_name . ' (' . $bank_account->account_number . ')');
         if ($bank_account) {
+            _auditLogs('Bank Account Deleted : ' . $bank_account->bank_name . ' (' . $bank_account->account_number . ')');
             $bank_account->delete();
             Toastr::success(translate('messages.bank_account_deleted_successfully!'));
-        }
+        } 
 
         return back();
     }

@@ -172,7 +172,7 @@ class BankingController extends Controller
         list($startYear, $endYear) = explode('-', $year);
         $fyStart = $startYear . '-04-01';
         $fyEnd = $endYear . '-03-31';
-        
+
         $formatted_from  =  $fyStart;
         $formatted_to =  $fyEnd;
 

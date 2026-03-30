@@ -1067,7 +1067,7 @@ class VendorController extends Controller
     {
         // prx($request->all());
         if (Helpers::module_permission_check('store')) { // don't remove this condition
-        } else if (Helpers::module_permission_check('store_add_edit')) {
+        } else if (hasPermission('store', 'add_basic') || hasPermission('store', 'add_advanced') || hasPermission('store', 'edit')) {
             if ($store->vendor->created_by != auth('admin')->user()->id) {
                 Toastr::error('Cannot edit stores added by others');
                 return redirect()->back();
@@ -2013,8 +2013,8 @@ class VendorController extends Controller
         $zone_id = $request->query('zone_id', 'all');
         $type = $request->query('type', 'all');
         $module_id = $request->query('module_id', 'all');
-        $stores = Store::with(['vendor', 'module'])
-            ->whereHas('vendor', fn($q) => $q->whereNotNull('status'))
+        $stores = Store::with(['vendor', 'module']) 
+            ->whereHas('vendor', fn($q) => $q->where('status', 1))
             ->when(is_numeric($zone_id), fn($q) => $q->where('zone_id', $zone_id))
             ->when(is_numeric($module_id), fn($q) => $q->module($module_id))
             ->when($key, function ($q) use ($key) {
@@ -2048,7 +2048,7 @@ class VendorController extends Controller
         if (!$store_all_perm) {
             $stores->whereHas('vendor', fn($v) => $v->whereNotNull('status')->where('created_by', auth('admin')->id()));
             $stores->where('status', 0);
-        }
+        } 
 
         $stores = $stores->type($type)->latest()->paginate(config('default_pagination'));
 

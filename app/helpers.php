@@ -987,18 +987,23 @@ if (!function_exists('generatePassword')) {
 }
 
 
+// function _onlyStoreAddEdit()
+// {
+//     $permission = auth('admin')->user()->role->modules;
+//     $perm_array = (array) json_decode($permission, true); // decode as associative array
+
+//     $values = array_values($perm_array);
+
+//     if (count($values) === 1 && in_array('store_add_edit', $values)) {
+//         return true;
+//     }
+
+//     return false;
+// }
+
 function _onlyStoreAddEdit()
 {
-    $permission = auth('admin')->user()->role->modules;
-    $perm_array = (array) json_decode($permission, true); // decode as associative array
-
-    $values = array_values($perm_array);
-
-    if (count($values) === 1 && in_array('store_add_edit', $values)) {
-        return true;
-    }
-
-    return false;
+   return hasPermission('store', 'add_basic') || hasPermission('store', 'add_advanced') || hasPermission('store', 'edit');
 }
 
 function _isEnabled($column)

@@ -333,8 +333,8 @@
                                     <div>
                                         @php
                                             $today = date('Y-m-d');
-                                            $startOfFinancialYear = date('Y') -1  . '-04-01';
-                                        @endphp
+                                            $startOfFinancialYear = (date('m') >= 4 ? date('Y') : date('Y') - 1) . '-04-01';
+                                        @endphp 
                                         <input type="date" name="invoice_date" class="form-control form-control-sm"
                                             min="{{ $startOfFinancialYear }}" value="{{ $today }}">
                                     </div>

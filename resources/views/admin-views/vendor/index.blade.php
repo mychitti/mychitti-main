@@ -259,7 +259,8 @@
                                     </div>
 
                                     <div>
-                                        {{--   <div class="my-3">
+                                    @if( hasPermission('store', 'add_advanced'))
+                                          <div class="my-3">
                                             <label class="input-label fw-bold" for="choice_zones">Vendor Type</label>
                                             <input type="radio" checked name="vendor_type" value="regular"
                                                 id="vendor_regular">
@@ -316,7 +317,8 @@
 
                                                 </div>
                                             </div>
-                                        </div> --}}
+                                        </div>
+                                        @endif
                                         @if (Config::get('module.current_module_id') == 5)
                                             <div class="mb-4" id="shop_business_type_elem">
                                                 <div class="form-group">
@@ -554,7 +556,9 @@
                         </div>
                     </div>
                 </div> --}}
-                {{-- <div class="col-lg-12">
+       @if(hasPermission('store', 'add_advanced'))
+
+                <div class="col-lg-12">
                     <div class="card">
                         <div class="card-header">
                             <h4 class="card-title m-0 d-flex align-items-center">
@@ -633,8 +637,8 @@
                             </div>
                         </div>
                     </div>
-                </div> --}}
-
+                </div>
+@endif
                 @if (0 && Config::get('module.current_module_id') == 6)
                     <div class="col-lg-12">
                         <div id="accordion">
@@ -672,8 +676,8 @@
                                                 <div class="card-body  text-center" style="line-height: 2.5rem;">
                                                     <h3 class="card-title  text-center"
                                                         style=" margin: 0 auto;
-                                        width: fit-content;
-                                        margin-bottom: 1.5rem;">
+                                                                width: fit-content;
+                                                                margin-bottom: 1.5rem;">
                                                         {{ $plan->title }}</h3>
 
                                                     {{-- <h6 class="card-subtitle mb-2 text-muted">Plan Description</h6> --}}
