@@ -1327,6 +1327,8 @@ class ItemController extends Controller
         return response()->json(['errors' => Helpers::error_processor($validator)]);
     }
 
+    prx($request->all());
+
     $itemIds = $request->item_id ?? [];
 
     foreach ($request->category as $categoryId) {
