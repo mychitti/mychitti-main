@@ -67,6 +67,9 @@ jobs:
         echo 'Restarting queue workers...' && \
         php artisan queue:restart && \
 
+        echo 'Resetting OPcache...' && \
+        systemctl restart httpd && \
+
         mkdir -p storage/app/tmp && \
         chown -R apache:apache storage/app/tmp && \
         chmod -R 775 storage/app/tmp && \

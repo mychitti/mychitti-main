@@ -15,7 +15,7 @@ use App\Models\GatePassItem;
 use App\Models\InServiceQuotation; 
 use App\Models\Salary;
 use App\Models\VendorEmpJob;
-use App\Models\Store; 
+use App\Models\Store;  
 use App\Models\ServiceInvoice;
 use App\Models\InvoiceItem;
 use App\Models\LeadCharge;
@@ -183,7 +183,8 @@ class ServiceController extends Controller
                 }
             }
         }
-        $minimumBalanceRequired = $chargesToBeApplied > 100 ? $chargesToBeApplied : 100;
+        $walletMinBalance = Helpers::get_wallet_min_balance($zoneId, $cat_id);
+        $minimumBalanceRequired = $chargesToBeApplied > $walletMinBalance ? $chargesToBeApplied : $walletMinBalance;
         // check balance
         if ($chargesToBeApplied) {
             if ($avlblBalance < $minimumBalanceRequired) {

@@ -10,8 +10,8 @@ use Firebase\JWT\Key;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Zone;
-use App\Models\AddOn;
-use App\Models\Store;
+use App\Models\AddOn; 
+use App\Models\Store; 
 use App\Models\Module;
 use App\Models\Review;
 use App\Models\Expense;
@@ -2569,20 +2569,19 @@ class Helpers
             ->pluck('vendor_id', 'id')
             ->toArray();
 
-        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
+        // Get zone-wise + category-wise minimum balance per store
+        $storeZones = DB::table('stores')->whereIn('id', $storeIds)->pluck('zone_id', 'id')->toArray();
+        $categoryId = $item->category_id ?? null;
 
-        $qualifiedVendorIds = DB::table('store_wallets')
-            ->whereIn('vendor_id', array_values($storeVendorMap))
-            ->where('total_earning', '>=', $minimumBalance)
-            ->pluck('vendor_id')
-            ->map(fn($id) => (int) $id)
-            ->toArray();
-
-        $walletQualifiedStoreIds = collect($storeVendorMap)
-            ->filter(fn($vendorId) => in_array((int) $vendorId, $qualifiedVendorIds))
-            ->keys()
-            ->map(fn($id) => (int) $id)
-            ->toArray();
+        $walletQualifiedStoreIds = [];
+        foreach ($storeVendorMap as $sId => $vendorId) {
+            $zoneId = $storeZones[$sId] ?? null;
+            $minimumBalance = Helpers::get_wallet_min_balance($zoneId, $categoryId);
+            $walletBalance = DB::table('store_wallets')->where('vendor_id', $vendorId)->value('total_earning') ?? 0;
+            if ($walletBalance >= $minimumBalance) {
+                $walletQualifiedStoreIds[] = (int) $sId;
+            }
+        }
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
 
@@ -5271,6 +5270,36 @@ class Helpers
 
         return $fyear;
     }
+
+    /**
+     * Get wallet minimum balance from zone_wallet_configs table.
+     * Lookup priority: zone + category → zone only (category=null) → global business setting fallback.
+     */
+    public static function get_wallet_min_balance($zone_id = null, $category_id = null)
+    {
+        if ($zone_id) { 
+            // First try zone + category specific
+            if ($category_id) {
+                $config = DB::table('zone_wallet_configs')
+                    ->where('zone_id', $zone_id)
+                    ->where('category_id', $category_id)
+                    ->first();
+                if ($config) return $config->min_balance;
+            }
+
+            // Fallback to zone level (category = null)
+            $config = DB::table('zone_wallet_configs')
+                ->where('zone_id', $zone_id)
+                ->whereNull('category_id')
+                ->first();
+            if ($config) return $config->min_balance;
+        }
+
+        // Fallback to global setting
+        $setting = BusinessSetting::where('key', 'wallet_min_balance')->first();
+        return $setting ? $setting->value : 100;
+    }
+
     public static function getChartData(string $preset, \Carbon\Carbon $from, \Carbon\Carbon $to)
     {
         $rangeType = Helpers::getRangeTypeFromPreset($preset, $from, $to);

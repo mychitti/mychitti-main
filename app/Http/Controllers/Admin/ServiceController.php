@@ -382,7 +382,7 @@ class ServiceController extends Controller
             ->get();
 
         $categories = Category::where('module_id', 6)->get(); 
-        $zoneWalletConfigs = ZoneWalletConfig::with('zone', 'category')->get();
+        $zoneWalletConfigs = ZoneWalletConfig::with('zone', 'category')->get(); 
 
         return view('admin-views.service.config', compact('reported_issue_list', 'zones', 'categories', 'zoneWalletConfigs'));
     }
@@ -391,25 +391,33 @@ class ServiceController extends Controller
     {
         $request->validate([
             'zone_id' => 'required',
-            'category_id' => 'nullable',
+            'category_id' => 'nullable|array',
             'min_balance' => 'required|numeric|min:0',
         ]);
 
-        $exists = ZoneWalletConfig::where('zone_id', $request->zone_id)
-            ->where('category_id', $request->category_id ?: null)
-            ->exists();
+        $categoryIds = $request->category_id ?? [null];
+        $skipped = 0;
 
-        if ($exists) {
-            Toastr::error('Config for this zone & category combination already exists');
-            return back();
+        foreach ($categoryIds as $categoryId) {
+            $exists = ZoneWalletConfig::where('zone_id', $request->zone_id)
+                ->where('category_id', $categoryId ?: null)
+                ->exists();
+ 
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            ZoneWalletConfig::create([
+                'zone_id' => $request->zone_id,
+                'category_id' => $categoryId ?: null,
+                'min_balance' => $request->min_balance,
+            ]);
         }
 
-        ZoneWalletConfig::create([
-            'zone_id' => $request->zone_id,
-            'category_id' => $request->category_id ?: null,
-            'min_balance' => $request->min_balance,
-        ]);
-
+        if ($skipped > 0) {
+            Toastr::warning($skipped . ' config(s) already existed and were skipped');
+        }
         Toastr::success('Zone wallet config saved successfully');
         return back();
     }

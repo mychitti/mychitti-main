@@ -11,7 +11,7 @@ use App\Models\BusinessSetting;
 use App\Models\Coupon;
 use App\Models\InAppNotification;
 use App\Models\InventoryItem;
-use App\Models\InventoryOrderDetail;
+use App\Models\InventoryOrderDetail; 
 use App\Models\Item;
 use App\Models\Leave;
 use App\Models\ManualInvoice;
@@ -135,7 +135,7 @@ class DashboardController extends Controller
             // --- Profile completion ---
             $store = Helpers::get_store_data();
             
-            $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100;
+            $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
             $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
             $completionHasService = $store->services_1 || $store->services_2;
             $completionHasAddress = !empty($store->address) && !empty($store->latitude);

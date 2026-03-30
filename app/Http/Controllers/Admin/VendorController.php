@@ -12,7 +12,7 @@ use App\Models\Store;
 use App\Models\Module;
 use App\Models\Vendor;  
 use App\Models\Message;
-use App\Models\UserInfo;
+use App\Models\UserInfo; 
 use App\Scopes\StoreScope;
 use App\Models\Plan;
 use App\Models\VendorSubscription;
@@ -1733,8 +1733,7 @@ class VendorController extends Controller
             $reactivationScore -= min(30, (int) ($lastLoginDays / 3));
             $reactivationIssues[] = "Inactive for {$lastLoginDays} days";
         }
-        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
-
+        $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
 
         if ($walletBalance < $minimumBalance) {
             $reactivationScore -= 20;
@@ -1762,7 +1761,7 @@ class VendorController extends Controller
             $reactivationIssues[] = "Vendor is performing well";
         }
 
-        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 101; 
+        $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
 
         // --- Profile completion ---
         $hasDoc          = !empty($store->gst_doc) || !empty($store->id_doc);
@@ -1854,8 +1853,8 @@ class VendorController extends Controller
             $steps[] = ['priority' => 'High', 'action' => 'Renew subscription to continue receiving leads.'];
         }
 
-        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
-
+        $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
+ 
         // Wallet
         if ($walletBalance < $minimumBalance) {
             $steps[] = ['priority' => 'High', 'action' => "Recharge wallet (current: ₹" . round($walletBalance) . "). Minimum ₹" . $minimumBalance . " required."];

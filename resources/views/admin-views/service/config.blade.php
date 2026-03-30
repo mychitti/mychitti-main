@@ -159,15 +159,14 @@
                                         <option value="{{ $zone->id }}">{{ $zone->name }}</option>
                                     @endforeach
                                 </select>
-                            </div> 
+                            </div>  
                             <div class="form-group">
                                 <label>Category <small class="text-muted">(Optional - leave empty for zone level)</small></label>
-                                <select name="category_id" class="form-control js-select2-custom">
-                                    <option value="">All Categories (Zone level)</option>
+                                <select name="category_id[]" class="form-control js-select2-custom" multiple>
                                     @foreach ($categories as $cat)
                                         <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                                     @endforeach
-                                </select>
+                                </select> 
                             </div>
                             <div class="form-group">
                                 <label>Minimum Balance <span class="text-danger">*</span></label>
@@ -189,7 +188,7 @@
                             <thead class="thead-light">
                                 <tr>
                                     <th>{{ translate('sl') }}</th>
-                                    <th>Zone</th>
+                                    <th>Zone</th> 
                                     <th>Category</th>
                                     <th>Min Balance</th>
                                     <th>Action</th>
@@ -197,7 +196,7 @@
                             </thead>
                             <tbody>
                                 @forelse ($zoneWalletConfigs as $config)
-                                    <tr>
+                                    <tr> 
                                         <td>{{ $loop->iteration }}</td>
                                         <td>{{ $config->zone?->name ?? 'N/A' }}</td>
                                         <td>{{ $config->category?->name ?? 'All Categories' }}</td>
@@ -214,7 +213,7 @@
                                             </a>
                                         </td>
                                     </tr>
-                                @empty
+                                @empty  
                                     <tr>
                                         <td colspan="5" class="text-center text-muted py-3">No zone configs added yet</td>
                                     </tr>
