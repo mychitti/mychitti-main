@@ -134,6 +134,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('edit-charges/{id}', 'ItemController@edit_charges')->name('edit-charges');
             Route::get('get-items-by-category/{category_id}', 'ItemController@get_items_by_category')->name('get-items-by-category');
             Route::get('get-items-by-categories', 'ItemController@get_items_by_categories')->name('get-items-by-categories');
+            Route::post('zone-wallet-config-save', 'ServiceController@zone_wallet_config_save')->name('zone-wallet-config-save');
+            Route::get('zone-wallet-config-delete/{id}', 'ServiceController@zone_wallet_config_delete')->name('zone-wallet-config-delete');
+            Route::post('zone-wallet-config-update/{id}', 'ServiceController@zone_wallet_config_update')->name('zone-wallet-config-update');
             Route::get('list', 'ServiceController@lead_list')->name('lead-list');
             Route::get('detail/{id}', 'ServiceController@lead_detail')->name('lead-detail');
             Route::get('lead-timeline/{id}', 'ServiceController@lead_timeline')->name('lead-timeline');
@@ -751,7 +754,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
         // DOCUMENTS  ===================================
         Route::group(['prefix' => 'documents', 'as' => 'documents.', 'middleware' => ['module:documents']], function () {
-            // Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () {
+            // Route::group(['prefix' => 'gatepass', 'as' => 'gatepass.'], function () { 
             //     Route::get('list/{tab}', 'InventoryGatepassController@gatepass_list')->name('list');
             //     Route::get('delete/{id}', 'InventoryGatepassController@gatepass_delete')->name('delete');
             // });

@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title', 'Lead List')
+@section('title', 'Lead Config')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -14,7 +14,7 @@
             <div class="page-header-select-wrapper">
 
 
-            </div>
+            </div> 
         </div>
         <!-- End Page Header -->
 
@@ -138,6 +138,92 @@
                 </div>
             </div>
             <!-- End Card -->
+        </div>
+
+        <!-- Zone-wise Wallet Minimum Balance -->
+        <div class="row mt-3">
+            <div class="col-md-5"> 
+                <div class="card h-100">
+                    <div class="card-header flex-column align-items-start   ">
+                        <h5 class="card-title mb-0">Add Zone Wallet Minimum Balance</h5>
+                        <p class="text-muted small mb-0">Set the minimum wallet balance required per zone. Leads will not be distributed to vendors whose wallet balance is below this threshold.</p>
+                    </div> 
+                    <div class="card-body">
+                        <form action="{{ route('admin.service.zone-wallet-config-save') }}" method="post">
+                            @csrf
+                            <div class="form-group">
+                                <label>Zone <span class="text-danger">*</span></label>
+                                <select name="zone_id" class="form-control js-select2-custom" required>
+                                    <option value="">Select Zone</option>
+                                    @foreach ($zones as $zone)
+                                        <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div> 
+                            <div class="form-group">
+                                <label>Category <small class="text-muted">(Optional - leave empty for zone level)</small></label>
+                                <select name="category_id" class="form-control js-select2-custom">
+                                    <option value="">All Categories (Zone level)</option>
+                                    @foreach ($categories as $cat)
+                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Minimum Balance <span class="text-danger">*</span></label>
+                                <input type="number" name="min_balance" class="form-control" placeholder="Ex: 100" min="0" step="0.01" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Zone Wallet Configs</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>{{ translate('sl') }}</th>
+                                    <th>Zone</th>
+                                    <th>Category</th>
+                                    <th>Min Balance</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($zoneWalletConfigs as $config)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td>{{ $config->zone?->name ?? 'N/A' }}</td>
+                                        <td>{{ $config->category?->name ?? 'All Categories' }}</td>
+                                        <td>
+                                            <form action="{{ route('admin.service.zone-wallet-config-update', $config->id) }}" method="post" class="d-flex align-items-center">
+                                                @csrf
+                                                <input type="number" name="min_balance" value="{{ $config->min_balance }}" class="form-control form-control-sm" style="width: 120px;" min="0" step="0.01" required>
+                                                <button type="submit" class="btn btn-sm btn-primary ml-2">Update</button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <a class="btn btn-sm btn--danger btn-outline-danger" href="{{ route('admin.service.zone-wallet-config-delete', $config->id) }}" title="Delete">
+                                                <i class="tio-delete-outlined"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">No zone configs added yet</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
     @endsection

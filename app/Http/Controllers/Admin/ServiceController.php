@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB; 
 use Illuminate\Http\Request;
 use App\Models\EmployeeRole;
 use App\Models\GatePass;
@@ -27,6 +27,7 @@ use App\Models\StoreTask;
 use App\Models\StoreVoucher;
 use App\Models\TempStoreStatus;
 use App\Models\User;
+use App\Models\ZoneWalletConfig;
 
 use function PHPSTORM_META\type;
 
@@ -373,7 +374,64 @@ class ServiceController extends Controller
     public function config()
     {
         $reported_issue_list  = CommonServiceIssue::all();
-        return view('admin-views.service.config', compact('reported_issue_list'));
+
+        $zones = DB::table('zones')
+            ->join('module_zone', 'module_zone.zone_id', '=', 'zones.id')
+            ->where('module_zone.module_id', 6)
+            ->select('zones.*')
+            ->get();
+
+        $categories = Category::where('module_id', 6)->get(); 
+        $zoneWalletConfigs = ZoneWalletConfig::with('zone', 'category')->get();
+
+        return view('admin-views.service.config', compact('reported_issue_list', 'zones', 'categories', 'zoneWalletConfigs'));
+    }
+
+    public function zone_wallet_config_save(Request $request)
+    {
+        $request->validate([
+            'zone_id' => 'required',
+            'category_id' => 'nullable',
+            'min_balance' => 'required|numeric|min:0',
+        ]);
+
+        $exists = ZoneWalletConfig::where('zone_id', $request->zone_id)
+            ->where('category_id', $request->category_id ?: null)
+            ->exists();
+
+        if ($exists) {
+            Toastr::error('Config for this zone & category combination already exists');
+            return back();
+        }
+
+        ZoneWalletConfig::create([
+            'zone_id' => $request->zone_id,
+            'category_id' => $request->category_id ?: null,
+            'min_balance' => $request->min_balance,
+        ]);
+
+        Toastr::success('Zone wallet config saved successfully');
+        return back();
+    }
+
+    public function zone_wallet_config_update(Request $request, $id)
+    {
+        $request->validate([
+            'min_balance' => 'required|numeric|min:0',
+        ]);
+
+        $config = ZoneWalletConfig::findOrFail($id);
+        $config->update(['min_balance' => $request->min_balance]);
+
+        Toastr::success('Zone wallet config updated successfully');
+        return back();
+    }
+
+    public function zone_wallet_config_delete($id)
+    {
+        ZoneWalletConfig::findOrFail($id)->delete();
+        Toastr::success('Zone wallet config deleted successfully');
+        return back();
     }
 
     public function approve_status_request(Request $request)
