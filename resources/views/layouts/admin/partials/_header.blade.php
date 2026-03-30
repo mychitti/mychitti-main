@@ -18,7 +18,6 @@
             <!-- Secondary Content -->
             <div class="navbar-nav-wrap-content-right flex-grow-1 w-0">
                 <!-- Navbar -->
-                @if(!_onlyStoreAddEdit())
                 <ul class="navbar-nav align-items-center flex-row flex-grow-1 __navbar-nav">
                     <li class="nav-item __nav-item">
                         <a href="{{ route('admin.users.user-dashboard')}}" id="tourb-6" class="__nav-link {{ Request::is('users*') ? 'active' : '' }}">
@@ -314,8 +313,7 @@
                         </div>
                     </li>
                 </ul>
-                @else 
-                @endif
+            
                 <!-- End Navbar -->
             </div>
             <!-- End Secondary Content -->

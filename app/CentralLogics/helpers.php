@@ -2563,15 +2563,17 @@ class Helpers
 
         if (empty($storeIds)) return [];
 
-        // Step 2.5: Filter stores with minimum wallet balance of 101
+        // Step 2.5: Filter stores with minimum wallet balance ?
         $storeVendorMap = DB::table('stores')
             ->whereIn('id', $storeIds)
             ->pluck('vendor_id', 'id')
             ->toArray();
 
+        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
+
         $qualifiedVendorIds = DB::table('store_wallets')
             ->whereIn('vendor_id', array_values($storeVendorMap))
-            ->where('total_earning', '>=', 101)
+            ->where('total_earning', '>=', $minimumBalance)
             ->pluck('vendor_id')
             ->map(fn($id) => (int) $id)
             ->toArray();

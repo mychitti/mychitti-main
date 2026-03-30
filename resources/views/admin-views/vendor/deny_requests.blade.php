@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-    <div class="content container-fluid">
+    <div class="content container-fluid"> 
         <!-- Page Header -->
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> {{translate('messages.denied_stores')}}</h1>
@@ -52,6 +52,15 @@
             <div class="card-header py-2">
                 <div class="search--button-wrapper">
                     <h5 class="card-title">{{translate('messages.stores_list')}} <span class="badge badge-soft-dark ml-2" id="itemCount">{{$stores->total()}}</span></h5>
+                    <form class="search-form">
+                        <select onchange="this.form.submit()" data-placeholder="Added By" class="form-control js-select2-custom" name="created_by">
+                            <option value=""></option>
+                            <option value="all">All</option>
+                            @foreach($adminStaff as $key => $value)
+                                <option {{ request()?->created_by == $value->id ? 'selected' : '' }} value="{{$value->id}}">{{$value->f_name . ' '  . $value->l_name. ' #' .$value->id}}</option>
+                            @endforeach
+                        </select>
+                    </form>
                     <form action="javascript:" id="search-form" class="search-form">
                     <!-- Search -->
                         @csrf

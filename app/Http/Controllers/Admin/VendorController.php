@@ -10,7 +10,7 @@ use App\Models\AddOn;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\Module;
-use App\Models\Vendor; 
+use App\Models\Vendor;  
 use App\Models\Message;
 use App\Models\UserInfo;
 use App\Scopes\StoreScope;
@@ -1733,7 +1733,10 @@ class VendorController extends Controller
             $reactivationScore -= min(30, (int) ($lastLoginDays / 3));
             $reactivationIssues[] = "Inactive for {$lastLoginDays} days";
         }
-        if ($walletBalance < 101) {
+        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
+
+
+        if ($walletBalance < $minimumBalance) {
             $reactivationScore -= 20;
             $reactivationIssues[] = "Wallet balance low";
         }
@@ -1759,6 +1762,8 @@ class VendorController extends Controller
             $reactivationIssues[] = "Vendor is performing well";
         }
 
+        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 101; 
+
         // --- Profile completion ---
         $hasDoc          = !empty($store->gst_doc) || !empty($store->id_doc);
         $hasService      = $store->services_1 || $store->services_2 ;
@@ -1767,7 +1772,7 @@ class VendorController extends Controller
         $hasLogo         = !empty($store->logo);
         $hasProfile      = $hasAddress && $hasCoverPic && $hasLogo; 
         $hasSub          = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
-        $walletRecharged = isset($wallet) && ($wallet->balance ?? 0) >= 101;
+        $walletRecharged = isset($wallet) && ($wallet->balance ?? 0) >= $minimumBalance;
 
         $completionChecks   = [$hasDoc, $hasService, $hasProfile, $hasSub, $walletRecharged];
         $completionDone     = collect($completionChecks)->filter()->count();
@@ -1781,7 +1786,7 @@ class VendorController extends Controller
             ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $hasService],
             ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $hasProfile],
             ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $hasSub],
-            ['icon' => '💰', 'label' => 'Wallet Min Balance ₹101',   'done' => $walletRecharged],
+            ['icon' => '💰', 'label' => 'Wallet Min Balance ₹' . $minimumBalance,   'done' => $walletRecharged],
         ];
  
         return view('admin-views.vendor.view.index', compact(
@@ -1849,9 +1854,11 @@ class VendorController extends Controller
             $steps[] = ['priority' => 'High', 'action' => 'Renew subscription to continue receiving leads.'];
         }
 
+        $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100; 
+
         // Wallet
-        if ($walletBalance < 101) {
-            $steps[] = ['priority' => 'High', 'action' => "Recharge wallet (current: ₹" . round($walletBalance) . "). Minimum ₹101 required."];
+        if ($walletBalance < $minimumBalance) {
+            $steps[] = ['priority' => 'High', 'action' => "Recharge wallet (current: ₹" . round($walletBalance) . "). Minimum ₹" . $minimumBalance . " required."];
         } elseif ($walletBalance < 500) {
             $steps[] = ['priority' => 'Low', 'action' => "Wallet balance is ₹" . round($walletBalance) . ". Consider recharging for uninterrupted service."];
         }
@@ -2188,6 +2195,7 @@ class VendorController extends Controller
         $key = explode(' ', $search_by);
         $type = $request->query('type', 'all');
         $module_id = $request->query('module_id', 'all');
+        $created_by = ($request['created_by'] === 'all' || empty($request['created_by'])) ? null : $request['created_by'];
         $stores = Store::with('vendor', 'module')->whereHas('vendor', function ($query) {
             return $query->where('status', null);
         })
@@ -2197,6 +2205,7 @@ class VendorController extends Controller
             ->when(is_numeric($module_id), function ($query) use ($request) {
                 return $query->module($request->query('module_id'));
             })
+            ->when(is_numeric($created_by), fn($q) => $q->whereHas('vendor', fn($v) => $v->where('created_by', $created_by)))
             ->when($search_by, function ($query) use ($key) {
                 return $query->where(function ($query) use ($key) {
                     $query->orWhereHas('vendor', function ($q) use ($key) {
@@ -2220,7 +2229,8 @@ class VendorController extends Controller
             ->module(Config::get('module.current_module_id'))
             ->type($type)->latest()->paginate(config('default_pagination'));
         $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
-        return view('admin-views.vendor.pending_requests', compact('stores', 'zone', 'type', 'search_by'));
+        $adminStaff = Admin::all();
+        return view('admin-views.vendor.pending_requests', compact('stores', 'zone', 'type', 'search_by', 'adminStaff'));
     }
 
     public function deny_requests(Request $request)
@@ -2230,6 +2240,7 @@ class VendorController extends Controller
         $zone_id = $request->query('zone_id', 'all');
         $type = $request->query('type', 'all');
         $module_id = $request->query('module_id', 'all');
+        $created_by = ($request['created_by'] === 'all' || empty($request['created_by'])) ? null : $request['created_by'];
         $stores = Store::with('vendor', 'module')->whereHas('vendor', function ($query) {
             return $query->where('status', 0);
         })
@@ -2239,6 +2250,7 @@ class VendorController extends Controller
             ->when(is_numeric($module_id), function ($query) use ($request) {
                 return $query->module($request->query('module_id'));
             })
+            ->when(is_numeric($created_by), fn($q) => $q->whereHas('vendor', fn($v) => $v->where('created_by', $created_by)))
             ->when($search_by, function ($query) use ($key) {
                 return $query->where(function ($query) use ($key) {
                     $query->orWhereHas('vendor', function ($q) use ($key) {
@@ -2262,7 +2274,8 @@ class VendorController extends Controller
             ->module(Config::get('module.current_module_id'))
             ->type($type)->latest()->paginate(config('default_pagination'));
         $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
-        return view('admin-views.vendor.deny_requests', compact('stores', 'zone', 'type', 'search_by'));
+        $adminStaff = Admin::all();
+        return view('admin-views.vendor.deny_requests', compact('stores', 'zone', 'type', 'search_by', 'adminStaff'));
     }
 
 

@@ -101,10 +101,16 @@ class ContactController extends Controller
         return back();
     }
 
-    public function send_mail(Request $request, $id)
+    public function send_mail(Request $request, $id) 
     {
         $contact = Contact::findOrFail($id);
-        $data = array('body' => $request['mail_body'], 'name' => $contact->name);
+        $data = array(
+            'reply_message' => $request['mail_body'],
+            'name' => $contact->name, 
+            'subject' => $request['subject'],
+            'customer_subject' => $contact->subject,
+            'customer_message' => $contact->message,
+        );
         try {
             Mail::send('email-templates.customer-message', $data, function ($message) use ($contact, $request) {
                 $message->to($contact['email'], BusinessSetting::where(['key' => 'business_name'])->first()->value)
@@ -118,7 +124,8 @@ class ContactController extends Controller
                 ]),
                 'seen'=>1
             ]);
-        } catch (\Exception $exception) {
+        } catch (\Throwable $th) {
+            prx($th->getMessage());
             Toastr::error(translate('Invalied Email Id!'));
             return back();
         }

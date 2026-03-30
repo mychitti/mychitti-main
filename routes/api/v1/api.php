@@ -179,7 +179,6 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('wallet-payment-list', 'DeliverymanController@wallet_payment_list')->name('wallet_payment_list');
             Route::get('wallet-provided-earning-list', 'DeliverymanController@wallet_provided_earning_list')->name('wallet_provided_earning_list');
 
-
             // Chatting
             Route::group(['prefix' => 'message'], function () {
                 Route::get('list', 'ConversationController@dm_conversations');

@@ -775,7 +775,11 @@ class BusinessSettingsController extends Controller
         ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'wallet_recharge_gst_status'], [
-            'value' => $request['wallet_recharge_gst_status']
+            'value' => $request['wallet_recharge_gst_status'] 
+        ]);
+
+        DB::table('business_settings')->updateOrInsert(['key' => 'wallet_min_balance'], [
+            'value' => $request['wallet_min_balance'] ?? 100
         ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'meta_description'], [

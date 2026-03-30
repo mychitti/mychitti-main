@@ -14,7 +14,7 @@
                 <span>
                     {{ translate('messages.business_settings') }}
                 </span>
-            </h1>
+            </h1> 
             @include('admin-views.business-settings.partials.nav-menu')
         </div>
         <!-- End Page Header -->
@@ -1178,7 +1178,7 @@
                                                 </div> -->
                                 <div class="card-body">
                                     <div class="row g-3 align-items-end">
-                                        <div class="col-sm-6 col-lg-4">
+                                        <div class="col-sm-6 col-lg-3">
                                             @php($wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first())
                                             <div class="form-group mb-0">
                                                 <label class="form-label text-capitalize"
@@ -1191,7 +1191,7 @@
                                                     required>
                                             </div>
                                         </div>
-                                        <div class="col-sm-6 col-lg-4">
+                                        <div class="col-sm-6 col-lg-3">
                                             @php($wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first())
                                             <div class="form-group mb-0">
                                                 <label class="form-label text-capitalize"
@@ -1203,7 +1203,7 @@
                                                     </select>
                                             </div>
                                         </div>
-                                        <div class="col-sm-6 col-lg-4">
+                                        <div class="col-sm-6 col-lg-3">
                                             @php($wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first())
                                             <div class="form-group mb-0">
                                                 <label class="form-label text-capitalize"
@@ -1212,6 +1212,16 @@
                                                     id="wallet_recharge_hsn" min="0" placeholder="HSN"
                                                     value="{{ $wallet_recharge_hsn ? $wallet_recharge_hsn->value : '' }}"
                                                     required>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6 col-lg-3">
+                                            @php($wallet_min_balance = \App\Models\BusinessSetting::where('key', 'wallet_min_balance')->first())
+                                            <div class="form-group mb-0">
+                                                <label class="form-label text-capitalize"
+                                                    for="wallet_min_balance">Wallet Minimum Balance</label>
+                                                <input type="number" name="wallet_min_balance" class="form-control"
+                                                    id="wallet_min_balance" min="0" placeholder="Ex: 100"
+                                                    value="{{ $wallet_min_balance ? $wallet_min_balance->value : 101 }}">
                                             </div>
                                         </div>
                                     </div>

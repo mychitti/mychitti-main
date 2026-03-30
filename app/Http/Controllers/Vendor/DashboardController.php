@@ -135,6 +135,7 @@ class DashboardController extends Controller
             // --- Profile completion ---
             $store = Helpers::get_store_data();
             
+            $minimumBalance = BusinessSetting::where('key', 'wallet_min_balance')->first()->value ?? 100;
             $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
             $completionHasService = $store->services_1 || $store->services_2;
             $completionHasAddress = !empty($store->address) && !empty($store->latitude);
@@ -143,7 +144,7 @@ class DashboardController extends Controller
             $completionHasProfile = $completionHasAddress && $completionHasCover && $completionHasLogo;
             $completionHasSub     = $store->subscriptions()->where('plan_expiry', '>=', now())->exists();
             $storeWallet          = StoreWallet::where('vendor_id', $vendorId)->first();
-            $completionWallet     = $storeWallet && ($storeWallet->balance ?? 0) >= 101;
+            $completionWallet     = $storeWallet && ($storeWallet->balance ?? 0) >= $minimumBalance;
 
             $cChecks          = [$completionHasDoc, $completionHasService, $completionHasProfile, $completionHasSub, $completionWallet];
             $completionDone    = collect($cChecks)->filter()->count(); 
@@ -157,7 +158,7 @@ class DashboardController extends Controller
                 ['icon' => '🛎️', 'label' => 'Service Offered',         'done' => $completionHasService],
                 ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $completionHasProfile],
                 ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $completionHasSub],
-                ['icon' => '💰', 'label' => 'Wallet Min Balance ₹101',   'done' => $completionWallet],
+                ['icon' => '💰', 'label' => 'Wallet Min Balance ₹' . $minimumBalance,   'done' => $completionWallet],
             ];  
 
             $inactiveWarning = \App\Models\InAppNotification::where('reciever', \App\CentralLogics\Helpers::get_store_id())
