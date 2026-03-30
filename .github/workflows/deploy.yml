@@ -64,6 +64,9 @@ jobs:
         php artisan config:cache && \
         php artisan view:cache && \
 
+        echo 'Restarting queue workers...' && \
+        php artisan queue:restart && \
+
         mkdir -p storage/app/tmp && \
         chown -R apache:apache storage/app/tmp && \
         chmod -R 775 storage/app/tmp && \
