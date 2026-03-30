@@ -9,7 +9,7 @@
     <style>
         .lead-stats {
             background: #f8f9fa;
-            padding: 12px 16px;
+            padding: 12px 16px; 
             border-radius: 10px;
             font-size: 14px;
             line-height: 1.6;
@@ -276,7 +276,7 @@
                                                     $empInfo = _getWhere('admins', [
                                                         'id' => $lead->project_manager,
                                                     ]);
-                                                    if ($empInfo[0]) {
+                                                    if (!empty($empInfo[0])) {
                                                         echo $empInfo[0]->f_name .
                                                             ' ' .
                                                             $empInfo[0]->l_name .
@@ -393,7 +393,7 @@
                                                                 $empInfo = _getWhere('vendor_employees', [
                                                                     'id' => $lead->project_manager,
                                                                 ]);
-                                                                if ($empInfo[0]) {
+                                                                if (!empty($empInfo[0])) {
                                                                     echo $empInfo[0]->f_name .
                                                                         ' ' .
                                                                         $empInfo[0]->l_name;

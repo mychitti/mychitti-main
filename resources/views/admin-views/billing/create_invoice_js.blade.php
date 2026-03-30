@@ -1,4 +1,5 @@
  <script>
+     @include('partials.inventory_stock_notify_js')
      let invoiceDeleteRowUrl = "{{ route('admin.billing.delete-row') }}";
      let inventoryGetItemInfoUrl = "{{ route('admin.inventory.get-item-info') }}";
      let customerFetchDetailsUrl = "{{ route('admin.client.fetch-details') }}";
@@ -7,7 +8,7 @@
      let businessSettingsSignatureFetchUrl = "{{ route('admin.business-settings.signature.fetch') }}";
      $('.submit_btn').on('click', function() {
          if ($('.item_row').length) {
-             $("#invoice_form").submit();
+             $("#invoice_form").submit();  
          } else {
              toasterNotification("Add Atleast One Item")
          } 
@@ -125,6 +126,7 @@
                      id: item.id,
                  },
                  success: function(data) {
+                     notifyInventoryStockOnAdd(data);
                      addMoreRow(data);
                  },
                  complete: function() {
@@ -250,7 +252,8 @@
          data-secondary-unit="${item?.secondary_unit ?? ''}"
     data-primary-qty="${item?.primary_qty ?? 0}"
     data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}">
+    data-primary-price="${item?.selling_price ?? 0}"
+    data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
                        <input type="hidden" name="inventory_item_id[]" value="` + item_id +
              `"  class="form-control">
                        <input type="hidden" name="invoice_item_new[]" value="1"  class="form-control">

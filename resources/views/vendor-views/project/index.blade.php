@@ -276,9 +276,9 @@
                                                     $empInfo = _getWhere('vendor_employees', [
                                                         'id' => $lead->project_manager,
                                                     ]);
-                                                    if ($empInfo[0]) {
+                                                    if (!empty($empInfo[0])) {
                                                         echo $empInfo[0]->f_name .
-                                                            ' ' .
+                                                            ' ' . 
                                                             $empInfo[0]->l_name .
                                                             ' (ID: ' .
                                                             $lead->project_manager .
@@ -393,7 +393,7 @@
                                                                 $empInfo = _getWhere('vendor_employees', [
                                                                     'id' => $lead->project_manager,
                                                                 ]);
-                                                                if ($empInfo[0]) {
+                                                                if (!empty($empInfo[0])) {
                                                                     echo $empInfo[0]->f_name .
                                                                         ' ' .
                                                                         $empInfo[0]->l_name;

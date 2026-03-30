@@ -1,4 +1,5 @@
  <script>
+     @include('partials.inventory_stock_notify_js')
      $(document).ready(function() {
          $('#customer_id').select2({
              placeholder: 'Search for a customer',
@@ -457,7 +458,8 @@
                      id: item.id,
                  },
                  success: function(data) {
-                     addMoreRow(data);
+                     notifyInventoryStockOnAdd(data);
+                     addMoreRow(data); 
                  },
                  complete: function() {
                      completed++;

@@ -310,7 +310,7 @@
                         class="btn btn--warning">📄 Receivable Receipt</button>
                 @endif
                 <button type="submit" class="btn btn-primary">💾 Save Task</button>
-            </div>
+            </div> 
             @include('admin-views/form_modals/job_card_modal')
             @include('admin-views/form_modals/receivable_receipt_modal')
         </form>

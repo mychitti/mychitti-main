@@ -345,31 +345,15 @@
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Task Management</h1>
         </div>
         @if (hasPermission('task', 'list'))
-            <div class="d-flex row p-3">
-                <div class="col-6 col-md-2 p-1">
-                    <div class="card  stat-card theme-skyblue-color ">
-                        <span class="card-caption">Allotted</span>
-                        <span class="card-main-text">{{ $data['alotted'] }}</span>
+            <div class="d-flex row p-3 flex-wrap">
+                @foreach ($taskStatusStatCards ?? [] as $card)
+                    <div class="col-6 col-md-2 p-1">
+                        <div class="card stat-card {{ $card['theme_class'] }}">
+                            <span class="card-caption">{{ $card['label'] }}</span>
+                            <span class="card-main-text">{{ $card['count'] }}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="col-6 col-md-2 p-1">
-                    <div class="card  stat-card theme-green-color">
-                        <span class="card-caption">Completed</span>
-                        <span class="card-main-text">{{ $data['completed'] }}</span>
-                    </div>
-                </div>
-                <div class="col-6 col-md-2 p-1">
-                    <div class="card  stat-card theme-grey-color">
-                        <span class="card-caption">In Progress</span>
-                        <span class="card-main-text">{{ $data['inprogress'] }}</span>
-                    </div>
-                </div>
-                <div class="col-6 col-md-2 p-1">
-                    <div class="card  stat-card theme-pink-color">
-                        <span class="card-caption">Cancelled</span>
-                        <span class="card-main-text">{{ $data['cancelled'] }}</span>
-                    </div>
-                </div>
+                @endforeach
             </div>
         @endif
         <div class="card-header d-flex justify-content-end gap-2 flex-wrap py-2">
@@ -391,7 +375,7 @@
             <div class="card-header d-flex py-2  flex-wrap align-items-center">
 
                 @if (!$empId) <!-- if not showing employee specific -->
-                    @if (hasPermission('task', 'list'))
+                    @if (hasPermission('task', 'list')) 
                         <form action="" class="d-flex date-range-form">
                             @include('admin-views/form_modals/date_range')
                             <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning"

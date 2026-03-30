@@ -1,4 +1,5 @@
  <script>
+     @include('partials.inventory_stock_notify_js')
      $(document).ready(function() {
          $('#customer_id').select2({
              placeholder: 'Search for a customer',
@@ -341,6 +342,7 @@
                      id: item.id,
                  },
                  success: function(data) {
+                     notifyInventoryStockOnAdd(data);
                      addMoreRowQuote(data);
                  },
                  complete: function() {
@@ -398,10 +400,12 @@
 
          var html = `<tr class="item_row_quote" data-quote="` + dataId + `"  
           data-primary-unit="${item?.unit ?? ''}"
-    data-secondary-unit="${item?.secondary_unit ?? ''}"
+    data-secondary-unit="${item?.secondary_unit ?? ''}" 
     data-primary-qty="${item?.primary_qty ?? 0}"
     data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}">
+    data-primary-price="${item?.selling_price ?? 0}"
+    data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
+                       <input type="hidden" name="invoice_item_id[]" value="` + (item && item.id ? item.id : '') + `">
                        <input type="hidden" name="invoice_item_new[]" value="1" placeholder="Item Name" class="form-control">
                       <td><input type="text" name="item_name_new[]" value="` + item_name + `" placeholder="Item Name" class="form-control"></td>
                       <td style="width: 100px;"><input type="number" value="` + item_price + `" step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price"></td>

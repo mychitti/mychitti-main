@@ -187,7 +187,7 @@ class TaskController extends Controller
         $inventory_items = InventoryItem::where('store_id', $store_id)->get();
 
         // for invoice generated 
-        $store = Helpers::get_store_data();
+        $data['store'] = $store = Helpers::get_store_data();
 
         $upcoming_bill_number = Helpers::generateInvoiceIdAdmin(6);
         $bill_number = $upcoming_bill_number;
@@ -272,6 +272,7 @@ class TaskController extends Controller
     {
         $tasks = StoreTask::with('allChildren')
             ->where('store_id', Helpers::get_store_id())
+            ->where('task_type', 'common')
             ->where('parent_id', $id)
 
             ->whereNotNull('parent_id')
@@ -342,38 +343,52 @@ class TaskController extends Controller
 
         $tasks = $query->get();
 
-        // Fetch all tasks for the store (no date filter)
-        $allTasks = StoreTask::where('store_id', $storeId)
-            ->whereNull('parent_id')
-            ->get();
+        $store = Helpers::get_store_data();
+        $configuredStatuses = array_values(array_filter(array_map('trim', explode(',', $store->task_statuses ?? ''))));
 
-        // Initialize counts
-        $data = [
-            'alotted' => 0,
-            'inprogress' => 0,
-            'completed' => 0,
-            'cancelled' => 0,
-        ];
-
-        // Loop through tasks and count based on rules
-        foreach ($allTasks as $task) {
-            if ($task->employee_id) {
-                $data['alotted']++;
-            }
+        $baseTasksForStats = StoreTask::query()
+            ->where('store_id', $storeId)
+            ->where('task_type', 'common')
+            ->whereNull('parent_id');
+         if ($empId) {
+            $baseTasksForStats->where('employee_id', $empId);
+        } else {
+            $baseTasksForStats->whereBetween('created_at', [$formatted_from, $formatted_to]);
         }
-        $baseTasks = StoreTask::where('store_id', $storeId)->whereNull('parent_id');
-        $taskStats['new'] = (clone $baseTasks)->where('status', 'New')->count();
-        $taskStats['completed'] = (clone $baseTasks)->where('status', 'Completed')->count();
-        $taskStats['in_progress'] = (clone $baseTasks)->whereIn(DB::raw('LOWER(status)'), [
-            'in progress',
-            'in_progress',
-            'inprogress',
-        ])->count();
 
+        $themeClasses = ['theme-skyblue-color', 'theme-green-color', 'theme-grey-color', 'theme-pink-color', 'theme-purple-color'];
+        $taskStatusStatCards = [];
+        $seenStatusNormalized = [];
+        foreach ($configuredStatuses as $i => $label) {
+            $normalized = strtolower(trim($label));
+            $seenStatusNormalized[$normalized] = true;
+            $count = (clone $baseTasksForStats)->whereRaw('LOWER(TRIM(status)) = ?', [$normalized])->count();
+            $taskStatusStatCards[] = [
+                'label' => $label,
+                'count' => $count,
+                'theme_class' => $themeClasses[$i % count($themeClasses)],
+            ];
+        }
 
-        // prx(Helpers::get_store_id());
-        // prx($tasks);
-        return view('admin-views.task.list', compact('staff', 'sales', 'preset', 'data', 'empId', 'tasks', 'statuses', 'from', 'to', 'status'));
+        $appendedFixedStatuses = [
+            ['label' => 'New', 'theme_class' => 'theme-skyblue-color'],
+            ['label' => 'Completed', 'theme_class' => 'theme-green-color'],
+            ['label' => 'Cancelled', 'theme_class' => 'theme-pink-color'],
+        ];
+        foreach ($appendedFixedStatuses as $row) { 
+            $normalized = strtolower(trim($row['label']));
+            if (! empty($seenStatusNormalized[$normalized])) {
+                continue;
+            }
+            $count = (clone $baseTasksForStats)->whereRaw('LOWER(TRIM(status)) = ?', [$normalized])->count();
+            $taskStatusStatCards[] = [
+                'label' => $row['label'],
+                'count' => $count,
+                'theme_class' => $row['theme_class'],
+            ];
+        }
+
+        return view('admin-views.task.list', compact('staff', 'sales', 'preset', 'taskStatusStatCards', 'empId', 'tasks', 'statuses', 'from', 'to', 'status'));
     }
 
     public function export(Request $request)
@@ -386,9 +401,10 @@ class TaskController extends Controller
             'taskCategory'
         ])
             ->where('store_id', $storeId)
+            ->where('task_type', 'common')
             ->whereNull('parent_id');
         $tasks = $query->get();
-
+ 
         $headings = [
             'Sl',
             'Title',

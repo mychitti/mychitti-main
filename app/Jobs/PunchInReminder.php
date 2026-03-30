@@ -19,7 +19,7 @@ class PunchInReminder implements ShouldQueue
 
     public function handle()
     {
-        $employees = VendorEmployee::where('status', 1)->get();
+        $employees = VendorEmployee::where('status', 1)->where('id', 7)->get();
 
         $today = Carbon::today();
 

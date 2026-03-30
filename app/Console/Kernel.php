@@ -7,6 +7,12 @@ use App\Jobs\MarkEmployeeAttendance;
 use App\Jobs\ProcessMonthlyDepreciation;
 use App\Jobs\ProcessSingleVendorAccount;
 use App\Jobs\PunchInReminder;
+use App\Jobs\Scheduled\CancelStaleOrdersJob;
+use App\Jobs\Scheduled\DatabaseBackupJob;
+use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
+use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
+use App\Jobs\Scheduled\RegenerateSitemapJob;
+use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Models\Store;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -31,6 +37,39 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $tz = 'Asia/Kolkata';
+ 
+        // URL crons migrated from wget → queued jobs (run `php artisan queue:work` with QUEUE_CONNECTION=redis or database)
+        $schedule->job(new CancelStaleOrdersJob)->everyFiveMinutes()
+            ->name('cancel-stale-orders')
+            ->withoutOverlapping();
+
+        $schedule->job(new SendPaymentRemindersJob)->dailyAt('09:00')
+            ->timezone($tz)
+            ->name('payment-reminders')
+            ->withoutOverlapping();
+
+        $schedule->job(new MonthlyMaintenanceReminderJob)->dailyAt('09:00')
+            ->timezone($tz)
+            ->name('maintenance-reminders')
+            ->withoutOverlapping();
+
+        $schedule->job(new RegenerateSitemapJob)->dailyAt('00:00')
+            ->timezone($tz)
+            ->name('regenerate-sitemap')
+            ->withoutOverlapping();
+
+        // Was: 0 0,12 */2 * * — midnight & noon on every 2nd day of month (mysqldump; long timeout on job)
+        $schedule->job(new DatabaseBackupJob)->cron('0 0,12 */2 * *')
+            ->timezone($tz)
+            ->name('database-sql-backup')
+            ->withoutOverlapping();
+
+        $schedule->job(new EmployeeAttendanceMarkJob)->dailyAt('21:00')
+            ->timezone($tz)
+            ->name('employee-attendance-mark')
+            ->withoutOverlapping();
+
         // PROCESS VENDOR ====================================
         $schedule->call(function () {
             $date = now()->toDateString();
@@ -42,14 +81,14 @@ class Kernel extends ConsoleKernel
                 }
             });
         })->name('process-vendor-accounts')->dailyAt('23:59')
-            ->timezone('Asia/Kolkata')
+            ->timezone($tz)
             ->withoutOverlapping();
 
         // LOW BALANCE NOTIFICATION ============================
         $schedule->call(function () {
             LowBalanceNotification::dispatch();
         })->name('low-balance-notification')->dailyAt('23:59')
-            ->timezone('Asia/Kolkata')
+            ->timezone($tz)
             ->withoutOverlapping();
         // })->everyTwoMinutes();  
 
@@ -63,16 +102,16 @@ class Kernel extends ConsoleKernel
             }
             // })->everyFiveSeconds();
         })->name('monthly-depreciation')->dailyAt('23:59')
-            ->timezone('Asia/Kolkata')
+            ->timezone($tz)
             ->withoutOverlapping();
 
         // PUNCH IN REMINDER =======================================
         $schedule->call(function () {
             PunchInReminder::dispatch();
         })->name('punch-in-reminder')
-            // ->everyMinute() // main 
-            ->dailyAt('22:30')
-            ->timezone('Asia/Kolkata')
+            ->everyMinute() // main 
+            // ->dailyAt('22:30')
+            ->timezone($tz)
             ->withoutOverlapping();
 
 

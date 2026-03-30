@@ -1,7 +1,8 @@
 <script>
+    @include('partials.inventory_stock_notify_js')
     $(".bill_to_type").on('change', function() {
         const val = $(this).val();
-        
+          
         if (val === 'user' && $(this).prop('checked') == true) {
             $('#customer_list').show();
             $('#userSelect').attr('name', 'bill_to');
@@ -155,7 +156,8 @@
                         data-secondary-unit="${item?.secondary_unit ?? ''}"
                         data-primary-qty="${item?.primary_qty ?? 0}"
                         data-secondary-qty="${item?.secondary_qty ?? 0}"
-                        data-primary-price="${item?.selling_price ?? 0}">
+                        data-primary-price="${item?.selling_price ?? 0}"
+                        data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
 
                        <input type="hidden" name="inventory_item_id_new[]" value="` + item_id + `" >
                        <input type="hidden" name="invoice_item_new[]" value="1" >
@@ -398,6 +400,7 @@
                     id: item.id,
                 },
                 success: function(data) {
+                    notifyInventoryStockOnAdd(data);
                     addMoreRow(data);
                 },
                 complete: function() {

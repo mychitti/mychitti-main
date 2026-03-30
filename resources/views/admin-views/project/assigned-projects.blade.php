@@ -13,7 +13,7 @@
     <div class="page-header">
         <h1 class="page-header-title"><i class="tio-filter-list"></i> Projects<span class="badge badge-soft-dark ml-2"
                 id="itemCount">{{ count($projects) }}</span></h1>
-        <div class="page-header-select-wrapper">
+        <div class="page-header-select-wrapper"> 
 
             {{-- <div class="select-item">
                     <select name="module_id" class="form-control js-select2-custom"
@@ -99,7 +99,7 @@
                                     <div class="info">
                                         <div class="text--title">
                                             @php $empInfo = _getWhere('vendor_employees', ['id'=> $lead->team_leader]);
-                                            if($empInfo[0])
+                                            if (!empty($empInfo[0]))
                                             echo $empInfo[0]->f_name . ' ' . $empInfo[0]->l_name; @endphp
 
 

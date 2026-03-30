@@ -230,7 +230,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'asset', 'as' => 'asset.'], function () {
             Route::post('return', 'AssetsController@return_asset')->name('return');
             Route::get('alotted', 'AssetsController@alotted_assets')->name('alotted');
-        });
+        }); 
         Route::group(['prefix' => 'asset', 'as' => 'asset.', 'middleware' => ['planwise:account_manage']], function () { // add middleware
             Route::get('/', 'AssetsController@index')->name('index');
             Route::post('store', 'AssetsController@store')->name('store');
