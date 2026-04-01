@@ -1797,6 +1797,39 @@ if (!function_exists('_updateInventoryStock')) {
         }
     }
 }
+if (!function_exists('_incrementInventoryStock')) {
+
+    function _incrementInventoryStock($inv_item_id, $qty, $unit = null)
+    {
+        try {
+            $inv_item = InventoryItem::where('id', $inv_item_id)
+                ->where('store_id', Helpers::get_store_id())
+                ->first();
+
+            if (!$inv_item || $qty <= 0) {
+                return;
+            }
+
+            $addQty = $qty;
+
+            if (
+                $unit &&
+                $inv_item->secondary_unit &&
+                $unit == $inv_item->secondary_unit &&
+                $inv_item->primary_qty > 0 &&
+                $inv_item->secondary_qty > 0
+            ) {
+                $conversionRate = $inv_item->primary_qty / $inv_item->secondary_qty;
+                $addQty = $qty * $conversionRate;
+            }
+
+            $inv_item->stock = $inv_item->stock + $addQty;
+            $inv_item->save();
+        } catch (\Throwable $th) {
+            //  Log::error($th);
+        }
+    }
+}
 if (!function_exists('_placePurchaseOrder')) {
 
     function _placePurchaseOrder($item_id, $stock)

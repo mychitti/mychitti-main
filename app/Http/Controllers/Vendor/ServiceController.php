@@ -794,23 +794,22 @@ class ServiceController extends Controller
         }
 
         $service_id = $request->service_id;
+        $tax_type = $request->tax_type ?? 'non-gst';
 
         $existInvoice = ServiceInvoice::where('service_id', $service_id)->exists();
         $totalPrice = 0;
         foreach ($request->item_price as $key => $price) {
-            if (Helpers::get_store_data()->gst == null ||  json_decode(Helpers::get_store_data()->gst)->status) {
-                $tax_type = 'gst';
+            if ($tax_type == 'gst') {
                 $rtax = $request->item_tax[$key] ?? 0;
                 $totalPrice += _taxIncludedPrice($price, $rtax, 'actual') *  $request->item_qty[$key];
             } else {
-                $tax_type = 'non-gst';
                 $totalPrice += _taxIncludedPrice($price, 0, 'actual') *  $request->item_qty[$key];
             }
         }
         if ($request->has('item_price_new')) {
             foreach ($request->item_price_new as $key => $price) {
-                if (Helpers::get_store_data()->gst == null ||  json_decode(Helpers::get_store_data()->gst)->status) {
-                    $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key], 'actual') *  $request->item_qty_new[$key];
+                if ($tax_type == 'gst') {
+                    $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key] ?? 0, 'actual') *  $request->item_qty_new[$key];
                 } else {
                     $totalPrice += _taxIncludedPrice($price, 0, 'actual') *  $request->item_qty_new[$key];
                 }
@@ -1177,8 +1176,14 @@ class ServiceController extends Controller
     }
     public function reviews(Request $request)
     {
-        $reviews = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.id', Helpers::get_store_id())->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.id as rev_id', 'store_reviews.reply')->where('store_reviews.status', 1)->get();
+        $reviews = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.id', Helpers::get_store_id())->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.id as rev_id', 'store_reviews.reply', 'store_reviews.status as review_status')->get();
         return view('vendor-views.service.reviews', compact('reviews'));
+    }
+
+    public function review_status(Request $request)
+    {
+        DB::table('store_reviews')->where('id', $request->id)->update(['status' => $request->status]);
+        return response()->json(['success' => true]);
     }
     public function send_confirmation_notification(Request $request)
     {

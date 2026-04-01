@@ -4,17 +4,11 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    @if (
-        !App\CentralLogics\Helpers::get_store_data()->gst == null &&
-            !(App\CentralLogics\Helpers::get_store_data()->gst &&
-                json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status
-            ))
-        <style>
-            .tax_field {
-                display: none;
-            }
-        </style>
-    @endif
+    <style>
+        .tax_field {
+            display: none;
+        }
+    </style>
     <style>
         .item_row td {
             padding: 2px !important;
@@ -176,6 +170,24 @@
                                 <input class="form-control form-control-sm online_amount" value="{{$invoice?->online_amount}}" name="online_amount"
                                     type="number" placeholder="Ex: 3000" name="flexRadioDefault" id="flexRadioDefault2">
                             </div>
+                            @if (App\CentralLogics\Helpers::get_store_data()->gst &&
+                                    json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
+                                <div class="col-md-2 p-1">
+                                    <label class="d-block mb-1 small">Tax Type</label>
+                                    <div class="d-flex border rounded" style="padding: 11px;">
+                                        <div class="form-check mr-3 form-check-inline">
+                                            <input class="form-check-input tax_type" value="gst" name="tax_type" type="radio" id="staffGstRadio1">
+                                            <label class="form-check-label small" for="staffGstRadio1">GST</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input tax_type" value="non-gst" name="tax_type" type="radio" id="staffGstRadio2" checked>
+                                            <label class="form-check-label small" for="staffGstRadio2">Non GST</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <input type="hidden" name="tax_type" value="non-gst">
+                            @endif
                             <div class="col-md-9  row">
                                 <div class="form-check payment_date_inp col-md-4 col-sm-6 p-1" {{$invoice?->payment_status == 'Paid' || !$invoice  ? "style=display:none" : ''}}>
                                     <label class="form-check-label" for="flexRadioDefault2">Payment Date</label>
@@ -221,12 +233,12 @@
                                         <th scope="col">Unit</th>
                                         @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                 json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                            <th scope="col">Tax <i>(in %)</i></th>
+                                            <th scope="col" class="tax_field">Tax <i>(in %)</i></th>
                                         @endif
                                         <th scope="col">HSN</th>
                                         @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                 json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                            <th scope="col">Taxable</th>
+                                            <th scope="col" class="tax_field">Taxable</th>
                                         @endif
                                         <th scope="col">Total</th>
                                         <th scope="col"></th>
@@ -252,7 +264,7 @@
                                                 </select></td>
                                             @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                     json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                <td style="width: 58px;"><input type="number"
+                                                <td style="width: 58px;" class="tax_field"><input type="number"
                                                         value="{{ $service_det->tax }}" name="item_tax[]"
                                                         placeholder="Tax" class="form-control tax"></td>
                                             @endif
@@ -260,7 +272,7 @@
                                                     placeholder="HSN" class="form-control"></td>
                                             @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                     json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                <td style="width: 93px;"><input type="text" readonly
+                                                <td style="width: 93px;" class="tax_field"><input type="text" readonly
                                                         placeholder="Taxable" class="form-control item_taxable"></td>
                                             @endif
                                             <td style="width: 93px;"><input type="text" readonly placeholder="Total"
@@ -288,7 +300,7 @@
                                                     </select></td>
                                                 @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                         json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                    <td style="width: 58px;"><input type="number"
+                                                    <td style="width: 58px;" class="tax_field"><input type="number"
                                                             value="{{ $qt->tax }}" name="item_tax[]"
                                                             placeholder="Tax" class="form-control tax"></td>
                                                 @endif
@@ -297,7 +309,7 @@
                                                         class="form-control"></td>
                                                 @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                         json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                    <td style="width: 93px;"><input type="text" value=""
+                                                    <td style="width: 93px;" class="tax_field"><input type="text" value=""
                                                             readonly placeholder="Taxable"
                                                             class="form-control item_taxable"></td>
                                                 @endif
@@ -333,7 +345,7 @@
                                                     </select></td>
                                                 @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                         json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                    <td style="width: 58px;"><input type="number"
+                                                    <td style="width: 58px;" class="tax_field"><input type="number"
                                                             value="{{ $qt->tax }}" name="item_tax[]"
                                                             placeholder="Tax" class="form-control tax">
                                                     </td>
@@ -343,7 +355,7 @@
                                                         class="form-control"></td>
                                                 @if (App\CentralLogics\Helpers::get_store_data()->gst &&
                                                         json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
-                                                    <td style="width: 93px;"><input type="text" readonly
+                                                    <td style="width: 93px;" class="tax_field"><input type="text" readonly
                                                             placeholder="Taxable" class="form-control item_taxable"></td>
                                                 @endif
                                                 <td style="width: 93px;"><input type="text" readonly
@@ -364,9 +376,11 @@
                                 </tbody>
                             </table>
                             <div>
-                                <p class="totalWithGSTInp"><strong>Total: <span class="currency">₹</span><span
+                                <p class="totalWithoutGSTInp"><strong>Total (Without GST): <span class="currency">₹</span><span
+                                            id="totalWithoutGST">0</span></strong></p>
+                                <p class="totalWithGSTInp" style="display:none;"><strong>Total (With GST): <span class="currency">₹</span><span
                                             id="totalWithGST">0</span></strong></p>
-                                            <input type="hidden" name="total_amt" id="totalWithGSTHidden">
+                                <input type="hidden" name="total_amt" id="totalWithGSTHidden">
                             </div>
                         </div>
                     </div>

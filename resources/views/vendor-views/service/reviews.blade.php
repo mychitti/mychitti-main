@@ -48,6 +48,7 @@
                             <th class="border-0">Review</th>
 
                             <th class="border-0">Created at</th>
+                            <th class="border-0">Status</th>
                             <th class="border-0">Action</th>
                         </tr>
                     </thead>
@@ -98,6 +99,17 @@
                                 </td>
                                 <td>
                                     {{ _formatted_datetime($rev->created_at) }}
+                                </td>
+                                <td>
+                                    <label class="toggle-switch toggle-switch-sm" for="reviewStatus{{ $rev->rev_id }}">
+                                        <input type="checkbox" class="toggle-switch-input review-status-toggle"
+                                            id="reviewStatus{{ $rev->rev_id }}"
+                                            data-id="{{ $rev->rev_id }}"
+                                            {{ $rev->review_status ? 'checked' : '' }}>
+                                        <span class="toggle-switch-label">
+                                            <span class="toggle-switch-indicator"></span>
+                                        </span>
+                                    </label>
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal"
@@ -261,6 +273,19 @@
                 }
             })
         }
+        $(document).on('change', '.review-status-toggle', function() {
+            var id = $(this).data('id');
+            var status = $(this).is(':checked') ? 1 : 0;
+            $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+            $.post('{{ route('vendor.service.review-status') }}', { id: id, status: status }, function(res) {
+                if (res.success) {
+                    toastr.success('Review status updated');
+                }
+            }).fail(function() {
+                toastr.error('Failed to update status');
+            });
+        });
+
         $(document).on('ready', function() {
             // INITIALIZATION OF DATATABLES
             // =======================================================

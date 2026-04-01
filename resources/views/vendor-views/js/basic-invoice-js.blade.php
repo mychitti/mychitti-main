@@ -63,6 +63,19 @@
         $('[data-id="' + rowId + '"]').remove()
     }
 
+    $(document).on('change', '.tax_type', function() {
+        if ($(this).val() == 'non-gst') {
+            $('.tax_field').hide();
+            $('.totalWithGSTInp').hide();
+            $('.totalWithoutGSTInp').show();
+        } else {
+            $('.tax_field').show();
+            $('.totalWithGSTInp').show();
+            $('.totalWithoutGSTInp').hide();
+        }
+        calculateTotals();
+    });
+
     var unitOptions = `{!! \App\Models\Unit::all()->map(function ($unit) {
             return "<option value='{$unit->id}'>{$unit->unit}</option>";
         })->implode('') !!}`;
@@ -73,7 +86,6 @@
             return false; // Stops further execution
         }
         var $lastItemRow = $('.item_row').last();
-
         if (!$lastItemRow.length) {
             var dataId = 1;
         } else {
@@ -100,7 +112,10 @@
                        <td><button type="button"  onclick="deleteNewRow(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></button></td>
                     </tr>`;
 
-        $('.rows_parent').append(html)
+        $('.rows_parent').append(html);
+        if ($('.tax_type:checked').val() == 'gst') {
+            $('.tax_field').show();
+        }
     }
 
     function calculateTotals() {
@@ -124,7 +139,7 @@
             $(this).find('.item_total').val(lineTotalWithGST)
 
         });
-console.log('thisis incl;')
+        console.log('thisis incl;')
         $('#totalWithoutGST').text(totalWithoutGST.toFixed(3));
         $('#totalWithoutGST_inv').text(totalWithoutGST.toFixed(3));
         $('#totalWithGSTHidden_inv').val(totalWithGST.toFixed(3));

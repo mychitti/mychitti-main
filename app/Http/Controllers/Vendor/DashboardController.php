@@ -72,7 +72,17 @@ class DashboardController extends Controller
             $leadsQuery = AcceptedServiceRequest::where('vendor_id', $storeId)
                 ->whereBetween('created_at', [$formatted_from, $formatted_to]);
 
-            $data['total_leads_count'] = (clone $leadsQuery)->count();
+            $data['missed_leads_count'] = DB::table('service_requests')
+                ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
+                ->where(function ($q) use ($storeId) {
+                    $q->whereRaw('NOT FIND_IN_SET(?, service_requests.accepted_by)', [$storeId])
+                        ->orWhereNull('service_requests.accepted_by');
+                })
+                ->where('service_requests.created_at', '<', now()->subMinutes(Helpers::get_lead_exp_minutes()))
+                ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to])
+                ->count();
+
+            $data['total_leads_count'] = (clone $leadsQuery)->count() + $data['missed_leads_count'];
 
             $data['completed_leads_count'] = (clone $leadsQuery)
                 ->where('current_status', 'Completed')

@@ -783,6 +783,11 @@ class BillingController extends Controller
         'hsn' => $request->item_hsn_new[$key],
         'inv_id' => $request->inventory_item_id[$key] ?? null,
       ];
+
+      // INCREMENT INVENTORY STOCK (purchase invoice adds stock)
+      if ($request->inventory_item_id[$key]) {
+        _incrementInventoryStock($request->inventory_item_id[$key], $request->item_qty_new[$key], ($request->has('item_unit_new.' . $key) ? $request->item_unit_new[$key] : null));
+      }
     }
 
     $data = [
@@ -1118,7 +1123,7 @@ class BillingController extends Controller
       if ($request->form_type == 'ajax') {
         return response()->json(['status' => true, 'msg' => "Added  Successfully"]);
       } else {
-        if (hasPermission('billing', 'view')){
+        if (hasPermission('billing', 'view')) {
           return redirect()->route('vendor.invoice.view-invoice', ['invoice_id' => $invoice->id]);
         } else {
           Toastr::success('Invoice created successfully');

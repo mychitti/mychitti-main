@@ -105,10 +105,9 @@
 
                  {{-- Vendor & Status Filter --}}
                  <form action="" class="d-flex gap-1 flex-wrap">
-                     <div style="min-width: 200px !important;">
+                     {{-- <div style="min-width: 200px !important;">
                          <select name="vendor" onchange="this.form.submit()" data-placeholder="Vendor"
                              class="js-select2-custom form-select">
-                             {{-- <option value=""></option> --}}
                              <option value="all" {{ request()?->vendor == 'all' ? 'selected' : '' }}>All</option>
                              @foreach ($stores as $key => $value)
                                  <option value="{{ $value->id }}"
@@ -117,7 +116,7 @@
                                  </option>
                              @endforeach
                          </select>
-                     </div>
+                     </div> --}}
                      <div style="min-width: 200px !important;">
                          <select name="status" onchange="this.form.submit()" data-placeholder="Status"
                              class="js-select2-custom form-select">

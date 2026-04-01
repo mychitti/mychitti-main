@@ -593,6 +593,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('track-location/{staff_id}', 'ServiceController@track_location')->name('track-location');
 
         Route::get('service/reviews', 'ServiceController@reviews')->name('service.reviews');
+        Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
