@@ -1056,7 +1056,7 @@ $log_email_succ = session()->get('log_email_succ');
             <div class="login-left">
 
                 <div class="d-flex justify-content-center w-100">
-                    <a style="    width: 135px; margin:0 auto;" href="{{ route('home') }}">
+                    <a style="    width: 135px; margin:0 auto;" href="https://mcvendorhub.com">
                         <img style="    width: 135px; margin:0 auto;" src="{{ $logo ?? '' }}" alt="logo" />
                     </a>
                 </div>
