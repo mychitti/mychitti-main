@@ -165,8 +165,8 @@ class WebsiteSettingsController extends Controller
     public function updateBranding(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            'cover_photo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048'
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:30720',
+            'cover_photo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:30720'
         ]);
 
         if ($validator->fails()) {

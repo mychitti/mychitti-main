@@ -61,12 +61,17 @@
                             </div>
                             <div class="modal-body">
                                 <form action="{{ route('vendor.gallery.store') }}" method="post"
-                                    enctype="multipart/form-data">
+                                    enctype="multipart/form-data" id="galleryUploadForm">
                                     @csrf
 
-                                    <input type="file" multiple name="file[]" class="form-control" accept="image/*" />
-                                    <button type="submit" class="btn btn-primary btn--primary ">Upload
-                                    </button>
+                                    <div class="alert alert-info py-2 px-3 mb-2 text-dark" style="background:#e8f4fd;border-color:#bee3f8;font-size:0.85rem;">
+                                        <i class="tio-info-outined mr-1"></i>
+                                        You can upload up to <strong>10 images</strong> at a time. Each image must be under <strong>4 MB</strong>.
+                                        Accepted formats: JPG, PNG, GIF, WEBP.
+                                    </div>
+                                    <input type="file" multiple name="file[]" id="galleryFileInput" class="form-control" accept="image/*" />
+                                    <div id="galleryFileError" class="text-danger mt-1" style="font-size:0.85rem;"></div>
+                                    <button type="submit" class="btn btn-primary btn--primary mt-2">Upload</button>
                                 </form>
                             </div>
                             <div class="modal-footer">
@@ -128,3 +133,32 @@
             @endif
         </div>
     </div>
+
+<script>
+    document.getElementById('galleryFileInput').addEventListener('change', function () {
+        const files = Array.from(this.files);
+        const errorEl = document.getElementById('galleryFileError');
+        const maxFiles = 10;
+        const maxSizeMB = 4;
+        const errors = [];
+
+        if (files.length > maxFiles) {
+            errors.push('You can upload a maximum of ' + maxFiles + ' images at a time.');
+        }
+
+        files.forEach(function (file) {
+            const sizeMB = file.size / (1024 * 1024);
+            if (sizeMB > maxSizeMB) {
+                errors.push('"' + file.name + '" exceeds 4 MB (' + sizeMB.toFixed(1) + ' MB).');
+            }
+        });
+
+        if (errors.length > 0) {
+            errorEl.innerHTML = errors.join('<br>');
+            document.getElementById('galleryUploadForm').querySelector('[type=submit]').disabled = true;
+        } else {
+            errorEl.innerHTML = '';
+            document.getElementById('galleryUploadForm').querySelector('[type=submit]').disabled = false;
+        }
+    });
+</script>

@@ -105,6 +105,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get(Banner::UPDATE_STATUS[URI].'/{id}/{status}', [BannerController::class,'updateStatus'])->name('status');
             Route::get(Banner::UPDATE_FEATURED[URI].'/{id}/{status}', [BannerController::class,'updateFeatured'])->name('featured');
             Route::post(Banner::SEARCH[URI], [BannerController::class,'getSearchList'])->name('search');
+            Route::post('sort-order', [BannerController::class,'updateSortOrder'])->name('sort-order');
         });
 
         Route::group(['prefix' => 'coupon', 'as' => 'coupon.', 'middleware' => ['module:coupon']], function () {

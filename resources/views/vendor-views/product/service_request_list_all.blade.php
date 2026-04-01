@@ -227,12 +227,12 @@
                                 <select class="form-control mx-1" name="type" onchange="this.form.submit()">
                                     <option {{ $type == 'All' ? 'selected' : '' }} value="All">All</option>
                                     <option {{ $type == 'New' ? 'selected' : '' }} value="New">New</option>
-                                    <option {{ $type == 'Missed' ? 'selected' : '' }} value="Missed">Missed</option>
+                                    {{-- <option {{ $type == 'Missed' ? 'selected' : '' }} value="Missed">Missed</option> --}}
                                     <option {{ $type == 'Accepted' ? 'selected' : '' }} value="Accepted">Accepted</option>
-                                    <option {{ $type == 'Confirmed' ? 'selected' : '' }} value="Confirmed">Confirmed
-                                    </option>
-                                    <option {{ $type == 'In Progress' ? 'selected' : '' }} value="In Progress">In Progress
-                                    </option>
+                                    {{-- <option {{ $type == 'Confirmed' ? 'selected' : '' }} value="Confirmed">Confirmed
+                                    </option> --}}
+                                    {{-- <option {{ $type == 'In Progress' ? 'selected' : '' }} value="In Progress">In Progress
+                                    </option> --}}
                                     <option {{ $type == 'Cancelled' ? 'selected' : '' }} value="Cancelled">Cancelled
                                     </option>
                                     <option {{ $type == 'Completed' ? 'selected' : '' }} value="Completed">Completed
@@ -246,14 +246,12 @@
                         @endif
                     @endif
                 </div>
-            </div>
+            </div>  
             <!-- End Header -->
             @php
                 $statusCounts = [
                     'new' => 0,
-                    'confirmed' => 0,
-                    'alotted' => 0,
-                    'in_progress' => 0,
+                    'accepted' => 0,
                     'completed' => 0,
                     'cancelled' => 0,
                 ];
@@ -899,6 +897,7 @@
         }
 
         let statusCounts = @json($statusCounts);
+        console.log(statusCounts); // check values
         let leadCounts = @json($product).length;
         console.log(statusCounts); // check values
 function capitalize(str) {

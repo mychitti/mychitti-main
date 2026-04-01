@@ -33,6 +33,7 @@ class InventoryItem extends Model
         'product_note',
         'storage_unit_id',
         'image',
+        'images',
         'module_id',
         'variations',
         'choice_options',

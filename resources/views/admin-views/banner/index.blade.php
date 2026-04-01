@@ -155,6 +155,10 @@
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.default_link')}}({{ translate('messages.optional') }})</label>
                                         <input type="text" name="default_link" class="form-control" placeholder="{{translate('messages.default_link')}}">
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label">Sort Order</label>
+                                        <input type="number" name="sort_order" class="form-control" placeholder="0" min="0" value="0">
+                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">
@@ -217,13 +221,14 @@
                                     "isShowPaging": false,
                                     "paging": false
                                 }'
-                                >
+                                > 
                             <thead class="thead-light">
                                 <tr>
                                     <th class="border-0">{{ translate('messages.SL') }}</th>
                                     <th class="border-0">{{translate('messages.title')}}</th>
                                     <th class="border-0">Platform</th>
                                     <th class="border-0">{{translate('messages.type')}}</th>
+                                    <th class="border-0 text-center">Sort Order</th>
                                     <th class="border-0 text-center">{{translate('messages.featured')}} <span class="input-label-secondary"
                                         data-toggle="tooltip" data-placement="right" data-original-title="{{translate('if_you_turn/off_on_this_featured,_it_will_effect_on_website_&_user_app')}}"><img src="{{asset('public/assets/admin/img/info-circle.svg')}}"
                                             alt="public/img"></span></th>
@@ -250,6 +255,14 @@
                                     </td>
                                     <td><span class="badge badge-soft-{{ $banner->platform == 'app' ? 'info' : ($banner->platform == 'web' ? 'success' : 'secondary') }}">{{ ucfirst($banner->platform ?? 'all') }}</span></td>
                                     <td>{{translate('messages.'.$banner['type'])}}</td>
+
+                                    <td class="text-center">
+                                        <input type="number" min="0"
+                                            class="form-control text-center banner-sort-order"
+                                            style="width:70px;margin:auto;"
+                                            data-id="{{ $banner->id }}"
+                                            value="{{ $banner->sort_order ?? 0 }}">
+                                    </td>
 
                                     <td  >
                                         <div class="d-flex justify-content-center">
@@ -341,6 +354,21 @@
     <script src="{{asset('public/assets/admin')}}/js/view-pages/banner-index.js"></script>
     <script>
         "use strict";
+
+        $(document).on('change', '.banner-sort-order', function () {
+            const id = $(this).data('id');
+            const sort_order = $(this).val();
+            $.post('{{ route('admin.banner.sort-order') }}', {
+                _token: '{{ csrf_token() }}',
+                id: id,
+                sort_order: sort_order
+            }).done(function () {
+                toastr.success('Sort order updated');
+            }).fail(function () {
+                toastr.error('Failed to update sort order');
+            });
+        });
+
         @php use Illuminate\Support\Str; @endphp
         var module_id = {{Config::get('module.current_module_id')}};
 

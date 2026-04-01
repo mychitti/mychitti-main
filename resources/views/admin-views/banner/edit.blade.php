@@ -183,6 +183,10 @@
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.default_link')}} ({{ translate('messages.optional') }})</label>
                                         <input type="text" name="default_link" class="form-control" value="{{ $banner->default_link }}" placeholder="{{translate('messages.default_link')}}">
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label">Sort Order</label>
+                                        <input type="number" name="sort_order" class="form-control" placeholder="0" min="0" value="{{ $banner->sort_order ?? 0 }}">
+                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">

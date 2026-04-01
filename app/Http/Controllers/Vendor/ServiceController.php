@@ -1387,7 +1387,7 @@ class ServiceController extends Controller
             ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
             ->when($search, function ($q) use ($search) {
                 $q->where('items.name', 'like', '%' . $search . '%');
-            });
+            }); 
         if (!$empId && $action != 'export') {
             $query->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
         }
@@ -1527,10 +1527,11 @@ class ServiceController extends Controller
                 'accepted_service_requests.assigned_to',
                 'accepted_service_requests.accepted_by_staff'
             );
-        }
+        } 
         // prx($query->get());
 
         $query->groupBy('service_requests.id');
+        $query->orderBy('service_requests.created_at', 'desc');
         $product = $query->get();
 
 
@@ -1737,7 +1738,7 @@ class ServiceController extends Controller
         $request->validate([
             'desc' => 'max:500',
             'title.*' => 'required|max:500',
-            'image.*.*' => 'required|image|mimes:jpg,jpeg,png|max:2048'
+            'image.*.*' => 'required|image|mimes:jpg,jpeg,png|max:30720'
         ], [
             'title.*.required' => 'Title is required',
             'image.*.*.required' => 'Image is required'
@@ -1861,7 +1862,7 @@ class ServiceController extends Controller
         $request->validate([
             'desc' => 'max:500',
             'title.*' => 'required|max:500',
-            'image.*.*' => 'required|image|mimes:jpg,jpeg,png|max:2048'
+            'image.*.*' => 'required|image|mimes:jpg,jpeg,png|max:30720'
         ], [
             'title.*.required' => 'Title is required',
             'image.*.*.required' => 'Image is required'

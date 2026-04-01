@@ -159,7 +159,7 @@ class StoreController extends Controller
             'comment' => 'required', 
             'rating' => 'required|numeric|max:5',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:jpeg,png,jpg,gif|max:2048',
+            'attachments.*' => 'file|mimes:jpeg,png,jpg,gif|max:30720',
         ]);
      if ($validator->errors()->count() > 0) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);

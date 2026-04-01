@@ -789,13 +789,17 @@ class VendorController extends Controller
                 _saveDayBookEntry($invoice->total_amount, 'debit', $request->store_id, "Module Purchase", $invoice->id, $voucher?->id);
             }
 
-
+ 
             foreach ($invoice_items as $key => $value) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
                 $InvoiceItem->name = $value['name'];
                 $InvoiceItem->qty =  $value['qty'];
-                $InvoiceItem->price =  $value['price'];
+                // For inclusive GST, store the taxable (exclusive) price so the invoice
+                // template's exclusive tax formula produces correct taxable/tax amounts.
+                $InvoiceItem->price = ($gstMode === 'include' && $value['tax'] > 0)
+                    ? round($value['price'] / (1 + $value['tax'] / 100), 3)
+                    : $value['price'];
                 $InvoiceItem->tax =  $value['tax'];
                 $InvoiceItem->hsn =  $value['hsn'];
                 $InvoiceItem->save();

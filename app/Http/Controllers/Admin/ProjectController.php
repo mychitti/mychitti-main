@@ -472,7 +472,7 @@ class ProjectController extends Controller
             'milestones.*.due_date'  => 'nullable|date',
             'milestones.*.status'    => 'nullable|string',
 
-            'attachments.*' => 'nullable|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx|max:5120',
+            'attachments.*' => 'nullable|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx|max:30720',
         ], [
             'title.required' => 'Please Enter Project Title',
             'project_manager.required' => 'Please Assign a Project Manager',

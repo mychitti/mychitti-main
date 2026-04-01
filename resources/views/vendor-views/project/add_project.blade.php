@@ -132,7 +132,7 @@
                             <!-- Project Manager -->
                             <div class="form-row col-md-3 py-2">
                                 <label>Project Manager</label>
-                                <select name="project_manager" class="form-control js-select2-custom">
+                                <select name="project_manager" class="form-control js-select2-custom" required>
                                     <option value="">-- select --</option>
                                     @foreach ($employees as $emp)
                                         <option value="{{ $emp->id }}">{{ $emp->f_name }} {{ $emp->l_name }}</option>
@@ -400,7 +400,7 @@
                             <div id="dropArea" class="col-md-6 border border-primary rounded p-4 text-center "
                                 style="cursor:pointer;">
                                 <h6>Drag & Drop Files Here</h6>
-                                <p class="text-muted">PDF, JPG, PNG, Excel, Word (Max 5MB each)</p>
+                                <p class="text-muted">PDF, JPG, PNG, Excel, Word</p>
                                 <button type="button" class="btn btn-sm btn-primary mt-2">Browse Files</button>
                             </div>
 
@@ -654,8 +654,6 @@
         });
     </script>
     <script>
-        let maxFileSize = 5 * 1024 * 1024; // 5MB
-
         $("#dropArea").click(function() {
             $("#fileInput").click();
         });
@@ -702,8 +700,8 @@
                     return;
                 }
 
-                if (file.size > maxFileSize) {
-                    alert("File too large (Max 5MB): " + file.name);
+                if (file.size > 30 * 1024 * 1024) {
+                    alert(file.name + " exceeds the maximum allowed size of 30 MB.");
                     return;
                 }
 

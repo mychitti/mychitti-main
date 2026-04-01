@@ -6,7 +6,7 @@ use App\Models\User;
 use Firebase\JWT\JWT;
 use GuzzleHttp\Client;
 use Carbon\CarbonInterval;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; 
 use App\CentralLogics\Helpers;
 use Illuminate\Support\Carbon;
 use App\Models\BusinessSetting;

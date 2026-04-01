@@ -7,16 +7,21 @@ use App\Models\InvItemVariationDetail;
 use App\Models\TempInvItemImage;
 use App\Models\TempItemImage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
-class InvItemImport implements ToCollection
+class InvItemImport implements ToCollection 
 {
     public $failedRows = [];
     protected $storeId;
+    protected $imagesByRow;     // [rowNumber => [filename, ...]] — gallery images → `images`
+    protected $mainImageByRow;  // [rowNumber => filename]        — main image   → `image`
 
-    public function __construct($storeId = null)
+    public function __construct($storeId = null, array $imagesByRow = [], array $mainImageByRow = [])
     {
-        $this->storeId = $storeId;
+        $this->storeId       = $storeId;
+        $this->imagesByRow   = $imagesByRow;
+        $this->mainImageByRow = $mainImageByRow;
     }
 
     public function collection(Collection $rows)
@@ -75,7 +80,7 @@ class InvItemImport implements ToCollection
                             $category = \App\Models\Category::whereRaw('LOWER(name) = ?', [strtolower(trim($row[18]))])->first();
                         }
                         if (!$category) {
-                            $category = \App\Models\Category::create([ 
+                            $category = \App\Models\Category::create([
                                 'name' => trim($row[18]),
                                 'module_id' => 6,
                                 'status' => 1,
@@ -84,7 +89,7 @@ class InvItemImport implements ToCollection
                         }
                         $category_id = $category->id;
                     }
-                    // attributes and choice options 
+                    // attributes and choice options
                     // Attributes column (e.g. "30,91")
                     $attributesRaw = $row[9] ?? null; // adjust index
                     $attributeIds = [];
@@ -118,6 +123,17 @@ class InvItemImport implements ToCollection
                         }
                     }
 
+                    // --- Item Type ---
+                    $item_type = 'product';
+                    if (!empty($row[22])) {
+                        $item_type = strtolower(trim($row[22])) === 'service' ? 'service' : 'product';
+                    }
+
+                    // Excel row = $index + 1 (collection is 0-based, header = row 1)
+                    $excelRow  = $index + 1;
+                    $rowImages = $this->imagesByRow[$excelRow] ?? null;
+                    $mainImage = $this->mainImageByRow[$excelRow] ?? null;
+
                     // --- Create Item ---
                     $item = InventoryItem::create([
                         'store_id'        => $this->storeId,
@@ -135,9 +151,11 @@ class InvItemImport implements ToCollection
                         'brand'           => $row[17] ?? null,
                         'category_id'     => $category_id,
                         'hsn'             => $row[19] ?? null,
+                        'item_type'       => $item_type,
                         'module_id'       => 6,
+                        'images'          => $rowImages,
+                        'image'           => $mainImage,
                     ]);
-
 
                     $groupedItems[$tempGroup] = $item;
                 } else {
@@ -168,11 +186,6 @@ class InvItemImport implements ToCollection
                     $vrDetails->item_id = $item->id;
                     $vrDetails->sku = '';
                     $vrDetails->save();
-
-                    // if (empty($variationSellingPrice)) {
-                    //     $this->failedRows[] = ['row' => $index + 1, 'reason' => 'Missing Variation Selling Price'];
-                    //     continue;
-                    // }
 
                     // Save variation
                     $variations = $item->variations ? json_decode($item->variations, true) : [];

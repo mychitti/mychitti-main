@@ -5,7 +5,32 @@
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
     <style>
+        .owl-carousel .owl-item img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .owl-nav button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.4) !important;
+            color: #fff !important;
+            border-radius: 50% !important;
+            width: 32px;
+            height: 32px;
+            font-size: 18px !important;
+            line-height: 1 !important;
+        }
+        .owl-nav .owl-prev { left: 4px; }
+        .owl-nav .owl-next { right: 4px; }
+        .owl-dots { margin-top: 8px; text-align: center; }
+
         .specs_div {
             height: 250px;
             overflow: hidden;
@@ -40,6 +65,10 @@
             grid-template-columns: 1fr 1fr 1fr;
             gap: 1.5rem;
             margin-bottom: 1rem;
+            min-width: 0;
+        }
+        .main-content > * {
+            min-width: 0;
         }
 
         .image-section {
@@ -47,6 +76,8 @@
             border-radius: 12px;
             padding: 2rem;
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+            min-width: 0;
+            overflow: hidden;
         }
 
         .product-image {
@@ -259,11 +290,30 @@
 
         <div class="main-content">
             <div class="image-section">
-                <div class="product-image">
-                    <img class="w-100 onerror-image"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($item['image'], asset('storage/app/public/inventory-item/') . '/' . $item['image'], asset('public/assets/admin/img/160x160/img2.jpg'), 'inventory-item/') }}"
-                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        alt="{{ $item->item_name }} image">
+                @php
+                    $galleryImages = is_array($item->images) ? $item->images : (json_decode($item->images, true) ?? []);
+                    $mainImageSrc  = \App\CentralLogics\Helpers::onerror_image_helper(
+                        $item['image'],
+                        asset('storage/app/public/inventory-item/') . '/' . $item['image'],
+                        asset('public/assets/admin/img/160x160/img2.jpg'),
+                        'inventory-item/'
+                    );
+                @endphp 
+                <div class="owl-carousel owl-theme" id="itemImageCarousel">
+                    {{-- Main image always first --}}
+                    <div class="item">
+                        <img src="{{ $mainImageSrc }}"
+                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                             alt="{{ $item->item_name }}" class="onerror-image">
+                    </div>
+                    {{-- Gallery images --}}
+                    @foreach($galleryImages as $img)
+                        <div class="item">
+                            <img src="{{ asset('storage/app/public/inventory-item/' . $img) }}"
+                                 data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                                 alt="{{ $item->item_name }}" class="onerror-image">
+                        </div>
+                    @endforeach
                 </div>
             </div>
 
@@ -311,7 +361,7 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 flex-wrap">
                             <a style="padding: 10px 8px;white-space: nowrap;"
                                 href="{{ route('vendor.inventory.item.print', [$item->id, 'barcode']) }}"
                                 class="btn btn-sm btn--primary"><i class="tio-print"></i> Print Barcode</a>
@@ -537,10 +587,24 @@
 
     </div>
 
-
+ 
 @endsection
 
 @push('script_2')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#itemImageCarousel').owlCarousel({
+                items: 1,
+                loop: false,
+                nav: true,
+                dots: true,
+                navText: ['&#8249;', '&#8250;'],
+                autoplay: false,
+                smartSpeed: 400,
+            });
+        });
+    </script>
     <script>
         $(".read_more_btn").on('click', function() {
             $(".specs_div").css('height', 'fit-content');

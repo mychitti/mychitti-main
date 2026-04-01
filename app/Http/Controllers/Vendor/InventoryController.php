@@ -28,6 +28,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator as FacadesValidator;
 use Illuminate\Support\Facades\View;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
+use Illuminate\Http\File as IlluminateFile;
 use Mpdf\Mpdf;
 
 
@@ -171,11 +174,52 @@ class InventoryController extends Controller
     public function items_import(Request $request)
     {
         $file = $request->file('file');
-        $import = new InvItemImport(Helpers::get_store_id());
+
+        // Extract images embedded in the Excel file, keyed by Excel row number.
+        // Column U = multiple images → saved to `images` field
+        // Column V = main/thumbnail image → saved to `image` field
+        $imagesByRow     = []; // multiple images
+        $mainImageByRow  = []; // single main image
+        try {
+            $spreadsheet = IOFactory::load($file->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+
+            foreach ($sheet->getDrawingCollection() as $drawing) {
+                // Parse column letter and row number from coordinates (e.g. "U2")
+                preg_match('/^([A-Z]+)(\d+)$/', $drawing->getCoordinates(), $matches);
+                $col = $matches[1] ?? '';
+                $row = (int) ($matches[2] ?? 0);
+                if ($row <= 1) continue; // skip header row
+
+                // Upload image via Helpers
+                $tmpPath = tempnam(sys_get_temp_dir(), 'inv_img_');
+                if ($drawing instanceof MemoryDrawing) {
+                    ob_start();
+                    call_user_func($drawing->getRenderingFunction(), $drawing->getImageResource());
+                    file_put_contents($tmpPath, ob_get_clean());
+                } else {
+                    copy($drawing->getPath(), $tmpPath);
+                }
+                $filename = Helpers::upload('inventory-item/', 'png', new IlluminateFile($tmpPath));
+                @unlink($tmpPath);
+
+                if ($col === 'U') {
+                    // Column U = main image (single)
+                    $mainImageByRow[$row] = $filename;
+                } else {
+                    // Column V (or any other) = gallery images (multiple)
+                    $imagesByRow[$row][] = $filename;
+                }
+            }
+        } catch (\Exception $e) {
+            // Image extraction failure should not block the import
+        }
+
+        $import = new InvItemImport(Helpers::get_store_id(), $imagesByRow, $mainImageByRow);
         Excel::import($import, $file);
+
         if (!empty($import->failedRows)) {
-            dd($import->failedRows);
-        } else {
+            // dd($import->failedRows);
         }
 
         Toastr::success('Excel file imported successfully.');
@@ -608,44 +652,7 @@ class InventoryController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="labels_' . $item->item_name . '.pdf"');
     }
-    public function update_item_old(Request $request)
-    {
 
-        $request->validate([
-            'item_name'            => 'required|string|max:255',
-            'mrp'                  => 'required',
-        ]);
-
-
-        $inventory_item = InventoryItem::find($request->item_id);
-        $inventory_item->company_sku_id =  $request->company_sku_id;
-        $inventory_item->sku_id =  $request->sku_id;
-        $inventory_item->model_number = $request->model_number;
-        $inventory_item->item_name = $request->item_name;
-        $inventory_item->variation = $request->variation;
-        $inventory_item->brand = $request->brand;
-        $inventory_item->category_id = $request->category_id;
-        $inventory_item->sub_category_id = $request->sub_category_id;
-        $inventory_item->hsn = $request->hsn;
-        $inventory_item->unit = $request->unit;
-        $inventory_item->image =  $request->has('image') ? Helpers::upload('inventory-item/', 'png', $request->file('image')) : $inventory_item->image;
-        $inventory_item->my_fee = $request->my_fee;
-        $inventory_item->my_fee_type = $request->my_fee_type;
-        $inventory_item->storage_unit_id = $request->storage_unit_id;
-        $inventory_item->save();
-
-        $ifExist = AccountDropdownOption::where('name', $request->variation)->where('type', 'item_variation')->exists();
-        if (!$ifExist) {
-            $vr = new AccountDropdownOption();
-            $vr->type = 'item_variation';
-            $vr->name = $request->variation;
-            $vr->store_id = Helpers::get_store_id();
-            $vr->save();
-        }
-
-        Toastr::success('Updated Successfully');
-        return redirect()->route('vendor.inventory.index');
-    }
     public function update_item(Request $request)
     {
         $validator = FacadesValidator::make($request->all(), [
@@ -674,7 +681,7 @@ class InventoryController extends Controller
         // MAIN IMAGE
         if ($request->has('image')) {
             $main_image = Helpers::upload('inventory-item/', 'png', $request->file('image'));
-            if($show_on_store_page){
+            if ($show_on_store_page) {
                 Helpers::upload('product/', 'png', $request->file('image'), $main_image);
             }
         } else {
@@ -692,7 +699,7 @@ class InventoryController extends Controller
         if (!empty($request->file('item_images'))) {
             foreach ($request->item_images as $img) {
                 $image_name = Helpers::upload('inventory-item/', 'png', $img);
-                     if($show_on_store_page){
+                if ($show_on_store_page) {
                     $image_name = Helpers::upload('product/', 'png', $img, $image_name);
                 }
                 $images[] = $image_name;
@@ -713,8 +720,17 @@ class InventoryController extends Controller
 
 
         // save unit if doesnt exist
-        $unitInput = $request->unit; // can be ID or string
+        $unitInput = $request->primary_unit ?? $request->primary_unit; // can be ID or string
         $inv_unit = _saveUnitIfNotExist($unitInput);
+        $secondary_unit = $request->has('secondary_unit') && $request->secondary_unit ? _saveUnitIfNotExist($request->secondary_unit) : null;
+
+        //stock calculation (UOM)
+        $secondary_qty =  $request->secondary_qty ?? 1;
+
+        $total_stock = $request->main_opening_stock;
+
+        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $secondary_stock = 1;
 
         $inventory_item->item_type = $request->item_type;
         $inventory_item->item_name = $request->item_name;
@@ -727,6 +743,9 @@ class InventoryController extends Controller
         $inventory_item->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : $inventory_item->attributes;
         $inventory_item->category_id = $category_id;
         $inventory_item->unit = $inv_unit;
+        $inventory_item->secondary_unit = $secondary_unit;
+        $inventory_item->primary_qty = $primary_stock;
+        $inventory_item->secondary_qty = $secondary_stock;
         $inventory_item->mrp = $request->main_mrp;
         $inventory_item->gst_rate = $request->gst_rate ?? 0;
         $inventory_item->gst_type = $request->gst_type;
@@ -801,7 +820,7 @@ class InventoryController extends Controller
                     if ($request->hasFile($key)) {
                         foreach ($request->file($key) as $img) {
                             $image_name = Helpers::upload('inventory-variations/', 'png', $img);
-                            if($show_on_store_page){
+                            if ($show_on_store_page) {
                                 Helpers::upload('product/', 'png', $img, $image_name);
                             }
                             $vrImages[] = $image_name;
@@ -913,7 +932,7 @@ class InventoryController extends Controller
         if (!empty($request->file('item_images'))) {
             foreach ($request->item_images as $img) {
                 $image_name = Helpers::upload('inventory-item/', 'png', $img);
-                if($show_on_store_page){
+                if ($show_on_store_page) {
                     $image_name = Helpers::upload('product/', 'png', $img, $image_name);
                 }
                 $images[] = $image_name;
@@ -946,11 +965,10 @@ class InventoryController extends Controller
                 $field = $fields[$index] ?? null;
                 $custom_attr[$label] = $field;
             }
-
             // save unit if doesnt exist
             $unitInput = $request->primary_unit; // can be ID or string
             $inv_unit = _saveUnitIfNotExist($unitInput);
-            $secondary_unit = _saveUnitIfNotExist($request->secondary_unit);
+            $secondary_unit = $request->has('secondary_unit') && $request->secondary_unit ? _saveUnitIfNotExist($request->secondary_unit) : null;
 
             $inventory_item->barcode =  $request->has('barcode') ? Helpers::upload('inventory-item/barcode/', 'png', $request->file('barcode')) :  null;
             $inventory_item->brand = $request->brand;
@@ -988,7 +1006,7 @@ class InventoryController extends Controller
         $inventory_item->category_id = $category_id;
 
         if ($request->has('image') && $show_on_store_page) {
-             Helpers::upload('product/', 'png', $request->file('image'), $inventory_item->image = $inventory_item->image );
+            Helpers::upload('product/', 'png', $request->file('image'), $inventory_item->image = $inventory_item->image);
         }
 
         $inventory_item->save();

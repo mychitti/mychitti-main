@@ -123,19 +123,30 @@
                                 </td>
                                 <td>
                                     <div class="btn--container ">
-                @if (hasPermission('purchase_bill', 'view'))
-
-                                        @if ($order['pdf'])
-                                            <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
-                                                target="_blank"
-                                                href="{{ asset('storage/app/public/invoice') . '/' . $order['pdf'] }}"><i
-                                                    class="tio-visible"></i></a>
-                                        @else
-                                            <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
-                                                target="_blank"
-                                                href="{{ route('vendor.invoice.manual-invoice-view', ['manual', $order['invoice_id']]) }}?store"><i
-                                                    class="tio-visible"></i></a>
+                                       @if (hasPermission('purchase_bill', 'view'))
+                                            @if ($order['pdf'])
+                                                <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
+                                                    target="_blank"
+                                                    href="{{ asset('storage/app/public/invoice') . '/' . $order['pdf'] }}"><i
+                                                        class="tio-visible"></i></a>
+                                            @else
+                                                <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
+                                                    target="_blank"
+                                                    href="{{ route('vendor.invoice.manual-invoice-view', ['manual', $order['invoice_id']]) }}?store"><i
+                                                        class="tio-visible"></i></a>
+                                            @endif
                                         @endif
+                                       @if (hasPermission('purchase_bill', 'delete'))
+                                            <a class="btn action-btn btn--danger btn-outline-danger form-alert"
+                                                href="javascript:" data-id="category-{{ $order['id'] }}"
+                                                data-message="{{ translate('Want to delete this bill') }}"
+                                                title="{{ translate('messages.delete_bill') }}"><i
+                                                    class="tio-delete-outlined"></i>
+                                            </a>
+                                            <form action="{{ route('vendor.invoice.purchase-bill.delete', [$order['id']]) }}"
+                                                method="get" id="category-{{ $order['id'] }}">
+                                                @csrf @method('get')
+                                            </form>
                                         @endif
                                     </div>
                                 </td>

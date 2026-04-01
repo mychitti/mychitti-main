@@ -52,7 +52,7 @@ class BusinessSettingsController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'upload' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'upload' => 'required|image|mimes:jpeg,png,jpg,gif|max:30720'
         ]);
 
         if ($request->hasFile('upload')) {
@@ -248,8 +248,18 @@ class BusinessSettingsController extends Controller
         $type = $request->file_type; // id_doc | gst_doc
         $fileFieldFront = $type == 'id_doc' ? 'id_doc' : 'gst_doc';
 
+        // Save number fields if provided
+        if ($type == 'gst_doc' && $request->filled('gst_number')) {
+            $store->gst_number = $request->gst_number;
+            $store->save();
+        }
+        if ($type == 'id_doc' && $request->filled('id_number')) {
+            $store->id_number = $request->id_number;
+            $store->save();
+        }
+
         if (!$request->hasFile($fileFieldFront)) {
-            Toastr::error("Please upload a valid document");
+            Toastr::success("Details updated successfully");
             return back();
         }
 

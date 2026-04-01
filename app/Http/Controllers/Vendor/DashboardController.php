@@ -134,7 +134,6 @@ class DashboardController extends Controller
 
             // --- Profile completion ---
             $store = Helpers::get_store_data();
-            
             $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
             $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
             $completionHasService = $store->services_1 || $store->services_2;
@@ -1041,7 +1040,8 @@ class DashboardController extends Controller
     {
 
         $request->validate([
-            'file.*' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp',
+            'file'   => 'required|array|max:10',
+            'file.*' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:4096',
         ]);
 
         if (!empty($request->file('file'))) {

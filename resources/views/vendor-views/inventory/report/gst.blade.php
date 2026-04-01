@@ -219,16 +219,14 @@
                  <div class="d-flex align-items-center">
 
                      <div class="d-flex gap-2">
+
                          <form action="" class=" date-range-form">
                              @include('vendor-views/form_modals/date_range')
                              <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning"
                                  type="button" data-toggle="modal"
                                  data-target="#dateRangeModal">{{ translate($preset) }}</button>
                          </form>
-                         {{-- <a class="btn btn-outline-primary mr-1"
-                             href="{{ route('vendor.inventory.report.gst', ['export']) }}">
-                             Export
-                         </a> --}}
+
                      </div>
                  </div>
              </div>
@@ -255,7 +253,16 @@
 
 
                      <div class="card-body p-0">
-                         <h2>Sale Invoices</h2>
+                         <div class="d-flex justify-content-between align-items-center m-2">
+
+                             <h2>Sale Invoices</h2>
+                             @if(hasPermission('gst_report', 'export'))
+                             <a class="btn btn-outline-primary mr-1"
+                                 href="{{ route('vendor.inventory.report.gst', ['export-sale']) }}">
+                                 Export
+                             </a>
+                             @endif
+                         </div>
                          <div class="table-responsive">
                              <table id="datatable"
                                  class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
@@ -398,11 +405,17 @@
              </div>
              <div class="col-md-6 p-1">
                  <div class="card">
-
-
                      <div class="card-body p-0">
-                         <h2>Purchase Invoices</h2>
+                         <div class="d-flex justify-content-between align-items-center m-2">
+                             <h2>Purchase Invoices</h2>
+                             @if(hasPermission('gst_report', 'export'))
 
+                             <a class="btn btn-outline-primary mr-1"
+                                 href="{{ route('vendor.inventory.report.gst', ['export-purchase']) }}">
+                                 Export
+                             </a>
+                             @endif
+                         </div>
                          <div class="table-responsive">
                              <table id="datatable"
                                  class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table"

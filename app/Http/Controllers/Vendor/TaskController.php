@@ -8,9 +8,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Models\Lead;
-use App\Models\ManualInvoice;
+use App\Models\ManualInvoice; 
 use App\Models\Quotation;
-use App\Models\EmployeeRole;
+use App\Models\EmployeeRole; 
 use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
 use App\CentralLogics\Helpers;
@@ -143,10 +143,11 @@ class TaskController extends Controller
         $store_id = $storeId = Helpers::get_store_id();
 
         if ($task->employee_id === 0) {
-            $task['emp_name'] = 'Self';
-            $task['emp_phone'] = Helpers::get_store_data()->phone;
-            $task['emp_role'] = '-';
-            $task['emp_image'] =  Helpers::get_store_data()->logo;
+            $vendor = auth('vendor')->user();
+            $task['emp_name'] = $vendor ? trim($vendor->f_name . ' ' . $vendor->l_name) : 'Self';
+            $task['emp_phone'] = $vendor ? $vendor->phone : Helpers::get_store_data()->phone;
+            $task['emp_role'] = 'Vendor';
+            $task['emp_image'] = $vendor ? $vendor->image : null;
         } else if ($task->employee_id !== 0 && $task->employee_id !== null) {
             $empdet = VendorEmployee::with('role')->find($task->employee_id);
             $task['emp_name'] = $empdet ?  $empdet->f_name . ' ' . $empdet->l_name : 'Deleted';
@@ -517,7 +518,7 @@ class TaskController extends Controller
         $request->validate([
             'title' => 'required',
             'customer' => 'required_without:project_id',
-            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:5120', // max 5MB
+            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -653,11 +654,18 @@ class TaskController extends Controller
     {
         $task_id = $request->task_id;
         $task = StoreTask::find($task_id);
-        $task->offered_to = $request->employee_id;
-        $task->employee_id = null;
+        if($request->employee_id == 0){
+
+            $task->employee_id = 0;
+            $task->offered_to = 0;
+            $emp = Vendor::where('id', $store->employee_id)->first();
+        } else {
+            $task->offered_to = $request->employee_id;
+            $task->employee_id = null;
+            $emp = VendorEmployee::where('id', $request->employee_id)->first();
+        }
         $task->save();
 
-        $emp = VendorEmployee::where('id', $request->employee_id)->first();
 
         // store status update
         $taskStatus = new TaskStatus();
@@ -772,7 +780,7 @@ class TaskController extends Controller
     {
         $request->validate([
             'title' => 'required',
-            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:5120', // max 5MB
+            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
 
         $task = StoreTask::find($request->task_id_old);
@@ -1072,7 +1080,7 @@ class TaskController extends Controller
         $request->validate([
             'title' =>  'required|string|max:255',
             'comment' =>  'required',
-            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:2048', // max 2MB
+            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
         $files = [];
         if ($request->hasFile('files')) {
@@ -1101,7 +1109,7 @@ class TaskController extends Controller
         $request->validate([
             'title' =>  'required|string|max:255',
             'comment' =>  'required',
-            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:2048', // max 2MB
+            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $img) {

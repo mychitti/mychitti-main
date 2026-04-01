@@ -169,4 +169,10 @@ class BannerController extends BaseController
         Toastr::success(translate('messages.banner_featured_status_updated'));
         return back();
     }
+
+    public function updateSortOrder(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->bannerRepo->update(id: $request['id'], data: ['sort_order' => (int) $request['sort_order']]);
+        return response()->json(['success' => true]);
+    }
 }

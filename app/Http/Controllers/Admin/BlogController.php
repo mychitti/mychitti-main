@@ -22,7 +22,7 @@ class BlogController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'upload' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'upload' => 'required|image|mimes:jpeg,png,jpg,gif|max:30720'
         ]);
 
         if ($request->hasFile('upload')) {
@@ -75,7 +75,7 @@ class BlogController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|max:191',
-            'image' => 'nullable|mimes:jpg,jpeg,png,bmp,tiff|max:2048',
+            'image' => 'nullable|mimes:jpg,jpeg,png,bmp,tiff|max:30720',
             'description' => 'required',
             'category' => 'required',
         ]);
@@ -102,7 +102,7 @@ class BlogController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|max:191',
-            'image' => 'required|mimes:jpg,jpeg,png,bmp,tiff|max:2048',
+            'image' => 'required|mimes:jpg,jpeg,png,bmp,tiff|max:30720',
             'description' => 'required',
             'category' => 'required',
             'type' => 'required',
@@ -132,7 +132,7 @@ class BlogController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:blog_categories|max:191',
-            'image' => 'required|mimes:jpg,jpeg,png,bmp,tiff|max:2048',
+            'image' => 'required|mimes:jpg,jpeg,png,bmp,tiff|max:30720',
         ]);
 
         if ($validator->fails()) {

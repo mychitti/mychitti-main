@@ -1416,7 +1416,7 @@
                                                 </a>
                                             </li>
                                         @endif
-                                        <li
+                                        {{-- <li
                                             class="nav-item {{ Request::is('inventory/item-images') ? 'active' : '' }}">
                                             <a class="nav-link" href="{{ route('vendor.inventory.item-images') }}"
                                                 title="Item Images">
@@ -1425,7 +1425,7 @@
                                                     Item Images
                                                 </span>
                                             </a>
-                                        </li>
+                                        </li> --}}
                                     </ul>
                                 </li>
                                 @if (hasAnyPermission(['inventory_stock_in_out.list']))

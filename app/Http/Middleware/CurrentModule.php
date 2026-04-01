@@ -24,12 +24,8 @@ class CurrentModule
             session()->put('current_module', request()->get('module_id'));
             Config::set('module.current_module_id', request()->get('module_id'));
         } else {
-            if (_onlyStoreAddEdit()) {
-                Config::set('module.current_module_id', 6);
-                session()->put('current_module', 6);
-            } else {
+          
                 Config::set('module.current_module_id', session()->get('current_module'));
-            }
         }
 
         $module_id = Config::get('module.current_module_id');

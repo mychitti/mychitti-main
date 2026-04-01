@@ -47,6 +47,7 @@ class Banner extends Model
         'default_link',
         'created_by',
         'platform',
+        'sort_order',
     ];
 
     /**
@@ -58,6 +59,7 @@ class Banner extends Model
         'zone_id' => 'integer',
         'module_id' => 'integer',
         'featured' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     /**

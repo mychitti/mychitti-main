@@ -32,6 +32,7 @@ class BannerLogic
         $banners = $banners->whereIn('zone_id', json_decode($zone_id, true))->whereHas('module', function ($query) {
             $query->active();
         })->where('created_by', 'admin')
+            ->orderBy('sort_order')
             ->get();
 
         $data = [];
@@ -116,8 +117,10 @@ class BannerLogic
         $banners = $banners->whereIn('zone_id', json_decode($zone_id, true))->whereHas('module', function ($query) {
             $query->active();
         })->where('created_by', 'admin')
+            // ->orderBy('created_at', 'desc')
+            ->orderBy('sort_order', 'asc')
             ->get();
-
+  
         $data = [];
         foreach ($banners as $banner) {
             if ($banner->type == 'store_wise') {

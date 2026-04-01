@@ -18,7 +18,7 @@
                            <option value=""></option>
                            <option value="0">Self</option>
                            @foreach ($staff as $key => $s)
-                               <option value="{{ $s->id }}">
+                               <option value="{{ $s->id }}" >
                                    {{ $s->f_name . ' ' . $s->l_name . ' | ' . $s->role?->name }}</option>
                            @endforeach
                        </select>

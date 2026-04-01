@@ -164,7 +164,6 @@
                                  <th class="border-0">SGST Amt.</th>
                                  <th class="border-0">IGST Amt.</th>
                                  <th class="border-0">Payment Status</th>
-                                 <th class="border-0">Action</th>
                              </tr>
                          </thead>
 
@@ -206,30 +205,7 @@
                                              <span class="badge badge-soft-success">Paid</span>
                                          @endif
                                      </td>
-                                     <td>
-                                         <div class="dropdown">
-                                             <button class="btn p-1 dropdown-toggle" type="button"
-                                                 data-toggle="dropdown" aria-expanded="false">
-                                                 <i class="fa-solid fa-bars"></i>
-                                             </button>
-                                             <div class="dropdown-menu">
-                                                 @if (in_array($invoice->payment_status, ['unpaid', 'Unpaid']))
-                                                     <a class="dropdown-item text-success form-alert" href="javascript:"
-                                                         data-id="mark-paid-{{ $invoice->id }}"
-                                                         data-message="{{ translate('Want to mark paid this invoice') }}"
-                                                         title="{{ translate('messages.mark paid') }}"><i
-                                                             class="fa-solid fa-check-double"></i> Mark Paid
-                                                     </a>
-                                                     <form
-                                                         action="{{ route('vendor.invoice.mark-paid', ['manual', $invoice->id]) }}"
-                                                         method="get" id="mark-paid-{{ $invoice->id }}">
-                                                         @csrf @method('get')
-                                                     </form>
-                                                 @endif
-                                             </div>
-
-                                         </div>
-                                     </td>
+                                    
                                  </tr>
                              @endforeach
 

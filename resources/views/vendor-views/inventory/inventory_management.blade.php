@@ -566,7 +566,7 @@
                         <form action="{{ route('vendor.inventory.import') }}" method="post"
                             enctype="multipart/form-data">
                             @csrf
-                            <a href="{{ asset('storage/app/public/util/inventory_item_example.xlsx') }}" download
+                            <a href="{{ asset('storage/app/public/uploaded/excel/inventory_item_updated2.xlsx') }}" download
                                 class="btn btn-outline-primary mb-2">View Example</a>
                             <div class="form-group">
                                 <label for="file">Upload Excel File</label>
@@ -599,9 +599,8 @@
                             <li><strong>Item Type</strong><br> Specify the type of item, e.g., <code>Product</code> or
                                 <code>Service</code>.
                             </li>
-                            <li><strong>Item Image</strong><br> Upload item images from the <strong><a
-                                        class="text-underline" href="{{ route('vendor.inventory.item-images') }}">Item
-                                        Images Page</a></strong> and paste the exact image names in the sheet. </li>
+                            <li><strong>Main Image (Column U)</strong><br> Paste a single image directly into <strong>column U</strong> of the item's row. This will be saved as the main/thumbnail image of the item.</li>
+                            <li><strong>Multiple Images (Column V)</strong><br> Paste one or more images directly into <strong>column V</strong> of the item's row. These will be saved as the item's gallery images.</li>
                             <li><strong>Category and Unit</strong><br> Provide either <strong>Category Name (exact
                                     spelling)</strong> or <strong>Category ID</strong>.<br> Provide either <strong>Unit Name
                                     (exact spelling)</strong> or <strong>Unit ID</strong>. </li>

@@ -66,7 +66,7 @@ class BannerController extends Controller
     {
         $request->validate([
             'title' => 'required',
-            'image' => 'required|max:2048',
+            'image' => 'required|max:30720',
             'default_link' => 'max:255',
         ]);
 

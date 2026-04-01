@@ -1129,6 +1129,22 @@ class BillingController extends Controller
       //
     }
   }
+  public function purchase_bill_delete(Request $request, $id)
+  {
+    $invoice = ManualInvoice::where('id', $id)->first();
+    if ($invoice) {
+      if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
+        Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+      }
+      $invoice->delete();
+      Toastr::success('Invoice deleted successfully');
+    } else {
+      Toastr::error('Invoice not found');
+    }
+    _auditLogs('Deleted Purchase Invoice : ' . $invoice->invoice_id);
+    InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->delete();
+    return redirect()->back();
+  }
   public function view_invoice(Request $request, $id)
   {
     $invoice = ManualInvoice::find($id);

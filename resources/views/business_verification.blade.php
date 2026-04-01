@@ -1241,7 +1241,7 @@ $log_email_succ = session()->get('log_email_succ');
                                                 style="height: 38px !important;"
                                                 accept=".pdf,.png,.jpg,.jpeg,image/*">
                                             <small class="form-text text-muted">Accepted: PDF, PNG, JPG, JPEG
-                                                (Max 5MB)</small>
+                                                </small>
                                         </div>
 
                                         <!-- ID Proof -->
@@ -1251,7 +1251,7 @@ $log_email_succ = session()->get('log_email_succ');
                                                 style="height: 38px !important;"
                                                 accept=".pdf,.png,.jpg,.jpeg,image/*">
                                             <small class="form-text text-muted">Accepted: PDF, PNG, JPG, JPEG
-                                                (Max 5MB)</small>
+                                                </small>
                                         </div>
 
                                         <!-- Error Message -->
@@ -1359,14 +1359,14 @@ $log_email_succ = session()->get('log_email_succ');
                     return false;
                 }
 
-                // Validate file size (5MB max)
-                var maxSize = 5 * 1024 * 1024;
+                // 30MB size check
+                var maxSize = 30 * 1024 * 1024;
                 if (gstFile && gstFile.size > maxSize) {
-                    $('#errorMsg').text('GST Certificate file size exceeds 5MB.').show();
+                    $('#errorMsg').text('GST document exceeds the maximum allowed size of 30 MB.').show();
                     return false;
                 }
                 if (idFile && idFile.size > maxSize) {
-                    $('#errorMsg').text('ID Proof file size exceeds 5MB.').show();
+                    $('#errorMsg').text('ID proof exceeds the maximum allowed size of 30 MB.').show();
                     return false;
                 }
 

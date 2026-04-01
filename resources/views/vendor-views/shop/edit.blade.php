@@ -620,10 +620,10 @@
                 <div class="modal-body">
 
                     <!-- Document Card 1 -->
-                    <div class="vdp-doc-card">
+                    <div class="vdp-doc-card"> 
                         <div class="vdp-card-header">
                             <div class="vdp-file-icon">
-                                {{ $gst_doc ? _getFileTypeLabel($gst_doc->file_path) : 'GST' }}
+                                {{ $gstFilePath ? _getFileTypeLabel($gstFilePath) : 'GST' }}
                             </div>
                             <div class="vdp-card-info">
                                 <div class="vdp-doc-filename">GST Document</div>
@@ -631,30 +631,33 @@
                         </div>
                         <div class="vdp-card-body">
                             <div class="vdp-info-row">
+                                <span class="vdp-info-label">GST Number</span>
+                                <span class="vdp-info-value">{{ $store->gst_number ?? '-' }}</span>
+                            </div>
+                            <div class="vdp-info-row">
                                 <span class="vdp-info-label">File Type</span>
-                                <span
-                                    class="vdp-info-value">{{ $gst_doc ? _getFileTypeLabel($gst_doc->file_path) : '' }}</span>
+                                <span class="vdp-info-value">{{ $gstFilePath ? _getFileTypeLabel($gstFilePath) : '-' }}</span>
                             </div>
                             <div class="vdp-info-row">
                                 <span class="vdp-info-label">Status</span>
                                 @if ($gst_doc)
-                                    @if ($gst_doc && $gst_doc->verified == 0)
+                                    @if ($gst_doc->verified == 0)
                                         <span class="vdp-status-badge vdp-status-pending">Pending</span>
                                     @else
                                         <span class="vdp-status-badge vdp-status-approved">Approved</span>
                                     @endif
+                                @elseif ($store->gst_doc)
+                                    <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                @else
+                                    <span class="text-muted">No document uploaded</span>
                                 @endif
-
                             </div>
                         </div>
 
                         <div class="vdp-card-footer align-items-start flex-wrap">
-                            @if ($gst_doc || $store->gst_doc)
-                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $gst_doc->file_path }}"
-                                    class="btn btn-primary">View</a>
-                                <a download
-                                    href="{{ asset('storage/app/public/store/docs') . '/' . $gst_doc->file_path }}"
-                                    class="btn btn-outline-primary">Download</a>
+                            @if ($gstFilePath)
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $gstFilePath }}" class="btn btn-primary">View</a>
+                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $gstFilePath }}" class="btn btn-outline-primary">Download</a>
                             @endif
 
                             <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
@@ -667,9 +670,13 @@
                                         @csrf
                                         <input type="hidden" name="file_type" value="gst_doc">
                                         <div class="form-group">
+                                            <label for="gst_number">GST Number</label>
+                                            <input type="text" class="form-control" id="gst_number" name="gst_number"
+                                                value="{{ $store->gst_number ?? '' }}" placeholder="Enter GST Number">
+                                        </div>
+                                        <div class="form-group">
                                             <label for="gst_doc">Upload New GST Document</label>
-                                            <input type="file" class="form-control" id="gst_doc" name="gst_doc"
-                                                required>
+                                            <input type="file" class="form-control" id="gst_doc" name="gst_doc">
                                         </div>
                                         <div class="d-flex w-100 justify-content-end">
 
@@ -708,48 +715,48 @@
                     <div class="vdp-doc-card">
                         <div class="vdp-card-header">
                             <div class="vdp-file-icon">
-                                {{ $id_doc ? _getFileTypeLabel($id_doc->file_path) : 'ID' }}</div>
+                                {{ $idFilePath ? _getFileTypeLabel($idFilePath) : 'ID' }}</div>
                             <div class="vdp-card-info">
                                 <div class="vdp-doc-filename">ID Proof</div>
                             </div>
-                        </div>
+                        </div> 
                         <div class="vdp-card-body">
                             <div class="vdp-info-row">
+                                <span class="vdp-info-label">ID Number</span>
+                                <span class="vdp-info-value">{{ $store->id_number ?? '-' }}</span>
+                            </div>
+                            <div class="vdp-info-row">
                                 <span class="vdp-info-label">File Type</span>
-                                <span
-                                    class="vdp-info-value">{{ $id_doc ? _getFileTypeLabel($id_doc->file_path) : '' }}</span>
+                                <span class="vdp-info-value">{{ $idFilePath ? _getFileTypeLabel($idFilePath) : '-' }}</span>
                             </div>
                             <div class="vdp-info-row">
                                 <span class="vdp-info-label">Status</span>
                                 <div class="gap-1 d-flex">
                                     @if ($id_doc)
-                                        @if ($id_doc && $id_doc->verified == 0)
+                                        @if ($id_doc->verified == 0)
                                             <b>Front : </b>
                                             <span class="vdp-status-badge vdp-status-pending">Pending</span>
                                         @else
                                             <span class="vdp-status-badge vdp-status-approved">Approved</span>
                                         @endif
+                                    @elseif ($store->id_doc)
+                                        <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                    @else
+                                        <span class="text-muted">No document uploaded</span>
                                     @endif
-
-
                                 </div>
                             </div>
                         </div>
 
                         <div class="vdp-card-footer align-items-start flex-wrap">
-                            @if ($id_doc)
-                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->file_path }}"
-                                    class="btn btn-primary">View Front</a>
-                                @if ($id_doc->back_side)
-                                    <a href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}"
-                                        class="btn btn-primary">View Back</a>
+                            @if ($idFilePath)
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $idFilePath }}" class="btn btn-primary">View Front</a>
+                                @if ($id_doc && $id_doc->back_side)
+                                    <a href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}" class="btn btn-primary">View Back</a>
                                 @endif
-                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->file_path }}"
-                                    class="btn btn-outline-primary">Download Front</a>
-                                @if ($id_doc->back_side)
-                                    <a download
-                                        href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}"
-                                        class="btn btn-outline-primary">Download Back</a>
+                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $idFilePath }}" class="btn btn-outline-primary">Download Front</a>
+                                @if ($id_doc && $id_doc->back_side)
+                                    <a download href="{{ asset('storage/app/public/store/docs') . '/' . $id_doc->back_side }}" class="btn btn-outline-primary">Download Back</a>
                                 @endif
                             @endif
 
@@ -763,14 +770,18 @@
                                         @csrf
                                         <input type="hidden" name="file_type" value="id_doc">
                                         <div class="form-group">
+                                            <label for="id_number">ID Number</label>
+                                            <input type="text" class="form-control" id="id_number" name="id_number"
+                                                value="{{ $store->id_number ?? '' }}" placeholder="Enter ID Number">
+                                        </div>
+                                        <div class="form-group">
                                             <label for="id_doc">New ID Proof (Front / both sides)</label>
-                                            <input type="file" class="form-control" id="id_doc" name="id_doc"
-                                                required>
+                                            <input type="file" class="form-control" id="id_doc" name="id_doc">
                                         </div>
                                         <div class="form-group">
                                             <label for="id_doc_back">New ID Proof (Back side)</label>
-                                            <input type="file" class="form-control" id="id_doc_back"
-                                                name="id_doc_back" required>
+                                            <input type="file" class="form-control" id="id_doc_back" 
+                                                name="id_doc_back">
                                         </div>
                                         <div class="d-flex w-100 justify-content-end">
                                             <button type="submit" class="btn btn-primary">Update</button>
@@ -783,8 +794,6 @@
                         </div>
                     </div>
 
-
-
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -793,7 +802,7 @@
         </div>
     </div>
 @endsection
-
+ 
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/shop-edit.js"></script>
     <script src="{{ asset('public/assets/admin/js/spartan-multi-image-picker.js') }}"></script>

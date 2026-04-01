@@ -134,6 +134,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             Route::get('edit/{id}', 'BillingController@edit')->name('edit')->middleware('permission:billing,edit'); // only for manual invoices
             Route::get('purchase-bills', 'AccountController@my_bills')->name('my-bills')->middleware('permission:purchase_bill,list');; //ddd
+            Route::get('purchase-bill/delete/{id}', 'BillingController@purchase_bill_delete')->name('purchase-bill.delete')->middleware('permission:purchase_bill,delete');; //ddd
 
 
             Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice')->middleware('permission:billing,edit');

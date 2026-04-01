@@ -93,11 +93,12 @@ class ProjectTaskController extends Controller
 
         $store_id = $storeId = Helpers::get_store_id();
 
-        if ($task->employee_id === 0) {
-            $task['emp_name'] = 'Self';
-            $task['emp_phone'] = Helpers::get_store_data()->phone;
-            $task['emp_role'] = '-';
-            $task['emp_image'] =  Helpers::get_store_data()->logo;
+        if ($task->employee_id === 0) { 
+            $vendor = Auth::guard('vendor')->user();
+            $task['emp_name'] = $vendor ? trim($vendor->f_name . ' ' . $vendor->l_name) : 'Self';
+            $task['emp_phone'] = $vendor ? $vendor->phone : Helpers::get_store_data()->phone;
+            $task['emp_role'] = 'Vendor';
+            $task['emp_image'] = $vendor ? $vendor->image : null;
         } else if ($task->employee_id !== 0 && $task->employee_id !== null) {
             $empdet = VendorEmployee::with('role')->find($task->employee_id);
             $task['emp_name'] = $empdet ?  $empdet->f_name . ' ' . $empdet->l_name : 'Deleted';
@@ -443,7 +444,7 @@ class ProjectTaskController extends Controller
         $request->validate([
             'title' => 'required',
             'customer' => 'required_without:project_id',
-            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:5120', // max 5MB
+            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -611,7 +612,7 @@ class ProjectTaskController extends Controller
     {
         $request->validate([
             'title' => 'required',
-            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:5120', // max 5MB
+            'file' => 'nullable|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
 
         $task = StoreTask::find($request->task_id_old);
@@ -902,7 +903,7 @@ class ProjectTaskController extends Controller
         $request->validate([
             'title' =>  'required|string|max:255',
             'comment' =>  'required',
-            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:2048', // max 2MB
+            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
         $files = [];
         if ($request->hasFile('files')) {
@@ -931,7 +932,7 @@ class ProjectTaskController extends Controller
         $request->validate([
             'title' =>  'required|string|max:255',
             'comment' =>  'required',
-            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:2048', // max 2MB
+            'files.*' => 'nullable|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,csv|max:30720',
         ]);
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $img) {

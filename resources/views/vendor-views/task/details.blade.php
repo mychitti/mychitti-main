@@ -2,7 +2,7 @@
 
 @section('title', 'Task Details')
 
-@push('css_or_js')
+@push('css_or_js') 
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/css/lightgallery.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lightgallery.css">
@@ -739,36 +739,23 @@
                         @endif
                     </div>
                 </div>
-
+ 
                 <div class="d-flex gap-2 flex-wrap align-items-center reassign_section" style="">
 
                     <div class="card" style=" min-width: 200px;">
                         {{-- background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); --}}
                         <div class="card-body p-1">
                             <div class="d-flex align-items-center gap-2">
-                                @if ($task->emp_name == 'Self')
-                                    <img class="rounded-circle onerror-image me-3"
-                                        style="width: 50px;height: 50px;object-fit: cover;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
-                                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                            $task->emp_image ?? '',
-                                            asset('storage/app/public/store') . '/' . $task->emp_image ?? '',
-                                            asset('public/assets/admin/img/160x160/img1.jpg'),
-                                            'store/',
-                                        ) }}"
-                                        alt="Assignee">
-                                @else
-                                    <img class="rounded-circle onerror-image me-3"
-                                        style="width: 50px;height: 50px;object-fit: cover;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
-                                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                            $task->emp_image ?? '',
-                                            asset('storage/app/public/vendor') . '/' . $task->emp_image ?? '',
-                                            asset('public/assets/admin/img/160x160/img1.jpg'),
-                                            'vendor/',
-                                        ) }}"
-                                        alt="Assignee">
-                                @endif
+                                <img class="rounded-circle onerror-image me-3"
+                                    style="width: 50px;height: 50px;object-fit: cover;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                        $task->emp_image ?? '',
+                                        asset('storage/app/public/vendor') . '/' . $task->emp_image ?? '',
+                                        asset('public/assets/admin/img/160x160/img1.jpg'),
+                                        'vendor/',
+                                    ) }}"
+                                    alt="Assignee">
                                 <div class="flex-grow-1">
                                     <p class="text-muted mb-1 small fw-semibold">
                                         {{ $task->employee_id || $task->employee_id === 0 ? 'ASSIGNEE' : 'OFFERED TO' }}

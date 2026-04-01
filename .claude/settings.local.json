@@ -6,7 +6,9 @@
       "Bash(sqlite3 \"/d/Work Projects/mychitti-main/database/mychitti.db\" \".schema notifications\")",
       "Read(//d//**)",
       "Read(//d/Work/ Projects/mychitti-main/app/CentralLogics/**)",
-      "Bash(find 'd:/Work Projects/mychitti-main/app/Http/Controllers/Api' -type f -name *.php)"
+      "Bash(find 'd:/Work Projects/mychitti-main/app/Http/Controllers/Api' -type f -name *.php)",
+      "Bash(xargs cat:*)",
+      "Bash(cut -d'`' -f2)"
     ]
   }
 }

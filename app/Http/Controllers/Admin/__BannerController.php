@@ -49,6 +49,7 @@ class BannerController extends Controller
         $banner->data = ($request->banner_type == 'store_wise')?$request->store_id:(($request->banner_type == 'item_wise')?$request->item_id:'');
         $banner->module_id = Config::get('module.current_module_id');
         $banner->default_link = $request->default_link;
+        $banner->sort_order = $request->sort_order ?? 0;
         $banner->save();
         $data = [];
         $default_lang = str_replace('_', '-', app()->getLocale());
@@ -132,6 +133,7 @@ class BannerController extends Controller
         $banner->image = $request->has('image') ? Helpers::update('banner/', $banner->image, 'png', $request->file('image')) : $banner->image;
         $banner->data = ($request->banner_type == 'store_wise')?$request->store_id:(($request->banner_type == 'item_wise')?$request->item_id:'');
         $banner->default_link = $request->default_link;
+        $banner->sort_order = $request->sort_order ?? 0;
         $banner->save();
         $default_lang = str_replace('_', '-', app()->getLocale());
         foreach ($request->lang as $index => $key) {

@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Enums\ExportFileNames\Admin\Category;
-use App\Exports\ProfitAndLossExport;
-use App\Exports\PurchaseExport;
-use App\Exports\SaleExport;
-use App\Exports\StockExport;
+use App\Exports\Vendor\GstReportExport;
+use App\Exports\Vendor\SaleReportExport;
+use App\Exports\Vendor\PurchaseReportExport;
+use App\Exports\Vendor\StockReportExport;
+use App\Exports\Vendor\ProfitLossReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\Category as ModelsCategory;
 use App\Models\InventoryItem;
@@ -102,6 +103,30 @@ class InventoryReportController extends Controller
             });
         }
 
+        $data['formatted_from'] = \Carbon\Carbon::parse($formatted_from)->format('Y-m-d');
+        $data['formatted_to'] = \Carbon\Carbon::parse($formatted_to)->format('Y-m-d');
+        $data['preset'] = $preset;
+
+        if ($export == 'export-sale') {
+            if (hasPermission('gst_report', 'export')) {
+                $data = $this->gst_sale_export_excel($saleInvoices, $data);
+                return $data;
+            } else {
+                Toastr::error('Access Denied');
+                return back();
+            }
+        }
+        if ($export == 'export-purchase') {
+            if (hasPermission('gst_report', 'export')) {
+                $data = $this->gst_purchase_export_excel($purchaseInvoices, $data);
+                return $data;
+            } else {
+                Toastr::error('Access Denied');
+                return back();
+            }
+        }
+    
+
         $invoices = $invoices->sortByDesc(function ($invoice) {
             return $invoice->invoice_date ?? $invoice->created_at;
         })
@@ -150,10 +175,10 @@ class InventoryReportController extends Controller
             if (hasPermission('sale_report', 'export')) {
                 if ($export && $export_type == 'pdf') {
                     $data = $this->sale_export_pdf($invoices, $data);
-                    return redirect()->to($data['url']);
+                    return $data;
                 } elseif ($export && $export_type == 'excel') {
                     $data = $this->sale_export_excel($invoices, $data);
-                    return redirect()->to($data['url']);
+                    return $data;
                 }
             } else {
                 Toastr::error('Access Denied');
@@ -165,6 +190,164 @@ class InventoryReportController extends Controller
             Toastr::error('Access Denied');
             return back();
         }
+    }
+    public function gst_sale_export_excel($invoices, $data)
+    {
+        $fileName = 'gst_report_' . $data['formatted_from'] . '-' . $data['formatted_to'] . '.xlsx';
+
+        $this->save_report($fileName, $data,  'gst_sale', 'excel');
+
+        $headings = [
+            'Sl',
+            'Date',
+            'Invoice Id',
+            'Bill Type',
+            'Customer/Vendor Name',
+            'GST Number',
+            'Taxable Value',
+            'Tax Rate',
+            'Tax Amt.',
+            'CGST',
+            'SGST',
+            'IGST/UGST',
+            'Invoice Total'
+        ];
+        $rows = [];
+        foreach ($invoices as $key => $e) {
+            // NAME
+            $name = null;
+            if ($e['invoice_type'] === 'Service' && $e['websiteUser']) {
+                $name = trim(
+                    $e['websiteUser']?->f_name . ' ' . $e['websiteUser']?->l_name,
+                );
+            } elseif ($e['bill_type'] === 'Sale' && $e['storeCustomer']) {
+                $name = trim(
+                    $e['storeCustomer']?->f_name . ' ' . $e['storeCustomer']?->l_name,
+                );
+            } elseif ($e['seller']) {
+                $name = trim(
+                    $e['seller']?->f_name . ' ' . $e['seller']?->l_name,
+                );
+            }
+            // GST NUMBER
+            $gst = '';
+            if ($e['invoice_type'] === 'Service') {
+                $gst = $e['websiteUser']?->gst ?? '';
+            } elseif ($e['bill_type'] === 'Sale') {
+                $gst = $e['storeCustomer']?->gst ?? '';
+            } else {
+                $gst = $e['seller']?->gst ?? '';
+            }
+
+            // TAX RATES 
+            $tax_rates  = '';
+            if (!empty($e['invoiceItems'])) {
+                $taxes = $e['invoiceItems']
+                    ->whereNotNull('tax')
+                    ->where('tax', '!=', '')
+                    ->pluck('tax')
+                    ->toArray();
+            }
+
+            if (!empty($taxes)) {
+                $tax_rates = implode('%, ', $taxes)  . '%';
+            }
+            $rows[] = [
+                $key + 1,
+                $e->invoice_date ?? $e->created_at,
+                $e->invoice?->invoice_id ?? 'N/A',
+                $e['bill_type'] . ' - ' . $e['invoice_type'],
+                $name ?? 'N/A',
+                $gst,
+                _price($e['taxable_amount'] ?? $e['total_amount']),
+                $tax_rates,
+                _price($e['final_tax']),
+                _price($e['cgst']),
+                _price($e['sgst']),
+                _price($e['igst']),
+                _price($e['total_amount'])
+            ];
+        }
+        return Excel::download(new \App\Exports\Vendor\GstReportExport($rows, $headings), $fileName);
+    }
+    public function gst_purchase_export_excel($invoices, $data)
+    {
+        $fileName = 'gst_report_' . $data['formatted_from'] . '-' . $data['formatted_to'] . '.xlsx';
+
+        $this->save_report($fileName, $data,  'gst_purchase', 'excel');
+
+        $headings = [
+            'Sl',
+            'Date',
+            'Invoice Id',
+            'Bill Type',
+            'Customer/Vendor Name',
+            'GST Number',
+            'Taxable Value',
+            'Tax Rate',
+            'Tax Amt.',
+            'CGST',
+            'SGST',
+            'IGST/UGST',
+            'Invoice Total'
+        ];
+        $rows = [];
+        foreach ($invoices as $key => $e) {
+            // NAME
+            $name = null;
+            if ($e['invoice_type'] === 'Service' && $e['websiteUser']) {
+                $name = trim(
+                    $e['websiteUser']?->f_name . ' ' . $e['websiteUser']?->l_name,
+                );
+            } elseif ($e['bill_type'] === 'Sale' && $e['storeCustomer']) {
+                $name = trim(
+                    $e['storeCustomer']?->f_name . ' ' . $e['storeCustomer']?->l_name,
+                );
+            } elseif ($e['seller']) {
+                $name = trim(
+                    $e['seller']?->f_name . ' ' . $e['seller']?->l_name,
+                );
+            }
+            // GST NUMBER
+            $gst = '';
+            if ($e['invoice_type'] === 'Service') {
+                $gst = $e['websiteUser']?->gst ?? '';
+            } elseif ($e['bill_type'] === 'Sale') {
+                $gst = $e['storeCustomer']?->gst ?? '';
+            } else {
+                $gst = $e['seller']?->gst ?? '';
+            }
+
+            // TAX RATES 
+            $tax_rates  = '';
+            if (!empty($e['invoiceItems'])) {
+                $taxes = $e['invoiceItems']
+                    ->whereNotNull('tax')
+                    ->where('tax', '!=', '')
+                    ->pluck('tax')
+                    ->toArray();
+            }
+
+            if (!empty($taxes)) {
+                $tax_rates = implode('%, ', $taxes)  . '%';
+            }
+            $rows[] = [
+                $key + 1,
+                $e->invoice_date ?? $e->created_at,
+                $e->invoice?->invoice_id ?? 'N/A',
+                $e['bill_type'] . ' - ' . $e['invoice_type'],
+                $name ?? 'N/A',
+                $gst,
+                _price($e['taxable_amount'] ?? $e['total_amount']),
+                $tax_rates,
+                _price($e['final_tax']),
+                _price($e['cgst']),
+                _price($e['sgst']),
+                _price($e['igst']),
+                _price($e['total_amount'])
+            ];
+        }
+        return Excel::download(new \App\Exports\Vendor\GstReportExport($rows, $headings), $fileName);
     }
     public function sale_export_excel($invoices, $data)
     {
@@ -199,13 +382,7 @@ class InventoryReportController extends Controller
                 ucfirst($invoice->invoice?->payment_status),
             ];
         }
-        if (!Storage::disk('public')->exists('store_reports/sale/')) {
-            Storage::disk('public')->makeDirectory('store_reports/sale/');
-        }
-        $filePath = 'store_reports/sale/' . $fileName;
-        Excel::store(new SaleExport($rows, $headings), $filePath, 'public');
-        $url = Storage::disk('public')->url('store_reports/sale/' . $fileName);
-        return   ['success' => true, 'file_name' => $fileName,  'url'  => $url];
+        return Excel::download(new \App\Exports\Vendor\SaleReportExport($rows, $headings), $fileName);
     }
 
     public function sale_export_pdf($invoices, $data)
@@ -254,9 +431,9 @@ class InventoryReportController extends Controller
             $storeId = Helpers::get_store_id();
             // prx($storeId);
             $query = ManualInvoice::withCount('invoiceItems')->with('seller')
-           ->where('bill_to', $storeId)
-            ->where('user_type', 'store_vendor')
-            ->where('bill_to_type', 'vendor');
+                ->where('bill_to', $storeId)
+                ->where('user_type', 'store_vendor')
+                ->where('bill_to_type', 'vendor');
             $invoices =  (clone $query)->where('bill_to', $storeId)->where('bill_to_type', 'vendor')
                 ->when($search, function ($q) use ($search) {
                     $q->where('invoice_id', 'like', '%' . $search . '%');
@@ -331,16 +508,7 @@ class InventoryReportController extends Controller
                 count($invoice->invoiceItems)
             ];
         }
-        if (!Storage::disk('public')->exists('store_reports/purchase/')) {
-            Storage::disk('public')->makeDirectory('store_reports/purchase/');
-        }
-        $filePath = 'store_reports/purchase/' . $fileName;
-
-        $url = Storage::disk('public')->url('store_reports/purchase/' . $fileName);
-
-        Excel::store(new PurchaseExport($rows, $headings), $filePath, 'public');
-
-        return   ['success' => true, 'file_name' => $fileName,  'url'  => $url];
+        return Excel::download(new \App\Exports\Vendor\PurchaseReportExport($rows, $headings), $fileName);
     }
     public function stock(Request $request, $export = null, $export_type = null)
     {
@@ -435,14 +603,7 @@ class InventoryReportController extends Controller
                 $item->stock
             ];
         }
-        if (!Storage::disk('public')->exists('store_reports/stock2/')) {
-            Storage::disk('public')->makeDirectory('store_reports/stock2/');
-        } else {
-        }
-        $filePath = 'store_reports/stock2/' . $fileName;
-        Excel::store(new StockExport($rows, $headings), $filePath, 'public');
-        $url = Storage::disk('public')->url('store_reports/stock2/' . $fileName);
-        return   ['success' => true, 'file_name' => $fileName,  'url'  =>  $url];
+        return Excel::download(new \App\Exports\Vendor\StockReportExport($rows, $headings), $fileName);
     }
     public function stock_export_pdf($items, $data)
     {

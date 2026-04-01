@@ -28,7 +28,9 @@ class RestaurantController extends Controller
           $store_documents = StoreDocument::where('store_id', $store->id)->where('status', 1)->get();
         $id_doc = $store_documents->where('doc_type', 'id_doc')->first();
         $gst_doc = $store_documents->where('doc_type', 'gst_doc')->first();
-        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc'));
+        $gstFilePath = ($gst_doc ? $gst_doc->file_path : null) ?? $store->gst_doc ?? null;
+        $idFilePath = ($id_doc ? $id_doc->file_path : null) ?? $store->id_doc ?? null; 
+        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc', 'gstFilePath', 'idFilePath'));
     }
 
     public function update(Request $request)

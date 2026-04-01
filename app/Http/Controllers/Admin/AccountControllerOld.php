@@ -194,7 +194,7 @@ class AccountController extends Controller
                 'payment_mode' => 'required',   
                 'name' => 'required|max:100',
                 'amount' => 'required',
-                'file' => 'nullable|mimetypes:application/pdf|max:10240',
+                'file' => 'nullable|mimetypes:application/pdf|max:30720',
             ],[
                 'file.mimes' => 'Only .doc, .docx and .pdf file accepted',
             ]);

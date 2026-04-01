@@ -201,7 +201,7 @@ class VendorController extends Controller
             $store->gst_number = $request->gst_number;
         }
 
-        if (!$request->has('gst_number') || $request->gst_number == '') {
+        if ($request->has('id_number') && $request->id_number != '' && $request->hasFile('id_doc')) {
             $extension = $request->file('id_doc')->getClientOriginalExtension();
             $store->id_doc = Helpers::upload('store/docs/', $extension, $request->file('id_doc'));
             $store->id_number = $request->id_number;
@@ -212,7 +212,6 @@ class VendorController extends Controller
         Helpers::_assignFreeTrial($store);
         Helpers::_createDefaultLedgerAccounts();
         //    die;
-
 
         $store->module->increment('stores_count');
         if ($request->module_id == 6) {

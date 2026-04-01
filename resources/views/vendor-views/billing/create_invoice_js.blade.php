@@ -1,5 +1,5 @@
  <script>
-     @include('partials.inventory_stock_notify_js')
+{{-- @include('partials.inventory_stock_notify_js') --}}
      let invoiceDeleteRowUrl = "{{ route('vendor.invoice.delete-row') }}";
      let inventoryGetItemInfoUrl = "{{ route('vendor.inventory.get-item-info') }}";
      let customerFetchDetailsUrl = "{{ route('vendor.customer.fetch-details') }}";
@@ -11,7 +11,7 @@
              $("#invoice_form").submit();
          } else {
              toasterNotification("Add Atleast One Item")
-         }
+         } 
      })
      $(document).on('change', 'input[name="payment_mode"]', function() {
          var val = $(this).val();
@@ -126,7 +126,7 @@
                      id: item.id,
                  },
                  success: function(data) {
-                     notifyInventoryStockOnAdd(data);
+                     {{-- notifyInventoryStockOnAdd(data); --}}
                      addMoreRow(data);
                  },
                  complete: function() {

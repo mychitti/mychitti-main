@@ -319,9 +319,6 @@ class DashboardController extends Controller
             }
             return app(AIAgentSkillController::class)->index($request);
         }
-        if (_onlyStoreAddEdit()) {
-            return redirect()->route('admin.store.list');
-        }
         $params = [
             'zone_id' => $request['zone_id'] ?? 'all',
             'module_id' => Config::get('module.current_module_id'),

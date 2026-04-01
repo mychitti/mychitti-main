@@ -37,8 +37,8 @@ class ChatbotController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'message'    => 'nullable|string|max:5000',
-            'file'       => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:10240',
-            'voice'      => 'nullable|file|mimes:webm,wav,mp3,m4a|max:10240',
+            'file'       => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:30720',
+            'voice'      => 'nullable|file|mimes:webm,wav,mp3,m4a|max:30720',
             'session_id' => 'nullable|string|max:64',
         ]);
 

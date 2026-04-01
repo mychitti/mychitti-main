@@ -45,7 +45,6 @@
                     </div>
                 </form>
                 <ul class="navbar-nav navbar-nav-lg nav-tabs">
-                @if(!_onlyStoreAddEdit())
                     <!-- Dashboards -->
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('/') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.dashboard') }}?module_id={{Config::get('module.current_module_id')}}" title="{{ translate('messages.dashboard') }}">
@@ -55,7 +54,6 @@
                             </span>
                         </a>    
                     </li>
-                    @endif
                 
                     @include('admin-views/partials/billing_nav')
                     @include('admin-views/partials/account_nav')

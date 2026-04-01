@@ -23,18 +23,15 @@
                             <a class="list-separator-link" href="{{ route('admin.logs.action-logs.admin') }}">Logs</a>
                         </li>
                     @endif 
-                    @if (!_onlyStoreAddEdit())
                         <li class="list-inline-item">
                             <a class="list-separator-link" 
                                 href="{{ route('admin.business-settings.business-setup') }}">{{ translate('messages.business_setup') }}</a>
                         </li>
-                    @endif
 
                     <li class="list-inline-item">
                         <a class="list-separator-link"
                             href="{{ route('admin.settings') }}">{{ translate('messages.profile') }}</a>
                     </li>
-                    @if (!_onlyStoreAddEdit())
                         <li class="list-inline-item">
                             <!-- Keyboard Shortcuts Toggle -->
                             <div class="hs-unfold">
@@ -45,7 +42,6 @@
                             </div>
                             <!-- End Keyboard Shortcuts Toggle -->
                         </li>
-                    @endif
                     <li class="list-inline-item">
                         <label class="badge badge-soft-primary m-0">
                             {{ translate('messages.software_version') }} : {{ env('SOFTWARE_VERSION') }}

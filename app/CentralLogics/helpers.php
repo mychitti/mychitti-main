@@ -5230,10 +5230,27 @@ class Helpers
     {
         if ($image != null) {
             $imageName = $imageName ?? \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
+
             if (!Storage::disk('public')->exists($dir)) {
                 Storage::disk('public')->makeDirectory($dir);
             }
-            Storage::disk('public')->putFileAs($dir, $image, $imageName);
+
+            $compressibleFormats = ['jpg', 'jpeg', 'png', 'webp'];
+            $sizeMB = $image->getSize() / (1024 * 1024);
+
+            if ($sizeMB > 30) {
+                throw new \Exception("File too large. Maximum allowed size is 30 MB.");
+            }
+
+            if (in_array(strtolower($format), $compressibleFormats) && $sizeMB > 5) {
+                $compressed = \Intervention\Image\Facades\Image::make($image)
+                    ->encode($format, 50)
+                    ->getEncoded();
+
+                Storage::disk('public')->put($dir . $imageName, $compressed);
+            } else {
+                Storage::disk('public')->putFileAs($dir, $image, $imageName);
+            }
         } else {
             $imageName = 'def.png';
         }
@@ -5276,7 +5293,7 @@ class Helpers
      * Lookup priority: zone + category → zone only (category=null) → global business setting fallback.
      */
     public static function get_wallet_min_balance($zone_id = null, $category_id = null)
-    {
+    { 
         if ($zone_id) { 
             // First try zone + category specific
             if ($category_id) {
@@ -5287,7 +5304,7 @@ class Helpers
                 if ($config) return $config->min_balance;
             }
 
-            // Fallback to zone level (category = null)
+            // Fallback to zone level (category = null) 
             $config = DB::table('zone_wallet_configs')
                 ->where('zone_id', $zone_id)
                 ->whereNull('category_id')

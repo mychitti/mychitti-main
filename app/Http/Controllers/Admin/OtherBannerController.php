@@ -323,7 +323,7 @@ class OtherBannerController extends Controller
             'section_title' => 'required',
             'banner_type' => 'required',
             'banner_video' => 'required_if:banner_type,video',
-            'banner_video_content' => 'nullable|file|mimes:mp4,webm,ogg|max:5120'
+            'banner_video_content' => 'nullable|file|mimes:mp4,webm,ogg|max:30720'
         ]);
 
         $module_id = Config::get('module.current_module_id');

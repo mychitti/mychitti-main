@@ -1001,10 +1001,6 @@ if (!function_exists('generatePassword')) {
 //     return false;
 // }
 
-function _onlyStoreAddEdit()
-{
-   return hasPermission('store', 'add_basic') || hasPermission('store', 'add_advanced') || hasPermission('store', 'edit');
-}
 
 function _isEnabled($column)
 {
@@ -2770,13 +2766,18 @@ if (!function_exists('_isCancelled')) {
         if ($charges2) {
             return true;
         } else {
-            return false;
+            return false;  
         }
     }
 }
 if (!function_exists('addStatus')) {
     function addStatus(&$arr, $key)
     {
+        $allowed = ['new', 'accepted', 'completed', 'cancelled'];
+        if (!in_array(strtolower($key), $allowed)) {
+            return;
+        }
+        $key = strtolower($key);
         if (!isset($arr[$key])) {
             $arr[$key] = 0;
         }
