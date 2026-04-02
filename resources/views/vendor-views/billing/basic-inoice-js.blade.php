@@ -247,6 +247,7 @@
      }
 
      function addMoreRow(item = null) {
+        console.log(item)
          $(".items_table").show()
          $(".empty-state").hide()
 
@@ -288,7 +289,7 @@
              secondary_unit = item.secondary_unit;
              readonly = 'readonly';
              item_hsn = item.hsn;
-             item_tax = item.tax;
+             item_tax = item.tax ?? item.gst_rate;
          }
 
          console.log(dataId)

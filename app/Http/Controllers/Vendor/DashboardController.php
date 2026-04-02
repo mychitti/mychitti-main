@@ -81,7 +81,7 @@ class DashboardController extends Controller
                 ->where('service_requests.created_at', '<', now()->subMinutes(Helpers::get_lead_exp_minutes()))
                 ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to])
                 ->count();
-
+ 
             $data['total_leads_count'] = (clone $leadsQuery)->count() + $data['missed_leads_count'];
 
             $data['completed_leads_count'] = (clone $leadsQuery)
