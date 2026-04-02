@@ -1185,6 +1185,23 @@ class ServiceController extends Controller
         DB::table('store_reviews')->where('id', $request->id)->update(['status' => $request->status]);
         return response()->json(['success' => true]);
     }
+
+    public function lead_settings()
+    {
+        $storeId = Helpers::get_store_id();
+        $storeConfig = \App\Models\StoreConfig::firstOrCreate(['store_id' => $storeId]);
+        return view('vendor-views.service.lead_settings', compact('storeConfig'));
+    }
+
+    public function lead_settings_update(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        \App\Models\StoreConfig::where('store_id', $storeId)->update([ 
+            'lead_available' => $request->has('lead_available') ? 1 : 0,
+        ]);
+        Toastr::success('Lead settings updated successfully');
+        return back();
+    }
     public function send_confirmation_notification(Request $request)
     {
 
@@ -1382,9 +1399,6 @@ class ServiceController extends Controller
         $store_data = Helpers::get_store_data();
         $allStaff = DB::table('vendor_employees')->where('store_id', $storeId)->where('status', 1)->get();
         $type = $request->type ?? '';
-        if ($action == 'export') {
-            $type = 'All';
-        }
         $query = DB::table('service_requests')
             ->join('items', 'service_requests.item_id', '=', 'items.id')
             ->join('categories', 'items.category_id', '=', 'categories.id')
@@ -1393,7 +1407,7 @@ class ServiceController extends Controller
             ->when($search, function ($q) use ($search) {
                 $q->where('items.name', 'like', '%' . $search . '%');
             }); 
-        if (!$empId && $action != 'export') {
+        if (!$empId) {
             $query->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
         }
 

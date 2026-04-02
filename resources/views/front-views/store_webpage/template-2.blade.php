@@ -634,7 +634,13 @@
                                                                                         </div>
                                                                                     @endif
 
-                                                                                    @if (auth('web')->user())
+                                                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                                                        <button disabled
+                                                                                            class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
+                                                                                                class="fas fa-user-cog"></i>
+                                                                                            Enquiry Now</button>
+                                                                                        <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                                                    @elseif (auth('web')->user())
                                                                                         <button
                                                                                             onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i
@@ -803,7 +809,13 @@
                                                                                         </div>
                                                                                     @endif
 
-                                                                                    @if (auth('web')->user())
+                                                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                                                        <button disabled
+                                                                                            class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
+                                                                                                class="fas fa-user-cog"></i>
+                                                                                            Enquiry Now</button>
+                                                                                        <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                                                    @elseif (auth('web')->user())
                                                                                         <button
                                                                                             onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i

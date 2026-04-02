@@ -385,9 +385,20 @@ class UserController extends Controller
         $user_id = $user->id;
         $phone = $user->phone;
 
-        // phone number check 
+        // phone number check
         if (!$user->phone) {
             return response()->json(['status' => false, 'message' => 'phone_missing']);
+        }
+
+        // lead availability check
+        if ($request->storeId) {
+            $leadAvailable = DB::table('store_configs')
+                ->where('store_id', $request->storeId)
+                ->value('lead_available');
+
+            if ($leadAvailable !== null && $leadAvailable == 0) {
+                return response()->json(['status' => false, 'message' => 'This provider is currently not accepting enquiries. Please try again later.']);
+            }
         }
 
         if (!$request->has('address')) {
@@ -422,6 +433,11 @@ class UserController extends Controller
         }
         $storeId = $request->storeId ?? false;
         $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
+
+        if (empty($storesChunk)) {
+            return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
+        }
+
         // Check if this is a dedicated lead (store has dedicated_leads enabled)
         $isDedicated = false;
         if ($storeId) {

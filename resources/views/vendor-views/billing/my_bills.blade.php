@@ -71,7 +71,7 @@
                                     {{ $key + $bills->firstItem() }}
                                 </td>
                                 <td class="table-column-pl-0">
-                                    {{ $order['invoice_id'] }}
+                                     <a href="{{  $order['pdf'] ? asset('storage/invoice/') . '/'  .  $order['pdf'] : 'javascript:;'}}" target="_blank">{{ $order['invoice_id'] }}</a>   
                                 </td>
                                 <td>
                                     <div class=" mw--85px">

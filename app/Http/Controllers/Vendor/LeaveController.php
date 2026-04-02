@@ -23,9 +23,9 @@ class LeaveController extends Controller
         $v_id = Helpers::get_store_id();
 
         $store_config = StoreConfig::where('store_id', $v_id)->first();
-
+        $leaves = Leave::with('employee')->where('vendor_id', $v_id)->where('employee_type', 'vendor_employee')->get();
         $staff = VendorEmployee::where('store_id', Helpers::get_store_id())->get();
-        return view('vendor-views.leave.index', compact('staff', 'store_config'));
+        return view('vendor-views.leave.index', compact('staff', 'leaves','store_config'));
     }
     public function manage(Request $request, $id)
     {
@@ -134,10 +134,10 @@ class LeaveController extends Controller
     {
 
         $v_id = \App\CentralLogics\Helpers::get_store_id();
-        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->where('vendor_id' ,0)->exists();
+        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->where('vendor_id', 0)->exists();
         if (!$leave) {
 
-            $leave_date = sprintf('%04d-%02d-%02d',$request->post('year'),$request->post('month'),$request->post('day'));
+            $leave_date = sprintf('%04d-%02d-%02d', $request->post('year'), $request->post('month'), $request->post('day'));
 
             $leave = new Leave;
             $leave->vendor_id = $v_id;

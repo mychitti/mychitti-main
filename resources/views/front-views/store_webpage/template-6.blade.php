@@ -641,7 +641,12 @@
 
                                                     {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
 
-                                                    @auth
+                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                        <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
+                                                            Enquiry
+                                                        </button>
+                                                        <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                    @elseif (auth('web')->user())
                                                         <button
                                                             onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
                                                             class="btn btn-sm btn-outline-primary w-100">
@@ -652,7 +657,7 @@
                                                             class="btn btn-sm btn-outline-primary w-100">
                                                             Enquiry
                                                         </button>
-                                                    @endauth
+                                                    @endif
                                                 </div>
 
                                             </div>
@@ -691,7 +696,12 @@
 
                                                     {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
 
-                                                    @auth
+                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                        <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
+                                                            Enquiry
+                                                        </button>
+                                                        <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                    @elseif (auth('web')->user())
                                                         <button
                                                             onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
                                                             class="btn btn-sm btn-outline-primary w-100">
@@ -702,7 +712,7 @@
                                                             class="btn btn-sm btn-outline-primary w-100">
                                                             Enquiry
                                                         </button>
-                                                    @endauth
+                                                    @endif
                                                 </div>
 
                                             </div>

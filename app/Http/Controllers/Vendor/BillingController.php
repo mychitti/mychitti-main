@@ -62,10 +62,6 @@ class BillingController extends Controller
     // prx($request->all());
     $storeId = Helpers::get_store_id();
 
-    $query = ManualInvoice::with(['invoiceItems', 'storeCustomer'])
-      ->where('vendor_id', $storeId)
-      ->where('type', 'manual');
-
     $selected_items = json_decode($request->selected_items);
 
     if ($request->type == 'selected') {
@@ -74,10 +70,60 @@ class BillingController extends Controller
         return back();
       }
 
-      $query->whereIn('id', $selected_items);
+      $manualInvoices = ManualInvoice::with(['invoiceItems', 'storeCustomer'])
+        ->where('vendor_id', $storeId)
+        ->where('type', 'manual')
+        ->whereIn('id', $selected_items)
+        ->get();
+
+      $serviceInvoices = ServiceInvoice::with(['invoiceItems', 'storeCustomer'])
+        ->where('vendor_id', $storeId)
+        ->whereIn('id', $selected_items)
+        ->get();
+
+      $invoices = $manualInvoices->merge($serviceInvoices);
+    } else {
+      $today = date('Y-m-d');
+      $preset = $request->date_range ?? 'last_30_days';
+      $custom = $request->custom_date_range ?? null;
+      $range = Helpers::calculatePresetDates($preset, $custom);
+      $from = $range['start'];
+      $to = $range['end'];
+
+      $status = $request->status ?? 'all';
+      $search = $request->search;
+
+      $applyFilters = function ($query) use ($search, $status, $from, $to, $today) {
+        if ($search) {
+          $query->where('invoice_id', 'like', "%{$search}%");
+        } else {
+          if ($status === 'overdue') {
+            $query->where('payment_status', 'Unpaid')->where('created_at', '<', $today)->whereBetween('created_at', [$from, $to]);
+          } elseif ($status === 'pending') {
+            $query->where('payment_status', 'Unpaid')->where('created_at', '>=', $today)->whereBetween('created_at', [$from, $to]);
+          } elseif ($status === 'credit') {
+            $query->where('payment_status', 'Paid')->whereBetween('created_at', [$from, $to]);
+          } else {
+            $query->where(function ($q) use ($from, $to) {
+              $q->whereBetween('created_at', [$from, $to])->orWhereNull('created_at');
+            });
+          }
+        }
+      };
+
+      $manualQuery = ManualInvoice::with(['invoiceItems', 'storeCustomer'])
+        ->where('vendor_id', $storeId)
+        ->where('type', 'manual');
+      $applyFilters($manualQuery);
+
+      $serviceQuery = ServiceInvoice::with(['invoiceItems', 'storeCustomer'])
+        ->where('vendor_id', $storeId);
+      $applyFilters($serviceQuery);
+
+      $invoices = $manualQuery->get()->merge($serviceQuery->get());
     }
 
-    $invoices = $query->get();
+    $invoices = $invoices->unique('invoice_id')->values();
 
     if ($invoices->isEmpty()) {
       Toastr::error('No invoices found.');

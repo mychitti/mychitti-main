@@ -2550,12 +2550,14 @@ class Helpers
         $storeIds = array_unique(array_filter(explode(',', trim($item->store_ids))));
         $storeIds = array_map('intval', $storeIds);
 
-        // Step 2: Get only active, zone-matching stores
+        // Step 2: Get only active, zone-matching, lead-available stores
         $existingStoreIds = DB::table('stores')
-            ->whereIn('id', $storeIds)
-            ->where('status', 1)
-            ->whereIn('zone_id', $zId)
-            ->pluck('id')
+            ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
+            ->whereIn('stores.id', $storeIds)
+            ->where('stores.status', 1)
+            ->whereIn('stores.zone_id', $zId)
+            ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
+            ->pluck('stores.id')
             ->map(fn($id) => (int) $id)
             ->toArray();
 
@@ -4240,7 +4242,7 @@ class Helpers
         // Set headers for cURL request
         $header = array(
             "Authorization: Bearer " . $accessToken,
-            "Content-Type: application/json"
+            "Content-Type: application/json" 
         );
 
         // Optional data fields

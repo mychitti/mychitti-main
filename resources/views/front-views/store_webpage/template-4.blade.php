@@ -1105,7 +1105,12 @@
                                                     </div>
                                                 @endif
 
-                                                @if (auth('web')->user())
+                                                @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                    <button disabled class="btn-action-mini btn-enquiry-mini" style="opacity:0.5;cursor:not-allowed;">
+                                                        <i class="fas fa-user-cog"></i> Enquiry
+                                                    </button>
+                                                    <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                @elseif (auth('web')->user())
                                                     <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                         class="btn-action-mini btn-enquiry-mini">
                                                         <i class="fas fa-user-cog"></i> Enquiry
@@ -1215,7 +1220,12 @@
                                                     </div>
                                                 @endif
 
-                                                @if (auth('web')->user())
+                                                @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                    <button disabled class="btn-action-mini btn-enquiry-mini" style="opacity:0.5;cursor:not-allowed;">
+                                                        <i class="fas fa-user-cog"></i> Enquiry
+                                                    </button>
+                                                    <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                                @elseif (auth('web')->user())
                                                     <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                         class="btn-action-mini btn-enquiry-mini">
                                                         <i class="fas fa-user-cog"></i> Enquiry

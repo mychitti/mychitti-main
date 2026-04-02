@@ -177,6 +177,22 @@
                                         </a>
                                     </li>
                                 @endif
+                                @if (hasAnyPermission(['leads_manage.settings']))
+                                    <li class="nav-item {{ Request::is('service/report') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.service.report') }}" title="report">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                                Leads Report
+                                            </span>
+                                        </a>
+                                    </li>
+                                @endif
+                                <li class="nav-item {{ Request::is('service/lead-settings') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.service.lead-settings') }}" title="Lead Settings">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Lead Settings</span>
+                                    </a>
+                                </li>
 
                             </ul>
                         </li>

@@ -65,7 +65,11 @@
                     @if (hasPermission('billing', 'export'))
                         <form id="" action= "{{ route('vendor.invoice.export') }}" method="POST" target="_blank">
                             @csrf
-                            <input type="hidden" name="type" value = "all">
+                            <input type="hidden" name="type" value="all">
+                            <input type="hidden" name="status" value="{{ $status }}">
+                            <input type="hidden" name="date_range" value="{{ request('date_range') }}">
+                            <input type="hidden" name="custom_date_range" value="{{ request('custom_date_range') }}">
+                            <input type="hidden" name="search" value="{{ $search }}">
                             <button type="submit" class="btn btn--primary  btn_sm">Export All
                             </button>
                         </form>
@@ -141,7 +145,7 @@
                                                 name="" id=""></td>
                                     @endif
                                     <td>{{ $key + 1 }}</td>
-                                    <td> {{ $conf->invoice_id }} </td>
+                                    <td> <a href="{{ $conf->pdf ? asset('storage/invoice/') . '/'  . $conf->pdf : 'javascript:;'}}" target="_blank">{{ $conf->invoice_id }}</a> </td>
                                     <td> {{ $conf->user?->f_name . ' ' . $conf->user?->l_name }} </td>
                                     <td>
                                         @if (strtolower($conf->payment_status) == 'paid')

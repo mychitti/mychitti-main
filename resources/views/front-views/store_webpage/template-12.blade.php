@@ -1342,7 +1342,12 @@
                                             </div>
                                         @endif
 
-                                        @if (auth('web')->user())
+                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                            <button disabled class="t12-btn-card" style="opacity:0.5;cursor:not-allowed;">
+                                                <i class="fas fa-paper-plane"></i> Enquire
+                                            </button>
+                                            <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                        @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="t12-btn-card">
                                                 <i class="fas fa-paper-plane"></i> Enquire
@@ -1455,7 +1460,12 @@
                                             </div>
                                         @endif
 
-                                        @if (auth('web')->user())
+                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                            <button disabled class="t12-btn-card" style="opacity:0.5;cursor:not-allowed;">
+                                                <i class="fas fa-paper-plane"></i> Enquire
+                                            </button>
+                                            <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                        @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="t12-btn-card">
                                                 <i class="fas fa-paper-plane"></i> Enquire

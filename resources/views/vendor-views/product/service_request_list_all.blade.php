@@ -241,7 +241,7 @@
                             </form>
                         @endif
                         @if (hasPermission('leads_manage', 'export'))
-                            <a href="{{ route('vendor.service.leads_list', [0, 'export']) }}"
+                            <a href="{{ route('vendor.service.leads_list', [0, 'export']) . '?' . http_build_query(array_filter(['search' => request('search'), 'type' => request('type'), 'date_range' => request('date_range'), 'custom_date_range' => request('custom_date_range')])) }}"
                                 class="btn btn--primary">Export</a>
                         @endif
                     @endif
@@ -339,14 +339,14 @@
                                                             Cancel
                                                         </a>
                                                     @endif
-                                                    @if (hasPermission('leads_manage', 'convert_to_task'))
+                                                    {{-- @if (hasPermission('leads_manage', 'convert_to_task'))
                                                         <a href="{{ route('vendor.lead.convert-to-task', [$lead->id]) }}"
                                                             class="dropdown-item text-primary" title="Convert to Task"
                                                             style="cursor: pointer;">
                                                             <i class="tio-image-rotate-right"></i>
                                                             Convert to Task
                                                         </a>
-                                                    @endif
+                                                    @endif --}}
                                                 @endif
                                                 @if (
                                                     $lead->current_status === 'Confirmed' &&

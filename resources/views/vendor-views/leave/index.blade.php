@@ -13,8 +13,8 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header d-flex align-items-center justify-content-between w-100">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Staff <span class="badge badge-soft-dark ml-2"
-                    id="itemCount">{{ count($staff) }}</span></h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i> Leaves <span class="badge badge-soft-dark ml-2"
+                    id="itemCount">{{ count($leaves) }}</span></h1>
             <div class="">
                 @if (hasPermission('leave_manage', 'settings'))
                     <button type="button" class="btn btn_sm btn--primary" data-toggle="modal" data-target="#leaveModal">Edit
@@ -65,12 +65,91 @@
 
         <!-- Card -->
         @if (hasPermission('leave_manage', 'list'))
+            <div class="card mb-2">
+                <!-- Header -->
+                <div class="card-header py-2">
+                    <div class="search--button-wrapper">
+                        <h5 class="card-title">Leaves List</h5>
+
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive datatable-custom">
+                        <table id="columnSearchDatatable"
+                            class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                            data-hs-datatables-options='{
+                            "order": [],
+                            "orderCellsTop": true,
+                            "paging":true
+
+                               }'>
+                            <thead class="thead-light">
+                                <tr>
+                                    <th class="border-0">{{ translate('sl') }}</th>
+                                    <th class="border-0">Staff</th>
+                                    <th class="border-0">Leave Type</th>
+                                    <th class="border-0">Leave Date</th>
+                                    <th class="border-0">Reason</th>
+                                    <th class="border-0">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="set-rows">
+                                @foreach ($leaves as $leave)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td><a href="{{ $leave->employee?->id ? route('vendor.employee.view', ['id' => $leave->employee?->id]) : '#' }}">{{ $leave->employee?->f_name . ' ' . $leave->employee?->l_name . ' #' . $leave->employee?->id }}</a></td>
+                                        <td>
+                                            <div>
+                                                <a href="#" class="table-rest-info" alt="view store">
+
+                                                    <div class="info">
+                                                        <div class="text--title">
+                                                            @if ($leave['leave_type'] == 'CL')
+                                                                {{ 'Casual Leave' }}
+                                                            @elseif($leave['leave_type'] == 'SL')
+                                                                {{ 'Sick Leave' }}
+                                                            @elseif($leave['leave_type'] == 'HDF')
+                                                                {{ 'Half Day (first half)' }}
+                                                            @elseif($leave['leave_type'] == 'HDS')
+                                                                {{ 'Half Day (second half)' }}
+                                                            @elseif($leave['leave_type'] == 'HL')
+                                                                {{ 'Holiday' }}
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </td>
+                                        <td>{{ $leave['leave_date'] }}</td>
+                                        <td> {{ $leave['reason'] }}</td>
+                                        <td>
+                                            @if (hasPermission('leave_manage', 'status_change') )
+                                                @if($leave['status'] == 'approved' || $leave['status'] == 'rejected')
+                                                    <span class="badge badge-{{ $leave['status'] == 'approved' ? 'success' : 'danger' }}">{{ ucfirst($leave['status']) }}</span>
+                                                @else
+                                                    <a href="{{ route('vendor.approve-leave', ['id' => $leave['id']]) }}"
+                                                        class="btn btn--primary">Approve</a>
+                                                    <a href="{{ route('vendor.reject-leave', ['id' => $leave['id']]) }}"
+                                                        class="btn btn--danger ">Reject</a>
+                                                @endif
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </div>
 
             <div class="card">
                 <!-- Header -->
                 <div class="card-header py-2">
                     <div class="search--button-wrapper">
-                        <h5 class="card-title">Staff List</h5>
+                        <h5 class="card-title">Manage</h5>
                         <form action="javascript:" id="search-form" class="search-form">
                             <!-- Search -->
                             @csrf

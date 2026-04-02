@@ -37,6 +37,13 @@
                           <span class="text-truncate">Bills</span>
                       </a>
                   </li>
+                  <li class="navbar-vertical-aside-has-menu {{ Request::is('billing') ? 'active' : '' }}">
+                      <a class="nav-link " href="{{ route('admin.billing.index') }}"
+                          title="{{ translate('messages.Mychitti Bills') }}">
+                          <span class="tio-coin nav-icon"></span>
+                          <span class="text-truncate">Mychitti Bills</span>
+                      </a>
+                  </li>
 
                   @if (Config::get('module.current_module_id') == 5)
                       <li class="nav-item {{ Request::is('invoice-list') ? 'active' : '' }}">

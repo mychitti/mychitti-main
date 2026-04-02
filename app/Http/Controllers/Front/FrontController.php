@@ -2528,22 +2528,28 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             // prx(implode(',',$subscribedStoreIds));
 
             $subscribedStores = DB::table('stores')
-                ->whereIn('zone_id', $zoneIds)
-                ->whereIn('id', $storeIds)
-                ->whereIn('id', $subscribedStoreIds)
-                ->where('active', 1)
+                ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
+                ->whereIn('stores.zone_id', $zoneIds)
+                ->whereIn('stores.id', $storeIds)
+                ->whereIn('stores.id', $subscribedStoreIds)
+                ->where('stores.active', 1)
+                ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
                 ->inRandomOrder()
+                ->select('stores.*')
                 ->get()
                 ->map(function ($store) {
                     $store->subscribed = true;
                     return $store;
                 });
             $nonSubscribedStores = DB::table('stores')
-                ->whereIn('zone_id', $zoneIds)
-                ->whereIn('id', $storeIds)
-                ->whereNotIn('id', $subscribedStoreIds)
-                ->where('active', 1)
-                ->orderByDesc('id')
+                ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
+                ->whereIn('stores.zone_id', $zoneIds)
+                ->whereIn('stores.id', $storeIds)
+                ->whereNotIn('stores.id', $subscribedStoreIds)
+                ->where('stores.active', 1)
+                ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
+                ->orderByDesc('stores.id')
+                ->select('stores.*')
                 ->get()
                 ->map(function ($store) {
                     $store->subscribed = false;

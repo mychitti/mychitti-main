@@ -1472,7 +1472,12 @@
                                             </div>
                                         @endif
 
-                                        @if (auth('web')->user())
+                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                            <button disabled class="btn-product-animated" style="background: var(--success-gradient);opacity:0.5;cursor:not-allowed;">
+                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                            </button>
+                                            <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                        @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-product-animated" style="background: var(--success-gradient);">
                                                 <i class="fas fa-paper-plane"></i> Enquire Now
@@ -1599,7 +1604,12 @@
                                             </div>
                                         @endif
 
-                                        @if (auth('web')->user())
+                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                            <button disabled class="btn-product-animated" style="background: var(--success-gradient);opacity:0.5;cursor:not-allowed;">
+                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                            </button>
+                                            <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
+                                        @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-product-animated" style="background: var(--success-gradient);">
                                                 <i class="fas fa-paper-plane"></i> Enquire Now
