@@ -776,7 +776,8 @@ class CronController extends Controller
     }
     public function unavailable_provider(Request $request)
     {
-        $expireMinutes = Helpers::get_lead_exp_minutes();
+        // $expireMinutes = Helpers::get_lead_exp_minutes();
+        $expireMinutes = 5;
         $upper = Carbon::now()->subMinutes($expireMinutes);
         $lower = Carbon::now()->subMinutes($expireMinutes + 10);
 
@@ -788,6 +789,7 @@ class CronController extends Controller
             ->where('created_at', '<', $upper)
             ->where('created_at', '>', $lower)
             ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
+            ->where('user_id', 925)
             ->count();
         echo "Matched records: $count\n";
 
@@ -795,6 +797,7 @@ class CronController extends Controller
             ->where('created_at', '<', $upper)
             ->where('created_at', '>', $lower)
             ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
+            ->where('user_id', 925)
             ->with('user')
             ->chunk(100, function ($services) {
                 foreach ($services as $service) {
