@@ -776,37 +776,21 @@ class CronController extends Controller
     }
     public function unavailable_provider(Request $request)
     {
-        // $expireMinutes = Helpers::get_lead_exp_minutes();
-        $expireMinutes = 5;
+        $expireMinutes = Helpers::get_lead_exp_minutes();
         $upper = Carbon::now()->subMinutes($expireMinutes);
-        $lower = Carbon::now()->subMinutes($expireMinutes + 10);
-
-        echo "expireMinutes: $expireMinutes\n";
-        echo "now: " . Carbon::now() . "\n";
-        echo "created_at < $upper AND created_at > $lower\n";
-
-        $count = ServiceRequest::whereNull('accepted_by')
-            ->where('created_at', '<', $upper)
-            ->where('created_at', '>', $lower)
-            ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
-            ->where('user_id', 925)
-            ->count();
-        echo "Matched records: $count\n";
+        $lower = Carbon::now()->subMinutes($expireMinutes + 100);
 
         ServiceRequest::whereNull('accepted_by')
             ->where('created_at', '<', $upper)
             ->where('created_at', '>', $lower)
             ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
-            ->where('user_id', 925)
             ->with('user')
             ->chunk(100, function ($services) {
                 foreach ($services as $service) {
-                    echo "Processing service_request id: {$service->id}\n";
                     $customer = $service->user;
 
                     if ($customer) {
                         $fcm_token = $customer->cm_firebase_token;
-                        echo "user_id: {$service->user_id}, fcm_token: " . ($fcm_token ? 'present' : 'NULL') . "\n";
 
                         $data = [
                             'title' => "Service Request Update",
@@ -817,11 +801,7 @@ class CronController extends Controller
                         ];
 
                         if ($fcm_token) {
-                            
-                            $result = Helpers::send_push_notif_to_device($fcm_token, $data, null , true);
-                            echo '<h1>FCM Response:</h1>';
-                            print_r($result);
-                            echo "FCM result: " . json_encode($result) . "\n";
+                            Helpers::send_push_notif_to_device($fcm_token, $data);
                         }
                         DB::table('user_notifications')->insert([
                             'data' => json_encode($data),
@@ -829,16 +809,10 @@ class CronController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-                        echo "user_notification inserted\n";
-                    } else {
-                        echo "No customer found for user_id: {$service->user_id}\n";
                     }
-                    // $service->update(['user_notified' => 1]);
-                    echo
-                     "Marked user_notified=1\n";
+                    $service->update(['user_notified' => 1]);
                 }
             });
-        echo "Done.\n"; 
     }
     public function test_dbbackup(Request $request)
     {
