@@ -834,10 +834,11 @@ class CronController extends Controller
                         echo "No customer found for user_id: {$service->user_id}\n";
                     }
                     // $service->update(['user_notified' => 1]);
-                    echo "Marked user_notified=1\n";
+                    echo
+                     "Marked user_notified=1\n";
                 }
             });
-        echo "Done.\n";
+        echo "Done.\n"; 
     }
     public function test_dbbackup(Request $request)
     {
