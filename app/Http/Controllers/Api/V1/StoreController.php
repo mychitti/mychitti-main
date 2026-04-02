@@ -13,6 +13,7 @@ use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Review;
+use App\Models\StoreGallery;
 use App\Models\StoreReview;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -345,6 +346,19 @@ class StoreController extends Controller
                 ->get(['min_price', 'max_price']);
         }
         return response()->json($store, 200);
+    }
+    public function gallery(Request $request, $id){
+        $store = Store::find($id);
+        if (!$store) {
+            return response()->json(['errors' => [['code' => 'store_id', 'message' => translate('messages.store_not_found')]]], 403);
+        }
+        $image_path = asset('storage/store/gallery/') . '/';
+        $gallery = StoreGallery::where('store_id', $id)->select('id', 'image', 'created_at')->get()->map(function ($item) use ($image_path) {
+            $item->image_path = $image_path . $item->image;
+            unset($item->image);
+            return $item;
+        });
+        return response()->json($gallery, 200);
     }
     public function get_details_limited(Request $request, $id)
     {

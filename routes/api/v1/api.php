@@ -470,6 +470,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         });
 
         Route::group(['prefix' => 'stores'], function () {
+            Route::get('gallery/{store_id}', 'StoreController@gallery');
             Route::get('get-stores/{filter_data}', 'StoreController@get_stores');
             Route::get('nearby', 'StoreController@get_nearby_stores');
             Route::get('latest', 'StoreController@get_latest_stores');

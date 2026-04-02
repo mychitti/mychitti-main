@@ -13,6 +13,7 @@ use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
 use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
+use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
 use App\Models\Store;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -42,6 +43,11 @@ class Kernel extends ConsoleKernel
         // URL crons migrated from wget → queued jobs (run `php artisan queue:work` with QUEUE_CONNECTION=redis or database)
         $schedule->job(new CancelStaleOrdersJob)->everyFiveMinutes()
             ->name('cancel-stale-orders')
+            ->withoutOverlapping();
+
+        // UNAVAILABLE PROVIDER NOTIFICATION =======================
+        $schedule->job(new UnavailableProviderNotificationJob)->everyFiveMinutes()
+            ->name('unavailable-provider-notification')
             ->withoutOverlapping();
 
         $schedule->job(new SendPaymentRemindersJob)->dailyAt('09:00')
