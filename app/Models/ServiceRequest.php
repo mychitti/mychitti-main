@@ -9,7 +9,8 @@ class ServiceRequest extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'notified'
+        'notified',
+        'user_notified',
     ];
     protected function serializeDate(\DateTimeInterface $date)
     {

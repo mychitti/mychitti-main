@@ -472,7 +472,7 @@ class CronController extends Controller
                         'description'  => $master->expense_type,
                     ];
 
-                     _masterLedgerEntry(
+                    _masterLedgerEntry(
                         $ledgerData,
                         $credit_account,
                         $debit_account,
@@ -776,37 +776,65 @@ class CronController extends Controller
     }
     public function unavailable_provider(Request $request)
     {
+        $expireMinutes = Helpers::get_lead_exp_minutes();
+        $upper = Carbon::now()->subMinutes($expireMinutes);
+        $lower = Carbon::now()->subMinutes($expireMinutes + 10);
 
-        $unacceptedService = ServiceRequest::whereNull('accepted_by')
-            ->where('created_at', '<', Carbon::now()->subMinutes(Helpers::get_lead_exp_minutes()))->whereNull('notified')
-            ->get();
-            // print_r( $unacceptedService)
-        ;
-        foreach ($unacceptedService as $service) {
-            $customer = User::find($service->user_id);
-            // print_r( $customer ); 
-            if ($customer) {
+        echo "expireMinutes: $expireMinutes\n";
+        echo "now: " . Carbon::now() . "\n";
+        echo "created_at < $upper AND created_at > $lower\n";
 
-                $fcm_token = $customer->cm_firebase_token;
+        $count = ServiceRequest::whereNull('accepted_by')
+            ->where('created_at', '<', $upper)
+            ->where('created_at', '>', $lower)
+            ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
+            ->count();
+        echo "Matched records: $count\n";
 
-                $data = [
-                    'title' => "Service Request Update",
-                    'description' => "We're sorry for the inconvenience, but the vendor was unable to accept your request at this moment. Please try again after some time.",
-                    'order_id' => $service->id,
-                    'image' => '',
-                    'type' => 'notification'
-                ];
+        ServiceRequest::whereNull('accepted_by')
+            ->where('created_at', '<', $upper)
+            ->where('created_at', '>', $lower)
+            ->where(fn($q) => $q->whereNull('user_notified')->orWhere('user_notified', '!=', 1))
+            ->with('user')
+            ->chunk(100, function ($services) {
+                foreach ($services as $service) {
+                    echo "Processing service_request id: {$service->id}\n";
+                    $customer = $service->user;
 
-                Helpers::send_push_notif_to_device($fcm_token, $data);
-                DB::table('user_notifications')->insert([
-                    'data' => json_encode($data),
-                    'user_id' => $service->user_id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-            $service->update(['notified' => 1, 'expired' => 1]);
-        }
+                    if ($customer) {
+                        $fcm_token = $customer->cm_firebase_token;
+                        echo "user_id: {$service->user_id}, fcm_token: " . ($fcm_token ? 'present' : 'NULL') . "\n";
+
+                        $data = [
+                            'title' => "Service Request Update",
+                            'description' => "We're sorry for the inconvenience, but the vendor was unable to accept your request at this moment. Please try again after some time.",
+                            'order_id' => $service->id,
+                            'image' => '',
+                            'type' => 'notification'
+                        ];
+
+                        if ($fcm_token) {
+                            
+                            $result = Helpers::send_push_notif_to_device($fcm_token, $data, null , true);
+                            echo '<h1>FCM Response:</h1>';
+                            print_r($result);
+                            echo "FCM result: " . json_encode($result) . "\n";
+                        }
+                        DB::table('user_notifications')->insert([
+                            'data' => json_encode($data),
+                            'user_id' => $service->user_id,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                        echo "user_notification inserted\n";
+                    } else {
+                        echo "No customer found for user_id: {$service->user_id}\n";
+                    }
+                    // $service->update(['user_notified' => 1]);
+                    echo "Marked user_notified=1\n";
+                }
+            });
+        echo "Done.\n";
     }
     public function test_dbbackup(Request $request)
     {

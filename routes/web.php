@@ -168,6 +168,7 @@ Route::post('/recent-searches/clear', [FrontUserController::class, 'clear'])->na
 Route::get('invoice-correction', [FrontController::class, 'invoice_correction'])->name('invoice-correction');
 Route::get('gatepass-details/{id}', [FrontUserController::class, 'gatepass_details'])->name('gatepass-details');
 Route::get('quotation-details/{id}', [FrontUserController::class, 'quotation_details'])->name('quotation-details');
+Route::get('unavailable-provider-check', [CronController::class, 'unavailable_provider']);
 
 Route::post('check-business', [ControllersVendorController::class, 'check_business'])->name('check-business');
 
