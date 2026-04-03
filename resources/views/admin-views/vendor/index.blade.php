@@ -1014,7 +1014,7 @@
         $('#choice_zones').on('change', function() {
             let id = $(this).val();
             $.get({
-                url: '{{ url('/') }}/admin/zone/get-coordinates/' + id,
+                url: '{{ url('/') }}/zone/get-coordinates/' + id,
                 dataType: 'json',
                 success: function(data) {
                     if (zonePolygon) {
