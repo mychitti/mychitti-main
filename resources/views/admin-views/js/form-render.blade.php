@@ -4,7 +4,8 @@
         loadAndRenderForm();
     });
     const formName = $('#dynamicFormContainer').attr("data-form");
-    url = "{{ route('admin.form-builder.get-form') }}" + '/' + formName;
+    const formStoreId = $('#dynamicFormContainer').attr("data-store-id") || 0;
+    url = "{{ route('admin.form-builder.get-form') }}" + '/' + formName + '?store_id=' + formStoreId;
 
     function loadAndRenderForm() {
         $.ajax({
@@ -141,6 +142,22 @@
                                 ${field.label || 'Field'} ${requiredLabel}
                             </label>
                         </div>
+                    </div>
+                `;
+                break;
+
+            case 'file':
+                const accept   = field.attributes?.accept || '';
+                const multiple = field.attributes?.multiple ? 'multiple' : '';
+                fieldHtml = `
+                    <div class="col-md-3 p-1">
+                        <label class="tf-label">${field.label || 'Field'} ${requiredLabel}</label>
+                        <input type="file"
+                               name="${field.name}${field.attributes?.multiple ? '[]' : ''}"
+                               class="form-control"
+                               accept="${accept}"
+                               ${multiple}
+                               ${requiredAttr}>
                     </div>
                 `;
                 break;

@@ -88,6 +88,10 @@ class FormBuilderController extends Controller
     {
         try {
             $storeId = Helpers::get_store_id();
+            // In admin context get_store_id() returns 0 — use store_id from query param if provided
+            if (!$storeId && $request->filled('store_id')) {
+                $storeId = (int) $request->store_id;
+            }
             $formName = $formType == 'project_task_form' ? 'Project Task Form' : 'Task Form';
 
             $form = Form::where('form_type', $formType)

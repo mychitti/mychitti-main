@@ -384,7 +384,6 @@
             }
         }
     </style>
-
     {{-- documents  --}}
     <style>
         :root {
@@ -1052,6 +1051,37 @@
         </div>
     </div>
 
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="changePasswordAlert" class="alert d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="currentPassword" placeholder="Enter current password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPassword" placeholder="Enter new password (min 6 chars)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm new password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="changePasswordSubmit">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('script')
@@ -1080,7 +1110,63 @@
             // Change password link handler
             $('.change-password-link').on('click', function(e) {
                 e.preventDefault();
-                {{-- alert('Change password functionality would be implemented here'); --}}
+                $('#currentPassword, #newPassword, #confirmPassword').val('');
+                $('#changePasswordAlert').addClass('d-none').text('');
+                var modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+                modal.show();
+            });
+
+            $('#changePasswordSubmit').on('click', function() {
+                var currentPassword = $('#currentPassword').val().trim();
+                var newPassword     = $('#newPassword').val().trim();
+                var confirmPassword = $('#confirmPassword').val().trim();
+                var $alert          = $('#changePasswordAlert');
+
+                if (!currentPassword || !newPassword || !confirmPassword) {
+                    $alert.removeClass('d-none alert-success alert-danger').addClass('alert-danger').text('All fields are required.');
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    $alert.removeClass('d-none alert-success alert-danger').addClass('alert-danger').text('New password and confirmation do not match.');
+                    return;
+                }
+                if (newPassword.length < 6) {
+                    $alert.removeClass('d-none alert-success alert-danger').addClass('alert-danger').text('New password must be at least 6 characters.');
+                    return;
+                }
+
+                var $btn = $(this).prop('disabled', true).text('Updating...');
+
+                $.ajax({
+                    url: '{{ route("vendor.profile.change-password") }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        current_password: currentPassword,
+                        password: newPassword,
+                        password_confirmation: confirmPassword
+                    },
+                    success: function(res) {
+                        $alert.removeClass('d-none alert-danger').addClass('alert-success').text(res.message || 'Password changed successfully.');
+                        $('#currentPassword, #newPassword, #confirmPassword').val('');
+                        setTimeout(function() {
+                            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                        }, 1500);
+                    },
+                    error: function(xhr) {
+                        var msg = 'An error occurred.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            var errs = xhr.responseJSON.errors;
+                            msg = Object.values(errs).map(function(e) { return e[0]; }).join(' ');
+                        }
+                        $alert.removeClass('d-none alert-success').addClass('alert-danger').text(msg);
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Update Password');
+                    }
+                });
             });
 
             // Camera icon click handler

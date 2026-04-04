@@ -591,7 +591,7 @@ class VendorController extends Controller
 
     public function buy_module_for_store()
     {
-        return view('admin-views.plan.buy-for-store');
+        return view('admin-views.plan.buy-module-for-store');
     }
     public function get_matches(Request $request)
     {
@@ -768,6 +768,7 @@ class VendorController extends Controller
             $invoice->tax_type =  'gst';
             $invoice->payment_status =  'Paid';
             $invoice->reminder_date = null;
+            $invoice->invoice_date = $request->invoice_date ?? date('Y-m-d');
             $invoice->payment_date =  date('Y-m-d');
             $invoice->generated_by =  'admin';
             $invoice->save();

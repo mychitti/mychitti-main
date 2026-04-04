@@ -278,7 +278,11 @@ class InventoryController extends Controller
             'Brand',
             'Category',
             'HSN',
-            'Created At'
+            'Created At',
+            'Item Type',
+            '',
+            '',
+            'Show On Website',
         ];
 
         $data = [];
@@ -312,6 +316,10 @@ class InventoryController extends Controller
                         $firstVariation ? $item->category_name : '',
                         $firstVariation ? $item->hsn : '',
                         $firstVariation ? $item->created_at : '',
+                        $firstVariation ? $item->item_type : '',
+                        '',
+                        '',
+                        $firstVariation ? ($item->show_on_store_page ? 'Yes' : 'No') : '',
                     ];
                     $firstVariation = false;
                 }
@@ -337,6 +345,10 @@ class InventoryController extends Controller
                     $item->category_name,
                     $item->hsn,
                     $item->created_at,
+                    $item->item_type,
+                    '',
+                    '',
+                    $item->show_on_store_page ? 'Yes' : 'No',
                 ];
             }
 
@@ -749,6 +761,7 @@ class InventoryController extends Controller
         $inventory_item->mrp = $request->main_mrp;
         $inventory_item->gst_rate = $request->gst_rate ?? 0;
         $inventory_item->gst_type = $request->gst_type;
+        $inventory_item->gst_status = $request->gst_status ?? 'excluding';
         $inventory_item->hsn = $request->hsn;
         $inventory_item->my_fee = $request->my_fee ?? 0;
         $inventory_item->show_on_store_page = $show_on_store_page;
@@ -982,6 +995,7 @@ class InventoryController extends Controller
             $inventory_item->mrp = $request->main_mrp;
             $inventory_item->gst_rate = $request->gst_rate ?? 0;
             $inventory_item->gst_type = $request->gst_type;
+            $inventory_item->gst_status = $request->gst_status ?? 'excluding';
             $inventory_item->hsn = $request->hsn;
             $inventory_item->my_fee = $request->my_fee ?? 0;
             $inventory_item->my_fee_type = $request->my_fee_type ?? 'amount';

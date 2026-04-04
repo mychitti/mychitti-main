@@ -237,7 +237,7 @@
                 </div>
             </div>
 
-            <div id="dynamicFormContainer" data-form="project_task_form">
+            <div id="dynamicFormContainer" data-form="project_task_form" data-store-id="{{ $store_data->id ?? 0 }}">
                 <div class="text-center">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden"></span>

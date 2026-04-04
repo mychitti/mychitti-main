@@ -83,11 +83,54 @@
          if (val == 'Paid') {
              $(".payment_date_inp").hide()
              $(".reminder_date_inp").hide()
+             $(".payment_mode_grp").show()
+             if ($("input[name='payment_mode'][value='Cash and Online']").prop('checked')) {
+                 $(".partial_payment").show();
+             }
          } else {
              $(".payment_date_inp").show()
              $(".reminder_date_inp").show()
+             $(".partial_payment").hide()
+             $(".payment_mode_grp").hide()
          }
      })
+     $(document).on('change', 'input[name="payment_mode"]', function() {
+         var val = $(this).val();
+         if (val == 'Cash and Online') {
+             $(".partial_payment").show()
+         } else {
+             $(".partial_payment").hide()
+             $(".partial_payment_error").text('')
+             $(".submit_btn").removeAttr('disabled')
+         }
+         validatePartialPayment()
+     })
+
+     $(document).on('input change', '.cash_amount, .online_amount', function() {
+         validatePartialPayment()
+     })
+
+     function validatePartialPayment() {
+         if ($("input[name='payment_mode']:checked").val() !== 'Cash and Online') return;
+
+         var isGst = $(".tax_type:checked").val() === 'gst';
+         var total = isGst
+             ? parseFloat($(".totalWithGST").first().text()) || 0
+             : parseFloat($(".totalWithoutGST").first().text()) || 0;
+
+         var cash = parseFloat($(".cash_amount").val()) || 0;
+         var online = parseFloat($(".online_amount").val()) || 0;
+         var sum = Math.round((cash + online) * 1000) / 1000;
+         total = Math.round(total * 1000) / 1000;
+
+         if (sum !== total) {
+             $(".partial_payment_error").text('Cash + Online (' + sum.toFixed(2) + ') must equal invoice total (' + total.toFixed(2) + ')')
+             $(".submit_btn").attr('disabled', true)
+         } else {
+             $(".partial_payment_error").text('')
+             $(".submit_btn").removeAttr('disabled')
+         }
+     }
 
      function hideCustomerInput() {
          $("#customer_id").val('').select2()
@@ -172,9 +215,8 @@
 
          return options;
      }
-
+calculateTotals($('.quote_edit_form'));
      function calculateTotals(form) {
-         console.log('calculateTotals 22')
          let totalWithoutGST = 0;
          let totalWithGST = 0;
 
@@ -197,6 +239,7 @@
 
          $(form).find('.totalWithoutGST').text(totalWithoutGST.toFixed(3));
          $(form).find('.totalWithGST').text(totalWithGST.toFixed(3));
+         validatePartialPayment();
          $(form).find('#totalWithGSTHidden_inv').val(totalWithGST.toFixed(3));
 
          $('#totalWithoutGST_inv').text(totalWithoutGST.toFixed(3));
@@ -257,6 +300,8 @@
          $('.calc-form').each(function() {
              calculateTotals(this);
          });
+         // Sync GST/Non-GST visibility based on pre-selected radio
+         $('.tax_type:checked').trigger('change');
      });
 
      $('#customer_id').on('change', function() {

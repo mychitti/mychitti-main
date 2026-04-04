@@ -490,7 +490,7 @@
     @yield('content')
 
     @include('front-views.partials._footer')
-    <div id="toast" class="toast">This is a toaster notification!</div>
+    <div id="toast" class="toast"></div>
 
     {{-- AI Chat Panel --}}
     <style>

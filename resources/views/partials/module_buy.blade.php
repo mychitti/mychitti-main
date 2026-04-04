@@ -16,7 +16,7 @@
                   <h2>Subscribe Modules</h2>
                   @if (Route::currentRouteName() == 'admin.plan.module-store')
                   <div class="row">
-                  <div class="col-md-6">
+                  <div class="col-md-5">
                       <label class="form-check-label" for="flexRadioDefault2">Store</label>
                       <select data-placeholder="Select Store" required name="store_id" id="search_store_id"
                           class="form-control js-select2-custom ">
@@ -25,17 +25,22 @@
                       </select>
                   </div>
 
-                      <div class="col-md-6 my-3 d-flex gap-2 align-items-center">
+                      <div class="col-md-3 my-3 d-flex gap-2 align-items-center">
                           <input type="radio" value="1" name="billing" class="billing_status" id="billing"
                               checked>
                           <label for="billing" class="mb-0">Billing</label>
                           <input type="radio" value="0" name="billing" class="billing_status" id="retail">
                           <label for="retail" class="mb-0">Retail</label>
                       </div>
+                      <div class="col-md-4 invoice_date_inp">
+                          <label class="form-check-label" for="invoice_date">Invoice Date</label>
+                          <input type="date" name="invoice_date" id="invoice_date"
+                              class="form-control" value="{{ date('Y-m-d') }}">
+                      </div>
                   </div>
 
                   @endif
-                  @php $plan_durations = _planDurations(); @endphp
+                  @php $plan_durations = _planDurations(); @endphp 
                   <div class="pc-global-duration mb-3">
                       <label class="pc-label"><b>Select Plan Duration</b></label>
                       <div class="pc-duration-grid">

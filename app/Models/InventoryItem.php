@@ -26,6 +26,7 @@ class InventoryItem extends Model
         'mrp',
         'gst_type',
         'gst_rate',
+        'gst_status',
         'hsn',
         'my_fee',
         'my_fee_type',
@@ -39,7 +40,8 @@ class InventoryItem extends Model
         'choice_options',
         'attributes',
         'stock',
-        'selling_price'
+        'selling_price',
+        'show_on_store_page',
     ];
  
     public function purchaseOrders()

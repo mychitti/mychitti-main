@@ -497,7 +497,12 @@ class ServiceController extends Controller
         }
         if (isset($request->item_price_new)) {
             foreach ($request->item_price_new as $key => $price) {
-                $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key], 'actual') * $request->item_qty_new[$key];
+                $gstStatus = $request->item_gst_status_new[$key] ?? 'excluding';
+                $qty = $request->item_qty_new[$key];
+                $tax = $request->item_tax_new[$key] ?? 0;
+                $totalPrice += $gstStatus === 'including'
+                    ? $price * $qty
+                    : _taxIncludedPrice($price, $tax, 'actual') * $qty;
             }
         }
 
@@ -578,6 +583,7 @@ class ServiceController extends Controller
                 $InvoiceItem->unit = $request->item_unit_new[$key] ?? null;
                 $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
                 $InvoiceItem->hsn = $request->item_hsn_new[$key];
+                $InvoiceItem->gst_status = $request->item_gst_status_new[$key] ?? 'excluding';
                 $InvoiceItem->inv_id = $request->inventory_item_id_new[$key] ?? null;
                 $InvoiceItem->save();
                 if ($request->inventory_item_id_new[$key]) {
@@ -1370,6 +1376,28 @@ class ServiceController extends Controller
                 'status' =>  $staffName->f_name . ' ' . $staffName->l_name . ' #' . $empId . ' ' . ucfirst($action) . 'ed task',
                 'created_at' => date('Y-m-d H:i:s')
             ]);
+
+            $storeId = Helpers::get_store_id();
+            $sName   = $staffName ? trim($staffName->f_name . ' ' . $staffName->l_name) : 'Staff';
+            if ($action == 'reject') {
+                _inAppNotification(
+                    'Lead Rejected',
+                    "{$sName} has rejected the assigned lead #" . $service_id,
+                    null,
+                    $storeId,
+                    null,
+                    'vendor'
+                );
+            } elseif ($action == 'accept') {
+                _inAppNotification(
+                    'Lead Accepted',
+                    "{$sName} has accepted the assigned lead #" . $service_id,
+                    null,
+                    $storeId,
+                    null,
+                    'vendor'
+                );
+            }
 
             Toastr::success(ucfirst($action) . 'ed successfully!');
         } else {

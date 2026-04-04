@@ -579,6 +579,37 @@
         </div>
 
     </div>
+    {{-- VENDOR ADS SECTION --}}
+    @if (!empty($data['vendor_ads']) && $data['vendor_ads']->count())
+    <div class="m-2 mt-4">
+        <h2 style="font-size:18px; margin-bottom:10px;" class="section_heading text_dark">
+            <i class="fas fa-bullhorn me-1" style="color:var(--primary);"></i> Spotlight from Local Stores
+        </h2>
+        <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px;">
+            @foreach ($data['vendor_ads'] as $ad)
+            <div style="border-radius:10px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.1); min-width:0; cursor:pointer;"
+                 onclick="trackAdClick({{ $ad->id }})"
+>
+                <div style="aspect-ratio:4/5; overflow:hidden; background:#f0f0f0;">
+                    <img loading="lazy"
+                        src="{{ asset('storage/app/public/notification') . '/' . $ad->image }}"
+                        onerror="this.src='{{ asset('assets/admin/img/160x160/img1.jpg') }}'"
+                        alt="{{ $ad->title }}"
+                        style="width:100%; height:100%; object-fit:cover; display:block;">
+                </div>
+                <div style="padding:6px 8px;">
+                    <p class="mb-0 text-truncate" style="font-size:12px; font-weight:600; color:#222;">{{ $ad->title }}</p>
+                    @if($ad->description)
+                    <p class="mb-0 text-truncate" style="font-size:11px; color:#777;">{{ $ad->description }}</p>
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+    {{-- VENDOR ADS SECTION END --}}
+
     <div class="m-2 mt-4 ">
         @if (count($data['nearby_stores']))
             <div class="d-flex justify-content-between align-items-end">
@@ -760,6 +791,12 @@
     function trackBannerClick(bannerId) {
         $.post("{{ route('track.banner.click') }}", {
             banner_id: bannerId,
+            _token: '{{ csrf_token() }}'
+        });
+    }
+    function trackAdClick(adId) {
+        $.post("{{ route('track.ad.click') }}", {
+            ad_id: adId,
             _token: '{{ csrf_token() }}'
         });
     }

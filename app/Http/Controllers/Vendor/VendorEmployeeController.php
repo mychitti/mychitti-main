@@ -202,16 +202,26 @@ class VendorEmployeeController extends Controller
 
     public function leave_reject(Request $request, $id)
     {
-        $obj  =  Leave::find($id);
+        $obj = Leave::find($id);
         $obj->status = 'rejected';
-
         $obj->update();
+
+        $leaveDate = $obj->day . '/' . $obj->month . '/' . $obj->year;
+        _inAppNotification(
+            'Leave Rejected',
+            "Your leave request for {$leaveDate} ({$obj->leave_type}) has been rejected.",
+            null,
+            $obj->emp_id,
+            null,
+            'vendor_employee'
+        );
+
         return redirect()->back();
     }
 
     public function leave_approve(Request $request, $id)
     {
-        $obj  =  Leave::find($id);
+        $obj = Leave::find($id);
         $att = Attendance::where('employee_id', $obj->emp_id)->where('employee_type', 'vendor_employee')->where('vendor_id', $obj->vendor_id)->where('date', date('Y-m-d'))->first();
         if (!$att) {
             $att = new Attendance;
@@ -231,6 +241,17 @@ class VendorEmployeeController extends Controller
 
         $obj->status = 'approved';
         $obj->update();
+
+        $leaveDate = $obj->day . '/' . $obj->month . '/' . $obj->year;
+        _inAppNotification(
+            'Leave Approved',
+            "Your leave request for {$leaveDate} ({$obj->leave_type}) has been approved.",
+            null,
+            $obj->emp_id,
+            null,
+            'vendor_employee'
+        );
+
         return redirect()->back();
     }
 

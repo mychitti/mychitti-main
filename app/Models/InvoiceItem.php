@@ -5,12 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $gst_status
+ */
 class InvoiceItem extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'rand_invoice_id', 'name', 'price', 'tax', 'hsn', 'qty'
-    ];
+        'rand_invoice_id', 'name', 'price', 'tax', 'hsn', 'qty', 'gst_status'
+    ]; 
 
     public function unitId(){
         return $this->belongsTo(Unit::class , 'unit');

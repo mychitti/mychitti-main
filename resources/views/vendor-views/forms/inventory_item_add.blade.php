@@ -547,11 +547,16 @@
                                 <input type="number" onkeyup="checkPricing(this)" id="gst_rate" name="gst_rate"
                                     placeholder="%" class="form-control">
                             </div>
-                            <select class="form-control js-select2-custom" name="gst_type"
+                            {{-- <select class="form-control js-select2-custom" name="gst_type"
                                 data-placeholder="Select GST Type" id="gstType">
                                 <option value="cgst_sgst">GST (CGST + SGST) </option>
                                 <option value="igst">IGST</option>
                                 <option value="no_gst">No GST</option>
+                            </select> --}}
+                            <select class="form-control js-select2-custom" name="gst_status"
+                                data-placeholder="Select GST Satuts" id="gstStatus">
+                                <option value="excluding">Excluding</option>
+                                <option value="including">Including</option>
                             </select>
                         </div>
                     </div>

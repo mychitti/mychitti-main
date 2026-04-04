@@ -126,6 +126,7 @@ function removeCoupon() {
 }
 
 function toasterNotification(msg) {
+    if (!msg) return;
     $("#toast").text(msg);
     $("#toast").addClass("show");
     setTimeout(function () {

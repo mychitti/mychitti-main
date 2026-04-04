@@ -720,10 +720,29 @@ class ProfileController extends Controller
 
         return view('vendor-views.subscriptions.index', compact('allPlans', 'StoreConfig', 'features', 'sub_modules', 'subscriptions'));
     }
+    public function staff_change_password(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password'         => ['required', 'confirmed', 'min:6'],
+        ]);
+
+        $employee = auth('vendor_employee')->user();
+
+        if (!$employee || !\Illuminate\Support\Facades\Hash::check($request->current_password, $employee->password)) {
+            return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+        }
+
+        $employee->password = bcrypt($request->password);
+        $employee->save();
+
+        return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+    }
+
     public function settings_password_update(Request $request)
     {
         $request->validate([
-            'password' => ['required', 'same:confirm_password', Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()],
+            'password' => ['required', 'same:confirm_password', Password::min(8)->mixedCase()->letters()->numbers()->symbols()],
             'confirm_password' => 'required',
         ]);
 

@@ -22,7 +22,7 @@
 
         /* uom section */
         .secondary_unit_elem {
-            display: {{$item->secondary_unit ? 'block' : 'none'}};
+            display: {{ $item->secondary_unit ? 'block' : 'none' }};
         }
 
         /* stock section */
@@ -70,8 +70,9 @@
             transition: all 0.2s ease;
             background-color: #d6e2ffff;
         }
-        .add_btn2{
-            display: {{$item->secondary_unit ? 'none' : ''}};
+
+        .add_btn2 {
+            display: {{ $item->secondary_unit ? 'none' : '' }};
         }
 
         .add-alternate-btn:hover {
@@ -517,18 +518,21 @@
                                                     <div class="input-field secondary_unit_elem">
                                                         <label class="field-label">Quantity</label>
                                                         <input type="number" class="form-control" id="secondary_qty"
-                                                            name="secondary_qty" min="1" value="{{$item->secondary_qty ?? 1}}"
-                                                            placeholder="Enter quantity" >
+                                                            name="secondary_qty" min="1"
+                                                            value="{{ $item->secondary_qty ?? 1 }}"
+                                                            placeholder="Enter quantity">
                                                     </div>
 
                                                     <div class="select-field secondary_unit_elem">
                                                         <label class="field-label">Unit</label>
                                                         <select data-placeholder="Select or Type New"
                                                             class="form-control js-example-tags" id="secondary_unit"
-                                                            name="secondary_unit" >
+                                                            name="secondary_unit">
                                                             <option value=""></option>
                                                             @foreach (\App\Models\Unit::all() as $unit)
-                                                                <option {{$item->secondary_unit == $unit->id ? 'selected' : ''}} value="{{ $unit->id }}">{{ $unit->unit }}
+                                                                <option
+                                                                    {{ $item->secondary_unit == $unit->id ? 'selected' : '' }}
+                                                                    value="{{ $unit->id }}">{{ $unit->unit }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
@@ -541,18 +545,19 @@
                                                     <div class="input-field">
                                                         <label class="field-label">Quantity</label>
                                                         <input type="number" class="form-control" id="primary_qty"
-                                                            name="primary_qty" min="1" value="{{$item->primary_qty ?? 1}}"
-                                                            placeholder="Quantity" >
+                                                            name="primary_qty" min="1"
+                                                            value="{{ $item->primary_qty ?? 1 }}" placeholder="Quantity">
                                                     </div>
 
                                                     <div class="select-field">
                                                         <label class="field-label">Base Unit</label>
                                                         <select data-placeholder="Select or Type New"
                                                             class="form-control js-example-tags" id="primary_unit"
-                                                            name="primary_unit" >
+                                                            name="primary_unit">
                                                             <option value=""></option>
                                                             @foreach (\App\Models\Unit::all() as $unit)
-                                                                <option {{$item->unit == $unit->id ? 'selected' : ''}}  value="{{ $unit->id }}">{{ $unit->unit }}
+                                                                <option {{ $item->unit == $unit->id ? 'selected' : '' }}
+                                                                    value="{{ $unit->id }}">{{ $unit->unit }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
@@ -693,7 +698,7 @@
                                                 onkeyup="checkPricing(this)" id="gst_rate" name="gst_rate"
                                                 placeholder="%" class="form-control">
                                         </div>
-                                        <select class="form-control js-select2-custom" name="gst_type"
+                                        {{-- <select class="form-control js-select2-custom" name="gst_type"
                                             data-placeholder="Select GST Type" id="gstType">
                                             <option {{ $item->gst_type == 'cgst_sgst' ? 'selected' : '' }}
                                                 value="cgst_sgst">GST (CGST + SGST) </option>
@@ -701,6 +706,13 @@
                                             </option>
                                             <option {{ $item->gst_type == 'no_gst' ? 'selected' : '' }} value="no_gst">No
                                                 GST</option>
+                                        </select> --}}
+                                        <select class="form-control js-select2-custom" name="gst_status"
+                                            data-placeholder="Select GST Status" id="gstStatus">
+                                            <option {{ ($item->gst_status ?? 'excluding') == 'excluding' ? 'selected' : '' }}
+                                                value="excluding">Excluding</option>
+                                            <option {{ ($item->gst_status ?? 'excluding') == 'including' ? 'selected' : '' }}
+                                                value="including">Including</option>
                                         </select>
                                     </div>
                                 </div>
@@ -756,8 +768,12 @@
                                                 @include('vendor-views.inventory._edit-combinations', [
                                                     'combinations' => json_decode($item['variations'], true),
                                                     'stock' => 1,
-                                                    'primary_unit' => $item['unit'] ? _unitNaneById($item['unit']) : '',
-                                                    'secondary_unit' => $item['secondary_unit'] ? _unitNaneById($item['secondary_unit']) : '',
+                                                    'primary_unit' => $item['unit']
+                                                        ? _unitNaneById($item['unit'])
+                                                        : '',
+                                                    'secondary_unit' => $item['secondary_unit']
+                                                        ? _unitNaneById($item['secondary_unit'])
+                                                        : '',
                                                 ])
                                             </div>
                                         </div>

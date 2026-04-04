@@ -1138,6 +1138,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('profile/view', 'ProfileController@view')->name('profile.view');
         Route::get('profile/edit', 'ProfileController@edit')->name('profile.edit');
         Route::post('profile/update', 'ProfileController@update')->name('profile.update');
+        Route::post('profile/change-password', 'ProfileController@staff_change_password')->name('profile.change-password');
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:bank_info']], function () {
             Route::post('settings-password', 'ProfileController@settings_password_update')->name('settings-password');
             Route::get('bank-view', 'ProfileController@bank_view')->name('bankView');

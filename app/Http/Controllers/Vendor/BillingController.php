@@ -18,7 +18,7 @@ use App\Models\AccountDetail;
 use App\Models\Category as ModelsCategory;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
-use App\Models\ManualTrial;
+use App\Models\ManualTrial; 
 use App\Models\ServiceInvoice;
 use App\Models\StorageUnit;
 use App\Models\StoreCustomer;
@@ -135,19 +135,21 @@ class BillingController extends Controller
       'Temp Group',
       'Invoice Number',
       'Invoice Date',
-      'Payment Status',
-      'Payment Date',
+      'Client Name',
       'Client ID',
       'Client Phone',
+      'Payment Status',
+      'Payment Date',
+      'Total Amount',
       'Tax Type',
       'Reminder Date',
-      'Reminder Frequency Unit',
       'Reminder Frequency',
+      'Reminder Frequency Unit',
       'Item Name',
       'Item Price',
-      'Qty',
+      'Tax Percent',
       'HSN',
-      'Tax Percent'
+      'Qty',
     ];
     $headings = $header;
     $sheetData = [];
@@ -157,25 +159,28 @@ class BillingController extends Controller
       $client = StoreCustomer::find($invoice->bill_to);
       $phone = $client->phone ?? '';
       $clientId = $client->id ?? '';
+      $clientName = trim(($client->f_name ?? '') . ' ' . ($client->l_name ?? ''));
 
       foreach ($invoice->invoiceItems as $item) {
         $sheetData[] = [
           "GROUP_" . $tempIndex,
           $invoice->invoice_id,
           Carbon::parse($invoice->invoice_date)->format('d-m-Y'),
-          $invoice->payment_status,
-          $invoice->payment_date ? Carbon::parse($invoice->payment_date)->format('d-m-Y') : '',
+          $clientName,
           $clientId,
           $phone,
+          $invoice->payment_status,
+          $invoice->payment_date ? Carbon::parse($invoice->payment_date)->format('d-m-Y') : '',
+          $invoice->total_amount ?? '',
           $invoice->tax_type,
           $invoice->reminder_date ? Carbon::parse($invoice->reminder_date)->format('d-m-Y') : '',
-          $invoice->reminder_freq_unit,
           $invoice->reminder_freq,
+          $invoice->reminder_freq_unit,
           $item->name,
           $item->price,
-          $item->qty,
-          $item->hsn,
           $item->tax,
+          $item->hsn,
+          $item->qty,
         ];
       }
 
@@ -252,8 +257,9 @@ class BillingController extends Controller
           $invoice_number = $prefix . $invoice_serial;
         }
       }
-      array_push($invoiceIds, $invoice_number);
 
+      array_push($invoiceIds, $invoice_number);
+ 
       $invoice = new ManualInvoice();
       $invoice->bill_to             = $bill_to_id;
       $invoice->bill_to_type        = 'user';
@@ -422,7 +428,12 @@ class BillingController extends Controller
     }
     if (isset($request->item_price_new)) {
       foreach ($request->item_price_new as $key => $price) {
-        $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key] ?? 0, 'actual') * $request->item_qty_new[$key];
+        $gstStatus = $request->item_gst_status_new[$key] ?? 'excluding';
+        $qty = $request->item_qty_new[$key];
+        $tax = $request->item_tax_new[$key] ?? 0;
+        $totalPrice += $gstStatus === 'including'
+          ? $price * $qty
+          : _taxIncludedPrice($price, $tax, 'actual') * $qty;
       }
     }
 
@@ -461,12 +472,13 @@ class BillingController extends Controller
       foreach ($request->item_name_new as $key => $id) {
         $InvoiceItem = new InvoiceItem();
         $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
-        $InvoiceItem->name = $request->item_name_new[$key];
+        $InvoiceItem->name = $request->item_name_new[$key]; 
         $InvoiceItem->price = $request->item_price_new[$key];
         $InvoiceItem->qty = $request->item_qty_new[$key];
         $InvoiceItem->unit = $request->item_unit_new[$key];
         $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
         $InvoiceItem->hsn = $request->item_hsn_new[$key];
+        $InvoiceItem->gst_status = $request->item_gst_status_new[$key] ?? 'excluding';
         $InvoiceItem->save();
       }
     }
@@ -549,7 +561,12 @@ class BillingController extends Controller
     }
     if (isset($request->item_price_new)) {
       foreach ($request->item_price_new as $key => $price) {
-        $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key] ?? 0, 'actual') * $request->item_qty_new[$key];
+        $gstStatus = $request->item_gst_status_new[$key] ?? 'excluding';
+        $qty = $request->item_qty_new[$key];
+        $tax = $request->item_tax_new[$key] ?? 0;
+        $totalPrice += $gstStatus === 'including'
+          ? $price * $qty
+          : _taxIncludedPrice($price, $tax, 'actual') * $qty;
       }
     }
 
@@ -595,6 +612,7 @@ class BillingController extends Controller
         $InvoiceItem->unit = $request->item_unit_new[$key];
         $InvoiceItem->tax = $request->tax_type == 'gst' ?  ($request->item_tax_new[$key] ?? 0) : 0;
         $InvoiceItem->hsn = $request->item_hsn_new[$key];
+        $InvoiceItem->gst_status = $request->item_gst_status_new[$key] ?? 'excluding';
         $InvoiceItem->save();
       }
     }

@@ -372,6 +372,18 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         }
 
         $data['nearby_stores'] = _nearbyStoresOptimized($this->zone_id, 9);
+        $zone_ids = json_decode($this->zone_id, true);
+        $data['vendor_ads'] = \App\Models\Notification::whereNotNull('vendor_id')
+            ->where('approval', 1)
+            ->whereNotNull('image')
+            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
+            ->where(function ($q) use ($zone_ids) {
+                $q->whereIn('zone_id', $zone_ids)
+                  ->orWhereNull('zone_id');
+            })
+            ->inRandomOrder()
+            ->limit(12)
+            ->get();
         // $data['special_product'] = _getSpecialProduct($zone_id);
 
         $data['popular_services'] = _getPopularService($zone_id) ?? [];
@@ -2287,6 +2299,39 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         ]);
 
         return response()->json(['message' => 'Banner click counted']);
+    }
+
+    public function trackAdClick(Request $request)
+    {
+        $adId = $request->ad_id;
+        $ad = DB::table('notifications')->where('id', $adId)->whereNotNull('vendor_id')->first();
+        if (!$ad) {
+            return response()->json(['message' => 'Ad not found'], 404);
+        }
+
+        $ip = $request->ip();
+        $isUnique = !DB::table('analytics_logs')
+            ->where('screen_type', 'ad')
+            ->where('ref_id', $adId)
+            ->where('ip', $ip)
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+
+        DB::table('notifications')->where('id', $adId)->increment('total_clicks');
+        if ($isUnique) {
+            DB::table('notifications')->where('id', $adId)->increment('unique_clicks');
+        }
+
+        DB::table('analytics_logs')->insert([
+            'screen_type' => 'ad',
+            'sub_type'    => 'web',
+            'ref_id'      => $adId,
+            'user_id'     => auth()->check() ? auth()->id() : null,
+            'ip'          => $ip,
+            'created_at'  => now(),
+        ]);
+
+        return response()->json(['message' => 'Ad click counted']);
     }
 
     public function store_details(Request $request, $city, $slug)

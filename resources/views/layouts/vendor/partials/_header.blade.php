@@ -41,10 +41,11 @@
                 </button>
                 <!-- End Navbar Vertical Toggle -->
             </div>
+            @if(auth('vendor')->check())
             @if(Route::currentRouteName() == 'vendor.dashboard')
-            @if(auth('vendor')->check()) <h1 class="page-header-title d-none d-md-block">{{ translate('messages.welcome') }},
-                        {{ auth('vendor')->user()->f_name }}.</h1>
-                        @endif
+                 <h1 class="page-header-title d-none d-md-block">{{ translate('messages.welcome') }},
+                {{ auth('vendor')->user()->f_name }}.</h1>
+              
             @else
             <div class="desktop_linke">
                 <div class="d-flex gap-2  ">
@@ -69,6 +70,7 @@
                 </div>
             </div>
             
+            @endif
             @endif
               
             <div class="navbar-nav-wrap-content-right">

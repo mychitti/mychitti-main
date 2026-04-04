@@ -14,7 +14,7 @@ use App\Models\Leave;
 use App\Models\AdminWallet;
 use App\Models\EmployeeTimeCard;
 use App\Models\DeliveryMan;
-use App\Models\WalletPayment;
+use App\Models\WalletPayment; 
 use App\Scopes\StoreScope;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
@@ -1319,11 +1319,12 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
 
     $invoice->additional_charges;
     if ($invoice->tax_type == 'gst') {
-        $dataToUpdate['final_tax'] = $invoice->final_tax ?? $tax['total_tax'];
-        $dataToUpdate['cgst'] = $bill_gst_type == 'cgst_sgst' ? ($tax['total_tax'] / 2) : 0;
-        $dataToUpdate['sgst'] = $bill_gst_type == 'cgst_sgst' ? ($tax['total_tax'] / 2) : 0;
-        $dataToUpdate['igst'] = $bill_gst_type == 'igst' ? $tax['total_tax'] : 0;
-        $dataToUpdate['taxable_amount'] = $invoice->total_amount - $tax['total_tax'];
+        $hasGstStatusItems = $bill_data['invoice_items']->contains(fn($item) => !is_null($item->gst_status));
+        $dataToUpdate['final_tax'] = ($hasGstStatusItems || is_null($invoice->final_tax)) ? $tax['total_tax'] : $invoice->final_tax;
+        $dataToUpdate['cgst'] = $bill_gst_type == 'cgst_sgst' ? ($dataToUpdate['final_tax'] / 2) : 0;
+        $dataToUpdate['sgst'] = $bill_gst_type == 'cgst_sgst' ? ($dataToUpdate['final_tax'] / 2) : 0;
+        $dataToUpdate['igst'] = $bill_gst_type == 'igst' ? $dataToUpdate['final_tax'] : 0;
+        $dataToUpdate['taxable_amount'] = $invoice->total_amount - $dataToUpdate['final_tax'];
     } else {
         $dataToUpdate['taxable_amount'] = $invoice->total_amount;
     }
@@ -1684,7 +1685,11 @@ function calculateTax($invoice_items, $bill_to, $bill_from, $invoice)
     $summary = array_map(fn($v) => round($v, 2), $summary);
 
     $total_tax = $invoice_items->sum(function ($item) {
-        return _taxPrice($item->price * $item->qty, $item->tax, 'actual');
+        $lineTotal = $item->price * $item->qty;
+        if (($item->gst_status ?? 'excluding') === 'including') {
+            return $lineTotal - ($lineTotal / (1 + $item->tax / 100));
+        }
+        return _taxPrice($lineTotal, $item->tax, 'actual');
     });
     return ['total_tax' => $total_tax + $summary['tax_amount'], 'gst_type' => $bill_gst_type, 'invoice_total' => $invoice->total_amount + $summary['total']];
 }
@@ -5204,16 +5209,32 @@ if (!function_exists('_topsearched')) {
     function _topsearched()
     {
         $html = '';
+        $currentZoneIds = json_decode(session('zone_ids', '[]'), true) ?: [];
 
-        $popular_searches = UserRecentSearch::where('trash', 0)
+        $query = UserRecentSearch::where('trash', 0)
             ->select('text', 'url', DB::raw('COUNT(*) as total'))
             ->groupBy('text', 'url')
             ->orderByDesc('total')
-            ->limit(4)
-            ->get();
+            ->limit(4);
+
+        if (!empty($currentZoneIds)) {
+            $query->where(function ($q) use ($currentZoneIds) {
+                // Include old records saved without zone_ids
+                $q->whereNull('zone_ids');
+                foreach ($currentZoneIds as $zoneId) {
+                    $q->orWhereRaw("JSON_CONTAINS(zone_ids, ?)", [json_encode((int)$zoneId)]);
+                }
+            });
+        }
+
+        $popular_searches = $query->get();
 
         foreach ($popular_searches as $search) {
-            $html .= '<div class="chip" data-url="' . $search->url . '"><i class="fas fa-fire"></i> ' . $search->text . '</div>';
+            // Normalize to path-only so URL works on any domain/environment
+            $path      = parse_url($search->url, PHP_URL_PATH) ?? $search->url;
+            $qs        = parse_url($search->url, PHP_URL_QUERY);
+            $url       = $path . ($qs ? '?' . $qs : '');
+            $html .= '<div class="chip" data-url="' . e($url) . '"><i class="fas fa-fire"></i> ' . e($search->text) . '</div>';
         }
 
         return $html;

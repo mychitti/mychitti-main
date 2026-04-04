@@ -54,7 +54,7 @@
                     <div class="col-md-2 p-1">
                         <label class="form-check-label d-flex mb-1" for="flexRadioDefault2">Invoice Date</label>
                         <div>
-                            @php 
+                            @php
                                 $today = date('Y-m-d');
                                 $startOfFinancialYear = (date('m') >= 4 ? date('Y') : date('Y') - 1) . '-04-01';
                             @endphp
@@ -200,6 +200,7 @@
                             <th scope="col">Qty</th>
                             <th scope="col">Unit</th>
                             <th class="tax_inp_data hidden_tax" scope="col">Tax <i>(in %)</i></th>
+                            <th class="tax_inp_data hidden_tax" scope="col">GST Status</th>
                             <th class="hsn_inp hidden_hsn" scope="col">HSN</th>
                             <th class="hidden_tax" scope="col">Taxable</th>
                             <th class=" " scope="col">Total</th>

@@ -87,11 +87,15 @@
                                                 alt="image" />
                                         </div>
                                         <div class="custom-file">
-                                            <input type="file" name="image" id="customFileEg1"
+                                            <input type="file" name="image" id="customFileEg1434"
                                                 class="custom-file-input"
-                                                accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
+                                                accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*"
+                                                data-cropable="true"
+                                                data-aspect="0.8"
+                                                data-output-size="1080"
+                                                data-preview-target="#viewer">
                                             <label class="custom-file-label"
-                                                for="customFileEg1">{{ translate('messages.choose_file') }}</label>
+                                                for="customFileEg1434">{{ translate('messages.choose_file') }}</label>
                                         </div>
                                     </div>
                                 </div>
@@ -244,6 +248,8 @@
             <!-- End Table -->
         </div>
     </div>
+
+@include('vendor-views.partials.image-cropper-modal')
 
 @endsection
 

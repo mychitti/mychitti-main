@@ -88,7 +88,13 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Attendance Manage </h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i> Attendance Manage
+                @if(isset($staff))
+                    <span class="badge badge-soft-primary ml-2" style="font-size:14px; font-weight:500;">
+                        {{ $staff->f_name }} {{ $staff->l_name }}
+                    </span>
+                @endif
+            </h1>
             <div class="page-header-select-wrapper">
 
             </div>

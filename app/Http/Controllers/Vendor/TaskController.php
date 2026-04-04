@@ -693,6 +693,18 @@ class TaskController extends Controller
         $task = StoreTask::find($id);
         $task->offered_to = null;
         $task->save();
+
+        $employee = auth('vendor_employee')->user();
+        $staffName = $employee ? trim($employee->f_name . ' ' . $employee->l_name) : 'Staff';
+        _inAppNotification(
+            'Task Rejected',
+            "{$staffName} has rejected the task: " . ($task->title ?? '#' . $task->id),
+            null,
+            $task->store_id,
+            null,
+            'vendor'
+        );
+
         Toastr::success('Task Rejected');
         return back();
     }

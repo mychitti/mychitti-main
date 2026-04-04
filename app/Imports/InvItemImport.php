@@ -129,6 +129,12 @@ class InvItemImport implements ToCollection
                         $item_type = strtolower(trim($row[22])) === 'service' ? 'service' : 'product';
                     }
 
+                    // --- Show On Website ---
+                    $show_on_store_page = 0;
+                    if (!empty($row[23])) {
+                        $show_on_store_page = strtolower(trim($row[23])) === 'yes' ? 1 : 0;
+                    }
+
                     // Excel row = $index + 1 (collection is 0-based, header = row 1)
                     $excelRow  = $index + 1;
                     $rowImages = $this->imagesByRow[$excelRow] ?? null;
@@ -151,10 +157,11 @@ class InvItemImport implements ToCollection
                         'brand'           => $row[17] ?? null,
                         'category_id'     => $category_id,
                         'hsn'             => $row[19] ?? null,
-                        'item_type'       => $item_type,
-                        'module_id'       => 6,
-                        'images'          => $rowImages,
-                        'image'           => $mainImage,
+                        'item_type'          => $item_type,
+                        'module_id'          => 6,
+                        'images'             => $rowImages,
+                        'image'              => $mainImage,
+                        'show_on_store_page' => $show_on_store_page,
                     ]);
 
                     $groupedItems[$tempGroup] = $item;

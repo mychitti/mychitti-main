@@ -9,6 +9,9 @@
         height:300px;
         width: 100%;
     }
+    input.no-arrows::-webkit-outer-spin-button,
+    input.no-arrows::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input.no-arrows { -moz-appearance: textfield; }
 </style>
 
 <script>
@@ -64,7 +67,7 @@
                             <div class="col-md-6">
                                 <div class="form-item w-100">
                                     <label class="form-label my-3">Contact Person Mobile</label>
-                                    <input  oninput="this.value = this.value.slice(0, 10)" name="contact_person_number" type="number" class="form-control">
+                                    <input oninput="this.value = this.value.slice(0, 10)" onwheel="this.blur()" onkeydown="if(event.key==='ArrowUp'||event.key==='ArrowDown')event.preventDefault()" name="contact_person_number" type="number" class="form-control no-arrows">
                                 </div>
                             </div>
                             <div class="col-md-12 col-lg-12">

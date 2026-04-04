@@ -91,6 +91,7 @@ Route::get('/sitemap.xml', [SitemapController::class, 'show'])->name('sitemap');
 Route::get('/health-check', fn() => response('OK'));
 Route::get('icons', 'Front\FrontController@icons_view');
 Route::post('track-banner-click', 'Front\FrontController@trackBannerClick')->name('track.banner.click');
+Route::post('track-ad-click', 'Front\FrontController@trackAdClick')->name('track.ad.click');
 Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');
 Route::post('app-config/update', [FrontController::class, 'app_config_update'])->name('app-config.update');
  
@@ -254,7 +255,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('cart', [FrontController::class, 'cart'])->name('cart');
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
-    Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details');
+    Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');

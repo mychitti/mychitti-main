@@ -19,7 +19,7 @@
 
         .borderless_table td {
             {{-- border: 1px solid rgb(207, 207, 207); --}} border: none;
-
+ 
         }
 
         .text-center {
@@ -310,13 +310,22 @@
             $totalTaxAmount = 0; @endphp
             @foreach ($bill_data['invoice_items'] as $key => $qt)
                 @php
-                    $totalPrice += _taxIncludedPrice($qt->price * $qt->qty, $qt->tax, 'actual');
-                    $subTotalPrice += $qt->price * $qt->qty;
-                    $totalTaxAmount += _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual');
+                    $qt_line = $qt->price * $qt->qty;
+                    if (($qt->gst_status ?? 'excluding') === 'including') {
+                        $qt_taxable = $qt->tax > 0 ? $qt_line / (1 + $qt->tax / 100) : $qt_line;
+                        $gst_amount = $qt_line - $qt_taxable;
+                        $qt_total   = $qt_line;
+                    } else {
+                        $qt_taxable = $qt_line;
+                        $gst_amount = _taxPrice($qt_line, $qt->tax, 'actual');
+                        $qt_total   = $qt_line + $gst_amount;
+                    }
 
-                    $gst_percent = (int) $qt->tax; // e.g. 18
-                    $gst_amount = _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual'); // amount of GST
+                    $totalPrice     += $qt_total;
+                    $subTotalPrice  += $qt_taxable;
+                    $totalTaxAmount += $gst_amount;
 
+                    $gst_percent = (int) $qt->tax;
                     if (in_array($gst_percent, $gst_types)) {
                         $gst_summary[$gst_percent] += $gst_amount;
                     }
@@ -332,26 +341,23 @@
                     <td class="no-border">0</td>
                     <td class="no-border">{{ $qt->price }}</td>
                     @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)
-                        <td class="no-border">{{ $qt->price * $qt->qty }}</td>
+                        <td class="no-border">{{ round($qt_taxable, 3) }}</td>
                         @if ($bill_gst_type == 'cgst_sgst')
-                            <td class="no-border">{{ ($qt->cgst_rate ?? $qt->tax / 2) }}%</td><!-- CGST percent -->
-                            <td class="no-border">{{ $qt->cgst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
-                            <!-- CGST amount -->
-                            <td class="no-border">{{ $qt->sgst_rate ?? $qt->tax / 2 }}%</td> <!-- SGST percent -->
-                            <td class="no-border">{{$qt->sgst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') / 2 }}</td>
-                            <!-- SGST amount -->
+                            <td class="no-border">{{ ($qt->cgst_rate ?? $qt->tax / 2) }}%</td>
+                            <td class="no-border">{{ $qt->cgst_amount ?? round($gst_amount / 2, 3) }}</td>
+                            <td class="no-border">{{ $qt->sgst_rate ?? $qt->tax / 2 }}%</td>
+                            <td class="no-border">{{ $qt->sgst_amount ?? round($gst_amount / 2, 3) }}</td>
                         @else
-                            <td class="no-border">{{ $qt->igst_rate ?? $qt->tax }}%</td> <!-- IGST percent -->
-                            <td class="no-border">{{ $qt->igst_amount ?? _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}</td>
-                            <!-- IGST amount -->
+                            <td class="no-border">{{ $qt->igst_rate ?? $qt->tax }}%</td>
+                            <td class="no-border">{{ $qt->igst_amount ?? round($gst_amount, 3) }}</td>
                         @endif
-                        <td class="no-border">{{ _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}</td>
+                        <td class="no-border">{{ round($gst_amount, 3) }}</td>
                     @endif
                     <td class="no-border">
-                    @if($qt->total)
-                    {{round($qt->total)}}
-                    @else
-                        {{ $qt->price * $qt->qty + _taxPrice($qt->price * $qt->qty, $qt->tax, 'actual') }}
+                        @if($qt->total)
+                            {{ round($qt->total) }}
+                        @else
+                            {{ round($qt_total, 3) }}
                         @endif
                     </td>
                 </tr>
@@ -515,6 +521,14 @@
                             <b>{{ \App\CentralLogics\Helpers::currency_symbol() . number_format($bill_data['total_amount'], 3) }}</b>
                         </td>
                     </tr>
+                    @if (!empty($invoice->payment_method))
+                        <tr>
+                            <td class="borderless_td" style="text-align: right; font-size:10px;">Payment Method:</td>
+                            <td class="borderless_td" style="text-align: right; font-size:10px;">
+                                {{ $invoice->payment_method }}
+                            </td>
+                        </tr>
+                    @endif
                     @if ($invoice->advance_amount)
                         <tr>
                             <td class="borderless_td"></td>

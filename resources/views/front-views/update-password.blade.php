@@ -69,12 +69,22 @@
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" placeholder="password" id="password">
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="password" placeholder="password" id="password">
+                        <button type="button" class="btn btn-outline-secondary toggle-password" data-target="#password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                     <div class="form-text text-danger response__password"></div>
                 </div>
                 <div class="mb-3">
-                    <label for="password" class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" name="confirm_password" placeholder="password" id="password">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="confirm_password" placeholder="password" id="confirm_password">
+                        <button type="button" class="btn btn-outline-secondary toggle-password" data-target="#confirm_password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                     <div class="form-text text-danger response__password"></div>
                 </div>
                 <button type="submit" class="w-100 btn btn-primary ">Update</button> 
@@ -148,6 +158,13 @@
         }
     });
 })
+
+$(document).on('click', '.toggle-password', function () {
+    var $input = $($(this).data('target'));
+    var isPassword = $input.attr('type') === 'password';
+    $input.attr('type', isPassword ? 'text' : 'password');
+    $(this).find('i').toggleClass('bi-eye bi-eye-slash');
+});
 
 $(document).on('input', '.otp-input', function (e) {
     const $inputs = $('.otp-input');

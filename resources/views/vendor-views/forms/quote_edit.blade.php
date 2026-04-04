@@ -1,4 +1,4 @@
-<form class="w-100 row" action="{{ route('vendor.quotation.save-info') }}" method="post">
+<form class="w-100 row quote_edit_form" action="{{ route('vendor.quotation.save-info') }}" method="post">
     @csrf
     <div class="col-md-12 p-1">
         <div class="card h-100">
@@ -42,11 +42,16 @@
                 </div>
                 <div class="col-md-3">
                     <div class="row w-100 mb-2 ml-4">
-                        @if (App\CentralLogics\Helpers::get_store_data()->gst &&
-                                json_decode(App\CentralLogics\Helpers::get_store_data()->gst)->status)
+                        @php
+                            $storeGstData = App\CentralLogics\Helpers::get_store_data()->gst;
+                            $storeGstOn = $storeGstData && json_decode($storeGstData)->status;
+                            $quoteIsGst = ($quote->tax_type ?? '') == 'gst';
+                            $selectGst = $storeGstOn && $quoteIsGst;
+                        @endphp
+                        @if ($storeGstOn)
                             <div class="form-check mr-5 ">
                                 <input class="form-check-input tax_type" value="gst" name="tax_type" type="radio"
-                                    id="gstRadio1">
+                                    id="gstRadio1" {{ $selectGst ? 'checked' : '' }}>
                                 <label class="form-check-label" for="gstRadio1">
                                     GST
                                 </label>
@@ -54,7 +59,7 @@
                         @endif
                         <div class="form-check">
                             <input class="form-check-input tax_type" value="non-gst" name="tax_type" type="radio"
-                                id="gstRadio2" checked>
+                                id="gstRadio2" {{ !$selectGst ? 'checked' : '' }}>
                             <label class="form-check-label" for="gstRadio2">
                                 Non GST
                             </label>
@@ -76,8 +81,46 @@
                             </label>
                         </div>
                     </div>
+                    <div class="payment_mode_grp">
+                        <div class="pos--payment-options">
+                            <label>{{ translate('paid_By') }}</label>
+                            <ul class="mb-0">
+                                <li>
+                                    <label>
+                                        <input type="radio" class="payment_mode" name="payment_mode" value="Cash" hidden checked>
+                                        <span>Cash</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" class="payment_mode" name="payment_mode" value="Online" hidden>
+                                        <span>Online</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" class="payment_mode" name="payment_mode" value="Cash and Online" hidden>
+                                        <span>Both</span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-6 row">
+                    <div class="col-md-3 p-1 partial_payment" style="display: none">
+                        <label class="form-check-label mb-1">Cash Amount</label>
+                        <input class="form-control form-control-sm cash_amount" name="cash_amount" type="number"
+                            placeholder="Ex: 2000" step="0.001">
+                    </div>
+                    <div class="col-md-3 p-1 partial_payment" style="display: none">
+                        <label class="form-check-label mb-1">Online Amount</label>
+                        <input class="form-control form-control-sm online_amount" name="online_amount" type="number"
+                            placeholder="Ex: 3000" step="0.001">
+                    </div>
+                    <div class="col-12 partial_payment" style="display: none">
+                        <small class="text-danger partial_payment_error"></small>
+                    </div>
                     <div class="form-check payment_date_inp col-md-4 col-sm-6 p-1" style="display:none;">
                         <label class="form-check-label" for="flexRadioDefault2">Payment Date</label>
                         <input class="form-control" min="{{ date('Y-m-d') }}" name="payment_date" type="date"

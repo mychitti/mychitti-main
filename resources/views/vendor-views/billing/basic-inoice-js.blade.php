@@ -281,6 +281,7 @@
          var secondary_unit = '';
          var readonly = '';
          var item_tax = '';
+         var item_gst_status = 'excluding';
          if (item) {
              item_id = item.id
              item_name = item.item_name;
@@ -290,6 +291,7 @@
              readonly = 'readonly';
              item_hsn = item.hsn;
              item_tax = item.tax ?? item.gst_rate;
+             item_gst_status = item.gst_status ?? 'excluding';
          }
 
          console.log(dataId)
@@ -312,6 +314,12 @@
                     </td>
                       <td style="width: 58px;" class="tax_inp_data ` + className +
              ` tax_field" ><input type="number" value="` + item_tax + `" name="item_tax_new[]" placeholder="Tax" class="form-control tax"></td>
+                      <td style="width: 100px;" class="tax_inp_data ` + className + `">
+                        <select name="item_gst_status_new[]" class="form-control gst_status">
+                          <option value="excluding" ${item_gst_status == 'excluding' ? 'selected' : ''}>Excluding</option>
+                          <option value="including" ${item_gst_status == 'including' ? 'selected' : ''}>Including</option>
+                        </select>
+                      </td>
                       <td style="width: 93px;" class="hsn_inp ` + className2 +
              `"><input type="text" name="item_hsn_new[]" value="` + item_hsn + `" placeholder="HSN" class="form-control"></td>
                        <td style="width: 93px;" class="hidden_tax"><input type="text" readonly placeholder="Taxable" class="form-control item_taxable"></td>
@@ -335,17 +343,30 @@
              let price = parseFloat($(this).find('.price').val()) || 0;
              let qty = parseFloat($(this).find('.qty').val()) || 0;
              let tax = parseFloat($(this).find('.tax').val()) || 0;
+             let gstStatus = $(this).find('.gst_status').val() || 'excluding';
 
-             let lineTotal = price * qty;
-             let gstAmount = lineTotal * (tax / 100);
-             let lineTotalWithGST = lineTotal + gstAmount;
+             let lineTotal, gstAmount, lineTotalWithGST, taxableAmount;
 
-             totalWithoutGST += lineTotal;
+             if (gstStatus === 'including') {
+                 // Price already includes GST — extract the base
+                 lineTotalWithGST = price * qty;
+                 taxableAmount = lineTotalWithGST / (1 + tax / 100);
+                 gstAmount = lineTotalWithGST - taxableAmount;
+                 lineTotal = taxableAmount;
+             } else {
+                 // Price excludes GST — add tax on top
+                 lineTotal = price * qty;
+                 gstAmount = lineTotal * (tax / 100);
+                 lineTotalWithGST = lineTotal + gstAmount;
+                 taxableAmount = lineTotal;
+             }
+
+             totalWithoutGST += taxableAmount;
              totalGST += gstAmount;
              totalWithGST += lineTotalWithGST;
 
-             $(this).find('.item_taxable').val(lineTotal)
-             $(this).find('.item_total').val(lineTotalWithGST)
+             $(this).find('.item_taxable').val(taxableAmount.toFixed(3))
+             $(this).find('.item_total').val(lineTotalWithGST.toFixed(3))
          });
 
          totalWithoutGSTSubtotal = totalWithoutGST;
@@ -362,7 +383,7 @@
      }
 
      // Trigger on input change
-     $(document).on('keyup input change', '.price, .qty, .tax, #delivery_charges, .unit', function() {
+     $(document).on('keyup input change', '.price, .qty, .tax, .gst_status, #delivery_charges, .unit', function() {
          let $row = $(this).closest('.item_row_inv');
 
          if ($(this).hasClass('unit')) {

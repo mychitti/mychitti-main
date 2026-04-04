@@ -566,7 +566,7 @@
                         <form action="{{ route('vendor.inventory.import') }}" method="post"
                             enctype="multipart/form-data">
                             @csrf
-                            <a href="{{ asset('storage/app/public/uploaded/excel/inventory_item_updated2.xlsx') }}" download
+                            <a href="{{ asset('storage/app/public/uploaded/excel/inventory_item_updated3.xlsx') }}" download
                                 class="btn btn-outline-primary mb-2">View Example</a>
                             <div class="form-group">
                                 <label for="file">Upload Excel File</label>

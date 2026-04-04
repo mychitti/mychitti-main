@@ -515,7 +515,8 @@ class UserController extends Controller
             UserRecentSearch::create([
                 'user_id' => $user_id,
                 'text' => $validated['text'],
-                'url' => $validated['url']
+                'url' => $validated['url'],
+                'zone_ids' => session('zone_ids') ?? null,
             ]);
         }
 
@@ -854,6 +855,9 @@ class UserController extends Controller
 
     public function dashboard(Request $request, $tab = 'profile')
     {
+        // Support both /dashboard/favourites (route param) and /dashboard?tab=favourites (query param)
+        $tab = $request->get('tab') ?: $tab;
+
         $user_id = auth('web')->user() ? auth('web')->user()->id : session()->get('guest_id');
         $is_guest = auth('web')->user() ? 0 : 1;
 
@@ -1077,8 +1081,10 @@ class UserController extends Controller
     }
     public function remove_wishlist(Request $request, $type, $id)
     {
+        $userId = auth('web')->user() ? auth('web')->user()->id : session()->get('guest_id');
 
-        Wishlist::where('id', $id)->delete();
+        Wishlist::where('id', $id)->where('user_id', $userId)->delete();
+
         return response()->json(['status' => true, 'message' => 'Removed Successfully']);
     }
     public function delete_address(Request $request)

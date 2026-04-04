@@ -9,7 +9,7 @@ class QuotationDetail extends Model
 {
     use HasFactory;
        protected $fillable = [
-        'pdf',
+        'pdf', 'cash_amount', 'online_amount',
     ];
 
     public function user()

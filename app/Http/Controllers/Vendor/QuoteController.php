@@ -348,6 +348,9 @@ class QuoteController extends Controller
         if ($id && $quotation_det) {
             $quotation_det->total_amount = $totalAmount;
             $quotation_det->task_id = $task_id ?? null;
+            $quotation_det->payment_method = $request->payment_mode ?? 'Cash';
+            $quotation_det->cash_amount = $request->cash_amount ?? null;
+            $quotation_det->online_amount = $request->online_amount ?? null;
             $quotation_det->save();
 
             //delete items if already exists
@@ -368,7 +371,9 @@ class QuoteController extends Controller
             $quotation_det->module_id =  Helpers::get_store_data()->module_id;
             $quotation_det->total_amount = $totalAmount;
             $quotation_det->tax_type = $request->tax_type;
-            $quotation_det->payment_method = 'Cash';
+            $quotation_det->payment_method = $request->payment_mode ?? 'Cash';
+            $quotation_det->cash_amount = $request->cash_amount ?? null;
+            $quotation_det->online_amount = $request->online_amount ?? null;
             $quotation_det->payment_status = $request->payment_stts;
             $quotation_det->save();
         }

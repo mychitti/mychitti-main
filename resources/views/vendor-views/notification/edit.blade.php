@@ -69,13 +69,17 @@
                                     <small class="text-danger">* ( {{translate('messages.ratio')}} 1080x1350 )</small>
                                 </label>
                                 <div class="text-center py-3 my-auto" style="width: 200px;margin: 0 auto;">
-                                    <img class="img--vertical onerror-image" style="width: 100%;" id="viewer"
+                                    <img class="onerror-image" style="width: 100%;" id="viewer"
                                     src="{{\App\CentralLogics\Helpers::onerror_image_helper($notification['image'], asset('storage/app/public/notification/').'/'.$notification['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'notification/') }}"
                                     data-onerror-image="{{asset('public/assets/admin/img/900x400/1080x1350_img1.jpg')}}" alt="image"/>
                                 </div>
                                 <div class="custom-file">
                                     <input type="file" name="image" id="customFileEg1" class="custom-file-input"
-                                        accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*">
+                                        accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*"
+                                        data-cropable="true"
+                                        data-aspect="0.8"
+                                        data-output-size="1080"
+                                        data-preview-target="#viewer">
                                     <label class="custom-file-label" for="customFileEg1">{{translate('messages.choose_file')}}</label>
                                 </div>
                             </div>
@@ -90,6 +94,8 @@
             <!-- End Table -->
         </div>
     </div>
+
+@include('vendor-views.partials.image-cropper-modal')
 
 @endsection
 
