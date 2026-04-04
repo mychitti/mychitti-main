@@ -20,13 +20,13 @@ jobs:
             host: 64.227.158.127
             path: /var/www/html/admin
 
-          # - name: vendor
-          #   host: 167.71.233.92
-          #   path: /var/www/html/vendor
+          - name: vendor
+            host: 167.71.233.92
+            path: /var/www/html/vendor
 
-          # - name: shop
-          #   host: 64.227.178.210
-          #   path: /var/www/html/mychitti
+          - name: shop
+            host: 64.227.178.210
+            path: /var/www/html/mychitti
 
     steps:
     - name: Checkout Code

@@ -6,7 +6,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 ?>
 <html dir="{{ session()->get('site_direction') }}" lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     class="{{ session()->get('site_direction') === 'rtl' ? 'active' : '' }}">
-
+ 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
