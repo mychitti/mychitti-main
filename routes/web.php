@@ -78,7 +78,7 @@ use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 Route::get('/test-attendance-job', function () {
     (new PunchInReminder())->handle();
     return 'Attendance reminder job executed!';
-});
+}); 
 
 Route::group(['prefix' => 'mc-vendor', 'as' => 'mc-vendor.'], function () {
     Route::get('contact', [McVendorController::class, 'contact'])->name('contact');
