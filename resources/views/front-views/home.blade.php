@@ -794,11 +794,6 @@
             _token: '{{ csrf_token() }}'
         });
     }
-    function trackAdClick(adId) {
-        $.post("{{ route('track.ad.click') }}", {
-            ad_id: adId,
-            _token: '{{ csrf_token() }}'
-        });
-    }
+ 
 </script>
 @endpush
