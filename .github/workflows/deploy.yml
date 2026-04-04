@@ -54,7 +54,6 @@ jobs:
         php artisan view:clear && \
         php artisan cache:clear && \
         php artisan config:cache && \
-        php artisan view:cache && \
 
         echo 'Restarting queue workers...' && \
         php artisan queue:restart && \
