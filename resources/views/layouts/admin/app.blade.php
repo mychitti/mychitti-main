@@ -12,7 +12,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="csrf-token" id="csrf-token" content="{{ csrf_token() }}">
     <!-- Title -->
-    <title>@yield('title')</title>
+    <title>2 @yield('title')</title>
     <!-- Favicon -->
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
     <link rel="shortcut icon" href="">
