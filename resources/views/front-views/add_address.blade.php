@@ -49,7 +49,7 @@
                                 <label for="Delivery-3" style="cursor:pointer" class="col-2 form-check text-start my-3 border rounded border-primary py-3  mx-1 px-1">
                                     <input type="radio"  class="form-check-input bg-primary border-0 mx-1" id="Delivery-3" name="address_type" value="others">
                                     Other
-                                </label>
+                                </label> 
 
                             </div>
                             <div class="col-md-12 col-lg-12">
