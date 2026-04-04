@@ -20,13 +20,13 @@ jobs:
             host: 64.227.158.127
             path: /var/www/html/admin
 
-          - name: vendor
-            host: 167.71.233.92
-            path: /var/www/html/vendor
+          # - name: vendor
+          #   host: 167.71.233.92
+          #   path: /var/www/html/vendor
 
-          - name: shop
-            host: 64.227.178.210
-            path: /var/www/html/mychitti
+          # - name: shop
+          #   host: 64.227.178.210
+          #   path: /var/www/html/mychitti
 
     steps:
     - name: Checkout Code
@@ -45,18 +45,10 @@ jobs:
         set -e && \
         cd ${{ matrix.path }} && \
 
-        echo 'Preserving server composer files...' && \
-        cp composer.json /tmp/composer.json.bak || true && \
-        cp composer.lock /tmp/composer.lock.bak || true && \
-
         echo 'Fetching latest code...' && \
         git fetch origin && \
-        git reset --hard origin/main && \
+        git merge --ff-only origin/main && \
 
-        echo 'Restoring server composer files...' && \
-        mv /tmp/composer.json.bak composer.json || true && \
-        mv /tmp/composer.lock.bak composer.lock || true && \
- 
         php artisan config:clear && \
         php artisan route:clear && \
         php artisan view:clear && \
@@ -67,34 +59,6 @@ jobs:
         echo 'Restarting queue workers...' && \
         php artisan queue:restart && \
 
-        mkdir -p storage/app/tmp && \
-        chown -R apache:apache storage/app/tmp && \
-        chmod -R 775 storage/app/tmp && \
- 
-        mkdir -p storage/app/mpdf_temp && \
-        chown -R apache:apache storage/app/mpdf_temp && \
-        chmod -R 775 storage/app/mpdf_temp && \
-        
-        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/tmp(/.*)?' && \
-        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/storage/app/mpdf_temp(/.*)?' && \
-
-        restorecon -Rv ${{ matrix.path }}/storage/app/tmp && \
-        restorecon -Rv ${{ matrix.path }}/storage/app/mpdf_temp && \
-
-        chown -R apache:apache storage/framework storage/logs bootstrap/cache && \
-        chmod -R 775 storage/framework storage/logs bootstrap/cache && \
-
-        mkdir -p storage/app/secure_files && \
-        chown -R apache:apache storage/app/secure_files && \
-        find storage/app/secure_files -type d -exec chmod 755 {} \;
-        find storage/app/secure_files -type f -exec chmod 644 {} \;
- 
-        touch public/sitemap.xml && \
-        chown apache:apache public/sitemap.xml && \
-        chmod 664 public/sitemap.xml && \
-        semanage fcontext -a -t httpd_sys_rw_content_t '${{ matrix.path }}/public/sitemap.xml' || true && \
-        restorecon -v ${{ matrix.path }}/public/sitemap.xml && \
-
-        echo ' Deployment completed successfully!'
+        echo 'Deployment completed successfully!'
         "
  
