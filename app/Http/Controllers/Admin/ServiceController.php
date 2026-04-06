@@ -471,12 +471,12 @@ class ServiceController extends Controller
         }
     }
 
-    public function new_status_request()
-    {
-        $stts_requests =  TempStoreStatus::with('serviceStatus', 'store')
-            ->paginate(10);
-        return view('admin-views.service.new_status_request', compact('stts_requests', 'stts_requests'));
-    }
+    // public function new_status_request()
+    // {
+    //     $stts_requests =  TempStoreStatus::with('serviceStatus', 'store')
+    //         ->paginate(10);
+    //     return view('admin-views.service.new_status_request', compact('stts_requests', 'stts_requests'));
+    // }
     public function config_update(Request $request)
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'exp_count'], [

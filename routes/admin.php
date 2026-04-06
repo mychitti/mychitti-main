@@ -123,7 +123,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('common-issue-delete/{id}', 'ServiceController@common_issue_delete')->name('common-issue.delete');
             Route::post('config-update', 'ServiceController@config_update')->name('config.update');
             Route::get('status', 'ItemController@request_status')->name('request-status');
-            Route::get('new-status-request', 'ServiceController@new_status_request')->name('new-status-request');
+            // Route::get('new-status-request', 'ServiceController@new_status_request')->name('new-status-request');
             Route::get('approve-status-request/{id}', 'ServiceController@approve_status_request')->name('approve-status-request');
             Route::get('delete-status/{id}', 'ItemController@delete_status')->name('delete-status');
             Route::post('status-save', 'ItemController@status_save')->name('status-save');

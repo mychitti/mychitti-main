@@ -140,7 +140,7 @@
                                         <td>{{ $coupon['code'] }}</td>
                                         <td>{{ $coupon['user_type'] }} ID {{ $coupon['user_type_id'] }} </td>
                                         <td>{{ $coupon['use_limit'] }}</td>
-                                        <td >
+                                        <td>
                                             <div class="btn--container justify-content-center">
 
                                                 <a class="btn action-btn btn--danger btn-outline-danger form-alert"
@@ -149,9 +149,10 @@
                                                     title="{{ translate('messages.delete_coupon') }}"><i
                                                         class="tio-delete-outlined"></i>
                                                 </a>
-                                                <form action="{{ route('admin.coupon.service-coupon.delete', [$coupon['id']]) }}"
+                                                <form
+                                                    action="{{ route('admin.coupon.service-coupon.delete', [$coupon['id']]) }}"
                                                     method="post" id="coupon-{{ $coupon['id'] }}">
-                                                    @csrf 
+                                                    @csrf
                                                 </form>
                                             </div>
                                         </td>
@@ -183,7 +184,8 @@
                     <div class="card-header py-2 border-0">
                         <div class="search--button-wrapper">
                             <h5 class="card-title">{{ translate('messages.for_upcoming_stores') }}<span
-                                    class="badge badge-soft-dark ml-2" id="itemCount">{{count( $upcoming_coupons) }}</span></h5>
+                                    class="badge badge-soft-dark ml-2"
+                                    id="itemCount">{{ count($upcoming_coupons) }}</span></h5>
 
 
                         </div>
@@ -215,7 +217,7 @@
                             <tbody id="set-rows">
                                 @foreach ($upcoming_coupons as $key => $coupon)
                                     <tr>
-                                        <td>{{ $key + 1}}</td>
+                                        <td>{{ $key + 1 }}</td>
                                         <td>{{ \App\CentralLogics\Helpers::format_currency($coupon['amount']) }}</td>
                                         <td>{{ $coupon['code'] }}</td>
                                         <td>{{ $coupon['user_type'] }}</td>
@@ -270,10 +272,14 @@
         $(document).on('ready', function() {
 
             let module_id = {{ Config::get('module.current_module_id') }};
-
+            @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
+                url: '{{ url('/') }}/admin/store/get-stores',
+            @else
+                url: '{{ url('/') }}/store/get-stores',
+            @endif
             $('.js-data-example-ajax').select2({
                 ajax: {
-                    url: '{{ url('/') }}/admin/store/get-stores',
+                    url: url,
                     data: function(params) {
                         return {
                             q: params.term, // search term

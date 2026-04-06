@@ -484,12 +484,12 @@
                                     <span class="text-truncate">Lead Status</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{  Request::is('service/new-status-request')  ? 'active' : '' }}">
+                            {{-- <li class="nav-item {{  Request::is('service/new-status-request')  ? 'active' : '' }}">
                                 <a class="nav-link " href="{{ route('admin.service.new-status-request') }}" title="New Status Request">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">New Status Request</span>
                                 </a>
-                            </li>
+                            </li> --}}
                             <li class="nav-item {{  Request::is('service/lead-charge')  ? 'active' : '' }}">
                                 <a class="nav-link " href="{{ route('admin.service.lead-charge') }}" title="Lead Charge">
                                     <span class="tio-circle nav-indicator-icon"></span>

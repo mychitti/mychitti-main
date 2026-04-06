@@ -178,10 +178,8 @@ Service
                     <form method="post" action="{{ route('admin.item.bulk_delete') }}"
                         class="d-flex align-items-center bulk_form">
                         @csrf
-                        <label style="    white-space: nowrap;" class="form-label m-1" for="bulk_action"><span>With
-                                Selected
-                                :</span> </label>
-                        <select class="form-control m-1" id="bulk_action">
+                        <label class="form-label m-1 text-nowrap" for="bulk_action"><span>With Selected :</span></label>
+                        <select class="form-control m-1" id="bulk_action" style="width:160px;flex:none;">
                             <option value="" selected disabled>--select--</option>
                             <option value="delete">Delete</option>
 
@@ -238,13 +236,13 @@ Service
                         </div>
                     </div>
                     <!-- End Unfold -->
-                    @if (Config::get('module.current_module_type') != 'food')
+                    @if (Config::get('module.current_module_type') != 'food' && Config::get('module.current_module_id') != 6)
                         <div>
                             <a href="{{ route('admin.report.stock-report') }}"
                                 class="btn btn--primary font-regular">{{ translate('messages.limited_stock') }}</a>
                         </div>
                     @endif
-                    @if (\App\CentralLogics\Helpers::get_mail_status('product_approval'))
+                    @if (\App\CentralLogics\Helpers::get_mail_status('product_approval') && Config::get('module.current_module_id') != 6)
                         <div>
                             <a href="{{ route('admin.item.approval_list') }}"
                                 class="btn btn--primary font-regular">{{ translate('messages.New_Product_Request') }}</a>
