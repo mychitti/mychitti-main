@@ -14,6 +14,7 @@ use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
+use App\Models\Banner;
 use App\Models\Store;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -108,6 +109,18 @@ class Kernel extends ConsoleKernel
             }
             // })->everyFiveSeconds();
         })->name('monthly-depreciation')->dailyAt('23:59')
+            ->timezone($tz)
+            ->withoutOverlapping();
+
+        // BANNER SCHEDULED PUBLISH ================================
+        $schedule->call(function () {
+            Banner::withoutGlobalScopes()
+                ->where('status', 0)
+                ->whereNotNull('publish_at')
+                ->where('publish_at', '<=', now())
+                ->update(['status' => 1]);
+        })->name('banner-scheduled-publish')
+            ->everyMinute()
             ->timezone($tz)
             ->withoutOverlapping();
 

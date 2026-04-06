@@ -54,14 +54,83 @@ class BillingController extends Controller
             $fromdate = date('Y-m') . '-01';
             $todate = date('Y-m') . '-30';
         }
+        $search = $request->search;
         $customers = User::where('status', 1)->get();
         $stores = Store::where('status', 1)->where('module_id', Config::get('module.current_module_id'))->get();
-        $invoices = ManualInvoice::whereBetween('created_at', [$fromdate . ' 00:00:00', $todate . ' 23:59:59'])->where('module_id', Config::get('module.current_module_id'))
+        $invoices = ManualInvoice::whereBetween('created_at', [$fromdate . ' 00:00:00', $todate . ' 23:59:59'])
+            ->where('module_id', Config::get('module.current_module_id'))
             ->where(function ($query) {
                 $query->where("generated_by", 'admin')
-                    ->orWhere("vendor_id", 0); 
-            })->get();
-        return view('admin-views.billing.invoice_generate', compact('customers', 'stores', 'invoices', 'fromdate', 'todate'));
+                    ->orWhere("vendor_id", 0);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('invoice_id', 'like', "%{$search}%")
+                      ->orWhere('invoice_serial', 'like', "%{$search}%")
+                      ->orWhereHas('storeCustomer', function ($q) use ($search) {
+                          $q->where('f_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                      });
+                });
+            })
+            ->get();
+        return view('admin-views.billing.invoice_generate', compact('customers', 'stores', 'invoices', 'fromdate', 'todate', 'search'));
+    }
+
+    public function billing_export(Request $request)
+    {
+        $fromdate = $request->from ?? date('Y-m') . '-01';
+        $todate   = $request->to   ?? date('Y-m') . '-30';
+        $search   = $request->search;
+
+        $invoices = ManualInvoice::with('storeCustomer', 'invoiceItems')
+            ->whereBetween('created_at', [$fromdate . ' 00:00:00', $todate . ' 23:59:59'])
+            ->where('module_id', Config::get('module.current_module_id'))
+            ->where(function ($q) {
+                $q->where('generated_by', 'admin')->orWhere('vendor_id', 0);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('invoice_id', 'like', "%{$search}%")
+                      ->orWhere('invoice_serial', 'like', "%{$search}%")
+                      ->orWhereHas('storeCustomer', function ($q) use ($search) {
+                          $q->where('f_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                      });
+                });
+            })
+            ->get();
+
+        $headings = ['#', 'Invoice ID', 'Bill To', 'Phone', 'Type', 'Total Amount', 'Payment Method', 'Payment Status', 'Payment Date', 'Created At'];
+        $exportData = [];
+        foreach ($invoices as $i => $invoice) {
+            if ($invoice->bill_to_type == 'vendor') {
+                $billUser = _getUserDetails($invoice->bill_to, 'store');
+                $billName  = $billUser ? $billUser->name : 'Store Deleted';
+                $billPhone = '';
+            } else {
+                $cust = $invoice->storeCustomer;
+                $billName  = $cust ? trim($cust->f_name . ' ' . $cust->l_name) : 'Customer Deleted';
+                $billPhone = $cust ? $cust->phone : '';
+            }
+            $exportData[] = [
+                $i + 1,
+                $invoice->invoice_id,
+                $billName,
+                (string) "\t" . $billPhone,
+                $invoice->type,
+                $invoice->total_amount,
+                $invoice->payment_method,
+                $invoice->payment_status,
+                $invoice->payment_date,
+                $invoice->created_at ? $invoice->created_at->format('Y-m-d H:i') : '',
+            ];
+        }
+
+        return Excel::download(
+            new \App\Exports\StoreListExportNew($exportData, $headings),
+            'Bills_' . $fromdate . '_to_' . $todate . '.xlsx'
+        );
     }
     public function invoice_bulk_delete(Request $request)
     {

@@ -42,7 +42,9 @@ class BannerService
             'price' => $request->user_id ?   $request->price : null ,
             'validity_count' => $request->user_id ? $request->validity_count: null,
             'validity_type' => $request->user_id ? $request->validity_type: null,
-            'expiry_date' => $request->user_id ? $expiry_date_formatted : null
+            'expiry_date' => $request->user_id ? $expiry_date_formatted : null,
+            'publish_at' => $request->publish_at ?: null,
+            'status' => ($request->publish_at && $request->publish_at > now()) ? 0 : 1,
         ];
     }
     public function getUpdateData(Object $request, object $banner): array
@@ -56,6 +58,8 @@ class BannerService
             'module_id' => Config::get('module.current_module_id'),
             'default_link' => $request->default_link,
             'platform' => $request->platform ?? $banner->platform,
+            'publish_at' => $request->publish_at ?: null,
+            'status' => ($request->publish_at && $request->publish_at > now()) ? 0 : $banner->status,
         ];
     }
 

@@ -2676,9 +2676,20 @@ class VendorController extends Controller
     public function update_application(Request $request)
     {
         $store = Store::findOrFail($request->id);
-        $store->vendor->status = $request->status;
+        $vendor = $store->vendor;
+        $vendor->status = $request->status;
         $store->status_updated_by = auth('admin')->user()->id;
-        $store->vendor->save();
+        // When rejecting, free up phone/email so another registration with same contact can proceed
+        if (!$request->status) {
+            $suffix = '_rejected_' . $vendor->id;
+            if ($vendor->phone && !str_contains($vendor->phone, '_rejected_')) {
+                $vendor->phone = $vendor->phone . $suffix;
+            }
+            if ($vendor->email && !str_contains($vendor->email, '_rejected_')) {
+                $vendor->email = $vendor->email . $suffix;
+            }
+        }
+        $vendor->save();
         if ($request->status) $store->status = 1;
         $store->save();
 
@@ -2709,10 +2720,19 @@ class VendorController extends Controller
     {
         // prx('here');
         $store = Store::findOrFail($request->store_id);
-        $store->vendor->status = 0;
+        $vendor = $store->vendor;
+        $vendor->status = 0;
+        // Free up phone/email so another registration with the same contact can proceed
+        $suffix = '_rejected_' . $vendor->id;
+        if ($vendor->phone && !str_contains($vendor->phone, '_rejected_')) {
+            $vendor->phone = $vendor->phone . $suffix;
+        }
+        if ($vendor->email && !str_contains($vendor->email, '_rejected_')) {
+            $vendor->email = $vendor->email . $suffix;
+        }
         $store->reason = $request->reason;
         $store->status_updated_by = auth('admin')->user()->id;
-        $store->vendor->save();
+        $vendor->save();
         $store->status = 0;
         $store->save();
         try {

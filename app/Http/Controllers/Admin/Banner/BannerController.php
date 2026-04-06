@@ -49,13 +49,16 @@ class BannerController extends BaseController
             searchValue: request()->search,
             dataLimit: config('default_pagination')
         );
+        $totalBannerCount = \App\Models\Banner::where('module_id', Config::get('module.current_module_id'))
+            ->where('created_by', 'admin')
+            ->count();
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
         $categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
         $users = User::where('status', 1)->get();
         // prx( $categories);
-        return view(BannerViewPath::INDEX[VIEW], compact('banners', 'language', 'defaultLang', 'zones', 'categories', 'users'));
+        return view(BannerViewPath::INDEX[VIEW], compact('banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users'));
     }
 
     public function add(BannerAddRequest $request): JsonResponse

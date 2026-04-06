@@ -141,7 +141,7 @@
                                                 name="" id=""></td>
                                     @endif
                                     <td>{{ $key + 1 }}</td>
-                                    <td> {{ $conf->invoice_id }} </td>
+                                    <td><a href="{{ $conf->pdf ?  asset('storage/invoice') . '/' . $conf->pdf : '#'}}" target="_blank">{{ $conf->invoice_id }}</a></td>
                                     <td> {{ $conf->user?->f_name . ' ' . $conf->user?->l_name }} </td>
                                     <td>
                                         @if (strtolower($conf->payment_status) == 'paid')

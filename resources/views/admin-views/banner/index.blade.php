@@ -159,6 +159,10 @@
                                         <label class="input-label">Sort Order</label>
                                         <input type="number" name="sort_order" class="form-control" placeholder="0" min="0" value="0">
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label">Schedule Publish <small class="text-muted">(optional — leave blank to publish immediately)</small></label>
+                                        <input type="datetime-local" name="publish_at" class="form-control" min="{{ now()->format('Y-m-d\TH:i') }}">
+                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">
@@ -192,7 +196,7 @@
                     <div class="card-header py-2 border-0">
                         <div class="search--button-wrapper">
                             <h5 class="card-title">
-                                {{translate('messages.banner_list')}}<span class="badge badge-soft-dark ml-2" id="itemCount">{{$banners->count()}}</span>
+                                {{translate('messages.banner_list')}}<span class="badge badge-soft-dark ml-2" id="itemCount">{{$totalBannerCount}}</span>
                             </h5>
                             <form  class="search-form">
                                 <!-- Search -->
@@ -232,6 +236,7 @@
                                     <th class="border-0 text-center">{{translate('messages.featured')}} <span class="input-label-secondary"
                                         data-toggle="tooltip" data-placement="right" data-original-title="{{translate('if_you_turn/off_on_this_featured,_it_will_effect_on_website_&_user_app')}}"><img src="{{asset('public/assets/admin/img/info-circle.svg')}}"
                                             alt="public/img"></span></th>
+                                    <th class="border-0 text-center">Publish At</th>
                                     <th class="border-0 text-center">{{translate('messages.status')}}</th>
                                     <th class="border-0 text-center">{{translate('messages.action')}}</th>
                                 </tr>
@@ -287,6 +292,17 @@
                                         method="get" id="featuredCheckbox{{$banner->id}}_form">
                                         </form>
 
+                                    <td class="text-center">
+                                        @if($banner->publish_at && $banner->publish_at > now())
+                                            <span class="badge badge-soft-warning" title="{{ $banner->publish_at->format('Y-m-d H:i') }}">
+                                                <i class="tio-time"></i> {{ $banner->publish_at->format('d M H:i') }}
+                                            </span>
+                                        @elseif($banner->publish_at)
+                                            <span class="badge badge-soft-success">Published</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td  >
                                         <div class="d-flex justify-content-center">
                                             <label class="toggle-switch toggle-switch-sm" for="statusCheckbox{{$banner->id}}">

@@ -187,6 +187,12 @@
                                         <label class="input-label">Sort Order</label>
                                         <input type="number" name="sort_order" class="form-control" placeholder="0" min="0" value="{{ $banner->sort_order ?? 0 }}">
                                     </div>
+                                    <div class="form-group col-md-6">
+                                        <label class="input-label">Schedule Publish <small class="text-muted">(optional — leave blank to keep current)</small></label>
+                                        <input type="datetime-local" name="publish_at" class="form-control"
+                                            value="{{ $banner->publish_at ? $banner->publish_at->format('Y-m-d\TH:i') : '' }}"
+                                            min="{{ now()->format('Y-m-d\TH:i') }}">
+                                    </div>
                                 </div>
                                 <div class="col-lg-4">
                                     <div class="h-100 d-flex flex-column">

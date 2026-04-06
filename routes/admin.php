@@ -619,6 +619,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
         Route::group(['prefix' => 'billing', 'as' => 'billing.', 'middleware' => ['module:billing']], function () {
             Route::get('/', 'BillingController@billing')->name('index');
+            Route::get('export', 'BillingController@billing_export')->name('export');
             Route::post('save-manual-invoice', 'BillingController@save_manual_invoice')->name('save-manual-invoice');
             Route::get('test-invoice', 'BillingController@test_invoice')->name('test-invoice');
             Route::get('invoice-view/{id}', 'BillingController@invoice_view')->name('invoice-view');

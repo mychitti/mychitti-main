@@ -265,17 +265,28 @@
                 </div>
                 <a href="" class="text-danger text-underline mx-2" data-toggle="modal"
                     data-target="#deleteInvModal">Delete By Serial Numebr</a>
-                <form action="" class="row search-form">
-                    <div class="col">
-                        <input type="date" name="from" value="{{ $fromdate }}" class="form-control"
-                            id="">
+                <form action="{{ route('admin.billing.index') }}" method="GET" class="row search-form align-items-center">
+                    <div class="col-auto">
+                        <input type="date" name="from" value="{{ $fromdate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col">
-                        <input type="date" name="to" value="{{ $todate }}" class="form-control"
-                            id="">
+                    <div class="col-auto">
+                        <input type="date" name="to" value="{{ $todate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col">
-                        <button class="btn btn-primary btn-sm">Filter</button>
+                    <div class="col-auto">
+                        <div class="input-group input-group-sm">
+                            <input type="search" name="search" value="{{ $search ?? '' }}" class="form-control" placeholder="Invoice ID / Customer / Phone">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary">
+                                    <i class="tio-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ route('admin.billing.export', array_filter(['from' => $fromdate, 'to' => $todate, 'search' => $search ?? ''])) }}"
+                           class="btn btn-sm btn--primary">
+                            <i class="tio-file-outlined"></i> Export
+                        </a>
                     </div>
                 </form>
             </div>
@@ -302,7 +313,7 @@
                             @foreach ($invoices as $key => $invoice)
                                 <tr>
                                     <td>{{ $key + 1 }}</td>
-                                    <td>{{ $invoice->invoice_id }}</td>
+                                    <td><a href="{{ $invoice->pdf ?  asset('storage/invoice') . '/' . $invoice->pdf : '#'}}" target="_blank">{{ $invoice->invoice_id }}</a></td>
                                     <td>
                                         @if ($invoice->bill_to_type == 'vendor')
                                             {{ _getUserDetails($invoice->bill_to, 'store') ? _getUserDetails($invoice->bill_to, 'store')->name : 'Store Deleted' }}

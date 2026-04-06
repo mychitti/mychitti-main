@@ -48,6 +48,7 @@ class Banner extends Model
         'created_by',
         'platform',
         'sort_order',
+        'publish_at',
     ];
 
     /**
@@ -60,6 +61,7 @@ class Banner extends Model
         'module_id' => 'integer',
         'featured' => 'boolean',
         'sort_order' => 'integer',
+        'publish_at' => 'datetime',
     ];
 
     /**
@@ -119,7 +121,10 @@ class Banner extends Model
      */
     public function scopeActive($query): mixed
     {
-        return $query->where('status', '=', 1);
+        return $query->where('status', '=', 1)
+            ->where(function ($q) {
+                $q->whereNull('publish_at')->orWhere('publish_at', '<=', now());
+            });
     }
 
     /**
