@@ -582,14 +582,16 @@
     {{-- VENDOR ADS SECTION --}}
     @if (!empty($data['vendor_ads']) && $data['vendor_ads']->count())
     <div class="m-2 mt-4">
-        <h2 style="font-size:18px; margin-bottom:10px;" class="section_heading text_dark">
-            <i class="fas fa-bullhorn me-1" style="color:var(--primary);"></i> Spotlight from Local Stores
-        </h2>
+        <div class="d-flex justify-content-between align-items-end mb-2">
+            <div>
+                <h2 style="font-size:22px;" class="section_heading text_dark">Spotlight from Local Stores</h2>
+                <p style="margin:0;" class="text_dark"><i class="fas fa-bullhorn text-secondary me-1"></i> Discover what's trending from businesses near you</p>
+            </div>
+            <a class="btn btn-primary text-white" href="{{ route('front.ads.index') }}">View All</a>
+        </div>
         <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px;">
             @foreach ($data['vendor_ads'] as $ad)
-            <div style="border-radius:10px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.1); min-width:0; cursor:pointer;"
-                 onclick="trackAdClick({{ $ad->id }})"
->
+            <a href="{{ route('front.ads.detail', $ad->id) }}" style="border-radius:10px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.1); min-width:0; text-decoration:none;">
                 <div style="aspect-ratio:4/5; overflow:hidden; background:#f0f0f0;">
                     <img loading="lazy"
                         src="{{ asset('storage/app/public/notification') . '/' . $ad->image }}"
@@ -603,7 +605,7 @@
                     <p class="mb-0 text-truncate" style="font-size:11px; color:#777;">{{ $ad->description }}</p>
                     @endif
                 </div>
-            </div>
+            </a>
             @endforeach
         </div>
     </div>

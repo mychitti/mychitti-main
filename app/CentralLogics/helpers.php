@@ -5218,7 +5218,7 @@ class Helpers
 
     public static function get_store_data()
     {
-        if (auth('admin')->check()) {
+        if (auth('admin')->check() && request()->routeIs('admin.*')) {
             return (object) [
                 'name' => BusinessSetting::where('key', 'business_name')->first()?->value ?? 'Admin',
                 'phone' => BusinessSetting::where('key', 'phone')->first()?->value,

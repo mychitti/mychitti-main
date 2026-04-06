@@ -37,6 +37,8 @@ class ManualInvoice extends Model
         'igst',
         'taxable_amount',
         'final_tax',
+        'cash_amount',
+        'online_amount',
     ];
     protected $casts = [
         'reference_number' => 'array',

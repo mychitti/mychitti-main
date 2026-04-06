@@ -316,7 +316,20 @@
                                     <td>{{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->total_amount) }}
                                     </td>
                                     <td>{{ $invoice->payment_method }}</td>
-                                    <td>{{ $invoice->payment_status }}</td>
+                                    <td>
+                                        @if (strtolower($invoice->payment_status) == 'paid')
+                                            <span class="badge badge-soft-success">Paid</span>
+                                        @else
+                                            @if (hasPermission('billing', 'pay'))
+                                                <a style="width: 74px;"
+                                                    class="btn action-btn btn--warning btn-outline-warning mark_paid_btn"
+                                                    data-toggle="modal" data-id="{{ $invoice->id }}"
+                                                    data-target="#markPaidModal" href="javascript:;">Unpaid</a>
+                                            @else
+                                                <span class="text-danger">{{ ucfirst($invoice->payment_status) }}</span>
+                                            @endif
+                                        @endif
+                                    </td>
                                     <td>{{ $invoice->payment_date ? $invoice->payment_date : explode(' ', $invoice->created_at)[0] }}
                                     </td>
                                     <td>{{ $invoice->created_at }}</td>
@@ -358,6 +371,17 @@
                                                             User deleted
                                                         </a>
                                                     @endif
+                                                @endif
+                                            @endif
+                                            @if (hasPermission('billing', 'edit'))
+                                                @if ($invoice->type == 'service')
+                                                    <a class="btn action-btn btn--primary btn-outline-primary"
+                                                        href="{{ route('admin.billing.edit-service-invoice', [$invoice->id]) }}"
+                                                        title="Edit"><i class="tio-edit"></i></a>
+                                                @else
+                                                    <a class="btn action-btn btn--primary btn-outline-primary"
+                                                        href="{{ route('admin.billing.edit', [$invoice->id]) }}"
+                                                        title="Edit"><i class="tio-edit"></i></a>
                                                 @endif
                                             @endif
                                             <a class="btn action-btn btn--danger btn-outline-danger form-alert"
@@ -602,5 +626,59 @@
                 }
             });
         });
+
+        $('.mark_paid_btn').on('click', function() {
+            $(".invoice_id_inp").val($(this).data('id'));
+        });
+
+        $(document).on('click', '.pos--payment-options label', function() {
+            var val = $(this).find('input[type="radio"]').val();
+            var $modal = $(this).closest('.modal-content');
+            if (val == 'Cash and Online') {
+                $modal.find('.partial_payment').show();
+            } else {
+                $modal.find('.partial_payment').hide();
+            }
+        });
     </script>
+
+    <div class="modal fade" id="markPaidModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Mark as Paid</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form method="post" action="{{ route('admin.billing.mark-paid2') }}">
+                    @csrf
+                    <div class="modal-body">
+                        <input type="hidden" name="id" class="invoice_id_inp">
+                        <input type="hidden" name="type" value="manual">
+                        <div class="pos--payment-options">
+                            <label>{{ translate('payment mode') }}</label>
+                            <ul class="mb-0">
+                                <li><label><input type="radio" name="payment_mode" value="Cash" hidden checked><span>Cash</span></label></li>
+                                <li><label><input type="radio" name="payment_mode" value="Online" hidden><span>Online</span></label></li>
+                                <li><label><input type="radio" name="payment_mode" value="Cash and Online" hidden><span>Both</span></label></li>
+                            </ul>
+                        </div>
+                        <div class="w-100 row">
+                            <div class="col-md-6 p-1 partial_payment" style="display:none">
+                                <label class="mb-1">Cash Amount</label>
+                                <input class="form-control form-control-sm cash_amount" name="cash_amount" type="number" placeholder="Ex: 2000">
+                            </div>
+                            <div class="col-md-6 p-1 partial_payment" style="display:none">
+                                <label class="mb-1">Online Amount</label>
+                                <input class="form-control form-control-sm online_amount" name="online_amount" type="number" placeholder="Ex: 3000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Mark Paid</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endpush

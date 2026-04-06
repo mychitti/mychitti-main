@@ -28,7 +28,7 @@
                                                     <div class="card-body">
                                                         <h5 class="card-title">{{ $ct->name }}</h5>
                                                         <p class="card-text">{{ _limitDesc($ct->description, 150) }}</p>
-                                                        @if (Config::get('module.current_module_id') == 5)
+                                                        {{-- @if (Config::get('module.current_module_id') == 5)
                                                             <p class="card-text"><small class="text-muted">
                                                                     {{ \App\CentralLogics\Helpers::currency_symbol() . _discountedPrice($ct->price, $ct->discount, $ct->discount_type) }}
                                                                     @if ($ct->discount)
@@ -38,7 +38,7 @@
                                                                             {{ floor($ct->price) }}</span>
                                                                     @endif
                                                                 </small></p>
-                                                        @endif
+                                                        @endif --}}
                                                     </div>
                                                 </div>
                                             </div>

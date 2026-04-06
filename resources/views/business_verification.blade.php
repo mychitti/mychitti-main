@@ -1115,7 +1115,7 @@ $log_email_succ = session()->get('log_email_succ');
 
 
                 <div id="login_with_otp_screen" class=" "
-                    {{ request()->has('phone') ? '' : 'style=display:none;' }}>
+                    {{ isset($phone) && $phone ? '' : 'style=display:none;' }}>
 
                     <form class="send_login_otp login-form" action="{{ route('send-vendor-otp') }}" method="post"
                         id="form-id">
@@ -1125,7 +1125,7 @@ $log_email_succ = session()->get('log_email_succ');
                                 <img style="width: 50px;"
                                     src="{{ asset('storage/app/public/vendor_login/login_icon.jpeg') }}" alt="">
                             </div>
-                            @if (!request()->has('phone'))
+                            @if (empty($phone))
                                 <div>
                                     <h2>Login with OTP</h2>
                                     <div style="font-size:13px;color:var(--login-muted);margin-top:6px">
@@ -1147,8 +1147,8 @@ $log_email_succ = session()->get('log_email_succ');
                         <div class="js-form-message form-group">
                             <label class="" for="signinSrEmail">{{ translate('messages.mobile_number') }}</label>
 
-                            <input type="text" {{ request('phone') ? 'disabled' : '' }}
-                                value="{{ request('phone') ?? '' }}" class="login-input mb-2" name="phone"
+                            <input type="text" {{ !empty($phone) ? 'disabled' : '' }}
+                                value="{{ $phone ?? '' }}" class="login-input mb-2" name="phone"
                                 id="signinSrMobile" tabindex="1" placeholder="Ex: 8899779988" aria-label="8899779988"
                                 required data-msg="{{ translate('Please_enter_mobile_number.') }}">
                         </div>

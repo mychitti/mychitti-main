@@ -405,7 +405,7 @@
                                                 </div>
 
                                                 <div class="modal-body">
-                                                    <form action="{{ route('vendor.employee.resign') }}">
+                                                    <form action="{{ route('vendor.employee.resign') }}" method="POST">
                                                         @csrf
 
                                                         <label>Reason</label>

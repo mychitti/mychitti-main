@@ -139,11 +139,13 @@
                                         <td class="text-capitalize text-break"><a
                                                  href="{{ hasPermission('staff_manage', 'view') ? route('vendor.employee.view', [$e['id']]) : '#' }}">{{ $e['f_name'] }}
                                                 {{ $e['l_name'] }}</a></td>
-
-                                        <td>
-                                            {{ $e['email'] }}
-                                        </td>
-                                        <td>{{ $e['phone'] }}</td>
+                                        @if($e['resignation'] || $e['terminate'])
+                                            <td>{{ $e['resigned_email'] }} <span class="badge badge-soft-danger">Resigned</span></td>
+                                            <td>{{ $e['resigned_phone'] }} <span class="badge badge-soft-danger">Resigned</span></td>
+                                        @else
+                                            <td>{{ $e['email'] }} </td>
+                                            <td>{{ $e['phone'] }} </td>
+                                        @endif
                                         <td>{{ $e->role ? $e->role['name'] : translate('messages.role_deleted') }}</td>
                                         <td>
                                             @if ($e['resignation'])

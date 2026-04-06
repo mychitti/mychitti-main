@@ -30,7 +30,7 @@ class VendorMiddleware
             if (!auth('vendor_employee')->user()->store->status) {
                 return redirect('login');
             }
-            return $next($request);
+return $next($request);
         }
         $userAgent = request()->header('User-Agent');
 

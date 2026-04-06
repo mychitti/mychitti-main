@@ -814,6 +814,7 @@
                                         </a>
                                     </li>
                                 @endif
+                                @if(hasPermission('restaurant_tables', 'list') || hasPermission('restaurant_tables', 'add'))
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('pos/restaurant-tables*') ? 'active' : '' }}">
                                     <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -824,6 +825,7 @@
                                     </a>
 
                                     <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
+                                        @if(hasPermission('restaurant_tables', 'list'))
                                         <li
                                             class="nav-item {{ Request::is('pos/restaurant-tables/index') ? 'active' : '' }}">
                                             <a class="nav-link "
@@ -833,6 +835,8 @@
                                                 <span class="text-truncate">List</span>
                                             </a>
                                         </li>
+                                        @endif
+                                        @if(hasPermission('restaurant_tables', 'add'))
                                         <li
                                             class="nav-item {{ Request::is('pos/restaurant-tables/create') ? 'active' : '' }}">
                                             <a class="nav-link "
@@ -842,8 +846,10 @@
                                                 <span class="text-truncate">Add new</span>
                                             </a>
                                         </li>
+                                        @endif
                                     </ul>
                                 </li>
+                                @endif
                                 @if (hasPermission('pos_token', 'list'))
                                     <li class="nav-item {{ Request::is('pos/token-list') ? 'active' : '' }}">
                                         <a class="nav-link " href="{{ route('vendor.pos.token.list') }}"

@@ -745,8 +745,13 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         //
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
 
-            // restaurent table  
-            Route::resource('restaurant-tables', \App\Http\Controllers\Vendor\RestaurantTableController::class);
+            // restaurant tables
+            Route::get('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'index'])->name('restaurant-tables.index')->middleware('permission:restaurant_tables,list');
+            Route::get('restaurant-tables/create', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'create'])->name('restaurant-tables.create')->middleware('permission:restaurant_tables,create');
+            Route::post('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'store'])->name('restaurant-tables.store')->middleware('permission:restaurant_tables,create');
+            Route::get('restaurant-tables/{id}/edit', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'edit'])->name('restaurant-tables.edit')->middleware('permission:restaurant_tables,edit');
+            Route::put('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'update'])->name('restaurant-tables.update')->middleware('permission:restaurant_tables,edit');
+            Route::delete('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'destroy'])->name('restaurant-tables.destroy')->middleware('permission:restaurant_tables,delete');
 
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
@@ -888,7 +893,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
 
         Route::group(['prefix' => 'employee', 'as' => 'employee.'], function () {
-            Route::get('resign', 'EmployeeController@resign')->name('resign');
+            Route::post('resign', 'EmployeeController@resign')->name('resign');
             Route::get('resignation-action/{id}/{action}', 'EmployeeController@resignation_action')->name('resignation-action');
         });
         Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['planwise:hr_manage']], function () {
@@ -1144,6 +1149,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('profile/view', 'ProfileController@view')->name('profile.view');
         Route::get('profile/edit', 'ProfileController@edit')->name('profile.edit');
         Route::post('profile/update', 'ProfileController@update')->name('profile.update');
+        Route::post('profile/change-password', 'ProfileController@staff_change_password')->name('profile.change-password');
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:bank_info']], function () {
             Route::post('settings-password', 'ProfileController@settings_password_update')->name('settings-password');
             Route::get('bank-view', 'ProfileController@bank_view')->name('bankView');

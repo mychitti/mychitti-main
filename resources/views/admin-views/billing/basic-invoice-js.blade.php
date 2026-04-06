@@ -338,7 +338,7 @@
         let totalWithoutGST = 0;
         let totalWithGST = 0;
 
-        var rowSelector = '{{ Route::is("admin.billing.manual-bill") ? ".item_row_inv" : ".item_row" }}';
+        var rowSelector = '{{ Route::is("admin.billing.manual-bill") || Route::is("admin.billing.edit") ? ".item_row_inv" : ".item_row" }}';
         $(rowSelector).each(function() {
             let price = parseFloat($(this).find('.price').val()) || 0;
             let qty = parseFloat($(this).find('.qty').val()) || 0;

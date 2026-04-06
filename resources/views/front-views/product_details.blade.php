@@ -439,7 +439,7 @@
 
     <!-- Single Product Start -->
     <div class="  mt-5">
-        <div class="container ">
+        <div class="mx-2 ">
             <div class="row g-4 mb-5">
                 <div class="col-12">
                     @if (count($data['banners']))
@@ -465,20 +465,26 @@
                 <div class="{{ $is_inventory_product ? 'col-12' : 'col-12' }} row  mt-5">
                     {{-- banner --}}
 
-                    <div class="<?= $module == 5 ? 'col-md-6' : 'col-md-4' ?>">
+                    <div class="<?= $module == 5 || $is_inventory_product ? 'col-md-6' : 'col-md-4' ?>">
                         <div class=" rounded mb-3" style="position: sticky;top: 130px;z-index:2;">
                             <div id="product-lightgallery" class="owl-carousel banner-carousel22 justify-content-center">
-                                <a class="product-lg-item" data-src="{{ asset('storage/app/public/product/') . '/' . $item->image }}" style="cursor:zoom-in;">
-                                    <img loading="lazy" src="{{ asset('storage/app/public/product/') . '/' . $item->image }}"
-                                        style="<?= $module == 5 ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ; {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
+                                <a class="product-lg-item"
+                                    data-src="{{ asset('storage/app/public/product/') . '/' . $item->image }}"
+                                    style="cursor:zoom-in;">
+                                    <img loading="lazy"
+                                        src="{{ asset('storage/app/public/product/') . '/' . $item->image }}"
+                                        style="<?= $module == 5 || $is_inventory_product ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ; {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
                                         alt="{{ $item->name }}">
                                 </a>
 
                                 @if ($item->images)
                                     @foreach (json_decode($item->images, true) as $key => $value)
-                                        <a class="product-lg-item" data-src="{{ asset('storage/app/public/product/') . '/' . $value }}" style="cursor:zoom-in;">
-                                            <img loading="lazy" src="{{ asset('storage/app/public/product/') . '/' . $value }}"
-                                                style="<?= $module == 5 ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ;  {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
+                                        <a class="product-lg-item"
+                                            data-src="{{ asset('storage/app/public/product/') . '/' . $value }}"
+                                            style="cursor:zoom-in;">
+                                            <img loading="lazy"
+                                                src="{{ asset('storage/app/public/product/') . '/' . $value }}"
+                                                style="<?= $module == 5 || $is_inventory_product ? 'height: 600px;' : 'height: 300px;' ?>object-fit:contain ;width=100% ;  {{ !$item->status || (isset($item->suspended) && $item->suspended) ? 'filter:grayscale(1);' : '' }}"
                                                 class="rounded" alt="{{ $item->name }}">
                                         </a>
                                     @endforeach
@@ -526,7 +532,8 @@
                             @endphp
                             {{ $content }}</p>
                     </div>
-                    <div class="<?= $module == 5 ? 'col-md-6' : 'col-md-4' ?> position-relative" style="z-index:2;">
+                    <div class="<?= $module == 5 || $is_inventory_product ? 'col-md-6' : 'col-md-5' ?> position-relative"
+                        style="z-index:2;">
                         <div onclick="wishlist({{ $item->id }}, '{{ _itemExistInWishlist($item->id) ? 'remove' : 'add' }}')"
                             class="prHeart_{{ $item->id }}  p-1 rounded  position-absolute wishlist_btn"
                             style="top: 10px; right: 10px;cursor:pointer"><i
@@ -631,7 +638,8 @@
                                     Seller: <a href="{{ route('store.details', [_selectedCity(), $item->store_slug]) }}"
                                         class="mb-1">{{ $item->store_name }}</a>
                                 @endif
-                            @else
+                            @endif
+                            @if (0 && ($module == 5 || $is_inventory_product))
                                 @if (auth('web')->user())
                                     {{-- <a onclick="bookService({{ $item->id }}, this)"
                                             class="btn btn-lg btn-primary rounded text-light px-3 my-3"><i
@@ -667,7 +675,7 @@
                         </div>
 
                     </div>
-                    <div class="col-md-4 mt-5">
+                    <div class="col-md-3">
                         @if ($module == 6 && !$is_inventory_product)
                             <div class="">
                                 @if (count($stores))
@@ -1317,7 +1325,12 @@
                             var images = JSON.parse(vr_details.images);
                             // Append new images wrapped for lightGallery
                             images.forEach(function(image) {
-                                owl.append('<a class="product-lg-item" data-src="' + path + image + '" style="cursor:zoom-in;"><img loading="lazy" src="' + path + image + '" style="height:300px;object-fit:contain;width:100%;" alt="{{$item->name}} (' + vr_details.type + ')"></a>');
+                                owl.append('<a class="product-lg-item" data-src="' + path +
+                                    image +
+                                    '" style="cursor:zoom-in;"><img loading="lazy" src="' +
+                                    path + image +
+                                    '" style="height:300px;object-fit:contain;width:100%;" alt="{{ $item->name }} (' +
+                                    vr_details.type + ')"></a>');
                             });
 
                             // Reinitialize Owl Carousel
@@ -1331,7 +1344,8 @@
                             });
 
                             // Reinitialize lightGallery
-                            window.productLgInstance = lightGallery(document.getElementById('product-lightgallery'), {
+                            window.productLgInstance = lightGallery(document.getElementById(
+                                'product-lightgallery'), {
                                 selector: '.product-lg-item',
                                 download: false,
                                 thumbnail: true,
@@ -1444,7 +1458,8 @@
         </script>
     @endif
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/thumbnail/lg-thumbnail.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/thumbnail/lg-thumbnail.umd.min.js">
+    </script>
     <script>
         window.productLgInstance = lightGallery(document.getElementById('product-lightgallery'), {
             selector: '.product-lg-item',

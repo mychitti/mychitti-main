@@ -92,6 +92,9 @@ Route::get('/health-check', fn() => response('OK'));
 Route::get('icons', 'Front\FrontController@icons_view');
 Route::post('track-banner-click', 'Front\FrontController@trackBannerClick')->name('track.banner.click');
 Route::post('track-ad-click', 'Front\FrontController@trackAdClick')->name('track.ad.click');
+Route::get('ads', 'Front\FrontController@allAds')->name('front.ads.index');
+Route::get('ads/load', 'Front\FrontController@loadAds')->name('front.ads.load');
+Route::get('ads/{id}', 'Front\FrontController@adDetail')->name('front.ads.detail');
 Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');
 Route::post('app-config/update', [FrontController::class, 'app_config_update'])->name('app-config.update');
  

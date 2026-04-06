@@ -241,8 +241,8 @@
         }
     });
     $(".banner-carousel22").owlCarousel({
-        autoplay: false,
-        smartSpeed: 1500,
+        autoplay: true,
+        smartSpeed: 1000,
         center: true,
         dots: true,
         loop: true,

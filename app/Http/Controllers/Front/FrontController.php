@@ -376,7 +376,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $data['vendor_ads'] = \App\Models\Notification::whereNotNull('vendor_id')
             ->where('approval', 1)
             ->whereNotNull('image')
-            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
+            // ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
                   ->orWhereNull('zone_id');
@@ -2332,6 +2332,66 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         ]);
 
         return response()->json(['message' => 'Ad click counted']);
+    }
+
+    private function adsBaseQuery()
+    {
+        $zone_ids = json_decode($this->zone_id, true);
+        return \App\Models\Notification::whereNotNull('vendor_id')
+            ->where('approval', 1)
+            ->whereNotNull('image')
+            ->where(function ($q) use ($zone_ids) {
+                $q->whereIn('zone_id', $zone_ids)->orWhereNull('zone_id');
+            })
+            ->latest();
+    }
+
+    public function allAds()
+    {
+        $ads = $this->adsBaseQuery()->paginate(18);
+        return view('front-views.ads.index', compact('ads'));
+    }
+
+    public function loadAds(Request $request)
+    {
+        $ads = $this->adsBaseQuery()->paginate(12);
+        $html = view('front-views.ads._ad_cards', compact('ads'))->render();
+        return response()->json([
+            'html'     => $html,
+            'has_more' => $ads->hasMorePages(),
+        ]);
+    }
+
+    public function adDetail($id)
+    {
+        $ad = \App\Models\Notification::whereNotNull('vendor_id')
+            ->where('approval', 1)
+            ->findOrFail($id);
+
+        // track view
+        $ip = request()->ip();
+        $isUnique = !DB::table('analytics_logs')
+            ->where('screen_type', 'ad')
+            ->where('ref_id', $id)
+            ->where('ip', $ip)
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+
+        DB::table('notifications')->where('id', $id)->increment('total_clicks');
+        if ($isUnique) {
+            DB::table('notifications')->where('id', $id)->increment('unique_clicks');
+        }
+        DB::table('analytics_logs')->insert([
+            'screen_type' => 'ad',
+            'sub_type'    => 'web',
+            'ref_id'      => $id,
+            'user_id'     => auth()->check() ? auth()->id() : null,
+            'ip'          => $ip,
+            'created_at'  => now(),
+        ]);
+
+        $store = $ad->vendor_id ? DB::table('stores')->where('id', $ad->vendor_id)->first() : null;
+        return view('front-views.ads.detail', compact('ad', 'store'));
     }
 
     public function store_details(Request $request, $city, $slug)

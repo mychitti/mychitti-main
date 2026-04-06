@@ -107,10 +107,10 @@
                         </a>
                         <a href="{{ route('new-store.create') }}" class="btn-link">List Your Business For Free</a>
                         @if (auth('web')->user())
-                            <a class="btn-link" href="{{ route('cart') }}">My Cart</a>
+                            {{-- <a class="btn-link" href="{{ route('cart') }}">My Cart</a>
                             @if (_cartCount())
                                 <a href="{{ route('checkout') }}" class="btn-link">Checkout</a>
-                            @endif
+                            @endif --}}
                         @endif
                     </div>
                 </div>

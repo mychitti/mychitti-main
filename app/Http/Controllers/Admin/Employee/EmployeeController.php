@@ -13,6 +13,7 @@ use App\Http\Requests\Admin\EmployeeAddRequest;
 use App\Http\Requests\Admin\EmployeeUpdateRequest; 
 use App\Models\AcceptedServiceRequest;
 use App\Models\Admin;
+use App\Models\VendorEmployee;
 use App\Models\AdvanceRequest; 
 use App\Models\Department;
 use App\Models\AssetAlotment;
@@ -241,23 +242,33 @@ class EmployeeController extends BaseController
 
     public function resignation_action(Request $request, $id, $action): RedirectResponse
     {
-        $rr = DB::table('employee_resignations')
-            ->where('id', $id)
-            ->where('store_id', 0)
-            ->first();
+        $rr = DB::table('employee_resignations')->where('id', $id)->first();
 
         if ($rr) {
             DB::table('employee_resignations')
                 ->where('id', $id)
-                ->where('store_id', 0)
-                ->update(['status' => $action]);
+                ->update(['status' => $action, 'updated_at' => now()]);
 
             if ($action == 'approved') {
-                $emp = Admin::where('role_id', '!=', 1)->where('id', $rr->employee_id)->first();
-                if ($emp) {
-                    $emp->status = 0;
-                    $emp->resignation = 1;
-                    $emp->save();
+                if ($rr->store_id != 0) {
+                    // vendor/store employee
+                    $emp = VendorEmployee::find($rr->employee_id);
+                    if ($emp) {
+                        $emp->status = 0;
+                        $emp->resignation = 1;
+                        $emp->resigned_email = $emp->email;
+                        $emp->resigned_phone = $emp->phone;
+                        $emp->email = null;
+                        $emp->phone = null;
+                        $emp->save();
+                    }
+                } else {
+                    // admin employee
+                    $emp = Admin::where('role_id', '!=', 1)->where('id', $rr->employee_id)->first();
+                    if ($emp) {
+                        $emp->status = 0;
+                        $emp->save();
+                    }
                 }
             }
 

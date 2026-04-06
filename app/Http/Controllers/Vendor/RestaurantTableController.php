@@ -52,7 +52,9 @@ class RestaurantTableController extends Controller
         ]);
 
         Toastr::success('Table added successfully');
-        return redirect()->route('vendor.pos.restaurant-tables.index');
+        return hasPermission('restaurant_tables', 'list')
+            ? redirect()->route('vendor.pos.restaurant-tables.index')
+            : redirect()->route('vendor.pos.restaurant-tables.create');
     }
 
     public function edit($id)
@@ -89,7 +91,9 @@ class RestaurantTableController extends Controller
         ]);
 
         Toastr::success('Table updated successfully');
-        return redirect()->route('vendor.pos.restaurant-tables.index');
+        return hasPermission('restaurant_tables', 'list')
+            ? redirect()->route('vendor.pos.restaurant-tables.index')
+            : redirect()->route('vendor.pos.restaurant-tables.edit', $id);
     }
 
     public function destroy($id)
@@ -101,6 +105,8 @@ class RestaurantTableController extends Controller
             ->delete();
 
         Toastr::error('Table deleted');
-        return back();
+        return hasPermission('restaurant_tables', 'list')
+            ? redirect()->route('vendor.pos.restaurant-tables.index')
+            : back();
     }
 }

@@ -168,9 +168,16 @@
 
                                     <div class="upgrade-card cust_det_card" >
                                         <div class="customer_info">
-                                            <h6>{{$invoice->storeCustomer?->f_name .' '.$invoice->storeCustomer?->l_name}}</h6>
-                                            <p class="mb-0" style="font-size:12px">{{$invoice->storeCustomer?->phone}}</p>
-                                            <p class="mb-0" style="font-size:12px">{{$invoice->storeCustomer?->email}}</p>
+                                            @if ($invoice->bill_to_type == 'vendor')
+                                                @php $billStore = _getUserDetails($invoice->bill_to, 'store'); @endphp
+                                                <h6>{{ $billStore ? $billStore->name : 'Store Deleted' }}</h6>
+                                                <p class="mb-0" style="font-size:12px">Store ID: {{ $invoice->bill_to }}</p>
+                                            @else
+                                                @php $billCust = $invoice->storeCustomer; @endphp
+                                                <h6>{{ $billCust ? $billCust->f_name . ' ' . $billCust->l_name : ($invoice->bill_to ?? 'N/A') }}</h6>
+                                                <p class="mb-0" style="font-size:12px">{{ $billCust?->phone }}</p>
+                                                <p class="mb-0" style="font-size:12px">{{ $billCust?->email }}</p>
+                                            @endif
                                         </div>
                                     </div>
                                     </div>
@@ -232,37 +239,39 @@
                                             <li>
                                                 <label>
                                                     <input type="radio" class="payment_mode" name="payment_mode"
-                                                        value="Cash" hidden checked>
+                                                        value="Cash" hidden {{ $invoice->payment_method == 'Cash' || !$invoice->payment_method ? 'checked' : '' }}>
                                                     <span>Cash</span>
                                                 </label>
                                             </li>
                                             <li>
                                                 <label>
                                                     <input type="radio" class="payment_mode" name="payment_mode"
-                                                        value="Online" hidden>
+                                                        value="Online" hidden {{ $invoice->payment_method == 'Online' ? 'checked' : '' }}>
                                                     <span>Online</span>
                                                 </label>
                                             </li>
                                             <li>
                                                 <label>
                                                     <input type="radio" class="payment_mode" name="payment_mode"
-                                                        value="Cash and Online" hidden>
+                                                        value="Cash and Online" hidden {{ $invoice->payment_method == 'Cash and Online' ? 'checked' : '' }}>
                                                     <span>Both</span>
                                                 </label>
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div class="col-md-2 p-1 partial_payment" style="display: none">
+                                <div class="col-md-2 p-1 partial_payment" style="{{ $invoice->payment_method == 'Cash and Online' ? '' : 'display: none' }}">
                                     <label class="form-check-label mb-1" for="flexRadioDefault2">Cash Amount</label>
                                     <input class="form-control form-control-sm cash_amount" name="cash_amount"
                                         type="number" step="0.001" placeholder="Ex: 2000"
+                                        value="{{ $invoice->cash_amount }}"
                                         id="flexRadioDefault2">
                                 </div>
-                                <div class="col-md-2 p-1 partial_payment" style="display: none">
+                                <div class="col-md-2 p-1 partial_payment" style="{{ $invoice->payment_method == 'Cash and Online' ? '' : 'display: none' }}">
                                     <label class="form-check-label mb-1" for="flexRadioDefault2">Online Amount</label>
                                     <input class="form-control form-control-sm online_amount" name="online_amount"
                                         type="number" step="0.001" placeholder="Ex: 3000"
+                                        value="{{ $invoice->online_amount }}"
                                         id="flexRadioDefault2">
                                 </div>
 

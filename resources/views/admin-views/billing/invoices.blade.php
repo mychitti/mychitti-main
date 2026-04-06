@@ -227,7 +227,7 @@
                                                     @if (hasPermission('billing', 'share'))
                                                         <a href="javascript:void(0);"
                                                             onclick="shareFunction('{{ asset('storage/app/public/invoice') . '/' . $conf->pdf }}')"
-                                                            class="dropdown-item  text--success" title="Edit"><i
+                                                            class="dropdown-item  text--success" title="Share"><i
                                                                 class="tio-share-vs"></i>
                                                             Share</a>
                                                         </a>
@@ -482,12 +482,13 @@
             }
         }
 
-        $(document).on('change', 'input[name="payment_mode"]', function() {
-            var val = $(this).val();
+        $(document).on('click', '.pos--payment-options label', function() {
+            var val = $(this).find('input[type="radio"]').val();
+            var $modal = $(this).closest('.modal-content');
             if (val == 'Cash and Online') {
-                $(".partial_payment").show()
+                $modal.find('.partial_payment').show();
             } else {
-                $(".partial_payment").hide()
+                $modal.find('.partial_payment').hide();
             }
         })
         $('#importForm').on('submit', function(e) {

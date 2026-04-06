@@ -891,7 +891,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" id="cancelClaimBtn">Okay Got it
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="cancelClaimBtn">Okay Got it
                         !</button>
                 </div>
             </div>

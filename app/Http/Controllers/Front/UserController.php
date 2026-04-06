@@ -601,7 +601,7 @@ class UserController extends Controller
             'f_name' => 'required',
             'l_name' => 'required',
             'email' => 'required',
-            'phone' => 'required|unique:users|max:10',
+            'phone' => 'required|unique:users|digits:10',
             'password' => ['required', Password::min(8)],
         ], [
             'f_name.required' => 'The first name field is required.',
@@ -855,6 +855,7 @@ class UserController extends Controller
 
     public function dashboard(Request $request, $tab = 'profile')
     {
+
         // Support both /dashboard/favourites (route param) and /dashboard?tab=favourites (query param)
         $tab = $request->get('tab') ?: $tab;
 
@@ -879,9 +880,9 @@ class UserController extends Controller
             $wishlists['items'] = DB::table('wishlists')
                 ->where('user_id', $user_id)
                 ->join('items', 'items.id', '=', 'wishlists.item_id')
-                ->when(config('module.current_module_data'), function ($query) {
-                    $query->where('module_id', config('module.current_module_data')['id']);
-                })
+                // ->when(config('module.current_module_data'), function ($query) {
+                //     $query->where('module_id', config('module.current_module_data')['id']);
+                // })
                 ->whereNotNull('wishlists.item_id')
                 ->select('items.*', 'wishlists.id')
                 ->get();

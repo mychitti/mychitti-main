@@ -93,7 +93,8 @@ class HRController extends Controller
             ->where('year', $now->year)
             ->get();
         $data['holidays'] = _getStoreHolidays($store_id, 'upcoming', null);
-        $data['resignations'] =  DB::table('employee_resignations')->where('store_id', 0)->get();
+        $data['resignations'] = DB::table('employee_resignations')->where('store_id', 0)->get();
+        $data['store_resignations'] = DB::table('employee_resignations')->where('store_id', '!=', 0)->get();
         return view('admin-views.hr.dashboard', compact('chart_data', 'staff', 'attendances', 'data'));
     }
 }

@@ -828,6 +828,14 @@ class BillingController extends Controller
         $invoice->reminder_date = $request->reminder_date ?? date('Y-m-d');
         $invoice->reminder_freq = $request->reminder_freq ?? 1;
         $invoice->reminder_freq_unit = $request->reminder_freq_unit ?? 'week';
+        $invoice->payment_method = $request->payment_mode ?? $invoice->payment_method;
+        if ($request->payment_mode == 'Cash and Online') {
+            $invoice->cash_amount   = $request->cash_amount ?? 0;
+            $invoice->online_amount = $request->online_amount ?? 0;
+        } else {
+            $invoice->cash_amount   = null;
+            $invoice->online_amount = null;
+        }
         $invoice->save();
 
         $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
@@ -846,15 +854,18 @@ class BillingController extends Controller
         }
 
         if (isset($request->item_name_new)) {
+            $unitNew = $request->item_unit_new ?? [];
+            $taxNew  = $request->item_tax_new  ?? [];
+            $hsnNew  = $request->item_hsn_new  ?? [];
             foreach ($request->item_name_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];
-                $InvoiceItem->unit = $request->item_unit_new[$key];
-                $InvoiceItem->tax = $request->tax_type == 'gst' ? ($request->item_tax_new[$key] ?? 0) : 0;
-                $InvoiceItem->hsn = $request->item_hsn_new[$key];
+                $InvoiceItem->unit = $unitNew[$key] ?? null;
+                $InvoiceItem->tax = $request->tax_type == 'gst' ? ($taxNew[$key] ?? 0) : 0;
+                $InvoiceItem->hsn = $hsnNew[$key] ?? null;
                 $InvoiceItem->save();
             }
         }

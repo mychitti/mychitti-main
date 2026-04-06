@@ -45,22 +45,30 @@ class EmployeeController extends Controller
             ->where('store_id', Helpers::get_store_id())
             ->first();
 
-        if ($rr) {
-            DB::table('employee_resignations')
-                ->where('id', $id)
-                ->where('store_id', Helpers::get_store_id())
-                ->update(['status' => $action]);
-
-            if ($action == 'approved') {
-                $emp =  VendorEmployee::findOrFail($rr->employee_id);
-                $emp->status = 0;
-                $emp->resignation = 1;
-                $emp->save();
-            }
-
-            Toastr::success(ucfirst($action) . ' successfully');
+        if (!$rr) {
+            Toastr::error('Resignation request not found');
             return back();
         }
+
+        DB::table('employee_resignations')
+            ->where('id', $id)
+            ->update(['status' => $action, 'updated_at' => now()]);
+
+        if ($action == 'approved') {
+            $emp = VendorEmployee::find($rr->employee_id);
+            if ($emp) {
+                $emp->status = 0;
+                $emp->resignation = 1;
+                $emp->resigned_email = $emp->email;
+                $emp->resigned_phone = $emp->phone;
+                $emp->email = null;
+                $emp->phone = null;
+                $emp->save();
+            }
+        }
+
+        Toastr::success(ucfirst($action) . ' successfully');
+        return back();
     }
     public function comment_save(Request $request)
     {
@@ -97,13 +105,33 @@ class EmployeeController extends Controller
         $empId = Helpers::get_loggedin_user()->id;
         $storeId = Helpers::get_store_id();
 
-        $rReq = DB::table('employee_resignations')->insert([
-            'employee_id' => $empId,
-            'store_id' => $storeId,
-            'reason' => $request->reason,
-        ]);
+        // Block if already has a pending or approved resignation
+        $existing = DB::table('employee_resignations')
+            ->where('employee_id', $empId)
+            ->where('store_id', $storeId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->first();
 
-        Toastr::success('Requested Successfully');
+        if ($existing) {
+            $msg = $existing->status === 'approved'
+                ? 'Your resignation has already been approved.'
+                : 'You already have a pending resignation request.';
+            Toastr::warning($msg);
+            return back();
+        }
+
+        $resignationData = [
+            'employee_id' => $empId,
+            'store_id'    => $storeId,
+            'reason'      => $request->reason,
+            'status'      => 'pending',
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ];
+
+        DB::table('employee_resignations')->insert($resignationData);
+
+        Toastr::success('Resignation submitted successfully. Awaiting approval.');
         return back();
     }
     public function terminate(Request $request, $id)
@@ -111,6 +139,10 @@ class EmployeeController extends Controller
         $emp = VendorEmployee::where('store_id', Helpers::get_store_id())->where('id', $id)->first();
         $emp->terminate = 1;
         $emp->status = 0;
+        $emp->resigned_email = $emp->email;
+        $emp->resigned_phone = $emp->phone;
+        $emp->email = null;
+        $emp->phone = null;
         $emp->save();
 
         Toastr::success('Terminated Employee');

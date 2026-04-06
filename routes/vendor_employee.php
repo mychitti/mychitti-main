@@ -33,6 +33,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
+        Route::post('mark-inactive-read', 'DashboardController@markInactiveRead')->name('mark-inactive-read');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
@@ -53,6 +54,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/reviews', 'ReviewController@index')->name('reviews')->middleware('module:reviews');
         Route::post('submit-reply', 'ReviewController@submit_reply')->name('submit-reply');
         Route::get('site_direction', 'BusinessSettingsController@site_direction_vendor')->name('site_direction');
+
+        Route::group(['prefix' => 'analytics', 'as' => 'analytics.'], function () {
+            Route::get('/', 'AnalyticsController@index')->name('index');
+            Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data');
+        });
 
         Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
             Route::get('/', 'NotificationController@index')->name('add-new');
@@ -132,6 +138,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             Route::get('edit/{id}', 'BillingController@edit')->name('edit')->middleware('permission:billing,edit'); // only for manual invoices
             Route::get('purchase-bills', 'AccountController@my_bills')->name('my-bills')->middleware('permission:purchase_bill,list');; //ddd
+            Route::get('purchase-bill/delete/{id}', 'BillingController@purchase_bill_delete')->name('purchase-bill.delete')->middleware('permission:purchase_bill,delete');
 
 
             Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice')->middleware('permission:billing,edit');
@@ -590,6 +597,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('track-location/{staff_id}', 'ServiceController@track_location')->name('track-location');
 
         Route::get('service/reviews', 'ServiceController@reviews')->name('service.reviews');
+        Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
+        Route::get('service/lead-settings', 'ServiceController@lead_settings')->name('service.lead-settings');
+        Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
@@ -739,8 +749,13 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         //
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
 
-            // restaurent table  
-            Route::resource('restaurant-tables', \App\Http\Controllers\Vendor\RestaurantTableController::class);
+            // restaurant tables
+            Route::get('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'index'])->name('restaurant-tables.index')->middleware('permission:restaurant_tables,list');
+            Route::get('restaurant-tables/create', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'create'])->name('restaurant-tables.create')->middleware('permission:restaurant_tables,add');
+            Route::post('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'store'])->name('restaurant-tables.store')->middleware('permission:restaurant_tables,add');
+            Route::get('restaurant-tables/{id}/edit', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'edit'])->name('restaurant-tables.edit')->middleware('permission:restaurant_tables,edit');
+            Route::put('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'update'])->name('restaurant-tables.update')->middleware('permission:restaurant_tables,edit');
+            Route::delete('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'destroy'])->name('restaurant-tables.destroy')->middleware('permission:restaurant_tables,delete');
 
             // POS 
             Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
@@ -882,7 +897,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
 
         Route::group(['prefix' => 'employee', 'as' => 'employee.'], function () {
-            Route::get('resign', 'EmployeeController@resign')->name('resign');
+            Route::post('resign', 'EmployeeController@resign')->name('resign');
             Route::get('resignation-action/{id}/{action}', 'EmployeeController@resignation_action')->name('resignation-action');
         });
         Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['planwise:hr_manage']], function () {
@@ -1174,6 +1189,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('send', 'AIChatController@chat')->name('send');
         Route::get('history', 'AIChatController@history')->name('history');
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
+        Route::post('tts', 'AIChatController@tts')->name('tts');
     });
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');

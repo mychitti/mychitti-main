@@ -684,22 +684,63 @@
                         </label>
                     </div>
                 </div>
-                <div class="d-flex w-100 justify-content-end mt-4">
+                <div class="d-flex w-100 justify-content-end gap-2 mt-4">
+                    @php
+                        $myResignation = \Illuminate\Support\Facades\DB::table('employee_resignations')
+                            ->where('employee_id', $employee->id)
+                            ->where('store_id', \App\CentralLogics\Helpers::get_store_id())
+                            ->whereIn('status', ['pending', 'approved'])
+                            ->first();
+                    @endphp
+                    @if(!$myResignation)
+                        <button type="button" data-toggle="modal" data-target="#resignModal"
+                            class="btn btn-outline-danger">Submit Resignation</button>
+                    @elseif($myResignation->status === 'approved')
+                        <span class="badge badge-success p-2">Resignation Approved</span>
+                    @else
+                        <span class="badge badge-warning p-2">Resignation Pending Approval</span>
+                    @endif
                     <button type="button" data-toggle="modal" data-target="#profileEditModal"
                         class="btn btn-outline-primary">Edit Profile</button>
+                </div>
+
+                {{-- Resignation Modal --}}
+                <div class="modal fade" id="resignModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Submit Resignation</h5>
+                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                            </div>
+                            <form action="{{ route('vendor.employee.resign') }}" method="POST">
+                                @csrf
+                                <div class="modal-body">
+                                    <p class="text-muted small">Your resignation will be sent to your employer for approval.</p>
+                                    <div class="form-group">
+                                        <label>Reason for Resignation <span class="text-danger">*</span></label>
+                                        <textarea name="reason" class="form-control" rows="4" placeholder="Please provide your reason..." required></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-danger">Submit</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal fade" id="profileEditModal" tabindex="-1" role="dialog"
                     aria-labelledby="exampleModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-lg" role="document">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                                <h5 class="modal-title" id="exampleModalLabel">Edit Profile</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
-                                <form action="{{ route('vendor.profile.update') }}" method="POST">
+                                <form action="{{ route('vendor.profile.update') }}" method="POST" enctype="multipart/form-data">
                                 @csrf
                                     <div class="row">
                                         <div class="row col-md-8">

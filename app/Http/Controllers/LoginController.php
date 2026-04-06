@@ -38,7 +38,7 @@ class LoginController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('guest:admin,vendor', ['except' => 'logout']);
+        $this->middleware('guest:admin,vendor', ['except' => ['logout', 'business_verification', 'login_otp_ajax']]);
     }
 
     public function login_old($login_url)
@@ -434,7 +434,9 @@ class LoginController extends Controller
     }
     public function business_verification(Request $request)
     {
-        return view('business_verification');
+        $phone = rawurldecode($request->server('QUERY_STRING'));
+        $phone = preg_match('/phone=(\S+)/', $phone, $m) ? $m[1] : null;
+        return view('business_verification', compact('phone'));
     }
     public function login_otp_ajax(Request $request)
     {

@@ -236,21 +236,24 @@ class VendorController extends Controller
             'address' => 'required|max:1000',
             'latitude' => 'required',
             'longitude' => 'required',
-            // 'email' => 'required|unique:vendors',
             'phone' => ['required', 'regex:/^\+\d{1,3}\d{10}$/', 'unique:vendors,phone'],
-            // 'password' => [
-            //     'required',
-            //     Password::min(8)->mixedCase()->letters()->numbers()->symbols(),
-            //     function ($attribute, $value, $fail) {
-            //         if (strpos($value, ' ') !== false) {
-            //             $fail('The :attribute cannot contain white spaces.');
-            //         }
-            //     },
-            // ],
-            // 'category_1' => 'required',
             'zone_id' => 'required',
             'logo' => 'required',
         ];
+
+        if (hasPermission('store', 'add_advanced')) {
+            $rulesArr['email']      = 'required|unique:vendors';
+            $rulesArr['category_1'] = 'required';
+            $rulesArr['password']   = [
+                'required',
+                Password::min(8)->mixedCase()->letters()->numbers()->symbols(),
+                function ($attribute, $value, $fail) {
+                    if (strpos($value, ' ') !== false) {
+                        $fail('The :attribute cannot contain white spaces.');
+                    }
+                },
+            ];
+        }
 
         // if (!isset($request->confirmation) || $request->confirmation == '' || Config::get('module.current_module_id') == 5) {
         //     $rulesArr['gst_doc']  = 'required|mimes:png,jpg,jpeg,pdf';
@@ -1086,18 +1089,21 @@ class VendorController extends Controller
             'f_name' => 'required|max:100',
             'l_name' => 'nullable|max:100',
             'name' => 'required|max:191',
-            // 'email' => 'required|unique:vendors,email,' . $vendorId,
             'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20|unique:vendors,phone,' . $vendorId . '|unique:stores,phone,' . $store->id,
             'zone_id' => 'required',
             'latitude' => 'required',
             'longitude' => 'required',
-            // 'category_1' => 'required',
-            // 'password' => ['nullable', Password::min(8)->mixedCase()->letters()->numbers()->symbols(), function ($attribute, $value, $fail) {
-            //     if (strpos($value, ' ') !== false) {
-            //         $fail('The :attribute cannot contain white spaces.');
-            //     }
-            // }],
         ];
+
+        if (hasPermission('store', 'add_advanced')) {
+            $rules['email']    = 'required|unique:vendors,email,' . $vendorId;
+            $rules['category_1'] = 'required';
+            $rules['password'] = ['nullable', Password::min(8)->mixedCase()->letters()->numbers()->symbols(), function ($attribute, $value, $fail) {
+                if (strpos($value, ' ') !== false) {
+                    $fail('The :attribute cannot contain white spaces.');
+                }
+            }];
+        }
 
         if (!isset($request->confirmation) || $request->confirmation == '' || Config::get('module.current_module_id') == 5) {
             // $rules['gst_doc']  = 'required|mimes:png,jpg,jpeg,pdf';
@@ -1190,7 +1196,7 @@ class VendorController extends Controller
         $vendor->email = $request->email ?? '';
         $vendor->phone = $request->phone;
         $vendor->secondary_phone = $request->secondary_phone;
-        // $vendor->password = strlen($request->password) > 1 ? bcrypt($request->password) : $store->vendor->password;
+        $vendor->password = strlen($request->password) > 1 ? bcrypt($request->password) : $store->vendor->password;
 
         if (!Helpers::module_permission_check('store')) {
             $vendor->status = null;

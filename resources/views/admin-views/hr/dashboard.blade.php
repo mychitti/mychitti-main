@@ -681,6 +681,18 @@
                 </div>
                 <div class="updates-section">
                     <div class="updates-header">
+                        <h3>Store Staff Resignations</h3>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <h3>{{ count($data['store_resignations']) }}</h3>
+                        @if (hasPermission('staff_manage', 'resignation'))
+                            <a type="button" data-toggle="modal" data-target="#storeResignationModal"
+                                class="text-primary text-underline">View All</a>
+                        @endif
+                    </div>
+                </div>
+                <div class="updates-section">
+                    <div class="updates-header">
                         <h3>Total Base Salary this month</h3>
                     </div>
                     <h3>{{ \App\CentralLogics\Helpers::format_currency($data['total_base_salary']) }}</h3>
@@ -809,7 +821,12 @@
                                             <td>{{ _userInfo($value->employee_id, 'staff')?->f_name . ' ' . _userInfo($value->employee_id, 'staff')?->l_name }}
                                             </td>
                                             <td>{{ $value->reason }}</td>
-                                            <td>{{ ucfirst($value->status) }}</td>
+                                            <td>
+                                                {{ ucfirst($value->status) }}
+                                                @if(!empty($value->vendor_actioned))
+                                                    <span class="badge badge-info ml-1" title="Vendor has already actioned this">Vendor {{ ucfirst($value->status) }}</span>
+                                                @endif
+                                            </td>
                                             <td>{{ $value->created_at }}</td>
                                             <td>
                                                 @if ($value->status == 'pending')
@@ -835,6 +852,8 @@
                                                             @csrf @method('get')
                                                         </form>
                                                     </div>
+                                                @else
+                                                    <span class="text-muted small">{{ ucfirst($value->status) }} by {{ !empty($value->vendor_actioned) ? 'Vendor' : 'Admin' }}</span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -849,6 +868,79 @@
                 </div>
             </div>
         @endif
+
+    {{-- Store Staff Resignations Modal --}}
+    @if (hasPermission('staff_manage', 'resignation'))
+    <div class="modal fade" id="storeResignationModal" tabindex="-1" aria-labelledby="storeResignationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="storeResignationModalLabel">Store Staff Resignations</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-responsive">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Staff Name</th>
+                                <th>Store</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Submitted at</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($data['store_resignations'] as $key => $value)
+                                @php
+                                    $staffInfo = \Illuminate\Support\Facades\DB::table('vendor_employees')->where('id', $value->employee_id)->first();
+                                    $storeInfo = $staffInfo ? \Illuminate\Support\Facades\DB::table('stores')->where('id', $staffInfo->store_id)->first() : null;
+                                @endphp
+                                <tr>
+                                    <th>{{ $key + 1 }}</th>
+                                    <td>{{ $staffInfo ? $staffInfo->f_name . ' ' . $staffInfo->l_name : 'N/A' }}</td>
+                                    <td>{{ $storeInfo ? $storeInfo->name : 'N/A' }}</td>
+                                    <td>{{ $value->reason }}</td>
+                                    <td>
+                                        {{ ucfirst($value->status) }}
+                                        @if(!empty($value->vendor_actioned))
+                                            <span class="badge badge-info ml-1">Vendor {{ ucfirst($value->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $value->created_at }}</td>
+                                    <td>
+                                        @if ($value->status == 'pending')
+                                            <div class="btn--container">
+                                                <a class="btn btn--danger btn-outline-danger form-alert"
+                                                    href="javascript:" data-id="store-res-{{ $value->id }}"
+                                                    data-message="{{ translate('Want to approve this resignation') }}">Approve</a>
+                                                <form action="{{ route('admin.employee.resignation-action', [$value->id, 'approved']) }}"
+                                                    method="get" id="store-res-{{ $value->id }}">@csrf</form>
+
+                                                <a class="btn btn-dark form-alert"
+                                                    href="javascript:" data-id="store-res2-{{ $value->id }}"
+                                                    data-message="{{ translate('Want to reject this resignation') }}">Reject</a>
+                                                <form action="{{ route('admin.employee.resignation-action', [$value->id, 'rejected']) }}"
+                                                    method="get" id="store-res2-{{ $value->id }}">@csrf</form>
+                                            </div>
+                                        @else
+                                            <span class="text-muted small">{{ ucfirst($value->status) }} by {{ !empty($value->vendor_actioned) ? 'Vendor' : 'Admin' }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     @endsection
 
     @push('script_2')

@@ -10,7 +10,7 @@
 @endpush
 
 @section('content')
-
+<div id="spacer" style="height: 38px;"></div>
 <!-- Single Page Header start -->
 <div class="container-fluid page-header py-5">
     <h1 class="text-center text-white display-6">Signup</h1>
@@ -23,7 +23,7 @@
 
 
 <!-- Contact Start -->
-<div class="container-fluid contact py-1">
+<div class="container-fluid contact py-1 mt-3">
     <div class="container">
         <div class="contact_div bg-light rounded" style="max-width: 550px;
     margin: 0 auto;">
