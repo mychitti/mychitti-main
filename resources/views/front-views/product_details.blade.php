@@ -639,7 +639,6 @@
                                         class="mb-1">{{ $item->store_name }}</a>
                                 @endif
                             @endif
-                            @if (0 && ($module == 5 || $is_inventory_product))
                                 @if (auth('web')->user())
                                     {{-- <a onclick="bookService({{ $item->id }}, this)"
                                             class="btn btn-lg btn-primary rounded text-light px-3 my-3"><i
@@ -661,7 +660,6 @@
                                             class="fas fa-user-cog"></i>
                                         Enquiry Now</a>
                                 @endif
-                            @endif
 
                             <p class="desc">
                                 {{ $item->description }}

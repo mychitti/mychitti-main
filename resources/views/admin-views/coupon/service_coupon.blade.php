@@ -272,6 +272,7 @@
         $(document).on('ready', function() {
 
             let module_id = {{ Config::get('module.current_module_id') }};
+            var  url = '';
             @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
                 url: '{{ url('/') }}/admin/store/get-stores',
             @else
