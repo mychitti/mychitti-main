@@ -241,7 +241,6 @@ class BillingController extends Controller
     public function invoice_num_for_date(Request $request)
     {
         $invoice_id = Helpers::generateInvoiceIdAdmin(6, false, $request->invoice_date);
-        prx($invoice_id);
         $prefix     = substr($invoice_id, 0, strrpos($invoice_id, '_') + 1);
         $number     = substr($invoice_id, strrpos($invoice_id, '_') + 1);
         $parts      = explode('_', $invoice_id);
