@@ -2430,7 +2430,7 @@
                     @endif
                     <!-- End Coupon -->
                     {{-- @if (selected_menu('patients_manage') && _offeredModule('patient_manage')) --}}
-                    @if (1)
+                    @if (0)
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('patient*') || Request::is('doctor*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                 href="javascript:;" title="Hospital Management">
