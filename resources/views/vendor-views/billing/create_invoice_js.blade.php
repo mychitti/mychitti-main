@@ -22,7 +22,7 @@
              $(".partial_payment").hide()
          }
      })
-     let ckeditorInstance = null;
+     ckeditorInstance = typeof ckeditorInstance !== 'undefined' ? ckeditorInstance : null;
 
      if (!ckeditorInstance) {
          if (typeof ClassicEditor !== 'undefined') {
@@ -788,7 +788,7 @@
              });
          }
      })
-     let tcs_applied = tds_applied = false;
+     tcs_applied = tds_applied = false;
      $(".tax_rate").on('change', function() {
          // Helper to toggle visibility
          function toggle(show, selectors) {

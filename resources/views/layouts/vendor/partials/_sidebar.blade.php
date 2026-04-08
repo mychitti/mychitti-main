@@ -2429,15 +2429,36 @@
                         </li>
                     @endif
                     <!-- End Coupon -->
-                    @if (selected_menu('patients_manage') && _offeredModule('patient_manage'))
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('patient*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.patient.add') }}" title="Patients Management">
-                                <i class="tio-notifications nav-icon"></i>
+                    {{-- @if (selected_menu('patients_manage') && _offeredModule('patient_manage')) --}}
+                    @if (1)
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('patient*') || Request::is('doctor*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                                href="javascript:;" title="Hospital Management">
+                                <i class="tio-hospital nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                    Patients Management
+                                    Hospital Management
                                 </span>
                             </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
+                                <li class="nav-item {{ Request::is('patient/add') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.patient.add') }}" title="Register Patient">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Add Patient</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.patient.list') }}" title="Patient List">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Patient List</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.doctor.list') }}" title="Doctors">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Doctors</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     @endif
                     <!-- Business Section-->

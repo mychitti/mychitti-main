@@ -511,18 +511,45 @@ class StoreController extends Controller
 
         foreach ($invItemdata as $cat) {
             $cat->items = DB::table('items')
-                ->whereRaw('FIND_IN_SET(?, store_ids)', [$request->store_id])
+                ->leftJoin('inventory_items', 'inventory_items.id', '=', 'items.inventory_item_id')
+                ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
                 ->whereNotNull('items.inventory_item_id')
-                ->where('category_id', $cat->id)
-                ->where('status', 1)
-                ->select('items.id', 'items.name', 'items.description', 'items.image')
+                ->where('items.category_id', $cat->id)
+                ->where('items.status', 1)
+                ->select(
+                    'items.id',
+                    'items.name',
+                    'items.description',
+                    'items.image',
+                    'items.inventory_item_id',
+                    'items.price as item_price',
+                    'items.mrp_price as item_mrp_price',
+                    'inventory_items.stock',
+                    'inventory_items.unit',
+                    'inventory_items.secondary_unit',
+                    'inventory_items.hsn',
+                    'inventory_items.gst_rate',
+                    'inventory_items.gst_type',
+                    'inventory_items.gst_status',
+                    'inventory_items.variations',
+                )
                 ->get()
                 ->map(function ($item) {
-                    $item->image = $item->image ? asset('storage/product/') . '/' . $item->image : null;
+                    $item->image = $item->image ? asset('storage/app/public/product/') . '/' . $item->image : null;
+                    $variations = $item->variations ? json_decode($item->variations) : [];
+                    $firstVr = !empty($variations) ? $variations[0] : null;
+                    if ($firstVr) {
+                        $item->selling_price = $firstVr->price ?? $item->item_price;
+                        $item->mrp           = $firstVr->mrpprice ?? $firstVr->price ?? $item->item_price;
+                    } else {
+                        $item->selling_price = $item->item_price;
+                        $item->mrp           = $item->item_mrp_price;
+                    }
+                    unset($item->item_price, $item->item_mrp_price, $item->variations);
                     return $item;
                 });
         }
-        $productdata = $serviceData1->merge($invItemdata); // paginate this 
+        $productdata = $serviceData1->merge($invItemdata); // paginate this
 
         return response()->json($productdata, 200);
     }

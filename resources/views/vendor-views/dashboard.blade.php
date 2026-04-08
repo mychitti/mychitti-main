@@ -801,13 +801,17 @@
                         {{ auth('vendor')->user()->f_name }}.</h1>
                     <p class="page-header-text">Welcome to MyChitti Dashboard</p>
                 </div>
-                <form action="" class="d-flex date-range-form">
-                    @include('vendor-views/form_modals/date_range')
-                    <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
-                        data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
-
-
-                </form>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                    <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal"
+                        data-target="#exampleModal">Apply Coupon for Customer</button>
+                    <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal"
+                        data-target="#exampleModal">Apply Coupon</button>
+                    <form action="" class="d-flex date-range-form">
+                        @include('vendor-views/form_modals/date_range')
+                        <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
+                            data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
+                    </form>
+                </div>
             </div>
             <div class="dashboard-container">
                 <!-- Stats Cards -->

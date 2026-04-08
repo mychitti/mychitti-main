@@ -24,6 +24,24 @@
         <!-- End Page Header -->
 
         <div class="">
+            {{-- Invoice Prefix --}}
+            <div class="card mb-1">
+                <div class="card-header">
+                    <h2 class="card-title h4"><i class="tio-settings mr-1"></i> Invoice Prefix</h2>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('admin.billing.save-invoice-prefix') }}" method="POST" class="d-flex align-items-end gap-3">
+                        @csrf
+                        <div class="form-group mb-0">
+                            <label class="input-label">Prefix <small class="text-muted">(used in Invoice ID, e.g. <strong>{{ $invoice_prefix }}</strong>_26-27_1)</small></label>
+                            <input type="text" name="prefix" class="form-control" value="{{ $invoice_prefix }}"
+                                maxlength="10" placeholder="e.g. MSM" style="max-width:200px;" required>
+                        </div>
+                        <button type="submit" class="btn btn--primary mb-0">Save</button>
+                    </form>
+                </div>
+            </div>
+
             @if (hasAnyModulePermission(['billing_bank_account']))
                 <div class="card mb-1">
                     <div class="card-header d-flex justify-content-between">

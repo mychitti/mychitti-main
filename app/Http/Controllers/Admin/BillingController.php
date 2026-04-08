@@ -154,17 +154,18 @@ class BillingController extends Controller
     }
     public function manual_bill()
     {
-        $upcoming_bill_number = Helpers::generateInvoiceIdAdmin(6);
+        $upcoming_bill_number = Helpers::generateInvoiceIdAdmin(6, false);
         $bill_number = $upcoming_bill_number;
-        $bill_num['prefix'] = 'MSM_';
-        $bill_num['nongst_prefix'] = 'MSM_';
+        $prefix = substr($bill_number, 0, strrpos($bill_number, '_') + 1);
+        $bill_num['prefix'] = $prefix;
+        $bill_num['nongst_prefix'] = $prefix;
         $bill_num['number'] = substr($bill_number, strrpos($bill_number, '_') + 1);
         $bill_num['non_gst_sno'] = $bill_num['number'];
         $storage_units = StorageUnit::with('parent')->where('store_id', 0)->get();
 
         // Keep incrementing until unique
         do {
-            $invoice_num = $bill_num['prefix'] . $bill_num['number'];
+            $invoice_num = $bill_num['prefix'] . $bill_num['number']; 
             $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
             if ($exists) {
                 $bill_num['number']++;
@@ -233,7 +234,34 @@ class BillingController extends Controller
         $staffs = \App\Models\Admin::all();
         $signatures = StoreSignature::with('adminEmployee')->where('store_id', $store_id)->where('type', 'invoice')->get();
         $store = Store::where('id',  $store_id)->first();
-        return view('admin-views.billing.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts',  'store'));
+        $invoice_prefix = BusinessSetting::where('key', 'admin_invoice_prefix')->first()?->value ?? 'MSM';
+        return view('admin-views.billing.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts', 'store', 'invoice_prefix'));
+    }
+
+    public function invoice_num_for_date(Request $request)
+    {
+        $invoice_id = Helpers::generateInvoiceIdAdmin(6, false, $request->invoice_date);
+        prx($invoice_id);
+        $prefix     = substr($invoice_id, 0, strrpos($invoice_id, '_') + 1);
+        $number     = substr($invoice_id, strrpos($invoice_id, '_') + 1);
+        $parts      = explode('_', $invoice_id);
+        $year       = $parts[count($parts) - 2];
+        $d           = \Carbon\Carbon::parse($request->invoice_date);
+        $fyStartYear = $d->month >= 4 ? $d->year : $d->year - 1;
+        $test_year   = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
+
+        return response()->json(compact('prefix', 'number', 'invoice_id', 'year', 'test_year'));
+    }
+
+    public function save_invoice_prefix(Request $request)
+    {
+        $request->validate(['prefix' => 'required|alpha|max:10']);
+        BusinessSetting::updateOrInsert(
+            ['key' => 'admin_invoice_prefix'],
+            ['value' => strtoupper($request->prefix)]
+        );
+        Toastr::success('Invoice prefix updated');
+        return back();
     }
     public function my_bills(Request $request)
     {
@@ -277,8 +305,8 @@ class BillingController extends Controller
         $tAndCContent = DB::table('vendor_terms_conditions')->where('type', 'for_customer')->where('vendor_id', $store_id)->first();
         $upcoming_bill_number = Helpers::generateInvoiceIdAdmin(6, false);
         $bill_number = $upcoming_bill_number;
-        $bill_num['prefix'] = 'MSM_';
-        $bill_num['nongst_prefix'] = 'MSM_';
+        $bill_num['prefix'] = substr($bill_number, 0, strrpos($bill_number, '_') + 1);
+        $bill_num['nongst_prefix'] = $bill_num['prefix'];
         $bill_num['number'] = substr($bill_number, strrpos($bill_number, '_') + 1);
         $data['tax_rates_tcs'] = TaxRate::where('type', 'TCS')->get();
         $data['tax_rates_tds'] = TaxRate::where('type', 'TDS')->get();

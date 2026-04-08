@@ -48,6 +48,81 @@ class BillingController extends Controller
     $invoice = ManualInvoice::find($invoice_id);
     return view('vendor-views.billing.payment_details', compact('invoice'));
   }
+  public function getInvoiceIdForDate(Request $request)
+  {
+    $date  = $request->date ? \Carbon\Carbon::parse($request->date) : now();
+    $store = Helpers::get_store_data();
+
+    // Determine FY for the selected date
+    $fyYear             = $date->month >= 4 ? $date->year : $date->year - 1;
+    $financialYearStart = \Carbon\Carbon::createFromDate($fyYear, 4, 1);
+    $financialYearEnd   = $financialYearStart->copy()->addYear()->subDay();
+    $fy                 = $financialYearStart->format('y') . '-' . $financialYearEnd->format('y');
+
+    $store_prefix  = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3);
+    $prefix        = $store_prefix . '_M_' . $fy . '_';
+    $nongst_prefix = $store_prefix . '_';
+
+    // Determine current FY to decide whether to use store counter or scan invoices
+    $currentFyYear  = now()->month >= 4 ? now()->year : now()->year - 1;
+    $currentFy      = (\Carbon\Carbon::createFromDate($currentFyYear, 4, 1)->format('y')) . '-' .
+                      (\Carbon\Carbon::createFromDate($currentFyYear + 1, 4, 1)->subDay()->format('y'));
+
+    if ($fy === $currentFy) {
+        // Current FY — use store counters directly (source of truth)
+        $nextSerial   = (int) $store->bill_serial_number;
+        $nonGstSerial = (int) $store->non_gst_sno;
+    } else {
+        // Past FY — scan invoices to find last used serial
+        $lastInvoice = \App\Models\ManualInvoice::where('vendor_id', $store->id)
+            ->where('invoice_id', 'like', $prefix . '%')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_id, "_", -1) AS UNSIGNED) DESC')
+            ->first();
+
+        $nextSerial = $lastInvoice
+            ? ((int) substr($lastInvoice->invoice_id, strrpos($lastInvoice->invoice_id, '_') + 1)) + 1
+            : 1;
+
+        $lastService = \App\Models\ServiceInvoice::where('vendor_id', $store->id)
+            ->where('invoice_id', 'like', $prefix . '%')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_id, "_", -1) AS UNSIGNED) DESC')
+            ->first();
+
+        if ($lastService) {
+            $nextSerial = max($nextSerial, (int) substr($lastService->invoice_id, strrpos($lastService->invoice_id, '_') + 1) + 1);
+        }
+
+        $lastNonGstManual = \App\Models\ManualInvoice::where('vendor_id', $store->id)
+            ->where('invoice_id', 'like', $nongst_prefix . '%')
+            ->where('invoice_id', 'not like', $store_prefix . '_M_%')
+            ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
+            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_id, "_", -1) AS UNSIGNED) DESC')
+            ->first();
+
+        $lastNonGstService = \App\Models\ServiceInvoice::where('vendor_id', $store->id)
+            ->where('invoice_id', 'like', $nongst_prefix . '%')
+            ->where('invoice_id', 'not like', $store_prefix . '_M_%')
+            ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
+            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_id, "_", -1) AS UNSIGNED) DESC')
+            ->first();
+
+        $nonGstSerial = 1;
+        if ($lastNonGstManual) {
+            $nonGstSerial = max($nonGstSerial, (int) substr($lastNonGstManual->invoice_id, strrpos($lastNonGstManual->invoice_id, '_') + 1) + 1);
+        }
+        if ($lastNonGstService) {
+            $nonGstSerial = max($nonGstSerial, (int) substr($lastNonGstService->invoice_id, strrpos($lastNonGstService->invoice_id, '_') + 1) + 1);
+        }
+    }
+
+    return response()->json([
+        'prefix'        => $prefix,
+        'number'        => $nextSerial,
+        'fy'            => $fy,
+        'non_gst_serial' => $nonGstSerial,
+    ]);
+  }
+
   public function validate_invoicenum(Request $request)
   {
     if (is_serial_number_used($request->number, $request->prefixe, $request->tax_type)) {

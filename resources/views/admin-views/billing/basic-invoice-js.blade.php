@@ -413,4 +413,33 @@
             });
         });
     }
+
+    // Update invoice prefix/number when invoice date changes
+    @php
+        $fyYear    = date('m') >= 4 ? date('Y') : date('Y') - 1;
+        $currentFy = ($fyYear % 100) . '-' . (($fyYear + 1) % 100);
+    @endphp
+    var adminCurrentFy = '{{ $currentFy }}';
+
+    $('input[name="invoice_date"]').on('change', function () {
+        const date = $(this).val();
+        if (!date) return;
+        $.get('{{ route("admin.billing.invoice-num-for-date") }}', { invoice_date: date }, function (res) {
+            $('.invoice_prefix').text(res.prefix);
+            $('.invoice_prefix2').text(res.prefix);
+            $('input[name="prefixe"]').val(res.prefix);
+            $('#editableInput').val(res.number);
+            $('input[name="number"]').val(res.number);
+
+            if (res.year !== adminCurrentFy) {
+                if (!$('#fy_warning').length) {
+                    $('input[name="invoice_date"]').after('<small id="fy_warning" class="text-warning ml-1"><i class="tio-warning"></i> FY ' + res.year + ' — serial updated.</small>');
+                } else {
+                    $('#fy_warning').text('⚠ FY ' + res.year + ' — serial updated.');
+                }
+            } else {
+                $('#fy_warning').remove();
+            }
+        });
+    });
 </script>

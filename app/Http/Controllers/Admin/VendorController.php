@@ -396,6 +396,9 @@ class VendorController extends Controller
 
             Helpers::_addWelcomeCouponsIfExist($store);
             Helpers::_addWelcomeCouponsIfExist($store);
+            if (strtolower($store->business_type) == 'hospital') {
+                Helpers::createHospitalDefaultRoles($store->id);
+            }
             //account details
             $bankAccount = new AccountDetail();
             $bankAccount->user_type = 'vendor';
@@ -1285,6 +1288,9 @@ class VendorController extends Controller
             $store->delivery_time = $request->minimum_delivery_time . '-' . $request->maximum_delivery_time . ' ' . $request->delivery_time_type;
         }
         $store->save();
+        if (strtolower($store->business_type) == 'hospital') {
+            Helpers::createHospitalDefaultRoles($store->id);
+        }
         // prx($store);
         $default_lang = str_replace('_', '-', app()->getLocale());
         foreach ($request->lang as $index => $key) {
@@ -2696,25 +2702,23 @@ class VendorController extends Controller
         // $buyplan =   $this->buyPlan($store->id, 6);
         // echo 'plan purchase';
         try {
-            if ($request->status == 1) { 
-                // $mail_status = Helpers::get_mail_status('approve_mail_status_store'); 
-                $mail_status = 1; 
-                if (config('mail.status') && $mail_status == '1') {
+            if ($request->status == 1) {
+                $mail_status = 1;
+                // if (config('mail.status') && $mail_status == '1') {
                     Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('approved', $store->name));
-                }
-            } else { 
-                // $mail_status = Helpers::get_mail_status('deny_mail_status_store');
-                $mail_status =1;
-                if (config('mail.status') && $mail_status == '1') {
+                // }
+                $this->sendVendorApprovalWhatsApp($store->vendor, $store->name);
+            } else {
+                // $mail_status = 1;
+                // if (config('mail.status') && $mail_status == '1') {
                     Mail::to($store?->vendor?->email)->send(new \App\Mail\VendorSelfRegistration('denied', $store->name));
-                } 
+                // }
             }
         } catch (\Exception $ex) {
             info($ex->getMessage());
         }
         Toastr::success(translate('messages.application_status_updated_successfully'));
         return back();
-        echo 1;
     }
     public function deny_application(Request $request)
     {
@@ -3670,5 +3674,27 @@ class VendorController extends Controller
         }
         Toastr::success('Vendor account deleted successfully.');
         return back();
+    }
+
+    private function sendVendorApprovalWhatsApp($vendor, $storeName)
+    {
+        try {
+            $phone = $vendor?->phone;
+            if (!$phone) return;
+
+            // Clean phone number
+            $phone = preg_replace('/\D/', '', $phone);
+            $phone = preg_replace('/^(0|91)/', '', $phone);
+
+            $businessName = \App\Models\BusinessSetting::where('key', 'business_name')->first()?->value ?? 'Us';
+            $loginUrl     = \App\CentralLogics\Helpers::get_login_url('store_login_url');
+            $loginUrl     = $loginUrl ? url('login/' . $loginUrl) : url('login');
+
+            $message = "Hello! 🎉\n\nYour store *{$storeName}* has been *approved* on {$businessName}.\n\nYou can now login and start receiving leads.\n\n🔗 Login: {$loginUrl}\n\nWelcome aboard! 🚀";
+
+            _sendWhatsApp($phone, $message);
+        } catch (\Exception $e) {
+            info('WhatsApp welcome notification failed: ' . $e->getMessage());
+        }
     }
 }

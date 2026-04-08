@@ -411,6 +411,58 @@
 
            
 
+            {{-- Serial Number Settings --}}
+            <div class="card mb-1">
+                <div class="card-header">
+                    <h2 class="card-title h4">Invoice Serial Numbers</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ route('vendor.invoice.update-serial') }}">
+                        @csrf
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">
+                                    GST Invoice Serial
+                                    <i class="tio-info-outined ml-1" title="Next GST invoice will use this number"></i>
+                                </label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">
+                                            {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_M_{{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}_
+                                        </span>
+                                    </div>
+                                    <input type="number" name="bill_serial_number" class="form-control"
+                                        value="{{ $store->bill_serial_number }}" min="1">
+                                </div>
+                                <small class="text-muted">Current FY: {{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">
+                                    Non-GST Invoice Serial
+                                    <i class="tio-info-outined ml-1" title="Next Non-GST invoice will use this number"></i>
+                                </label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">
+                                            {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_
+                                        </span>
+                                    </div>
+                                    <input type="number" name="non_gst_sno" class="form-control"
+                                        value="{{ $store->non_gst_sno }}" min="1">
+                                </div>
+                                <small class="text-muted">Current FY: {{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}</small>
+
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn--primary">
+                                    <i class="tio-save mr-1"></i> Update Serials
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
     </div>
     @if (hasPermission('billing_bank_account', 'add'))

@@ -572,7 +572,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('list', 'BillingController@invoice_list')->name('list');
             Route::get('purchase-bills', 'BillingController@my_bills')->name('my-bills');
             Route::get('settings', 'BillingController@invoice_settings')->name('settings');
+            Route::post('save-invoice-prefix', 'BillingController@save_invoice_prefix')->name('save-invoice-prefix');
             Route::post('validate-invoicenum', 'BillingController@validate_invoicenum')->name('validate-invoicenum');
+            Route::get('invoice-num-for-date', 'BillingController@invoice_num_for_date')->name('invoice-num-for-date');
             Route::get('edit/{id}', 'BillingController@edit')->name('edit');
             Route::post('update-invoice', 'BillingController@update_invoice')->name('update-invoice');
             Route::post('service-update-invoice', 'BillingController@service_update_invoice')->name('service-update-invoice');
@@ -1124,6 +1126,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
                 Route::get('/', 'VendorWalletController@index')->name('index');
                 Route::post('recharge', 'VendorWalletController@recharge')->name('recharge');
+                Route::get('view/{id}', 'VendorWalletController@view')->name('view');
             });
 
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');

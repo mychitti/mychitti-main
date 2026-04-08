@@ -19,7 +19,8 @@
                     <div class="col-md-2 inv__field">
                         <label class="form-check-label d-flex inv__label" for="flexRadioDefault32">Invoice Id</label>
                         <input type="hidden" name="prefixe" value="{{ $bill_num['prefix'] }}">
-                        <div class="gst_invoice_num" style="display:none;">
+                        {{-- style="display:none;" --}}
+                        <div class="gst_invoice_num" >
                             <div class="input-group input-group-sm inv__id-group">
                                 <span class="input-group-text invoice_prefix inv__id-prefix"
                                     style="border-right: none; padding-right: 0;">{{ $bill_num['prefix'] }}</span>
@@ -29,7 +30,7 @@
                             </div>
                             <span class="text-danger invoice_error"></span>
                         </div> 
-                        <div class="nongst_invoice_num">
+                        {{-- <div class="nongst_invoice_num">
                             <div class="input-group input-group-sm inv__id-group">
                                 <span class="input-group-text invoice_prefix2 bg-white inv__id-prefix"
                                     style="border-right: none; padding: 6px 8px; padding-right: 0;">{{ $bill_num['nongst_prefix'] }}</span>
@@ -38,7 +39,7 @@
                                     id="editableInput" name="number" value="{{ $bill_num['number'] }}">
                             </div>
                             <span class="text-danger invoice_error"></span>
-                        </div>
+                        </div> --}}
                     </div>
 
                     <!-- Bill To Toggle -->
@@ -100,7 +101,7 @@
                     <div class="col-md-2 inv__field">
                         <label class="form-check-label d-flex inv__label" for="flexRadioDefault2">Invoice Date</label>
                         <input type="date" name="invoice_date" class="form-control form-control-sm inv__input"
-                            value="2026-03-12">
+                            value="{{date('Y-m-d')}}">
                     </div>
 
                     <!-- Reference Number -->

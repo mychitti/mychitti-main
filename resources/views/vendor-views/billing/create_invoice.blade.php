@@ -75,7 +75,7 @@
                             </div>
                             <div class="info-group">
                                 <label>Invoice Number</label>
-                                <div class="gst_invoice_num gst_fld" style="display:none;">
+                                <div class="gst_invoice_num gst_fld">
                                     <div class="input-group">
                                         <span class="input-group-text invoice_prefix bg-white"
                                             style="border-right: none; padding-right: 0; ">{{ $bill_num['prefix'] }}</span>
@@ -113,7 +113,7 @@
                             </div>
                             <div class="info-group">
                                 <label>Invoice Date</label>
-                                <input type="date" name="invoice_date" value="{{ date('Y-m-d') }}">
+                                <input type="date" name="invoice_date" id="invoice_date" value="{{ date('Y-m-d') }}" onchange="fetchInvoiceIdForDate(this.value)">
                             </div>
                             <div class="info-group">
                                 <label>Payment Status</label>
@@ -768,6 +768,24 @@
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
     @include('vendor-views/billing/create_invoice_js')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/create_invoice.js"></script>
+    <script>
+        // Ensure correct invoice number section shown on page load
+        $(document).ready(function() {
+            if (typeof recalculateInvoice === 'function') recalculateInvoice();
+        });
+
+        // When user switches GST/Non-GST after date was already changed, apply correct cached serial
+        $(document).on('change', '.tax_type', function() {
+            var isGst = $(this).val() === 'gst';
+            var gstSerial  = $('.invoice_num.gst_field').data('fy-serial');
+            var ngstSerial = $('.invoice_num.non_gst_field').data('fy-serial');
+            if (isGst && gstSerial) {
+                $('.invoice_num.gst_field').val(gstSerial);
+            } else if (!isGst && ngstSerial) {
+                $('.invoice_num.non_gst_field').val(ngstSerial);
+            }
+        });
+    </script>
 
     <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
     <script>
@@ -790,6 +808,41 @@
             ${option.text}
         </span>
     `);
+        }
+    </script>
+    <script>
+        function fetchInvoiceIdForDate(date) {
+            if (!date) return;
+            $.get('{{ route('vendor.invoice.get-invoice-id-for-date') }}', { date: date }, function(res) {
+                var isGst = $('.tax_type:checked').val() === 'gst';
+                if (isGst) {
+                    // GST
+                    $('.invoice_prefix').text(res.prefix);
+                    $('input[name="prefixe"]').val(res.prefix);
+                    $('.invoice_num.gst_field').val(res.number);
+                } else {
+                    // Non-GST
+                    $('.invoice_num.non_gst_field').val(res.non_gst_serial);
+                }
+                // Always keep hidden fields in sync too
+                $('.invoice_num.gst_field').data('fy-serial', res.number);
+                $('.invoice_num.non_gst_field').data('fy-serial', res.non_gst_serial);
+
+                @php
+                    $fyYear    = date('m') >= 4 ? date('Y') : date('Y') - 1;
+                    $currentFy = ($fyYear % 100) . '-' . (($fyYear + 1) % 100);
+                @endphp
+                var currentFy = '{{ $currentFy }}';
+                if (res.fy !== currentFy) {
+                    if (!$('#fy_warning').length) {
+                        $('#invoice_date').after('<small id="fy_warning" class="text-warning ml-1"><i class="tio-warning"></i> FY ' + res.fy + ' — serial updated.</small>');
+                    } else {
+                        $('#fy_warning').text('\u26A0 FY ' + res.fy + ' — serial updated.');
+                    }
+                } else {
+                    $('#fy_warning').remove();
+                }
+            });
         }
     </script>
 @endpush

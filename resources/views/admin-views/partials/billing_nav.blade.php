@@ -41,7 +41,7 @@
                       <a class="nav-link " href="{{ route('admin.billing.index') }}"
                           title="{{ translate('messages.Mychitti Bills') }}">
                           <span class="tio-coin nav-icon"></span>
-                          <span class="text-truncate">Mychitti Bills</span>
+                          <span class="text-truncate">Subscription & Wallet Bills</span>
                       </a>
                   </li>
 

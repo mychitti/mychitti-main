@@ -50,7 +50,10 @@
                 <div class="row g-4">
                     <!-- Password Login -->
                     <div id="passwordLogin">
-                        <form class="loginForm" action="{{ route('login.post') }}" method="post">
+                    
+                    <form class="loginForm" 
+                        action="{{ request()->getHost() === 'staging.mychitti.net' ? 'https://staging.mychitti.net/login' : route('login.post') }}" 
+                        method="post">             
                             @csrf
                             <div class="mb-3">
                                 <label for="phoneInp" class="form-label">Phone Number</label>

@@ -1034,7 +1034,7 @@ class ServiceController extends Controller
         $bill_num['prefix'] = substr($bill_number, 0, strrpos($bill_number, '_') + 1); // 'PJS_M_25-26_'
         $bill_num['nongst_prefix'] = Helpers::_storePrefix($store->name);
         $bill_num['number'] = substr($bill_number, strrpos($bill_number, '_') + 1);    // '82'
-        $bill_num['non_gst_sno'] = Helpers::get_store_data()->non_gst_sno;
+        $bill_num['non_gst_sno'] = Helpers::getNextNonGstSerial();
         $storage_units = StorageUnit::with('parent')->where('store_id', $store->id)->get();
 
         // Keep incrementing until unique

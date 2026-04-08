@@ -20,18 +20,34 @@ class VendorWalletController extends Controller
 {
     public function index()
     {
-        return view('admin-views.vendor.wallet');
+        $storeWallets = StoreWallet::with('vendorStore', 'lastRecharge')->paginate(config('default_pagination'));
+        return view('admin-views.vendor.wallet', compact('storeWallets'));
+    }
+    public function view(Request $request, $id)
+    {
+        $search = $request->query('search');
+        $wallet = StoreWallet::with('vendorStore')->where('id', $id)->firstOrFail();
+        $transactions = $wallet->transactions()
+        ->when($search, function ($query, $search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                  ->orWhere('amount', 'like', "%{$search}%");
+            });
+        })
+        ->where('method', 'wallet')
+        ->orderBy('created_at', 'desc')->paginate(config('default_pagination'));
+        return view('admin-views.vendor.wallet_view', compact('wallet', 'transactions'));
     }
     public function recharge(Request $request)
     {
         $request->validate([
-            'store_id' => 'required|exists:stores,id', 
+            'store_id' => 'required|exists:stores,id',
             'amount'   => 'required|numeric|min:1',
         ]);
 
         $store_id = $request->store_id;
         $amount  = round($request->amount, 2); // amount paid
-$vendor_id = Store::where('id', $store_id)->value('vendor_id');
+        $vendor_id = Store::where('id', $store_id)->value('vendor_id');
         $actionType = 'retail_recharge_wallet';
         $payload = ['store_id' => $store_id, 'vendor_id' => $vendor_id, 'amount' => $amount, 'billing' => $request->billing];
         $data = [

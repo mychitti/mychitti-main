@@ -2414,13 +2414,33 @@ class Helpers
         $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $storename)), 0, 3);
         return $store_prefix . "_";
     }
+    public static function getNextNonGstSerial($store = null): int
+    {
+        if (!$store) {
+            $store = Store::find(self::get_store_id());
+        }
+
+        $today              = now();
+        $fyStart            = Carbon::createFromDate($today->year, 4, 1);
+        if ($today->month < 4) $fyStart->subYear();
+        $fyEnd              = $fyStart->copy()->addYear()->subDay();
+        $year               = $fyStart->format('y') . '-' . $fyEnd->format('y');
+
+        if ($store->non_gst_fy !== $year) {
+            $store->non_gst_sno = 1;
+            $store->non_gst_fy  = $year;
+            $store->save();
+        }
+
+        return (int) $store->non_gst_sno;
+    }
+
     public static function generateInvoiceId($infix,   $update = true, $serial_num = null, $tax_type = 'gst', $store = null) // for stores only
     {
         if (!$store) {
             $store = Store::find(Helpers::get_store_id());
         }
         $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3);
-        $store_serial = $serial_num ?? ($tax_type == 'gst' ? $store->bill_serial_number : $store->non_gst_sno);
         $infix = $infix ?? 'INV';
 
         $today = now();
@@ -2432,6 +2452,20 @@ class Helpers
         }
         $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March
         $year = $financialYearStart->format('y') . '-' . $financialYearEnd->format('y');
+
+        // Reset serial number if financial year has changed
+        if ($serial_num === null) {
+            $fyColumn     = $tax_type == 'gst' ? 'bill_fy' : 'non_gst_fy';
+            $serialColumn = $tax_type == 'gst' ? 'bill_serial_number' : 'non_gst_sno';
+
+            if ($store->$fyColumn !== $year) {
+                $store->$serialColumn = 1;
+                $store->$fyColumn     = $year;
+                $store->save();
+            }
+        }
+
+        $store_serial = $serial_num ?? ($tax_type == 'gst' ? $store->bill_serial_number : $store->non_gst_sno);
 
         do {
             if ($tax_type == 'gst') {
@@ -2466,59 +2500,55 @@ class Helpers
         return $invoice_id;
     }
 
-    public static function generateInvoiceIdAdmin($module = 6, $save = true)
+    public static function generateInvoiceIdAdmin($module = 6, $save = true, $invoice_date = null)
     {
-        if ($module == 6) {
-            $prefix = 'MSM';
+        $prefix = BusinessSetting::where('key', 'admin_invoice_prefix')->first()?->value ?? ($module == 6 ? 'MSM' : 'MCS');
+
+        $date = ($invoice_date && strtotime($invoice_date)) ? Carbon::parse($invoice_date) : Carbon::now();
+        // FY starts April 1 — use plain integer arithmetic to avoid Carbon mutation bugs
+        $fyStartYear = $date->month >= 4 ? $date->year : $date->year - 1;
+        $fyEndYear   = $fyStartYear + 1;
+        $year        = substr($fyStartYear, -2) . '-' . substr($fyEndYear, -2);
+
+        // Current FY
+        $today              = Carbon::now();
+        $curFyStartYear     = $today->month >= 4 ? $today->year : $today->year - 1;
+        $currentYear        = substr($curFyStartYear, -2) . '-' . substr($curFyStartYear + 1, -2);
+ 
+        $isCurrentFY = $year === $currentYear;
+
+        if ($isCurrentFY) {
+            $fySetting     = BusinessSetting::firstOrCreate(['key' => 'admin_bill_fy'],     ['value' => '']);
+            $serialSetting = BusinessSetting::firstOrCreate(['key' => 'admin_bill_serial_number'], ['value' => 1]);
+
+            if ($fySetting->value !== $year) {
+                $fySetting->value     = $year; 
+                $fySetting->save();
+                $serialSetting->value = 1;
+                $serialSetting->save(); 
+            }
+
+            $serial = (int) $serialSetting->value;
+
+            if ($save) { 
+                $serialSetting->value = $serial + 1;
+                $serialSetting->save();
+            }
         } else {
-            $prefix = 'MCS';
+            // Past FY — derive serial from existing invoices
+            $fyStart = Carbon::create($fyStartYear, 4, 1, 0, 0, 0);
+            $fyEnd   = Carbon::create($fyEndYear, 3, 31, 23, 59, 59);
+            $serial  = (DB::table('manual_invoices')
+                ->whereBetween('created_at', [$fyStart, $fyEnd])
+                ->max('invoice_serial') ?? 0) + 1;
         }
 
-        $setting = BusinessSetting::where('key', 'admin_bill_serial_number')->first();
-
-        $serial = $setting->value;
-
-        if (date('m') > 3) { // march
-            $year = date('y') . '-' . date('y') + 1;
-        } else {
-            $year = date('y') - 1 . '-' . date('y');
-        }
-
-        $invoice_id = $prefix . '_' . $year . '_' .  $serial;
-
-        // Increment the value
-        if ($save) {
-            $setting->value = (int) $setting->value + 1;
-            $setting->save();
-        }
-
-        return $invoice_id;
+        return $prefix . '_' . $year . '_' . $serial;
     }
+
     public static function generateInvoiceSerialAdmin($module = 6)
     {
-        if ($module == 6) {
-            $prefix = 'MSM';
-        } else {
-            $prefix = 'MCS';
-        }
-
-        $setting = BusinessSetting::where('key', 'admin_bill_serial_number')->first();
-
-        $serial = $setting->value;
-
-        if (date('m') > 3) { // march
-            $year = date('y') . '-' . date('y') + 1;
-        } else {
-            $year = date('y') - 1 . '-' . date('y');
-        }
-
-        $invoice_id = $prefix . '_' . $year . '_' .  $serial;
-
-        // Increment the value
-        $setting->value = (int) $setting->value + 1;
-        $setting->save();
-
-        return $invoice_id;
+        return self::generateInvoiceIdAdmin($module, true);
     }
 
     public static function get_store_range($item_id, $zone_ids, $user_id, $storeId = null)
@@ -2728,6 +2758,22 @@ class Helpers
         }
         return $exp_time . ' ' . $unit;
     }
+    public static function createHospitalDefaultRoles(int $store_id): void
+    {
+        $defaultRoles = ['Doctor', 'Nurse', 'Receptionist'];
+        foreach ($defaultRoles as $roleName) {
+            $exists = \App\Models\EmployeeRole::where('store_id', $store_id)
+                ->where('name', $roleName)->exists();
+            if (!$exists) {
+                $role = new \App\Models\EmployeeRole();
+                $role->name = $roleName;
+                $role->store_id = $store_id;
+                $role->status = 1;
+                $role->save();
+            }
+        }
+    }
+
     public static function _addWelcomeCouponsIfExist($store)
     {
         try {

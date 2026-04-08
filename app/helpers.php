@@ -2796,10 +2796,16 @@ if (!function_exists('_isCancelled')) {
     {
         $store_id = \App\CentralLogics\Helpers::get_store_id();
 
+        $service_request = DB::table('service_requests')->where('id', $req_id)->first();
+        if ($service_request?->status == 'cancelled') {
+            return true;
+        }
+
         $charges2 = DB::table('cancelled_service_requests')
             ->where('service_request_id', $req_id)
             ->where('vendor_id', $store_id)
             ->exists();
+        
 
         if ($charges2) {
             return true;
@@ -2927,6 +2933,8 @@ if (!function_exists('_serviceRunning')) {
                 'accepted_service_requests.*',
                 'service_requests.id as service_request_id',
                 'service_requests.created_at',
+                DB::raw("CASE WHEN service_requests.status = 'cancelled' THEN 'cancelled' ELSE accepted_service_requests.current_status END as current_status"),
+                'service_requests.cancelled_by',
                 'items.name as item_name',
                 'items.image as item_image',
                 'stores.name as store_name',
@@ -3012,7 +3020,7 @@ if (!function_exists('_serviceRunning')) {
                 } else {
                     // Defaults
                     $req->id = 0;
-                    $req->current_status = 'Enquiry Sent';
+                    $req->current_status = $req->current_status === 'cancelled' ? 'Cancelled' : 'Enquiry Sent';
                     $req->assigned_status = 'Not Assigned';
                     $req->assigned_type = 'N/A';
                     $req->staff_name = $req->staff_role = $req->staff_image = $req->staff_contact = '';
@@ -5006,6 +5014,35 @@ if (!function_exists('_sendSMS')) {
         $data = json_decode(curl_exec($ch));
 
         return $data;/* result of API call*/
+    }
+}
+
+if (!function_exists('_sendWhatsApp')) {
+    function _sendWhatsApp($phone, $message)
+    {
+        $apikey    = "PH73e7LuzUGqwSWbO8ta5A";
+        $apisender = "MCHITI";
+
+        // Clean phone
+        $phone = preg_replace('/\D/', '', $phone);
+        $phone = preg_replace('/^(0|91)/', '', $phone);
+
+        $ms  = rawurlencode($message);
+        $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey
+             . '&senderid=' . $apisender
+             . '&channel=11'   // channel 11 = WhatsApp on smsgatewayhub
+             . '&DCS=0&flashsms=0&number=' . $phone
+             . '&text=' . $ms . '&route=1';
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 2);
+        $data = json_decode(curl_exec($ch));
+        curl_close($ch);
+
+        return $data;
     }
 }
 

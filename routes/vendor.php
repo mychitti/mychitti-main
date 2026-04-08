@@ -127,10 +127,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'billing', 'as' => 'invoice.',], function () {
             Route::get('manual-bill', 'ServiceController@manual_bill')->name('manual-bill')->middleware('permission:billing,add_basic');
             Route::get('settings', 'SettingsController@invoice_settings')->name('settings');
+            Route::post('update-serial', 'SettingsController@update_serial_number')->name('update-serial');
             Route::post('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor')->middleware('permission:billing,list'); // only for manual invoices
             Route::get('veiw-invoice/{invoice_id}', 'BillingController@view_invoice')->name('view-invoice')->middleware('permission:billing,view'); // only for manual invoices
             Route::get('create-invoice', 'BillingController@create_invoice')->name('create-invoice')->middleware('permission:billing,add_advanced'); // only for manual invoices
             Route::post('validate-invoicenum', 'BillingController@validate_invoicenum')->name('validate-invoicenum'); // only for manual invoices
+            Route::get('get-invoice-id-for-date', 'BillingController@getInvoiceIdForDate')->name('get-invoice-id-for-date');
 
             Route::get('edit/{id}', 'BillingController@edit')->name('edit')->middleware('permission:billing,edit'); // only for manual invoices
             Route::get('purchase-bills', 'AccountController@my_bills')->name('my-bills')->middleware('permission:purchase_bill,list');; //ddd
@@ -1188,12 +1190,30 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
 
+    // doctor management ==============================
+    Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
+        Route::get('list', 'DoctorController@index')->name('list');
+        Route::get('create', 'DoctorController@create')->name('create');
+        Route::post('store', 'DoctorController@store')->name('store');
+        Route::get('{id}/edit', 'DoctorController@edit')->name('edit');
+        Route::post('{id}/update', 'DoctorController@update')->name('update');
+        Route::get('{id}/delete', 'DoctorController@destroy')->name('delete');
+        Route::get('{id}/slots', 'DoctorController@slots')->name('slots');
+        Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store');
+        Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle');
+        Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete');
+    });
+
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
         Route::get('list', 'PatientController@list')->name('list');
         Route::post('save', 'PatientController@save')->name('save');
         Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel');
+        Route::get('{id}', 'PatientController@show')->name('show');
+        Route::get('{id}/edit', 'PatientController@edit')->name('edit');
+        Route::post('{id}/update', 'PatientController@update')->name('update');
+        Route::get('{id}/delete', 'PatientController@destroy')->name('delete');
     });
 });
 

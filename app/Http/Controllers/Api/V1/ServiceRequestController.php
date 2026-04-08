@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\AccountTransaction;
 use App\Models\BusinessSetting;
-use App\Models\CustomerAddress; 
+use App\Models\CustomerAddress;
 use App\Models\DataSetting;
 use App\Models\EmployeeRole;
 use App\Models\GatePassItem;
@@ -632,7 +632,7 @@ class ServiceRequestController extends Controller
                 $serviceReq = ServiceRequest::where('service_requests.id', $request->service_id)
                     ->join('items', 'items.id', '=', 'service_requests.item_id')
                     ->select('items.category_id', 'service_requests.item_id')
-                    ->first(); 
+                    ->first();
                 $catId = $serviceReq->category_id;
                 $itemId = $serviceReq->item_id;
 
@@ -750,17 +750,35 @@ class ServiceRequestController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+
         $acceptedReq = AcceptedServiceRequest::where('service_request_id', $request->service_id)->first();
-        $acceptedReq->current_status = 'Cancelled';
-        $acceptedReq->cancel_reason = $request->reason;
-        $acceptedReq->cancelled_by = 'User';
-        if ($acceptedReq->update()) {
 
-            $cancelledRequest = $acceptedReq->replicate();
-            $cancelledRequest->setTable('cancelled_service_requests');
-            $cancelledRequest->save();
-            $acceptedReq->delete();
+        if ($acceptedReq) {
+            $acceptedReq->current_status = 'Cancelled';
+            $acceptedReq->cancel_reason = $request->reason;
+            $acceptedReq->cancelled_by = 'User';
 
+            if ($acceptedReq->update()) {
+                $cancelledRequest = $acceptedReq->replicate();
+                $cancelledRequest->setTable('cancelled_service_requests');
+                $cancelledRequest->save();
+                $acceptedReq->delete();
+
+                $cancelled = true;
+            }
+        }else{ // cancel only in service_requests table if not accepted yet
+            $serviceReq = ServiceRequest::where('id', $request->service_id)->first();
+            if ($serviceReq) {
+                $serviceReq->status = 'cancelled';
+                $serviceReq->cancelled_by = 'User';
+                if ($serviceReq->update()) {
+                    $cancelled = true;
+                }
+            }
+        }
+
+
+        if ($cancelled) {
             DB::table('lead_statuses')->insert([
                 'service_request_id' => $request->service_id,
                 'status' => 'Cancelled By User',

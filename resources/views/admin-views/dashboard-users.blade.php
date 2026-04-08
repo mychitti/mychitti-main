@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="content container-fluid">
-        @if(auth('admin')->user()->role_id == 1)
+        {{-- @if(auth('admin')->user()->role_id == 1) --}}
         <!-- Page Header -->
         <div class="page-header">
             <div class="row align-items-center py-2">
@@ -56,7 +56,7 @@
                 </div>
                     </a>
             </div>
-            <div class="col-sm-6 col-lg-4">
+            {{-- <div class="col-sm-6 col-lg-4">
                 <a href="{{ route('admin.users.delivery-man.list',['zone_id' => $params['zone_id'] ?? null]) }}">
                 <div class="__user-dashboard-card" style="--theme-clr:#006AB4">
 
@@ -75,7 +75,7 @@
                     <h5 class="subtitle text-capitalize">{{translate('messages.total_delivery_man')}}</h5>
                 </div>
             </a>
-            </div>
+            </div> --}}
             <div class="col-sm-6 col-lg-4">
                 <a href="{{ route('admin.users.employee.list',['zone_id' => $params['zone_id'] ?? null]) }}">
                     <div class="__user-dashboard-card" style="--theme-clr:#FFA800">
@@ -329,7 +329,7 @@
                 </div>
             </div>
         </div>
-        <h4 class="mb-md-3">{{ translate('Deliveryman Statistics') }}</h4>
+        {{-- <h4 class="mb-md-3">{{ translate('Deliveryman Statistics') }}</h4>
         <div class="row g-2">
             <div class="col-lg-8">
                 <div class="row gap__10">
@@ -399,8 +399,8 @@
                     @include('admin-views.partials._top-deliveryman',['top_deliveryman'=>$data['top_deliveryman']])
                 </div>
             </div>
-        </div>
-        @else
+        </div> --}}
+        {{-- @else
         <!-- Page Header -->
         <div class="page-header">
             <div class="row align-items-center">
@@ -411,7 +411,7 @@
             </div>
         </div>
         <!-- End Page Header -->
-        @endif
+        @endif --}}
     </div>
 @endsection
 

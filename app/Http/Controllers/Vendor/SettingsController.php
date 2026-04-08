@@ -52,6 +52,22 @@ class SettingsController extends Controller
         $store = Store::where('id',  $store_id)->first();
         return view('vendor-views.settings.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts',  'store'));
     }
+    public function update_serial_number(Request $request)
+    {
+        $request->validate([
+            'bill_serial_number' => 'required|integer|min:1',
+            'non_gst_sno'        => 'required|integer|min:1',
+        ]);
+
+        $store = Store::where('id', Helpers::get_store_id())->first();
+        $store->bill_serial_number = $request->bill_serial_number;
+        $store->non_gst_sno        = $request->non_gst_sno;
+        $store->save();
+
+        Toastr::success('Serial numbers updated successfully');
+        return back();
+    }
+
     public function webpage_template_update(Request $request)
     {
         $storeId = Helpers::get_store_id();

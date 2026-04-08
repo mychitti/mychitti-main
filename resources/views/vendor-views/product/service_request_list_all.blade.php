@@ -264,10 +264,10 @@
                         @php
                             $status = $lead->current_status;
                             $invoiceStatus = _serviceInvoiceStatus($lead->id);
-                            $isCompleted = $status === 'Completed';
+                            $isCompleted = $status === 'Completed'; 
                             $isCancelled = _isCancelled($lead->id);
                             $isConfirmed = $status === 'Confirmed';
-                            $canViewDetails = $isConfirmed || $isCancelled || $isCompleted;
+                            $canViewDetails = ($isConfirmed || $isCancelled || $isCompleted) && $lead->status != 'cancelled';
                             $isConfirmed2 = $status === 'Confirmed' || $canViewDetails;
                             $isAcceptedReq = _acceptedReq($lead->id);
                             $canAccept = !isset($lead->additional_status) || $lead->additional_status !== 'missed';
@@ -287,11 +287,12 @@
                             $user_details = _getUserDetails($lead->uid);
                         @endphp
                         <div class="col-md-2">
-                            <div @if ($class != 'missed' && $class != 'new') onclick="handleClick('{{ route('vendor.service.lead-details', [$lead->id]) }}', event)" style="cursor:pointer;" @endif
+                        {{$lead->id}}
+                            <div @if ($class != 'missed' && $class != 'new' && $class != 'cancelled') onclick="handleClick('{{ route('vendor.service.lead-details', [$lead->id]) }}', event)" style="cursor:pointer;" @endif
                                 class="card-container">
 
                                 <div class="card-new pt-4 {{ $class }}">
-                                    @if ($class == 'new' || (isset($lead->additional_status) && $lead->additional_status == 'missed'))
+                                    @if ($class == 'new' || $lead->status == 'cancelled' || (isset($lead->additional_status) && $lead->additional_status == 'missed'))
                                     @else
                                         <div class="dropdown">
                                             <button class="btn p-1 dropdown-toggle"
@@ -486,7 +487,7 @@
                                                 @endif
                                             @endif
                                             {{-- ============ ACCEPT OPTION ================= --}}
-                                            @if (!$canViewDetails)
+                                            @if (!$canViewDetails && !$isCancelled && !$isCompleted)
                                                 @if ($isAcceptedReq)
                                                 @elseif (hasPermission('leads_manage', 'accept') && $canAccept)
                                                     <a href="{{ route('vendor.service.accept', [$lead->id]) }}"

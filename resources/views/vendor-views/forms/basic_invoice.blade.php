@@ -54,12 +54,8 @@
                     <div class="col-md-2 p-1">
                         <label class="form-check-label d-flex mb-1" for="flexRadioDefault2">Invoice Date</label>
                         <div>
-                            @php
-                                $today = date('Y-m-d');
-                                $startOfFinancialYear = (date('m') >= 4 ? date('Y') : date('Y') - 1) . '-04-01';
-                            @endphp
-                            <input type="date" name="invoice_date" class="form-control form-control-sm"
-                                min="{{ $startOfFinancialYear }}" value="{{ $today }}">
+                            <input type="date" name="invoice_date" id="invoice_date" class="form-control form-control-sm"
+                                value="{{ date('Y-m-d') }}" onchange="fetchInvoiceIdForDate(this.value)">
                         </div>
                     </div>
 
@@ -395,3 +391,31 @@
         bottom: 50px;
     }
 </style>
+<script>
+function fetchInvoiceIdForDate(date) {
+    if (!date) return;
+    $.get('{{ route('vendor.invoice.get-invoice-id-for-date') }}', { date: date }, function(res) {
+        // GST
+        $('.invoice_prefix').text(res.prefix);
+        $('input[name="prefixe"]').val(res.prefix);
+        $('.invoice_num.gst_field').val(res.number);
+        // Non-GST
+        $('.invoice_num.non_gst_field').val(res.non_gst_serial);
+
+        @php
+            $fyYear    = date('m') >= 4 ? date('Y') : date('Y') - 1;
+            $currentFy = ($fyYear % 100) . '-' . (($fyYear + 1) % 100);
+        @endphp
+        var currentFy = '{{ $currentFy }}';
+        if (res.fy !== currentFy) {
+            if (!$('#fy_warning').length) {
+                $('#invoice_date').after('<small id="fy_warning" class="text-warning ml-1"><i class="tio-warning"></i> FY ' + res.fy + ' — serial updated.</small>');
+            } else {
+                $('#fy_warning').text('\u26A0 FY ' + res.fy + ' — serial updated.');
+            }
+        } else {
+            $('#fy_warning').remove();
+        }
+    });
+}
+</script>
