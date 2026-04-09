@@ -398,7 +398,9 @@ class CustomerAuthController extends Controller
 
 
         if (auth('web')->check()) {
-            $token = auth()->user()->createToken('RestaurantCustomerAuth')->accessToken;
+            $tokenResult = auth()->user()->createToken('RestaurantCustomerAuth');
+            $token       = $tokenResult->accessToken;
+            $expiresAt   = $tokenResult->token->expires_at?->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
             if (!auth()->user()->status) {
                 $errors = [];
                 array_push($errors, ['code' => 'auth-003', 'message' => translate('messages.your_account_is_blocked')]);
@@ -426,7 +428,7 @@ class CustomerAuthController extends Controller
                     'otp'   => null
                 ]);
 
-            return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
+            return response()->json(['token' => $token, 'expires_at' => $expiresAt, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
         } else {
             $errors = [];
             array_push($errors, ['code' => 'auth-001', 'message' => translate('messages.Unauthorized')]);

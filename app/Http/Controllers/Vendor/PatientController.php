@@ -23,7 +23,7 @@ class PatientController extends Controller
         $store_id = Helpers::get_store_id();
         $search   = $request->search;
 
-        $patients = Patient::where('vendor_id', $store_id)
+        $patients = Patient::where('store_id', $store_id)
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q2) use ($search) {
                     $q2->where('name', 'like', "%{$search}%")
@@ -52,7 +52,7 @@ class PatientController extends Controller
         DB::beginTransaction();
         try {
             $patient              = new Patient();
-            $patient->vendor_id   = $store_id;
+            $patient->store_id   = $store_id;
             $patient->patient_uid = $this->generateUid($store_id);
             $patient->name        = $request->name;
             $patient->dob         = $request->dob;
@@ -130,7 +130,7 @@ class PatientController extends Controller
     public function show($id)
     {
         $store_id = Helpers::get_store_id();
-        $patient  = Patient::where('vendor_id', $store_id)
+        $patient  = Patient::where('store_id', $store_id)
             ->with('medicalHistory', 'documents')
             ->findOrFail($id);
 
@@ -140,7 +140,7 @@ class PatientController extends Controller
     public function edit($id)
     {
         $store_id = Helpers::get_store_id();
-        $patient  = Patient::where('vendor_id', $store_id)->with('medicalHistory')->findOrFail($id);
+        $patient  = Patient::where('store_id', $store_id)->with('medicalHistory')->findOrFail($id);
 
         return view('vendor-views.patient.edit', compact('patient'));
     }
@@ -155,7 +155,7 @@ class PatientController extends Controller
         ]);
 
         $store_id = Helpers::get_store_id();
-        $patient  = Patient::where('vendor_id', $store_id)->findOrFail($id);
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
 
         DB::beginTransaction();
         try {
@@ -204,7 +204,7 @@ class PatientController extends Controller
     public function destroy($id)
     {
         $store_id = Helpers::get_store_id();
-        $patient  = Patient::where('vendor_id', $store_id)->findOrFail($id);
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
         $patient->delete();
 
         Toastr::success('Patient deleted');
@@ -219,7 +219,7 @@ class PatientController extends Controller
 
     private function generateUid(int $store_id): string
     {
-        $last = Patient::where('vendor_id', $store_id)->latest('id')->first();
+        $last = Patient::where('store_id', $store_id)->latest('id')->first();
         $next = $last ? ($last->id + 1) : 1;
         return 'P-' . str_pad($next, 5, '0', STR_PAD_LEFT);
     }

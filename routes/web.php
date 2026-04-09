@@ -25,6 +25,7 @@ use App\Http\Controllers\Front\ModuleInfoController;
 use App\Http\Controllers\Front\UserController as FrontUserController;
 use App\Http\Controllers\Front\WishlistController;
 use App\Http\Controllers\Front\AIChatController as FrontAIChatController;
+use App\Http\Controllers\Front\AppointmentController as FrontAppointmentController;
 use App\Http\Controllers\PaymentGateway;
 use App\Http\Controllers\Front\SitemapController;
 use App\Http\Controllers\LocationController;
@@ -259,6 +260,10 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
     Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');
+    Route::get('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'show'])->name('front.appointment.book');
+    Route::post('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'book'])->name('front.appointment.store');
+    Route::get('{city}/store/{slug}/appointment/{id}/confirm', [FrontAppointmentController::class, 'confirm'])->name('front.appointment.confirm');
+    Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');

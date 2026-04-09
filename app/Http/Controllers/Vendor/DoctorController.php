@@ -16,7 +16,7 @@ class DoctorController extends Controller
     public function index()
     {
         $store_id = Helpers::get_store_id();
-        $doctors  = DoctorProfile::where('vendor_id', $store_id)
+        $doctors  = DoctorProfile::where('store_id', $store_id)
             ->with('employee')
             ->latest()
             ->paginate(15);
@@ -29,7 +29,7 @@ class DoctorController extends Controller
         $store_id  = Helpers::get_store_id();
 
         // Employees not already assigned a doctor profile
-        $assigned_emp_ids = DoctorProfile::where('vendor_id', $store_id)->pluck('emp_id');
+        $assigned_emp_ids = DoctorProfile::where('store_id', $store_id)->pluck('emp_id');
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
             ->whereNotIn('id', $assigned_emp_ids)
@@ -52,7 +52,7 @@ class DoctorController extends Controller
 
         DoctorProfile::create([
             'emp_id'              => $request->emp_id,
-            'vendor_id'           => $store_id,
+            'store_id'           => $store_id,
             'specialization'      => $request->specialization,
             'qualification'       => $request->qualification,
             'registration_number' => $request->registration_number,
@@ -65,11 +65,16 @@ class DoctorController extends Controller
             'bio'                 => $request->bio,
         ]);
 
-        // Auto-assign the Doctor role to this employee
+        // Auto-assign the Doctor role — create it if it doesn't exist
         $doctorRole = EmployeeRole::where('store_id', $store_id)->where('name', 'Doctor')->first();
-        if ($doctorRole) {
-            VendorEmployee::where('id', $request->emp_id)->update(['role_id' => $doctorRole->id]);
+        if (!$doctorRole) {
+            $doctorRole = new EmployeeRole();
+            $doctorRole->name     = 'Doctor';
+            $doctorRole->store_id = $store_id;
+            $doctorRole->status   = 1;
+            $doctorRole->save();
         }
+        VendorEmployee::where('id', $request->emp_id)->update(['employee_role_id' => $doctorRole->id]);
 
         Toastr::success('Doctor profile created successfully');
         return redirect()->route('vendor.doctor.list');
@@ -78,13 +83,13 @@ class DoctorController extends Controller
     public function edit($id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->with('employee', 'slots')->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
 
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
             ->where(function ($q) use ($doctor) {
                 $q->where('id', $doctor->emp_id)
-                  ->orWhereNotIn('id', DoctorProfile::where('vendor_id', $doctor->vendor_id)->pluck('emp_id'));
+                  ->orWhereNotIn('id', DoctorProfile::where('store_id', $doctor->store_id)->pluck('emp_id'));
             })
             ->get();
 
@@ -104,7 +109,7 @@ class DoctorController extends Controller
         ]);
 
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
 
         $doctor->update([
             'emp_id'              => $request->emp_id,
@@ -127,7 +132,7 @@ class DoctorController extends Controller
     public function destroy($id)
     {
         $store_id = Helpers::get_store_id();
-        DoctorProfile::where('vendor_id', $store_id)->findOrFail($id)->delete();
+        DoctorProfile::where('store_id', $store_id)->findOrFail($id)->delete();
 
         Toastr::success('Doctor profile deleted');
         return redirect()->route('vendor.doctor.list');
@@ -138,7 +143,7 @@ class DoctorController extends Controller
     public function slots($id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->with('employee', 'slots')->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
         $days     = DoctorSlot::DAYS;
 
         return view('vendor-views.doctor.slots', compact('doctor', 'days'));
@@ -147,7 +152,8 @@ class DoctorController extends Controller
     public function slotStore(Request $request, $id)
     {
         $request->validate([
-            'day_of_week'           => 'required|integer|between:0,6',
+            'days_of_week'          => 'required|array|min:1',
+            'days_of_week.*'        => 'integer|between:0,6',
             'slot_start'            => 'required|date_format:H:i',
             'slot_end'              => 'required|date_format:H:i|after:slot_start',
             'slot_duration_minutes' => 'required|integer|min:5',
@@ -155,26 +161,57 @@ class DoctorController extends Controller
         ]);
 
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
 
-        DoctorSlot::create([
-            'doctor_profile_id'     => $doctor->id,
-            'day_of_week'           => $request->day_of_week,
-            'slot_start'            => $request->slot_start,
-            'slot_end'              => $request->slot_end,
-            'slot_duration_minutes' => $request->slot_duration_minutes,
-            'max_patients'          => $request->max_patients,
-            'is_active'             => 1,
+        foreach ($request->days_of_week as $day) {
+            DoctorSlot::create([
+                'doctor_profile_id'     => $doctor->id,
+                'day_of_week'           => $day,
+                'slot_start'            => $request->slot_start,
+                'slot_end'              => $request->slot_end,
+                'slot_duration_minutes' => $request->slot_duration_minutes,
+                'max_patients'          => $request->max_patients,
+                'is_active'             => 1,
+            ]);
+        }
+
+        $count = count($request->days_of_week);
+        Toastr::success($count === 1 ? 'Slot added' : "{$count} slots added");
+        return back();
+    }
+
+    public function slotClone(Request $request, $id, $slot_id)
+    {
+        $request->validate([
+            'days_of_week'   => 'required|array|min:1',
+            'days_of_week.*' => 'integer|between:0,6',
         ]);
 
-        Toastr::success('Slot added');
+        $store_id = Helpers::get_store_id();
+        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
+        $source   = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
+
+        foreach ($request->days_of_week as $day) {
+            DoctorSlot::create([
+                'doctor_profile_id'     => $doctor->id,
+                'day_of_week'           => $day,
+                'slot_start'            => $source->slot_start,
+                'slot_end'              => $source->slot_end,
+                'slot_duration_minutes' => $source->slot_duration_minutes,
+                'max_patients'          => $source->max_patients,
+                'is_active'             => 1,
+            ]);
+        }
+
+        $count = count($request->days_of_week);
+        Toastr::success("Slot cloned to {$count} " . ($count === 1 ? 'day' : 'days'));
         return back();
     }
 
     public function slotToggle($id, $slot_id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
         $slot     = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
         $slot->is_active = !$slot->is_active;
         $slot->save();
@@ -186,7 +223,7 @@ class DoctorController extends Controller
     public function slotDestroy($id, $slot_id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('vendor_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
         DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id)->delete();
 
         Toastr::success('Slot deleted');

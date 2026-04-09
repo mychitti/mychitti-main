@@ -9,7 +9,9 @@
       "Bash(find 'd:/Work Projects/mychitti-main/app/Http/Controllers/Api' -type f -name *.php)",
       "Bash(xargs cat:*)",
       "Bash(cut -d'`' -f2)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(xargs -0 grep -l \"service_requests\")",
+      "Bash(find . -name \"*.php\" -type f -exec grep -l \"schema.*service_requests\\\\|create.*service_requests\" {} \\\\;)"
     ]
   }
 }

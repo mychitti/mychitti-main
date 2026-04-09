@@ -1202,6 +1202,20 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store');
         Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle');
         Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete');
+        Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone');
+    });
+
+    // appointment management ==============================
+    Route::group(['prefix' => 'appointment', 'as' => 'appointment.'], function () {
+        Route::get('list', 'AppointmentController@index')->name('list');
+        Route::get('create', 'AppointmentController@create')->name('create');
+        Route::post('store', 'AppointmentController@store')->name('store');
+        Route::get('available-slots', 'AppointmentController@availableSlots')->name('available-slots');
+        Route::get('search-patients', 'AppointmentController@searchPatients')->name('search-patients');
+        Route::get('search-doctors', 'AppointmentController@searchDoctors')->name('search-doctors');
+        Route::get('{id}', 'AppointmentController@show')->name('show');
+        Route::post('{id}/status', 'AppointmentController@updateStatus')->name('status');
+        Route::post('{id}/reschedule', 'AppointmentController@reschedule')->name('reschedule');
     });
 
     // patient management ==============================

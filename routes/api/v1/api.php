@@ -542,9 +542,23 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('vehicle/extra_charge', 'ConfigController@extra_charge');
     Route::get('get-vehicles', 'ConfigController@get_vehicles');
 
-    // AI Chatbot 
+    // AI Chatbot
     Route::group(['prefix' => 'chatbot'], function () {
         Route::post('message', 'ChatbotController@message');
+    });
+
+    // Hospital Management
+    Route::group(['prefix' => 'hospital'], function () {
+        Route::get('slots', 'AppointmentController@slots');
+        Route::get('patient-lookup', 'AppointmentController@patientLookup');
+        Route::get('appointments/{id}', 'AppointmentController@show');
+
+        Route::group(['middleware' => 'auth:api'], function () {
+            Route::post('appointments/book', 'AppointmentController@book');
+            Route::get('appointments/my', 'AppointmentController@myAppointments');
+            Route::post('appointments/{id}/cancel', 'AppointmentController@cancel');
+            Route::post('appointments/{id}/reschedule', 'AppointmentController@reschedule');
+        });
     });
 });
 

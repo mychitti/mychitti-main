@@ -2044,6 +2044,7 @@
             </div>
         </div>
     </div>
+@include('front-views.partials._appointment_booking')
 @include('front-views.partials._claim_remove_business')
 @endsection
 

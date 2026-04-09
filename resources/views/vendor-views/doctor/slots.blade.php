@@ -26,15 +26,26 @@
                 <div class="card-body">
                     <form action="{{ route('vendor.doctor.slot.store', $doctor->id) }}" method="POST">
                         @csrf
+
                         <div class="form-group">
-                            <label class="input-label">Day <span class="text-danger">*</span></label>
-                            <select name="day_of_week" class="form-control" required>
-                                <option value="">-- Select Day --</option>
+                            <label class="input-label">Days <span class="text-danger">*</span></label>
+                            <div class="d-flex flex-wrap gap-1" style="gap:6px;">
                                 @foreach($days as $num => $name)
-                                    <option value="{{ $num }}">{{ $name }}</option>
+                                <label class="day-pill" id="pill-{{ $num }}">
+                                    <input type="checkbox" name="days_of_week[]" value="{{ $num }}"
+                                        class="day-checkbox" onchange="togglePill({{ $num }})">
+                                    {{ substr($name, 0, 3) }}
+                                </label>
                                 @endforeach
-                            </select>
+                            </div>
+                            <div class="mt-1">
+                                <a href="#" class="small text-primary mr-2" onclick="selectAllDays(true);return false;">All</a>
+                                <a href="#" class="small text-secondary mr-2" onclick="selectAllDays(false);return false;">None</a>
+                                <a href="#" class="small text-info" onclick="selectWeekdays();return false;">Weekdays</a>
+                            </div>
+                            @error('days_of_week')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
+
                         <div class="row">
                             <div class="col-6 form-group">
                                 <label class="input-label">Start Time <span class="text-danger">*</span></label>
@@ -97,11 +108,22 @@
                                         </td>
                                         <td>
                                             <div class="btn--container">
+                                                {{-- Clone --}}
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-info"
+                                                    title="Clone to other days"
+                                                    onclick="openCloneModal({{ $slot->id }}, '{{ $name }}', '{{ \Carbon\Carbon::parse($slot->slot_start)->format('h:i A') }} – {{ \Carbon\Carbon::parse($slot->slot_end)->format('h:i A') }}')">
+                                                    <i class="tio-copy"></i>
+                                                </button>
+
+                                                {{-- Toggle --}}
                                                 <a href="{{ route('vendor.doctor.slot.toggle', [$doctor->id, $slot->id]) }}"
                                                     class="btn btn-sm btn-outline-{{ $slot->is_active ? 'secondary' : 'success' }}"
                                                     title="{{ $slot->is_active ? 'Deactivate' : 'Activate' }}">
                                                     <i class="tio-{{ $slot->is_active ? 'block' : 'checkmark-circle' }}"></i>
                                                 </a>
+
+                                                {{-- Delete --}}
                                                 <a href="{{ route('vendor.doctor.slot.delete', [$doctor->id, $slot->id]) }}"
                                                     class="btn btn-sm btn--danger btn-outline-danger form-alert"
                                                     data-id="slot-del-{{ $slot->id }}"
@@ -123,4 +145,123 @@
         </div>
     </div>
 </div>
+
+{{-- Clone Modal --}}
+<div class="modal fade" id="cloneModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Clone Slot</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="cloneForm" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted small mb-2" id="cloneSlotLabel"></p>
+                    <label class="input-label">Copy to days:</label>
+                    <div class="d-flex flex-wrap" style="gap:6px; margin-top:6px;">
+                        @foreach($days as $num => $name)
+                        <label class="day-pill" id="clone-pill-{{ $num }}">
+                            <input type="checkbox" name="days_of_week[]" value="{{ $num }}"
+                                class="clone-day-checkbox" onchange="toggleClonePill({{ $num }})">
+                            {{ substr($name, 0, 3) }}
+                        </label>
+                        @endforeach
+                    </div>
+                    <div class="mt-2">
+                        <a href="#" class="small text-primary mr-2" onclick="selectAllCloneDays(true);return false;">All</a>
+                        <a href="#" class="small text-secondary mr-2" onclick="selectAllCloneDays(false);return false;">None</a>
+                        <a href="#" class="small text-info" onclick="selectCloneWeekdays();return false;">Weekdays</a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn--primary btn-sm">Clone</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.day-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 36px;
+    border: 2px solid #e7eaf3;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #677788;
+    background: #fff;
+    margin: 2px;
+    transition: all 0.15s;
+    user-select: none;
+}
+.day-pill input[type=checkbox] { display: none; }
+.day-pill.active {
+    border-color: #377dff;
+    background: #377dff;
+    color: #fff;
+}
+</style>
 @endsection
+
+@push('script_2')
+<script>
+    // Add form pills
+    function togglePill(num) {
+        const cb  = document.querySelector(`#pill-${num} input`);
+        const lbl = document.getElementById(`pill-${num}`);
+        lbl.classList.toggle('active', cb.checked);
+    }
+    function selectAllDays(val) {
+        document.querySelectorAll('.day-checkbox').forEach(cb => {
+            cb.checked = val;
+            togglePill(cb.value);
+        });
+    }
+    function selectWeekdays() {
+        selectAllDays(false);
+        [1,2,3,4,5].forEach(d => {
+            const cb = document.querySelector(`#pill-${d} input`);
+            cb.checked = true;
+            togglePill(d);
+        });
+    }
+
+    // Clone modal pills
+    function toggleClonePill(num) {
+        const cb  = document.querySelector(`#clone-pill-${num} input`);
+        const lbl = document.getElementById(`clone-pill-${num}`);
+        lbl.classList.toggle('active', cb.checked);
+    }
+    function selectAllCloneDays(val) {
+        document.querySelectorAll('.clone-day-checkbox').forEach(cb => {
+            cb.checked = val;
+            toggleClonePill(cb.value);
+        });
+    }
+    function selectCloneWeekdays() {
+        selectAllCloneDays(false);
+        [1,2,3,4,5].forEach(d => {
+            const cb = document.querySelector(`#clone-pill-${d} input`);
+            cb.checked = true;
+            toggleClonePill(d);
+        });
+    }
+
+    function openCloneModal(slotId, dayName, timeLabel) {
+        // Reset checkboxes
+        selectAllCloneDays(false);
+
+        document.getElementById('cloneSlotLabel').textContent = `${dayName} · ${timeLabel}`;
+        document.getElementById('cloneForm').action = "{{ url('vendor/doctor/' . $doctor->id . '/slots') }}/" + slotId + "/clone";
+
+        $('#cloneModal').modal('show');
+    }
+</script>
+@endpush

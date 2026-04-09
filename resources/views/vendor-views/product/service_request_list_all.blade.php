@@ -287,7 +287,6 @@
                             $user_details = _getUserDetails($lead->uid);
                         @endphp
                         <div class="col-md-2">
-                        {{$lead->id}}
                             <div @if ($class != 'missed' && $class != 'new' && $class != 'cancelled') onclick="handleClick('{{ route('vendor.service.lead-details', [$lead->id]) }}', event)" style="cursor:pointer;" @endif
                                 class="card-container">
 

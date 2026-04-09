@@ -2534,7 +2534,8 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         } else {
             return redirect()->route('home');
         }
-        $data['store_config'] = StoreConfig::where('store_id', $store->id)->first();
+        $data['store_config']    = StoreConfig::where('store_id', $store->id)->first();
+        $data['has_appointment'] = \App\Models\DoctorProfile::where('store_id', $store->id)->exists();
         $data['galleries'] = StoreGallery::where('store_id', $store->id)->get();
         $data['banners'] = DB::table('banners')->where('type', 'store_wise')->where('data',  $store->id)->where('status', 1)->whereIn('platform', ['web', 'all'])->orderBy('sort_order')->get();
         $data['reviews'] = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->take(3)->get();

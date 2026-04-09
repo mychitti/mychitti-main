@@ -299,6 +299,7 @@ class ServiceRequestController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+        //
         //   $serviceRequest = _serviceRunning($request->user_id, true, 10, $request->service_id);
         $serviceRequest = ServiceRequest::with([
             'leadStatus:service_request_id,status,created_at',
@@ -347,7 +348,7 @@ class ServiceRequestController extends Controller
             'quotation.items:id,quote_id,name,price,qty,tax,total',
 
         ])
-            ->select('id', 'item_id', 'user_id', 'status', 'created_at')
+            ->select('id', 'item_id', 'user_id', 'status', 'cancelled_by', 'created_at')
             ->where('id', $request->service_id)
             ->first();
         $host = request()->getHost();
@@ -391,11 +392,10 @@ class ServiceRequestController extends Controller
             $serviceRequest->gatePass->images_path = $filesPath . '/gatepass/';
         }
 
-        // accepted 
+        // accepted
         if (!$serviceRequest->accepted) {
             $fakeAccepted = new AcceptedServiceRequest();
             $fakeAccepted->id = 0;
-            $fakeAccepted->current_status  = 'Enquiry Sent';
             $fakeAccepted->assigned_status = 'Not Assigned';
             $fakeAccepted->assigned_type   = 'N/A';
             $fakeAccepted->staff_name      = '';
@@ -403,6 +403,14 @@ class ServiceRequestController extends Controller
             $fakeAccepted->staff_image     = '';
             $fakeAccepted->staff_contact   = '';
             $fakeAccepted->review_status   = null;
+
+            if ($serviceRequest->status === 'cancelled') {
+                $fakeAccepted->current_status = 'Cancelled';
+                $fakeAccepted->cancelled_by   = $serviceRequest->cancelled_by;
+            } else {
+                $fakeAccepted->current_status = 'Enquiry Sent';
+                $fakeAccepted->cancelled_by   = null;
+            }
 
             $serviceRequest->setRelation('accepted', $fakeAccepted);
         }

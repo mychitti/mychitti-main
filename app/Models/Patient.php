@@ -10,7 +10,8 @@ class Patient extends Model
     use HasFactory;
 
     protected $fillable = [
-        'vendor_id',
+        'store_id',
+        'user_id',
         'patient_uid',
         'name',
         'dob',
@@ -30,6 +31,11 @@ class Patient extends Model
         'status',
         'created_by',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     public function medicalHistory()
     {
