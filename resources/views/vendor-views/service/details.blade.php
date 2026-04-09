@@ -125,9 +125,9 @@
                 @if (
                     ($serviceDetails->current_status == 'Cancelled' || $serviceDetails->current_status == 'Completed') &&
                         !_gatepassExist($serviceDetails->service_id))
-                    No gatepass found..
+                  1  No gatepass found..
                 @elseif(hasPermission('leads_gatepass', 'veiw') && _gatepassExist($serviceDetails->service_id) && $gp->approved == 1)
-                    <h3>Current Gatepass</h3>
+                  2  <h3>Current Gatepass</h3>
 
                     <div class="col-12 mb-1">
                         <div class="resturant-card card--bg-1 position-relative">
@@ -165,7 +165,7 @@
                         </div>
                     </div>
                 @elseif(hasPermission('leads_gatepass', 'edit') && _gatepassExist($serviceDetails->service_id))
-                    <form class="w-100" id="quote_form" enctype="multipart/form-data"
+                   3 <form class="w-100" id="quote_form" enctype="multipart/form-data"
                         action="{{ route('vendor.service.gatepass-update') }}" method="post">
                         @csrf
                         <h5 class="title" style="font-size:1.1rem;">
@@ -255,8 +255,8 @@
 
                     </form>
                 @elseif(hasPermission('leads_gatepass', 'add'))
-
-                    <form class="w-100" id="quote_form" enctype="multipart/form-data"
+4
+                    5<form class="w-100" id="quote_form" enctype="multipart/form-data"
                         action="{{ route('vendor.service.gatepass-add') }}" method="post">
                         @csrf
                         <input type="hidden" id="service_id" name="service_id"
@@ -304,6 +304,7 @@
 
                     </form>
                 @endif
+                7
             </div>
             <div class="col-md-5" style=" height: 90vh; overflow: auto;">
                 <h3>Customer Details</h3>
