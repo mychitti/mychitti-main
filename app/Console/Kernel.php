@@ -124,11 +124,13 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->withoutOverlapping();
 
-        // NOTIFICATION SCHEDULED PUBLISH ================================
-        $schedule->job(new \App\Jobs\SendScheduledNotifications)->everyMinute()
-            ->timezone($tz)
-            ->name('send-scheduled-notifications')
-            ->withoutOverlapping();
+     // NOTIFICATION SCHEDULED PUBLISH ================================
+$schedule->call(function () {
+    \App\Jobs\SendScheduledNotifications::dispatch();
+})->everyMinute()
+  ->timezone($tz)
+  ->name('send-scheduled-notifications')
+  ->withoutOverlapping();
 
         // PUNCH IN REMINDER =======================================
         $schedule->call(function () {
