@@ -35,7 +35,7 @@
                                 </button>
                             </div>
                             <div class="modal-body">
-                            <a href="{{asset('storage/app/public/util')}}/users.xlsx" class="btn btn-primary btn-outline-primary mb-2">Download Example Excel</a>
+                            <a href="{{asset('storage/app/public/uploaded/excel')}}/users.xlsx" class="btn btn-primary btn-outline-primary mb-2">Download Example Excel</a>
                                 <form action="{{route('admin.users.customer.upload-excel')}}" method="post" enctype="multipart/form-data">
                                     @csrf
 
@@ -287,8 +287,7 @@
                                 <th class="border-0">{{ translate('messages.total_order') }}</th>
                                 <th class="border-0">{{ translate('messages.total_order_amount') }}</th>
                                 <th class="border-0">{{ translate('messages.Joining_date') }}</th>
-                                <th class="border-0">
-                                    {{ translate('messages.active') }}/{{ translate('messages.inactive') }}</th>
+                                <th class="border-0">Status</th>
                                 <th class="border-0">{{ translate('messages.actions') }}</th>
                             </tr>
                         </thead>
@@ -336,25 +335,142 @@
                                         </label>
                                     </td>
                                     <td>
-                                        <label class="toggle-switch toggle-switch-sm ml-xl-4"
-                                            for="stocksCheckbox{{ $customer->id }}">
-                                            <input type="checkbox"
-                                                data-url="{{ route('admin.users.customer.status', [$customer->id, $customer->status ? 0 : 1]) }}"
-                                                data-message="{{ $customer->status ? translate('messages.you_want_to_block_this_customer') : translate('messages.you_want_to_unblock_this_customer') }}"
-                                                class="toggle-switch-input status_change_alert"
-                                                id="stocksCheckbox{{ $customer->id }}"
-                                                {{ $customer->status ? 'checked' : '' }}>
-                                            <span class="toggle-switch-label">
-                                                <span class="toggle-switch-indicator"></span>
-                                            </span>
-                                        </label>
+                                        @if($customer->status)
+                                            <span class="badge badge-soft-success">Active</span>
+                                        @else
+                                            <span class="badge badge-soft-danger">Blocked</span>
+                                        @endif
                                     </td>
                                     <td>
-                                        <a class="btn action-btn btn--warning btn-outline-warning"
-                                            href="{{ route('admin.users.customer.view', [$customer['id']]) }}"
-                                            title="{{ translate('messages.view_customer') }}"><i
-                                                class="tio-visible-outlined"></i>
-                                        </a>
+                                     <button class="btn p-1 dropdown-toggle" type="button"
+                                                        data-toggle="dropdown" aria-expanded="false">
+                                                        <img style="    width: 24px; filter: contrast(0);"
+                                                            src = "{{ asset('storage/app/public/util/10025520.png') }}"
+                                                            alt="action">
+                                                    </button>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                                <a class="dropdown-item"
+                                                    href="{{ route('admin.users.customer.view', [$customer->id]) }}">
+                                                    <i class="tio-visible-outlined mr-2"></i> View
+                                                </a>
+                                                <a class="dropdown-item"
+                                                    href="javascript:;"
+                                                    data-toggle="modal"
+                                                    data-target="#editModal-{{ $customer->id }}">
+                                                    <i class="tio-edit mr-2"></i> Edit
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                @if($customer->status)
+                                                <a class="dropdown-item text-warning"
+                                                    href="javascript:;"
+                                                    data-toggle="modal"
+                                                    data-target="#blockModal-{{ $customer->id }}">
+                                                    <i class="tio-block mr-2"></i> Block
+                                                </a>
+                                                @else
+                                                <a class="dropdown-item text-success"
+                                                    href="{{ route('admin.users.customer.status', [$customer->id, 1]) }}">
+                                                    <i class="tio-checkmark-circle mr-2"></i> Unblock
+                                                </a>
+                                                @endif
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger"
+                                                    href="javascript:;"
+                                                    data-toggle="modal"
+                                                    data-target="#deleteModal-{{ $customer->id }}">
+                                                    <i class="tio-delete mr-2"></i> Delete
+                                                </a>
+                                            </div>
+
+                                        {{-- Block Modal --}}
+                                        @if($customer->status)
+                                        <div class="modal fade" id="blockModal-{{ $customer->id }}" tabindex="-1" role="dialog">
+                                            <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+                                                <div class="modal-content" style="border-radius:14px;border:none;text-align:center;overflow:hidden;">
+                                                    <div class="modal-body p-4">
+                                                        <div style="width:56px;height:56px;border-radius:50%;background:#fff8e1;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px;color:#f57c00;">
+                                                            <i class="tio-block"></i>
+                                                        </div>
+                                                        <h5 class="font-semibold mb-2">Block Customer?</h5>
+                                                        <p class="text-muted mb-4" style="font-size:13px;">
+                                                            <strong>{{ $customer->f_name }}</strong> will be logged out immediately and cannot access the platform.
+                                                        </p>
+                                                        <a href="{{ route('admin.users.customer.status', [$customer->id, 0]) }}"
+                                                            class="btn btn-warning text-white w-100 mb-2">Yes, Block</a>
+                                                        <button type="button" class="btn btn-white w-100" data-dismiss="modal">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        {{-- Edit Modal --}}
+                                        <div class="modal fade" id="editModal-{{ $customer->id }}" tabindex="-1" role="dialog">
+                                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                                <div class="modal-content" style="border-radius:14px;border:none;overflow:hidden;">
+                                                    <form action="{{ route('admin.customer.update', $customer->id) }}" method="POST">
+                                                        @csrf
+                                                        <div class="modal-header" style="background:#f8fffe;border-bottom:1px solid #e0f2f1;">
+                                                            <h5 class="modal-title font-semibold">
+                                                                <i class="tio-edit mr-1" style="color:#00696e;"></i> Edit Customer
+                                                            </h5>
+                                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="row">
+                                                                <div class="col-12 mb-3">
+                                                                    <label class="input-label">Name <span class="text-danger">*</span></label>
+                                                                    <input type="text" name="f_name" class="form-control" value="{{ $customer->f_name }}" required>
+                                                                </div>
+                                                                <div class="col-md-6 mb-3">
+                                                                    <label class="input-label">Phone <span class="text-danger">*</span></label>
+                                                                    <input type="text" name="phone" class="form-control" value="{{ $customer->phone }}" required>
+                                                                </div>
+                                                                <div class="col-md-6 mb-3">
+                                                                    <label class="input-label">Email</label>
+                                                                    <input type="email" name="email" class="form-control" value="{{ $customer->email }}">
+                                                                </div>
+                                                                <div class="col-12 mb-3">
+                                                                    <label class="input-label">GST Number</label>
+                                                                    <input type="text" name="gst" class="form-control" value="{{ $customer->gst }}">
+                                                                </div>
+                                                                <div class="col-12 mb-0">
+                                                                    <label class="input-label">Address</label>
+                                                                    <textarea name="address" class="form-control" rows="2">{{ $customer->address }}</textarea>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer" style="border-top:1px solid #f0f0f0;">
+                                                            <button type="button" class="btn btn-white" data-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn--primary">Save Changes</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Delete Modal --}}
+                                        <div class="modal fade" id="deleteModal-{{ $customer->id }}" tabindex="-1" role="dialog">
+                                            <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+                                                <div class="modal-content" style="border-radius:14px;border:none;text-align:center;overflow:hidden;">
+                                                    <div class="modal-body p-4">
+                                                        <div style="width:56px;height:56px;border-radius:50%;background:#fff0f0;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px;color:#e74c3c;">
+                                                            <i class="tio-delete"></i>
+                                                        </div>
+                                                        <h5 class="font-semibold mb-2">Delete Customer?</h5>
+                                                        <p class="text-muted mb-4" style="font-size:13px;">
+                                                            <strong>{{ $customer->f_name }}</strong> will be permanently deleted.
+                                                        </p>
+                                                        <form action="{{ route('admin.customer.delete', $customer->id) }}" method="POST">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger w-100 mb-2">Yes, Delete</button>
+                                                            <button type="button" class="btn btn-white w-100" data-dismiss="modal">Cancel</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

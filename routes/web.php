@@ -31,6 +31,7 @@ use App\Http\Controllers\Front\SitemapController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\VendorController as ControllersVendorController;
 use App\Jobs\PunchInReminder;
+use App\Models\Notification;
 use Illuminate\Support\Facades\Mail;
 
 
@@ -80,6 +81,20 @@ Route::get('/test-attendance-job', function () {
     (new PunchInReminder())->handle();
     return 'Attendance reminder job executed!';
 }); 
+Route::get('/debug-scheduled-notifications', function () {
+    try {
+        (new \App\Jobs\SendScheduledNotifications())->handle();
+
+        return "✅ Job executed successfully";
+
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file'  => $e->getFile(),
+            'line'  => $e->getLine(),
+        ]);
+    }
+});
 
 Route::group(['prefix' => 'mc-vendor', 'as' => 'mc-vendor.'], function () {
     Route::get('contact', [McVendorController::class, 'contact'])->name('contact');

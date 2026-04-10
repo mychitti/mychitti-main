@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use App\CentralLogics\SuspiciousActivity;
 
 class ServiceRequestController extends Controller
 {
@@ -138,8 +139,10 @@ class ServiceRequestController extends Controller
 
         try {
             if ($serviceReq->save()) {
-                // if (1) {
-                //   event( new ServiceNotification('dsaf'));
+                // Check for suspicious repeated enquiries
+                $itemName = DB::table('items')->where('id', $request->item_id)->value('name') ?? '';
+                SuspiciousActivity::checkEnquiry($request->user_id, $request->item_id, $itemName, $request->ip());
+
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $serviceReq->id,
                     'status' => 'User Requested Service',

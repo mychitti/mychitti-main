@@ -22,7 +22,7 @@
                     <div class="progress-bar progress-bar-striped bg-success" role="progressbar" style="width: 20%;" id="progressBar">Step 1 of 5</div>
                 </div>
 
-                <form id="patientForm" method="POST" action="{{ route('vendor.patient.save') }}" enctype="multipart/form-data">
+                <form id="patientForm" method="POST" action="{{ route('vendor.patient.save') }}" enctype="multipart/form-data" novalidate>
                     @csrf
 
                     <!-- Step 1: Personal Details -->

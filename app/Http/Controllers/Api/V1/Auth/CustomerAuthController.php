@@ -17,6 +17,7 @@ use App\Models\WalletTransaction;
 use App\Models\EmailVerifications;
 use Illuminate\Support\Facades\DB;
 use App\CentralLogics\CustomerLogic;
+use App\CentralLogics\SuspiciousActivity;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -31,125 +32,98 @@ class CustomerAuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required|min:11|max:14',
-            'otp' => 'required',
+            'otp'   => 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+
         $user = User::where('phone', $request->phone)->first();
-        if ($user) {
-            if ($user->is_phone_verified) {
-                return response()->json([
-                    'message' => translate('messages.phone_number_is_already_varified')
-                ], 200);
-            }
+        if (!$user) {
+            return response()->json(['message' => translate('messages.not_found')], 404);
+        }
 
-            if (env('APP_MODE') == 'demo') {
-                if ($request['otp'] == "1234") {
-                    $user->is_phone_verified = 1;
-                    $user->save();
+        if ($user->is_phone_verified) {
+            return response()->json(['message' => translate('messages.phone_number_is_already_varified')], 200);
+        }
 
-                    return response()->json([
-                        'message' => translate('messages.phone_number_varified_successfully'),
-                        'otp' => 'inactive'
-                    ], 200);
-                }
-                return response()->json([
-                    'message' => translate('messages.phone_number_and_otp_not_matched')
-                ], 404);
-            }
-
-            $data = DB::table('phone_verifications')->where([
-                'phone' => $request['phone'],
-                'token' => $request['otp'],
-            ])->first();
-
-            if ($data) {
-                DB::table('phone_verifications')->where([
-                    'phone' => $request['phone'],
-                    'token' => $request['otp'],
-                ])->delete();
-
+        if (env('APP_MODE') == 'demo') {
+            if ($request['otp'] == "1234") {
                 $user->is_phone_verified = 1;
                 $user->save();
-
-                return response()->json([
-                    'message' => translate('messages.phone_number_varified_successfully'),
-                    'otp' => 'inactive'
-                ], 200);
-            } else {
-                $max_otp_hit = 5;
-                $max_otp_hit_time = 60; // seconds
-                $temp_block_time = 600; // seconds
-
-                $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
-
-                if (isset($verification_data)) {
-
-                    if (isset($verification_data->temp_block_time) && Carbon::parse($verification_data->temp_block_time)->DiffInSeconds() <= $temp_block_time) {
-                        $time = $temp_block_time - Carbon::parse($verification_data->temp_block_time)->DiffInSeconds();
-
-                        $errors = [];
-                        array_push($errors, [
-                            'code' => 'otp_block_time',
-                            'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($time)->cascade()->forHumans()
-                        ]);
-                        return response()->json([
-                            'errors' => $errors
-                        ], 405);
-                    }
-
-                    if ($verification_data->is_temp_blocked == 1 && Carbon::parse($verification_data->updated_at)->DiffInSeconds() >= $max_otp_hit_time) {
-                        DB::table('phone_verifications')->updateOrInsert(
-                            ['phone' => $request['phone']],
-                            [
-                                'otp_hit_count' => 0,
-                                'is_temp_blocked' => 0,
-                                'temp_block_time' => null,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]
-                        );
-                    }
-
-                    if ($verification_data->otp_hit_count >= $max_otp_hit &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $max_otp_hit_time &&  $verification_data->is_temp_blocked == 0) {
-
-                        DB::table('phone_verifications')->updateOrInsert(
-                            ['phone' => $request['phone']],
-                            [
-                                'is_temp_blocked' => 1,
-                                'temp_block_time' => now(),
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]
-                        );
-                        $errors = [];
-                        array_push($errors, ['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]);
-                        return response()->json([
-                            'errors' => $errors
-                        ], 405);
-                    }
-                }
-
-
-                DB::table('phone_verifications')->updateOrInsert(
-                    ['phone' => $request['phone']],
-                    [
-                        'otp_hit_count' => DB::raw('otp_hit_count + 1'),
-                        'updated_at' => now(),
-                        'temp_block_time' => null,
-                    ]
-                );
-
-                return response()->json([
-                    'message' => translate('messages.phone_number_and_otp_not_matched')
-                ], 404);
+                return response()->json(['message' => translate('messages.phone_number_varified_successfully'), 'otp' => 'inactive'], 200);
             }
+            return response()->json(['message' => translate('messages.phone_number_and_otp_not_matched')], 404);
         }
-        return response()->json([
-            'message' => translate('messages.not_found')
-        ], 404);
+
+        $blockSeconds = 1800; // 30 minutes
+        $maxAttempts  = 5;
+        $otpExpiry    = 600;  // 10 minutes
+
+        $vd = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+
+        if (!$vd) {
+            return response()->json(['message' => translate('messages.phone_number_and_otp_not_matched')], 404);
+        }
+
+        // 1. Block check
+        if ($vd->is_temp_blocked && $vd->temp_block_time) {
+            $elapsed = Carbon::parse($vd->temp_block_time)->diffInSeconds(now());
+            if ($elapsed < $blockSeconds) {
+                $remaining = $blockSeconds - $elapsed;
+                return response()->json([
+                    'errors' => [['code' => 'otp_block_time', 'message' => translate('messages.please_try_again_after_') . CarbonInterval::seconds($remaining)->cascade()->forHumans()]]
+                ], 429);
+            }
+            // Block expired — reset
+            DB::table('phone_verifications')->where('phone', $request['phone'])->update([
+                'otp_hit_count'   => 0,
+                'is_temp_blocked' => 0,
+                'temp_block_time' => null,
+                'updated_at'      => now(),
+            ]);
+            $vd->otp_hit_count   = 0;
+            $vd->is_temp_blocked = 0;
+        }
+
+        // 2. OTP expiry (OTP was sent when created_at was last set)
+        if (Carbon::parse($vd->created_at)->diffInSeconds(now()) > $otpExpiry) {
+            return response()->json([
+                'errors' => [['code' => 'otp_expired', 'message' => 'OTP has expired. Please request a new one.']]
+            ], 403);
+        }
+
+        // 3. OTP match
+        if ($vd->token != $request['otp']) {
+            $newCount = $vd->otp_hit_count + 1;
+            if ($newCount >= $maxAttempts) {
+                DB::table('phone_verifications')->where('phone', $request['phone'])->update([
+                    'otp_hit_count'   => $newCount,
+                    'is_temp_blocked' => 1,
+                    'temp_block_time' => now(),
+                    'updated_at'      => now(),
+                ]);
+                return response()->json([
+                    'errors' => [['code' => 'otp_temp_blocked', 'message' => translate('messages.Too_many_attemps')]]
+                ], 429);
+            }
+            DB::table('phone_verifications')->where('phone', $request['phone'])->update([
+                'otp_hit_count' => $newCount,
+                'updated_at'    => now(),
+            ]);
+            return response()->json([
+                'message'            => translate('messages.phone_number_and_otp_not_matched'),
+                'remaining_attempts' => $maxAttempts - $newCount,
+            ], 404);
+        }
+
+        // 4. Correct OTP
+        DB::table('phone_verifications')->where('phone', $request['phone'])->delete();
+        $user->is_phone_verified = 1;
+        $user->save();
+
+        return response()->json(['message' => translate('messages.phone_number_varified_successfully'), 'otp' => 'inactive'], 200);
     }
 
     public function check_email(Request $request)
@@ -289,28 +263,36 @@ class CustomerAuthController extends Controller
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 
         if ($customer_verification && env('APP_MODE') != 'demo') {
-            $otp_interval_time = 60; //seconds
-            $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+            $vd = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
 
-            if (isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time) {
-                $time = $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
-                $errors = [];
-                array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]);
-                return response()->json([
-                    'errors' => $errors
-                ], 405);
+            // 60-second cooldown
+            if ($vd && Carbon::parse($vd->updated_at)->diffInSeconds(now()) < 60) {
+                $time = 60 - Carbon::parse($vd->updated_at)->diffInSeconds(now());
+                return response()->json(['errors' => [['code' => 'otp', 'message' => translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]]], 429);
+            }
+
+            // Max 5 sends per hour
+            $elapsed = $vd ? Carbon::parse($vd->updated_at)->diffInSeconds(now()) : PHP_INT_MAX;
+            if ($vd && ($vd->send_count ?? 0) >= 5 && $elapsed < 3600) {
+                $remaining = (int) ceil((3600 - $elapsed) / 60);
+                return response()->json(['errors' => [['code' => 'otp', 'message' => "Too many OTP requests. Try again after {$remaining} minute(s)."]]], 429);
             }
 
             $otp = rand(1000, 9999);
+            $sendCount = ($vd && $elapsed < 3600) ? (($vd->send_count ?? 0) + 1) : 1;
             DB::table('phone_verifications')->updateOrInsert(
                 ['phone' => $request['phone']],
                 [
-                    'token' => $otp,
-                    'otp_hit_count' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'token'           => $otp,
+                    'otp_hit_count'   => 0,
+                    'is_temp_blocked' => 0,
+                    'temp_block_time' => null,
+                    'send_count'      => $sendCount,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
                 ]
             );
+            SuspiciousActivity::checkOtp($request['phone'], $user->id ?? null, $request->ip());
             $mail_status = Helpers::get_mail_status('registration_otp_mail_status_user');
             if (config('mail.status') && $mail_status == '1') {
                 Mail::to($request['email'])->send(new EmailVerification($otp, $request->f_name));
@@ -470,30 +452,36 @@ class CustomerAuthController extends Controller
             }
             $user = auth()->user();
             if ($customer_verification && !auth()->user()->is_phone_verified && env('APP_MODE') != 'demo') {
-                $otp_interval_time = 60; //seconds
+                $vd = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
 
-                $verification_data = DB::table('phone_verifications')->where('phone', $request['phone'])->first();
+                // 60-second cooldown
+                if ($vd && Carbon::parse($vd->updated_at)->diffInSeconds(now()) < 60) {
+                    $time = 60 - Carbon::parse($vd->updated_at)->diffInSeconds(now());
+                    return response()->json(['errors' => [['code' => 'otp', 'message' => translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]]], 429);
+                }
 
-                if (isset($verification_data) &&  Carbon::parse($verification_data->updated_at)->DiffInSeconds() < $otp_interval_time) {
-
-                    $time = $otp_interval_time - Carbon::parse($verification_data->updated_at)->DiffInSeconds();
-                    $errors = [];
-                    array_push($errors, ['code' => 'otp', 'message' =>  translate('messages.please_try_again_after_') . $time . ' ' . translate('messages.seconds')]);
-                    return response()->json([
-                        'errors' => $errors
-                    ], 405);
+                // Max 5 sends per hour
+                $elapsed = $vd ? Carbon::parse($vd->updated_at)->diffInSeconds(now()) : PHP_INT_MAX;
+                if ($vd && ($vd->send_count ?? 0) >= 5 && $elapsed < 3600) {
+                    $remaining = (int) ceil((3600 - $elapsed) / 60);
+                    return response()->json(['errors' => [['code' => 'otp', 'message' => "Too many OTP requests. Try again after {$remaining} minute(s)."]]], 429);
                 }
 
                 $otp = rand(1000, 9999);
+                $sendCount = ($vd && $elapsed < 3600) ? (($vd->send_count ?? 0) + 1) : 1;
                 DB::table('phone_verifications')->updateOrInsert(
                     ['phone' => $request['phone']],
                     [
-                        'token' => $otp,
-                        'otp_hit_count' => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'token'           => $otp,
+                        'otp_hit_count'   => 0,
+                        'is_temp_blocked' => 0,
+                        'temp_block_time' => null,
+                        'send_count'      => $sendCount,
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
                     ]
                 );
+                SuspiciousActivity::checkOtp($request['phone'], $user->id ?? null, $request->ip());
                 $mail_status = Helpers::get_mail_status('login_otp_mail_status_user');
                 if (config('mail.status') && $mail_status == '1') {
                     Mail::to($user['email'])->send(new LoginVerification($otp, $user->f_name));

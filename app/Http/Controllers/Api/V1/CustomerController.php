@@ -10,12 +10,13 @@ use App\Models\OrderDetail;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\SMS_module;
+use App\CentralLogics\SuspiciousActivity;
 use App\Models\OrderReference;
 use Illuminate\Support\Carbon;
 use App\Models\CustomerAddress;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\BusinessSetting;
+use App\Models\BusinessSetting; 
 use App\Models\Coupon;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
@@ -250,57 +251,140 @@ class CustomerController extends Controller
         }
     }
 
+    // OTP config
+    const OTP_RESEND_COOLDOWN = 60;   // seconds between sends
+    const OTP_MAX_SENDS       = 5;    // max sends per hour before hard block
+    const OTP_SEND_WINDOW     = 3600; // 1 hour window for send count
+    const OTP_MAX_ATTEMPTS    = 5;    // wrong guesses before block
+    const OTP_BLOCK_MINUTES   = 30;   // how long block lasts
+    const OTP_EXPIRY_MINUTES  = 10;   // OTP valid for 10 minutes
+
     public function verify_otp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required',
-            'otp' => 'required',
+            'otp'   => 'required',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        // otp in db 
-        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $request->otp)->first();
-        if ($dbOtp) {
-            if ($dbOtp->otp != $request->otp) {
-                return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
-            }
-        } else {
-            return response()->json(['status' => false, 'error' => 'Invalid OTP'], 403);
-        }
-        // unset otp
 
+        $record = DB::table('phone_otp')->where('phone', $request->phone)->first();
+
+        if (!$record) {
+            return response()->json(['status' => false, 'error' => 'OTP not found. Please request a new one.'], 403);
+        }
+
+        // Check if blocked due to too many wrong attempts
+        if ($record->is_blocked && Carbon::parse($record->updated_at)->addMinutes(self::OTP_BLOCK_MINUTES)->isFuture()) {
+            $wait = Carbon::parse($record->updated_at)->addMinutes(self::OTP_BLOCK_MINUTES)->diffInMinutes(now()) + 1;
+            return response()->json(['status' => false, 'error' => "Too many wrong attempts. Try again in {$wait} minutes."], 429);
+        }
+
+        // Check OTP expiry
+        if (!$record->expires_at || Carbon::parse($record->expires_at)->isPast()) {
+            return response()->json(['status' => false, 'error' => 'OTP has expired. Please request a new one.'], 403);
+        }
+
+        // Wrong OTP
+        if ($record->otp != $request->otp) {
+            $newAttempts = $record->attempt_count + 1;
+            $shouldBlock = $newAttempts >= self::OTP_MAX_ATTEMPTS;
+
+            DB::table('phone_otp')->where('phone', $request->phone)->update([
+                'attempt_count' => $newAttempts,
+                'is_blocked'    => $shouldBlock ? 1 : 0,
+                'updated_at'    => now(),
+            ]);
+
+            SuspiciousActivity::checkOtp($request->phone, null, $request->ip());
+
+            if ($shouldBlock) {
+                return response()->json(['status' => false, 'error' => 'Too many wrong attempts. Your OTP has been blocked for ' . self::OTP_BLOCK_MINUTES . ' minutes.'], 429);
+            }
+
+            $remaining = self::OTP_MAX_ATTEMPTS - $newAttempts;
+            return response()->json(['status' => false, 'error' => "Invalid OTP. {$remaining} attempt(s) remaining."], 403);
+        }
+
+        // Valid — clear the OTP
+        DB::table('phone_otp')->where('phone', $request->phone)->update([
+            'otp'           => null,
+            'attempt_count' => 0,
+            'is_blocked'    => 0,
+            'expires_at'    => null,
+            'updated_at'    => now(),
+        ]);
 
         return response()->json(['verified' => true], 200);
     }
+
     public function sendotp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required',
         ]);
-
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
+
+        $record = DB::table('phone_otp')->where('phone', $request->phone)->first();
+
+        // Block check
+        if ($record && $record->is_blocked && Carbon::parse($record->updated_at)->addMinutes(self::OTP_BLOCK_MINUTES)->isFuture()) {
+            $wait = Carbon::parse($record->updated_at)->addMinutes(self::OTP_BLOCK_MINUTES)->diffInMinutes(now()) + 1;
+            return response()->json(['status' => false, 'message' => "Account temporarily blocked. Try again in {$wait} minutes."], 429);
+        }
+
+        // Cooldown between sends
+        if ($record && $record->expires_at && Carbon::parse($record->expires_at)->subMinutes(self::OTP_EXPIRY_MINUTES)->addSeconds(self::OTP_RESEND_COOLDOWN)->isFuture()) {
+            $wait = self::OTP_RESEND_COOLDOWN - Carbon::parse($record->updated_at)->diffInSeconds(now());
+            return response()->json(['status' => false, 'message' => "Please wait {$wait} seconds before requesting a new OTP."], 429);
+        }
+
+        // Max sends per hour
+        $sendCount = $record ? $record->send_count : 0;
+        if ($record && Carbon::parse($record->created_at)->addSeconds(self::OTP_SEND_WINDOW)->isFuture()) {
+            if ($sendCount >= self::OTP_MAX_SENDS) {
+                SuspiciousActivity::checkOtp($request->phone, null, $request->ip());
+                return response()->json(['status' => false, 'message' => 'Maximum OTP requests exceeded. Try again later.'], 429);
+            }
+        } else {
+            // Reset window
+            $sendCount = 0;
+        }
+
         $userExists = User::where('phone', $request->phone)->exists();
-        if (!$userExists) { // if user not exists
+        if (!$userExists) {
             $this->createcustomer($request->phone);
         }
 
-        $otp  = rand(1000, 9999);
+        $otp     = rand(1000, 9999);
+        $expires = now()->addMinutes(self::OTP_EXPIRY_MINUTES);
         $sendsms = _send_confirmation_sms('mobile_verification', $request->phone, $otp);
-        $insert  = DB::table('phone_otp')->updateOrInsert([
-            'phone' =>  $request->phone,
-        ], [
-            'otp' => $otp,
-            'created_at' => now()
-        ]);
 
-        if ($insert) {
-            return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $request->phone]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Some error occured', 'sms_status' => $sendsms, 'action' => '']);
-        }
+        DB::table('phone_otp')->updateOrInsert(
+            ['phone' => $request->phone],
+            [
+                'otp'           => $otp,
+                'send_count'    => $sendCount + 1,
+                'attempt_count' => 0,
+                'is_blocked'    => 0,
+                'expires_at'    => $expires,
+                'created_at'    => $record ? $record->created_at : now(),
+                'updated_at'    => now(),
+            ]
+        );
+
+        SuspiciousActivity::checkOtp($request->phone, null, $request->ip());
+
+        return response()->json([
+            'status'     => true,
+            'message'    => 'OTP sent successfully.',
+            'action'     => 'otp_sent',
+            'phone'      => $request->phone,
+            'expires_in' => self::OTP_EXPIRY_MINUTES * 60,
+        ]);
     }
     public function download_service_bill(Request $request)
     {

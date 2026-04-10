@@ -40,7 +40,7 @@ class NotificationController extends BaseController
     }
 
     private function getAddView($request): View
-    {
+    { 
         $notifications = $this->notificationRepo->getListWhere(
             searchValue: $request['search'],
             dataLimit: config('default_pagination'),
@@ -55,17 +55,29 @@ class NotificationController extends BaseController
 
     public function add(NotificationAddRequest $request): JsonResponse
     {
-        $notification = $this->notificationRepo->add(data: $this->notificationService->getAddData(request: $request));
-        $topic = $this->notificationService->getTopic(request: $request);
-        $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
-
-        try {
-            $this->sendPushNotificationToTopic($notification, $topic, 'general');
-        } catch (Exception) {
-            Toastr::warning(translate('messages.push_notification_failed'));
+        $isScheduled = $request->boolean('is_scheduled', false);
+        
+        $data = $this->notificationService->getAddData(request: $request);
+        $data['is_scheduled'] = $isScheduled ? 1 : 0;
+        $data['schedule_time'] = $isScheduled ? $request->scheduled_at : null;
+        
+        $notification = $this->notificationRepo->add(data: $data);
+        
+        if (!$isScheduled) {
+            $topic = $this->notificationService->getTopic(request: $request);
+            $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
+            
+            try {
+                $this->sendPushNotificationToTopic($notification, $topic, 'general');
+                Toastr::success('Notification sent successfully!');
+            } catch (Exception $e) {
+                Toastr::warning(translate('messages.push_notification_failed'));
+            }
+        } else {
+            Toastr::success('Notification scheduled for ' . $request->scheduled_at);
         }
-
-        return response()->json();
+        
+        return response()->json(['message' => $isScheduled ? 'Scheduled!' : 'Sent!']);
     }
 
     public function getUpdateView(string|int $id): View

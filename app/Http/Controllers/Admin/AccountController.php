@@ -216,22 +216,18 @@ class AccountController extends Controller
     }
     public function send_otp(Request $request)
     {
-        $otp  = rand(1000, 9999);
         $phone = BusinessSetting::where('key', 'phone')->first()?->value;
-        // $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
 
-        $insert  = DB::table('phone_otp')->updateOrInsert([
-            'phone' =>  $phone,
-        ], [
-            'otp' => $otp,
-            'created_at' => now()
-        ]);
-
-        if ($sendsms && $insert) {
-            return response()->json(['status' => true, 'message' => "OTP sent to store's registered phone number", 'action' => 'otp_sent']);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Some error occured', 'sms_status' => $sendsms, 'action' => '']);
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
+
+        $otp = rand(1000, 9999);
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
+
+        return response()->json(['status' => true, 'message' => "OTP sent to store's registered phone number", 'action' => 'otp_sent']);
     }
     public function reset_accounts_module(Request $request)
     {

@@ -106,18 +106,13 @@ class LeadController extends Controller
     }
     public function job_otp_verify(Request $request)
     {
-        // prx($request->all());
         $acc_id = $request->acc_id;
-        // prx($request->action);
-        $latest_otp = DB::table('phone_otp')
-            ->where('phone', $request->phone)
-            ->orderByDesc('id') // or 'created_at' if available
-            ->value('otp');
+        $phone  = $request->phone;
+        $otp    = implode('', $request->otp ?? []);
 
-        $is_otp = $latest_otp == implode('', $request->otp);
+        $is_otp = _verify_otp($phone, $otp); // handles expiry, brute-force blocking, cleanup
 
         if ($is_otp) {
-            DB::table('phone_otp')->where('phone', $request->phone)->update(['otp' => NULL]);
             $accDet = AcceptedServiceRequest::find($acc_id);
 
             if ($accDet->assigned_type == 'vendor') {
@@ -280,17 +275,17 @@ class LeadController extends Controller
     }
     public function start_job(Request $request)
     {
-        $otp = rand(1000, 9999);
         $phone = $request->customer_phone;
-        DB::table('phone_otp')->updateOrInsert(
-            ['phone' => $phone],
-            [
-                'phone' => $phone,
-                'otp' => $otp,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            // Still send the old OTP if one exists; just don't send a new SMS
+            // Return the throttle message to the frontend
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
+        }
+
+        $otp = rand(1000, 9999);
+        _store_otp($phone, $otp);
         $user = User::where('phone', $request->customer_phone)->first();
         if ($user) {
             $data = [
@@ -339,15 +334,13 @@ class LeadController extends Controller
 
         Helpers::send_push_notif_to_device($cm_firebase_token, $data, '');
 
-        DB::table('phone_otp')->updateOrInsert(
-            ['phone' => $phone],
-            [
-                'phone' => $phone,
-                'otp' => $otp,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return 0;
+        }
+
+        $otp = rand(1000, 9999);
+        _store_otp($phone, $otp);
         _send_confirmation_sms('job_msg', $phone, $otp);
         return 1;
     }

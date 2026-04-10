@@ -5093,22 +5093,101 @@ if (!function_exists('_storeEmployees')) {
 if (!function_exists('_send_otp')) {
     function _send_otp($phone) {}
 }
+if (!function_exists('_check_otp_send_allowed')) {
+    /**
+     * Check if an OTP send is allowed for the given phone (phone_otp table).
+     * Returns ['allowed' => true] or ['allowed' => false, 'message' => '...']
+     */
+    function _check_otp_send_allowed(string $phone): array
+    {
+        $row = DB::table('phone_otp')->where('phone', $phone)->first();
+        if (!$row) return ['allowed' => true];
+
+        $elapsed = \Carbon\Carbon::parse($row->updated_at)->diffInSeconds(now());
+
+        // 60-second resend cooldown
+        if ($elapsed < 60) {
+            return ['allowed' => false, 'message' => 'Please wait ' . (60 - (int)$elapsed) . ' seconds before requesting another OTP.'];
+        }
+
+        // Max 5 sends per hour (sliding window)
+        if (($row->send_count ?? 0) >= 5 && $elapsed < 3600) {
+            $remaining = (int) ceil((3600 - $elapsed) / 60);
+            return ['allowed' => false, 'message' => "Too many OTP requests. Try again after {$remaining} minute(s)."];
+        }
+
+        return ['allowed' => true];
+    }
+}
+
+if (!function_exists('_store_otp')) {
+    /**
+     * Save/update OTP in phone_otp with security fields (expires_at, send_count, reset attempt_count).
+     */
+    function _store_otp(string $phone, int $otp): void
+    {
+        $row     = DB::table('phone_otp')->where('phone', $phone)->first();
+        $elapsed = $row ? \Carbon\Carbon::parse($row->updated_at)->diffInSeconds(now()) : PHP_INT_MAX;
+        // increment send_count within the 1-hour window, else start fresh
+        $sendCount = ($row && $elapsed < 3600) ? (($row->send_count ?? 0) + 1) : 1;
+
+        DB::table('phone_otp')->updateOrInsert(
+            ['phone' => $phone],
+            [
+                'otp'           => $otp,
+                'send_count'    => $sendCount,
+                'attempt_count' => 0,
+                'is_blocked'    => 0,
+                'expires_at'    => now()->addMinutes(10),
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]
+        );
+    }
+}
+
 if (!function_exists('_verify_otp')) {
     function _verify_otp($phone, $otp)
     {
-        $verify = DB::table('phone_otp')
-            ->where('phone', $phone)
-            ->where('otp', $otp)
-            ->exists();
+        $row = DB::table('phone_otp')->where('phone', $phone)->first();
 
-        if ($verify) {
-            DB::table('phone_otp')
-                ->where('phone', $phone)
-                ->where('otp', $otp)
-                ->delete();
+        if (!$row) return false;
+
+        // Block check (30-minute block)
+        if ($row->is_blocked ?? false) {
+            $elapsed = \Carbon\Carbon::parse($row->updated_at)->diffInSeconds(now());
+            if ($elapsed < 1800) {
+                return false;
+            }
+            // Block expired — reset
+            DB::table('phone_otp')->where('phone', $phone)->update([
+                'attempt_count' => 0,
+                'is_blocked'    => 0,
+                'updated_at'    => now(),
+            ]);
+            $row->attempt_count = 0;
+            $row->is_blocked    = 0;
         }
 
-        return $verify;
+        // Expiry check (10 minutes)
+        if (!empty($row->expires_at) && \Carbon\Carbon::parse($row->expires_at)->isPast()) {
+            return false;
+        }
+
+        // OTP match
+        if ($row->otp != $otp) {
+            $newCount = ($row->attempt_count ?? 0) + 1;
+            $update = ['attempt_count' => $newCount, 'updated_at' => now()];
+            if ($newCount >= 5) {
+                $update['is_blocked'] = 1;
+            }
+            DB::table('phone_otp')->where('phone', $phone)->update($update);
+            return false;
+        }
+
+        // Correct — clear row
+        DB::table('phone_otp')->where('phone', $phone)->delete();
+        return true;
     }
 }
 

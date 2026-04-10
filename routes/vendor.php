@@ -59,6 +59,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
             Route::get('/', 'NotificationController@index')->name('add-new');
             Route::post('store', 'NotificationController@store')->name('store');
+            Route::post('schedule', 'NotificationController@storeScheduled')->name('schedule');
             Route::get('edit/{id}', 'NotificationController@edit')->name('edit');
             Route::post('update/{id}', 'NotificationController@update')->name('update');
             Route::delete('/delete{id}', 'NotificationController@delete')->name('delete');

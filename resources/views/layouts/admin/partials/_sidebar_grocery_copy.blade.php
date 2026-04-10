@@ -623,28 +623,6 @@
                             </span>
                         </a>
                     </li>
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('suspicious-activity*') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('admin.suspicious.index') }}" title="Suspicious Activity">
-                            <i class="tio-warning-outlined nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Suspicious Activity
-                                @if(\Illuminate\Support\Facades\DB::table('suspicious_activity_logs')->where('status','open')->count() > 0)
-                                    <span class="btn-status btn-status-danger border-0 size-8px"></span>
-                                @endif
-                            </span>
-                        </a>
-                    </li>
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/scheduled-notification*') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('admin.scheduled-notification.index') }}" title="Scheduled Notifications">
-                            <i class="tio-time nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Scheduled Notifications
-<!-- Scheduled notifications badge removed --> 
-                            </span>
-                        </a>
-                    </li>
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/store/types')  }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.types') }}" title="{{ translate('messages.stores_config') }}">
                         <span class="tio-layout nav-icon"></span>

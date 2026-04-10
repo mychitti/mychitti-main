@@ -19,6 +19,7 @@ use App\Exports\PushNotificationExport;
 use App\Http\Controllers\Controller;
 use App\Traits\FileManagerTrait;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use App\Http\Controllers\Admin\ScheduledNotificationController;
 use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
@@ -74,6 +75,40 @@ class NotificationController extends Controller
         return response()->json([
             'success' => true,
             'message' => translate('messages.notification_submitted_successfully'),
+        ]);
+    }
+
+    /* ================= STORE SCHEDULED ================= */
+    public function storeScheduled(Request $request)
+    {
+        $request->validate([
+            'notification_title' => 'required|string|max:191',
+            'description'        => 'required|string',
+            'scheduled_at'       => 'required|date|after:now',
+            'zone'               => 'nullable',
+            'tergat'             => 'nullable|string',
+            'image'              => 'nullable|image|max:2048',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+
+        $image = $request->hasFile('image')
+            ? $this->upload('notification/', 'png', $request->file('image'))
+            : null;
+
+        ScheduledNotificationController::storeVendorAd([
+            'title'        => $request->notification_title,
+            'description'  => $request->description,
+            'image'        => $image,
+            'tergat'       => $request->tergat ?? 'customer',
+            'zone'         => $request->zone,
+            'vendor_id'    => $storeId,
+            'scheduled_at' => $request->scheduled_at,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ad scheduled successfully. It will be sent after approval at the scheduled time.',
         ]);
     }
 

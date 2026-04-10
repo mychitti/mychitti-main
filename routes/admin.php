@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Admin\Item\CategoryController;
 use Illuminate\Support\Facades\Route;
-
+ 
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
@@ -641,6 +641,28 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'store-monetization', 'as' => 'store-monetization.'], function () {
             Route::get('/', 'StoreMonetizationController@dashboard')->name('dashboard');
             Route::get('store/{id}', 'StoreMonetizationController@storeDetail')->name('store-detail');
+        });
+
+        // Webpage Template Management
+        Route::group(['prefix' => 'webpage-templates', 'as' => 'webpage-templates.'], function () {
+            Route::get('/', 'SettingsController@webpageTemplates')->name('index');
+            Route::post('update', 'SettingsController@webpageTemplateUpdate')->name('update');
+            Route::post('toggle', 'SettingsController@webpageTemplateToggle')->name('toggle');
+        });
+
+        // Suspicious Activity
+        Route::group(['prefix' => 'suspicious-activity', 'as' => 'suspicious.'], function () {
+            Route::get('/', 'SuspiciousActivityController@index')->name('index');
+            Route::post('update-status', 'SuspiciousActivityController@updateStatus')->name('update-status');
+        });
+
+        // Scheduled Notifications
+        Route::group(['prefix' => 'scheduled-notification', 'as' => 'scheduled-notification.'], function () {
+            Route::get('/', 'ScheduledNotificationController@index')->name('index');
+            Route::post('store-push', 'ScheduledNotificationController@storePush')->name('store-push');
+            Route::post('store-email', 'ScheduledNotificationController@storeEmail')->name('store-email');
+            Route::post('send-now/{scheduledNotification}', 'ScheduledNotificationController@sendNow')->name('send-now');
+            Route::delete('{scheduledNotification}', 'ScheduledNotificationController@destroy')->name('destroy');
         });
 
         Route::get('maintenance-mode', 'SystemController@maintenance_mode')->name('maintenance-mode');
@@ -1576,6 +1598,8 @@ Route::get('add', 'VendorController@index')->name('add')->middleware('permission
             Route::get('view/{user_id}', 'CustomerController@view')->name('view');
             Route::post('search', 'CustomerController@search')->name('search');
             Route::get('status/{customer}/{status}', 'CustomerController@status')->name('status');
+            Route::post('update/{customer}', 'CustomerController@update')->name('update');
+            Route::delete('delete/{customer}', 'CustomerController@destroy')->name('delete');
         });
 
 

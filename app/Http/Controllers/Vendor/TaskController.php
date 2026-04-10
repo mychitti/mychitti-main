@@ -769,23 +769,20 @@ class TaskController extends Controller
             }
         }
 
-        $otp  = rand(1000, 9999);
-        DB::table('phone_otp')->updateOrInsert(
-            ['phone' => $phone],
-            [
-                'phone' => $phone,
-                'otp' => $otp,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'msg' => $check['message']], 429);
+        }
+
+        $otp = rand(1000, 9999);
         _send_confirmation_sms('job_msg', $phone, $otp);
+        _store_otp($phone, $otp);
 
         return response()->json([
-            'status' => true,
-            'action' => 'otp_sent',
+            'status'     => true,
+            'action'     => 'otp_sent',
             'job_action' => $jobAction,
-            'msg' => 'OTP sent successfully'
+            'msg'        => 'OTP sent successfully'
         ]);
     }
     public function update(Request $request)
@@ -950,15 +947,13 @@ class TaskController extends Controller
                     }
                     $delivery_person = $request->employee_id;
                 } else {
-                    $otp  = rand(1000, 9999);
+                    $check = _check_otp_send_allowed($phone);
+                    if (!$check['allowed']) {
+                        return response()->json(['status' => false, 'action' => 'otp_sent', 'status_ajax' => $request->status, 'msg' => $check['message']], 429);
+                    }
+                    $otp = rand(1000, 9999);
                     _send_confirmation_sms('mobile_verification', $phone, $otp);
-                    DB::table('phone_otp')->updateOrInsert(
-                        ['phone' => $phone], // match condition
-                        [
-                            'otp' => $otp,
-                            'created_at' => now()
-                        ]
-                    );
+                    _store_otp($phone, $otp);
                     return response()->json(['status' => true, 'action' => 'otp_sent', 'status_ajax' => $request->status, 'msg' => 'otp sent successfully']);
                 }
             }

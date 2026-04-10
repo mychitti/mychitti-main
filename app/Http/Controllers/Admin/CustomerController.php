@@ -15,6 +15,7 @@ use App\Exports\CustomerListExport;
 use App\Exports\CustomerOrderExport;
 use App\Exports\SubscriberListExport;
 use App\Imports\CustomerImport;
+use App\Imports\AdminCustomerImport;
 use App\Http\Controllers\Controller;
 use App\Mail\EmailVerification;
 use App\Models\Cart;
@@ -105,9 +106,8 @@ class CustomerController extends Controller
                 $query->latest();
             })
             ->when(!$order_wise, function ($query) {
-                $query->orderBy('orders_count', 'desc');
+                $query->latest();
             })
-
             ->paginate(config('default_pagination'));
 
         return view('admin-views.customer.list', compact('customers'));
@@ -124,13 +124,13 @@ class CustomerController extends Controller
             return redirect()->back();
         }
         
-        $import = new CustomerImport();
+        $import = new AdminCustomerImport();
         Excel::import($import, $request->file('file'));
 
-        if ($import->failedRows) {
-            Toastr::warning($import->failedRows . '. Uploaded Successfully');
-        }else{
-            Toastr::success('Customers list imported successfully!');
+        if ($import->skipped > 0) {
+            Toastr::warning("{$import->imported} imported, {$import->skipped} skipped (duplicate phone/email).");
+        } else {
+            Toastr::success("{$import->imported} customers imported successfully!");
         }
         return redirect()->back();
 
@@ -143,13 +143,10 @@ class CustomerController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
-            'l_name' => 'required',
             'email' => 'required|unique:users',
             'phone' => 'required|unique:users',
-            'password' => ['required', RulesPassword::min(8)],
         ], [
-            'f_name.required' => 'The first name field is required.',
-            'l_name.required' => 'The last name field is required.',
+            'f_name.required' => 'The name field is required.',
         ]);
 
         if ($validator->fails()) {
@@ -174,7 +171,7 @@ class CustomerController extends Controller
             }
 
             $notification_data = [
-                'title' => translate('messages.Your_referral_code_is_used_by') . ' ' . $request->f_name . ' ' . $request->l_name,
+                'title' => translate('messages.Your_referral_code_is_used_by') . ' ' . $request->f_name,
                 'description' => translate('Be prepare to receive when they complete there first purchase'),
                 'order_id' => 1,
                 'image' => '',
@@ -194,12 +191,13 @@ class CustomerController extends Controller
         }
 
         $user = User::create([
-            'f_name' => $request->f_name,
-            'l_name' => $request->l_name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'ref_by' =>   $ref_by,
-            'password' => bcrypt($request->password),
+            'f_name'   => $request->f_name,
+            'email'    => $request->email,
+            'phone'    => $request->phone,
+            'ref_by'   => $ref_by,
+            'gst'      => $request->gst,
+            'address'  => $request->address,
+            'password' => bcrypt(uniqid()),
         ]);
         $user->ref_code = Helpers::generate_referer_code($user);
         $user->save();
@@ -319,6 +317,35 @@ class CustomerController extends Controller
 
         Toastr::success(translate('messages.customer') . translate('messages.status_updated'));
         return back();
+    }
+
+    public function update(Request $request, User $customer)
+    {
+        $request->validate([
+            'f_name'  => 'required|string|max:191',
+            'phone'   => 'required|unique:users,phone,' . $customer->id,
+            'email'   => 'nullable|email|unique:users,email,' . $customer->id,
+            'gst'     => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        $customer->update([
+            'f_name'  => $request->f_name,
+            'phone'   => $request->phone,
+            'email'   => $request->email,
+            'gst'     => $request->gst,
+            'address' => $request->address,
+        ]);
+
+        Toastr::success('Customer updated successfully.');
+        return back();
+    }
+
+    public function destroy(User $customer)
+    {
+        $customer->delete();
+        Toastr::success('Customer deleted.');
+        return redirect()->route('admin.users.customer.list');
     }
 
     public function search(Request $request)

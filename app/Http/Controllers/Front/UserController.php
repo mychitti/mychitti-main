@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Front;
 
 
 use App\CentralLogics\Helpers;
+use App\CentralLogics\SuspiciousActivity;
 use App\CentralLogics\ProductLogic;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessSetting;
@@ -90,31 +91,14 @@ class UserController extends Controller
             return response()->json(['status' => false, 'message' => 'No account found with this phone number.']);
         }
 
-        $lastOtp = DB::table('phone_otp')->where('phone', $phone)->first();
-
-        // Rate limiting: 3 attempts per 10 minutes
-        if ($lastOtp && $lastOtp->attempts >= 3) {
-            $timePassed = now()->diffInMinutes($lastOtp->created_at);
-            $timeLeft = max(10 - $timePassed, 0);
-            if ($timeLeft > 0) {
-                return response()->json(['status' => false, 'message' => "Too many attempts. Try again after {$timeLeft} minutes."]);
-            }
-            DB::table('phone_otp')->where('phone', $phone)->update(['attempts' => 0]);
-        }
-
-        // Rate limiting: 1 OTP per 60 seconds
-        if ($lastOtp && \Carbon\Carbon::parse($lastOtp->created_at)->diffInSeconds(now()) < 60) {
-            $timeLeft = 60 - \Carbon\Carbon::parse($lastOtp->created_at)->diffInSeconds(now());
-            return response()->json(['status' => false, 'message' => "Please wait {$timeLeft} seconds before requesting another OTP."]);
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
 
         $otp = rand(1000, 9999);
         _send_confirmation_sms('mobile_verification', $phone, $otp);
-
-        DB::table('phone_otp')->updateOrInsert(
-            ['phone' => $phone],
-            ['otp' => $otp, 'attempts' => ($lastOtp->attempts ?? 0) + 1, 'created_at' => now()]
-        );
+        _store_otp($phone, $otp);
 
         return response()->json(['status' => true, 'message' => 'OTP sent successfully.']);
     }
@@ -122,15 +106,11 @@ class UserController extends Controller
     public function verify_login_otp(Request $request)
     {
         $phone = $request->phone;
-        $otp = implode('', $request->otp);
+        $otp   = implode('', $request->otp);
 
-        $valid = DB::table('phone_otp')->where(['phone' => $phone, 'otp' => $otp])->exists();
-
-        if (!$valid) {
-            return response()->json(['status' => false, 'message' => 'Incorrect OTP.']);
+        if (!_verify_otp($phone, $otp)) {
+            return response()->json(['status' => false, 'message' => 'Incorrect or expired OTP.']);
         }
-
-        DB::table('phone_otp')->where('phone', $phone)->delete();
 
         $user = User::where('phone', $phone)->first();
         auth('web')->login($user);
@@ -461,6 +441,9 @@ class UserController extends Controller
 
         try {
             if ($serviceReq->save()) {
+                $itemName = DB::table('items')->where('id', $request->serviceId)->value('name') ?? '';
+                SuspiciousActivity::checkEnquiry($user_id, $request->serviceId, $itemName, $request->ip());
+
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $serviceReq->id,
                     'status' => 'User Requested Service',

@@ -32,8 +32,9 @@
                         <span class="badge badge-primary template-active-badge">Active</span>
                     @endif
 
-                    <img src="{{ asset('storage/app/public/uploaded/templates') . '/' . $template->thumbnail }}"
-                        class="card-img-top" style="height:150px;object-fit:cover">
+                    <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($template->thumbnail, asset('storage/app/public/uploaded/templates') . '/' . $template->thumbnail, asset('public/assets/admin/img/160x160/img2.jpg'), 'uploaded/templates/') }}"
+                        class="card-img-top onerror-image" style="height:150px;object-fit:cover"
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
 
                     <div class="card-body p-2 d-flex flex-column text-center">
 

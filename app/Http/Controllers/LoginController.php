@@ -323,27 +323,21 @@ class LoginController extends Controller
             return redirect()->back()->withInput($request->only('phone'))
                 ->withErrors(['Phone number does not exist.']);
         }
-        // otp in db 
-        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->first();
-
-        if ($dbOtp && $dbOtp->otp != $otp) {
-            // die('invalid otp');
-            return redirect()->back()->withErrors(['Invalid OTP.']);
+        if (!_verify_otp($request->phone, $otp)) {
+            return redirect()->back()->withErrors(['Invalid or expired OTP.']);
         }
 
-        if ($vendor->stores[0]->status == 0) {
-            // die('inactive vendor');
+        if (($vendor->stores[0]->status ?? 1) == 0) {
             return redirect()->back()->withErrors(['Vendor is inactive.']);
         }
+
         Auth::guard('vendor')->login($vendor);
 
         if (auth('vendor')->check()) {
-            DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->delete();
             return redirect()->route('vendor.dashboard');
-        } else {
-            // die('otp login failed');
-            return redirect()->back()->withErrors(['OTP login failed.']);
         }
+
+        return redirect()->back()->withErrors(['OTP login failed.']);
     }
     public function business_verify(Request $request)
     {
@@ -452,42 +446,17 @@ class LoginController extends Controller
             ]);
         }
 
-        $otp = $request->otp; // join OTP input
+        $otp = $request->otp;
 
-        $store = Store::where('phone', $request->phone)->first();
-
-        if (!$store) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Phone number does not exist.'
-            ]);
+        if (!Store::where('phone', $request->phone)->exists()) {
+            return response()->json(['status' => false, 'message' => 'Phone number does not exist.']);
         }
 
-        $dbOtp = DB::table('phone_otp')
-            ->where('phone', $request->phone)
-            ->where('otp', $otp)
-            ->first();
-
-        if (!$dbOtp || $dbOtp->otp != $otp) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid OTP.'
-            ]);
+        if (!_verify_otp($request->phone, $otp)) {
+            return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
         }
 
-        DB::table('phone_otp')
-            ->where('phone', $request->phone)
-            ->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'OTP verification successful',
-        ]);
-
-        return response()->json([
-            'status' => false,
-            'message' => 'OTP verification failed.'
-        ]);
+        return response()->json(['status' => true, 'message' => 'OTP verification successful']);
     }
     public function reloadCaptcha()
     {

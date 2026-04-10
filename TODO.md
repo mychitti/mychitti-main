@@ -1,51 +1,64 @@
-# Export Separated Files - Progress Tracker
+# Schedule Notification in Admin Push (Using notifications table only)
 
-## Plan Status: ✅ APPROVED
+**Status**: Implementation Plan
 
-**Objective**: Refactor inline Excel exports → dedicated classes. Direct `Excel::download()` vs store+redirect.
+## Information Gathered
+- Admin push form: `resources/views/admin-views/notification/index.blade.php` (title, zone, tergat=customer/deliveryman, description, image)
+- Controller: `NotificationController@add` → immediate FCM via trait `sendPushNotificationToTopic`
+- Current schedule uses separate `ScheduledNotification` table (to be removed for push)
+- Keep email scheduling as-is (uses ScheduledNotification)
 
-## Steps (5/5)
+## Plan
+1. **Migration**: Add columns to `notifications` table:
+   ```
+   php artisan make:migration add_scheduling_to_notifications_table
+   Schema::table('notifications', function (Blueprint $table) {
+       $table->enum('status', ['draft', 'scheduled', 'sent', 'failed'])->default('draft');
+       $table->timestamp('scheduled_at')->nullable();
+       $table->timestamp('sent_at')->nullable();
+   });
+   ```
 
-### ✅ 1. Create Exports Directory  
-- `app/Exports/Vendor/` directory ✓
+2. **New Job**: `app/Jobs/SendScheduledPushNotifications.php`
+   ```
+   notifications::where('status', 'scheduled')
+   ->where('scheduled_at', '<=', now())
+   ->chunk(10, fn($notifs) => $notifs->each(fn($n) => {
+       try {
+           NotificationTrait::sendPushNotificationToTopic($n->toArray(), $topic, 'general');
+           $n->update(['status' => 'sent', 'sent_at' => now()]);
+       } catch(e) {
+           $n->update(['status' => 'failed']);
+       }
+   }));
+   ```
 
-### ✅ 2. Create 5 Export Classes
-```
-✅ app/Exports/Vendor/GstReportExport.php
-✅ app/Exports/Vendor/SaleReportExport.php  
-✅ app/Exports/Vendor/PurchaseReportExport.php
-✅ app/Exports/Vendor/StockReportExport.php
-✅ app/Exports/Vendor/ProfitLossReportExport.php
-```
-**Pattern**: `FromCollection, WithHeadings` → constructor(`$data,$headings`) → `collect($data)` + `headings()` ✓
+3. **Kernel.php**:
+   ```
+   \$schedule->job(new SendScheduledPushNotifications)->everyMinute()
+   ```
 
-### ☐ 3. Refactor InventoryReportController.php
-**Changes**:
-```
-❌ Excel::store(new SaleExport(...)) → redirect(url)
-✅ Excel::download(new VendorSaleReportExport(...), filename)
-```
-- Keep PDF/save_report unchanged
-- Update all 5 Excel methods
+4. **NotificationController.php** (`add` method):
+   ```
+   \$isScheduled = \$request->boolean('is_scheduled');
+   \$data['status'] = \$isScheduled ? 'scheduled' : 'sent';
+   \$data['scheduled_at'] = \$isScheduled ? \$request->scheduled_at : null;
+   \$notification = repo->add(\$data);
+   if (!\$isScheduled) {
+       // existing sendPushNotificationToTopic logic
+   }
+   Toastr::success(\$isScheduled ? 'Scheduled!' : 'Sent!');
+   ```
 
-### ☐ 4. Test Exports
-```
-☐ GST Report Excel download
-☐ Sale Report Excel  
-☐ Purchase Report Excel
-☐ Stock Report Excel
-☐ P&L Report Excel
-☐ PDF exports unchanged
-☐ Permissions work
-```
+5. **Blade JS** (`index.blade.php`):
+   - Always POST to `notification.store`
+   - Toggle → `formData.append('is_scheduled', true); formData.append('scheduled_at', datetime.val());`
 
-### ☐ 5. Complete
-```
-php artisan cache:clear
-✅ All reports download directly
-✅ Data matches previous exports
-```
+## Next Steps (awaiting approval)
+- Create migration
+- Generate job class
+- Edit controllers/kernel
+- Test queue
 
-**Next**: Step 3 → Refactor controller
-
+**Approve plan before code changes.**
 

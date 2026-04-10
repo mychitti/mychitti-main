@@ -94,26 +94,24 @@ class SystemController extends Controller
             $phone = BusinessSetting::where('key', 'phone')->first()->value ?? '8777966552';
         }
         $fileId = $request->id ?? '';
-        $otp  = rand(1000, 9999);
-        $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
-        $insert  = DB::table('phone_otp')->updateOrInsert([
-            'phone' =>  $phone,
-        ], [
-            'otp' => $otp,
-            'created_at' => now()
-        ]);
-        $data = [
-            'user_id' => auth('admin')->id(),
-            'user_type' => 'admin',
-            'action' => 'requested file',
-            'description' => 'Requested to download secure file (Id: ' . $fileId . ')',
-        ];
-        _actionLog($data);
-        if ($insert) {
-            return response()->json(['status' => true]);
-        } else {
-            return response()->json(['status' => false]);
+
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
+
+        $otp = rand(1000, 9999);
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
+
+        _actionLog([
+            'user_id'     => auth('admin')->id(),
+            'user_type'   => 'admin',
+            'action'      => 'requested file',
+            'description' => 'Requested to download secure file (Id: ' . $fileId . ')',
+        ]);
+
+        return response()->json(['status' => true]);
     }
     public function settings()
     {

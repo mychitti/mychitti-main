@@ -567,4 +567,44 @@ class SettingsController extends Controller
 
         return true;
     }
+
+    // ─── Webpage Template Management ───────────────────────────────────────────
+
+    public function webpageTemplates()
+    {
+        $templates = DB::table('store_webpage_templates')->orderBy('id')->get();
+        return view('admin-views.settings.webpage-templates', compact('templates'));
+    }
+
+    public function webpageTemplateUpdate(Request $request)
+    {
+        $request->validate([
+            'id'     => 'required|integer|exists:store_webpage_templates,id',
+            'price'  => 'required|numeric|min:0',
+            'status' => 'required|in:0,1',
+            'name'   => 'required|string|max:191',
+        ]);
+
+        DB::table('store_webpage_templates')->where('id', $request->id)->update([
+            'name'       => $request->name,
+            'price'      => $request->price,
+            'status'     => $request->status,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Template updated.']);
+    }
+
+    public function webpageTemplateToggle(Request $request)
+    {
+        $request->validate(['id' => 'required|integer|exists:store_webpage_templates,id']);
+
+        $current = DB::table('store_webpage_templates')->where('id', $request->id)->value('status');
+        DB::table('store_webpage_templates')->where('id', $request->id)->update([
+            'status'     => $current ? 0 : 1,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'status' => !$current]);
+    }
 }

@@ -1149,14 +1149,14 @@
                                                             {{ translate('cod') }}
                                                         </span>
                                                     </label>
-                                                    <label class="form-check form--check">
+                                                    {{-- <label class="form-check form--check">
                                                         <input class="form-check-input" type="radio"
                                                             value="digital_payment" name="partial_payment_method"
                                                             {{ $partial_payment_method ? ($partial_payment_method->value == 'digital_payment' ? 'checked' : '') : '' }}>
                                                         <span class="form-check-label">
                                                             {{ translate('digital_payment') }}
                                                         </span>
-                                                    </label>
+                                                    </label> --}}
                                                     <label class="form-check form--check">
                                                         <input class="form-check-input" type="radio" value="both"
                                                             name="partial_payment_method"

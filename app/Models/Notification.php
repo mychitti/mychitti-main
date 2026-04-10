@@ -36,6 +36,12 @@ class Notification extends Model
         'zone_id',
         'added_by',
         'vendor_id',
+        'is_scheduled',
+        'schedule_time',
+        'sent_time',
+        'publish_at',
+        'published_at',
+        'scheduled_at',
     ];
 
     /**

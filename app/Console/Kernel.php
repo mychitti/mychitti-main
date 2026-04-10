@@ -113,7 +113,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         // BANNER SCHEDULED PUBLISH ================================
-        $schedule->call(function () {
+        $schedule->call(function () { 
             Banner::withoutGlobalScopes()
                 ->where('status', 0)
                 ->whereNotNull('publish_at')
@@ -122,6 +122,12 @@ class Kernel extends ConsoleKernel
         })->name('banner-scheduled-publish')
             ->everyMinute()
             ->timezone($tz)
+            ->withoutOverlapping();
+
+        // NOTIFICATION SCHEDULED PUBLISH ================================
+        $schedule->job(new \App\Jobs\SendScheduledNotifications)->everyMinute()
+            ->timezone($tz)
+            ->name('send-scheduled-notifications')
             ->withoutOverlapping();
 
         // PUNCH IN REMINDER =======================================

@@ -3,8 +3,13 @@
 @section('title', translate('messages.notification'))
 
 @push('css_or_js')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<style>
+    #schedule_wrap { display:none; }
+    #email_schedule_section { margin-top: 1.5rem; }
+</style>
 @endpush
-
+ 
 @section('content')
     <div class="content container-fluid">
         <!-- Page Header -->
@@ -96,6 +101,17 @@
                                     </div>
                                 </div>
                                 <div class="col-12">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="custom-control custom-switch mr-3">
+                                            <input type="checkbox" class="custom-control-input" id="schedule_toggle">
+                                            <label class="custom-control-label" for="schedule_toggle">Schedule for later</label>
+                                        </div>
+                                    </div>
+                                    <div id="schedule_wrap" class="mb-3">
+                                        <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" id="push_scheduled_at" class="form-control"
+                                            min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
+                                    </div>
                                     <div class="btn--container justify-content-end">
                                         <button type="reset" id="reset_btn"
                                             class="btn btn--reset">{{ translate('messages.reset') }}</button>
@@ -187,6 +203,7 @@
                                     <th class="border-0">{{ translate('messages.image') }}</th>
                                     <th class="border-0">{{ translate('messages.zone') }}</th>
                                     <th class="border-0">{{ translate('messages.tergat') }}</th>
+                                    <th class="border-0">{{ translate('messages.publish status') }}</th>
                                     <th class="text-center border-0">{{ translate('messages.status') }}</th>
                                     <th class="text-center border-0">{{ translate('messages.action') }}</th>
                                 </tr>
@@ -227,6 +244,13 @@
                                         </td>
                                         <td class="text-uppercase">
                                             {{ translate($notification->tergat) }}
+                                        </td>
+                                        <td>
+                                            @if($notification->is_scheduled &&  $notification->sent_at == NULL && $notification->scheduled_at > now()) 
+                                                <label class="badge badge-soft-info">Scheduled for {{ date('Y-m-d H:i', strtotime($notification->scheduled_at)) }}</label>
+                                            @else
+                                                <label class="badge badge-soft-success">Published</label>
+                                            @endif
                                         </td>
                                         <td>
                                             <label class="toggle-switch toggle-switch-sm"
@@ -480,6 +504,54 @@
                 </div>
             </div>
             <!-- End Table -->
+
+            {{-- EMAIL SCHEDULING CARD --}}
+            <div class="col-12" id="email_schedule_section">
+                <div class="card">
+                    <div class="card-header py-2">
+                        <h5 class="card-title mb-0"><i class="tio-email mr-1"></i> Schedule Email Broadcast</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="email_schedule_form">
+                            @csrf
+                            <div class="row g-3">
+                                <div class="col-lg-6">
+                                    <div class="form-group mb-2">
+                                        <label class="input-label">Subject <span class="text-danger">*</span></label>
+                                        <input type="text" name="email_subject" class="form-control" placeholder="Email subject" required maxlength="255">
+                                    </div>
+                                    <div class="form-group mb-2">
+                                        <label class="input-label">Send To <span class="text-danger">*</span></label>
+                                        <select name="send_to" class="form-control" required>
+                                            <option value="all_users">All Customers</option>
+                                            <option value="all_vendors">All Vendors</option>
+                                            <option value="all_delivery_men">All Delivery Men</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-2">
+                                        <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" name="scheduled_at" class="form-control"
+                                            min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="form-group mb-2">
+                                        <label class="input-label">Message / Body <span class="text-danger">*</span></label>
+                                        <textarea name="message" class="form-control" rows="6" placeholder="Email body..." required></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="btn--container justify-content-end">
+                                        <button type="reset" class="btn btn--reset">Reset</button>
+                                        <button type="submit" class="btn btn--primary"><i class="tio-time mr-1"></i> Schedule Email</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -489,29 +561,54 @@
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/notification.js"></script>
     <script>
         "use strict";
-        $('#notification').on('submit', function(e) {
 
+        // Schedule toggle
+        $('#schedule_toggle').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#schedule_wrap').slideDown(200);
+                $('#submit').html('<i class="tio-time mr-1"></i> Schedule Notification');
+            } else {
+                $('#schedule_wrap').slideUp(200);
+                $('#submit').html('{{ translate('messages.send_notification') }}');
+            }
+        });
+
+        // Push notification form
+        $('#notification').on('submit', function(e) {
             e.preventDefault();
-            var formData = new FormData(this);
+            var isScheduled = $('#schedule_toggle').is(':checked');
+            var scheduledAt = $('#push_scheduled_at').val();
+
+            if (isScheduled && !scheduledAt) {
+                toastr.error('Please select a schedule date & time.');
+                return;
+            }
+
+            var confirmText = isScheduled
+                ? 'Schedule this notification for ' + scheduledAt + '?'
+                : '{{ translate('messages.you want to sent notification to') }}' + $('#tergat').val() + '?';
 
             Swal.fire({
                 title: '{{ translate('messages.are_you_sure') }}',
-                text: '{{ translate('messages.you want to sent notification to') }}' + $('#tergat')
-                .val() + '?',
+                text: confirmText,
                 type: 'info',
                 showCancelButton: true,
                 cancelButtonColor: 'default',
                 confirmButtonColor: 'primary',
                 cancelButtonText: '{{ translate('messages.no') }}',
-                confirmButtonText: '{{ translate('messages.send') }}',
+                confirmButtonText: isScheduled ? 'Schedule' : '{{ translate('messages.send') }}',
                 reverseButtons: true
             }).then((result) => {
                 if (result.value) {
                     $.ajaxSetup({
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        }
-                    });
+                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+                    }); 
+
+                    var formData = new FormData(this);
+                    if (isScheduled) {
+                        formData.append('is_scheduled', '1');
+                        formData.append('scheduled_at', scheduledAt);
+                    }
                     $.post({
                         url: '{{ route('admin.notification.store') }}',
                         data: formData,
@@ -519,32 +616,70 @@
                         contentType: false,
                         processData: false,
                         success: function(data) {
-                            if (data.errors) {
-                                for (var i = 0; i < data.errors.length; i++) {
-                                    toastr.error(data.errors[i].message, {
-                                        CloseButton: true,
-                                        ProgressBar: true
-                                    });
-                                }
+                            toastr.success(data.message || (isScheduled ? 'Scheduled!' : 'Sent!'));
+                            if (!isScheduled) {
+                                $('#notification')[0].reset();
+                            }
+                        },
+                        error: function(xhr) {
+                            var errors = xhr.responseJSON?.errors;
+                            if (errors) {
+                                $.each(errors, function(k, v) { toastr.error(v[0]); });
                             } else {
-                                toastr.success('Notifiction sent successfully!', {
-                                    CloseButton: true,
-                                    ProgressBar: true
-                                });
-                                setTimeout(function() {
-                                    {{-- location.href = '{{route('admin.notification.add-new')}}'; --}}
-                                }, 2000);
+                                toastr.error('Something went wrong.');
                             }
                         }
                     });
                 }
-            })
-        })
+            });
+        });
+
+        // Email schedule form
+        $('#email_schedule_form').on('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+
+            Swal.fire({
+                title: 'Schedule Email?',
+                text: 'This email will be queued and sent at the scheduled time.',
+                type: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Schedule',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.value) {
+                    $.ajaxSetup({
+                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+                    });
+                    $.post({
+                        url: '{{ route('admin.scheduled-notification.store-email') }}',
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function(data) {
+                            toastr.success(data.message || 'Email scheduled successfully!');
+                            $('#email_schedule_form')[0].reset();
+                        },
+                        error: function(xhr) {
+                            var errors = xhr.responseJSON?.errors;
+                            if (errors) {
+                                $.each(errors, function(k, v) { toastr.error(v[0]); });
+                            } else {
+                                toastr.error('Something went wrong.');
+                            }
+                        }
+                    });
+                }
+            });
+        });
 
         $('#reset_btn').click(function() {
             $('#zone').val('all').trigger('change');
             $('#viewer').attr('src', '{{ asset('public/assets/admin/img/900x400/img1.jpg') }}');
             $('#customFileEg1').val(null);
-        })
+            $('#schedule_toggle').prop('checked', false).trigger('change');
+        });
     </script>
 @endpush

@@ -40,8 +40,9 @@
                         </div>
                         @endif
                         @php($digital_payment=\App\CentralLogics\Helpers::get_business_settings('digital_payment'))
+                        @php($hasModule6 = $zone->modules->pluck('id')->contains(6))
                         @if ($digital_payment && $digital_payment['status']==1)
-                        <div class="check-item">
+                        <div class="check-item" id="digital_payment_wrap" @if($hasModule6) style="display:none;" @endif>
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="digital_payment" value="digital_payment" class="form-check-input"
                                        id="digital_payment" {{$zone->digital_payment == 1 ?'checked':''}}>
@@ -241,7 +242,19 @@
         }else{
             $('#mod-label').hide();
         }
+        function toggleDigitalPayment() {
+            var selected = $('#choice_modules').val() || [];
+            if (selected.includes('6') || selected.includes(6)) {
+                $('#digital_payment_wrap').hide();
+                $('#digital_payment').prop('checked', false);
+            } else {
+                $('#digital_payment_wrap').show();
+            }
+        }
+        toggleDigitalPayment();
+
         $('#choice_modules').on('change', function() {
+            toggleDigitalPayment();
             $('#mod-label').show();
             let ids = $('.module-row').map(function() {
                 return $(this).attr('id').split('_')[1];

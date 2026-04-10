@@ -379,7 +379,8 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             // ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
-                  ->orWhereNull('zone_id');
+                  ->orWhereNull('zone_id')
+                  ->orWhere('zone_id', 0);
             })
             ->inRandomOrder()
             ->limit(12)
@@ -432,44 +433,33 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
     }
     public function send_vendor_otp(Request $request)
     {
-        $phone =  $request->phone;
-        $exists = Store::where('phone', $phone)->exists();
+        $phone = $request->phone;
 
-        if (!$exists) {
+        if (!Store::where('phone', $phone)->exists()) {
             return response()->json(['status' => false, 'message' => 'This phone is not registered']);
         }
-        $otp  = rand(1000, 9999);
 
-        $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
-
-        $insert  = DB::table('phone_otp')->updateOrInsert([
-            'phone' =>  $phone,
-        ], [
-            'otp' => $otp,
-            'created_at' => now()
-        ]);
-
-        if ($insert) {
-            return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $phone]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Some error occured', 'sms_status' => $sendsms, 'action' => '']);
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
+
+        $otp = rand(1000, 9999);
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
+
+        return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $phone]);
     }
 
     public function verify_vendor_otp(Request $request)
     {
         $phone = $request->phone;
-        $otp = implode('', $request->otp);
-        $verify_otp   = DB::table('phone_otp')->where([
-            'phone' =>  $phone,
-            'otp' => $otp
-        ])->exists();
+        $otp   = implode('', $request->otp);
 
-        if ($verify_otp) {
+        if (_verify_otp($phone, $otp)) {
             return response()->json(['status' => true, 'message' => 'Verified successfully.', 'action' => 'verified', 'otp' => $otp]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Incorrect OTP.', 'action' => '', 'otp' => '']);
         }
+        return response()->json(['status' => false, 'message' => 'Incorrect or expired OTP.', 'action' => '', 'otp' => '']);
     }
     public function fetch_subcategory(Request $request)
     {
@@ -999,97 +989,31 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
     {
         $phone = $request->phone;
 
-        // Check if phone is already registered
         if (Store::where('phone', $phone)->exists()) {
             return response()->json(['status' => false, 'message' => 'This phone is already registered']);
         }
 
-        // Get last OTP record
-        $lastOtp = DB::table('phone_otp')->where('phone', $phone)
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        // **Check if user has reached 3 attempts (apply 10-minute lock)**
-        if ($lastOtp && $lastOtp->attempts >= 3) {
-            $timePassed = Carbon::now()->diffInMinutes($lastOtp->created_at);
-            $timeLeft = max(10 - $timePassed, 0);
-
-            if ($timeLeft > 0) {
-                return response()->json([
-                    'status' => false,
-                    'message' => "You've reached the maximum attempts. Please try again after $timeLeft minutes."
-                ]);
-            } else {
-                // Reset attempts after 10 minutes
-                DB::table('phone_otp')->where('phone', $phone)->update(['attempts' => 0]);
-            }
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
 
-        //  **Check if OTP was sent in the last 1 minute**
-        if ($lastOtp && Carbon::parse($lastOtp->created_at)->diffInSeconds(Carbon::now()) < 60) {
-            $timeLeft = 60 - Carbon::parse($lastOtp->created_at)->diffInSeconds(Carbon::now());
-            return response()->json([
-                'status' => false,
-                'message' => "Please wait $timeLeft seconds before requesting another OTP."
-            ]);
-        }
-
-        //  **Generate OTP**
         $otp = rand(1000, 9999);
-        $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
-        // $sendsms = true; // Simulating SMS sent (remove in production)
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
 
-        //  **Insert or Update OTP in the Database**
-        if (!$lastOtp) {
-            // Insert new OTP
-            $insert = DB::table('phone_otp')->updateOrInsert([
-                'phone' => $phone,
-            ], [
-                'otp' => $otp,
-                'attempts' => 1,
-                'created_at' => now()
-            ]);
-        } else {
-            // Update OTP and increase attempt count
-            $insert = DB::table('phone_otp')->where('phone', $phone)->update([
-                'attempts' => (int) $lastOtp->attempts + 1,
-                'otp' => $otp,
-                'created_at' => now()
-            ]);
-        }
-
-        //  **Return Response**
-        if ($insert) {
-            return response()->json([
-                'status' => true,
-                'message' => 'OTP sent successfully.',
-                'action' => 'otp_sent',
-                'phone' => $phone
-            ]);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => 'Some error occurred',
-                'sms_status' => $sendsms,
-                'action' => ''
-            ]);
-        }
+        return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $phone]);
     }
 
     public function verify_otp(Request $request)
     {
         $phone = $request->phone;
-        $otp = implode('', $request->otp);
-        $verify_otp   = DB::table('phone_otp')->where([
-            'phone' =>  $phone,
-            'otp' => $otp
-        ])->exists();
+        $otp   = implode('', $request->otp);
 
-        if ($verify_otp) {
+        if (_verify_otp($phone, $otp)) {
             return response()->json(['status' => true, 'message' => 'Verified successfully.', 'action' => 'verified', 'otp' => $otp]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Incorrect OTP.', 'action' => '', 'otp' => '']);
         }
+        return response()->json(['status' => false, 'message' => 'Incorrect or expired OTP.', 'action' => '', 'otp' => '']);
     }
 
     public function missing_zone_request(Request $request)
@@ -2341,7 +2265,9 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             ->where('approval', 1)
             ->whereNotNull('image')
             ->where(function ($q) use ($zone_ids) {
-                $q->whereIn('zone_id', $zone_ids)->orWhereNull('zone_id');
+                $q->whereIn('zone_id', $zone_ids)
+                ->orWhereNull('zone_id')
+                ->orWhere('zone_id', 0);
             })
             ->latest();
     }

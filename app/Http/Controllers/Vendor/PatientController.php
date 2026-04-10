@@ -219,8 +219,14 @@ class PatientController extends Controller
 
     private function generateUid(int $store_id): string
     {
-        $last = Patient::where('store_id', $store_id)->latest('id')->first();
-        $next = $last ? ($last->id + 1) : 1;
+        // lockForUpdate() requires an active transaction (caller uses DB::beginTransaction)
+        $lastUid = Patient::where('store_id', $store_id)
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->value('patient_uid');
+
+        $next = ($lastUid && preg_match('/P-(\d+)$/', $lastUid, $m)) ? ((int)$m[1] + 1) : 1;
+
         return 'P-' . str_pad($next, 5, '0', STR_PAD_LEFT);
     }
 }

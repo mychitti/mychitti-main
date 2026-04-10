@@ -3,6 +3,10 @@
 @section('title', translate('messages.ad'))
 
 @push('css_or_js')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<style>
+    #vendor_schedule_wrap { display:none; }
+</style>
 @endpush
 
 @section('content')
@@ -100,6 +104,17 @@
                                     </div>
                                 </div>
                                 <div class="col-12">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="custom-control custom-switch mr-3">
+                                            <input type="checkbox" class="custom-control-input" id="vendor_schedule_toggle">
+                                            <label class="custom-control-label" for="vendor_schedule_toggle">Schedule for later</label>
+                                        </div>
+                                    </div>
+                                    <div id="vendor_schedule_wrap" class="mb-3">
+                                        <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" id="vendor_scheduled_at" class="form-control"
+                                            min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
+                                    </div>
                                     <div class="btn--container justify-content-end">
                                         <button type="reset" id="reset_btn"
                                             class="btn btn--reset">{{ translate('messages.reset') }}</button>
@@ -257,30 +272,61 @@
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/notification.js"></script>
     <script>
         "use strict";
-        $('#notification').on('submit', function(e) {
 
+        // Schedule toggle
+        $('#vendor_schedule_toggle').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#vendor_schedule_wrap').slideDown(200);
+                $('#submit').html('<i class="tio-time mr-1"></i> Schedule Ad');
+            } else {
+                $('#vendor_schedule_wrap').slideUp(200);
+                $('#submit').html('{{ translate('messages.submit_ad') }}');
+            }
+        });
+
+        $('#notification').on('submit', function(e) {
             e.preventDefault();
-            var formData = new FormData(this);
+            var isScheduled = $('#vendor_schedule_toggle').is(':checked');
+            var scheduledAt = $('#vendor_scheduled_at').val();
+
+            if (isScheduled && !scheduledAt) {
+                toastr.error('Please select a schedule date & time.');
+                return;
+            }
+
+            var confirmTitle = isScheduled ? 'Schedule Ad?' : '{{ translate('messages.Info') }}';
+            var confirmText  = isScheduled
+                ? 'This ad will be scheduled for ' + scheduledAt + ' and sent after approval.'
+                : '{{ translate('messages.the ad will first be verified then it will be released') }}.';
+            var confirmBtn   = isScheduled ? 'Schedule' : '{{ translate('messages.okay submit') }}';
 
             Swal.fire({
-                title: '{{ translate('messages.Info') }}',
-                text: '{{ translate('messages.the ad will first be verified then it will be released') }}.',
+                title: confirmTitle,
+                text: confirmText,
                 type: 'info',
                 showCancelButton: true,
                 cancelButtonColor: 'default',
                 confirmButtonColor: 'primary',
                 cancelButtonText: '{{ translate('messages.cancel') }}',
-                confirmButtonText: '{{ translate('messages.okay submit') }}',
+                confirmButtonText: confirmBtn,
                 reverseButtons: true
             }).then((result) => {
                 if (result.value) {
                     $.ajaxSetup({
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        }
+                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
                     });
+
+                    var postUrl = isScheduled
+                        ? '{{ route('vendor.notification.schedule') }}'
+                        : '{{ route('vendor.notification.store') }}';
+
+                    var formData = new FormData(this);
+                    if (isScheduled) {
+                        formData.append('scheduled_at', scheduledAt);
+                    }
+
                     $.post({
-                        url: '{{ route('vendor.notification.store') }}',
+                        url: postUrl,
                         data: formData,
                         cache: false,
                         contentType: false,
@@ -288,30 +334,32 @@
                         success: function(data) {
                             if (data.errors) {
                                 for (var i = 0; i < data.errors.length; i++) {
-                                    toastr.error(data.errors[i].message, {
-                                        CloseButton: true,
-                                        ProgressBar: true
-                                    });
+                                    toastr.error(data.errors[i].message, { CloseButton: true, ProgressBar: true });
                                 }
                             } else {
-                                toastr.success('Notifiction sent successfully!', {
-                                    CloseButton: true,
-                                    ProgressBar: true
-                                });
-                                setTimeout(function() {
-                                    {{-- location.href = '{{route('vendor.notification.add-new')}}'; --}}
-                                }, 2000);
+                                toastr.success(data.message || 'Submitted successfully!', { CloseButton: true, ProgressBar: true });
+                                $('#vendor_schedule_toggle').prop('checked', false).trigger('change');
+                                $('#notification')[0].reset();
+                            }
+                        },
+                        error: function(xhr) {
+                            var errors = xhr.responseJSON?.errors;
+                            if (errors) {
+                                $.each(errors, function(k, v) { toastr.error(v[0]); });
+                            } else {
+                                toastr.error('Something went wrong.');
                             }
                         }
                     });
                 }
-            })
-        })
+            });
+        });
 
         $('#reset_btn').click(function() {
             $('#zone').val('all').trigger('change');
             $('#viewer').attr('src', '{{ asset('public/assets/admin/img/900x400/img1.jpg') }}');
             $('#customFileEg1').val(null);
-        })
+            $('#vendor_schedule_toggle').prop('checked', false).trigger('change');
+        });
     </script>
 @endpush

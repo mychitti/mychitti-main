@@ -126,61 +126,35 @@ class VendorLoginController extends Controller
     public function verify_otp(Request $request)
     {
         $request->validate([
-            'otp' => 'required', 
+            'otp'   => 'required',
             'phone' => 'required'
         ]);
 
-        $otp =  $request->otp; //array to string otp 
         $vendor = Vendor::where('phone', $request->phone)->first();
 
         if (!$vendor) {
-            $errors = [];
-            array_push($errors, ['code' => 'auth-001', 'message' => 'Phone number does not exist']);
-            return response()->json([
-                'errors' => $errors
-            ], 401);
-
-        }
-        // otp in db 
-        $dbOtp = DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->first();
-   
-        if (!$dbOtp || ($dbOtp && $dbOtp->otp != $otp)) {
-            $errors = [];
-            array_push($errors, ['code' => 'auth-001', 'message' => 'Invalid OTP.']);
-            return response()->json([
-                'errors' => $errors
-            ], 401);
-
+            return response()->json(['errors' => [['code' => 'auth-001', 'message' => 'Phone number does not exist']]], 401);
         }
 
-        if ($vendor->stores[0]->status == 0) {
-            $errors = [];
-            array_push($errors, ['code' => 'auth-001', 'message' => 'Vendor is inactive.']);
-            return response()->json([
-                'errors' => $errors
-            ], 401);
-
+        if (!_verify_otp($request->phone, $request->otp)) {
+            return response()->json(['errors' => [['code' => 'auth-001', 'message' => 'Invalid or expired OTP.']]], 401);
         }
-        // login attempt
+
+        if (($vendor->stores[0]->status ?? 1) == 0) {
+            return response()->json(['errors' => [['code' => 'auth-001', 'message' => 'Vendor is inactive.']]], 401);
+        }
+
         Auth::guard('vendor')->login($vendor);
 
         if (auth('vendor')->check()) {
-            // DB::table('phone_otp')->where('phone', $request->phone)->where('otp', $otp)->delete();
-         echo 'login';
-            // return redirect()->route('vendor.dashboard');
-        } else {
-            $errors = [];
-            array_push($errors, ['code' => 'auth-001', 'message' => 'OTP login failed.']);
-            return response()->json([
-                'errors' => $errors
-            ], 401);
+            return response()->json(['status' => true, 'message' => 'Login successful.']);
         }
+
+        return response()->json(['errors' => [['code' => 'auth-001', 'message' => 'OTP login failed.']]], 401);
     }
 
     public function send_vendor_otp(Request $request)
     {
-
-        
         $validator = Validator::make($request->all(), [
             'phone' => 'required'
         ]);
@@ -188,28 +162,24 @@ class VendorLoginController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
-        $phone =  $request->phone;
+
+        $phone = $request->phone;
         $exists = Store::where('phone', $phone)->exists();
 
         if (!$exists) {
             return response()->json(['status' => false, 'message' => 'This phone is not registered']);
         }
-        $otp  = rand(1000, 9999);
 
-        $sendsms = _send_confirmation_sms('mobile_verification', $phone, $otp);
-
-        $insert  = DB::table('phone_otp')->updateOrInsert([
-            'phone' =>  $phone,
-        ], [
-            'otp' => $otp,
-            'created_at' => now()
-        ]);
-
-        if ($insert) {
-            return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $phone]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Some error occured', 'sms_status' => $sendsms, 'action' => '']);
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
+
+        $otp = rand(1000, 9999);
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
+
+        return response()->json(['status' => true, 'message' => 'OTP sent successfully.', 'action' => 'otp_sent', 'phone' => $phone]);
     }
     
 
