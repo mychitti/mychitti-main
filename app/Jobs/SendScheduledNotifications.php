@@ -19,7 +19,7 @@ class SendScheduledNotifications implements ShouldQueue
     {
         Notification::where('is_scheduled', 1)
             ->whereNotNull('schedule_time')
-            ->where('schedule_time', '<=', now()) 
+            ->where('schedule_time', '<=', now('Asia/Kolkata'))
             ->whereNull('sent_time')
             ->chunk(20, function ($notifications) {
                 foreach ($notifications as $notification) {
