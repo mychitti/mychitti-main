@@ -62,6 +62,7 @@ class BlogController extends Controller
     {
         $type       = $request->get('type', 'common');
         $categories = BlogCategory::where('status', 1)->where('type', $type)->get();
+        $blogs      = BlogPost::paginate(10);
         return view('admin-views.blog.add', compact('blogs', 'categories', 'type'));
     }
     public function category_select_type(Request $request)
