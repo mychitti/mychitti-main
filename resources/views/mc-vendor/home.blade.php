@@ -554,7 +554,7 @@ $log_email_succ = session()->get('log_email_succ');
     <section class="capabilities-section" id="products_section">
         <div class="container">
             <h2 style="text-align: center; font-size: 32px; font-weight: bold; color: #1f2937; margin-bottom: 50px;">
-                Redefine what's possible with MC Vendor Hub
+                Redefine what's possible with MC Vendor Hub2
             </h2>
 
             <div class="capability-grid">
