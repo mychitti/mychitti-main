@@ -61,6 +61,7 @@ class BlogController extends Controller
     public function add_new(Request $request)
     {
         $type       = $request->get('type', 'common');
+        prx( $type);
         $categories = BlogCategory::where('status', 1)->where('type', $type)->get();
         $blogs      = BlogPost::paginate(10);
         return view('admin-views.blog.add', compact('blogs', 'categories', 'type'));
