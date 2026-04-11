@@ -32,9 +32,40 @@ class McvendorSettingsController extends Controller
             return view('admin-views.mcvendor-settings.privacy-policy', compact('privacy_policy_for_mc_vendor'));
         }
         else if ($tab == 'terms-and-conditions') {
-        $vendorhub_terms_and_conditions = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'vendorhub_terms_and_conditions')->first();
+            $vendorhub_terms_and_conditions = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'vendorhub_terms_and_conditions')->first();
             return view('admin-views.mcvendor-settings.terms-and-conditions', compact('vendorhub_terms_and_conditions'));
         }
+        else if ($tab == 'return-policy') {
+            $return_policy_for_mc_vendor = DataSetting::withoutGlobalScope('translate')->where('type', 'admin_landing_page')->where('key', 'return_policy_for_mc_vendor')->first();
+            return view('admin-views.mcvendor-settings.return-policy', compact('return_policy_for_mc_vendor'));
+        }
+    }
+
+    public function mcvendor_return_policy(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+
+        $encoded = $request->return_policy_for_mc_vendor;
+        // Decode URL-safe base64 submitted by ck_editor_form2
+        $padded  = str_pad(strtr($encoded, '-_', '+/'), strlen($encoded) + (4 - strlen($encoded) % 4) % 4, '=');
+        $decoded = base64_decode($padded);
+        // base64_decode returns false on failure — fall back to raw value
+        $value = $decoded !== false ? $decoded : $encoded;
+
+        $data_setting = DataSetting::where('type', 'admin_landing_page')->where('key', 'return_policy_for_mc_vendor')->first();
+        if (!$data_setting) {
+            $data_setting = new DataSetting();
+            $data_setting->type = 'admin_landing_page';
+            $data_setting->key  = 'return_policy_for_mc_vendor';
+        }
+        $data_setting->value = $value;
+        $data_setting->save();
+
+        Toastr::success('Return Policy updated successfully.');
+        return back();
     }
     public function mcvendor_setup(Request $request)
     {

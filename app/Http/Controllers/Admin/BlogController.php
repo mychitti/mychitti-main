@@ -93,11 +93,12 @@ class BlogController extends Controller
         $blog =  BlogPost::find($request->id);
         $blog->title = $request->post('name');
         $blog->slug = Str::slug($request->name);
-        $blog->image = $request->has('image') ? Helpers::update('blog/', $blog->image, 'png', $request->file('image')) : $blog->image;
+        $blog->image = $request->hasFile('image') ? Helpers::update('blog/', $blog->image, 'png', $request->file('image')) : $blog->image;
         $blog->category_id = $request->category;
         $blog->description = $request->post('description');
         $blog->short_description = $request->short_description;
         $blog->type = $request->type;
+        $blog->status = $request->input('publish_status', 0);
         $save = $blog->update();
 
 
@@ -126,6 +127,7 @@ class BlogController extends Controller
         $blog->description = $request->description;
         $blog->short_description = $request->short_description;
         $blog->type = $request->type;
+        $blog->status = $request->input('publish_status', 0);
         $save = $blog->save();
         if ($save) {
             return response()->json(['msg' => 'Blog Post saved successfully', 'status' => true]);

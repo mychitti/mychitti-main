@@ -69,6 +69,7 @@
                             <th class="border-0">Title</th>
                             <th class="border-0">Type</th>
                             <th class="border-0">Category</th>
+                            <th class="border-0">Status</th>
                             <th class="border-0 text-center">{{ translate('messages.action') }}</th>
                         </tr>
                     </thead>
@@ -105,7 +106,13 @@
                                 <td>
                                     {{ ucfirst($item->cat_name) }}
                                 </td>
-
+                                <td>
+                                    @if($item->status == 1)
+                                        <span class="badge badge-soft-success">Published</span>
+                                    @else
+                                        <span class="badge badge-soft-secondary">Draft</span>
+                                    @endif
+                                </td>
 
                                 <td>
                                     <div class="btn--container justify-content-center">

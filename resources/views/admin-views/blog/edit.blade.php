@@ -287,9 +287,24 @@ $('#blog_form').on('submit', function(e) {
                             </div>
                         </div>
                     </div>
-                    <div class="btn--container justify-content-end mt-3">
-                        <button type="reset" id="reset_btn" class="btn btn--reset">{{translate('messages.reset')}}</button>
-                        <button type="submit" class="btn btn--primary">Submit</button>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <label class="mb-0 fw-semibold">Status:</label>
+                            <div class="d-flex gap-2">
+                                <div>
+                                    <input type="radio" name="publish_status" id="status_draft" value="0" {{ ($post->status ?? 0) == 0 ? 'checked' : '' }}>
+                                    <label for="status_draft" class="form-label mb-0">Draft</label>
+                                </div>
+                                <div>
+                                    <input type="radio" name="publish_status" id="status_published" value="1" {{ ($post->status ?? 0) == 1 ? 'checked' : '' }}>
+                                    <label for="status_published" class="form-label mb-0">Published</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn--container">
+                            <button type="reset" id="reset_btn" class="btn btn--reset">{{translate('messages.reset')}}</button>
+                            <button type="submit" class="btn btn--primary">Submit</button>
+                        </div>
                     </div>
                 </form>
             </div>

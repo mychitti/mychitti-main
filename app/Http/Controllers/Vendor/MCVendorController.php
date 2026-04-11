@@ -34,6 +34,12 @@ class MCVendorController extends Controller
         $privacy_policy =  DataSetting::where('key', 'privacy_policy_for_mc_vendor')->first();
         return view('mc-vendor.vendorhub_privacy_policy', compact('privacy_policy'));
     }
+
+    public function mc_vendor_hub_return_policy(Request $request)
+    {
+        $return_policy = DataSetting::where('key', 'return_policy_for_mc_vendor')->first();
+        return view('mc-vendor.vendorhub_return_policy', compact('return_policy'));
+    }
     public function request_subscription_plan(Request $request)
     {
         // print_r($request->all());

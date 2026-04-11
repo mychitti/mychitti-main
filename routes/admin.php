@@ -1334,6 +1334,7 @@ Route::get('add', 'VendorController@index')->name('add')->middleware('permission
             Route::get('business-setup/{tab?}', 'BusinessSettingsController@business_index')->name('business-setup');
             Route::get('mcvendor-setup/{tab?}', 'McvendorSettingsController@mcvendor_index')->name('mcvendor-setup');
             Route::post('mcvendor-setup-update', 'McvendorSettingsController@mcvendor_setup')->name('mcvendor-setup-update');
+            Route::post('mcvendor-setup/return-policy', 'McvendorSettingsController@mcvendor_return_policy')->name('mcvendor-return-policy');
             Route::get('app-setup', 'BusinessSettingsController@app_setup')->name('app-setup');
             Route::get('react-setup', 'BusinessSettingsController@react_setup')->name('react-setup');
             Route::post('react-update', 'BusinessSettingsController@react_update')->name('react-update');

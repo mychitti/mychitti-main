@@ -20,6 +20,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('blog-mc-vendor-hub/{slug}', 'MCVendorController@blog_mc_vendor_post')->name('blog-mc-vendor-hub.post');
         Route::get('tnc', 'MCVendorController@mc_vendor_hub_tnc')->name('mc-vendor-hub-tnc');
         Route::get('privacy-policy', 'MCVendorController@mc_vendor_hub_pp')->name('mc-vendor-hub-pp');
+        Route::get('return-policy', 'MCVendorController@mc_vendor_hub_return_policy')->name('mc-vendor-hub-return-policy');
         Route::get('contact', 'MCVendorController@contact')->name('contact');
         Route::post('send-message', 'MCVendorController@send_message')->name('send-message');
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');

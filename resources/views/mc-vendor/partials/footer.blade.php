@@ -18,9 +18,11 @@
                             <a class="text-white text-decoration-none me-2"
                                 href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blogs</a>
                             <a class="text-white text-decoration-none me-2"
-                                href="https://mcvendorhub.com/tnc">Terms and Conditions</a>
-                                 <a class="text-white text-decoration-none me-2"
-                                href="https://mcvendorhub.com/privacy-policy">Privacy Policy</a>
+                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-tnc') }}">Terms and Conditions</a>
+                            <a class="text-white text-decoration-none me-2"
+                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}">Privacy Policy</a>
+                            <a class="text-white text-decoration-none me-2"
+                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-return-policy') }}">Return Policy</a>
                             <a class="text-white text-decoration-none me-2" href="https://mcvendorhub.com/price-calculator/contact">Contact</a>
                         </div>
                     </div>

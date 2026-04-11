@@ -11,6 +11,9 @@
             <li class="nav-item">
                 <a class="nav-link  {{ Request::is('business-settings/mcvendor-setup/terms-and-conditions') ?'active':'' }}" href="{{ route('admin.business-settings.mcvendor-setup',  ['tab' => 'terms-and-conditions']) }}"   aria-disabled="true">{{translate('messages.Terms and Conditions')}}</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link  {{ Request::is('business-settings/mcvendor-setup/return-policy') ?'active':'' }}" href="{{ route('admin.business-settings.mcvendor-setup',  ['tab' => 'return-policy']) }}"   aria-disabled="true">Return Policy</a>
+            </li>
         </ul>
         <!-- End Nav -->
     </div>

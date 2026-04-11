@@ -493,14 +493,14 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
 
     public function blog(Request $request)
     {
-        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->select('blog_posts.*', 'blog_categories.name as cat_name')->where('blog_posts.type', 'common')->paginate(10);
+        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->select('blog_posts.*', 'blog_categories.name as cat_name')->where('blog_posts.type', 'common')->where('blog_posts.status', 1)->orderByDesc('blog_posts.created_at')->paginate(10);
 
         $all_categories = BlogCategory::where('type', 'common')->where('status', 1)->get();
         return view('front-views.blog.index', compact('blogs', 'all_categories'));
     }
     public function blog_mc_vendor(Request $request)
     {
-        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->select('blog_posts.*', 'blog_categories.name as cat_name')->where('blog_posts.type', 'mc_vendor')->paginate(10);
+        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->select('blog_posts.*', 'blog_categories.name as cat_name')->where('blog_posts.type', 'mc_vendor')->where('blog_posts.status', 1)->orderByDesc('blog_posts.created_at')->paginate(10);
 
         $all_categories = BlogCategory::where('type', 'mc_vendor')->where('status', 1)->get();
         return view('front-views.blog.index', compact('blogs', 'all_categories'));
@@ -512,7 +512,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $category = BlogCategory::where('slug', $slug)->first();
         $type = $category->type ?? 'common';
 
-        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->where('blog_categories.slug', $slug)->select('blog_posts.*', 'blog_categories.name as cat_name')->paginate(10);
+        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->where('blog_categories.slug', $slug)->where('blog_posts.status', 1)->select('blog_posts.*', 'blog_categories.name as cat_name')->orderByDesc('blog_posts.created_at')->paginate(10);
 
         $all_categories = BlogCategory::where('status', 1)->where('type', $type)->get();
         return view('front-views.blog.index', compact('blogs', 'all_categories'));
@@ -520,9 +520,10 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
 
     public function blog_post(Request $request, $slug)
     {
-        $blog = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->where('blog_posts.slug', $slug)->select('blog_posts.*', 'blog_categories.name as cat_name')->first();
+        $blog = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->where('blog_posts.slug', $slug)->where('blog_posts.status', 1)->select('blog_posts.*', 'blog_categories.name as cat_name')->first();
+        abort_if(!$blog, 404);
         $type = $blog->type ?? 'common';
-        $all_blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->whereNot('blog_posts.slug', $slug)->where('blog_posts.type', $type)->select('blog_posts.*', 'blog_categories.name as cat_name')->limit(6)->get();
+        $all_blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->whereNot('blog_posts.slug', $slug)->where('blog_posts.type', $type)->where('blog_posts.status', 1)->select('blog_posts.*', 'blog_categories.name as cat_name')->orderByDesc('blog_posts.created_at')->limit(6)->get();
         $all_categories = BlogCategory::where('status', 1)->where('type', $type)->get();
         return view('front-views.blog.post', compact('blog', 'all_categories', 'all_blogs', 'type'));
     }
