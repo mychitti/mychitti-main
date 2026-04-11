@@ -335,12 +335,8 @@
                 });
             }
 
-            loadCategories($("input[name=type]:checked").val());
+            loadCategories($("input[name=type]").val());
 
-            $("input[name=type]").on("change", function() {
-                var type = $(this).val();
-                loadCategories(type);
-            });
         });
         $(document).on('change', '.warnig-charge-btn', function(e) {
 
