@@ -88,12 +88,23 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data')->middleware('permission:analytics,view');
         });
 
+        // Impersonation
+        Route::post('impersonate/start', 'ImpersonateController@start')->name('impersonate.start');
+        Route::post('impersonate/stop', 'ImpersonateController@stop')->name('impersonate.stop');
+
         Route::group(['prefix' => 'logs', 'as' => 'logs.'], function () {
             Route::get('action-logs', 'DashboardController@action_logs')->name('action-logs')->middleware('permission:action_logs,view');
             Route::get('action-logs/error-logs', 'DashboardController@action_logs')->name('action-logs.errors')->middleware('permission:error_logs,view');
             Route::get('action-logs/admin', 'DashboardController@action_logs')->name('action-logs.admin')->middleware('permission:admin_actions,view');
             Route::post('error-logs/{id}/status', 'DashboardController@update_error_status')->name('error-logs.update-status')->middleware('permission:error_logs,view');
             Route::post('error-logs/bulk-delete', 'DashboardController@bulk_delete_errors')->name('error-logs.bulk-delete')->middleware('permission:error_logs,view');
+
+            Route::prefix('website-errors')->as('website-errors.')->group(function () {
+                Route::get('/', 'WebsiteErrorController@index')->name('index');
+                Route::post('{id}/status', 'WebsiteErrorController@updateStatus')->name('update-status');
+                Route::delete('{id}', 'WebsiteErrorController@destroy')->name('destroy');
+                Route::post('bulk-delete', 'WebsiteErrorController@bulkDelete')->name('bulk-delete');
+            });
         });
 
 

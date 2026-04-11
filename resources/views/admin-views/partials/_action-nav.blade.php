@@ -22,6 +22,11 @@
                             href="{{ route('admin.logs.action-logs.errors') }}"
                             aria-disabled="true">App Error Logs</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ Request::routeIs('admin.logs.website-errors.index') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.website-errors.index') }}"
+                            aria-disabled="true">Website Error Logs</a>
+                    </li>
                     @endif
                 </ul>
                 <!-- End Nav -->

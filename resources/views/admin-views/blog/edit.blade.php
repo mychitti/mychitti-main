@@ -230,22 +230,7 @@ $('#blog_form').on('submit', function(e) {
                     <div class="row">
                         <input type="hidden" name="id" value="{{$post->id}}">
                         <div class="col-md-8 row">
-                        <div class="form-group  col-md-6">
-                                <label class="input-label" for="exampleFormControlInput1">Type
-                                </label>
-                                <div class="d-flex gap-2">
-                                    <div>
-                                        <input type="radio" {{$post->type=='common'?'checked':''}} name="type" id="common" value="common" class=""
-                                            checked>
-                                        <label class="form-label" for="common">Common</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" {{$post->type=='mc_vendor'?'checked':''}} name="type" id="mc_vendor" value="mc_vendor"
-                                            class="">
-                                        <label class="form-label" for="mc_vendor">MC Vendor</label>
-                                    </div>
-                                </div>
-                            </div>
+                            <input type="hidden" name="type" value="{{ $post->type }}">
                                 <div class="form-group lang_form col-md-6" id="default-form">
                                     <label class="input-label" for="exampleFormControlInput1">Category <span class="form-label-secondary text-danger"
                                         data-toggle="tooltip" data-placement="right"

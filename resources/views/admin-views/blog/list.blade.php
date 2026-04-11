@@ -17,8 +17,8 @@
                             <img src="{{ asset('public/assets/admin/img/items.png') }}" class="w--22" alt="">
                         </span>
                         <span>
-                            {{ translate('messages.blog_list') }} <span class="badge badge-soft-dark ml-2"
-                                id="foodCount">{{ $blogs->total() }}</span>
+                            {{ ($type ?? 'common') === 'mc_vendor' ? 'mcvendorhub.com' : 'mychitti.net' }} — Blog Posts
+                            <span class="badge badge-soft-dark ml-2" id="foodCount">{{ $blogs->total() }}</span>
                         </span>
                     </h1>
                 </div>
@@ -32,7 +32,7 @@
                 <div class="search--button-wrapper justify-content-end">
 
                     <div>
-                        <a href="{{ route('admin.blog.add-new') }}" class="btn btn--primary font-regular">Add Blog Post</a>
+                        <a href="{{ route('admin.blog.add-new') }}?type={{ $type ?? 'common' }}" class="btn btn--primary font-regular">Add Blog Post</a>
                     </div>
 
 

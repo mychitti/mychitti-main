@@ -92,6 +92,18 @@
                             </span>
                         </a>
                     </li>
+ 
+                    @if (auth('vendor')->check())
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel/blog*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                href="{{ route('vendor.blog.index') }}" title="Blog Posts">
+                                <i class="tio-pages-outlined nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    Blog Posts
+                                </span>
+                            </a>
+                        </li>
+                    @endif
 
                     @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_leads'))
                         <li
@@ -2430,7 +2442,7 @@
                     @endif
                     <!-- End Coupon -->
                     {{-- @if (selected_menu('patients_manage') && _offeredModule('patient_manage')) --}}
-                    @if (1)
+                    @if (0)
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('patient*') || Request::is('doctor*') || Request::is('appointment*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                 href="javascript:;" title="Hospital Management">

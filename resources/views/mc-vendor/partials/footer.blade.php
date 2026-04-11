@@ -15,8 +15,8 @@
                     </div> 
                     <div class="col-lg-6">
                         <div class="d-flex gap-4 justify-content-end pt-3">
-                            {{-- <a class="text-white text-decoration-none me-2"
-                                href="{{ route('blog-mc-vendor-hub') }}">Blogs</a> --}}
+                            <a class="text-white text-decoration-none me-2"
+                                href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blogs</a>
                             <a class="text-white text-decoration-none me-2"
                                 href="https://mcvendorhub.com/tnc">Terms and Conditions</a>
                                  <a class="text-white text-decoration-none me-2"

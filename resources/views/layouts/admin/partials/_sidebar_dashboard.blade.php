@@ -154,30 +154,60 @@
                     <!-- Campaign -->
 
                     @if (\App\CentralLogics\Helpers::module_permission_check('blog'))
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('blog*') ? 'active' : '' }}">
+                        {{-- mychitti.net Blogs --}}
+                        @php($blogType = request('type', 'common'))
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('blog*') && $blogType === 'common' ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"
-                                title="blog">
+                                title="mychitti.net Blogs">
                                 <i class="tio-layers-outlined nav-icon"></i>
-                                <span
-                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.blog') }}</span>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">mychitti.net Blogs</span>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                style="display:{{ Request::is('campaign*') ? 'block' : 'none' }}">
-
-                                <li class="nav-item {{ Request::is('blog/category*') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.blog.category') }}" title="category">
+                                style="display:{{ Request::is('blog*') && $blogType === 'common' ? 'block' : 'none' }}">
+                                <li class="nav-item {{ Request::is('blog/category*') && $blogType === 'common' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.category') }}?type=common" title="Categories">
                                         <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Blog Category</span>
+                                        <span class="text-truncate">Categories</span>
                                     </a>
                                 </li>
-                                <li class="nav-item {{ Request::is('blog/list*') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.blog.list') }}" title="List">
+                                <li class="nav-item {{ Request::is('blog/list*') && $blogType === 'common' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.list') }}?type=common" title="Blog Posts">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Blog Posts</span>
                                     </a>
                                 </li>
-                                <li class="nav-item {{ Request::is('blog/add-new*') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.blog.add-new') }}" title="Add New">
+                                <li class="nav-item {{ Request::is('blog/add-new*') && $blogType === 'common' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.add-new') }}?type=common" title="Add New Post">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Add New Post</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        {{-- mcvendorhub.com Blogs --}}
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('blog*') && $blogType === 'mc_vendor' ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"
+                                title="mcvendorhub.com Blogs">
+                                <i class="tio-layers nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">mcvendorhub.com Blogs</span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display:{{ Request::is('blog*') && $blogType === 'mc_vendor' ? 'block' : 'none' }}">
+                                <li class="nav-item {{ Request::is('blog/category*') && $blogType === 'mc_vendor' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.category') }}?type=mc_vendor" title="Categories">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Categories</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('blog/list*') && $blogType === 'mc_vendor' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.list') }}?type=mc_vendor" title="Blog Posts">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Blog Posts</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('blog/add-new*') && $blogType === 'mc_vendor' ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.blog.add-new') }}?type=mc_vendor" title="Add New Post">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Add New Post</span>
                                     </a>

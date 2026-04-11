@@ -42,10 +42,7 @@ return $next($request);
             $platform = 'app';
         }
 
-        // if ($platform == 'web') {
-        //     return redirect()->route('vendor_homepage');
-        // } else {
             return redirect('login');
-        // }
+    
     }
 }

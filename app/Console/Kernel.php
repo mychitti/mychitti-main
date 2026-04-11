@@ -124,6 +124,17 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->withoutOverlapping();
 
+        // SCHEDULED EMAIL BROADCAST =====================================
+        $schedule->call(function () {
+            \App\Models\ScheduledEmail::pending()->each(function ($scheduled) {
+                \App\Jobs\SendScheduledEmailBroadcast::dispatch($scheduled->id);
+                $scheduled->update(['status' => 'sent', 'sent_at' => now()]);
+            });
+        })->everyMinute()
+        ->timezone($tz)
+        ->name('send-scheduled-emails')
+        ->withoutOverlapping();
+
        // NOTIFICATION SCHEDULED PUBLISH ================================
         $schedule->call(function () {
             \App\Jobs\SendScheduledNotifications::dispatch();

@@ -635,16 +635,6 @@
                             </span>
                         </a>
                     </li>
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/scheduled-notification*') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('admin.scheduled-notification.index') }}" title="Scheduled Notifications">
-                            <i class="tio-time nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Scheduled Notifications
-<!-- Scheduled notifications badge removed --> 
-                            </span>
-                        </a>
-                    </li>
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/store/types')  }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.types') }}" title="{{ translate('messages.stores_config') }}">
                         <span class="tio-layout nav-icon"></span>

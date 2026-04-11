@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\BlogCategory;
 use App\Models\Contact;
 use App\Models\DataSetting;
 use App\Models\Plan;
@@ -105,6 +106,63 @@ class MCVendorController extends Controller
     public function contact()
     {
         return view('mc-vendor.contact');
+    }
+
+    public function blog_mc_vendor(Request $request)
+    {
+        $blogs = DB::table('blog_posts')
+            ->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')
+            ->select('blog_posts.*', 'blog_categories.name as cat_name', 'blog_categories.slug as cat_slug')
+            ->where('blog_posts.type', 'mc_vendor')
+            ->where('blog_posts.status', 1)
+            ->orderByDesc('blog_posts.created_at')
+            ->paginate(9);
+
+        $all_categories = BlogCategory::where('type', 'mc_vendor')->where('status', 1)->get();
+        return view('mc-vendor.blog.index', compact('blogs', 'all_categories'));
+    }
+
+    public function blog_mc_vendor_category(Request $request, $slug)
+    {
+        $category       = BlogCategory::where('slug', $slug)->where('type', 'mc_vendor')->firstOrFail();
+        $all_categories = BlogCategory::where('type', 'mc_vendor')->where('status', 1)->get();
+
+        $blogs = DB::table('blog_posts')
+            ->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')
+            ->select('blog_posts.*', 'blog_categories.name as cat_name', 'blog_categories.slug as cat_slug')
+            ->where('blog_categories.slug', $slug)
+            ->where('blog_posts.type', 'mc_vendor')
+            ->where('blog_posts.status', 1)
+            ->orderByDesc('blog_posts.created_at')
+            ->paginate(9);
+
+        return view('mc-vendor.blog.index', compact('blogs', 'all_categories', 'category'));
+    }
+
+    public function blog_mc_vendor_post(Request $request, $slug)
+    {
+        $blog = DB::table('blog_posts')
+            ->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')
+            ->select('blog_posts.*', 'blog_categories.name as cat_name', 'blog_categories.slug as cat_slug')
+            ->where('blog_posts.slug', $slug)
+            ->where('blog_posts.type', 'mc_vendor')
+            ->first();
+
+        abort_if(!$blog, 404);
+
+        $all_categories = BlogCategory::where('type', 'mc_vendor')->where('status', 1)->get();
+
+        $related_blogs = DB::table('blog_posts')
+            ->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')
+            ->select('blog_posts.*', 'blog_categories.name as cat_name', 'blog_categories.slug as cat_slug')
+            ->where('blog_posts.type', 'mc_vendor')
+            ->where('blog_posts.status', 1)
+            ->where('blog_posts.slug', '!=', $slug)
+            ->orderByDesc('blog_posts.created_at')
+            ->limit(6)
+            ->get();
+
+        return view('mc-vendor.blog.post', compact('blog', 'all_categories', 'related_blogs'));
     }
     public function send_message(Request $request)
     {

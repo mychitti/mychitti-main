@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Route;
 // use App\WebSockets\Handler\ServiceReqSocketHandler;
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
 
-// Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
 
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
  
@@ -17,6 +16,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
+        Route::get('blog-mc-vendor-hub/category/{slug}', 'MCVendorController@blog_mc_vendor_category')->name('blog-mc-vendor-hub.category');
+        Route::get('blog-mc-vendor-hub/{slug}', 'MCVendorController@blog_mc_vendor_post')->name('blog-mc-vendor-hub.post');
         Route::get('tnc', 'MCVendorController@mc_vendor_hub_tnc')->name('mc-vendor-hub-tnc');
         Route::get('privacy-policy', 'MCVendorController@mc_vendor_hub_pp')->name('mc-vendor-hub-pp');
         Route::get('contact', 'MCVendorController@contact')->name('contact');
@@ -25,6 +26,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
     });
+
+    // Impersonation — no auth middleware, token is the auth
+    Route::get('impersonate', 'ImpersonateController@start')->name('impersonate.start');
+    Route::post('impersonate/stop', 'ImpersonateController@stop')->name('impersonate.stop');
 
     Route::group(['middleware' => ['vendor']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
@@ -1049,6 +1054,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::delete('delete/{banner}', 'BannerController@delete')->name('delete');
             // Route::post('search', 'BannerController@search')->name('search');
             Route::get('join_campaign/{id}/{status}', 'BannerController@status')->name('status');
+        });
+
+        Route::group(['prefix' => 'blog', 'as' => 'blog.'], function () {
+            Route::get('/', 'BlogController@index')->name('index');
+            Route::get('create', 'BlogController@create')->name('create');
+            Route::post('store', 'BlogController@store')->name('store');
+            Route::get('edit/{id}', 'BlogController@edit')->name('edit');
+            Route::post('update/{id}', 'BlogController@update')->name('update');
+            Route::delete('delete/{id}', 'BlogController@destroy')->name('delete');
+            Route::get('categories-by-type', 'BlogController@getCategoriesByType')->name('categories-by-type');
+            Route::post('image-upload', 'BlogController@uploadImage')->name('image-upload');
         });
 
         Route::group(['prefix' => 'gallery', 'as' => 'gallery.'], function () {

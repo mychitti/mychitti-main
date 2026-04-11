@@ -6,7 +6,6 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <style>
     #schedule_wrap { display:none; }
-    #email_schedule_section { margin-top: 1.5rem; }
 </style>
 @endpush
  
@@ -505,52 +504,6 @@
             </div>
             <!-- End Table -->
 
-            {{-- EMAIL SCHEDULING CARD --}}
-            <div class="col-12" id="email_schedule_section">
-                <div class="card">
-                    <div class="card-header py-2">
-                        <h5 class="card-title mb-0"><i class="tio-email mr-1"></i> Schedule Email Broadcast</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="email_schedule_form">
-                            @csrf
-                            <div class="row g-3">
-                                <div class="col-lg-6">
-                                    <div class="form-group mb-2">
-                                        <label class="input-label">Subject <span class="text-danger">*</span></label>
-                                        <input type="text" name="email_subject" class="form-control" placeholder="Email subject" required maxlength="255">
-                                    </div>
-                                    <div class="form-group mb-2">
-                                        <label class="input-label">Send To <span class="text-danger">*</span></label>
-                                        <select name="send_to" class="form-control" required>
-                                            <option value="all_users">All Customers</option>
-                                            <option value="all_vendors">All Vendors</option>
-                                            <option value="all_delivery_men">All Delivery Men</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group mb-2">
-                                        <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
-                                        <input type="datetime-local" name="scheduled_at" class="form-control"
-                                            min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
-                                    </div>
-                                </div>
-                                <div class="col-lg-6">
-                                    <div class="form-group mb-2">
-                                        <label class="input-label">Message / Body <span class="text-danger">*</span></label>
-                                        <textarea name="message" class="form-control" rows="6" placeholder="Email body..." required></textarea>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="btn--container justify-content-end">
-                                        <button type="reset" class="btn btn--reset">Reset</button>
-                                        <button type="submit" class="btn btn--primary"><i class="tio-time mr-1"></i> Schedule Email</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
 
         </div>
     </div>
@@ -634,48 +587,7 @@
             });
         });
 
-        // Email schedule form
-        $('#email_schedule_form').on('submit', function(e) {
-            e.preventDefault();
-            var formData = new FormData(this);
-
-            Swal.fire({
-                title: 'Schedule Email?',
-                text: 'This email will be queued and sent at the scheduled time.',
-                type: 'info',
-                showCancelButton: true,
-                confirmButtonText: 'Schedule',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.value) {
-                    $.ajaxSetup({
-                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
-                    });
-                    $.post({
-                        url: '{{ route('admin.scheduled-notification.store-email') }}',
-                        data: formData,
-                        cache: false,
-                        contentType: false,
-                        processData: false,
-                        success: function(data) {
-                            toastr.success(data.message || 'Email scheduled successfully!');
-                            $('#email_schedule_form')[0].reset();
-                        },
-                        error: function(xhr) {
-                            var errors = xhr.responseJSON?.errors;
-                            if (errors) {
-                                $.each(errors, function(k, v) { toastr.error(v[0]); });
-                            } else {
-                                toastr.error('Something went wrong.');
-                            }
-                        }
-                    });
-                }
-            });
-        });
-
-        $('#reset_btn').click(function() {
+$('#reset_btn').click(function() {
             $('#zone').val('all').trigger('change');
             $('#viewer').attr('src', '{{ asset('public/assets/admin/img/900x400/img1.jpg') }}');
             $('#customFileEg1').val(null);

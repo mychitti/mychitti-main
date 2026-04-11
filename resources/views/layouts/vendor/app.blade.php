@@ -208,6 +208,20 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 </head>
 
 <body class="footer-offset ">
+    @if(session()->has('impersonator_id'))
+    <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;">
+        <i class="tio-user-big"></i>
+        Impersonating: {{ session('impersonated_label') }}
+        <form action="{{ route('vendor.impersonate.stop') }}" method="POST" style="margin:0">
+            @csrf
+            <button type="submit" style="background:#fff;color:#e74c3c;border:none;border-radius:4px;padding:3px 12px;font-weight:700;cursor:pointer;font-size:12px;">
+                ✕ Exit Impersonation
+            </button>
+        </form>
+    </div>
+    <div style="height:40px"></div>
+    @endif
+
     @if (env('APP_MODE') == 'demo')
         <div class="direction-toggle">
             <i class="tio-settings"></i>

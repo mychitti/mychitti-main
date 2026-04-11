@@ -43,21 +43,27 @@ class BlogController extends Controller
     }
     public function index(Request $request)
     {
-        // $blogs = BlogPost::paginate(10);
-        $blogs = DB::table('blog_posts')->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')->select('blog_posts.*', 'blog_categories.name as cat_name')->paginate(10);
-        // print_r($blogs); die;
-        return view('admin-views.blog.list', compact('blogs'));
+        $type  = $request->get('type', 'common');
+        $blogs = DB::table('blog_posts')
+            ->join('blog_categories', 'blog_categories.id', 'blog_posts.category_id')
+            ->select('blog_posts.*', 'blog_categories.name as cat_name')
+            ->where('blog_posts.type', $type)
+            ->orderByDesc('blog_posts.created_at')
+            ->paginate(10);
+        return view('admin-views.blog.list', compact('blogs', 'type'));
     }
     public function category(Request $request)
     {
-        $categories = BlogCategory::paginate(10);
-        return view('admin-views.blog.category', compact('categories'));
+        $type       = $request->get('type', 'common');
+        $categories = BlogCategory::where('type', $type)->paginate(10);
+        return view('admin-views.blog.category', compact('categories', 'type'));
     }
     public function add_new(Request $request)
     {
-        $categories = BlogCategory::where('status', 1)->where('type', 'common')->get();
-        $blogs = BlogPost::paginate(10);
-        return view('admin-views.blog.add', compact('blogs', 'categories'));
+        $type       = $request->get('type', 'common');
+        $categories = BlogCategory::where('status', 1)->where('type', $type)->get();
+        $blogs      = BlogPost::paginate(10);
+        return view('admin-views.blog.add', compact('blogs', 'categories', 'type'));
     }
     public function category_select_type(Request $request)
     {

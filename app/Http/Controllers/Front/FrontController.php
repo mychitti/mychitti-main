@@ -287,7 +287,6 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $zone_id = $this->zone_id;
         $longitude = $this->longitude;
         $latitude = $this->latitude;
-
         // featured stores
         $stores['featued_stores'] = Store::whereIn('zone_id',  json_decode($this->zone_id, true))->where(['featured' => 1, 'active' => 1, 'module_id' =>  $this->module_id, 'status' => 1])->paginate(8);
 

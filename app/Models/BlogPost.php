@@ -10,6 +10,11 @@ class BlogPost extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'title', 'slug', 'image', 'category_id', 'description', 'short_description',
+        'type', 'status', 'store_id', 'posted_by',
+    ];
+
     public function scopeActive($query)
     {
         return $query->where('status', '1');

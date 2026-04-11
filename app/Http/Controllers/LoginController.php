@@ -178,13 +178,7 @@ class LoginController extends Controller
         }
     }
 
-    public function vendor_homepage()
-    {
-        $vendor_modules = VendorModuleInstruction::all();
-        $lines = DataSetting::whereIn('key', ['mc_first_line', 'mc_second_line', 'mc_third_line'])->get();
 
-        return view('auth.vendor_homepage', compact('vendor_modules', 'lines'));
-    }
     public function login_attemp($role, $email, $password, $remember = false)
     {
         $auth = ($role == 'admin_employee' ? 'admin' : $role);

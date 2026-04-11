@@ -236,22 +236,7 @@
                     @csrf
                     <div class="row">
                         <div class="col-md-8 row">
-                            <div class="form-group  col-md-6">
-                                <label class="input-label" for="exampleFormControlInput1">Type
-                                </label>
-                                <div class="d-flex gap-2">
-                                    <div>
-                                        <input type="radio" name="type" id="common" value="common" class=""
-                                            checked>
-                                        <label class="form-label" for="common">Common</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" name="type" id="mc_vendor" value="mc_vendor"
-                                            class="">
-                                        <label class="form-label" for="mc_vendor">MC Vendor</label>
-                                    </div>
-                                </div>
-                            </div>
+                            <input type="hidden" name="type" value="{{ $type ?? 'common' }}">
                             <div class="form-group lang_form col-md-6" id="default-form">
                                 <label class="input-label" for="exampleFormControlInput1">Category <span
                                         class="form-label-secondary text-danger" data-toggle="tooltip"

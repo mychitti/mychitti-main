@@ -14,7 +14,7 @@
                     <img src="{{ asset('public/assets/admin/img/category.png') }}" class="w--20" alt="">
                 </span>
                 <span>
-                    Blog Category
+                    {{ ($type ?? 'common') === 'mc_vendor' ? 'mcvendorhub.com' : 'mychitti.net' }} — Blog Categories
                 </span>
             </h1>
         </div>
@@ -28,7 +28,7 @@
                     @csrf
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-8">
 
                             <div class="form-group lang_form" id="default-form">
                                 <label class="input-label" for="exampleFormControlInput1">{{ translate('messages.name') }}
@@ -43,28 +43,7 @@
                             </div>
 
                         </div>
-                        <div class="col-md-4">
-
-                            <div class="form-group ">
-                                <label class="input-label" for="exampleFormControlInput1">Type
-
-
-                                </label>
-                                <div class="d-flex gap-2">
-                                    <div>
-                                        <input type="radio" name="type" id="common" value="common" class=""
-                                            checked>
-                                        <label class="form-label" for="common">Common</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" name="type" id="mc_vendor" value="mc_vendor"
-                                            class="">
-                                        <label class="form-label" for="mc_vendor">MC Vendor</label>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
+                        <input type="hidden" name="type" value="{{ $type ?? 'common' }}">
                         <div class="col-md-4">
                             <div class="h-100 d-flex align-items-center flex-column">
                                 <label class="mb-3 text-center">{{ translate('messages.image') }} <small

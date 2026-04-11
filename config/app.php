@@ -58,6 +58,9 @@ return [
 
     'asset_url' => env('ASSET_URL', null),
 
+    'admin_panel_url'  => env('ADMIN_PANEL_URL', env('APP_URL', 'http://localhost') . '/admin'),
+    'vendor_panel_url' => env('VENDOR_PANEL_URL', env('APP_URL', 'http://localhost') . '/store-panel'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
