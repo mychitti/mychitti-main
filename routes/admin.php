@@ -1871,3 +1871,77 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
 // DEBUG ONLY — remove before production
 Route::get('debug/test-store-mail', 'Admin\VendorController@debugMail');
+Route::get('debug/test-push', function (\Illuminate\Http\Request $request) {
+    $topic  = $request->get('topic', 'all_zone_customer');
+    $title  = $request->get('title', 'Test Notification');
+    $body   = $request->get('body', 'This is a test push notification.');
+
+    $steps = [];
+
+    // 1. Check service account key
+    $keyPath = base_path('service-account-key.json');
+    $steps['key_file'] = file_exists($keyPath) ? 'EXISTS' : 'MISSING — ' . $keyPath;
+
+    // 2. Get access token
+    try {
+        $token = _getAccessToken();
+        $steps['access_token'] = $token ? 'OK (length=' . strlen($token) . ')' : 'EMPTY';
+    } catch (\Throwable $e) {
+        $steps['access_token'] = 'FAILED: ' . $e->getMessage();
+        $token = null;
+    }
+
+    // 3. Send to FCM
+    if ($token) {
+        try {
+            $projectId = 'fcm-3-e0206';
+            $client = new \GuzzleHttp\Client();
+            $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+            $payload = [
+                'message' => [
+                    'topic' => $topic,
+                    'data' => [
+                        'title' => $title,
+                        'body'  => $body,
+                        'image' => '',
+                        'type'  => 'general',
+                        'is_read' => '0',
+                    ],
+                    'notification' => [
+                        'title' => $title,
+                        'body'  => $body,
+                    ],
+                    'android' => [
+                        'notification' => [
+                            'channel_id' => 'MyChitti',
+                            'sound'      => 'notification.wav',
+                        ]
+                    ]
+                ]
+            ];
+            $response = $client->post($url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => $payload,
+                'http_errors' => false,
+            ]);
+            $status = $response->getStatusCode();
+            $body_resp = $response->getBody()->getContents();
+            $steps['fcm_status'] = $status;
+            $steps['fcm_response'] = $body_resp;
+        } catch (\Throwable $e) {
+            $steps['fcm_request'] = 'EXCEPTION: ' . $e->getMessage();
+        }
+    }
+
+    echo '<pre style="font-size:13px;padding:20px;">';
+    echo '<strong>Push Notification Debug</strong>' . "\n";
+    echo 'Usage: /debug/test-push?topic=all_zone_customer&title=Hello&body=World' . "\n\n";
+    foreach ($steps as $k => $v) {
+        echo str_pad($k, 20) . ': ' . $v . "\n";
+    }
+    echo '</pre>';
+    exit;
+});

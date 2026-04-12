@@ -183,7 +183,7 @@ trait NotificationTrait
                 'response' => json_decode($response->getBody()->getContents(), true)
             ];
         } catch (\Exception $e) {
-            // \Log::error('FCM Notification Error: ' . $e->getMessage());
+            \Log::error('FCM Notification Error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'error' => $e->getMessage()

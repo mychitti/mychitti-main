@@ -66,12 +66,14 @@ class NotificationController extends BaseController
         if (!$isScheduled) {
             $topic = $this->notificationService->getTopic(request: $request);
             $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
-            
-            try {
-                $this->sendPushNotificationToTopic($notification, $topic, 'general');
+
+            $result = $this->sendPushNotificationToTopic($notification, $topic, 'general');
+            if (!empty($result['success'])) {
                 Toastr::success('Notification sent successfully!');
-            } catch (Exception $e) {
-                Toastr::warning(translate('messages.push_notification_failed'));
+            } else {
+                $errMsg = $result['error'] ?? 'Unknown error';
+                \Log::error('FCM push failed (add): ' . $errMsg);
+                Toastr::warning('Push notification failed: ' . $errMsg);
             }
         } else {
             Toastr::success('Notification scheduled for ' . $request->scheduled_at);
@@ -128,13 +130,15 @@ class NotificationController extends BaseController
 
         $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
 
-        try {
-            $this->sendPushNotificationToTopic($notification, $topic, 'general');
-        } catch (Exception) {
-            Toastr::warning(translate('messages.push_notification_failed'));
+        $result = $this->sendPushNotificationToTopic($notification, $topic, 'general');
+        if (!empty($result['success'])) {
+            Toastr::success(translate('messages.notification_updated_successfully'));
+        } else {
+            $errMsg = $result['error'] ?? 'Unknown error';
+            \Log::error('FCM push failed (update): ' . $errMsg);
+            Toastr::warning('Push notification failed: ' . $errMsg);
         }
 
-        Toastr::success(translate('messages.notification_updated_successfully'));
         return back();
     }
 
