@@ -171,8 +171,27 @@ trait NotificationTrait
                     'timeout'     => 30,
                 ]);
 
-                $result = json_decode($response->getBody()->getContents(), true);
-                $sent  += $result['success'] ?? 0;
+                $statusCode  = $response->getStatusCode();
+                $rawBody     = $response->getBody()->getContents();
+                $result      = json_decode($rawBody, true);
+
+                \Log::info('FCM batch response [' . $statusCode . ']: ' . $rawBody);
+
+                if ($result === null) {
+                    // Non-JSON response (auth error, HTML page, etc.)
+                    $failed += count($chunk);
+                    $errors[] = 'FCM HTTP ' . $statusCode . ': ' . substr(strip_tags($rawBody), 0, 200);
+                    continue;
+                }
+
+                // Top-level error (e.g. {"error":"InvalidRegistration"})
+                if (!empty($result['error'])) {
+                    $failed += count($chunk);
+                    $errors[] = $result['error'];
+                    continue;
+                }
+
+                $sent   += $result['success'] ?? 0;
                 $failed += $result['failure'] ?? 0;
 
                 if (!empty($result['results'])) {
