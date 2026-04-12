@@ -1869,8 +1869,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     });
 });
 
-// DEBUG ONLY — remove before production
-Route::get('debug/test-store-mail', 'Admin\VendorController@debugMail');
+// DEBUG ONLY — remove before production (wrap in admin auth for safety)
+Route::middleware(['auth:admin'])->group(function () {
+    Route::get('debug/test-store-mail', 'Admin\VendorController@debugMail');
 Route::get('debug/test-push', function (\Illuminate\Http\Request $request) {
     $topic  = $request->get('topic', 'all_zone_customer');
     $title  = $request->get('title', 'Test Notification');
@@ -2017,3 +2018,4 @@ Route::get('debug/resubscribe-customers', function () {
     echo '</pre>';
     exit;
 });
+}); // end debug middleware group
