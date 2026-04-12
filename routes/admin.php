@@ -1946,23 +1946,74 @@ Route::get('debug/test-push', function (\Illuminate\Http\Request $request) {
     exit;
 });
 Route::get('debug/resubscribe-customers', function () {
-    $users = \App\Models\User::whereNotNull('cm_firebase_token')
-        ->where('cm_firebase_token', '!=', '')
-        ->where('cm_firebase_token', '!=', '1')
-        ->where('cm_firebase_token', '!=', '0')
-        ->select('id', 'cm_firebase_token', 'zone_id')
-        ->get();
+    set_time_limit(0);
 
-    $total = $users->count();
-    $done  = 0;
+    $key = \App\Models\BusinessSetting::where('key', 'push_notification_key')->value('value');
+    if (!$key) { echo '<pre>ERROR: push_notification_key not set.</pre>'; exit; }
 
-    foreach ($users as $user) {
-        $topics = ['all_zone_customer'];
-        if ($user->zone_id) $topics[] = 'zone_' . $user->zone_id . '_customer';
-        _subscribeTokenToTopics($user->cm_firebase_token, $topics);
-        $done++;
+    $client    = new \GuzzleHttp\Client();
+    $batchSize = 1000; // FCM IID API max per call
+    $calls     = 0;
+    $errors    = [];
+
+    $subscribe = function (string $topic, array $tokens) use ($client, $key, &$calls, &$errors, $batchSize) {
+        foreach (array_chunk($tokens, $batchSize) as $chunk) {
+            try {
+                $resp = $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
+                    'headers'     => [
+                        'Authorization'     => 'key=' . $key,
+                        'Content-Type'      => 'application/json',
+                        'access_token_auth' => 'true',
+                    ],
+                    'json'        => ['to' => '/topics/' . $topic, 'registration_tokens' => $chunk],
+                    'http_errors' => false,
+                    'timeout'     => 30,
+                ]);
+                $calls++;
+                $body = json_decode($resp->getBody()->getContents(), true);
+                if ($resp->getStatusCode() !== 200) {
+                    $errors[] = "topic={$topic} status={$resp->getStatusCode()} body=" . json_encode($body);
+                }
+            } catch (\Throwable $e) {
+                $errors[] = "topic={$topic} exception=" . $e->getMessage();
+            }
+        }
+    };
+
+    // Collect tokens grouped by zone using chunk() to avoid OOM
+    $allTokens = [];
+    $byZone    = [];
+
+    \App\Models\User::whereNotNull('cm_firebase_token')
+        ->whereNotIn('cm_firebase_token', ['', '1', '0', 'true', 'false'])
+        ->where(\Illuminate\Support\Facades\DB::raw('length(cm_firebase_token)'), '>', 20)
+        ->select('cm_firebase_token', 'zone_id')
+        ->chunk(5000, function ($rows) use (&$allTokens, &$byZone) {
+            foreach ($rows as $u) {
+                $allTokens[] = $u->cm_firebase_token;
+                if ($u->zone_id) {
+                    $byZone[$u->zone_id][] = $u->cm_firebase_token;
+                }
+            }
+        });
+
+    $total = count($allTokens);
+
+    // Subscribe everyone to the all-zones topic
+    $subscribe('all_zone_customer', $allTokens);
+
+    // Subscribe zone-specific
+    foreach ($byZone as $zoneId => $tokens) {
+        $subscribe('zone_' . $zoneId . '_customer', $tokens);
     }
 
-    echo "<pre>Resubscribed {$done} / {$total} customer tokens to FCM topics.</pre>";
+    echo '<pre>';
+    echo "Total tokens : {$total}\n";
+    echo "API calls    : {$calls}\n";
+    echo "Zones found  : " . count($byZone) . "\n";
+    echo "Errors       : " . count($errors) . "\n";
+    if ($errors) echo "\nError details:\n" . implode("\n", $errors);
+    else echo "\nAll tokens subscribed successfully.";
+    echo '</pre>';
     exit;
 });
