@@ -2018,4 +2018,79 @@ Route::get('debug/resubscribe-customers', function () {
     echo '</pre>';
     exit;
 });
+Route::get('debug/logs', function (\Illuminate\Http\Request $request) {
+    $logFile = storage_path('logs/laravel.log');
+
+    if (!file_exists($logFile)) {
+        echo '<pre>Log file not found.</pre>';
+        exit;
+    }
+
+    $lines   = (int) $request->get('lines', 200);
+    $filter  = $request->get('filter', '');
+    $lines   = max(50, min($lines, 5000));
+
+    // Read last N lines efficiently
+    $file    = new \SplFileObject($logFile, 'r');
+    $file->seek(PHP_INT_MAX);
+    $total   = $file->key();
+    $start   = max(0, $total - $lines);
+    $file->seek($start);
+
+    $output  = [];
+    while (!$file->eof()) {
+        $line = $file->fgets();
+        if ($filter === '' || stripos($line, $filter) !== false) {
+            $output[] = htmlspecialchars($line);
+        }
+    }
+
+    $fileSize = round(filesize($logFile) / 1024, 1);
+    $count    = count($output);
+
+    echo '<!DOCTYPE html><html><head><title>Laravel Logs</title>
+    <style>
+        body { background:#1e1e1e; color:#d4d4d4; font-family:monospace; font-size:13px; margin:0; padding:0; }
+        .toolbar { position:sticky; top:0; background:#252526; padding:10px 16px; border-bottom:1px solid #444; display:flex; gap:10px; align-items:center; flex-wrap:wrap; z-index:10; }
+        .toolbar input, .toolbar select { background:#3c3c3c; color:#d4d4d4; border:1px solid #555; border-radius:4px; padding:4px 8px; font-size:13px; }
+        .toolbar button { background:#0e639c; color:#fff; border:none; border-radius:4px; padding:5px 12px; cursor:pointer; font-size:13px; }
+        .toolbar button:hover { background:#1177bb; }
+        .info { color:#888; font-size:12px; }
+        pre { margin:0; padding:16px; white-space:pre-wrap; word-break:break-all; }
+        .line-err  { color:#f48771; }
+        .line-warn { color:#cca700; }
+        .line-info { color:#9cdcfe; }
+        .line-debug{ color:#888; }
+        a { color:#4fc1ff; }
+    </style></head><body>
+    <div class="toolbar">
+        <strong style="color:#fff">Laravel Log Viewer</strong>
+        <span class="info">File: ' . $fileSize . ' KB &nbsp;|&nbsp; Showing ' . $count . ' matching lines (last ' . $lines . ' of ' . $total . ')</span>
+        <form method="GET" style="display:flex;gap:8px;align-items:center;">
+            <input name="filter" placeholder="Filter (e.g. FCM, ERROR)" value="' . htmlspecialchars($filter) . '" style="width:220px">
+            <select name="lines"><option value="100"' . ($lines==100?' selected':'') . '>100 lines</option><option value="200"' . ($lines==200?' selected':'') . '>200 lines</option><option value="500"' . ($lines==500?' selected':'') . '>500 lines</option><option value="1000"' . ($lines==1000?' selected':'') . '>1000 lines</option><option value="5000"' . ($lines==5000?' selected':'') . '>5000 lines</option></select>
+            <button type="submit">Apply</button>
+            <a href="?lines=' . $lines . '&filter=' . urlencode($filter) . '" style="color:#4fc1ff;text-decoration:none;font-size:12px">&#x21bb; Refresh</a>
+            <a href="?lines=' . $lines . '&clear=1&filter=' . urlencode($filter) . '" onclick="return confirm(\'Clear the log file?\')" style="color:#f48771;text-decoration:none;font-size:12px">Clear log</a>
+        </form>
+    </div>
+    <pre id="log">';
+
+    if ($request->get('clear') === '1') {
+        file_put_contents($logFile, '');
+        echo '<span style="color:#73c991">Log file cleared.</span>';
+    } else {
+        foreach ($output as $line) {
+            $class = '';
+            if (stripos($line, '.ERROR') !== false || stripos($line, 'ERROR:') !== false) $class = 'line-err';
+            elseif (stripos($line, '.WARNING') !== false || stripos($line, 'WARNING:') !== false) $class = 'line-warn';
+            elseif (stripos($line, '.INFO') !== false) $class = 'line-info';
+            elseif (stripos($line, '.DEBUG') !== false) $class = 'line-debug';
+            echo $class ? '<span class="' . $class . '">' . $line . '</span>' : $line;
+        }
+    }
+
+    echo '</pre><script>window.scrollTo(0, document.body.scrollHeight);</script></body></html>';
+    exit;
+});
 }); // end debug middleware group
