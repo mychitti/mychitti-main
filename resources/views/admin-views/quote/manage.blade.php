@@ -163,7 +163,7 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form id="sendQuoteEmailForm">
+                <form id="sendQuoteEmailForm" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="quote_id" id="modal_quote_id">
                     <div class="modal-body">
@@ -188,6 +188,20 @@
                                     <label>Email Subject <span class="text-danger">*</span></label>
                                     <input type="text" name="email_subject" id="email_subject" class="form-control" required placeholder="Email subject">
                                 </div>
+                            </div>
+                        </div>
+                        <!-- Template Picker -->
+                        <div class="form-group">
+                            <label class="d-block mb-2">Email Template <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-2" style="gap:12px;">
+                                @foreach([1=>'Classic',2=>'Modern',3=>'Executive'] as $tid => $tlabel)
+                                <label class="tpl-card {{ ($quote_email_settings['email_template'] ?? '1') == $tid ? 'active' : '' }}" data-tpl="{{ $tid }}" style="cursor:pointer;border:2px solid {{ ($quote_email_settings['email_template'] ?? '1') == $tid ? '#006161' : '#dee2e6' }};border-radius:8px;padding:10px 14px;flex:1;text-align:center;transition:all .2s;">
+                                    <input type="radio" name="email_template" value="{{ $tid }}" style="display:none;" {{ ($quote_email_settings['email_template'] ?? '1') == $tid ? 'checked' : '' }}>
+                                    <div style="font-weight:600;font-size:13px;color:#333;">Template {{ $tid }}</div>
+                                    <div style="font-size:11px;color:#888;margin-top:2px;">{{ $tlabel }}</div>
+                                    <div class="tpl-preview-thumb mt-2" style="height:36px;border-radius:4px;background:{{ $tid==3 ? '#1a1a2e' : ($quote_email_settings['theme_color'] ?? '#a51d1d') }};opacity:{{ $tid==3 ? '1' : '0.85' }};"></div>
+                                </label>
+                                @endforeach
                             </div>
                         </div>
                         <div class="row">
@@ -231,8 +245,11 @@
                             </div>
                         </div>
 
-                        <div class="mt-2">
-                            <small class="text-muted"><i class="tio-attachment"></i> The quotation PDF will be attached automatically.</small>
+                        <div class="form-group mt-3">
+                            <label><i class="tio-attachment"></i> Attach Requirement Document <span class="text-muted">(optional — PDF, Word, Image, max 10MB)</span></label>
+                            <input type="file" name="requirement_doc" id="requirement_doc" class="form-control"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small class="text-muted">The quotation PDF will also be attached automatically.</small>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -401,13 +418,25 @@
             $('#emailPreviewContainer').html(html);
         }
 
-        $('#refreshPreview, #theme_color').on('change click', updatePreview);
+        // Template card selection
+        $(document).on('click', '.tpl-card', function() {
+            $('.tpl-card').css('border-color', '#dee2e6');
+            $(this).css('border-color', '#006161');
+            $(this).find('input[type=radio]').prop('checked', true);
+            updatePreview();
+        });
+
+        $('#refreshPreview, #theme_color').on('change click', function() {
+            // Sync thumb colors on color change
+            $('.tpl-preview-thumb').not('[data-dark]').css('background', $('#theme_color').val());
+            updatePreview();
+        });
         $('#email_greeting, #email_body, #email_footer, #email_subject').on('input', function() {
             clearTimeout(window._previewTimeout);
             window._previewTimeout = setTimeout(updatePreview, 300);
         });
 
-        // Submit email
+        // Submit email — use FormData to support file upload
         $('#sendQuoteEmailForm').on('submit', function(e) {
             e.preventDefault();
 
@@ -421,13 +450,19 @@
             let btn = $('#sendEmailBtn');
             btn.prop('disabled', true).html('<i class="tio-loading tio-spin"></i> Sending...');
 
+            let formData = new FormData(this);
+            formData.set('recipient_email', email);
+
             $.ajax({
                 url: '{{ route("admin.quotation.send-quote-email") }}',
                 type: 'POST',
-                data: $(this).serialize(),
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(resp) {
                     if (resp.success) {
                         $('#sendEmailModal').modal('hide');
+                        $('#requirement_doc').val('');
                         toastr.success(resp.message || 'Email sent successfully!');
                     } else {
                         toastr.error(resp.message || 'Failed to send email.');

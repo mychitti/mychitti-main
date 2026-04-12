@@ -664,6 +664,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('lead_approval', 'QuoteController@lead_approval')->name('lead_approval');
             Route::get('delete/{id}', 'QuoteController@delete')->name('delete')->middleware('permission:quotaiton_manage,delete');
             Route::get('manage/{id}', 'QuoteController@manage')->name('manage')->middleware('permission:quotaiton_manage,edit');
+            Route::get('check-email', 'QuoteController@check_email')->name('check-email');
+            Route::post('send-quote-email', 'QuoteController@send_quote_email')->name('send-quote-email');
             Route::get('settings', 'SettingsController@quotation_settings')->name('settings')->middleware('permission:quotaiton_manage,settings');
 
             Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
@@ -1057,16 +1059,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('join_campaign/{id}/{status}', 'BannerController@status')->name('status');
         });
 
-        Route::group(['prefix' => 'blog', 'as' => 'blog.'], function () {
-            Route::get('/', 'BlogController@index')->name('index');
-            Route::get('create', 'BlogController@create')->name('create');
-            Route::post('store', 'BlogController@store')->name('store');
-            Route::get('edit/{id}', 'BlogController@edit')->name('edit');
-            Route::post('update/{id}', 'BlogController@update')->name('update');
-            Route::delete('delete/{id}', 'BlogController@destroy')->name('delete');
-            Route::get('categories-by-type', 'BlogController@getCategoriesByType')->name('categories-by-type');
-            Route::post('image-upload', 'BlogController@uploadImage')->name('image-upload');
-        });
 
         Route::group(['prefix' => 'gallery', 'as' => 'gallery.'], function () {
             Route::get('/', 'DashboardController@gallery')->name('all');

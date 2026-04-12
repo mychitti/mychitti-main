@@ -52,6 +52,7 @@ use App\Exports\StoreWithdrawTransactionExport;
 use App\Exports\StoreWiseWithdrawTransactionExport;
 use App\Http\Controllers\Vendor\ProfileController;
 use App\Imports\StoreImport;
+use App\Mail\StoreWelcomeMail;
 use App\Models\AccountDetail;
 use App\Models\ActionLog;
 use App\Models\Admin;
@@ -77,11 +78,8 @@ class VendorController extends Controller
         $module_categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
         $allPlans = Plan::where('status', '1')->get();
         $business_types = StoreType::where('module_id', Config::get('module.current_module_id'))->get();
-        if (Config::get('module.current_module_id') == 8) {
-            return view('admin-views.vendor.index_hospital', compact('allPlans', 'module_categories'));
-        } else {
+     
             return view('admin-views.vendor.index', compact('allPlans', 'module_categories', 'business_types'));
-        }
     }
     public function types() 
     { 
@@ -472,6 +470,16 @@ class VendorController extends Controller
                 }
             }
             Translation::insert($data);
+            if ($vendor->email) {
+                try {
+                    Mail::to($vendor->email)->send(new StoreWelcomeMail($store->name));
+                } catch (\Exception $mailEx) {
+                    \Log::error('Store welcome mail failed: ' . $mailEx->getMessage());
+                }
+            }else{
+                echo 'dfs';
+            }
+
             // $store->zones()->attach($request->zone_ids);
             //code...
         } catch (\Exception $ex) {
@@ -517,6 +525,49 @@ class VendorController extends Controller
         Toastr::success(Config::get('module.vendor_role') . ' ' .  translate('messages.added_successfully'));
         return redirect()->route('admin.store.list');
     }
+    // DEBUG ONLY — remove before production
+    public function debugMail(Request $request)
+    {
+        $to    = $request->get('to', 'test@example.com');
+        $store = $request->get('store', 'Test Store');
+
+        $steps = [];
+
+        // 1. Check mail config
+        $steps['mail_driver'] = config('mail.default');
+        $steps['mail_host']   = config('mail.mailers.smtp.host');
+        $steps['mail_port']   = config('mail.mailers.smtp.port');
+        $steps['mail_from']   = config('mail.from.address');
+        $steps['mail_enc']    = config('mail.mailers.smtp.encryption');
+
+        // 2. Check EmailTemplate record
+        $template = \App\Models\EmailTemplate::where('type', 'admin')
+            ->where('email_type', 'store_registration')
+            ->first();
+        $steps['email_template_found'] = $template ? 'YES (id=' . $template->id . ')' : 'NO — missing from email_templates table';
+
+        // 3. Try sending
+        try {
+            Mail::to($to)->send(new StoreWelcomeMail($store));
+            $steps['send_result'] = 'SUCCESS — mail sent to ' . $to;
+        } catch (\Exception $e) {
+            $steps['send_result'] = 'FAILED: ' . $e->getMessage();
+            $steps['exception_class'] = get_class($e);
+            $steps['trace'] = nl2br(htmlspecialchars(substr($e->getTraceAsString(), 0, 2000)));
+        }
+
+        // 4. Dump
+        echo '<pre style="font-size:14px; padding:20px;">';
+        echo '<strong>Store Registration Mail Debug</strong>' . "\n\n";
+        echo '<strong>Usage:</strong> /debug/test-store-mail?to=yourmail@example.com&store=MyStore' . "\n\n";
+        foreach ($steps as $key => $val) {
+            echo str_pad($key, 30) . ': ' . $val . "\n";
+        }
+        echo '</pre>';
+        exit;
+    }
+    // END DEBUG
+
     public function edit_plan_for_store(Request $request)
     {
         $plans = VendorSubscription::where('vendor_id', $request->store_id)->get();

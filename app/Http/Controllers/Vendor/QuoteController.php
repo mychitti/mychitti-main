@@ -22,6 +22,7 @@ use App\Models\ItemCampaign;
 use App\Models\ManualInvoice;
 use App\Models\QuotationDetail;
 use App\Models\QuotationDetailItem;
+use App\Models\DataSetting;
 use App\Models\StoreCustomer;
 use App\Models\StoreTask;
 use App\Models\Tag;
@@ -37,6 +38,141 @@ use Illuminate\Support\Facades\Config;
 
 class QuoteController extends Controller
 {
+    private function getQuoteEmailSettings()
+    {
+        $storeId = Helpers::get_store_id();
+        $setting = DataSetting::where('key', 'quote_email_template_' . $storeId)->where('type', 'quotation')->first();
+        if ($setting) {
+            return json_decode($setting->getRawOriginal('value'), true) ?: [];
+        }
+        return [];
+    }
+
+    public function check_email(Request $request)
+    {
+        $customerId = $request->get('customer_id');
+        if ($customerId) {
+            $customer = StoreCustomer::where('id', $customerId)
+                ->where('store_id', Helpers::get_store_id())
+                ->first();
+            if ($customer) {
+                return response()->json([
+                    'has_email' => !empty($customer->email),
+                    'email'     => $customer->email,
+                    'name'      => trim($customer->f_name . ' ' . ($customer->l_name ?? '')),
+                    'phone'     => $customer->phone,
+                ]);
+            }
+        }
+        return response()->json(['has_email' => false, 'email' => null, 'name' => '', 'phone' => '']);
+    }
+
+    public function send_quote_email(Request $request)
+    {
+        $request->validate([
+            'quote_id'        => 'required',
+            'email_subject'   => 'required|string',
+            'email_body'      => 'required|string',
+            'requirement_doc' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+        ]);
+
+        $storeId  = Helpers::get_store_id();
+        $email    = $request->recipient_email;
+        $customerId = $request->customer_id;
+
+        if ($customerId && $request->customer_email_new) {
+            $customer = StoreCustomer::where('id', $customerId)->where('store_id', $storeId)->first();
+            if ($customer) {
+                $customer->email = $request->customer_email_new;
+                $customer->save();
+                $email = $request->customer_email_new;
+            }
+        }
+
+        if (empty($email)) {
+            return response()->json(['success' => false, 'message' => 'Recipient email is required.']);
+        }
+
+        $quote = Quotation::with('quote_detail', 'storeCustomer')
+            ->where('id', $request->quote_id)
+            ->where('vendor_id', $storeId)
+            ->first();
+
+        if (!$quote || !$quote->quote_detail?->pdf) {
+            return response()->json(['success' => false, 'message' => 'Quotation or PDF not found.']);
+        }
+
+        $store_data = Helpers::get_store_data();
+        $selectedCustomer = $customerId ? StoreCustomer::find($customerId) : null;
+        $clientName = $selectedCustomer
+            ? trim($selectedCustomer->f_name . ' ' . ($selectedCustomer->l_name ?? ''))
+            : ($quote->storeCustomer ? trim($quote->storeCustomer->f_name . ' ' . $quote->storeCustomer->l_name) : 'Customer');
+
+        $greeting   = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_greeting ?? 'Dear Customer,');
+        $body       = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_body);
+        $themeColor = $request->theme_color ?? '#a51d1d';
+        $templateId = in_array($request->email_template, ['1', '2', '3']) ? $request->email_template : '1';
+
+        $items     = QuotationDetailItem::where('quotation_det_id', $quote->quote_detail->id)->get();
+        $logo      = \App\Models\BusinessSetting::where('key', 'logo')->first();
+        $storeLogo = $logo ? asset('storage/business/' . $logo->value) : '';
+
+        $templateView = $templateId == '1' ? 'email-templates.quotation_email'
+                      : 'email-templates.quotation_email_' . $templateId;
+
+        $emailHtml = view($templateView, [
+            'theme_color'    => $themeColor,
+            'store_name'     => $store_data->name,
+            'store_logo'     => $storeLogo,
+            'email_subject'  => $request->email_subject,
+            'greeting'       => $greeting,
+            'body'           => $body,
+            'footer_text'    => $request->email_footer ?? 'Thank you for your business!',
+            'quotation_id'   => $quote->quotation_id,
+            'quotation_date' => $quote->q_date ? date('d M Y', strtotime($quote->q_date)) : date('d M Y'),
+            'items'          => $items,
+            'total_amount'   => $quote->quote_detail->total_amount,
+        ])->render();
+
+        $pdfPath    = storage_path('app/public/invoice/' . $quote->quote_detail->pdf);
+        $reqDocPath = null;
+        $reqDocName = null;
+        if ($request->hasFile('requirement_doc')) {
+            $file       = $request->file('requirement_doc');
+            $reqDocPath = $file->getPathname();
+            $reqDocName = $file->getClientOriginalName();
+        }
+
+        try {
+            Mail::send([], [], function ($message) use ($email, $request, $emailHtml, $pdfPath, $quote, $reqDocPath, $reqDocName) {
+                $message->to($email)->subject($request->email_subject)->html($emailHtml);
+                if (file_exists($pdfPath)) {
+                    $message->attach($pdfPath, ['as' => 'Quotation_' . $quote->quotation_id . '.pdf', 'mime' => 'application/pdf']);
+                }
+                if ($reqDocPath && file_exists($reqDocPath)) {
+                    $message->attach($reqDocPath, ['as' => $reqDocName]);
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send email: ' . $e->getMessage()]);
+        }
+
+        if ($request->save_as_default) {
+            DataSetting::updateOrCreate(
+                ['key' => 'quote_email_template_' . $storeId, 'type' => 'quotation'],
+                ['value' => json_encode([
+                    'theme_color'    => $themeColor,
+                    'email_template' => $templateId,
+                    'greeting'       => $request->email_greeting,
+                    'body'           => $request->email_body,
+                    'footer'         => $request->email_footer,
+                ])]
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Quotation email sent successfully!']);
+    }
+
     public function send_quote(Request $request, $id)
     {
         $quote = Quotation::find($id);
@@ -153,8 +289,8 @@ class QuoteController extends Controller
                     ->orWhereRaw("FIND_IN_SET(?, store_ids)", [$storeId]);
             })
             ->get();
-        // prx( $quote);
-        return view('vendor-views.quote.manage', compact('quote_items', 'quote', 'services', 'customers'));
+        $quote_email_settings = $this->getQuoteEmailSettings();
+        return view('vendor-views.quote.manage', compact('quote_items', 'quote', 'services', 'customers', 'quote_email_settings'));
     }
 
     public function status_change(Request $request)

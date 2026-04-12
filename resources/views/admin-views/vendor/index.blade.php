@@ -67,7 +67,8 @@
                                     <label class="input-label"
                                         for="exampleFormControlInput1">{{ translate('messages.name') }}</label>
                                     <input type="text" name="name[]" class="form-control"
-                                        placeholder="{{ translate('messages.store_name') }}" required>
+                                        placeholder="{{ translate('messages.store_name') }}" required
+                                        value="{{ old('name.0') }}">
                                 </div>
                                 <input type="hidden" name="lang[]" value="default">
                                 <div class="form-group mb-0">
@@ -75,7 +76,7 @@
                                         for="exampleFormControlInput1">{{ translate('messages.address') }}
                                     </label>
                                     <textarea type="text" name="address[]" placeholder="{{ translate('messages.store address') }}"
-                                        class="form-control min-h-90px ckeditor"></textarea>
+                                        class="form-control min-h-90px ckeditor">{{ old('address.0') }}</textarea>
                                 </div>
                             </div>
                         </div>
@@ -192,11 +193,11 @@
                                                             <div class="item smaller">
                                                                 <select name="delivery_time_type" id="delivery_time_type"
                                                                     class="custom-select">
-                                                                    <option value="min">
+                                                                    <option value="min" {{ old('delivery_time_type') == 'min' ? 'selected' : '' }}>
                                                                         {{ translate('messages.minutes') }}</option>
-                                                                    <option value="hours">
+                                                                    <option value="hours" {{ old('delivery_time_type') == 'hours' ? 'selected' : '' }}>
                                                                         {{ translate('messages.hours') }}</option>
-                                                                    <option value="days">
+                                                                    <option value="days" {{ old('delivery_time_type') == 'days' ? 'selected' : '' }}>
                                                                         {{ translate('messages.days') }}</option>
                                                                 </select>
                                                             </div>
@@ -262,18 +263,18 @@
                                     @if( hasPermission('store', 'add_advanced'))
                                           <div class="my-3">
                                             <label class="input-label fw-bold" for="choice_zones">Vendor Type</label>
-                                            <input type="radio" checked name="vendor_type" value="regular"
-                                                id="vendor_regular">
+                                            <input type="radio" name="vendor_type" value="regular"
+                                                id="vendor_regular" {{ old('vendor_type', 'regular') == 'regular' ? 'checked' : '' }}>
                                             <label style="margin: 16px 0px;" class="input-label d-inline"
                                                 for="vendor_regular">Regular</label>
 
                                             <input type="radio" name="vendor_type" value="composition"
-                                                id="vendor_composition">
+                                                id="vendor_composition" {{ old('vendor_type') == 'composition' ? 'checked' : '' }}>
                                             <label style="margin: 16px 0px;" class="input-label d-inline"
                                                 for="vendor_composition">Composition</label> &nbsp; &nbsp;
                                         </div>
                                         <div class="my-3">
-                                            <input type="checkbox" name="confirmation" id="confirmation_check">
+                                            <input type="checkbox" name="confirmation" id="confirmation_check" {{ old('confirmation') ? 'checked' : '' }}>
                                             <label for="confirmation_check">Vendor's annual turnover is below 20
                                                 lakhs.</label>
                                         </div>
@@ -292,7 +293,8 @@
                                                 <label class="input-label" id="" for="gst_num">GST
                                                     Number<span>*</span></label>
                                                 <input type="text" placeholder="GST Number" id=""
-                                                    name="gst_num" class="form-control __form-control">
+                                                    name="gst_num" class="form-control __form-control"
+                                                    value="{{ old('gst_num') }}">
                                             </div>
                                         </div>
 
@@ -302,7 +304,8 @@
                                                     <label class="input-label" id="" for="id_num">ID
                                                         Number</label>
                                                     <input type="text" placeholder="ID Number" id="id_num"
-                                                        name="id_number" class="form-control __form-control">
+                                                        name="id_number" class="form-control __form-control"
+                                                        value="{{ old('id_number') }}">
                                                 </div>
                                             </div>
                                             <div class="mb-4" id="id_inp">
@@ -357,7 +360,8 @@
                                                     Link<span></span></label>
                                                 <input required type="text" placeholder="Your Google Business Link"
                                                     id="google_verification" name="google_verification"
-                                                    class="form-control __form-control">
+                                                    class="form-control __form-control"
+                                                    value="{{ old('google_verification') }}">
                                             </div>
                                         </div>
                                         <!-- verification_inp -->
@@ -367,7 +371,8 @@
                                                     for="other_verification">Other Business Link</label>
                                                 <input type="text" placeholder="Other Business Link"
                                                     id="other_verification" name="other_verification"
-                                                    class="form-control __form-control">
+                                                    class="form-control __form-control"
+                                                    value="{{ old('other_verification') }}">
                                             </div>
                                         </div>
                                     </div>
@@ -492,7 +497,8 @@
                                         <label class="input-label"
                                             for="phone">{{ translate('messages.phone') }}</label>
                                         <input type="text" id="phone" name="phone" class="intl_input form-control"
-                                            placeholder="{{ translate('messages.Ex:') }} 99********" required>
+                                            placeholder="{{ translate('messages.Ex:') }} 99********" required
+                                            value="{{ old('phone') }}">
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-sm-6">
@@ -501,7 +507,8 @@
                                             {{ translate('messages.phone') }} <i>(Optional)</i></label>
                                         <input type="text" id="secondary_phone" name="secondary_phone"
                                             class="intl_input form-control"
-                                            placeholder="{{ translate('messages.Ex:') }} 99********">
+                                            placeholder="{{ translate('messages.Ex:') }} 99********"
+                                            value="{{ old('secondary_phone') }}">
                                     </div>
                                 </div>
                             </div>

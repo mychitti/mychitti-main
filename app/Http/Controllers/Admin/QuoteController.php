@@ -54,9 +54,10 @@ class QuoteController extends Controller
     public function send_quote_email(Request $request)
     {
         $request->validate([
-            'quote_id' => 'required',
+            'quote_id'      => 'required',
             'email_subject' => 'required|string',
-            'email_body' => 'required|string',
+            'email_body'    => 'required|string',
+            'requirement_doc' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
         ]);
 
         // Resolve email: from selected customer or manually entered
@@ -90,45 +91,59 @@ class QuoteController extends Controller
             : ($quote->storeCustomer ? ($quote->storeCustomer->f_name . ' ' . $quote->storeCustomer->l_name) : 'Customer');
 
         // Replace placeholders
-        $greeting = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_greeting ?? 'Dear Customer,');
-        $body = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_body);
+        $greeting   = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_greeting ?? 'Dear Customer,');
+        $body       = str_replace(['{client_name}', '{quotation_id}'], [$clientName, $quote->quotation_id], $request->email_body);
         $themeColor = $request->theme_color ?? '#a51d1d';
+        $templateId = in_array($request->email_template, ['1', '2', '3']) ? $request->email_template : '1';
 
         // Get quotation items
         $items = QuotationDetailItem::where('quotation_det_id', $quote->quote_detail->id)->get();
 
         // Store logo
-        $logo = \App\Models\BusinessSetting::where('key', 'logo')->first();
+        $logo      = \App\Models\BusinessSetting::where('key', 'logo')->first();
         $storeLogo = $logo ? asset('storage/business/' . $logo->value) : '';
 
-        // Render email HTML
-        $emailHtml = view('email-templates.quotation_email', [
-            'theme_color' => $themeColor,
-            'store_name' => $store_data->name,
-            'store_logo' => $storeLogo,
-            'email_subject' => $request->email_subject,
-            'greeting' => $greeting,
-            'body' => $body,
-            'footer_text' => $request->email_footer ?? 'Thank you for your business!',
-            'quotation_id' => $quote->quotation_id,
+        // Select template view
+        $templateView = $templateId == '1' ? 'email-templates.quotation_email'
+                      : 'email-templates.quotation_email_' . $templateId;
+
+        $emailHtml = view($templateView, [
+            'theme_color'    => $themeColor,
+            'store_name'     => $store_data->name,
+            'store_logo'     => $storeLogo,
+            'email_subject'  => $request->email_subject,
+            'greeting'       => $greeting,
+            'body'           => $body,
+            'footer_text'    => $request->email_footer ?? 'Thank you for your business!',
+            'quotation_id'   => $quote->quotation_id,
             'quotation_date' => $quote->q_date ? date('d M Y', strtotime($quote->q_date)) : date('d M Y'),
-            'items' => $items,
-            'total_amount' => $quote->quote_detail->total_amount,
+            'items'          => $items,
+            'total_amount'   => $quote->quote_detail->total_amount,
         ])->render();
 
-        // PDF path
-        $pdfPath = storage_path('app/public/invoice/' . $quote->quote_detail->pdf);
+        // Attachment paths
+        $pdfPath     = storage_path('app/public/invoice/' . $quote->quote_detail->pdf);
+        $reqDocPath  = null;
+        $reqDocName  = null;
+        if ($request->hasFile('requirement_doc')) {
+            $file       = $request->file('requirement_doc');
+            $reqDocPath = $file->getPathname();
+            $reqDocName = $file->getClientOriginalName();
+        }
 
         try {
-            Mail::send([], [], function ($message) use ($email, $request, $emailHtml, $pdfPath, $quote) {
+            Mail::send([], [], function ($message) use ($email, $request, $emailHtml, $pdfPath, $quote, $reqDocPath, $reqDocName) {
                 $message->to($email)
                     ->subject($request->email_subject)
                     ->html($emailHtml);
                 if (file_exists($pdfPath)) {
                     $message->attach($pdfPath, [
-                        'as' => 'Quotation_' . $quote->quotation_id . '.pdf',
+                        'as'   => 'Quotation_' . $quote->quotation_id . '.pdf',
                         'mime' => 'application/pdf',
                     ]);
+                }
+                if ($reqDocPath && file_exists($reqDocPath)) {
+                    $message->attach($reqDocPath, ['as' => $reqDocName]);
                 }
             });
         } catch (\Exception $e) {
@@ -137,15 +152,15 @@ class QuoteController extends Controller
 
         // Save as default if requested
         if ($request->save_as_default) {
-            $templateData = json_encode([
-                'theme_color' => $themeColor,
-                'greeting' => $request->email_greeting,
-                'body' => $request->email_body,
-                'footer' => $request->email_footer,
-            ]);
             DataSetting::updateOrCreate(
                 ['key' => 'quote_email_template', 'type' => 'quotation'],
-                ['value' => $templateData]
+                ['value' => json_encode([
+                    'theme_color'    => $themeColor,
+                    'email_template' => $templateId,
+                    'greeting'       => $request->email_greeting,
+                    'body'           => $request->email_body,
+                    'footer'         => $request->email_footer,
+                ])]
             );
         }
 

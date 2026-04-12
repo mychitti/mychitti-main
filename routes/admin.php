@@ -2,20 +2,20 @@
 
 use App\Http\Controllers\Admin\Item\CategoryController;
 use Illuminate\Support\Facades\Route;
- 
+
 
 Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
     Route::group(['prefix' => 'file', 'as' => 'file.'], function () {
         Route::get('add', 'FileController@add')->name('add');
         Route::post('store', 'FileController@store')->name('store');
-    }); 
+    });
     Route::post('send-otp', 'SystemController@send_otp')->name('send-otp');
-    Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp'); 
+    Route::post('verify-otp', 'SystemController@verify_otp')->name('verify-otp');
     Route::post('proceed-action', 'AdminActionController@proceed_action')->name('proceed-action');
     Route::get('secure-download/{file}', 'ProtectedFileController@download_file')
-        ->name('secure.download')->middleware('signed'); 
- 
+        ->name('secure.download')->middleware('signed');
+
     Route::group(['prefix' => 'prompt', 'as' => 'prompt.', 'middleware' => ['module:ai_agent']], function () {
         Route::get('/', 'SystemPromptController@index')->name('index')->middleware('permission:system_prompt,list');
         Route::post('store', 'SystemPromptController@store')->name('store')->middleware('permission:system_prompt,add');
@@ -221,7 +221,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('gst-settings', 'PlanController@save_gst_settings')->name('gst-settings');
             Route::get('stores', 'PlanController@stores')->name('stores');
             Route::post('store', 'PlanController@store')->name('store');
-        }); 
+        });
         Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () {
             Route::get('/', 'SupportTicketController@index')->name('index')->middleware('permission:support_ticket,list');
             Route::get('create', 'SupportTicketController@create')->name('create')->middleware('permission:support_ticket,add');
@@ -245,7 +245,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::group(['prefix' => 'asset', 'as' => 'asset.'], function () {
             Route::post('return', 'AssetsController@return_asset')->name('return');
             Route::get('alotted', 'AssetsController@alotted_assets')->name('alotted');
-        }); 
+        });
         Route::group(['prefix' => 'asset', 'as' => 'asset.', 'middleware' => ['planwise:account_manage']], function () { // add middleware
             Route::get('/', 'AssetsController@index')->name('index');
             Route::post('store', 'AssetsController@store')->name('store');
@@ -518,7 +518,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
 
-     
+
         Route::group(['prefix' => 'business-settings', 'as' => 'business-settings.'], function () {
             Route::post('signature-save', 'BusinessSettingsController@signature_save')->name('signature.save')->middleware('permission:billing_signatures,add');;
             Route::get('signature-delete/{id}', 'BusinessSettingsController@signature_delete')->name('signature.delete')->middleware('permission:billing_signatures,delete');;
@@ -611,7 +611,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         });
         Route::get('search-mychitti-clients', 'MychittiClientController@searchMychittiClients')->name('search-mychitti-clients');
-        
+
         Route::group(['prefix' => 'client', 'as' => 'client.'], function () {
             Route::post('fetch-details', 'CustomerController@fetch_details')->name('fetch-details');
             Route::get('get-matches', 'CustomerController@get_matches')->name('get-matches');
@@ -807,12 +807,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 // Route::get('list', 'DocumentsController@job_cards_list')->name('list');
                 // Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
             });
-             Route::group(['prefix' => 'service-report', 'as' => 'service-report.'], function () {
+            Route::group(['prefix' => 'service-report', 'as' => 'service-report.'], function () {
                 // Route::get('create', 'DocumentsController@jobcard_create')->name('create');
                 Route::post('store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('store');
                 // Route::get('list', 'DocumentsController@job_cards_list')->name('list');
                 // Route::get('delete/{id}', 'DocumentsController@job_card_delete')->name('delete');
-            }); 
+            });
         });
 
         // PROJECT MANAGEMENT ===========================
@@ -898,7 +898,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('reject/{id}', 'TaskController@reject')->name('reject');
         });
 
-         // TASK CONTROLLER
+        // TASK CONTROLLER
         Route::group(['prefix' => 'task', 'as' => 'task.'], function () { // add middleware
             // Route::get('add/{project_id?}', 'ProjectTaskController@add')->name('add')->middleware('permission:project_task,add');
             // Route::post('store', 'ProjectTaskController@store')->name('store')->middleware('permission:project_task,add');
@@ -916,7 +916,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
 
-        
+
         // TASK MANAGEMENT =============================
         Route::group(['prefix' => 'task', 'as' => 'task.', 'middleware' => ['planwise:task_manage']], function () { // add middleware
             Route::get('add/{project_id?}', 'TaskController@add')->name('add')->middleware('permission:task,add');
@@ -961,7 +961,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         });
 
-       
+
 
 
         Route::group(['prefix' => 'parcel', 'as' => 'parcel.', 'middleware' => ['module:parcel']], function () {
@@ -1181,7 +1181,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::group(['middleware' => ['module:store']], function () {
                 Route::post('import', 'VendorController@import')->name('import');
 
-Route::get('add', 'VendorController@index')->name('add')->middleware('permission:store,add_basic,store,add_advanced');
+                Route::get('add', 'VendorController@index')->name('add')->middleware('permission:store,add_basic,store,add_advanced');
                 Route::post('store', 'VendorController@store')->name('store')->middleware('permission:store,add_basic,store,add_advanced');
                 Route::get('edit/{id}', 'VendorController@edit')->name('edit')->middleware('permission:store,edit_basic,store,edit_advanced');
                 Route::post('update/{store}', 'VendorController@update')->name('update')->middleware('permission:store,edit_basic,store,edit_advanced');
@@ -1688,27 +1688,27 @@ Route::get('add', 'VendorController@index')->name('add')->middleware('permission
             //     Route::get('edit/{id}', 'SalaryController@edit')->name('edit');
             // });
 
-        Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
-            Route::get('generate-monthly/{month}', 'SalaryController@generate_monthly')->name('generate-monthly')->middleware('permission:salary_manage,generate');
-            Route::get('mark-paid/{month}', 'SalaryController@mark_paid')->name('mark-paid')->middleware('permission:salary_manage,mark_paid');
-            Route::get('report', 'SalaryController@report')->name('report');
-            Route::get('export-salaries', 'SalaryController@export_salaries')->name('export-salaries')->middleware('permission:salary_manage,export');
-            Route::get('list', 'SalaryController@index')->name('list');
-            Route::get('export', 'SalaryController@export')->name('export')->middleware('permission:salary_manage,export');
-            Route::post('get-info', 'SalaryController@get_info')->name('get-info');
-            Route::post('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
+            Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
+                Route::get('generate-monthly/{month}', 'SalaryController@generate_monthly')->name('generate-monthly')->middleware('permission:salary_manage,generate');
+                Route::get('mark-paid/{month}', 'SalaryController@mark_paid')->name('mark-paid')->middleware('permission:salary_manage,mark_paid');
+                Route::get('report', 'SalaryController@report')->name('report');
+                Route::get('export-salaries', 'SalaryController@export_salaries')->name('export-salaries')->middleware('permission:salary_manage,export');
+                Route::get('list', 'SalaryController@index')->name('list');
+                Route::get('export', 'SalaryController@export')->name('export')->middleware('permission:salary_manage,export');
+                Route::post('get-info', 'SalaryController@get_info')->name('get-info');
+                Route::post('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
 
-            Route::post('pay', 'SalaryController@pay')->name('pay')->middleware('permission:salary_manage,mark_paid');
-            Route::get('add', 'SalaryController@add')->name('add-new')->middleware('permission:salary_manage,add');
-            Route::get('status/{id}/{status}', 'SalaryController@status')->name('status')->middleware('permission:salary_manage,status_change');
-            Route::post('save-info', 'SalaryController@save_info')->name('save')->middleware('permission:salary_manage,edit');
-            Route::get('delete/{id}', 'SalaryController@delete')->name('delete')->middleware('permission:salary_manage,delete');
-            Route::get('edit/{id}', 'SalaryController@edit')->name('edit')->middleware('permission:salary_manage,edit');
+                Route::post('pay', 'SalaryController@pay')->name('pay')->middleware('permission:salary_manage,mark_paid');
+                Route::get('add', 'SalaryController@add')->name('add-new')->middleware('permission:salary_manage,add');
+                Route::get('status/{id}/{status}', 'SalaryController@status')->name('status')->middleware('permission:salary_manage,status_change');
+                Route::post('save-info', 'SalaryController@save_info')->name('save')->middleware('permission:salary_manage,edit');
+                Route::get('delete/{id}', 'SalaryController@delete')->name('delete')->middleware('permission:salary_manage,delete');
+                Route::get('edit/{id}', 'SalaryController@edit')->name('edit')->middleware('permission:salary_manage,edit');
 
-            Route::get('all-advance-requests', 'SalaryController@all_advance_requests')->name('all-advance-requests')->middleware('permission:advance_requests,list');
-            Route::get('approve-advance/{id}', 'SalaryController@approve_advance_payment')->name('approve-advance')->middleware('permission:advance_requests,approve');
-            Route::get('reject-advance/{id}', 'SalaryController@reject_advance_payment')->name('reject-advance')->middleware('permission:advance_requests,reject');
-        });
+                Route::get('all-advance-requests', 'SalaryController@all_advance_requests')->name('all-advance-requests')->middleware('permission:advance_requests,list');
+                Route::get('approve-advance/{id}', 'SalaryController@approve_advance_payment')->name('approve-advance')->middleware('permission:advance_requests,approve');
+                Route::get('reject-advance/{id}', 'SalaryController@reject_advance_payment')->name('reject-advance')->middleware('permission:advance_requests,reject');
+            });
 
 
             // Subscribed customer Routes
@@ -1868,3 +1868,6 @@ Route::get('add', 'VendorController@index')->name('add')->middleware('permission
         });
     });
 });
+
+// DEBUG ONLY — remove before production
+Route::get('debug/test-store-mail', 'Admin\VendorController@debugMail');
