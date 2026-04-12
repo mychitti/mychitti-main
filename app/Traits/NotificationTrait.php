@@ -123,13 +123,35 @@ trait NotificationTrait
      * @param string $type    Notification type
      * @return array ['sent' => int, 'failed' => int, 'errors' => array]
      */
+    /**
+     * Send push notification to a batch of device tokens using FCM v1 API.
+     * The legacy registration_ids API was shut down in 2024; FCM v1 requires
+     * one message per token but supports async concurrent sending.
+     *
+     * @param array  $tokens  Array of FCM device tokens
+     * @param mixed  $data    Notification data (array or Eloquent model)
+     * @param string $type    Notification type
+     * @return array ['sent' => int, 'failed' => int, 'errors' => array]
+     */
     public static function sendPushNotificationToTokensBatch(array $tokens, $data, string $type): array
     {
-        $key = BusinessSetting::where('key', 'push_notification_key')->value('value');
-        if (!$key || empty($tokens)) {
-            return ['sent' => 0, 'failed' => 0, 'errors' => ['No server key or empty token list']];
+        if (empty($tokens)) {
+            return ['sent' => 0, 'failed' => 0, 'errors' => ['Empty token list']];
         }
 
+        try {
+            $accessToken = _getAccessToken();
+        } catch (\Exception $e) {
+            \Log::error('FCM batch: failed to get access token: ' . $e->getMessage());
+            return ['sent' => 0, 'failed' => count($tokens), 'errors' => ['Access token error: ' . $e->getMessage()]];
+        }
+
+        if (!$accessToken) {
+            return ['sent' => 0, 'failed' => count($tokens), 'errors' => ['Could not obtain FCM access token']];
+        }
+
+        $projectId   = config('fcm.project_id', 'fcm-3-e0206');
+        $url         = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
         $title       = is_array($data) ? ($data['title'] ?? '') : $data['title'];
         $description = is_array($data) ? ($data['description'] ?? '') : $data['description'];
         $image       = is_array($data) ? ($data['image'] ?? '') : ($data['image'] ?? '');
@@ -137,75 +159,71 @@ trait NotificationTrait
         $sent   = 0;
         $failed = 0;
         $errors = [];
+        $client = new Client(['timeout' => 30, 'http_errors' => false]);
 
-        $client = new Client();
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json',
+        ];
 
-        foreach (array_chunk($tokens, 500) as $chunk) {
-            $payload = [
-                'registration_ids' => $chunk,
-                'mutable_content'  => true,
-                'data'             => [
-                    'title'   => (string) $title,
-                    'body'    => (string) $description,
-                    'image'   => (string) ($image ?? ''),
-                    'type'    => $type,
-                    'is_read' => '0',
-                ],
-                'notification'     => [
-                    'title'              => (string) $title,
-                    'body'               => (string) $description,
-                    'image'              => (string) ($image ?? ''),
-                    'sound'              => 'notification.wav',
-                    'android_channel_id' => 'MyChitti',
-                ],
-            ];
+        // FCM v1 has no multicast — send concurrently in chunks of 100 async requests
+        foreach (array_chunk($tokens, 100) as $chunk) {
+            $promises = [];
 
-            try {
-                $response = $client->post('https://fcm.googleapis.com/fcm/send', [
-                    'headers' => [
-                        'Authorization' => 'key=' . $key,
-                        'Content-Type'  => 'application/json',
+            foreach ($chunk as $token) {
+                $promises[] = $client->postAsync($url, [
+                    'headers' => $headers,
+                    'json'    => [
+                        'message' => [
+                            'token' => $token,
+                            'data'  => [
+                                'title'   => (string) $title,
+                                'body'    => (string) $description,
+                                'image'   => (string) ($image ?? ''),
+                                'type'    => $type,
+                                'is_read' => '0',
+                            ],
+                            'notification' => [
+                                'title' => (string) $title,
+                                'body'  => (string) $description,
+                                'image' => (string) ($image ?? ''),
+                            ],
+                            'android' => [
+                                'notification' => [
+                                    'sound'      => 'notification.wav',
+                                    'channel_id' => 'MyChitti',
+                                ],
+                            ],
+                        ],
                     ],
-                    'json'        => $payload,
-                    'http_errors' => false,
-                    'timeout'     => 30,
                 ]);
-
-                $statusCode  = $response->getStatusCode();
-                $rawBody     = $response->getBody()->getContents();
-                $result      = json_decode($rawBody, true);
-
-                \Log::info('FCM batch response [' . $statusCode . ']: ' . $rawBody);
-
-                if ($result === null) {
-                    // Non-JSON response (auth error, HTML page, etc.)
-                    $failed += count($chunk);
-                    $errors[] = 'FCM HTTP ' . $statusCode . ': ' . substr(strip_tags($rawBody), 0, 200);
-                    continue;
-                }
-
-                // Top-level error (e.g. {"error":"InvalidRegistration"})
-                if (!empty($result['error'])) {
-                    $failed += count($chunk);
-                    $errors[] = $result['error'];
-                    continue;
-                }
-
-                $sent   += $result['success'] ?? 0;
-                $failed += $result['failure'] ?? 0;
-
-                if (!empty($result['results'])) {
-                    foreach ($result['results'] as $r) {
-                        if (!empty($r['error'])) {
-                            $errors[] = $r['error'];
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::error('FCM batch send error: ' . $e->getMessage());
-                $failed += count($chunk);
-                $errors[] = $e->getMessage();
             }
+
+            $settled = \GuzzleHttp\Promise\Utils::settle($promises)->wait();
+
+            foreach ($settled as $result) {
+                if ($result['state'] === 'fulfilled') {
+                    $statusCode = $result['value']->getStatusCode();
+                    $body       = json_decode($result['value']->getBody()->getContents(), true);
+
+                    if ($statusCode === 200) {
+                        $sent++;
+                    } else {
+                        $failed++;
+                        $errMsg = $body['error']['message'] ?? ('HTTP ' . $statusCode);
+                        $errors[] = $errMsg;
+                        \Log::warning('FCM v1 token send failed: ' . $errMsg);
+                    }
+                } else {
+                    $failed++;
+                    $errors[] = $result['reason']->getMessage();
+                    \Log::error('FCM v1 async error: ' . $result['reason']->getMessage());
+                }
+            }
+        }
+
+        if ($sent > 0 || $failed > 0) {
+            \Log::info("FCM batch complete: {$sent} sent, {$failed} failed out of " . count($tokens) . " tokens.");
         }
 
         return ['sent' => $sent, 'failed' => $failed, 'errors' => array_unique($errors)];
