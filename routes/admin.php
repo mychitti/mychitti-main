@@ -1945,3 +1945,24 @@ Route::get('debug/test-push', function (\Illuminate\Http\Request $request) {
     echo '</pre>';
     exit;
 });
+Route::get('debug/resubscribe-customers', function () {
+    $users = \App\Models\User::whereNotNull('cm_firebase_token')
+        ->where('cm_firebase_token', '!=', '')
+        ->where('cm_firebase_token', '!=', '1')
+        ->where('cm_firebase_token', '!=', '0')
+        ->select('id', 'cm_firebase_token', 'zone_id')
+        ->get();
+
+    $total = $users->count();
+    $done  = 0;
+
+    foreach ($users as $user) {
+        $topics = ['all_zone_customer'];
+        if ($user->zone_id) $topics[] = 'zone_' . $user->zone_id . '_customer';
+        _subscribeTokenToTopics($user->cm_firebase_token, $topics);
+        $done++;
+    }
+
+    echo "<pre>Resubscribed {$done} / {$total} customer tokens to FCM topics.</pre>";
+    exit;
+});

@@ -5492,6 +5492,38 @@ if (!function_exists('_getAccessToken')) {
         return $result['access_token'];
     }
 }
+if (!function_exists('_subscribeTokenToTopics')) {
+    /**
+     * Subscribe an FCM device token to one or more topics server-side.
+     * Uses the FCM IID batch-add API with the legacy server key.
+     */
+    function _subscribeTokenToTopics(string $token, array $topics): void
+    {
+        $key = \App\Models\BusinessSetting::where('key', 'push_notification_key')->value('value');
+        if (!$key || !$token) return;
+
+        $client = new \GuzzleHttp\Client();
+        foreach ($topics as $topic) {
+            try {
+                $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
+                    'headers' => [
+                        'Authorization' => 'key=' . $key,
+                        'Content-Type'  => 'application/json',
+                        'access_token_auth' => 'true',
+                    ],
+                    'json' => [
+                        'to'                  => '/topics/' . $topic,
+                        'registration_tokens' => [$token],
+                    ],
+                    'http_errors' => false,
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error("FCM topic subscribe failed [{$topic}]: " . $e->getMessage());
+            }
+        }
+    }
+}
+
 if (!function_exists('_convertNumberToWords')) {
     function _convertNumberToWords($number)
     {

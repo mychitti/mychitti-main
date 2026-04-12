@@ -701,9 +701,14 @@ class CustomerController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        DB::table('users')->where('id', $request->user()->id)->update([
+        $user = $request->user();
+        DB::table('users')->where('id', $user->id)->update([
             'cm_firebase_token' => $request['cm_firebase_token']
         ]);
+
+        $topics = ['all_zone_customer'];
+        if ($user->zone_id) $topics[] = 'zone_' . $user->zone_id . '_customer';
+        _subscribeTokenToTopics($request['cm_firebase_token'], $topics);
 
         return response()->json(['message' => translate('messages.updated_successfully')], 200);
     }
