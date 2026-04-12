@@ -113,6 +113,85 @@ trait NotificationTrait
     }
 
 
+    /**
+     * Send push notification directly to a batch of device tokens.
+     * Uses the legacy FCM API which supports registration_ids (up to 500 per call).
+     * More reliable than topic-based delivery for admin broadcasts.
+     *
+     * @param array  $tokens  Array of FCM device tokens
+     * @param mixed  $data    Notification data (array or Eloquent model)
+     * @param string $type    Notification type
+     * @return array ['sent' => int, 'failed' => int, 'errors' => array]
+     */
+    public static function sendPushNotificationToTokensBatch(array $tokens, $data, string $type): array
+    {
+        $key = BusinessSetting::where('key', 'push_notification_key')->value('value');
+        if (!$key || empty($tokens)) {
+            return ['sent' => 0, 'failed' => 0, 'errors' => ['No server key or empty token list']];
+        }
+
+        $title       = is_array($data) ? ($data['title'] ?? '') : $data['title'];
+        $description = is_array($data) ? ($data['description'] ?? '') : $data['description'];
+        $image       = is_array($data) ? ($data['image'] ?? '') : ($data['image'] ?? '');
+
+        $sent   = 0;
+        $failed = 0;
+        $errors = [];
+
+        $client = new Client();
+
+        foreach (array_chunk($tokens, 500) as $chunk) {
+            $payload = [
+                'registration_ids' => $chunk,
+                'mutable_content'  => true,
+                'data'             => [
+                    'title'   => (string) $title,
+                    'body'    => (string) $description,
+                    'image'   => (string) ($image ?? ''),
+                    'type'    => $type,
+                    'is_read' => '0',
+                ],
+                'notification'     => [
+                    'title'              => (string) $title,
+                    'body'               => (string) $description,
+                    'image'              => (string) ($image ?? ''),
+                    'sound'              => 'notification.wav',
+                    'android_channel_id' => 'MyChitti',
+                ],
+            ];
+
+            try {
+                $response = $client->post('https://fcm.googleapis.com/fcm/send', [
+                    'headers' => [
+                        'Authorization' => 'key=' . $key,
+                        'Content-Type'  => 'application/json',
+                    ],
+                    'json'        => $payload,
+                    'http_errors' => false,
+                    'timeout'     => 30,
+                ]);
+
+                $result = json_decode($response->getBody()->getContents(), true);
+                $sent  += $result['success'] ?? 0;
+                $failed += $result['failure'] ?? 0;
+
+                if (!empty($result['results'])) {
+                    foreach ($result['results'] as $r) {
+                        if (!empty($r['error'])) {
+                            $errors[] = $r['error'];
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('FCM batch send error: ' . $e->getMessage());
+                $failed += count($chunk);
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        return ['sent' => $sent, 'failed' => $failed, 'errors' => array_unique($errors)];
+    }
+
     public static function sendPushNotificationToTopic($data, $topic, $type, $web_push_link = null): array
     {
         try {

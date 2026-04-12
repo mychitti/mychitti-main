@@ -22,12 +22,44 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class NotificationController extends BaseController
 {
     use NotificationTrait;
+
+    /**
+     * Resolve valid FCM tokens for the target audience.
+     * target: customer | deliveryman | store
+     * zoneId: numeric zone ID or null for all zones
+     */
+    private function resolveTokens(string $target, ?int $zoneId): array
+    {
+        $column = match($target) {
+            'deliveryman' => 'dm_firebase_token',
+            'store'       => 'firebase_token',
+            default       => 'cm_firebase_token', // customer
+        };
+
+        $table = match($target) {
+            'deliveryman' => 'delivery_men',
+            'store'       => 'vendors',
+            default       => 'users',
+        };
+
+        return DB::table($table)
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->where($column, '!=', '1')
+            ->where($column, '!=', '0')
+            ->where(DB::raw("length({$column})"), '>', 20)
+            ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+            ->pluck($column)
+            ->toArray();
+    }
+
     public function __construct(
         protected NotificationRepositoryInterface $notificationRepo,
         protected NotificationService $notificationService,
@@ -64,16 +96,22 @@ class NotificationController extends BaseController
         $notification = $this->notificationRepo->add(data: $data);
         
         if (!$isScheduled) {
-            $topic = $this->notificationService->getTopic(request: $request);
             $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
 
-            $result = $this->sendPushNotificationToTopic($notification, $topic, 'general');
-            if (!empty($result['success'])) {
-                Toastr::success('Notification sent successfully!');
+            $zoneId = $request->zone === 'all' ? null : (int) $request->zone;
+            $tokens = $this->resolveTokens($request->tergat, $zoneId);
+
+            if (empty($tokens)) {
+                Toastr::warning('No device tokens found for the selected audience.');
             } else {
-                $errMsg = $result['error'] ?? 'Unknown error';
-                \Log::error('FCM push failed (add): ' . $errMsg);
-                Toastr::warning('Push notification failed: ' . $errMsg);
+                $result = $this->sendPushNotificationToTokensBatch($tokens, $notification, 'general');
+                if ($result['sent'] > 0) {
+                    Toastr::success("Notification sent to {$result['sent']} device(s)." . ($result['failed'] ? " ({$result['failed']} failed)" : ''));
+                } else {
+                    $errMsg = implode(', ', $result['errors'] ?: ['All sends failed']);
+                    \Log::error('FCM batch push failed (add): ' . $errMsg);
+                    Toastr::warning('Push notification failed: ' . $errMsg);
+                }
             }
         } else {
             Toastr::success('Notification scheduled for ' . $request->scheduled_at);
@@ -109,16 +147,21 @@ class NotificationController extends BaseController
             'status'   => 1,
         ]);
 
-        try {
-            $topic = $this->notificationService->getTopicByZoneAndTarget($notification['zone_id'], $notification['tergat']);
-            $notification['image'] = $notification['image'] ? url('/') . '/storage/app/public/notification/' . $notification['image'] : null;
+        $notification['image'] = $notification['image'] ? url('/') . '/storage/app/public/notification/' . $notification['image'] : null;
+        $zoneId = !empty($notification['zone_id']) ? (int) $notification['zone_id'] : null;
+        $tokens = $this->resolveTokens($notification['tergat'], $zoneId);
 
-            $this->sendPushNotificationToTopic($notification,  $topic, 'general');
-            Toastr::success('Approved and Sent Successfully');
-            return back();
-        } catch (\Exception $e) {
-            Toastr::warning(translate('messages.push_notification_failed'));
+        if (empty($tokens)) {
+            Toastr::warning('Approved but no device tokens found for the audience.');
+        } else {
+            $result = $this->sendPushNotificationToTokensBatch($tokens, $notification, 'general');
+            if ($result['sent'] > 0) {
+                Toastr::success("Approved and sent to {$result['sent']} device(s).");
+            } else {
+                Toastr::warning('Approved but push notification failed: ' . implode(', ', $result['errors'] ?: ['unknown']));
+            }
         }
+        return back();
     }
 
     public function update(NotificationUpdateRequest $request, $id): RedirectResponse
@@ -126,17 +169,22 @@ class NotificationController extends BaseController
         $notification = $this->notificationRepo->getFirstWhere(params: ['id' => $id]);
         $notification = $this->notificationRepo->update(id: $id, data: $this->notificationService->getUpdateData(request: $request, notification: $notification));
 
-        $topic = $this->notificationService->getTopic(request: $request);
-
         $notification->image = $notification->image ? url('/') . '/storage/app/public/notification/' . $notification->image : null;
 
-        $result = $this->sendPushNotificationToTopic($notification, $topic, 'general');
-        if (!empty($result['success'])) {
-            Toastr::success(translate('messages.notification_updated_successfully'));
+        $zoneId = ($request->zone && $request->zone !== 'all') ? (int) $request->zone : null;
+        $tokens = $this->resolveTokens($request->tergat, $zoneId);
+
+        if (empty($tokens)) {
+            Toastr::warning('No device tokens found for the selected audience.');
         } else {
-            $errMsg = $result['error'] ?? 'Unknown error';
-            \Log::error('FCM push failed (update): ' . $errMsg);
-            Toastr::warning('Push notification failed: ' . $errMsg);
+            $result = $this->sendPushNotificationToTokensBatch($tokens, $notification, 'general');
+            if ($result['sent'] > 0) {
+                Toastr::success("Notification sent to {$result['sent']} device(s)." . ($result['failed'] ? " ({$result['failed']} failed)" : ''));
+            } else {
+                $errMsg = implode(', ', $result['errors'] ?: ['All sends failed']);
+                \Log::error('FCM batch push failed (update): ' . $errMsg);
+                Toastr::warning('Push notification failed: ' . $errMsg);
+            }
         }
 
         return back();
