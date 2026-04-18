@@ -857,6 +857,7 @@ class VendorController extends Controller
             foreach ($invoice_items as $key => $value) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $value['name'];
                 $InvoiceItem->qty =  $value['qty'];
                 // For inclusive GST, store the taxable (exclusive) price so the invoice
@@ -869,14 +870,12 @@ class VendorController extends Controller
                 $InvoiceItem->save();
             }
 
-            // prx($invoice);
-
             try {
                 $data = _createBillPdf($invoice, 'admin');
                 $invoice->update(['pdf' => $data['pdf']]);
                 return redirect($data['url']);
-            } catch (\Exception $th) {
-                prx($th);
+            } catch (\Exception) {
+                return back()->with('success', 'Modules enabled. Invoice #' . $invoice->invoice_id . ' created.');
             }
         }
         Toastr::success('Modules Enabled Successfully');
