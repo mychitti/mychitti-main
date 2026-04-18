@@ -604,18 +604,23 @@ class LaundryController extends Controller
 // prx($challanIds);
         $rows = LaundryChallanItem::whereIn('laundry_challan_id', $challanIds)->get();
 
-        // Build item summary: item_name => [qty (net), rate (latest)]
+        // Build item summary: item_name => [sent, damaged, qty (net), rate (latest)]
         $items = [];
         foreach ($rows as $row) {
-            $netQty = max(0, $row->sent_qty - $row->damaged_qty);
-            if ($netQty <= 0) continue;
+            $sent    = (int) $row->sent_qty;
+            $damaged = (int) $row->damaged_qty;
+            $netQty  = max(0, $sent - $damaged);
             $key = $row->item_name;
             if (!isset($items[$key])) {
-                $items[$key] = ['qty' => 0, 'rate' => (float) $row->rate];
+                $items[$key] = ['sent' => 0, 'damaged' => 0, 'qty' => 0, 'rate' => (float) $row->rate];
             }
-            $items[$key]['qty']  += $netQty;
-            $items[$key]['rate']  = (float) $row->rate; // last challan rate wins
+            $items[$key]['sent']    += $sent;
+            $items[$key]['damaged'] += $damaged;
+            $items[$key]['qty']     += $netQty;
+            $items[$key]['rate']     = (float) $row->rate; // last challan rate wins
         }
+        // Remove items with no billable qty
+        $items = array_filter($items, fn($i) => $i['qty'] > 0);
 
         return view('vendor-views.laundry.monthly_billing', compact(
             'items', 'hotel', 'hotelId', 'from', 'to', 'preset'

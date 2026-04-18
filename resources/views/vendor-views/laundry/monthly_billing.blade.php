@@ -43,7 +43,9 @@
                         <thead class="thead-light">
                             <tr>
                                 <th style="min-width:180px;">Item</th>
-                                <th class="text-center" style="width:100px;">Net Qty</th>
+                                <th class="text-center" style="width:90px;">Sent</th>
+                                <th class="text-center" style="width:90px;">Damaged</th>
+                                <th class="text-center" style="width:90px;">Net Qty</th>
                                 <th class="text-center" style="width:130px;">Rate (₹)</th>
                                 <th class="text-right"  style="width:130px;">Amount (₹)</th>
                             </tr>
@@ -56,7 +58,11 @@
                                     <input type="hidden" name="items[{{ $loop->index }}][name]" value="{{ $name }}">
                                     <input type="hidden" name="items[{{ $loop->index }}][qty]"  value="{{ $item['qty'] }}" class="item-qty">
                                 </td>
-                                <td class="text-center">{{ $item['qty'] }}</td>
+                                <td class="text-center text-muted">{{ $item['sent'] }}</td>
+                                <td class="text-center {{ $item['damaged'] > 0 ? 'text-danger font-weight-bold' : 'text-muted' }}">
+                                    {{ $item['damaged'] > 0 ? $item['damaged'] : '—' }}
+                                </td>
+                                <td class="text-center font-weight-bold">{{ $item['qty'] }}</td>
                                 <td class="text-center">
                                     <input type="number" step="0.01" min="0"
                                         name="items[{{ $loop->index }}][rate]"
@@ -72,7 +78,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="3" class="text-right font-weight-bold">Grand Total</td>
+                                <td colspan="5" class="text-right font-weight-bold">Grand Total</td>
                                 <td class="text-right font-weight-bold text-primary" id="grandTotal">
                                     {{ number_format(collect($items)->sum(fn($i) => $i['qty'] * $i['rate']), 2) }}
                                 </td>

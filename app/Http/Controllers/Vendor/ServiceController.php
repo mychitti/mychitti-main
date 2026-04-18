@@ -844,7 +844,7 @@ class ServiceController extends Controller
             $invoices = $overdue->concat($pending)->concat($credit)->unique('invoice_id')->values();;
         }
         // prx($invoices);
-        // die;
+    // die;
 
         return view('vendor-views.service.invoices', compact('preset', 'invoices', 'from', 'to', 'status', 'search'));
     }
