@@ -436,6 +436,32 @@
                             target="_blank">
                             <i class="fas fa-map-marker-alt"></i> Client Location
                         </a>
+                        @if (_isHospital())
+                            @php
+                                $srRx = \App\Models\Prescription::where('service_request_id', $acceptanceDetails->service_request_id)->first();
+                            @endphp
+                            @if($srRx)
+                                <a class="action-card text-decoration-none"
+                                    style="background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8;"
+                                    href="{{ route('vendor.prescription.show', $srRx->id) }}">
+                                    <i class="tio-print"></i> View Prescription
+                                </a>
+                                @if(!$srRx->is_finalized)
+                                <a class="action-card text-decoration-none"
+                                    style="background:#fff7ed; border-color:#fed7aa; color:#c2410c;"
+                                    href="{{ route('vendor.prescription.edit', $srRx->id) }}">
+                                    <i class="tio-edit"></i> Edit Prescription
+                                </a>
+                                @endif
+                            @else
+                                <a class="action-card text-decoration-none"
+                                    style="background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8;"
+                                    href="{{ route('vendor.prescription.create', ['service_request_id' => $acceptanceDetails->service_request_id]) }}">
+                                    <i class="tio-medicine"></i> Add Prescription
+                                </a>
+                            @endif
+                        @endif
+
                         @if (hasPermission('leads_receivable_receipt', 'view') && isset($data['receivable_rec']) && $data['receivable_rec']->pdf)
                             <a target="_blank" class="action-card gatepass"
                                 href="{{ asset('storage/app/public/store/recivable-receipts/' . $data['receivable_rec']->pdf) }}">

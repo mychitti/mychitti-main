@@ -39,4 +39,9 @@ enum Banner
         VIEW => 'admin-views.banner.partials._table'
     ];
 
+    const CANCEL_PUBLISH = [
+        URI => 'cancel-publish',
+        VIEW => ''
+    ];
+
 }

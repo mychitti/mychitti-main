@@ -152,7 +152,7 @@
         <div class="appt-section">
             <div class="section-label">4. Reason <span style="font-weight:400;color:#9ca3af;">(optional)</span></div>
             <textarea name="reason" class="form-control" rows="2"
-                placeholder="Chief complaint or reason for visit...">{{ old('reason') }}</textarea>
+                placeholder="Chief complaint or reason for visit..." >{{ old('reason') }}</textarea>
         </div>
 
         {{-- Submit --}}

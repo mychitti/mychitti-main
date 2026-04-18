@@ -374,6 +374,8 @@ class BillingController extends Controller
       $invoice->total_amount =  $totalPrice;
       $invoice->save();
 
+      InvoiceItem::where('rand_invoice_id', $invoice_number)->whereNull('manual_invoice_id')->update(['manual_invoice_id' => $invoice->id]);
+
       $data = _createBillPdf($invoice, 'vendor');
       $invoice->update(['pdf' => $data['pdf']]);
 
@@ -480,7 +482,7 @@ class BillingController extends Controller
   {
     $invoice = ManualInvoice::with('storeCustomer')->where('id', $invoice_id)->first();
 
-    $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+    $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
 
     $customers = User::where('status', 1)->where('added_by', Helpers::get_store_id())->get();
 
@@ -512,7 +514,7 @@ class BillingController extends Controller
       }
     }
 
-    $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->first();
+    $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
 
     if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
       Storage::disk('public')->delete('invoice/' . $invoice->pdf);
@@ -528,7 +530,7 @@ class BillingController extends Controller
     $invoice->reminder_freq_unit =  $request->reminder_freq_unit ?? 'week';
     $invoice->save();
 
-    $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+    $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
     $invoice_items->each->delete(); // delete old
 
     foreach ($request->item_name as $key => $name) {
@@ -613,7 +615,11 @@ class BillingController extends Controller
       }
     }
     _auditLogs('Deleted Invoice : ' . $invoice->invoice_id);
-    InvoiceItem::where('rand_invoice_id', $invoice_id)->delete();
+    if ($type == 'service') {
+        InvoiceItem::where('rand_invoice_id', $invoice_id)->delete();
+    } else {
+        InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
+    }
     return redirect()->back();
   }
   public function service_update_invoice(Request $request)
@@ -645,7 +651,7 @@ class BillingController extends Controller
       }
     }
 
-    $invoice = ServiceInvoice::where('invoice_id', $request->invoice_id)->first();
+    $invoice = ServiceInvoice::where('invoice_id', $request->invoice_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
 
     if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
       Storage::disk('public')->delete('invoice/' . $invoice->pdf);
@@ -723,7 +729,7 @@ class BillingController extends Controller
     // Keep incrementing until unique
     do {
       $invoice_num = $bill_num['prefix'] . $bill_num['number'];
-      $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+      $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', Helpers::get_store_id())->where('financial_year', _currentFinancialYear())->exists();
       if ($exists) {
         $bill_num['number']++;
       }
@@ -901,7 +907,7 @@ class BillingController extends Controller
       'file' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx',
     ], ['bill_from.required' => 'Seller field is required']);
 
-    $exists = ManualInvoice::where("invoice_id", $request->invoice_id)->exists();
+    $exists = ManualInvoice::where("invoice_id", $request->invoice_id)->where('vendor_id', Helpers::get_store_id())->where('financial_year', _currentFinancialYear())->exists();
     if ($exists) {
       Toastr::error('Invoice Id Already Exists');
       return back();
@@ -1286,12 +1292,18 @@ class BillingController extends Controller
       Toastr::error('Invoice not found');
     }
     _auditLogs('Deleted Purchase Invoice : ' . $invoice->invoice_id);
-    InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->delete();
+    InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
     return redirect()->back();
   }
   public function view_invoice(Request $request, $id)
   {
-    $invoice = ManualInvoice::find($id);
+    $storeId = Helpers::get_store_id();
+    $invoice = is_numeric($id)
+        ? ManualInvoice::find($id)
+        : ManualInvoice::where('invoice_id', $id)->whereIn('vendor_id', [0, $storeId])->latest('id')->first();
+    if (!$invoice) {
+        abort(404, 'Invoice not found.');
+    }
     return view('vendor-views.billing.view_invoice', compact('invoice'));
   }
 }

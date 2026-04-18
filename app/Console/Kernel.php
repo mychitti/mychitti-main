@@ -28,7 +28,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        \App\Console\Commands\DeductPlatformFee::class,
     ];
 
     /**
@@ -119,6 +119,8 @@ class Kernel extends ConsoleKernel
                 ->whereNotNull('publish_at')
                 ->where('publish_at', '<=', now())
                 ->update(['status' => 1]);
+                Log::info('Schedule job finished at ' . now());
+
         })->name('banner-scheduled-publish')
             ->everyMinute()
             ->timezone($tz)
@@ -152,6 +154,13 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->withoutOverlapping();
 
+
+        // PLATFORM FEE MONTHLY DEDUCTION =======================================
+        $schedule->command('platform-fee:deduct')
+            ->monthlyOn(1, '00:00')
+            ->timezone($tz)
+            ->withoutOverlapping()
+            ->name('platform-fee-deduct');
 
         // EMPLOYEE ATTENDANCE =======================================
         // $schedule->call(function () {

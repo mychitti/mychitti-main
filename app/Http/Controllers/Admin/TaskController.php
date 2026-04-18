@@ -237,7 +237,7 @@ class TaskController extends Controller
 
         do {
             $invoice_num = $bill_num['prefix'] . $bill_num['number'];
-            $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+            $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', 0)->where('financial_year', _currentFinancialYear())->exists();
             if ($exists) {
                 $bill_num['number']++;
             }

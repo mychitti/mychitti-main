@@ -173,7 +173,7 @@
                                                 <h6>{{ $billStore ? $billStore->name : 'Store Deleted' }}</h6>
                                                 <p class="mb-0" style="font-size:12px">Store ID: {{ $invoice->bill_to }}</p>
                                             @else
-                                                @php $billCust = $invoice->storeCustomer; @endphp
+                                                @php $billCust = $invoice->storeCustomer ?? $invoice->websiteUser ; @endphp
                                                 <h6>{{ $billCust ? $billCust->f_name . ' ' . $billCust->l_name : ($invoice->bill_to ?? 'N/A') }}</h6>
                                                 <p class="mb-0" style="font-size:12px">{{ $billCust?->phone }}</p>
                                                 <p class="mb-0" style="font-size:12px">{{ $billCust?->email }}</p>
@@ -215,14 +215,14 @@
                                     <div class="d-flex d-flex border rounded" style="padding: 11px;">
                                             <div class="form-check mr-3 form-check-inline">
                                                 <input class="form-check-input tax_type" value="gst" name="tax_type"
-                                                    type="radio" id="gstRadio1">
+                                                    type="radio" id="gstRadio1" {{$invoice->tax_type == 'gst' ? 'checked' : ''}}>
                                                 <label class="form-check-label small" for="gstRadio1">GST</label>
                                             </div>
-                                        <div class="form-check form-check-inline">
+                                        {{-- <div class="form-check form-check-inline">
                                             <input class="form-check-input tax_type" value="non-gst" name="tax_type"
-                                                type="radio" id="gstRadio2" checked>
+                                                type="radio" id="gstRadio2" {{$invoice->tax_type == 'non-gst' ? 'checked' : ''}}>
                                             <label class="form-check-label small" for="gstRadio2">Non GST</label>
-                                        </div>
+                                        </div> --}}
                                     </div>
 
                                 </div>

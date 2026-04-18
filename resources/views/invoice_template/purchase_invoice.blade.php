@@ -527,59 +527,52 @@
 
 
 
-    @if ($bill_data['template_type'] == 'quotation')
-        <h4>Terms and Conditions</h4>
+    <?php
+        $isQuotation = ($bill_data['template_type'] ?? '') === 'quotation';
+        $storeConfig = isset($bill_data['store']) ? $bill_data['store']->storeConfig : null;
+        $fromVendor  = isset($bill_from_type) && $bill_from_type === 'vendor_to_user';
+        $fromAdmin   = isset($bill_from_type) && in_array($bill_from_type, ['admin_to_user', 'admin_to_vendor']);
+        $isShop      = ($bill_data['vendor_typ'] ?? '') === 'shop';
+    ?>
 
-        {!! $bill_data['quote_tnc'] !!}
+    @if ($isQuotation)
+        @if ($storeConfig?->tnc_quotation_status && !empty($bill_data['quote_tnc']))
+            <h4>Terms and Conditions</h4>
+            {!! $bill_data['quote_tnc'] !!}
+        @endif
+
     @elseif ($invoice->terms_and_conditions)
         <h4>Terms and Conditions</h4>
         {!! $invoice->terms_and_conditions !!}
-    @else
-        @if ($bill_data['template_type'] == 'quotation')
-            @if ($bill_data['store']->storeConfig?->tnc_quotation_status)
-                <h4>Terms and Conditions</h4>
 
-                {!! _vendorTandCForQuotation($bill_from['id']) !!}
+    @elseif ($fromVendor && $storeConfig?->tnc_invoice_status)
+        @if ($isShop)
+            <?php $tncUrl = _termsAndConditionsUrl($bill_from_type, $bill_from['id'], $bill_data['vendor_typ']); ?>
+            @if ($tncUrl)
+                <a target="_blank" href="{{ $tncUrl }}">Terms and Conditions</a>
             @endif
         @else
-            @if (isset($bill_from_type) && $bill_from_type == 'vendor_to_user')
-                @if ($bill_data['store']->storeConfig?->tnc_invoice_status)
-                    @if (_termsAndConditionsUrl($bill_from_type, $bill_from['id'], $bill_data['vendor_typ']))
-                        @if ($bill_data['vendor_typ'] != 'shop')
-                            <h4>Terms and Conditions</h4>
-                            {!! _vendorTandC($bill_from['id']) !!}
-                        @else
-                            <a target="_blank"
-                                href="{{ _termsAndConditionsUrl($bill_from_type, $bill_from['id'], $bill_data['vendor_typ']) }}">Terms
-                                and
-                                Conditions</a>
-                        @endif
-                    @elseif($bill_data['vendor_typ'] != 'shop')
-                        NO WARRENTY NO GARENTY
-                    @endif
-                @endif
-            @elseif(isset($bill_from_type) && in_array($bill_from_type, ['admin_to_user', 'admin_to_vendor']))
-                <p class="section-title">BASIC TERMS & CONDITIONS</p>
-                <ol style="font-size: 10px;">
-                    <li>Contract Duration: The contract duration is for one year or more, unless otherwise mutually
-                        agreed
-                        upon
-                        by
-                        the parties in writing under this agreement.</li>
-                    <li>Right to Terminate: My Chitti reserves the right to terminate the contract or any services at
-                        its
-                        discretion, with or without cause, by providing a thirty (30) day written
-                        notice to the vendor/service provider.</li>
-                    <li>No Guarantee of Business: My Chitti does not guarantee any specific business or sales leads to
-                        vendors/service providers listed on the platform. It merely acts as
-                        an intermediary connecting businesses and customers.</li>
-                    <li>Non-Refundable Payments: All payments made or due under this contract are non-refundable.</li>
-                    <li>Acceptance of Terms: By making a payment under this contract, the vendor/service provider agrees
-                        to
-                        the
-                        Terms of Use as outlined on the My Chitti platform.</li>
-                </ol>
+            <?php $tncContent = _vendorTandC($bill_from['id']); ?>
+            @if ($tncContent)
+                <h4>Terms and Conditions</h4>
+                {!! $tncContent !!}
             @endif
+        @endif
+
+    @elseif ($fromAdmin)
+        <?php $adminTnc = _adminInvoiceTnC(); ?>
+        @if ($adminTnc)
+            <h4>Terms and Conditions</h4>
+            {!! $adminTnc->content !!}
+        @else
+            <p class="section-title">BASIC TERMS & CONDITIONS</p>
+            <ol style="font-size: 10px;">
+                <li>Contract Duration: The contract duration is for one year or more, unless otherwise mutually agreed upon by the parties in writing under this agreement.</li>
+                <li>Right to Terminate: My Chitti reserves the right to terminate the contract or any services at its discretion, with or without cause, by providing a thirty (30) day written notice to the vendor/service provider.</li>
+                <li>No Guarantee of Business: My Chitti does not guarantee any specific business or sales leads to vendors/service providers listed on the platform. It merely acts as an intermediary connecting businesses and customers.</li>
+                <li>Non-Refundable Payments: All payments made or due under this contract are non-refundable.</li>
+                <li>Acceptance of Terms: By making a payment under this contract, the vendor/service provider agrees to the Terms of Use as outlined on the My Chitti platform.</li>
+            </ol>
         @endif
     @endif
 

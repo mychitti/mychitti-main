@@ -179,7 +179,7 @@
                                             <td>
                                                 @foreach ($plan_durations as $dur)
                                                     <b>{{ $dur->label }}: </b>
-                                                    {{ $sub_module_discounts[$type->id]?->firstWhere('plan_duration_id', $dur->id)?->discount ?? 0 }}%<br>
+                                                    {{ ($sub_module_discounts[$type->id] ?? collect())->firstWhere('plan_duration_id', $dur->id)?->discount ?? 0 }}%<br>
                                                 @endforeach
                                             </td>
                                             <td>
@@ -225,7 +225,7 @@
                                                                         <input class="form-control" type="number"
                                                                             step="0.01"
                                                                             name="discounts[{{ $dur->id }}]"
-                                                                            value="{{ $sub_module_discounts[$type->id]?->firstWhere('plan_duration_id', $dur->id)?->discount ?? 0 }}">
+                                                                            value="{{ ($sub_module_discounts[$type->id] ?? collect())->firstWhere('plan_duration_id', $dur->id)?->discount ?? 0 }}">
                                                                     </div>
                                                                 @endforeach
                                                             </div>

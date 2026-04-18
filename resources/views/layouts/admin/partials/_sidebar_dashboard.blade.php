@@ -61,44 +61,15 @@
                     </li>
 
 
-                    @if (\App\CentralLogics\Helpers::permission_check('account_manage'))
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('account*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                                title="Leads">
-                                <i class="tio-money-vs nav-icon"></i>
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Account
-                                    Management</span>
-                            </a>
 
-                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                style="display: {{ Request::is('account*') ? 'block' : 'none' }}">
 
-                                <li class="nav-item {{ Request::is('account/report') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.account.report') }}" title="Report">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Report</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('account/add') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.account.add') }}"
-                                        title="{{ translate('messages.add') }} {{ translate('messages.new') }}">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">{{ translate('messages.add') }}
-                                            {{ translate('messages.new') }}</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('account/list') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('admin.account.list') }}"
-                                        title="Lead {{ translate('messages.list') }}">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">{{ translate('messages.list') }}</span>
-                                    </a>
-                                </li>
-
-                            </ul>
-                        </li>
-                    @endif
-
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/pricing*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.pricing.index') }}" title="Pricing">
+                            <i class="tio-dollar-outlined nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Pricing</span>
+                        </a>
+                    </li>
 
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('services-billing*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"

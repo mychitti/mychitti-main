@@ -36,20 +36,6 @@
                                 </div>
                         
                         </div>
-                        <div class="col-6">
-                            <div>
-                                <div class="form-group">
-                                    <label class="input-label" for="exampleFormControlInput1">Condition (optional)</label>
-                                    <select name="coupon_condition" id="coupon_condition"
-                                        class="form-control js-select2-custom">
-                                        <option value=""></option>
-                                        @foreach ($coupon_conditions as $key => $value)
-                                            <option {{$value->id == $coupon['coupon_condition_id'] ? 'selected' : ''}} value="{{ $value->id }}">{{ $value->coupon_condition }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
                         
                         <div class="col-md-4 col-lg-3 col-sm-6">
                             <div class="form-group m-0">
@@ -132,6 +118,15 @@
                                     for="limit">{{ translate('messages.limit_for_same_user') }}</label>
                                 <input type="number" name="limit" id="coupon_limit" value="{{ $coupon['limit'] }}"
                                     class="form-control" max="100" placeholder="EX: 10">
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-lg-3 col-sm-6">
+                            <div class="form-group m-0">
+                                <label class="input-label" for="min_services">Min. Completed Services</label>
+                                <input type="number" name="min_services" id="min_services" min="0"
+                                    value="{{ $coupon['min_services'] ?? 0 }}"
+                                    class="form-control" placeholder="0 = no requirement">
+                                <small class="text-muted">Coupon becomes redeemable after this many completed services</small>
                             </div>
                         </div>
                         <div class="col-md-4 col-lg-3 col-sm-6">

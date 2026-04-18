@@ -10,7 +10,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         :root {
-            --t13-primary: #7c3aed;
+            --t13-primary: #7c3aed; 
             --t13-primary-dark: #5b21b6;
             --t13-primary-light: #c4b5fd;
             --t13-primary-bg: #f5f3ff;
@@ -1879,7 +1879,20 @@
             </div>
         </div>
     </div>
+                                    <!-- STORE REVIEW SECTION -->
+                                    <section class="reviews-section mt-5" id="give-review-section">
+                                        <div class="section-container">
+                                            <div class="text-center mb-4">
+                                                <button class="btn btn-primary btn-lg px-5 py-3 shadow-lg" data-bs-toggle="modal" data-bs-target="#storeReviewModal{{ $store['id'] }}">
+                                                    <i class="fas fa-star me-2"></i> <strong>Share Your Review</strong>
+                                                </button>
+                                            </div>
+                                            @include('front-views.partials._store-review-form', ['store' => $store])
+                                        </div>
+                                    </section>
+
 @include('front-views.partials._appointment_booking')
+@include('front-views.partials._hospital_booking_modal')
 @include('front-views.partials._claim_remove_business')
 @endsection
 

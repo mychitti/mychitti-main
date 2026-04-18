@@ -36,9 +36,7 @@
                  <div class="card-body row align-items-end">
                      <div class="col-md-3">
                          <div class="btn-group btn-group-toggle m-0" style="margin: 2px auto;" data-toggle="buttons">
-                             <label class="btn btn-responsive btn-outline-primary  ">
-                                 <input type="radio" {{($store && $store->account_type  == 'normal' ) || (!$store || !$store->account_type)  ? 'checked' : ''}} class="account_type" value="normal" name="account_type" id="option1"> Normal Account
-                             </label>
+                         
                              <label class="btn btn-responsive btn-outline-primary ">
                                  <input type="radio" {{$store && $store->account_type == 'ledger' ? 'checked' : ''}} class="account_type" value="ledger" name="account_type"
                                      id="option3">

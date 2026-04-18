@@ -767,7 +767,7 @@
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
     @include('vendor-views/billing/create_invoice_js')
-    <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/create_invoice.js"></script>
+    {{-- <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/create_invoice.js"></script> --}}
     <script>
         // Ensure correct invoice number section shown on page load
         $(document).ready(function() {

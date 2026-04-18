@@ -1,64 +1,52 @@
-# Schedule Notification in Admin Push (Using notifications table only)
+# Store Review Form Implementation - BLACKBOXAI
+Status: ✅ **IN PROGRESS**
 
-**Status**: Implementation Plan
+## Approved Plan Summary
+- Create reusable partial: `resources/views/front-views/partials/_store-review-form.blade.php` (modal form).
+- Add to ALL 16 templates: `resources/views/front-views/store_webpage/template-1.blade.php` to `template-16.blade.php`.
+- Add route: `POST /submit-store-review` → `Front\UserController@submit_service_review`.
+- Leverage existing backend (StoreReview model, validation, uploads, rating updates).
+- Features: Login required, star rating, multi-file upload, AJAX submit, responsive modal.
 
-## Information Gathered
-- Admin push form: `resources/views/admin-views/notification/index.blade.php` (title, zone, tergat=customer/deliveryman, description, image)
-- Controller: `NotificationController@add` → immediate FCM via trait `sendPushNotificationToTopic`
-- Current schedule uses separate `ScheduledNotification` table (to be removed for push)
-- Keep email scheduling as-is (uses ScheduledNotification)
+## Step-by-Step Tasks
 
-## Plan
-1. **Migration**: Add columns to `notifications` table:
-   ```
-   php artisan make:migration add_scheduling_to_notifications_table
-   Schema::table('notifications', function (Blueprint $table) {
-       $table->enum('status', ['draft', 'scheduled', 'sent', 'failed'])->default('draft');
-       $table->timestamp('scheduled_at')->nullable();
-       $table->timestamp('sent_at')->nullable();
-   });
-   ```
+### ✅ Step 1: Create Reusable Review Form Partial
+- File: `resources/views/front-views/partials/_store-review-form.blade.php`
+- Features: Form fields matching validation, star rating JS, file preview, AJAX submit.
 
-2. **New Job**: `app/Jobs/SendScheduledPushNotifications.php`
-   ```
-   notifications::where('status', 'scheduled')
-   ->where('scheduled_at', '<=', now())
-   ->chunk(10, fn($notifs) => $notifs->each(fn($n) => {
-       try {
-           NotificationTrait::sendPushNotificationToTopic($n->toArray(), $topic, 'general');
-           $n->update(['status' => 'sent', 'sent_at' => now()]);
-       } catch(e) {
-           $n->update(['status' => 'failed']);
-       }
-   }));
-   ```
+### ⏳ Step 2: Add Route for Web Submission
+- File: `routes/web.php`
+- Add: `Route::post('submit-store-review', [FrontUserController::class, 'submit_service_review'])->middleware('loginuser')->name('submit-store-review');`
 
-3. **Kernel.php**:
-   ```
-   \$schedule->job(new SendScheduledPushNotifications)->everyMinute()
-   ```
+### ☐ Step 3: Update All 16 Templates (Batch)
+For each `template-N.blade.php` (N=1-16):
+- Add "Give Review" button (e.g. after services/reviews section).
+- Include modal + `@include('front-views.partials._store-review-form', ['store' => $store])`.
+- Add common JS for stars/AJAX (in <script> before </body>).
 
-4. **NotificationController.php** (`add` method):
-   ```
-   \$isScheduled = \$request->boolean('is_scheduled');
-   \$data['status'] = \$isScheduled ? 'scheduled' : 'sent';
-   \$data['scheduled_at'] = \$isScheduled ? \$request->scheduled_at : null;
-   \$notification = repo->add(\$data);
-   if (!\$isScheduled) {
-       // existing sendPushNotificationToTopic logic
-   }
-   Toastr::success(\$isScheduled ? 'Scheduled!' : 'Sent!');
-   ```
+**Batch Commands** (after manual):
+```
+- template-1 to template-16: Add button + include
+```
 
-5. **Blade JS** (`index.blade.php`):
-   - Always POST to `notification.store`
-   - Toggle → `formData.append('is_scheduled', true); formData.append('scheduled_at', datetime.val());`
+### ☐ Step 4: Test & Cache
+```
+php artisan storage:link
+php artisan route:cache
+php artisan view:cache
+```
+- Test: Visit template → login → "Give Review" → submit → verify DB/ratings.
 
-## Next Steps (awaiting approval)
-- Create migration
-- Generate job class
-- Edit controllers/kernel
-- Test queue
+### ☐ Step 5: Optional Enhancements
+- Add to `store_details.blade.php`, `customer-store-page.blade.php`.
+- Success toast refresh.
 
-**Approve plan before code changes.**
+## Current Progress
+- [x] Plan finalized & approved
+- [ ] Step 1: Partial created
+- [ ] Step 2: Route added
+- [ ] Step 3: Templates updated (0/16)
+- [ ] Step 4: Tested & cached
+
+**Next**: Implement Step 1 → confirm → Step 2 → batch Step 3.
 

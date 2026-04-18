@@ -21,6 +21,7 @@ class NotificationService
             'image' => $imageName,
             'tergat' => $request->tergat,
             'status' => 1,
+            'link' => $request->link,
             'zone_id' => $request->zone=='all'?null:$request->zone,
         ];
     }

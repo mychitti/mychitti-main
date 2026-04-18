@@ -21,8 +21,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
+        Route::get('blog-mc-vendor-hub/category/{slug}', 'MCVendorController@blog_mc_vendor_category')->name('blog-mc-vendor-hub.category');
+        Route::get('blog-mc-vendor-hub/{slug}', 'MCVendorController@blog_mc_vendor_post')->name('blog-mc-vendor-hub.post');
         Route::get('tnc', 'MCVendorController@mc_vendor_hub_tnc')->name('mc-vendor-hub-tnc');
         Route::get('privacy-policy', 'MCVendorController@mc_vendor_hub_pp')->name('mc-vendor-hub-pp');
+        Route::get('return-policy', 'MCVendorController@mc_vendor_hub_return_policy')->name('mc-vendor-hub-return-policy');
         Route::get('contact', 'MCVendorController@contact')->name('contact');
         Route::post('send-message', 'MCVendorController@send_message')->name('send-message');
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
@@ -63,6 +66,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
             Route::get('/', 'NotificationController@index')->name('add-new');
             Route::post('store', 'NotificationController@store')->name('store');
+            Route::post('schedule', 'NotificationController@storeScheduled')->name('schedule');
             Route::get('edit/{id}', 'NotificationController@edit')->name('edit');
             Route::post('update/{id}', 'NotificationController@update')->name('update');
             Route::delete('/delete{id}', 'NotificationController@delete')->name('delete');
@@ -131,6 +135,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'billing', 'as' => 'invoice.',], function () {
             Route::get('manual-bill', 'ServiceController@manual_bill')->name('manual-bill')->middleware('permission:billing,add_basic');
             Route::get('settings', 'SettingsController@invoice_settings')->name('settings');
+            Route::post('update-serial', 'SettingsController@update_serial_number')->name('update-serial');
+            Route::get('get-invoice-id-for-date', 'BillingController@getInvoiceIdForDate')->name('get-invoice-id-for-date');
             Route::post('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor')->middleware('permission:billing,list'); // only for manual invoices
             Route::get('veiw-invoice/{invoice_id}', 'BillingController@view_invoice')->name('view-invoice')->middleware('permission:billing,view'); // only for manual invoices
             Route::get('create-invoice', 'BillingController@create_invoice')->name('create-invoice')->middleware('permission:billing,add_advanced'); // only for manual invoices
@@ -659,6 +665,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('lead_approval', 'QuoteController@lead_approval')->name('lead_approval');
             Route::get('delete/{id}', 'QuoteController@delete')->name('delete')->middleware('permission:quotaiton_manage,delete');
             Route::get('manage/{id}', 'QuoteController@manage')->name('manage')->middleware('permission:quotaiton_manage,edit');
+            Route::get('check-email', 'QuoteController@check_email')->name('check-email');
+            Route::post('send-quote-email', 'QuoteController@send_quote_email')->name('send-quote-email');
             Route::get('settings', 'SettingsController@quotation_settings')->name('settings')->middleware('permission:quotaiton_manage,settings');
 
             Route::post('config-save', 'BusinessSettingsController@config_save')->name('config.save');
@@ -1191,11 +1199,43 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
+    // doctor management ==============================
+    Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
+        Route::get('list', 'DoctorController@index')->name('list');
+        Route::get('create', 'DoctorController@create')->name('create');
+        Route::post('store', 'DoctorController@store')->name('store');
+        Route::get('{id}/edit', 'DoctorController@edit')->name('edit');
+        Route::post('{id}/update', 'DoctorController@update')->name('update');
+        Route::get('{id}/delete', 'DoctorController@destroy')->name('delete');
+        Route::get('{id}/slots', 'DoctorController@slots')->name('slots');
+        Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store');
+        Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle');
+        Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete');
+        Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone');
+    });
+
+    // appointment management ==============================
+    Route::group(['prefix' => 'appointment', 'as' => 'appointment.'], function () {
+        Route::get('list', 'AppointmentController@index')->name('list');
+        Route::get('create', 'AppointmentController@create')->name('create');
+        Route::post('store', 'AppointmentController@store')->name('store');
+        Route::get('available-slots', 'AppointmentController@availableSlots')->name('available-slots');
+        Route::get('search-patients', 'AppointmentController@searchPatients')->name('search-patients');
+        Route::get('search-doctors', 'AppointmentController@searchDoctors')->name('search-doctors');
+        Route::get('{id}', 'AppointmentController@show')->name('show');
+        Route::post('{id}/status', 'AppointmentController@updateStatus')->name('status');
+        Route::post('{id}/reschedule', 'AppointmentController@reschedule')->name('reschedule');
+    });
+
     // patient management ==============================
     Route::get('patient/add', 'PatientController@index')->name('patient.add');
     Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
         Route::get('list', 'PatientController@list')->name('list');
         Route::post('save', 'PatientController@save')->name('save');
         Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel');
+        Route::get('{id}', 'PatientController@show')->name('show');
+        Route::get('{id}/edit', 'PatientController@edit')->name('edit');
+        Route::post('{id}/update', 'PatientController@update')->name('update');
+        Route::get('{id}/delete', 'PatientController@destroy')->name('delete');
     });
 });

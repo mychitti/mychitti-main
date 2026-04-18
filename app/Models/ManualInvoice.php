@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Patient;
 
 /** @mixin \Eloquent */
 class ManualInvoice extends Model
@@ -39,9 +40,11 @@ class ManualInvoice extends Model
         'final_tax',
         'cash_amount',
         'online_amount',
+        'meta',
     ];
     protected $casts = [
         'reference_number' => 'array',
+        'meta'             => 'array',
     ];
 
     public function store()
@@ -67,11 +70,19 @@ class ManualInvoice extends Model
     }
     public function invoiceItems()
     {
-        return $this->hasMany(InvoiceItem::class, 'rand_invoice_id', 'invoice_id');
+        return $this->hasMany(InvoiceItem::class, 'manual_invoice_id');
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class, 'bill_to');
     }
 
     public function getUserAttribute()
     {
+        if ($this->bill_to_type === 'patient') {
+            return $this->patient;
+        }
         if ($this->user_type === 'website_user') {
             return $this->websiteUser;
         } elseif ($this->user_type === 'store_user') {

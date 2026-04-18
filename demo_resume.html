@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resume - John Doe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #222;
+      background: #f0f0f0;
+    }
+
+    .page {
+      width: 794px;
+      min-height: 1123px;
+      margin: 30px auto;
+      background: #fff;
+      display: flex;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    /* LEFT SIDEBAR */
+    .sidebar {
+      width: 260px;
+      background: #1a3c5e;
+      color: #fff;
+      padding: 36px 24px;
+      flex-shrink: 0;
+    }
+
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #2e6da4;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      font-weight: bold;
+      color: #fff;
+      border: 3px solid #4a9fd4;
+    }
+
+    .sidebar h1 {
+      font-size: 20px;
+      text-align: center;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar .title {
+      text-align: center;
+      font-size: 11px;
+      color: #90c4e8;
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-section {
+      margin-bottom: 22px;
+    }
+
+    .sidebar-section h2 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #4a9fd4;
+      border-bottom: 1px solid #2e6da4;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+
+    .contact-item {
+      margin-bottom: 7px;
+      font-size: 12px;
+      color: #d0e8f8;
+    }
+
+    .contact-item span {
+      display: block;
+      font-size: 10px;
+      color: #7ab8d8;
+    }
+
+    .skill-row {
+      margin-bottom: 8px;
+    }
+
+    .skill-label {
+      font-size: 11px;
+      color: #d0e8f8;
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .skill-bar {
+      background: #2e6da4;
+      border-radius: 10px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .skill-fill {
+      height: 100%;
+      background: #4a9fd4;
+      border-radius: 10px;
+    }
+
+    .lang-item {
+      font-size: 11px;
+      color: #d0e8f8;
+      margin-bottom: 5px;
+    }
+
+    /* MAIN CONTENT */
+    .main {
+      flex: 1;
+      padding: 36px 32px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1a3c5e;
+      border-bottom: 2px solid #4a9fd4;
+      padding-bottom: 4px;
+      margin-bottom: 14px;
+    }
+
+    .profile-text {
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #444;
+    }
+
+    .job {
+      margin-bottom: 16px;
+    }
+
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2px;
+    }
+
+    .job-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #1a3c5e;
+    }
+
+    .job-date {
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+
+    .job-company {
+      font-size: 11.5px;
+      color: #2e6da4;
+      margin-bottom: 6px;
+      font-style: italic;
+    }
+
+    .job ul {
+      padding-left: 16px;
+    }
+
+    .job ul li {
+      font-size: 12px;
+      color: #444;
+      margin-bottom: 3px;
+      line-height: 1.5;
+    }
+
+    .edu-item {
+      margin-bottom: 12px;
+    }
+
+    .edu-degree {
+      font-weight: 700;
+      font-size: 13px;
+      color: #1a3c5e;
+    }
+
+    .edu-school {
+      font-size: 11.5px;
+      color: #2e6da4;
+      font-style: italic;
+    }
+
+    .edu-year {
+      font-size: 11px;
+      color: #888;
+    }
+
+    .cert-item {
+      font-size: 12px;
+      color: #444;
+      margin-bottom: 5px;
+      padding-left: 12px;
+      position: relative;
+    }
+
+    .cert-item::before {
+      content: '•';
+      color: #4a9fd4;
+      position: absolute;
+      left: 0;
+    }
+
+    @media print {
+      body { background: none; }
+      .page { margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="avatar">JD</div>
+      <h1>John Doe</h1>
+      <div class="title">Full Stack Developer</div>
+
+      <div class="sidebar-section">
+        <h2>Contact</h2>
+        <div class="contact-item">
+          <span>Email</span>
+          john.doe@email.com
+        </div>
+        <div class="contact-item">
+          <span>Phone</span>
+          +1 (555) 123-4567
+        </div>
+        <div class="contact-item">
+          <span>Location</span>
+          New York, USA
+        </div>
+        <div class="contact-item">
+          <span>LinkedIn</span>
+          linkedin.com/in/johndoe
+        </div>
+        <div class="contact-item">
+          <span>GitHub</span>
+          github.com/johndoe
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h2>Skills</h2>
+        <div class="skill-row">
+          <div class="skill-label"><span>PHP / Laravel</span><span>90%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:90%"></div></div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label"><span>JavaScript / Vue</span><span>85%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:85%"></div></div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label"><span>MySQL / PostgreSQL</span><span>80%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:80%"></div></div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label"><span>React / Next.js</span><span>75%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:75%"></div></div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label"><span>Docker / CI-CD</span><span>70%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:70%"></div></div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label"><span>AWS / DigitalOcean</span><span>65%</span></div>
+          <div class="skill-bar"><div class="skill-fill" style="width:65%"></div></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h2>Languages</h2>
+        <div class="lang-item">English — Native</div>
+        <div class="lang-item">Spanish — Intermediate</div>
+        <div class="lang-item">French — Basic</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+
+      <div class="section">
+        <div class="section-title">Profile</div>
+        <p class="profile-text">
+          Passionate Full Stack Developer with 6+ years of experience designing, building, and
+          maintaining scalable web applications. Adept at translating business requirements into
+          robust technical solutions. Experienced with agile methodologies, cloud deployments, and
+          RESTful API development. Committed to writing clean, maintainable code and continuously
+          improving system performance.
+        </p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Work Experience</div>
+
+        <div class="job">
+          <div class="job-header">
+            <div class="job-title">Senior Full Stack Developer</div>
+            <div class="job-date">Jan 2022 – Present</div>
+          </div>
+          <div class="job-company">TechCorp Solutions, New York</div>
+          <ul>
+            <li>Led a team of 5 developers to deliver a SaaS platform used by 50,000+ users.</li>
+            <li>Architected microservices using Laravel and Vue.js, reducing load time by 40%.</li>
+            <li>Implemented CI/CD pipelines via GitHub Actions and Docker on AWS.</li>
+            <li>Mentored junior developers through code reviews and pair programming.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-header">
+            <div class="job-title">Full Stack Developer</div>
+            <div class="job-date">Mar 2019 – Dec 2021</div>
+          </div>
+          <div class="job-company">Digital Agency Inc., Remote</div>
+          <ul>
+            <li>Built 15+ client websites and e-commerce platforms using Laravel and React.</li>
+            <li>Integrated third-party APIs (Stripe, Twilio, Google Maps) into production apps.</li>
+            <li>Optimized MySQL queries resulting in 30% performance improvement.</li>
+            <li>Collaborated with UX designers to implement pixel-perfect responsive interfaces.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-header">
+            <div class="job-title">Junior Web Developer</div>
+            <div class="job-date">Jun 2017 – Feb 2019</div>
+          </div>
+          <div class="job-company">StartupHub, New York</div>
+          <ul>
+            <li>Developed and maintained PHP-based web applications for startup clients.</li>
+            <li>Assisted in migrating legacy codebases to modern Laravel framework.</li>
+            <li>Created RESTful APIs consumed by mobile applications.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Education</div>
+        <div class="edu-item">
+          <div class="edu-degree">B.Sc. Computer Science</div>
+          <div class="edu-school">State University of New York</div>
+          <div class="edu-year">2013 – 2017 &nbsp;|&nbsp; GPA: 3.8 / 4.0</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Certifications</div>
+        <div class="cert-item">AWS Certified Developer – Associate (2023)</div>
+        <div class="cert-item">Laravel Certified Developer (2022)</div>
+        <div class="cert-item">Google Professional Cloud Developer (2021)</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

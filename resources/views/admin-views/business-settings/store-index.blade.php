@@ -357,6 +357,40 @@
                             </div>
 
 
+                            {{-- Platform Fee --}}
+                            <hr class="mt-4">
+                            <h5 class="mt-3 mb-3">{{ translate('Platform Fee (Monthly Deduction)') }}</h5>
+                            <div class="row g-3">
+                                <div class="col-lg-4 col-sm-6">
+                                    @php($platform_fee_subscribed = \App\Models\BusinessSetting::where('key', 'platform_fee_subscribed')->first())
+                                    <div class="form-group mb-0">
+                                        <label class="input-label text-capitalize" for="platform_fee_subscribed">
+                                            {{ translate('Subscribed Vendors Fee') }}
+                                            ({{ \App\CentralLogics\Helpers::currency_symbol() }})
+                                        </label>
+                                        <input type="number" name="platform_fee_subscribed" class="form-control"
+                                            id="platform_fee_subscribed" min="0" step="0.01"
+                                            placeholder="0.00"
+                                            value="{{ $platform_fee_subscribed ? $platform_fee_subscribed->value : '0' }}">
+                                        <small class="text-muted">{{ translate('Monthly fee deducted from subscribed vendor wallets') }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 col-sm-6">
+                                    @php($platform_fee_unsubscribed = \App\Models\BusinessSetting::where('key', 'platform_fee_unsubscribed')->first())
+                                    <div class="form-group mb-0">
+                                        <label class="input-label text-capitalize" for="platform_fee_unsubscribed">
+                                            {{ translate('Unsubscribed Vendors Fee') }}
+                                            ({{ \App\CentralLogics\Helpers::currency_symbol() }})
+                                        </label>
+                                        <input type="number" name="platform_fee_unsubscribed" class="form-control"
+                                            id="platform_fee_unsubscribed" min="0" step="0.01"
+                                            placeholder="0.00"
+                                            value="{{ $platform_fee_unsubscribed ? $platform_fee_unsubscribed->value : '0' }}">
+                                        <small class="text-muted">{{ translate('Monthly fee deducted from unsubscribed vendor wallets') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="btn--container justify-content-end mt-3">
                                 <button type="reset" class="btn btn--reset">{{ translate('messages.reset') }}</button>
                                 <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}"

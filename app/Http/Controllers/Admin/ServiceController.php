@@ -39,58 +39,58 @@ class ServiceController extends Controller
         // mark all as checked
         ServiceRequest::query()->update(['checked' => 1]);
 
-        $type = $request->type ?? '';
-        // prx( $type);
-        if (!$type || $type == 'all') {
-            $leads = DB::table('service_requests')
-                ->leftJoin('accepted_service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
-                ->leftJoin('stores', 'stores.id', '=', 'accepted_service_requests.vendor_id')
-                ->leftJoin('items', 'items.id', '=', 'service_requests.item_id')
-                ->leftJoin('vendor_emp_jobs', 'vendor_emp_jobs.service_id', '=', 'accepted_service_requests.service_request_id')
-                ->leftJoin('service_statuses', 'service_statuses.id', '=', 'vendor_emp_jobs.status')
-                ->select(
-                    'service_requests.id',
-                    // 'service_requests.*',
-                    'service_requests.id as service_id',
-                    'service_requests.created_at as enquiry_date',
-                    'accepted_service_requests.current_status',
-                    'accepted_service_requests.id as accepted_id',
-                    'service_statuses.status',
-                    'items.name',
-                    'items.image',
-                    'stores.name as store_name',
-                    'stores.logo'
-                )
-                ->groupBy('service_requests.id')
-                ->orderBy('service_id', 'desc')
-                ->paginate(15);
+        $type       = $request->type ?? 'all';
+        $search     = $request->search ?? '';
+        $zone_id    = $request->zone_id ?? '';
+        $preset     = $request->date_range ?? 'this_year';
+        $custom     = $request->custom_date_range ?? null;
+        $range      = Helpers::calculatePresetDates($preset, $custom);
 
-            // prx($leads);
-        } else {
-            $type = $request->type;
-            $leads = DB::table('service_requests')
-                ->leftJoin('accepted_service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
-                ->leftJoin('stores', 'stores.id', '=', 'accepted_service_requests.vendor_id')
-                ->leftJoin('items', 'items.id', '=', 'service_requests.item_id')
-                ->leftJoin('vendor_emp_jobs', 'vendor_emp_jobs.service_id', '=', 'accepted_service_requests.service_request_id')
-                ->leftJoin('service_statuses', 'service_statuses.id', '=', 'vendor_emp_jobs.status')
-                ->where('accepted_service_requests.current_status', $request->type)
-                ->select(
-                    'accepted_service_requests.current_status',
-                    'service_requests.id as service_id',
-                    'service_requests.created_at as enquiry_date',
-                    'service_statuses.status',
-                    'items.name',
-                    'items.image',
-                    'stores.name as store_name',
-                    'stores.logo'
-                )
-                // ->groupBy('service_requests.id')
-                ->orderBy('service_requests.id', 'desc')
-                ->paginate(15)
-                ->appends(['type' => $request->type]);
-        }
-        return view('admin-views.service.leads-list', compact('leads', 'type'));
+        $leads = DB::table('service_requests')
+            ->leftJoin('accepted_service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->leftJoin('stores', 'stores.id', '=', 'accepted_service_requests.vendor_id')
+            ->leftJoin('zones', 'zones.id', '=', 'stores.zone_id')
+            ->leftJoin('items', 'items.id', '=', 'service_requests.item_id')
+            ->leftJoin('vendor_emp_jobs', 'vendor_emp_jobs.service_id', '=', 'accepted_service_requests.service_request_id')
+            ->leftJoin('service_statuses', 'service_statuses.id', '=', 'vendor_emp_jobs.status')
+            ->select(
+                'service_requests.id',
+                'service_requests.id as service_id',
+                'service_requests.created_at as enquiry_date',
+                'accepted_service_requests.current_status',
+                'accepted_service_requests.id as accepted_id',
+                'service_statuses.status',
+                'items.name',
+                'items.image',
+                'stores.name as store_name',
+                'stores.logo',
+                'zones.name as zone_name'
+            )
+            ->when($type && $type !== 'all', function ($q) use ($type) {
+                $q->where('accepted_service_requests.current_status', $type);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('items.name', 'like', "%{$search}%")
+                          ->orWhere('service_requests.id', $search);
+                });
+            })
+            ->when($zone_id, function ($q) use ($zone_id) {
+                $q->where('stores.zone_id', $zone_id);
+            })
+            ->whereBetween(DB::raw('DATE(service_requests.created_at)'), [$range['start'], $range['end']])
+            ->distinct('service_requests.id')
+            ->orderBy('service_requests.id', 'desc')
+            ->paginate(15)
+            ->appends($request->query());
+
+        $zones = DB::table('zones')
+            ->join('module_zone', 'module_zone.zone_id', '=', 'zones.id')
+            ->where('module_zone.module_id', 6)
+            ->select('zones.id', 'zones.name')
+            ->get();
+
+        return view('admin-views.service.leads-list', compact('leads', 'type', 'search', 'zone_id', 'preset', 'zones'));
     }
      public function mark_paid2(Request $request)
     {

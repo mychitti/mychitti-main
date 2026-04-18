@@ -1391,20 +1391,82 @@ class ItemController extends Controller
         return response()->json($items, 200);
     }
 
-    public function get_product($id)
+    public function get_product_new($id)
     {
         try {
-            $item = Item::withCount('whislists')->with(['tags', 'reviews', 'reviews.customer'])->active()
+            $id = trim($id);
+
+            $item = Item::withoutGlobalScopes()
+                ->withCount('whislists')
+                ->with(['tags', 'reviews', 'reviews.customer'])
+                ->where('status', 1)
                 ->when(config('module.current_module_data'), function ($query) {
                     $query->module(config('module.current_module_data')['id']);
                 })
-                ->when(is_numeric($id), function ($qurey) use ($id) {
-                    $qurey->where('id', $id);
+                ->when(is_numeric($id), function ($query) use ($id) {
+                    $query->where('id', (int) $id);
                 })
-                ->when(!is_numeric($id), function ($qurey) use ($id) {
-                    $qurey->where('slug', $id);
+                ->when(!is_numeric($id), function ($query) use ($id) {
+                    $query->where('id', $id);
                 })
+                ->select([
+                    'id',
+                    'name',
+                    'description',
+                    'specifications',
+                    'image',
+                    'variations',
+                    'choice_options',
+                    'price',
+                    'mrp_price',
+                    'keywords',
+                    'avg_rating',
+                    'rating_count',
+                    'stock',
+                    'seo_heading',
+                    'meta_desc',
+                    'meta_title'
+                ])
                 ->first();
+            if ($item) {
+                $item->image = $item->image
+                    ? asset('storage/product/' . $item->image)
+                    : null;
+                $item->choice_options = json_decode($item->choice_options);
+                $item->variations = json_decode($item->variations);
+              
+            }
+            // prx($item);
+
+            return response()->json($item, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]
+            ], 404);
+        }
+    }
+    public function get_product($id)
+    {
+        try {
+            $id = trim($id);
+
+            $item = Item::withoutGlobalScopes()
+                ->withCount('whislists')
+                ->with(['tags', 'reviews', 'reviews.customer'])
+                ->where('status', 1)
+                ->when(config('module.current_module_data'), function ($query) {
+                    $query->module(config('module.current_module_data')['id']);
+                })
+                ->when(is_numeric($id), function ($query) use ($id) {
+                    $query->where('id', (int) $id);
+                })
+                ->when(!is_numeric($id), function ($query) use ($id) {
+                    $query->where('id', $id);
+                })
+
+                ->first();
+
+            // prx($item);
             $store = StoreLogic::get_store_details($item->store_id);
             if ($store) {
                 $category_ids = DB::table('items')
@@ -1426,6 +1488,7 @@ class ItemController extends Controller
             $item['store_details'] = $store;
             return response()->json($item, 200);
         } catch (\Exception $e) {
+            prx($e->getMessage());
             return response()->json([
                 'errors' => ['code' => 'product-001', 'message' => translate('messages.not_found')]
             ], 404);

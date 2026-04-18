@@ -95,7 +95,8 @@
                             </thead>
                             <tbody id="set-rows">
                             @foreach($employees as $k=>$employee)
-                                <tr>
+                                <tr class="employee-row" style="cursor:pointer"
+                                    data-href="{{ route('admin.employee.view', [$employee['id']]) }}">
                                     <th scope="row">{{$k+$employees->firstItem()}}</th>
                                     <th>{{$employee['employee_id'] ?? $employee['id']}}</th>
                                     <td class="text-capitalize">{{$employee['f_name']}} {{$employee['l_name']}}</td>
@@ -153,5 +154,10 @@
 @endsection
 
 @push('script_2')
-
+<script>
+    $(document).on('click', '.employee-row', function(e) {
+        if ($(e.target).closest('.btn--container, a, button, form').length) return;
+        window.location.href = $(this).data('href');
+    });
+</script>
 @endpush

@@ -88,6 +88,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data')->middleware('permission:analytics,view');
         });
 
+        // Laundry
+        Route::group(['prefix' => 'laundry', 'as' => 'laundry.'], function () {
+            Route::get('orders',   'LaundryController@orders')->name('orders');
+            Route::get('challans', 'LaundryController@challans')->name('challans');
+        });
+
         // Impersonation
         Route::post('impersonate/start', 'ImpersonateController@start')->name('impersonate.start');
         Route::post('impersonate/stop', 'ImpersonateController@stop')->name('impersonate.stop');
@@ -221,6 +227,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('gst-settings', 'PlanController@save_gst_settings')->name('gst-settings');
             Route::get('stores', 'PlanController@stores')->name('stores');
             Route::post('store', 'PlanController@store')->name('store');
+
+            Route::get('hospital-bed-tiers', 'HospitalBedTierController@index')->name('hospital-bed-tiers');
+            Route::post('hospital-bed-tiers', 'HospitalBedTierController@store')->name('hospital-bed-tiers.store');
+            Route::post('hospital-bed-tiers/{id}', 'HospitalBedTierController@update')->name('hospital-bed-tiers.update');
+            Route::delete('hospital-bed-tiers/{id}', 'HospitalBedTierController@destroy')->name('hospital-bed-tiers.destroy');
         });
         Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () {
             Route::get('/', 'SupportTicketController@index')->name('index')->middleware('permission:support_ticket,list');
@@ -530,10 +541,18 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('tnc-save', 'BusinessSettingsController@tnc_save')->name('tnc.save')->middleware('permission:billing_tnc,add');
             Route::get('tnc-delete/{id}', 'BusinessSettingsController@tnc_delete')->name('tnc.delete')->middleware('permission:billing_tnc,delete');
             Route::post('tnc-update', 'BusinessSettingsController@tnc_update')->name('tnc.update')->middleware('permission:billing_tnc,edit');
+            Route::post('tnc-set-default/{id}', 'BusinessSettingsController@tnc_set_default')->name('tnc.set-default')->middleware('permission:billing_tnc,edit');
             Route::post('terms-and-conditions-save', 'BusinessSettingsController@terms_and_conditions_save')->name('terms-and-conditions.save');
         });
 
-        // QUOTATION MANAGEMENT 
+        // PRICING
+        Route::group(['prefix' => 'pricing', 'as' => 'pricing.'], function () {
+            Route::get('/', 'PricingController@index')->name('index');
+            Route::post('platform-fee', 'PricingController@updatePlatformFee')->name('platform-fee');
+            Route::post('wallet-settings', 'PricingController@updateWalletSettings')->name('wallet-settings');
+        });
+
+        // QUOTATION MANAGEMENT
         Route::group(['prefix' => 'quotation', 'as' => 'quotation.', 'middleware' => ['planwise:quotaiton_manage']], function () {
             Route::get('convert-to-bill/{id}', 'QuoteController@convert_to_bill')->name('convert-to-bill')->middleware('permission:quotaiton_manage,convert_to_bill');
             Route::get('list', 'QuoteController@index')->name('list');
@@ -584,6 +603,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('purchase-bills', 'BillingController@my_bills')->name('my-bills');
             Route::get('settings', 'BillingController@invoice_settings')->name('settings');
             Route::post('save-invoice-prefix', 'BillingController@save_invoice_prefix')->name('save-invoice-prefix');
+            Route::post('save-invoice-template', 'BillingController@save_invoice_template')->name('save-invoice-template');
             Route::post('validate-invoicenum', 'BillingController@validate_invoicenum')->name('validate-invoicenum');
             Route::get('invoice-num-for-date', 'BillingController@invoice_num_for_date')->name('invoice-num-for-date');
             Route::get('edit/{id}', 'BillingController@edit')->name('edit');
@@ -600,6 +620,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('make-payment/{id}', 'BillingController@make_payment')->name('make-payment');
             Route::get('delete/{type}/{id}', 'BillingController@delete')->name('delete');
             Route::get('view-invoice/{id}', 'BillingController@view_invoice')->name('view-invoice');
+            Route::post('send-invoice-email', 'BillingController@send_invoice_email')->name('send-invoice-email');
             Route::get('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor');
             Route::post('delete-row', 'ServiceController@delete_row')->name('delete-row');
             Route::get('view-invoice/{type}/{invoice_id}', 'BillingController@manual_invoice_view')->name('manual-invoice-view')->middleware('permission:billing,view');
@@ -608,6 +629,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::group(['prefix' => 'purchase-invoice', 'as' => 'purchase-invoice.'], function () {
                 Route::post('save', 'BillingController@save_purchase_invoice')->name('save')->middleware('permission:purchase_bill,add');
                 Route::post('import', 'BillingController@importPurchaseInvoices')->name('import')->middleware('permission:purchase_bill,import');
+                Route::post('mark-paid/{id}', 'BillingController@markPurchasePaid')->name('mark-paid')->middleware('permission:purchase_bill,update');
             });
         });
         Route::get('search-mychitti-clients', 'MychittiClientController@searchMychittiClients')->name('search-mychitti-clients');

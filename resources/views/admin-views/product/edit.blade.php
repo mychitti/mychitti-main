@@ -877,9 +877,8 @@
                                                     <a href="{{ asset('storage/app/public/export-keywords.xlsx') }}"
                                                         class="text-underline">Download Example Excel</a>
                                                 </div>
-
-                                                <input type="file" name="keyword_excel" id="import_excel"
-                                                    class="form-control" id="">
+                                                <input type="file" name="keyword_excel[]" id="import_excel"
+                                                    class="form-control" multiple>
                                             </div>
                                             <div class="form-group mb-0 col-md-4">
                                                 <div class="d-flex justify-content-between">

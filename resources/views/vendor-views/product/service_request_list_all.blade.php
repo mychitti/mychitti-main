@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', $type . ' Leads')
+@section('title', $type .  (_isHospital() ? 'Appointments' : ' Leads'))
 
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
@@ -186,7 +186,7 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ $type . ' Leads' }} <span
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ $type . (_isHospital() ? 'Appointments' : ' Leads') }} <span
                     class="badge badge-soft-dark ml-2" id="itemCount">{{ count($product) }}</span></h1>
             <div class="page-header-select-wrapper">
                 <!-- Button trigger modal -->
@@ -358,6 +358,29 @@
                                                         title="{{ translate('messages.Track Location') }}">
                                                         <i class="tio-location-search"></i> Track Location
                                                     </a>
+                                                @endif
+
+                                                @if (_isHospital() && ($isConfirmed || $isCompleted))
+                                                    @php
+                                                        $leadRx = \App\Models\Prescription::where('service_request_id', $lead->id)->first();
+                                                    @endphp
+                                                    @if($leadRx)
+                                                        <a href="{{ route('vendor.prescription.show', $leadRx->id) }}"
+                                                            class="dropdown-item text-success">
+                                                            <i class="tio-print"></i> View Prescription
+                                                        </a>
+                                                        @if(!$leadRx->is_finalized)
+                                                        <a href="{{ route('vendor.prescription.edit', $leadRx->id) }}"
+                                                            class="dropdown-item text-primary">
+                                                            <i class="tio-edit"></i> Edit Prescription
+                                                        </a>
+                                                        @endif
+                                                    @else
+                                                        <a href="{{ route('vendor.prescription.create', ['service_request_id' => $lead->id]) }}"
+                                                            class="dropdown-item text-success">
+                                                            <i class="tio-medicine"></i> Write Prescription
+                                                        </a>
+                                                    @endif
                                                 @endif
 
                                                 @if (!$canViewDetails)

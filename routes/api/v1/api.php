@@ -454,6 +454,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('search', 'ItemController@get_searched_products');
             Route::get('search-suggestion', 'ItemController@get_searched_products_suggestion');
             Route::get('details/{id}', 'ItemController@get_product');
+            Route::get('details-new/{id}', 'ItemController@get_product_new');
             Route::get('related-items/{item_id}', 'ItemController@get_related_products');
             Route::get('related-services/{item_id}', 'ItemController@get_related_services');
             Route::get('related-store-items/{item_id}', 'ItemController@get_related_store_products');
@@ -485,6 +486,8 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('get-service-list', 'StoreController@get_services_list');
             Route::post('add-review', 'StoreController@add_review');
             Route::post('get-review', 'StoreController@get_review');
+            Route::post('add-service-review', 'StoreController@add_service_review')->middleware('auth:api');
+            Route::post('get-service-review', 'StoreController@get_service_review');
             Route::post('unmask-phone', 'StoreController@unmask_phone')->middleware('auth:api');
         });
         Route::get('get-combined-data', 'SearchController@get_combined_data');
@@ -549,7 +552,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     // Hospital Management
     Route::group(['prefix' => 'hospital'], function () {
+        Route::get('doctors', 'AppointmentController@doctors');
         Route::get('slots', 'AppointmentController@slots');
+        Route::get('doctor-slots', 'AppointmentController@doctorSlots');
         Route::get('patient-lookup', 'AppointmentController@patientLookup');
         Route::get('appointments/{id}', 'AppointmentController@show');
 

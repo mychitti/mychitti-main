@@ -4,6 +4,7 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
 @endpush
 
 @section('content')
@@ -16,27 +17,60 @@
         </div>
         <!-- End Page Header -->
 
-
         <div class="row">
             <!-- Card -->
             <div class="card col-12">
                 <!-- Header -->
                 <div class="card-header py-2">
-                    <div class="search--button-wrapper"> 
-                        <h5 class="card-title">Leads</h5> 
-
-                        <form action="" class="d-flex">
-                            <select class="form-control" name="type">
-                                <option {{$type && $type == 'all' ? 'selected' : '';}} value="all">All</option> 
-                                <option {{$type && $type == 'new' ? 'selected' : '';}} value="new">New</option> 
-                                <option {{$type && $type == 'Confirmation Request Sent' ? 'selected' : '';}} value="Confirmation Request Sent">Confirmation Request Sent</option>
-                                <option {{$type && $type == 'Confirmed' ? 'selected' : '';}} value="Confirmed">Confirmed</option>
-                                <option {{$type && $type == 'Completed' ? 'selected' : '';}} value="Completed">Completed</option> 
-                                <option {{$type && $type == 'Cancelled' ? 'selected' : '';}} value="Cancelled">Cancelled</option>
-                            </select>
-                            <button class="btn btn-primary">Filter</button>
-                        </form>
-                    </div>
+                    <h5 class="card-title">Leads</h5>
+                    <form action="" method="GET" class="date-range-form">
+                        @include('admin-views.form_modals.date_range')
+                        <div class="d-flex flex-wrap align-items-end" style="gap:12px">
+                            <!-- Search -->
+                            <div class="form-group mb-0">
+                                {{-- <label class="input-label">Search</label> --}}
+                                <input type="text" name="search" class="form-control form-control-sm"
+                                    style="width:200px" placeholder="Lead ID / Service name" value="{{ $search }}">
+                            </div>
+                            <!-- Date Range -->
+                            <div class="form-group mb-0">
+                                {{-- <label class="input-label d-block">Date Range</label> --}}
+                                <button style="white-space:nowrap" class="btn  btn-outline-warning" type="button"
+                                    data-toggle="modal" data-target="#dateRangeModal">
+                                    {{ translate($preset) }}
+                                </button>
+                            </div>
+                            <!-- Zone -->
+                            <div class="form-group mb-0">
+                                {{-- <label class="input-label">Zone</label> --}}
+                                <select id="filter_zone" name="zone_id" class="js-select2-custom form-control form-control-sm" style="width:180px">
+                                    <option value="">All Zones</option>
+                                    @foreach ($zones as $zone)
+                                        <option value="{{ $zone->id }}" {{ $zone_id == $zone->id ? 'selected' : '' }}>
+                                            {{ $zone->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <!-- Status -->
+                            <div class="form-group mb-0">
+                                {{-- <label class="input-label">Status</label> --}}
+                                <select id="filter_status" name="type" class="js-select2-custom form-control form-control-sm" style="width:200px">
+                                    <option value="all" {{ $type == 'all' ? 'selected' : '' }}>All</option>
+                                    <option value="new" {{ $type == 'new' ? 'selected' : '' }}>New</option>
+                                    <option value="Confirmation Request Sent" {{ $type == 'Confirmation Request Sent' ? 'selected' : '' }}>Confirmation Request Sent</option>
+                                    <option value="Confirmed" {{ $type == 'Confirmed' ? 'selected' : '' }}>Confirmed</option>
+                                    <option value="Completed" {{ $type == 'Completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="Cancelled" {{ $type == 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                </select>
+                            </div>
+                            <!-- Actions -->
+                            <div class="form-group mb-0">
+                                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                                <a href="{{ route('admin.service.lead-list') }}" class="btn btn-sm btn-secondary ml-1">Reset</a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 <!-- End Header -->
 
@@ -141,6 +175,7 @@
 @endsection
 
 @push('script_2')
+    @include('admin-views.js.date_range')
     <script>
         function status_change_alert(url, message, e) {
             e.preventDefault();
@@ -197,7 +232,11 @@
             // INITIALIZATION OF SELECT2
             // =======================================================
             $('.js-select2-custom').each(function() {
-                var select2 = $.HSCore.components.HSSelect2.init($(this));
+                $.HSCore.components.HSSelect2.init($(this));
+            });
+
+            $('#filter_zone, #filter_status').on('change', function() {
+                $(this).closest('form').submit();
             });
         });
     </script>

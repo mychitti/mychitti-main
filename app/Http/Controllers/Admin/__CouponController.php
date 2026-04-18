@@ -67,6 +67,7 @@ class CouponController extends Controller
         $coupon->max_discount = $request->max_discount != null ? $request->max_discount : 0;
         $coupon->discount = $request->discount_type == 'amount' ? $request->discount : $request['discount'];
         $coupon->discount_type = $request->discount_type??'';
+        $coupon->min_services = (int) ($request->min_services ?? 0);
         $coupon->status =  1;
         $coupon->created_by =  'admin';
         $coupon->data =  json_encode($data);
@@ -155,6 +156,7 @@ class CouponController extends Controller
         $coupon->max_discount = $request->max_discount != null ? $request->max_discount : 0;
         $coupon->discount = $request->discount_type == 'amount' ? $request->discount : $request['discount'];
         $coupon->discount_type = $request->discount_type??'';
+        $coupon->min_services = (int) ($request->min_services ?? 0);
         $coupon->data = json_encode($data);
         $coupon->customer_id = json_encode($customer_id);
         $coupon->save();

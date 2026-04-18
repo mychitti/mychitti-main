@@ -39,6 +39,10 @@
                 <a class="nav-link {{ $tab == 'phone_unmasks' ? 'active' : '' }}"
                     href="{{ route('admin.analytics.index', ['tab' => 'phone_unmasks']) }}">Phone Unmasks</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab == 'shares' ? 'active' : '' }}"
+                    href="{{ route('admin.analytics.index', ['tab' => 'shares']) }}">Shares</a>
+            </li>
         </ul>
 
         {{-- Search & Filter --}}
@@ -265,6 +269,53 @@
                                 @empty
                                     <tr>
                                         <td colspan="6" class="text-center py-4">No data found</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    @elseif ($tab == 'shares')
+                        <table class="table table-borderless table-thead-bordered table-align-middle">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Type</th>
+                                    <th>Name</th>
+                                    <th>User</th>
+                                    <th>User Phone</th>
+                                    <th>IP</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($data['items'] as $key => $item)
+                                    <tr>
+                                        <td>{{ $key + $data['items']->firstItem() }}</td>
+                                        <td>
+                                            @if ($item->sub_type == 'store')
+                                                <span class="badge badge-soft-primary">Store</span>
+                                            @elseif ($item->sub_type == 'service')
+                                                <span class="badge badge-soft-success">Service</span>
+                                            @else
+                                                <span class="text-muted">{{ $item->sub_type ?? '-' }}</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $item->entity_name }}</td>
+                                        <td>
+                                            @if ($item->f_name)
+                                                {{ $item->f_name . ' ' . $item->l_name }}
+                                            @elseif ($item->user_id)
+                                                <span class="text-muted">Deleted User #{{ $item->user_id }}</span>
+                                            @else
+                                                <span class="text-muted">Guest</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $item->user_phone ?? '-' }}</td>
+                                        <td><code>{{ $item->ip }}</code></td>
+                                        <td>{{ \Carbon\Carbon::parse($item->created_at)->format('d M Y, h:i A') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">No data found</td>
                                     </tr>
                                 @endforelse
                             </tbody>

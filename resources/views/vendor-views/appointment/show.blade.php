@@ -15,6 +15,7 @@
         </div>
     </div>
 
+    {{-- Top row: Appointment info + Patient/Actions --}}
     <div class="row">
         {{-- Left: Appointment Info --}}
         <div class="col-md-7">
@@ -138,12 +139,11 @@
 
         {{-- Right: Patient Info + Reschedule --}}
         <div class="col-md-5">
-            {{-- Patient Summary --}}
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Patient Info</h5></div>
                 <div class="card-body">
                     <table class="table table-borderless table-sm mb-0">
-                        <tr><th>Phone</th><td>{{ $appointment->patient?->phone ?? '—' }}</td></tr>
+                        <tr><th width="40%">Phone</th><td>{{ $appointment->patient?->phone ?? '—' }}</td></tr>
                         <tr><th>Gender</th><td>{{ ucfirst($appointment->patient?->gender ?? '—') }}</td></tr>
                         <tr><th>Blood Group</th><td>{{ $appointment->patient?->blood_group ?? '—' }}</td></tr>
                         <tr><th>DOB</th><td>{{ $appointment->patient?->dob ?? '—' }}</td></tr>
@@ -153,7 +153,7 @@
 
             {{-- Reschedule --}}
             @if(!in_array($appointment->status, ['completed', 'cancelled']))
-            <div class="card">
+            <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Reschedule</h5></div>
                 <div class="card-body">
                     <form action="{{ route('vendor.appointment.reschedule', $appointment->id) }}" method="POST" id="rescheduleForm">
@@ -183,25 +183,196 @@
             @endif
         </div>
     </div>
+
+    {{-- ══════════════════════════════════════════════════════════
+         PRESCRIPTION — full-width inline section
+    ══════════════════════════════════════════════════════════ --}}
+    @php
+        $existingRx = \App\Models\Prescription::where('appointment_id', $appointment->id)
+            ->with('items')
+            ->first();
+        $rxOpen = session('rx_saved') || $existingRx || old('diagnosis') !== null;
+    @endphp
+
+    <div class="card mb-4" id="rxCard" style="border:1.5px solid #3b82f6;">
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); cursor:pointer;"
+             onclick="toggleRx()">
+            <div class="d-flex align-items-center gap-2">
+                <i class="tio-medicine" style="font-size:20px; color:#2563eb;"></i>
+                <h5 class="card-title mb-0" style="color:#1e3a5f;">Prescription</h5>
+                @if($existingRx)
+                    <span class="badge {{ $existingRx->is_finalized ? 'badge-success' : 'badge-warning' }} ml-2">
+                        {{ $existingRx->is_finalized ? 'Finalized' : 'Draft' }}
+                    </span>
+                @else
+                    <span class="badge badge-soft-secondary ml-2">Not written yet</span>
+                @endif
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                @if($existingRx)
+                    <a href="{{ route('vendor.prescription.show', $existingRx->id) }}"
+                       class="btn btn-sm btn--primary" onclick="event.stopPropagation()">
+                        <i class="tio-print"></i> View / Print
+                    </a>
+                @endif
+                <i class="tio-chevron-down" id="rxChevron" style="font-size:18px; color:#6b7280;
+                   transition:transform .2s; {{ $rxOpen ? 'transform:rotate(180deg)' : '' }}"></i>
+            </div>
+        </div>
+
+        <div id="rxBody" style="{{ $rxOpen ? '' : 'display:none;' }}">
+            @if($existingRx && $existingRx->is_finalized)
+                {{-- Finalized: read-only summary --}}
+                <div class="card-body">
+                    <div class="alert alert-success mb-3" style="font-size:13px;">
+                        <i class="tio-checkmark-circle mr-1"></i>
+                        This prescription is finalized and cannot be edited.
+                        <a href="{{ route('vendor.prescription.show', $existingRx->id) }}" class="alert-link ml-2">
+                            View full prescription →
+                        </a>
+                    </div>
+                    @if($existingRx->diagnosis)
+                        <p class="mb-1"><strong>Diagnosis:</strong> {{ $existingRx->diagnosis }}</p>
+                    @endif
+                    @if($existingRx->items->count())
+                        <p class="mb-1"><strong>Medicines ({{ $existingRx->items->count() }}):</strong>
+                            {{ $existingRx->items->pluck('medicine_name')->implode(', ') }}
+                        </p>
+                    @endif
+                    @if($existingRx->follow_up_date)
+                        <p class="mb-0"><strong>Follow-up:</strong> {{ $existingRx->follow_up_date->format('d M Y') }}</p>
+                    @endif
+                </div>
+            @else
+                {{-- Editable inline form --}}
+                <div class="card-body p-3">
+                    @if(session('rx_saved'))
+                        <div class="alert alert-success alert-dismissible mb-3" style="font-size:13px;">
+                            Prescription saved.
+                            <a href="{{ route('vendor.prescription.show', session('rx_saved')) }}" class="alert-link">View / Print</a>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
+                    @endif
+
+                    <form action="{{ $existingRx ? route('vendor.prescription.update', $existingRx->id) : route('vendor.prescription.store') }}"
+                          method="POST" id="inlineRxForm">
+                        @csrf
+                        <input type="hidden" name="appointment_id"    value="{{ $appointment->id }}">
+                        <input type="hidden" name="patient_id"        value="{{ $appointment->patient_id }}">
+                        <input type="hidden" name="doctor_profile_id" value="{{ $appointment->doctor_profile_id }}">
+
+                        <div class="row">
+                            {{-- Diagnosis + Notes + Follow-up --}}
+                            <div class="col-lg-5">
+                                <div class="form-group">
+                                    <label class="input-label font-weight-bold">Diagnosis</label>
+                                    <textarea name="diagnosis" class="form-control" rows="3"
+                                        placeholder="Primary diagnosis / chief complaint...">{{ old('diagnosis', $existingRx?->diagnosis ?? '') }}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="input-label font-weight-bold">Doctor's Notes / Advice</label>
+                                    <textarea name="notes" class="form-control" rows="3"
+                                        placeholder="Rest, diet, precautions...">{{ old('notes', $existingRx?->notes ?? '') }}</textarea>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label class="input-label font-weight-bold">Follow-Up Date</label>
+                                    <input type="date" name="follow_up_date" class="form-control" style="max-width:200px;"
+                                        value="{{ old('follow_up_date', $existingRx?->follow_up_date?->format('Y-m-d') ?? '') }}">
+                                </div>
+                            </div>
+
+                            {{-- Medicines --}}
+                            <div class="col-lg-7">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="input-label font-weight-bold mb-0">Medicines</label>
+                                    <button type="button" class="btn btn-sm btn--primary" onclick="apptAddMedRow()">
+                                        <i class="tio-add"></i> Add manually
+                                    </button>
+                                </div>
+
+                                {{-- Pharmacy search --}}
+                                <div class="mb-2" style="position:relative;">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0">
+                                                <i class="tio-search" style="font-size:13px;color:#6b7280;"></i>
+                                            </span>
+                                        </div>
+                                        <input type="text" id="apptPharmacySearch" class="form-control border-left-0"
+                                            placeholder="Search pharmacy inventory..."
+                                            autocomplete="off"
+                                            oninput="apptPharmDebounce(this.value)">
+                                    </div>
+                                    <ul id="apptPharmSuggestions"
+                                        style="display:none; list-style:none; margin:0; padding:4px 0;
+                                               border:1px solid #e5e7eb; border-top:none; border-radius:0 0 8px 8px;
+                                               background:#fff; max-height:190px; overflow-y:auto;
+                                               position:absolute; width:100%; z-index:99; box-shadow:0 4px 12px rgba(0,0,0,.08);">
+                                    </ul>
+                                </div>
+
+                                <div id="apptMedTable">
+                                    @if($existingRx && $existingRx->items->count())
+                                        @foreach($existingRx->items as $i => $item)
+                                            @include('vendor-views.prescription._med_row', ['i' => $i, 'item' => $item])
+                                        @endforeach
+                                    @else
+                                        @include('vendor-views.prescription._med_row', ['i' => 0, 'item' => null])
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="mt-3 mb-3">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn--primary" name="action" value="draft">
+                                <i class="tio-save"></i> Save Draft
+                            </button>
+                            <button type="submit" class="btn btn-success" name="finalize" value="1">
+                                <i class="tio-checkmark-circle"></i> Finalize &amp; Print
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+        </div>
+    </div>
+
 </div>
+
+{{-- Hidden template for new medicine rows --}}
+<template id="apptMedRowTpl">
+    @include('vendor-views.prescription._med_row', ['i' => '__IDX__', 'item' => null])
+</template>
+
 @endsection
 
 @push('script_2')
 <script>
-    const slotsUrl   = "{{ route('vendor.appointment.available-slots') }}";
-    const doctorId   = {{ $appointment->doctor_profile_id }};
+    const slotsUrl  = "{{ route('vendor.appointment.available-slots') }}";
+    const doctorId  = {{ $appointment->doctor_profile_id }};
+    const pharmUrl  = "{{ route('vendor.prescription.search-medicines') }}";
 
-    // Cancel reason toggle
+    // ── Rx accordion ─────────────────────────────────────────
+    function toggleRx() {
+        const body    = document.getElementById('rxBody');
+        const chevron = document.getElementById('rxChevron');
+        const open    = body.style.display !== 'none';
+        body.style.display    = open ? 'none' : '';
+        chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+
+    // ── Status update ────────────────────────────────────────
     document.getElementById('statusSelect')?.addEventListener('change', function () {
         document.getElementById('cancelReasonWrap').style.display =
             this.value === 'cancelled' ? 'block' : 'none';
     });
 
-    // Reschedule slot loader
+    // ── Reschedule slot loader ───────────────────────────────
     document.getElementById('rescheduleDate')?.addEventListener('change', function () {
-        const date     = this.value;
-        const slotSel  = document.getElementById('rescheduleSlot');
-        const timeSel  = document.getElementById('rescheduleTime');
+        const date    = this.value;
+        const slotSel = document.getElementById('rescheduleSlot');
 
         slotSel.innerHTML = '<option value="">Loading...</option>';
 
@@ -231,5 +402,82 @@
         const hour = parseInt(h);
         return `${hour > 12 ? hour - 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
     }
+
+    // ── Inline Rx — medicine rows ────────────────────────────
+    let apptMedIdx = {{ $existingRx ? max(0, $existingRx->items->count() - 1) : 0 }};
+
+    function apptAddMedRow(prefill) {
+        apptMedIdx++;
+        const tpl = document.getElementById('apptMedRowTpl').innerHTML
+            .replace(/__IDX__/g, apptMedIdx);
+        const div = document.createElement('div');
+        div.innerHTML = tpl;
+        const row = div.firstElementChild;
+        if (prefill) {
+            const nameInput = row.querySelector('input[name$="[medicine_name]"]');
+            if (nameInput) nameInput.value = prefill.name;
+            const invInput = row.querySelector('.med-inv-id');
+            if (invInput && prefill.id) invInput.value = prefill.id;
+        }
+        document.getElementById('apptMedTable').appendChild(row);
+        if (prefill) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // removeMedRow is shared — defined here for the inline form
+    function removeMedRow(btn) {
+        const rows = document.querySelectorAll('#apptMedTable .med-row');
+        if (rows.length <= 1) {
+            btn.closest('.med-row').querySelectorAll('input,select').forEach(el => el.value = '');
+            return;
+        }
+        btn.closest('.med-row').remove();
+    }
+
+    // ── Pharmacy search ──────────────────────────────────────
+    let _apptPharmTimer = null;
+    function apptPharmDebounce(val) {
+        clearTimeout(_apptPharmTimer);
+        const ul = document.getElementById('apptPharmSuggestions');
+        if (val.length < 2) { ul.style.display = 'none'; return; }
+        _apptPharmTimer = setTimeout(() => apptPharmFetch(val), 280);
+    }
+
+    function apptPharmFetch(q) {
+        fetch(`${pharmUrl}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(items => {
+                const ul = document.getElementById('apptPharmSuggestions');
+                if (!items.length) { ul.style.display = 'none'; return; }
+                ul.innerHTML = items.map(it => `
+                    <li onclick='apptPharmSelect(${JSON.stringify(it)})'
+                        style="padding:7px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f3f4f6;"
+                        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
+                        <strong>${it.name}</strong>
+                        ${it.price > 0 ? `<span style="float:right;color:#059669;font-size:12px;">₹${parseFloat(it.price).toFixed(0)}</span>` : ''}
+                    </li>`).join('');
+                ul.style.display = 'block';
+            })
+            .catch(() => {});
+    }
+
+    function apptPharmSelect(item) {
+        const firstNameInput = document.querySelector('#apptMedTable .med-row input[name$="[medicine_name]"]');
+        if (firstNameInput && firstNameInput.value.trim() === '') {
+            firstNameInput.value = item.name;
+            const invInput = firstNameInput.closest('.med-row').querySelector('.med-inv-id');
+            if (invInput) invInput.value = item.id;
+        } else {
+            apptAddMedRow(item);
+        }
+        document.getElementById('apptPharmacySearch').value = '';
+        document.getElementById('apptPharmSuggestions').style.display = 'none';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#apptPharmacySearch') && !e.target.closest('#apptPharmSuggestions')) {
+            const ul = document.getElementById('apptPharmSuggestions');
+            if (ul) ul.style.display = 'none';
+        }
+    });
 </script>
 @endpush

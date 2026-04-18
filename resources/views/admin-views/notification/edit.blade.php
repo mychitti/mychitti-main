@@ -27,13 +27,13 @@
                     <div class="row g-3">
                         <div class="col-lg-6">
                             <div class="row g-2">
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.title')}}</label>
                                         <input type="text" value="{{$notification['title']}}" name="notification_title" class="form-control" placeholder="{{translate('messages.new_notification')}}" required maxlength="191">
                                     </div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.zone')}}</label>
                                         <select name="zone" id="zone" class="form-control js-select2-custom" >
@@ -44,7 +44,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="tergat">{{translate('messages.send_to')}}</label>
 
@@ -55,6 +55,15 @@
                                         </select>
                                     </div>
                                 </div>
+                                 <div class="col-md-6">
+                                            <div class="form-group mb-0">
+                                                <label class="input-label"
+                                                    for="exampleFormControlInput1">{{ translate('messages.link') }}</label>
+                                                <input type="text" name="link" class="form-control" value="{{$notification['link']}}"
+                                                    placeholder="{{ translate('messages.eg.:https://mychitti.net/blog') }}" 
+                                                    maxlength="191">
+                                            </div>
+                                        </div>
                                 <div class="col-12">
                                     <div class="form-group mb-0">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.description')}}</label>

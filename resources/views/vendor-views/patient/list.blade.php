@@ -14,9 +14,14 @@
                     <span class="badge badge-soft-dark ml-2">{{ $patients->total() }}</span>
                 </span>
             </h1>
-            <a href="{{ route('vendor.patient.add') }}" class="btn btn--primary mb-2">
-                <i class="tio-add-circle"></i> Add New Patient
-            </a>
+            <div class="d-flex gap-2 mb-2">
+                <a href="{{ route('vendor.patient.export') }}" class="btn  btn-outline-success">
+                    <i class="tio-download"></i> Export
+                </a>
+                <a href="{{ route('vendor.patient.add') }}" class="btn btn--primary">
+                    <i class="tio-add-circle"></i> Add New Patient
+                </a>
+            </div>
         </div>
     </div>
 

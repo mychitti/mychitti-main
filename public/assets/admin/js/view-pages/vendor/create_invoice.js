@@ -96,7 +96,7 @@ function add_inv_items() {
             },
         });
     });
-    recalculateInvoice();
+    calculateTotals();
 }
 
 function hideCustomerInput() {
@@ -225,6 +225,7 @@ function addMoreRow(item = null) {
             .trigger("change");
     }
 
+    calculateTotals();
     updateEmptyState();
 }
 

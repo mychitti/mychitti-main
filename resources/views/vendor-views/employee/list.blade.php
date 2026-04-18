@@ -130,7 +130,8 @@
                             </thead>
                             <tbody id="set-rows">
                                 @foreach ($em as $k => $e)
-                                    <tr>
+                                    <tr class="employee-row" style="cursor:pointer"
+                                        data-href="{{ hasPermission('staff_manage', 'view') ? route('vendor.employee.view', [$e['id']]) : '#' }}">
                                         <th scope="row">{{ $k + $em->firstItem() }}</th>
                                         <td>
                                             <a
@@ -220,3 +221,13 @@
         </div>
     </div>
 @endsection
+
+@push('script_2')
+<script>
+    $(document).on('click', '.employee-row', function(e) {
+        if ($(e.target).closest('.btn--container, a, button, form').length) return;
+        var href = $(this).data('href');
+        if (href && href !== '#') window.location.href = href;
+    });
+</script>
+@endpush

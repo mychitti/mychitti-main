@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\Plan;
+use App\Models\VendorSubscription;
+use Brian2694\Toastr\Facades\Toastr;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -145,19 +149,115 @@ class AnalyticsController extends Controller
             }
 
             $data['items'] = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+        } elseif ($tab == 'shares') {
+            // Store shares: ref_id = storeId with sub_type = 'store'
+            // Service shares: ref_id = any item belonging to this store with sub_type = 'service'
+            $storeItemIds = DB::table('items')->where('store_id', $storeId)->pluck('id');
+
+            $query = DB::table('analytics_logs as al')
+                ->leftJoin('users as u', 'al.user_id', '=', 'u.id')
+                ->where('al.screen_type', 'share')
+                ->where(function ($q) use ($storeId, $storeItemIds) {
+                    $q->where(function ($q2) use ($storeId) {
+                        $q2->where('al.sub_type', 'store')->where('al.ref_id', $storeId);
+                    })->orWhere(function ($q2) use ($storeItemIds) {
+                        $q2->where('al.sub_type', 'service')->whereIn('al.ref_id', $storeItemIds);
+                    });
+                })
+                ->select('al.*', 'u.f_name', 'u.l_name', 'u.phone as user_phone');
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('u.f_name', 'like', "%{$search}%")
+                      ->orWhere('u.l_name', 'like', "%{$search}%")
+                      ->orWhere('u.phone', 'like', "%{$search}%");
+                });
+            }
+            if ($dateFrom) {
+                $query->whereDate('al.created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('al.created_at', '<=', $dateTo);
+            }
+
+            $rawItems = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+            $itemNames = DB::table('items')->whereIn('id', $storeItemIds)->pluck('name', 'id');
+            $storeName = DB::table('stores')->where('id', $storeId)->value('name');
+
+            $rawItems->getCollection()->transform(function ($row) use ($storeName, $itemNames) {
+                if ($row->sub_type === 'store') {
+                    $row->entity_name = $storeName ?? 'Store';
+                } elseif ($row->sub_type === 'service') {
+                    $row->entity_name = $itemNames[$row->ref_id] ?? 'Deleted Service';
+                } else {
+                    $row->entity_name = '-';
+                }
+                return $row;
+            });
+
+            $data['items'] = $rawItems;
         }
 
         // Total counts for summary cards
+        $shareItemIds = DB::table('items')->where('store_id', $storeId)->pluck('id');
         $counts = [
-            'store_visits' => DB::table('analytics_logs')->where('screen_type', 'store')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'store_visits'  => DB::table('analytics_logs')->where('screen_type', 'store')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
             'banner_clicks' => DB::table('analytics_logs as al')->join('banners as b', 'al.ref_id', '=', 'b.id')->where('al.screen_type', 'banner')->where('b.type', 'store_wise')->where('b.data', $storeId)->whereDate('al.created_at', '>=', $dateFrom)->whereDate('al.created_at', '<=', $dateTo)->count(),
-            'ad_clicks' => DB::table('analytics_logs as al')->join('notifications as n', 'al.ref_id', '=', 'n.id')->where('al.screen_type', 'ad')->where('n.vendor_id', $vendorId)->whereDate('al.created_at', '>=', $dateFrom)->whereDate('al.created_at', '<=', $dateTo)->count(),
-            'location_views' => DB::table('analytics_logs')->where('screen_type', 'location')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
-            'phone_calls' => DB::table('analytics_logs')->where('screen_type', 'call')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'ad_clicks'     => DB::table('analytics_logs as al')->join('notifications as n', 'al.ref_id', '=', 'n.id')->where('al.screen_type', 'ad')->where('n.vendor_id', $vendorId)->whereDate('al.created_at', '>=', $dateFrom)->whereDate('al.created_at', '<=', $dateTo)->count(),
+            'location_views'=> DB::table('analytics_logs')->where('screen_type', 'location')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'phone_calls'   => DB::table('analytics_logs')->where('screen_type', 'call')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'shares'        => DB::table('analytics_logs')->where('screen_type', 'share')->where(function ($q) use ($storeId, $shareItemIds) {
+                $q->where(function ($q2) use ($storeId) { $q2->where('sub_type', 'store')->where('ref_id', $storeId); })
+                  ->orWhere(function ($q2) use ($shareItemIds) { $q2->where('sub_type', 'service')->whereIn('ref_id', $shareItemIds); });
+            })->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
         ];
 
-        return view('vendor-views.analytics.index', compact('tab', 'data', 'search', 'dateFrom', 'dateTo', 'preset', 'counts'));
-    } 
+        $trial        = VendorSubscription::where('vendor_id', $storeId)
+                            ->whereJsonContains('permitted_modules', 'performance_analytics')
+                            ->first();
+        $hasAccess    = Helpers::permission_check('performance_analytics');
+        $trialActive  = $trial && Carbon::parse($trial->plan_expiry)->isFuture();
+        $trialExpired = $trial && !Carbon::parse($trial->plan_expiry)->isFuture();
+
+        return view('vendor-views.analytics.index', compact(
+            'tab', 'data', 'search', 'dateFrom', 'dateTo', 'preset', 'counts',
+            'trial', 'trialActive', 'trialExpired', 'hasAccess'
+        ));
+    }
+
+    public function claimTrial(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        $existing = VendorSubscription::where('vendor_id', $storeId)
+            ->where('duration_type', 'free_trial')
+            ->whereJsonContains('permitted_modules', 'analytics')
+            ->first();
+
+        if ($existing) {
+            Toastr::warning('Free trial already claimed.');
+            return back();
+        }
+
+        $expiry = Carbon::today()->addMonth();
+
+        $plan_id = Plan::where('key', 'performance_analytics')->value('id') ?? 0;
+
+        VendorSubscription::create([
+            'vendor_id'         => $storeId,
+            'plan_id'           => $plan_id,
+            'duration_count'    => 1,
+            'duration_type'     => 'Months',
+            'permitted_modules' => json_encode(['performance_analytics']),
+            'plan_expiry'       => $expiry,
+            'purchased_at'      => now(),
+        ]);
+
+        Toastr::success('1-month free trial activated! Enjoy Performance Analytics.');
+        return back();
+    }
 
     public function chartData(Request $request)
     {

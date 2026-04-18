@@ -54,7 +54,7 @@
 <body>
     <div class="my-2 container d-flex flex-column align-items-center">
         <div class="invoice-actions">
-            <a href="{{ asset('storage/app/public/invoice') . '/' . $invoice->pdf }}" download class="btn-designer download text-white">
+            <a href="{{ $invoice->pdf ? asset('storage/app/public/invoice') . '/' . $invoice->pdf : '#' }}" download class="btn-designer download text-white" @if(!$invoice->pdf) style="opacity:0.5;pointer-events:none" @endif>
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -77,9 +77,13 @@
             </button>
         </div>
 
-       <iframe id="invoiceFrame" 
-        src="{{ asset('storage/app/public/invoice') . '/' . $invoice->pdf }}#toolbar=0&navpanes=0" 
+       @if($invoice->pdf)
+       <iframe id="invoiceFrame"
+        src="{{ asset('storage/app/public/invoice') . '/' . $invoice->pdf }}#toolbar=0&navpanes=0"
       width="750" height="1062"></iframe>
+       @else
+       <div class="alert alert-warning text-center mt-4" style="width:750px">PDF not yet generated for this invoice.</div>
+       @endif
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"
         integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous">
@@ -89,7 +93,7 @@
     </script>
     <script>
         function sharePDF() {
-            const pdfUrl = '{{ asset('storage/app/public/invoice') . '/' . $invoice->pdf }}';
+            const pdfUrl = '{{ $invoice->pdf ? asset('storage/app/public/invoice') . '/' . $invoice->pdf : '' }}';
             if (navigator.share) {
                 navigator.share({
                     title: 'Invoice',

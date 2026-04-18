@@ -35,20 +35,6 @@
                                     </div>
                                 </div>
                                 <input type="hidden" name="coupon_type" value="default">
-                                <div class="col-6">
-                                    <div>
-                                        <div class="form-group">
-                                            <label class="input-label"
-                                                for="exampleFormControlInput1">Condition (optional)</label>
-                                           <select name="coupon_condition" id="coupon_condition" class="form-control js-select2-custom">
-                                           <option value=""></option>
-                                           @foreach($coupon_conditions as $key => $value)
-                                            <option value="{{$value->id}}">{{$value->coupon_condition}}</option>
-                                           @endforeach
-                                           </select>
-                                        </div>
-                                    </div>
-                                </div>
                                 {{-- <div class="col-md-4 col-lg-3 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.coupon_type')}}</label>
@@ -114,6 +100,14 @@
                                             for="exampleFormControlInput1">{{ translate('messages.limit_for_same_user') }}</label>
                                         <input type="number" name="limit" id="coupon_limit" class="form-control"
                                             placeholder="EX: 10" min="1" max="100">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-lg-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label class="input-label" for="min_services">Min. Completed Services</label>
+                                        <input type="number" name="min_services" id="min_services" min="0"
+                                            value="0" class="form-control" placeholder="0 = no requirement">
+                                        <small class="text-muted">Redeemable after N completed services</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4 col-lg-3 col-sm-6">

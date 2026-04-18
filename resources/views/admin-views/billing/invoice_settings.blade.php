@@ -24,6 +24,36 @@
         <!-- End Page Header -->
 
         <div class="">
+            {{-- Invoice Template --}}
+            <div class="card mb-1">
+                <div class="card-header">
+                    <h2 class="card-title h4"><i class="tio-document-text mr-1"></i> Invoice Template</h2>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('admin.billing.save-invoice-template') }}" method="POST">
+                        @csrf
+                        <div class="d-flex gap-3 flex-wrap mb-3">
+                            @php
+                                $templates = [
+                                    'service_n_manual'     => 'Template 1 (Classic)',
+                                    'service_n_manual_new' => 'Template 2 (New)',
+                                ];
+                            @endphp
+                            @foreach ($templates as $value => $label)
+                                <label class="template-card {{ $invoice_template === $value ? 'selected' : '' }}"
+                                       style="border:2px solid {{ $invoice_template === $value ? '#0f3460' : '#dee2e6' }};border-radius:8px;padding:10px 18px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:500;">
+                                    <input type="radio" name="invoice_template" value="{{ $value }}"
+                                           {{ $invoice_template === $value ? 'checked' : '' }}
+                                           style="accent-color:#0f3460;">
+                                    {{ $label }}
+                                </label>
+                            @endforeach
+                        </div>
+                        <button type="submit" class="btn btn--primary">Save</button>
+                    </form>
+                </div>
+            </div>
+
             {{-- Invoice Prefix --}}
             <div class="card mb-1">
                 <div class="card-header">
@@ -243,6 +273,7 @@
                                                 <th>{{ translate('messages.sl') }}</th>
                                                 <th>{{ translate('messages.For') }}</th>
                                                 <th>{{ translate('messages.Content') }}</th>
+                                                <th class="text-center">Default</th>
                                                 <th class="text-center">{{ translate('messages.action') }}</th>
                                             </tr>
                                         </thead>
@@ -252,12 +283,26 @@
                                                 <tr>
                                                     <td>{{ $key + 1 }}</td>
                                                     <td>
-                                                        <span
-                                                            class="d-block font-size-sm text-body for_{{ $tnc->id }}">
+                                                        <span class="d-block font-size-sm text-body for_{{ $tnc->id }}">
                                                             {{ $tnc->tnc_for }}
                                                         </span>
                                                     </td>
                                                     <td class="content_{{ $tnc->id }}">{!! $tnc->content !!}</td>
+
+                                                    <td class="text-center">
+                                                        @if ($tnc->is_default)
+                                                            <span class="badge badge-success px-3 py-2">&#10003; Default</span>
+                                                        @else
+                                                            @if (hasPermission('billing_tnc', 'edit'))
+                                                                <form action="{{ route('admin.business-settings.tnc.set-default', $tnc->id) }}" method="POST" style="display:inline">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-xs btn-outline-success">
+                                                                        Set as Default
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        @endif
+                                                    </td>
 
                                                     <td>
                                                         <div class="btn--container justify-content-center">
@@ -265,8 +310,7 @@
                                                                 <a type="button" data-id="{{ $tnc->id }}"
                                                                     class="btn btn-sm btn--primary btn-outline-primary action-btn edit_tnc"
                                                                     data-toggle="modal" data-target="#tncEditModal"
-                                                                    title="{{ translate('messages.edit_tnc') }}"><i
-                                                                        class="tio-edit"></i>
+                                                                    title="{{ translate('messages.edit_tnc') }}"><i class="tio-edit"></i>
                                                                 </a>
                                                             @endif
                                                             @if (hasPermission('billing_tnc', 'delete'))
@@ -274,18 +318,16 @@
                                                                     data-id="tnc-{{ $tnc['id'] }}"
                                                                     data-message="{{ translate('Want to delete this Terms and Conditions ?') }}"
                                                                     href="javascript:"
-                                                                    title="{{ translate('messages.delete_tnc') }}"><i
-                                                                        class="tio-delete-outlined"></i>
+                                                                    title="{{ translate('messages.delete_tnc') }}"><i class="tio-delete-outlined"></i>
                                                                 </a>
-                                                                <form
-                                                                    action="{{ route('admin.business-settings.tnc.delete', [$tnc['id']]) }}"
+                                                                <form action="{{ route('admin.business-settings.tnc.delete', [$tnc['id']]) }}"
                                                                     method="get" id="tnc-{{ $tnc['id'] }}">
                                                                     @csrf @method('get')
                                                                 </form>
                                                             @endif
                                                         </div>
                                                     </td>
-                                                </tr> 
+                                                </tr>
                                             @endforeach
                                         </tbody>
                                     </table>

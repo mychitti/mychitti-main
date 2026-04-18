@@ -35,9 +35,11 @@ use App\Traits\Payment;
 use Brian2694\Toastr\Facades\Toastr;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\DataSetting;
 use Mpdf\Mpdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -66,11 +68,11 @@ class BillingController extends Controller
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('invoice_id', 'like', "%{$search}%")
-                      ->orWhere('invoice_serial', 'like', "%{$search}%")
-                      ->orWhereHas('storeCustomer', function ($q) use ($search) {
-                          $q->where('f_name', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%");
-                      });
+                        ->orWhere('invoice_serial', 'like', "%{$search}%")
+                        ->orWhereHas('storeCustomer', function ($q) use ($search) {
+                            $q->where('f_name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
                 });
             })
             ->get();
@@ -92,11 +94,11 @@ class BillingController extends Controller
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('invoice_id', 'like', "%{$search}%")
-                      ->orWhere('invoice_serial', 'like', "%{$search}%")
-                      ->orWhereHas('storeCustomer', function ($q) use ($search) {
-                          $q->where('f_name', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%");
-                      });
+                        ->orWhere('invoice_serial', 'like', "%{$search}%")
+                        ->orWhereHas('storeCustomer', function ($q) use ($search) {
+                            $q->where('f_name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
                 });
             })
             ->get();
@@ -149,6 +151,7 @@ class BillingController extends Controller
         BusinessSetting::updateOrInsert(['key' => 'admin_bill_serial_number'], [
             'value' => $maxSerial + 1
         ]);
+        $this->reset_bill_serial_number();
         Toastr::success('Invoices Deleted Successfully');
         return back();
     }
@@ -165,11 +168,11 @@ class BillingController extends Controller
 
         // Keep incrementing until unique
         do {
-            $invoice_num = $bill_num['prefix'] . $bill_num['number']; 
-            $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+            $invoice_num = $bill_num['prefix'] . $bill_num['number'];
+            $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', 0)->where('financial_year', _currentFinancialYear())->exists();
             if ($exists) {
                 $bill_num['number']++;
-            } 
+            }
         } while ($exists);
 
         $customers = User::where('status', 1)->get();
@@ -234,8 +237,9 @@ class BillingController extends Controller
         $staffs = \App\Models\Admin::all();
         $signatures = StoreSignature::with('adminEmployee')->where('store_id', $store_id)->where('type', 'invoice')->get();
         $store = Store::where('id',  $store_id)->first();
-        $invoice_prefix = BusinessSetting::where('key', 'admin_invoice_prefix')->first()?->value ?? 'MSM';
-        return view('admin-views.billing.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts', 'store', 'invoice_prefix'));
+        $invoice_prefix   = BusinessSetting::where('key', 'admin_invoice_prefix')->first()?->value ?? 'MSM';
+        $invoice_template = BusinessSetting::where('key', 'admin_invoice_template')->first()?->value ?? 'service_n_manual';
+        return view('admin-views.billing.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts', 'store', 'invoice_prefix', 'invoice_template'));
     }
 
     public function invoice_num_for_date(Request $request)
@@ -262,6 +266,19 @@ class BillingController extends Controller
         Toastr::success('Invoice prefix updated');
         return back();
     }
+
+    public function save_invoice_template(Request $request)
+    {
+        $allowed = ['service_n_manual', 'service_n_manual_new'];
+        $template = in_array($request->invoice_template, $allowed) ? $request->invoice_template : 'service_n_manual';
+        BusinessSetting::updateOrInsert(
+            ['key' => 'admin_invoice_template'],
+            ['value' => $template]
+        );
+        Toastr::success('Invoice template updated');
+        return back();
+    }
+
     public function my_bills(Request $request)
     {
         $storephone = BusinessSetting::where('key', 'phone')->first()?->value;
@@ -311,10 +328,10 @@ class BillingController extends Controller
         $data['tax_rates_tds'] = TaxRate::where('type', 'TDS')->get();
         $staffs = Admin::where('role_id', '!=', 1)->get();
         $data['store_tncs'] = StoreTnc::where('store_id', $store_id)->where('tnc_type', 'invoice')->get();
-        // Keep incrementing until unique 
+        // Keep incrementing until unique
         do {
             $invoice_num = $bill_num['prefix'] . $bill_num['number'];
-            $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+            $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', 0)->where('financial_year', _currentFinancialYear())->exists();
             if ($exists) {
                 $bill_num['number']++;
             }
@@ -324,28 +341,55 @@ class BillingController extends Controller
     }
     public function invoice_delete(Request $request, $type, $invoice_id)
     {
+        // prx($invoice_id);
         if ($type == 'manual') {
-            $invoice = ManualInvoice::where('invoice_id', $invoice_id)->where('generated_by', 'admin')->first();
-            DayBook::where('invoice_id', $invoice->id)->first()?->delete();
+            $invoice = ManualInvoice::where('invoice_id', $invoice_id)->where('vendor_id', 0)->where('generated_by', 'admin')->latest('id')->first();
+            if ($invoice) {
+                DayBook::where('invoice_id', $invoice->id)->first()?->delete();
+            }
         } else if ($type == 'service') {
-            $invoice = ServiceInvoice::where('invoice_id', $invoice_id)->first();
+            $invoice = ServiceInvoice::where('invoice_id', $invoice_id)->where('vendor_id', 0)->latest('id')->first();
         }
         if ($invoice) {
             $invoice->invoiceItems()->delete(); // delete all associated invoice items
             $invoice->delete();
+        } else {
+            Toastr::error('Invoice not found');
+            return back();
         }
 
-        $maxSerial = DB::table('manual_invoices')->where('generated_by', 'admin')->max('invoice_serial');
-        BusinessSetting::updateOrInsert(['key' => 'admin_bill_serial_number'], [
-            'value' => $maxSerial + 1
-        ]);
+        // reset bill serial numner for new invoice generation based on financial year
+        $this->reset_bill_serial_number();
+
         Toastr::success('Invoice Deleted Successfully');
         return back();
     }
+    public function reset_bill_serial_number()
+    {
+        $fySetting = BusinessSetting::firstOrCreate(
+            ['key' => 'admin_bill_fy'],
+            ['value' => '']
+        );
+
+        // Convert "2026-2027" → "26-27" to match invoice_id format
+        $fyShort = $fySetting->value; // "2026-2027"
+
+        $maxSerial = DB::table('manual_invoices')
+            ->where('generated_by', 'admin')
+            ->where('invoice_id', 'LIKE', '%_' . $fyShort . '_%')
+            ->selectRaw('MAX(CAST(SUBSTRING_INDEX(invoice_id, "_", -1) AS UNSIGNED)) as max_serial')
+            ->value('max_serial');
+
+        $nextSerial = ($maxSerial ?? 0) + 1;
+
+        BusinessSetting::updateOrInsert(['key' => 'admin_bill_serial_number'], [
+            'value' => $nextSerial 
+        ]);
+    }
     public function manual_invoice_view(Request $request, $type, $invoice_id)
     {
-        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->first();
-        $quotations = InvoiceItem::where('rand_invoice_id',  $existingInvoice[0]->invoice_id)->get();
+        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->where('vendor_id', 0)->latest('id')->first();
+        $quotations = InvoiceItem::where('manual_invoice_id', $existingInvoice[0]->id)->get();
         if ($request->has('store')) {
             $service_det = Store::find($existingInvoice[0]->bill_to);
             $type = 'store';
@@ -370,8 +414,8 @@ class BillingController extends Controller
     }
     public function invoice_view(Request $request,  $invoice_id)
     {
-        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->first();
-        $quotations = InvoiceItem::where('rand_invoice_id',  $existingInvoice[0]->invoice_id)->get();
+        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->where('vendor_id', 0)->latest('id')->first();
+        $quotations = InvoiceItem::where('manual_invoice_id', $existingInvoice[0]->id)->get();
         $service_det = User::find($existingInvoice[0]->bill_to);
 
         if ($request->has('store')) {
@@ -480,6 +524,7 @@ class BillingController extends Controller
         foreach ($request->item_name as $key => $name) {
             $InvoiceItem = new InvoiceItem();
             $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+            $InvoiceItem->manual_invoice_id = $invoice->id;
             $InvoiceItem->name = $request->item_name[$key];
             $InvoiceItem->qty = $request->item_qty[$key] ?? 1;
             $InvoiceItem->price = $request->item_price[$key];
@@ -492,6 +537,7 @@ class BillingController extends Controller
             foreach ($request->invoice_item_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key] ?? 1;
@@ -518,12 +564,15 @@ class BillingController extends Controller
             'invoice_id' => 'required',
         ]);
 
-        $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->first();
+        $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->latest('id')->first();
 
+        // prx($invoice);
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found.');
         }
-        $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+
+        $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
+        // prx($invoice_items);
         $from = $invoice->vendor_id ? 'vendor' : 'admin';
 
         $totalPrice = 0;
@@ -870,6 +919,40 @@ class BillingController extends Controller
         return redirect()->to($redirect_link);
     }
 
+    public function markPurchasePaid(Request $request, $id)
+    {
+        $invoice = ManualInvoice::find($id);
+        if (!$invoice) {
+            Toastr::error('Invoice not found');
+            return back();
+        }
+        if ($invoice->payment_status === 'Paid') {
+            Toastr::info('Invoice is already marked as Paid');
+            return back();
+        }
+
+        $invoice->payment_status = 'Paid';
+        $invoice->payment_date   = $request->input('payment_date', now()->toDateString());
+        $invoice->save();
+
+        // Update voucher and ledger entries
+        $voucher = StoreVoucher::where('invoice_id', 'manual-' . $invoice->id)->first();
+        if ($voucher) {
+            $voucher->status       = 'approved';
+            $voucher->completed_at = now();
+            $voucher->save();
+
+            StoreLedgerEntry::where('voucher_id', $voucher->id)->each(function ($entry) {
+                $entry->status       = 'approved';
+                $entry->completed_at = now();
+                $entry->save();
+            });
+        }
+
+        Toastr::success('Purchase bill marked as Paid');
+        return back();
+    }
+
     public function edit_service_invoice(Request $request, $invoice_id)
     {
         $invoice = ServiceInvoice::where('id', $invoice_id)->first();
@@ -881,7 +964,7 @@ class BillingController extends Controller
     public function edit(Request $request, $invoice_id)
     {
         $invoice = ManualInvoice::with('storeCustomer')->where('id', $invoice_id)->first();
-        $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+        $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
         $customers = User::where('status', 1)->get();
         return view('admin-views.billing.invoice_edit', compact('customers', 'invoice_items', 'invoice'));
     }
@@ -907,7 +990,7 @@ class BillingController extends Controller
             }
         }
 
-        $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->first();
+        $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->where('vendor_id', 0)->latest('id')->first();
 
         if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
             Storage::disk('public')->delete('invoice/' . $invoice->pdf);
@@ -934,12 +1017,13 @@ class BillingController extends Controller
         }
         $invoice->save();
 
-        $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+        $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
         $invoice_items->each->delete();
 
         foreach ($request->item_name as $key => $name) {
             $InvoiceItem = new InvoiceItem();
             $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+            $InvoiceItem->manual_invoice_id = $invoice->id;
             $InvoiceItem->name = $request->item_name[$key];
             $InvoiceItem->qty = $request->item_qty[$key];
             $InvoiceItem->price = $request->item_price[$key];
@@ -956,6 +1040,7 @@ class BillingController extends Controller
             foreach ($request->item_name_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];
@@ -1017,7 +1102,7 @@ class BillingController extends Controller
             }
         }
 
-        $invoice = ServiceInvoice::where('invoice_id', $request->invoice_id)->first();
+        $invoice = ServiceInvoice::where('invoice_id', $request->invoice_id)->where('vendor_id', 0)->latest('id')->first();
 
         if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
             Storage::disk('public')->delete('invoice/' . $invoice->pdf);
@@ -1037,6 +1122,7 @@ class BillingController extends Controller
             foreach ($request->item_name as $key => $name) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name[$key];
                 $InvoiceItem->qty = $request->item_qty[$key];
                 $InvoiceItem->price = $request->item_price[$key];
@@ -1051,6 +1137,7 @@ class BillingController extends Controller
             foreach ($request->item_name_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];
@@ -1096,7 +1183,11 @@ class BillingController extends Controller
                 Toastr::error('Invoice not found');
             }
         }
-        InvoiceItem::where('rand_invoice_id', $invoice_id)->delete();
+        if ($type == 'service') {
+            InvoiceItem::where('rand_invoice_id', $invoice_id)->delete();
+        } else {
+            InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
+        }
         return redirect()->back();
     }
 
@@ -1202,6 +1293,7 @@ class BillingController extends Controller
         $invoice->bill_to_type = $bill_to_type;
         $invoice->user_type = $user_type;
         $invoice->module_id = 6;
+        $invoice->generated_by = 'admin';
         $invoice->total_amount =  $totalPrice;
         $invoice->tax_type =  $request->tax_type;
         $invoice->payment_method =  $request->payment_mode;
@@ -1224,6 +1316,7 @@ class BillingController extends Controller
             foreach ($request->item_name as $key => $name) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name[$key];
                 $InvoiceItem->qty = $request->item_qty[$key];
                 $InvoiceItem->price = $request->item_price[$key];
@@ -1238,6 +1331,7 @@ class BillingController extends Controller
             foreach ($request->invoice_item_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];
@@ -1477,6 +1571,7 @@ class BillingController extends Controller
         $invoice->user_type = $user_type;
         $invoice->module_id = 6;
         $invoice->tax_type = $request->tax_type;
+        $invoice->generated_by = 'admin';
         $invoice->payment_method = $request->payment_mode;
         $invoice->payment_mode = $request->payment_mode;
         $invoice->invoice_date = $request->invoice_date;
@@ -1534,6 +1629,7 @@ class BillingController extends Controller
 
         foreach ($invoiceItemsToSave as $item) {
             $item->rand_invoice_id = $invoice->invoice_id;
+            $item->manual_invoice_id = $invoice->id;
             $item->save();
         }
 
@@ -1606,7 +1702,118 @@ class BillingController extends Controller
     public function view_invoice(Request $request, $id)
     {
         $invoice = ManualInvoice::find($id);
-        return view('admin-views.billing.view_invoice', compact('invoice'));
+        $invoice_email_settings = json_decode(
+            DataSetting::where('key', 'invoice_email_template')->where('type', 'invoice')->first()?->value ?? '{}',
+            true
+        ) ?? [];
+        return view('admin-views.billing.view_invoice', compact('invoice', 'invoice_email_settings'));
+    }
+
+    public function send_invoice_email(Request $request)
+    {
+        $request->validate([
+            'invoice_id'      => 'required',
+            'email_subject'   => 'required|string',
+            'email_body'      => 'required|string',
+            'requirement_doc' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+        ]);
+
+        $email      = $request->recipient_email;
+        $customerId = $request->customer_id;
+
+        if ($customerId && $request->customer_email_new) {
+            $customer = StoreCustomer::find($customerId);
+            if ($customer) {
+                $customer->email = $request->customer_email_new;
+                $customer->save();
+                $email = $request->customer_email_new;
+            }
+        }
+
+        if (empty($email)) {
+            return response()->json(['success' => false, 'message' => 'Recipient email is required.']);
+        }
+
+        $invoice = ManualInvoice::with('storeCustomer', 'invoiceItems')->find($request->invoice_id);
+        if (!$invoice || !$invoice->pdf) {
+            return response()->json(['success' => false, 'message' => 'Invoice or PDF not found.']);
+        }
+
+        $store_data = Helpers::get_store_data();
+        $selectedCustomer = $customerId ? StoreCustomer::find($customerId) : null;
+        $clientName = $selectedCustomer
+            ? ($selectedCustomer->f_name . ' ' . ($selectedCustomer->l_name ?? ''))
+            : ($invoice->storeCustomer ? ($invoice->storeCustomer->f_name . ' ' . $invoice->storeCustomer->l_name) : 'Customer');
+
+        $greeting   = str_replace(['{client_name}', '{invoice_id}'], [$clientName, $invoice->invoice_id], $request->email_greeting ?? 'Dear Customer,');
+        $body       = str_replace(['{client_name}', '{invoice_id}'], [$clientName, $invoice->invoice_id], $request->email_body);
+        $themeColor = $request->theme_color ?? '#a51d1d';
+        $templateId = in_array($request->email_template, ['1', '2', '3']) ? $request->email_template : '1';
+
+        $items = $invoice->invoiceItems;
+
+        $logo      = BusinessSetting::where('key', 'logo')->first();
+        $storeLogo = $logo ? asset('storage/business/' . $logo->value) : '';
+
+        $templateView = $templateId == '1' ? 'email-templates.quotation_email'
+            : 'email-templates.quotation_email_' . $templateId;
+
+        $emailHtml = view($templateView, [
+            'theme_color'    => $themeColor,
+            'store_name'     => $store_data->name,
+            'store_logo'     => $storeLogo,
+            'email_subject'  => $request->email_subject,
+            'greeting'       => $greeting,
+            'body'           => $body,
+            'footer_text'    => $request->email_footer ?? 'Thank you for your business!',
+            'quotation_id'   => $invoice->invoice_id,
+            'quotation_date' => $invoice->invoice_date ? date('d M Y', strtotime($invoice->invoice_date)) : date('d M Y'),
+            'items'          => $items,
+            'total_amount'   => $invoice->total_amount,
+        ])->render();
+
+        $pdfPath    = storage_path('app/public/invoice/' . $invoice->pdf);
+        $reqDocPath = null;
+        $reqDocName = null;
+        if ($request->hasFile('requirement_doc')) {
+            $file       = $request->file('requirement_doc');
+            $reqDocPath = $file->getPathname();
+            $reqDocName = $file->getClientOriginalName();
+        }
+
+        try {
+            Mail::send([], [], function ($message) use ($email, $request, $emailHtml, $pdfPath, $invoice, $reqDocPath, $reqDocName) {
+                $message->to($email)
+                    ->subject($request->email_subject)
+                    ->html($emailHtml);
+                if (file_exists($pdfPath)) {
+                    $message->attach($pdfPath, [
+                        'as'   => 'Invoice_' . $invoice->invoice_id . '.pdf',
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+                if ($reqDocPath && file_exists($reqDocPath)) {
+                    $message->attach($reqDocPath, ['as' => $reqDocName]);
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send email: ' . $e->getMessage()]);
+        }
+
+        if ($request->save_as_default) {
+            DataSetting::updateOrCreate(
+                ['key' => 'invoice_email_template', 'type' => 'invoice'],
+                ['value' => json_encode([
+                    'theme_color'    => $themeColor,
+                    'email_template' => $templateId,
+                    'greeting'       => $request->email_greeting,
+                    'body'           => $request->email_body,
+                    'footer'         => $request->email_footer,
+                ])]
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Invoice email sent successfully!']);
     }
 
     public function get_invoices_by_vendor(Request $request)
@@ -1650,7 +1857,7 @@ class BillingController extends Controller
             return back();
         }
 
-        $exists = ManualInvoice::where("invoice_id", $request->invoice_id)->exists();
+        $exists = ManualInvoice::where("invoice_id", $request->invoice_id)->where('vendor_id', 0)->where('financial_year', _currentFinancialYear())->exists();
         if ($exists) {
             Toastr::error('Invoice Id Already Exists');
             return back();
@@ -1687,9 +1894,10 @@ class BillingController extends Controller
             'reminder_freq' => $request->reminder_freq,
             'reminder_freq_unit' => $request->reminder_freq_unit,
             'items' => $items,
+            'generated_by' => 'admin',
             'file' => $request->file('file'),
         ];
-// prx($request->all());
+        // prx($request->all());
         $invoiceData = $this->processInvoice($data, true);
 
         if ($invoiceData != 'store_not_found') {
@@ -1698,15 +1906,14 @@ class BillingController extends Controller
                 $totalPrice += _taxIncludedPrice($item['price'], $item['tax'], 'actual') * $item['qty'];
             }
 
-            if($request->bill_from_type == 'store'){
+            if ($request->bill_from_type == 'store') {
                 $customer = Store::find($bill_from_id);
                 $debit_account = Helpers::ensurePurchaseAccount('Purchase Bill');
                 $credit_account = Helpers::ensureAdminDefaultExpensesAccount($customer);
-            }else{
+            } else {
                 $customer = StoreCustomer::find($bill_from_id);
                 $debit_account = Helpers::ensurePurchaseAccount('Purchase Bill');
                 $credit_account = Helpers::ensureCustomerLedger($customer);
-
             }
             $data = [
                 'date' => now(),
@@ -1828,7 +2035,7 @@ class BillingController extends Controller
         if ($data['vendor_type'] === 'vendor') {
             $store = StoreCustomer::where('store_id', 0)->find($id);
             $from = 'store_vendor';
-        }else{
+        } else {
             $store = Store::withoutGlobalScopes()->where('status', 1)->find($id);
             $from = 'vendor';
         }
@@ -1838,14 +2045,15 @@ class BillingController extends Controller
         $invoice = new ManualInvoice;
         $invoice->invoice_id = $data['invoice_id'] ?? '';
         $invoice->bill_to =  0;
-        if($data['vendor_type'] == 'store'){
+        if ($data['vendor_type'] == 'store') {
             $invoice->vendor_id = $data['store_vendor_id'];
-        }else{
+        } else {
             $invoice->store_vendor_id = $data['store_vendor_id'];
         }
         $invoice->bill_to_type = $data['bill_to_type'] ?? 'vendor';
         $invoice->user_type = 'store_vendor';
         $invoice->module_id = 6;
+        $invoice->generated_by = 'admin';
         $invoice->total_amount = round($totalPrice);
         $invoice->tax_type = $data['tax_type'];
         $invoice->payment_method = 'Cash';
@@ -1865,6 +2073,7 @@ class BillingController extends Controller
         foreach ($data['items'] as $item) {
             $InvoiceItem = new InvoiceItem();
             $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+            $InvoiceItem->manual_invoice_id = $invoice->id;
             $InvoiceItem->name = $item['name'] ?? '';
             $InvoiceItem->price = $item['price'] ?? 0;
             $InvoiceItem->qty = $item['qty'] ?? 1;

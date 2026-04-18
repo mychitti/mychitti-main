@@ -12,7 +12,8 @@ class StoreConfig extends Model
     protected $fillable = [
         'token_prefix',
         'pos_token_template',
-        'store_id', 
+        'invoice_template',
+        'store_id',
         'jurisdiction_statement', 
         'signature', 
         'invoice_sign_status',

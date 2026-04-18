@@ -329,7 +329,12 @@ class BusinessSettingsController extends Controller
             'value' => $request['product_gallery']
         ]);
 
-
+        BusinessSetting::updateOrInsert(['key' => 'platform_fee_subscribed'], [
+            'value' => $request['platform_fee_subscribed'] ?? 0
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'platform_fee_unsubscribed'], [
+            'value' => $request['platform_fee_unsubscribed'] ?? 0
+        ]);
 
         Toastr::success(translate('messages.successfully_updated_to_changes_restart_app'));
         return back();
@@ -766,21 +771,6 @@ class BusinessSettingsController extends Controller
             'value' => $request['admin_comission_in_delivery_charge']
         ]);
 
-        DB::table('business_settings')->updateOrInsert(['key' => 'wallet_recharge_hsn'], [
-            'value' => $request['wallet_recharge_hsn']
-        ]);
-
-        DB::table('business_settings')->updateOrInsert(['key' => 'wallet_recharge_gst_percent'], [
-            'value' => $request['wallet_recharge_gst_percent']
-        ]);
-
-        DB::table('business_settings')->updateOrInsert(['key' => 'wallet_recharge_gst_status'], [
-            'value' => $request['wallet_recharge_gst_status'] 
-        ]);
-
-        DB::table('business_settings')->updateOrInsert(['key' => 'wallet_min_balance'], [
-            'value' => $request['wallet_min_balance'] ?? 100
-        ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'meta_description'], [
             'value' => $request['meta_description']
@@ -6927,6 +6917,20 @@ class BusinessSettingsController extends Controller
     {
         StoreTnc::find($id)->delete();
         Toastr::success('Deleted Successfully');
+        return back();
+    }
+
+    public function tnc_set_default(Request $request, $id)
+    {
+        $tnc = StoreTnc::findOrFail($id);
+        // Clear default on all TnCs of the same type and store
+        StoreTnc::where('store_id', $tnc->store_id)
+            ->where('tnc_type', $tnc->tnc_type)
+            ->update(['is_default' => 0]);
+        // Set this one as default
+        $tnc->is_default = 1;
+        $tnc->save();
+        Toastr::success('Default TnC updated');
         return back();
     }
     public function tnc_update(Request $request)

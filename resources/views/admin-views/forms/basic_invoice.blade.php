@@ -329,9 +329,9 @@
         </div>
     </div>
 
-    <div class="col-12 d-flex flex-column align-items-end justify-content-end">
+    <div  class="col-12 d-flex flex-column align-items-end justify-content-end">
         @if(isset($tncs) && $tncs->count() > 0)
-        <div class="w-100 mb-2">
+        <div class="w-100 mb-2" style="visibility:hidden">
             <label class="form-check-label mb-1 small"><strong>Default Terms & Conditions</strong></label>
             <select name="tnc_id" id="tncSelect" class="form-control form-control-sm">
                 <option value="">-- None --</option>

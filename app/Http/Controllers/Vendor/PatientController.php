@@ -38,6 +38,37 @@ class PatientController extends Controller
         return view('vendor-views.patient.list', compact('patients', 'search'));
     }
 
+    public function export(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+        $search   = $request->search;
+
+        $patients = Patient::where('store_id', $store_id)
+            ->when($search, fn($q) => $q->where(fn($q2) => $q2
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('patient_uid', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")))
+            ->latest()->get();
+
+        $headings = ['UID', 'Name', 'Phone', 'Email', 'Gender', 'DOB', 'Blood Group', 'Registered On'];
+        $data = $patients->map(fn($p) => [
+            $p->patient_uid,
+            $p->name,
+            $p->phone,
+            $p->email,
+            $p->gender,
+            $p->dob,
+            $p->blood_group,
+            $p->created_at->format('d M Y'),
+        ])->toArray();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($data, $headings),
+            'patients_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
     public function save(Request $request)
     {
         $request->validate([
@@ -134,7 +165,40 @@ class PatientController extends Controller
             ->with('medicalHistory', 'documents')
             ->findOrFail($id);
 
-        return view('vendor-views.patient.view', compact('patient'));
+        $appointments = \App\Models\Appointment::where('store_id', $store_id)
+            ->where('patient_id', $id)
+            ->with('doctorProfile.employee')
+            ->orderByDesc('appointment_date')
+            ->get();
+
+        $opdVisits = \App\Models\OpdVisit::where('store_id', $store_id)
+            ->where('patient_id', $id)
+            ->with('doctorProfile.employee')
+            ->orderByDesc('visit_date')
+            ->get();
+
+        $ipdAdmissions = \App\Models\IpdAdmission::where('store_id', $store_id)
+            ->where('patient_id', $id)
+            ->with(['ward', 'bed', 'doctorProfile.employee'])
+            ->orderByDesc('admission_date')
+            ->get();
+
+        $prescriptions = \App\Models\Prescription::where('store_id', $store_id)
+            ->where('patient_id', $id)
+            ->with('doctorProfile.employee')
+            ->withCount('items')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $consents = \App\Models\PatientConsent::where('store_id', $store_id)
+            ->where('patient_id', $id)
+            ->with('admission')
+            ->orderByDesc('signed_at')
+            ->get();
+
+        return view('vendor-views.patient.view', compact(
+            'patient', 'appointments', 'opdVisits', 'ipdAdmissions', 'prescriptions', 'consents'
+        ));
     }
 
     public function edit($id)
@@ -215,6 +279,44 @@ class PatientController extends Controller
     {
         Toastr::info('Excel import coming soon');
         return back();
+    }
+
+    // ── Quick-create patient via AJAX (modal) ──────────────────────────
+    public function quickSave(Request $request)
+    {
+        $request->validate([
+            'name'  => 'required|string|max:150',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+
+        DB::beginTransaction();
+        try {
+            $patient             = new Patient();
+            $patient->store_id   = $store_id;
+            $patient->patient_uid = $this->generateUid($store_id);
+            $patient->name       = $request->name;
+            $patient->phone      = $request->phone;
+            $patient->address    = $request->address;
+            $patient->created_by = auth('vendor_employee')->id() ?? auth('vendor')->id();
+            $patient->save();
+
+            PatientMedicalHistory::create(['patient_id' => $patient->id]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'patient' => [
+                'id'   => $patient->id,
+                'text' => $patient->name . ' (' . $patient->patient_uid . ')',
+            ],
+        ]);
     }
 
     private function generateUid(int $store_id): string

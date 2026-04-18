@@ -20,6 +20,7 @@ use DateTime;
 use App\Traits\Payment;
 use App\Library\Payment as PaymentInfo;
 use App\Library\Receiver;
+use App\Models\HospitalBedTier;
 use App\Models\Store;
 use App\Models\StoreConfig;
 use App\Models\SubModule;
@@ -126,6 +127,7 @@ class ProfileController extends Controller
     }
     public function buy_module(Request $request)
     {
+        // prx($request->all());
         $request->validate([
             'selected_modules' => 'required'
         ]);
@@ -151,7 +153,12 @@ class ProfileController extends Controller
             $ids[] = $module->id;
 
             $months = (int) $item['months'];
-            $basePrice = $module->price_per_month * $months;
+            if ($module->Key == 'hospital_manage') {
+                 $bedTierPrice = HospitalBedTier::where('id', $request->bed_tier_id)->first()?->price_monthly ?? $module->price_per_month; 
+                $basePrice = $bedTierPrice * $months;
+            } else {
+                $basePrice = $module->price_per_month * $months;
+            }
 
             $discountPercent = SubModuleDiscount::where('sub_module_id', $module->id)
                 ->whereHas('duration', fn($q) => $q->where('months', $months))
@@ -171,6 +178,7 @@ class ProfileController extends Controller
                 'duration_type' => 'Months',
                 'plan_expiry' => $expiryDate,
                 'purchased_at' => $finalPrice,
+                'bed_tier_id' => $request->bed_tier_id,
                 'created_at' => now()
             ];
         }
@@ -179,13 +187,13 @@ class ProfileController extends Controller
         DB::table('temp_module_purchases')->insert($finalData);
 
         // Apply GST to payment amount
-        $gstSettings = _planGstSettings(); 
+        $gstSettings = _planGstSettings();
         $gstPercent = floatval($gstSettings['gst_percent'] ?? 0);
         $gstMode = $gstSettings['gst_mode'] ?? 'exclude';
         $paymentAmount = $grandTotal;
         if ($gstPercent > 0 && $gstMode === 'exclude') {
             $paymentAmount = $grandTotal + ($grandTotal * $gstPercent / 100);
-        } 
+        }
 
         $vendor =  Vendor::find(Helpers::get_vendor_id());
         $payer = new Payer($vendor['f_name'] . ' ' . $vendor['l_name'], $vendor['email'], $vendor['phone'], '');
@@ -213,7 +221,7 @@ class ProfileController extends Controller
             payment_amount: $paymentAmount,
             external_redirect_link: $external_redirect_link,
             attribute: 'store_subscription',
-            attribute_id: implode(',', $ids), 
+            attribute_id: implode(',', $ids),
         );
 
         $receiver_info = new Receiver('Admin', 'example.png');
@@ -305,7 +313,7 @@ class ProfileController extends Controller
     //     return back();
     // }
     public function buyModule($vendorId = NULL, $module_ids = NULL)
-    { 
+    {
         $invoiceTotalAmount = 0;
         $invoice_items = [];
         // prx($module_ids);
@@ -352,6 +360,7 @@ class ProfileController extends Controller
             $subscription->permitted_modules = $permitted_modules;
             $subscription->plan_expiry = $expDate;
             $subscription->purchased_at = $tempPurchase->purchased_at;
+            $subscription->bed_tier_id = $tempPurchase->bed_tier_id;
             $subscription->created_at = date('Y-m-d H:i:s');
 
             $subscription->save();
@@ -362,7 +371,7 @@ class ProfileController extends Controller
                 'price' => $subscription->purchased_at,
                 'hsn' => '',
                 'tax' => 0
-            ]; 
+            ];
             $invoiceTotalAmount += $tempPurchase->purchased_at;
             if ($tempPurchase) {
                 $tempPurchase->delete();
@@ -375,12 +384,12 @@ class ProfileController extends Controller
         $gstMode = $gstSettings['gst_mode'] ?? 'exclude';
         $hsnCode = $gstSettings['hsn'] ?? '';
 
-        $taxableAmount = $invoiceTotalAmount; 
-        $gstAmount = 0; 
+        $taxableAmount = $invoiceTotalAmount;
+        $gstAmount = 0;
 
         if ($gstPercent > 0) {
             if ($gstMode === 'exclude') {
-                $gstAmount = ($taxableAmount * $gstPercent) / 100; 
+                $gstAmount = ($taxableAmount * $gstPercent) / 100;
             } else {
                 $gstAmount = $taxableAmount - ($taxableAmount * 100) / (100 + $gstPercent);
                 $taxableAmount = $invoiceTotalAmount - $gstAmount;
@@ -710,15 +719,28 @@ class ProfileController extends Controller
                     ->orWhere('store_id', $storeId);
             })
             ->get();
-        // prx($allPlans);
         $features = DB::table('subscription_modules')->where('status', 1)->get();
         $StoreConfig = StoreConfig::where('store_id', $storeId)->first();
         $sub_modules = SubModule::all();
         $subscriptions = VendorSubscription::with('plan')->where('vendor_id', $storeId)
             ->where('plan_expiry', '>', now())->get();
-        // prx($subscriptions);
 
-        return view('vendor-views.subscriptions.index', compact('allPlans', 'StoreConfig', 'features', 'sub_modules', 'subscriptions'));
+        // For hospital stores, pre-select tier from active subscription or bed_count
+        $store = \App\Models\Store::find($storeId);
+        $bedTier = null;
+        if ($store && $store->module_id == 6) {
+            // Try active subscription tier first
+            $activeSub = $subscriptions->whereNotNull('bed_tier_id')->first();
+            if ($activeSub) {
+                $bedTier = \App\Models\HospitalBedTier::find($activeSub->bed_tier_id);
+            }
+            // Fallback to bed_count match
+            if (!$bedTier && $store->bed_count > 0) {
+                $bedTier = \App\Models\HospitalBedTier::forBedCount($store->bed_count);
+            }
+        }
+
+        return view('vendor-views.subscriptions.index', compact('allPlans', 'StoreConfig', 'features', 'sub_modules', 'subscriptions', 'bedTier', 'store'));
     }
     public function staff_change_password(Request $request)
     {

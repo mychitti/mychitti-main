@@ -614,7 +614,8 @@
                         <div class="team-members">
                             @foreach ($staff as $key => $value)
                                 @break($key > 7)
-                                <div class="team-member d-flex justify-content-between">
+                                <div class="team-member d-flex justify-content-between employee-row" style="cursor:pointer"
+                                    @if(hasPermission('staff_manage', 'view')) data-href="{{ route('admin.employee.view', [$value->id]) }}" @endif>
                                     <div class="d-flex justify-content-start">
                                         <div class="member-avatar mr-2">
                                           <a type="button" data-toggle="modal"
@@ -1017,6 +1018,13 @@
                     }
                 },
                 plugins: [ChartDataLabels]
+            });
+        </script>
+        <script>
+            $(document).on('click', '.employee-row', function(e) {
+                if ($(e.target).closest('a, button, .btn--container, [data-toggle="modal"]').length) return;
+                var href = $(this).data('href');
+                if (href) window.location.href = href;
             });
         </script>
     @endpush

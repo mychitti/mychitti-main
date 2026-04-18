@@ -56,6 +56,14 @@
                     </li>
                 
                     @include('admin-views/partials/billing_nav')
+                    
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('pricing*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.pricing.index') }}" title="Pricing">
+                            <i class="tio-dollar-outlined nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Pricing</span>
+                        </a>
+                    </li>
                     @include('admin-views/partials/account_nav')
                     @include('admin-views/partials/hr_nav')
                     @include('admin-views/partials/inventory_nav')
@@ -614,15 +622,7 @@
                             </span>
                         </a>
                     </li>
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('webpage-templates*') ? 'show active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('admin.webpage-templates.index') }}" title="Webpage Templates">
-                            <i class="tio-layout nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Webpage Templates
-                            </span>
-                        </a>
-                    </li>
+                   
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('suspicious-activity*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('admin.suspicious.index') }}" title="Suspicious Activity">
@@ -720,12 +720,13 @@
                                 <span class="text-truncate"> Subscription Requests</span>
                             </a>
                         </li>
-                        <li class="nav-item {{ Request::is('plan/module-pricing') ? 'active' : '' }}">
-                            <a class="nav-link " href="{{ route('admin.plan.module-pricing') }}" title="Module Pricing">
-                                <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate">Module Pricing</span>
-                            </a>
-                        </li>
+                        <li class="nav-item {{ Request::is('plan/hospital-bed-tiers') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.plan.hospital-bed-tiers') }}" title="Hospital Bed Pricing">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Hospital Bed Pricing</span>
+                                </a>
+                            </li>
+                       
                     </ul>
                 </li> 
                 @endif

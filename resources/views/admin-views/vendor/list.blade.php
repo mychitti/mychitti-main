@@ -1,16 +1,19 @@
 @extends('layouts.admin.app')
 
-@section('title', (Config::get('module.current_module_id') == 8 ? 'Hospital' : translate('messages.store')) . ' ' . translate('List'))
+@section('title', (Config::get('module.current_module_id') == 8 ? 'Hospital' : translate('messages.store')) . ' ' .
+    translate('List'))
 
-@push('css_or_js')
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-@endpush
+    @push('css_or_js')
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+    @endpush
 
 @section('content')
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> {{Config::get('module.current_module_id') == 8 ? 'Hospitals' : translate('messages.stores')}} <span class="badge badge-soft-dark ml-2" id="itemCount">{{$stores->total()}}</span></h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>
+                {{ Config::get('module.current_module_id') == 8 ? 'Hospitals' : translate('messages.stores') }} <span
+                    class="badge badge-soft-dark ml-2" id="itemCount">{{ $stores->total() }}</span></h1>
             <div class="page-header-select-wrapper">
             </div>
         </div>
@@ -21,41 +24,56 @@
         <div class="row g-3 mb-3">
             <div class="col-xl-3 col-sm-6">
                 <div class="resturant-card card--bg-1">
-                    @php($total_store = \App\Models\Store::whereHas('vendor', function($query){
-                        return $query->where('status', 1);
-                    })->where('module_id', Config::get('module.current_module_id'))->count())
+                    @php(
+    $total_store = \App\Models\Store::whereHas('vendor', function ($query) {
+        return $query->where('status', 1);
+    })->where('module_id', Config::get('module.current_module_id'))->count()
+)
                     @php($total_store = isset($total_store) ? $total_store : 0)
-                    <h4 class="title">{{$total_store}}</h4>
-                    <span class="subtitle">{{translate('messages.total')}} {{Config::get('module.vendor_role')}} Stores</span>
-                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/total-store.png')}}" alt="store">
+                    <h4 class="title">{{ $total_store }}</h4>
+                    <span class="subtitle">{{ translate('messages.total') }} {{ Config::get('module.vendor_role') }}
+                        Stores</span>
+                    <img class="resturant-icon" src="{{ asset('/public/assets/admin/img/total-store.png') }}"
+                        alt="store">
                 </div>
             </div>
             <div class="col-xl-3 col-sm-6">
                 <div class="resturant-card card--bg-2">
-                    @php($active_stores = \App\Models\Store::where(['status'=>1])->where('module_id', Config::get('module.current_module_id'))->count())
+                    @php(
+    $active_stores = \App\Models\Store::where(['status' => 1])->where('module_id', Config::get('module.current_module_id'))->count()
+)
                     @php($active_stores = isset($active_stores) ? $active_stores : 0)
-                    <h4 class="title">{{$active_stores}}</h4>
-                    <span class="subtitle">{{translate('messages.active')}} {{Config::get('module.vendor_role')}} Stores</span>
-                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/active-store.png')}}" alt="store">
+                    <h4 class="title">{{ $active_stores }}</h4>
+                    <span class="subtitle">{{ translate('messages.active') }} {{ Config::get('module.vendor_role') }}
+                        Stores</span>
+                    <img class="resturant-icon" src="{{ asset('/public/assets/admin/img/active-store.png') }}"
+                        alt="store">
                 </div>
             </div>
             <div class="col-xl-3 col-sm-6">
                 <div class="resturant-card card--bg-3">
-                    @php($inactive_stores = \App\Models\Store::whereHas('vendor', function($query){
-                        return $query->where('status', 1);
-                    })->where(['status'=>0])->where('module_id', Config::get('module.current_module_id'))->count())
+                    @php(
+    $inactive_stores = \App\Models\Store::whereHas('vendor', function ($query) {
+        return $query->where('status', 1);
+    })->where(['status' => 0])->where('module_id', Config::get('module.current_module_id'))->count()
+)
                     @php($inactive_stores = isset($inactive_stores) ? $inactive_stores : 0)
-                    <h4 class="title">{{$inactive_stores}}</h4>
-                    <span class="subtitle">{{translate('messages.inactive')}} {{Config::get('module.vendor_role')}} Stores</span>
-                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/close-store.png')}}" alt="store">
+                    <h4 class="title">{{ $inactive_stores }}</h4>
+                    <span class="subtitle">{{ translate('messages.inactive') }} {{ Config::get('module.vendor_role') }}
+                        Stores</span>
+                    <img class="resturant-icon" src="{{ asset('/public/assets/admin/img/close-store.png') }}"
+                        alt="store">
                 </div>
             </div>
             <div class="col-xl-3 col-sm-6">
                 <div class="resturant-card card--bg-4">
-                    @php($data = \App\Models\Store::where('created_at', '>=', now()->subDays(30)->toDateTimeString())->where('module_id', Config::get('module.current_module_id'))->count())
-                    <h4 class="title">{{$data}}</h4>
-                    <span class="subtitle">{{translate('messages.newly_joined')}} {{Config::get('module.vendor_role')}} Stores</span>
-                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/add-store.png')}}" alt="store">
+                    @php(
+    $data = \App\Models\Store::where('created_at', '>=', now()->subDays(30)->toDateTimeString())->where('module_id', Config::get('module.current_module_id'))->count()
+)
+                    <h4 class="title">{{ $data }}</h4>
+                    <span class="subtitle">{{ translate('messages.newly_joined') }}
+                        {{ Config::get('module.vendor_role') }} Stores</span>
+                    <img class="resturant-icon" src="{{ asset('/public/assets/admin/img/add-store.png') }}" alt="store">
                 </div>
             </div>
         </div>
@@ -67,7 +85,7 @@
                 <div>
                     @php($total_transaction = \App\Models\OrderTransaction::where('module_id', Config::get('module.current_module_id'))->count())
                     @php($total_transaction = isset($total_transaction) ? $total_transaction : 0)
-                    <span>{{translate('messages.total_transactions')}}</span> <strong>{{$total_transaction}}</strong>
+                    <span>{{ translate('messages.total_transactions') }}</span> <strong>{{ $total_transaction }}</strong>
                 </div>
             </li>
             <li class="seperator"></li>
@@ -76,16 +94,18 @@
                 <div>
                     @php($comission_earned = \App\Models\AdminWallet::sum('total_commission_earning'))
                     @php($comission_earned = isset($comission_earned) ? $comission_earned : 0)
-                    <span>{{translate('messages.commission_earned')}}</span> <strong>{{\App\CentralLogics\Helpers::format_currency($comission_earned)}}</strong>
+                    <span>{{ translate('messages.commission_earned') }}</span>
+                    <strong>{{ \App\CentralLogics\Helpers::format_currency($comission_earned) }}</strong>
                 </div>
             </li>
             <li class="seperator"></li>
             <li class="text--danger">
                 <i class="tio-atm"></i>
                 <div>
-                    @php($store_withdraws = \App\Models\WithdrawRequest::where(['approved'=>1])->sum('amount'))
+                    @php($store_withdraws = \App\Models\WithdrawRequest::where(['approved' => 1])->sum('amount'))
                     @php($store_withdraws = isset($store_withdraws) ? $store_withdraws : 0)
-                    <span>Total {{Config::get('module.vendor_role')}} Withdraws</span> <strong>{{\App\CentralLogics\Helpers::format_currency($store_withdraws)}}</strong>
+                    <span>Total {{ Config::get('module.vendor_role') }} Withdraws</span>
+                    <strong>{{ \App\CentralLogics\Helpers::format_currency($store_withdraws) }}</strong>
                 </div>
             </li>
         </ul>
@@ -96,49 +116,58 @@
             <!-- Header -->
             <div class="card-header py-2">
                 <div class="search--button-wrapper">
-                    <h5 class="card-title"> {{Config::get('module.vendor_role')}} {{translate('messages.list')}}</h5>
+                    <h5 class="card-title"> {{ Config::get('module.vendor_role') }} {{ translate('messages.list') }}</h5>
 
-                @if(!isset(auth('admin')->user()->zone_id))
-                <div class="select-item min--280">
-                    <select name="zone_id" class="form-control js-select2-custom set-filter" data-url="{{url()->full()}}" data-filter="zone_id">
-                        <option value="" {{!request('zone_id')?'selected':''}}>{{ translate('messages.All_Zones') }}</option>
-                        @foreach(\App\Models\Zone::orderBy('name')->get() as $z)
-                            <option
-                                value="{{$z['id']}}" {{isset($zone) && $zone->id == $z['id']?'selected':''}}>
-                                {{$z['name']}}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                @endif
-                 <form  class="search-form">
-                        <select onchange="this.form.submit()" data-placeholder="Added By" class="form-control js-select2-custom" name="created_by" id=""  >
-                        <option value=""></option>
-                        <option value="all">All</option>
-                        @foreach($adminStaff as $key => $value)
-                            <option {{ request()?->created_by == $value->id ? 'selected' : '' }} value="{{$value->id}}">{{$value->f_name . ' '  . $value->l_name. ' #' .$value->id}} </option>
-                        @endforeach
+
+                    <form class="search-form search-form d-flex gap-2 align-items-center">
+                        @if (!isset(auth('admin')->user()->zone_id))
+                            <div class="select-item min--280">
+                                <select name="zone_id" class="form-control js-select2-custom set-filter"
+                                    data-url="{{ url()->full() }}" data-filter="zone_id">
+                                    <option value="" {{ !request('zone_id') ? 'selected' : '' }}>
+                                        {{ translate('messages.All_Zones') }}</option>
+                                    @foreach (\App\Models\Zone::orderBy('name')->get() as $z)
+                                        <option value="{{ $z['id'] }}"
+                                            {{ isset($zone) && $zone->id == $z['id'] ? 'selected' : '' }}>
+                                            {{ $z['name'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                        <select onchange="this.form.submit()" data-placeholder="Added By"
+                            class="form-control js-select2-custom" name="created_by" id="">
+                            <option value=""></option>
+                            <option value="all">All</option>
+                            @foreach ($adminStaff as $key => $value)
+                                <option {{ request()?->created_by == $value->id ? 'selected' : '' }}
+                                    value="{{ $value->id }}">
+                                    {{ $value->f_name . ' ' . $value->l_name . ' #' . $value->id }} </option>
+                            @endforeach
                         </select>
-                    </form>
-                    <form class="search-form">
-                                    <!-- Search -->
+
+                        <!-- Search -->
                         <div class="input-group input--group">
-                            <input id="datatableSearch_" type="search" value="{{ request()?->search ?? null }}" name="search" class="form-control"
-                                    placeholder="Search {{Config::get('module.vendor_role')}} Name or Phone" aria-label="{{translate('messages.search')}}" >
+                            <input id="datatableSearch_" type="search" value="{{ request()?->search ?? null }}"
+                                name="search" class="form-control"
+                                placeholder="Search {{ Config::get('module.vendor_role') }} Name or Phone"
+                                aria-label="{{ translate('messages.search') }}">
                             <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
 
                         </div>
                         <!-- End Search -->
                     </form>
-                    @if(request()->get('search'))
-                    <button type="reset" class="btn btn--primary ml-2 location-reload-to-base" data-url="{{url()->full()}}">{{translate('messages.reset')}}</button>
+                    @if (request()->get('search'))
+                        <button type="reset" class="btn btn--primary ml-2 location-reload-to-base"
+                            data-url="{{ url()->full() }}">{{ translate('messages.reset') }}</button>
                     @endif
 
                     <button type="button" data-toggle="modal" data-target="#importStoreModal"
-                                            class="btn btn-outline-primary">Import</button>
-                                     <!-- Unfold -->
+                        class="btn btn-outline-primary">Import</button>
+                    <!-- Unfold -->
                     <div class="hs-unfold mr-2">
-                        <a class="js-hs-unfold-invoker btn btn-sm btn-white dropdown-toggle min-height-40" href="javascript:;"
+                        <a class="js-hs-unfold-invoker btn btn-sm btn-white dropdown-toggle min-height-40"
+                            href="javascript:;"
                             data-hs-unfold-options='{
                                     "target": "#usersExportDropdown",
                                     "type": "css-animation"
@@ -149,7 +178,8 @@
                         <div id="usersExportDropdown"
                             class="hs-unfold-content dropdown-unfold dropdown-menu dropdown-menu-sm-right">
                             <span class="dropdown-header">{{ translate('messages.download_options') }}</span>
-                            <a id="export-excel" class="dropdown-item" href="{{route('admin.store.export', ['type'=>'excel',request()->getQueryString()])}}">
+                            <a id="export-excel" class="dropdown-item"
+                                href="{{ route('admin.store.export', ['type' => 'excel', request()->getQueryString()]) }}">
                                 <img class="avatar avatar-xss avatar-4by3 mr-2"
                                     src="{{ asset('public/assets/admin') }}/svg/components/excel.svg"
                                     alt="Image Description">
@@ -164,274 +194,300 @@
                         </div>
                     </div>
                     <!-- End Unfold -->
-                </div>   
-           
-            </div> <div class="card-header py-2">
+                </div>
 
-              <span><a href="" class="btn btn-outline-success"><b>Total:</b> {{ $stores->total() }}</a>  <a class="btn btn-outline-danger " href="javascript:;" id="showDuplicatesBtn" >Duplicates : {{ $duplicateCount }}</a> </span>
+            </div>
+            <div class="card-header py-2">
+
+                <span><a href="" class="btn btn-outline-success"><b>Total:</b> {{ $stores->total() }}</a> <a
+                        class="btn btn-outline-danger " href="javascript:;" id="showDuplicatesBtn">Duplicates :
+                        {{ $duplicateCount }}</a> </span>
             </div>
             <!-- End Header -->
 
             <!-- Table -->
             <div class="table-responsive datatable-custom">
                 <table id="columnSearchDatatable"
-                        class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
-                        data-hs-datatables-options='{
+                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                    data-hs-datatables-options='{
                             "order": [],
                             "orderCellsTop": true,
                             "paging":false
 
                         }'>
                     <thead class="thead-light">
-                    <tr>
-                        <th class="border-0">{{translate('sl')}}</th>
-                        <th class="border-0">{{Config::get('module.vendor_role')}} {{translate('messages.information')}}</th>
-                        <th>Created By</th>
-                        <th class="border-0">{{translate('messages.owner_information')}}</th>
-                        <th class="border-0">{{translate('messages.zone')}}</th>
-                        <th class="text-uppercase border-0">{{translate('messages.featured')}}</th>
-                        <th class="text-uppercase border-0">{{translate('messages.status')}}</th>
-                        <th class="text-uppercase border-0">{{translate('messages.added_at')}}</th>
-                        <th class="text-center border-0">{{translate('messages.action')}}</th>
-                    </tr>
+                        <tr>
+                            <th class="border-0">{{ translate('sl') }}</th>
+                            <th class="border-0">{{ Config::get('module.vendor_role') }}
+                                {{ translate('messages.information') }}</th>
+                            <th>Created By</th>
+                            <th class="border-0">{{ translate('messages.owner_information') }}</th>
+                            <th class="border-0">{{ translate('messages.zone') }}</th>
+                            <th class="text-uppercase border-0">{{ translate('messages.featured') }}</th>
+                            <th class="text-uppercase border-0">{{ translate('messages.status') }}</th>
+                            <th class="text-uppercase border-0">{{ translate('messages.added_at') }}</th>
+                            <th class="text-center border-0">{{ translate('messages.action') }}</th>
+                        </tr>
                     </thead>
 
                     <tbody id="set-rows">
-                    @foreach($stores as $key=>$store)
-                        <tr>
-                            <td>{{$key+$stores->firstItem()}}</td>
-                            <td>
-                                <div>
-                                    <a href="{{ hasPermission('store', 'view') ? route('admin.store.view', $store->id) : '#' }}" class="table-rest-info" alt="view store">
-                                    <img class="img--60 circle onerror-image" data-onerror-image="{{asset('public/assets/admin/img/160x160/img1.jpg')}}"
-
-                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                                $store['logo'] ?? '',
-                                                asset('storage/app/public/store').'/'.$store['logo'] ?? '',
-                                                asset('public/assets/admin/img/160x160/img1.jpg'),
-                                                'store/'
-                                            ) }}"
-
-                                            >
-                                        <div class="info"><div title="{{ $store?->name }}" class="text--title">
-                                            {{Str::limit($store->name,20,'...')}}
+                        @foreach ($stores as $key => $store)
+                            <tr>
+                                <td>{{ $key + $stores->firstItem() }}</td>
+                                <td>
+                                    <div>
+                                        <a href="{{ hasPermission('store', 'view') ? route('admin.store.view', $store->id) : '#' }}"
+                                            class="table-rest-info" alt="view store">
+                                            <img class="img--60 circle onerror-image"
+                                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                    $store['logo'] ?? '',
+                                                    asset('storage/app/public/store') . '/' . $store['logo'] ?? '',
+                                                    asset('public/assets/admin/img/160x160/img1.jpg'),
+                                                    'store/',
+                                                ) }}">
+                                            <div class="info">
+                                                <div title="{{ $store?->name }}" class="text--title">
+                                                    {{ Str::limit($store->name, 20, '...') }}
+                                                </div>
+                                                <div class="font-light">
+                                                    {{ translate('messages.id') }}:{{ $store->id }}
+                                                </div>
                                             </div>
-                                            <div class="font-light">
-                                                {{translate('messages.id')}}:{{$store->id}}
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div> 
-                            </td>
-                            <td>{{$store->vendor?->createdBy?->f_name . ' ' . $store->vendor?->createdBy?->l_name . ' #' . $store->vendor?->created_by}}</td>
+                                        </a>
+                                    </div>
+                                </td>
+                                <td>{{ $store->vendor?->createdBy?->f_name . ' ' . $store->vendor?->createdBy?->l_name . ' #' . $store->vendor?->created_by }}
+                                </td>
 
-                            <td>
-                                <span title="{{ $store?->vendor?->f_name.' '.$store?->vendor?->l_name }}" class="d-block font-size-sm text-body">
-                                    {{Str::limit($store->vendor?->f_name.' '.$store->vendor?->l_name,20,'...')}}
-                                </span>
-                                <div>
-                               
-                            <a href="javascript:;" style="cursor:default;"
-                                class="textToCopy"> {{$store['phone']}}</a>
-                            <button
-                                class="copy-btn bg-transparent outline-none border-0">
-                                <i class="tio-copy"></i>
-                            </button>
+                                <td>
+                                    <span title="{{ $store?->vendor?->f_name . ' ' . $store?->vendor?->l_name }}"
+                                        class="d-block font-size-sm text-body">
+                                        {{ Str::limit($store->vendor?->f_name . ' ' . $store->vendor?->l_name, 20, '...') }}
+                                    </span>
+                                    <div>
 
-                                </div>
-                            </td>
-                            <td>
-                                {{$store->zone?$store->zone->name:translate('messages.zone_deleted')}}
-                            </td>
-                            <td>
-                                @if($store->suspended == 1)
-                                -
-                                @else
-                                    <label class="toggle-switch toggle-switch-sm" for="featuredCheckbox{{$store->id}}">
-                                        <input type="checkbox" data-url="{{route('admin.store.featured',[$store->id,$store->featured?0:1])}}" class="toggle-switch-input redirect-url" id="featuredCheckbox{{$store->id}}" {{$store->featured?'checked':''}}>
-                                        <span class="toggle-switch-label">
-                                            <span class="toggle-switch-indicator"></span>
-                                        </span>
-                                    </label>
-                                @endif
-                            </td>
+                                        <a href="javascript:;" style="cursor:default;" class="textToCopy">
+                                            {{ $store['phone'] }}</a>
+                                        <button class="copy-btn bg-transparent outline-none border-0">
+                                            <i class="tio-copy"></i>
+                                        </button>
 
-                            <td>
-                                @if($store->suspended == 1)
-                                <a class="btn action-btn btn--danger btn-outline-danger px-2" style="pointer-events:none;width: fit-content;    padding: 0px 10px !important;" href="#" title="Suspended">
-                                    Suspended</a>
-                                @else
-                                    @if(isset($store->vendor->status))
-                                        @if($store->vendor->status)
-                                        <label class="toggle-switch toggle-switch-sm" for="stocksCheckbox{{$store->id}}">
-                                            <input type="checkbox" data-url="{{route('admin.store.status',[$store->id,$store->status?0:1])}}" data-message="{{translate('messages.you_want_to_change_this_store_status')}}" class="toggle-switch-input status_change_alert" id="stocksCheckbox{{$store->id}}" {{$store->status?'checked':''}}>
+                                    </div>
+                                </td>
+                                <td>
+                                    {{ $store->zone ? $store->zone->name : translate('messages.zone_deleted') }}
+                                </td>
+                                <td>
+                                    @if ($store->suspended == 1)
+                                        -
+                                    @else
+                                        <label class="toggle-switch toggle-switch-sm"
+                                            for="featuredCheckbox{{ $store->id }}">
+                                            <input type="checkbox"
+                                                data-url="{{ route('admin.store.featured', [$store->id, $store->featured ? 0 : 1]) }}"
+                                                class="toggle-switch-input redirect-url"
+                                                id="featuredCheckbox{{ $store->id }}"
+                                                {{ $store->featured ? 'checked' : '' }}>
                                             <span class="toggle-switch-label">
                                                 <span class="toggle-switch-indicator"></span>
                                             </span>
                                         </label>
-                                        @else
-                                        <span class="badge badge-soft-danger">{{translate('messages.denied')}}</span>
-                                        @endif
+                                    @endif
+                                </td>
+
+                                <td>
+                                    @if ($store->suspended == 1)
+                                        <a class="btn action-btn btn--danger btn-outline-danger px-2"
+                                            style="pointer-events:none;width: fit-content;    padding: 0px 10px !important;"
+                                            href="#" title="Suspended">
+                                            Suspended</a>
                                     @else
-                                        <span class="badge badge-soft-danger">{{translate('messages.pending')}}</span>
-                                    @endif
-                                @endif
-                            </td>
-                              <td>{{$store->created_at}}</td>
-                            <td>
-                                <div class="btn--container justify-content-center">
-                                @if(hasPermission('store', 'view'))
-                                    <a class="btn action-btn btn--warning btn-outline-warning"
-                                            href="{{route('admin.store.view', $store->id)}}"
-                                            title="{{ translate('messages.view') }}"><i
-                                                class="tio-visible-outlined"></i>
-                                        </a>
+                                        @if (isset($store->vendor->status))
+                                            @if ($store->vendor->status)
+                                                <label class="toggle-switch toggle-switch-sm"
+                                                    for="stocksCheckbox{{ $store->id }}">
+                                                    <input type="checkbox"
+                                                        data-url="{{ route('admin.store.status', [$store->id, $store->status ? 0 : 1]) }}"
+                                                        data-message="{{ translate('messages.you_want_to_change_this_store_status') }}"
+                                                        class="toggle-switch-input status_change_alert"
+                                                        id="stocksCheckbox{{ $store->id }}"
+                                                        {{ $store->status ? 'checked' : '' }}>
+                                                    <span class="toggle-switch-label">
+                                                        <span class="toggle-switch-indicator"></span>
+                                                    </span>
+                                                </label>
+                                            @else
+                                                <span
+                                                    class="badge badge-soft-danger">{{ translate('messages.denied') }}</span>
+                                            @endif
+                                        @else
+                                            <span
+                                                class="badge badge-soft-danger">{{ translate('messages.pending') }}</span>
                                         @endif
-                                        @if($store->suspended == 1)
-                                            <a style="pointer-events:none; color:#cccccc !important; border:1px solid #cccccc !important;" class="btn action-btn btn--secondary btn-outline-secondary"
-                                    href="#" ><i class="tio-edit" ></i>
-                                    </a>
-                                          @else
-                                          @if(hasPermission('store', 'edit_basic') || hasPermission('store', 'edit_advanced'))
-                                    <a class="btn action-btn btn--primary btn-outline-primary"
-                                    href="{{route('admin.store.edit',[$store['id']])}}" title="{{translate('messages.edit_store')}}"><i class="tio-edit"></i>
-                                    </a>
-                                  @endif
                                     @endif
-                                    @if(hasPermission('store', 'delete'))
-                                    <a class="btn action-btn btn--danger btn-outline-danger form-alert" href="javascript:"
-                                    data-id="vendor-{{$store['id']}}" data-message="{{translate('You want to remove this store')}}" title="{{translate('messages.delete_store')}}"><i class="tio-delete-outlined"></i>
-                                    </a>
-                                    <form action="{{route('admin.store.delete',[$store['id']])}}" method="post" id="vendor-{{$store['id']}}">
-                                        @csrf @method('delete')
-                                    </form>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
+                                </td>
+                                <td>{{ $store->created_at }}</td>
+                                <td>
+                                    <div class="btn--container justify-content-center">
+                                        @if (hasPermission('store', 'view'))
+                                            <a class="btn action-btn btn--warning btn-outline-warning"
+                                                href="{{ route('admin.store.view', $store->id) }}"
+                                                title="{{ translate('messages.view') }}"><i
+                                                    class="tio-visible-outlined"></i>
+                                            </a>
+                                        @endif
+                                        @if ($store->suspended == 1)
+                                            <a style="pointer-events:none; color:#cccccc !important; border:1px solid #cccccc !important;"
+                                                class="btn action-btn btn--secondary btn-outline-secondary"
+                                                href="#"><i class="tio-edit"></i>
+                                            </a>
+                                        @else
+                                            @if (hasPermission('store', 'edit_basic') || hasPermission('store', 'edit_advanced'))
+                                                <a class="btn action-btn btn--primary btn-outline-primary"
+                                                    href="{{ route('admin.store.edit', [$store['id']]) }}"
+                                                    title="{{ translate('messages.edit_store') }}"><i
+                                                        class="tio-edit"></i>
+                                                </a>
+                                            @endif
+                                        @endif
+                                        @if (hasPermission('store', 'delete'))
+                                            <a class="btn action-btn btn--danger btn-outline-danger form-alert"
+                                                href="javascript:" data-id="vendor-{{ $store['id'] }}"
+                                                data-message="{{ translate('You want to remove this store') }}"
+                                                title="{{ translate('messages.delete_store') }}"><i
+                                                    class="tio-delete-outlined"></i>
+                                            </a>
+                                            <form action="{{ route('admin.store.delete', [$store['id']]) }}"
+                                                method="post" id="vendor-{{ $store['id'] }}">
+                                                @csrf @method('delete')
+                                            </form>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
                     </tbody>
                 </table>
 
             </div>
-                @if(count($stores) !== 0)
+            @if (count($stores) !== 0)
                 <hr>
-                @endif
-                <div class="page-area">
-                    {!! $stores->withQueryString()->links() !!}
-                </div>
-                @if(count($stores) === 0)
+            @endif
+            <div class="page-area">
+                {!! $stores->withQueryString()->links() !!}
+            </div>
+            @if (count($stores) === 0)
                 <div class="empty--data">
-                    <img src="{{asset('/public/assets/admin/svg/illustrations/sorry.svg')}}" alt="public">
+                    <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
                     <h5>
-                        {{translate('no_data_found')}}
+                        {{ translate('no_data_found') }}
                     </h5>
                 </div>
-                @endif
+            @endif
             <!-- End Table -->
         </div>
         <!-- End Card -->
     </div>
-  <div class="modal fade" id="importStoreModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
-                <button type="button" class="close close_modal" data-dismiss="modal"
-                    aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form action="{{ route('admin.store.import') }}" method="post"
-                    enctype="multipart/form-data">
-                    @csrf
-                    <a href="{{ asset('storage/app/public/util/store_import_example.xlsx') }}"
-                        download class="btn btn-outline-primary mb-2">View Example</a>
-                    <div class="form-group">
-                        <label for="file">Upload Excel File</label>
-                        <input type="file" style="height: 46px !important;" name="file"
-                            class="form-control" id="file" accept=".xlsx,.xls">
-                    </div>
-                    <div class="form-group w-100 ">
-                        <button type="submit" class="btn btn-primary float-right">Import</button>
-                    </div>
-                </form>
-            </div>
-            <div class="p-3">
-                <h4>How It Works</h4>
-                <ol>
-                    <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
-                    <li><strong>Required Fields</strong><br> Must fill : <code>Store Name</code>,
-                        <code>Phone</code>,
-                        <code>Owner First Name</code>,
-                        <code>Owner Last Name</code>,
-                        <code>Google Verification</code>,
-                        <code>Address</code>,
-                        <code>Latitude</code>,
-                        <code>Longitude</code>,
-                        <code>Business Type</code>,
-                        <code>Zone Id</code>
-                    </li>
-                    <li><strong>Phone</strong><br> Format : <code>Conuntry Code (91)</code> + <code>10
-                            digits (9988779898)</code> eg. : <code>919988779898</code></li>
-                    <li><strong>Business Type</strong><br> Options :
-                        @foreach ($service_stores_type as $key => $value)
-                            <code>{{$value->name}}</code>,
-                        @endforeach
-                    </li>
-
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Duplicates Modal -->
-<div class="modal fade" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="duplicatesModalLabel">Duplicate Stores</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="duplicatesLoading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2">Loading duplicates...</p>
+    <div class="modal fade" id="importStoreModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Import Excel</h5>
+                    <button type="button" class="close close_modal" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="table-responsive" id="duplicatesTableWrap" style="display:none;">
-                    <table class="table table-bordered table-sm">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Store Name</th>
-                                <th>Phone</th>
-                                <th>Created By</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="duplicatesTableBody"></tbody>
-                    </table>
+                <div class="modal-body">
+                    <form action="{{ route('admin.store.import') }}" method="post" enctype="multipart/form-data">
+                        @csrf
+                        <a href="{{ asset('storage/app/public/util/store_import_example.xlsx') }}" download
+                            class="btn btn-outline-primary mb-2">View Example</a>
+                        <div class="form-group">
+                            <label for="file">Upload Excel File</label>
+                            <input type="file" style="height: 46px !important;" name="file" class="form-control"
+                                id="file" accept=".xlsx,.xls">
+                        </div>
+                        <div class="form-group w-100 ">
+                            <button type="submit" class="btn btn-primary float-right">Import</button>
+                        </div>
+                    </form>
                 </div>
-                <div id="duplicatesEmpty" class="text-center py-4" style="display:none;">
-                    <p>No duplicates found.</p>
+                <div class="p-3">
+                    <h4>How It Works</h4>
+                    <ol>
+                        <li><span class="text-danger"> Do not edit or delete column headings.</span></li>
+                        <li><strong>Required Fields</strong><br> Must fill : <code>Store Name</code>,
+                            <code>Phone</code>,
+                            <code>Owner First Name</code>,
+                            <code>Owner Last Name</code>,
+                            <code>Google Verification</code>,
+                            <code>Address</code>,
+                            <code>Latitude</code>,
+                            <code>Longitude</code>,
+                            <code>Business Type</code>,
+                            <code>Zone Id</code>
+                        </li>
+                        <li><strong>Phone</strong><br> Format : <code>Conuntry Code (91)</code> + <code>10
+                                digits (9988779898)</code> eg. : <code>919988779898</code></li>
+                        <li><strong>Business Type</strong><br> Options :
+                            @foreach ($service_stores_type as $key => $value)
+                                <code>{{ $value->name }}</code>,
+                            @endforeach
+                        </li>
+
+                    </ol>
                 </div>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Duplicates Modal -->
+    <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-labelledby="duplicatesModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="duplicatesModalLabel">Duplicate Stores</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="duplicatesLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Loading duplicates...</p>
+                    </div>
+                    <div class="table-responsive" id="duplicatesTableWrap" style="display:none;">
+                        <table class="table table-bordered table-sm">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Store Name</th>
+                                    <th>Phone</th>
+                                    <th>Created By</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="duplicatesTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="duplicatesEmpty" class="text-center py-4" style="display:none;">
+                        <p>No duplicates found.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 @endsection
 
 @push('script_2')
     <script>
         "use strict";
-        $('.status_change_alert').on('click', function (event) {
+        $('.status_change_alert').on('click', function(event) {
             let url = $(this).data('url');
             let message = $(this).data('message');
             status_change_alert(url, message, event)
@@ -440,48 +496,48 @@
         function status_change_alert(url, message, e) {
             e.preventDefault();
             Swal.fire({
-                title: '{{ translate('Are you sure?') }}' ,
+                title: '{{ translate('Are you sure?') }}',
                 text: message,
                 type: 'warning',
                 showCancelButton: true,
                 cancelButtonColor: 'default',
                 confirmButtonColor: '#FC6A57',
-                cancelButtonText: '{{translate('messages.no')}}',
-                confirmButtonText: '{{translate('messages.yes')}}',
+                cancelButtonText: '{{ translate('messages.no') }}',
+                confirmButtonText: '{{ translate('messages.yes') }}',
                 reverseButtons: true
             }).then((result) => {
                 if (result.value) {
-                    location.href=url;
+                    location.href = url;
                 }
             })
         }
-        $(document).on('ready', function () {
+        $(document).on('ready', function() {
             // INITIALIZATION OF DATATABLES
             // =======================================================
             let datatable = $.HSCore.components.HSDatatables.init($('#columnSearchDatatable'));
 
-            $('#column1_search').on('keyup', function () {
+            $('#column1_search').on('keyup', function() {
                 datatable
                     .columns(1)
                     .search(this.value)
                     .draw();
             });
 
-            $('#column2_search').on('keyup', function () {
+            $('#column2_search').on('keyup', function() {
                 datatable
                     .columns(2)
                     .search(this.value)
                     .draw();
             });
 
-            $('#column3_search').on('keyup', function () {
+            $('#column3_search').on('keyup', function() {
                 datatable
                     .columns(3)
                     .search(this.value)
                     .draw();
             });
 
-            $('#column4_search').on('keyup', function () {
+            $('#column4_search').on('keyup', function() {
                 datatable
                     .columns(4)
                     .search(this.value)
@@ -491,48 +547,48 @@
 
             // INITIALIZATION OF SELECT2
             // =======================================================
-            $('.js-select2-custom').each(function () {
+            $('.js-select2-custom').each(function() {
                 let select2 = $.HSCore.components.HSSelect2.init($(this));
             });
         });
 
-            $(document).ready(function () {
-    $(".copy-btn").on("click", function () {
-        // Get the previous <p> or span element text
-        var text = $(this).prev(".textToCopy").text().trim();
-        console.log(text); // Debugging
+        $(document).ready(function() {
+            $(".copy-btn").on("click", function() {
+                // Get the previous <p> or span element text
+                var text = $(this).prev(".textToCopy").text().trim();
+                console.log(text); // Debugging
 
-        if (navigator.clipboard && window.isSecureContext) {
-            // Modern way to copy
-            navigator.clipboard.writeText(text).then(() => {
-                console.log("Copied successfully!");
-            }).catch(err => {
-                console.error("Clipboard copy failed", err);
+                if (navigator.clipboard && window.isSecureContext) {
+                    // Modern way to copy
+                    navigator.clipboard.writeText(text).then(() => {
+                        console.log("Copied successfully!");
+                    }).catch(err => {
+                        console.error("Clipboard copy failed", err);
+                    });
+                } else {
+                    // Fallback for older browsers
+                    var tempInput = $("<textarea>"); // Use textarea instead of input
+                    $("body").append(tempInput);
+                    tempInput.val(text).css({
+                        position: "absolute",
+                        left: "-9999px", // Hide offscreen
+                    }).select();
+                    document.execCommand("copy");
+                    tempInput.remove();
+                }
+                $(this).html("Copied!");
+                setTimeout(() => $(this).html('<i class="tio-copy"></i>'), 1000);
             });
-        } else {
-            // Fallback for older browsers
-            var tempInput = $("<textarea>"); // Use textarea instead of input
-            $("body").append(tempInput);
-            tempInput.val(text).css({
-                position: "absolute",
-                left: "-9999px", // Hide offscreen
-            }).select();
-            document.execCommand("copy");
-            tempInput.remove();
-        }
-        $(this).html("Copied!");
-        setTimeout(() => $(this).html('<i class="tio-copy"></i>'), 1000);
-    });
-});
+        });
 
-        $('#showDuplicatesBtn').on('click', function () {
+        $('#showDuplicatesBtn').on('click', function() {
             $('#duplicatesModal').modal('show');
             $('#duplicatesLoading').show();
             $('#duplicatesTableWrap').hide();
             $('#duplicatesEmpty').hide();
 
             var params = new URLSearchParams(window.location.search);
-            var duplicateUrl = '{{ route("admin.store.duplicates") }}';
+            var duplicateUrl = '{{ route('admin.store.duplicates') }}';
             if (params.get('created_by')) {
                 duplicateUrl += '?created_by=' + params.get('created_by');
             }
@@ -540,26 +596,30 @@
             $.ajax({
                 url: duplicateUrl,
                 type: 'GET',
-                success: function (res) {
+                success: function(res) {
                     $('#duplicatesLoading').hide();
                     if (res.data && res.data.length > 0) {
                         var rows = '';
                         var colors = ['#fff3cd', '#d1ecf1', '#f8d7da', '#d4edda', '#e2e3e5', '#cce5ff'];
-                        $.each(res.data, function (groupIndex, group) {
+                        $.each(res.data, function(groupIndex, group) {
                             var bgColor = colors[groupIndex % colors.length];
                             rows += '<tr style="background-color: #f0f0f0;">' +
-                                '<td colspan="6"><strong>' + group.reason + '</strong> <span class="badge badge-soft-danger">' + group.stores.length + ' stores</span></td>' +
+                                '<td colspan="6"><strong>' + group.reason +
+                                '</strong> <span class="badge badge-soft-danger">' + group
+                                .stores.length + ' stores</span></td>' +
                                 '</tr>';
-                            $.each(group.stores, function (i, store) {
-                                rows += '<tr style="background-color:' + bgColor + ';">' +
+                            $.each(group.stores, function(i, store) {
+                                rows += '<tr style="background-color:' + bgColor +
+                                    ';">' +
                                     '<td>' + store.id + '</td>' +
                                     '<td>' + store.name + '</td>' +
                                     '<td>' + store.phone + '</td>' +
                                     '<td>' + store.created_by + '</td>' +
                                     '<td>' + store.status + '</td>' +
-                                    '<td><a href="' + store.view_url + '" class="btn btn-sm btn-outline-primary">View</a></td>' +
+                                    '<td><a href="' + store.view_url +
+                                    '" class="btn btn-sm btn-outline-primary">View</a></td>' +
                                     '</tr>';
-                            }); 
+                            });
                         });
                         $('#duplicatesTableBody').html(rows);
                         $('#duplicatesTableWrap').show();
@@ -567,13 +627,12 @@
                         $('#duplicatesEmpty').show();
                     }
                 },
-                error: function () {
+                error: function() {
                     $('#duplicatesLoading').hide();
-                    $('#duplicatesEmpty').html('<p class="text-danger">Failed to load duplicates.</p>').show();
+                    $('#duplicatesEmpty').html('<p class="text-danger">Failed to load duplicates.</p>')
+                        .show();
                 }
             });
         });
-
     </script>
-
 @endpush

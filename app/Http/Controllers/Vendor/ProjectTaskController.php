@@ -192,7 +192,7 @@ class ProjectTaskController extends Controller
 
         do {
             $invoice_num = $bill_num['prefix'] . $bill_num['number'];
-            $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+            $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', Helpers::get_store_id())->where('financial_year', _currentFinancialYear())->exists();
             if ($exists) {
                 $bill_num['number']++;
             }

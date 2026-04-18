@@ -225,6 +225,136 @@ class StoreController extends Controller
 
         return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
     }
+    public function add_service_review(Request $request)
+    {
+        $authUser = auth()->user();
+
+        $validator = Validator::make($request->all(), [
+            'store_id'      => 'required|integer',
+            'acceptance_id' => 'nullable|integer',
+            'service_name'  => 'required|string|max:255',
+            'service_date'  => 'required|date',
+            'experience'    => 'required|in:good,bad',
+            'comment'       => 'required|string',
+            'rating'        => 'required|numeric|min:1|max:5',
+            'attachments'   => 'nullable|array',
+            'attachments.*' => 'file|mimes:jpeg,png,jpg,gif|max:30720',
+        ]);
+
+        if ($validator->errors()->count() > 0) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $store = Store::find($request->store_id);
+        if (!$store) {
+            return response()->json(['errors' => [['code' => 'store_id', 'message' => translate('messages.store_not_found')]]], 403);
+        }
+
+        if ($request->acceptance_id) {
+            $order = AcceptedServiceRequest::find($request->acceptance_id);
+            if (!$order) {
+                return response()->json(['errors' => [['code' => 'acceptance_id', 'message' => translate('messages.service_data_not_found')]]], 403);
+            }
+            if ($order->current_status !== 'Completed') {
+                return response()->json(['errors' => [['code' => 'acceptance_id', 'message' => 'Service not completed yet']]], 403);
+            }
+        }
+
+        $duplicateQuery = StoreReview::where('store_id', $request->store_id)
+            ->where('user_id', $authUser->id)
+            ->where('service_name', $request->service_name)
+            ->where('service_date', $request->service_date);
+        if ($request->acceptance_id) {
+            $duplicateQuery->where('order_id', $request->acceptance_id);
+        }
+        if ($duplicateQuery->exists()) {
+            return response()->json(['errors' => [['code' => 'review', 'message' => translate('messages.already_submitted')]]], 403);
+        }
+
+        $image_array = [];
+        if (!empty($request->file('attachments'))) {
+            foreach ($request->file('attachments') as $image) {
+                if ($image != null) {
+                    if (!Storage::disk('public')->exists('review')) {
+                        Storage::disk('public')->makeDirectory('review');
+                    }
+                    array_push($image_array, Storage::disk('public')->put('review', $image));
+                }
+            }
+        }
+
+        $review = new StoreReview;
+        $review->user_id      = $authUser->id;
+        $review->store_id     = $request->store_id;
+        $review->order_id     = $request->acceptance_id;
+        $review->service_name = $request->service_name;
+        $review->service_date = $request->service_date;
+        $review->experience   = $request->experience;
+        $review->comment      = $request->comment;
+        $review->rating       = $request->rating;
+        $review->attachment   = $image_array;
+        $review->save();
+
+        $ratingData = DB::table('store_reviews')
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(rating) as rating_count')
+            ->where('store_id', $request->store_id)
+            ->first();
+
+        $store->rating_count   = $ratingData->rating_count;
+        $store->average_rating = $ratingData->avg_rating;
+        $store_rating = StoreLogic::update_store_rating($store->rating, (int)$request->rating);
+        $store->rating = $store_rating;
+        $store->save();
+
+        return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
+    }
+
+    public function get_service_review(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|integer',
+        ]);
+
+        if ($validator->errors()->count() > 0) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $store = Store::find($request->store_id);
+        if (!$store) {
+            return response()->json(['errors' => [['code' => 'store_id', 'message' => translate('messages.store_not_found')]]], 403);
+        }
+
+        $reviews = DB::table('store_reviews')
+            ->join('users', 'users.id', 'store_reviews.user_id')
+            ->where('store_reviews.store_id', $request->store_id)
+            ->where('store_reviews.status', 1)
+            ->whereNotNull('store_reviews.service_name')
+            ->select(
+                'users.f_name', 'users.l_name', 'users.image as profile_image',
+                'store_reviews.service_name', 'store_reviews.service_date',
+                'store_reviews.experience', 'store_reviews.comment',
+                'store_reviews.rating', 'store_reviews.attachment',
+                'store_reviews.reply', 'store_reviews.created_at',
+                DB::raw('CASE WHEN store_reviews.reply IS NULL THEN NULL ELSE store_reviews.replied_at END as replied_at')
+            )
+            ->orderByDesc('store_reviews.created_at')
+            ->get();
+
+        foreach ($reviews as $key => $value) {
+            $attachment = json_decode($value->attachment, true);
+            if (!empty($attachment) && is_array($attachment)) {
+                $reviews[$key]->attachment = array_map(function ($file) {
+                    return asset('storage/') . '/' . $file;
+                }, $attachment);
+            } else {
+                $reviews[$key]->attachment = [];
+            }
+            $reviews[$key]->profile_image = $value->profile_image ? asset('storage/profile') . '/' . $value->profile_image : null;
+        }
+
+        return response()->json(['message' => translate('messages.data_retrieved_successfully'), 'data' => $reviews], 200);
+    }
+
     public function get_latest_stores(Request $request, $filter_data = "all")
     {
         if (!$request->hasHeader('zoneId')) {
@@ -366,9 +496,9 @@ class StoreController extends Controller
         $latitude = (float)$request->header('latitude');
         $store = StoreLogic::get_store_details_limited($id, $longitude, $latitude);
         if ($store) {
-            $store = Helpers::store_data_formatting_limited($store);
+            $store2 = store_data_formatting_limited($store);
         }
-        return response()->json($store, 200);
+        return response()->json($store2, 200);
     }
 
     public function get_searched_stores(Request $request)

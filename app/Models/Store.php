@@ -111,6 +111,7 @@ class Store extends Model
         'order_count',
         'total_order',
         'module_id',
+        'bed_count',
         'order_place_to_schedule_interval',
         'featured',
         'per_km_shipping_charge',

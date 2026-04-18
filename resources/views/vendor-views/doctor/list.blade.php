@@ -9,9 +9,14 @@
                     <span class="page-header-icon"><i class="tio-user-outlined" style="font-size:22px;"></i></span>
                     <span>Doctors <span class="badge badge-soft-dark ml-2">{{ $doctors->total() }}</span></span>
                 </h1>
-                <a href="{{ route('vendor.doctor.create') }}" class="btn btn--primary mb-2">
-                    <i class="tio-add-circle"></i> Add Doctor
-                </a>
+                <div class="d-flex gap-2 mb-2">
+                    <a href="{{ route('vendor.doctor.export') }}" class="btn  btn--warning">
+                        <i class="tio-download"></i> Export
+                    </a>
+                    <a href="{{ route('vendor.doctor.create') }}" class="btn btn--primary">
+                        <i class="tio-add-circle"></i> Add Doctor
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -68,22 +73,19 @@
                                         <i class="fa-solid fa-bars"></i>
                                     </button>
                                     <div class="dropdown-menu">
-                                        @if (hasPermission('task', 'view'))
                                             <a class="dropdown-item text-info"
                                                 href="{{ route('vendor.doctor.slots', $doctor->id) }}"
                                                 title="{{ translate('messages.slots') }}"><i
                                                     class="tio-grid"></i>
                                                 Slots
                                             </a>
-                                        @endif
-                                        @if (hasPermission('task', 'edit'))
+                                      
                                             <a class="dropdown-item text-warning"
                                                 href="{{ route('vendor.doctor.edit', $doctor->id) }}"
                                                 title="{{ translate('messages.edit') }}"><i class="tio-edit"></i>
                                                 Edit
                                             </a>
-                                        @endif
-                                        @if (hasPermission('task', 'delete'))
+                                     
                                             <a class="dropdown-item  text-danger form-alert " href="javascript:"
                                                 data-id="task-{{ $doctor['id'] }}"
                                                 data-message="{{ translate('Want_to_delete_this_task_?') }}"
@@ -95,7 +97,6 @@
                                                 id="task-{{ $doctor['id'] }}">
                                                 @csrf @method('post')
                                             </form>
-                                        @endif
                                     </div>
                                     {{-- <div class="btn--container">
                                         <a href="{{ }}" class="btn btn-sm btn-outline-info"

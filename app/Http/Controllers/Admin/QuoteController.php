@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\Quotation;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\Storage;
-use App\CentralLogics\Helpers; 
+use App\CentralLogics\Helpers;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
@@ -16,9 +16,9 @@ use App\Models\QuotationDetail;
 use App\Models\QuotationDetailItem;
 use App\Models\StoreCustomer;
 use App\Models\StoreTask;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Models\DataSetting; 
+use App\Models\DataSetting;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
 
@@ -105,7 +105,7 @@ class QuoteController extends Controller
 
         // Select template view
         $templateView = $templateId == '1' ? 'email-templates.quotation_email'
-                      : 'email-templates.quotation_email_' . $templateId;
+            : 'email-templates.quotation_email_' . $templateId;
 
         $emailHtml = view($templateView, [
             'theme_color'    => $themeColor,
@@ -207,7 +207,7 @@ class QuoteController extends Controller
     {
         $quotation = '';
         $quotation_det =  QuotationDetail::where('quotation_id', $quote_id)->first();
-        $quotation = Quotation::find($quote_id); 
+        $quotation = Quotation::find($quote_id);
         if ($quotation) {
             $invoice = new ManualInvoice();
             $invoice->invoice_id =  Helpers::generateInvoiceIdAdmin(6); // M = manual
@@ -283,7 +283,7 @@ class QuoteController extends Controller
                 $query->where('store_id', $storeId)
                     ->orWhereRaw("FIND_IN_SET(?, store_ids)", [$storeId]);
             })
-            ->get(); 
+            ->get();
         // prx( $quote);
         $quote_email_settings = $this->getQuoteEmailSettings();
         return view('admin-views.quote.manage', compact('quote_items', 'quote', 'services', 'customers', 'quote_email_settings'));
@@ -425,10 +425,10 @@ class QuoteController extends Controller
         }
 
         $quote->vendor_id   = 0;
-        $quote->subject     = $request->post('subject'); 
+        $quote->subject     = $request->post('subject');
         $quote->status      = $request->post('status');
         $quote->q_date      = $request->post('invoice_date');
-        $quote->exp_date    = $request->post('reminder_date'); 
+        $quote->exp_date    = $request->post('reminder_date');
         $quote->remarks     = $request->post('remarks');
         $quote->client_name = $request->post('bill_to') ?? $request->customer;
         $quote->services    = $service_data;
@@ -495,8 +495,17 @@ class QuoteController extends Controller
             $quotation_det->task_id = $task_id ?? null;
             $quotation_det->quotation_id = $quote->id;
             $quotation_det->bill_to = isset($task) ? $task->user_id : ($request->post('bill_to') ?? $request->customer);
-            $quotation_det->user_type = 'store_user';
-            $quotation_det->bill_to_type = 'user';
+            $bill_to_type = $request->post('bill_to_type', 'user');
+            if ($bill_to_type === 'mychitti_client') {
+                $userTypeInfo = StoreCustomer::find($quotation_det->bill_to)->user_type ?? 'customer';
+                $user_type = $userTypeInfo === 'customer' ? 'store_user' : 'store_vendor';
+            } elseif ($bill_to_type === 'vendor') {
+                $user_type = 'store_vendor';
+            } else {
+                $user_type = 'user';
+            }
+            $quotation_det->user_type = $user_type;
+            $quotation_det->bill_to_type = $bill_to_type;
             $quotation_det->module_id = Config::get('module.current_module_id');
             $quotation_det->total_amount = $totalAmount;
             $quotation_det->tax_type = $request->tax_type;
@@ -514,7 +523,7 @@ class QuoteController extends Controller
             $quotation_det_item->item_id = $request->invoice_item[$key] ?? null;
             $quotation_det_item->qty = $request->item_qty[$key];
             $quotation_det_item->price = $request->item_price[$key];
-            $quotation_det_item->unit = $request->item_unit[$key];
+            $quotation_det_item->unit =   $request->item_unit[$key] ?? null;
             $quotation_det_item->tax = $request->item_tax[$key] ? $request->item_tax[$key] :  0;
             $quotation_det_item->hsn = $request->item_hsn[$key];
             $quotation_det_item->save();
@@ -526,7 +535,7 @@ class QuoteController extends Controller
             $quotation_det_item->item_id = $request->invoice_item_new[$key] ?? null;
             $quotation_det_item->qty = $request->item_qty_new[$key];
             $quotation_det_item->price = $request->item_price_new[$key];
-            $quotation_det_item->unit = $request->has('item_unit_new') ? $request->item_unit_new[$key] : null;
+            $quotation_det_item->unit = $request->item_unit_new[$key] ?? null;
             $quotation_det_item->tax = $request->item_tax_new[$key] ? $request->item_tax_new[$key] :  0;
             $quotation_det_item->hsn = $request->item_hsn_new[$key];
             $quotation_det_item->save();

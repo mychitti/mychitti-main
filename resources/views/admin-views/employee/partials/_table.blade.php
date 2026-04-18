@@ -1,5 +1,5 @@
 @foreach($employees as $k=>$employee)
-<tr>
+<tr class="employee-row" data-href="{{ route('admin.users.employee.view', [$employee['id']]) }}" style="cursor:pointer;">
     <th scope="row">{{$k+1}}</th>
     <td class="text-capitalize">{{$employee['f_name']}} {{$employee['l_name']}}</td>
     <td >

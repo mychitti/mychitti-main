@@ -1172,61 +1172,6 @@
                                 </div>
                             </div>
 
-                            <div class="__bg-F8F9FC-card p-0 mt-4">
-                                <!-- <div class="border-bottom p-3">
-                                                    <h4 class="card-title m-0 text--title">{{ translate('GST applicable') }}</h4>
-                                                </div> -->
-                                <div class="card-body">
-                                    <div class="row g-3 align-items-end">
-                                        <div class="col-sm-6 col-lg-3">
-                                            @php($wallet_recharge_gst_percent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->first())
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="wallet_recharge_gst_percent">{{ translate('messages.wallet_recharge_gst') }}
-                                                    %</label>
-                                                <input type="number" name="wallet_recharge_gst_percent"
-                                                    class="form-control" id="wallet_recharge_gst_percent" min="0"
-                                                    placeholder="{{ translate('messages.Ex:_10') }}"
-                                                    value="{{ $wallet_recharge_gst_percent ? $wallet_recharge_gst_percent->value : 0 }}"
-                                                    required>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6 col-lg-3">
-                                            @php($wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first())
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="wallet_recharge_gst_status">{{ translate('messages.wallet_recharge_gst_status') }}
-                                                    </label>
-                                                    <select  id="wallet_recharge_gst_status" name="wallet_recharge_gst_status" id="" class="form-control">
-                                                    <option {{ $wallet_recharge_gst_status && $wallet_recharge_gst_status->value == 'included' ? 'selected' : '' }} value="included">Included</option>
-                                                    <option {{ $wallet_recharge_gst_status && $wallet_recharge_gst_status->value == 'excluded' ? 'selected' : '' }} value="excluded">Excluded</option>
-                                                    </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6 col-lg-3">
-                                            @php($wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first())
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="wallet_recharge_hsn">{{ translate('messages.wallet_recharge_hsn') }}</label>
-                                                <input type="text" name="wallet_recharge_hsn" class="form-control"
-                                                    id="wallet_recharge_hsn" min="0" placeholder="HSN"
-                                                    value="{{ $wallet_recharge_hsn ? $wallet_recharge_hsn->value : '' }}"
-                                                    required>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6 col-lg-3">
-                                            @php($wallet_min_balance = \App\Models\BusinessSetting::where('key', 'wallet_min_balance')->first())
-                                            <div class="form-group mb-0">
-                                                <label class="form-label text-capitalize"
-                                                    for="wallet_min_balance">Wallet Minimum Balance</label>
-                                                <input type="number" name="wallet_min_balance" class="form-control"
-                                                    id="wallet_min_balance" min="0" placeholder="Ex: 100"
-                                                    value="{{ $wallet_min_balance ? $wallet_min_balance->value : 101 }}">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             <div class="btn--container justify-content-end mt-3">
                                 {{-- <button type="reset" class="btn btn--reset">{{ translate('messages.reset') }}</button> --}}
                                 <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}"

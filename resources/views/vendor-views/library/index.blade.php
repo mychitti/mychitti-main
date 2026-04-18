@@ -99,6 +99,15 @@
             </div>
             <div class="col-md-2 p-2">
                 <div class="card ">
+                    <div class="placeholder bg1">Invoice</div>
+                    <div class="card-body">
+                        <h4>Invoice</h4>
+                        <a type="button" data-toggle="modal" data-target="#invoiceTemplateModal">Templates</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 p-2">
+                <div class="card ">
                     <div class="placeholder bg4">Purchase Gatepass</div>
                     <div class="card-body">
                         <h4>Purchase Gatepass</h4>
@@ -154,6 +163,48 @@
             </div>
         </div>
     </div>
+    <!-- Invoice Template Modal -->
+    <div class="modal fade" id="invoiceTemplateModal" tabindex="-1" aria-labelledby="invoiceTemplateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="invoiceTemplateModalLabel">Invoice Templates</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="{{ route('vendor.library.select-template') }}" method="post">
+                    @csrf
+                    <input type="hidden" name="action" value="invoice_template">
+                    <div class="modal-body">
+                        <div class="d-flex gap-2 flex-wrap">
+                            @php
+                                $invoiceTemplates = [
+                                    'service_n_manual'     => 'Template 1 (Classic)',
+                                    'service_n_manual_new' => 'Template 2 (New)',
+                                ];
+                                $currentInvoiceTemplate = isset($store_config) && $store_config ? ($store_config->invoice_template ?? 'service_n_manual') : 'service_n_manual';
+                            @endphp
+                            @foreach ($invoiceTemplates as $value => $label)
+                                @php $selected = $currentInvoiceTemplate === $value; @endphp
+                                <div class="template-option {{ $selected ? 'selected' : '' }}">
+                                    <label>
+                                        <input type="radio" name="value" value="{{ $value }}" {{ $selected ? 'checked' : '' }}>
+                                        <div style="padding:20px 10px;font-size:13px;font-weight:500;">{{ $label }}</div>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 @push('script_2')
     <script>

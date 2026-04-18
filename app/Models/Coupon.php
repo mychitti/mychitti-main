@@ -59,6 +59,11 @@ class Coupon extends Model
         'customer_id',
         'slug',
         'store_id',
+        'min_services',
+        'claimed_at',
+        'claimed_by_store_id',
+        'claim_otp',
+        'claim_otp_expires_at',
     ];
 
     /**
@@ -72,7 +77,10 @@ class Coupon extends Model
         'store_id'=>'integer',
         'status'=>'integer',
         'id'=>'integer',
-        'total_uses'=>'integer',
+        'total_uses'      => 'integer',
+        'min_services'    => 'integer',
+        'claimed_at'      => 'datetime',
+        'claim_otp_expires_at' => 'datetime',
     ];
 
     /**

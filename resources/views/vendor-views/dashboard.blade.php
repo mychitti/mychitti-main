@@ -1213,33 +1213,47 @@
         </div>
     </div>
 
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="exampleModal" tabindex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Apply Coupon</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Claim Loyalty Coupon</h5>
                     <button type="button" class="close close_coupon_modal" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form class="applyCouponForm">
-                    @csrf
+
+                {{-- Step 1: Enter coupon code --}}
+                <div id="couponStep1">
                     <div class="modal-body">
-                        <label>Coupon Code</label>
-
-                        <input type="text" name="coupon_code" id="app_coupon_code" class="form-control" required>
-
-                        <span class="text-danger coupon_error"></span>
-                        <span class="text-success coupon_success"></span>
+                        <p class="text-muted mb-3">Ask the customer for their coupon code.</p>
+                        <div class="form-group mb-0">
+                            <label>Coupon Code <span class="text-danger">*</span></label>
+                            <input type="text" id="app_coupon_code" class="form-control" placeholder="Enter coupon code">
+                        </div>
+                        <span class="text-danger coupon_error d-block mt-2"></span>
                     </div>
-
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-
-                        <button type="button" class="btn btn-primary applyCouponBtn">Apply Coupon</button>
+                        <button type="button" class="btn btn-primary" id="sendOtpBtn">Send OTP to Customer</button>
                     </div>
-                </form>
+                </div>
 
+                {{-- Step 2: Verify OTP --}}
+                <div id="couponStep2" style="display:none;">
+                    <div class="modal-body">
+                        <div class="alert alert-info" id="couponOtpInfo"></div>
+                        <div class="form-group mb-0">
+                            <label>OTP <span class="text-danger">*</span></label>
+                            <input type="text" id="app_coupon_otp" class="form-control" maxlength="4" placeholder="4-digit OTP from customer">
+                        </div>
+                        <span class="text-danger coupon_verify_error d-block mt-2"></span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="backToStep1Btn">Back</button>
+                        <button type="button" class="btn btn-success" id="verifyCouponBtn">Verify & Claim</button>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -1581,48 +1595,104 @@
 
         });
 
-        $(document).on('click', '.applyCouponBtn', function(e) {
-            console.log('fsdf')
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            $(".applyCouponBtn").attr('disabled', true)
+        var _activeCouponCode = '';
 
+        function resetCouponModal() {
+            $('#couponStep1').show();
+            $('#couponStep2').hide();
+            $('#app_coupon_code').val('');
+            $('#app_coupon_otp').val('');
             $('.coupon_error').text('');
-            $('.coupon_success').text('');
+            $('.coupon_verify_error').text('');
+            $('#couponOtpInfo').text('');
+            _activeCouponCode = '';
+        }
 
-            let btn = $(this);
-            btn.prop('disabled', true).text('Applying...');
+        $(document).on('show.bs.modal', '#exampleModal', function () {
+            resetCouponModal();
+        });
+
+        $(document).on('click', '#sendOtpBtn', function () {
+            var code = $('#app_coupon_code').val().trim();
+            if (!code) {
+                $('.coupon_error').text('Please enter a coupon code.');
+                return;
+            }
+            $('.coupon_error').text('');
+            var btn = $(this);
+            btn.prop('disabled', true).text('Sending OTP...');
 
             $.ajax({
                 url: '{{ route('vendor.applyCoupon') }}',
                 method: 'POST',
                 data: {
                     _token: $('meta[name="csrf-token"]').attr('content'),
-                    coupon_code: $("#app_coupon_code").val()
+                    coupon_code: code
                 },
-                success: function(data) {
-                    console.log(data);
-
-                    if (data.status) {
-                        $('.coupon_success').text(data.message);
-                        setTimeout(() => {
-                            $(".applyCouponForm").trigger('reset')
-
-                            $(".close_coupon_modal").click()
-                            $(".applyCouponBtn").removeAttr('disabled')
-                        }, 1000);
+                success: function (data) {
+                    if (data.status && data.otp_sent) {
+                        _activeCouponCode = code;
+                        $('#couponOtpInfo').html(
+                            '<strong>' + (data.customer_name || 'Customer') + '</strong> &mdash; Coupon worth <strong>&#8377;' + data.discount + '</strong><br><span class="text-muted">' +
+                            data.message + '</span>'
+                        );
+                        $('#couponStep1').hide();
+                        $('#couponStep2').show();
+                        setTimeout(function(){ $('#app_coupon_otp').focus(); }, 100);
                     } else {
-                        $('.coupon_error').text(data.message);
+                        $('.coupon_error').text(data.message || 'Failed to send OTP.');
                     }
                 },
-                error: function(xhr) {
-                    console.log(xhr.responseText);
-                    $('.coupon_error').text('Server error');
+                error: function () {
+                    $('.coupon_error').text('Server error. Please try again.');
                 },
-                complete: function() {
-                    btn.prop('disabled', false).text('Apply Coupon');
+                complete: function () {
+                    btn.prop('disabled', false).text('Send OTP to Customer');
                 }
             });
+        });
+
+        $(document).on('click', '#verifyCouponBtn', function () {
+            var otp = $('#app_coupon_otp').val().trim();
+            if (!otp || otp.length !== 4) {
+                $('.coupon_verify_error').text('Please enter the 4-digit OTP.');
+                return;
+            }
+            $('.coupon_verify_error').text('');
+            var btn = $(this);
+            btn.prop('disabled', true).text('Verifying...');
+
+            $.ajax({
+                url: '{{ route('vendor.verifyCoupon') }}',
+                method: 'POST',
+                data: {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    coupon_code: _activeCouponCode,
+                    otp: otp
+                },
+                success: function (data) {
+                    if (data.status) {
+                        toastr.success(data.message);
+                        $('#exampleModal').modal('hide');
+                        resetCouponModal();
+                    } else {
+                        $('.coupon_verify_error').text(data.message || 'Verification failed.');
+                    }
+                },
+                error: function () {
+                    $('.coupon_verify_error').text('Server error. Please try again.');
+                },
+                complete: function () {
+                    btn.prop('disabled', false).text('Verify & Claim');
+                }
+            });
+        });
+
+        $(document).on('click', '#backToStep1Btn', function () {
+            $('#couponStep2').hide();
+            $('#couponStep1').show();
+            $('.coupon_verify_error').text('');
+            $('#app_coupon_otp').val('');
         });
     </script>
     <script>

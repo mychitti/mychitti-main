@@ -958,11 +958,19 @@
                                                 </div>
                                             @endif
 
-                                        </div>
-                                    @endif
+                                    <!-- GIVE REVIEW BUTTON & MODAL -->
+                                    <div class="text-center mt-4 mb-3">
+                                        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#storeReviewModal{{ $store['id'] }}">
+                                            📝 <strong>Give Review</strong>
+                                        </button>
+                                    </div>
+
+                                    @include('front-views.partials._store-review-form', ['store' => $store])
+
                                 </div>
-                            </div>
-                        @endif
+                            @endif
+                        </div>
+                    @endif
                         <div class="" id="contact" aria-labelledby="pills-contact-tab">
                             <div class="section_spacing">
                                 <h3 class="sec_heading">Contact</h3>
@@ -1022,7 +1030,7 @@
                             </div>
                         </div>
                         <div id="about" class="mt-4">
-                            <div class="">
+                            <div class=""> 
                                 <h3 class="sec_heading">About Store</h3>
                                 <div class=" rounded p-3 my-3">
                                     {!! $data['store_config']->about_us ?? '' !!}
@@ -1037,6 +1045,7 @@
         </div>
     </div>
 @include('front-views.partials._appointment_booking')
+@include('front-views.partials._hospital_booking_modal')
 @include('front-views.partials._claim_remove_business')
 @endsection
 

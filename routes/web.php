@@ -47,7 +47,10 @@ use Illuminate\Support\Facades\Mail;
 */
 use Mike42\Escpos\Printer;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
-
+Route::get('/opcache-reset', function() {
+    opcache_reset();
+    return 'OPcache cleared';
+});
 // Route::get('/print-receipt', function () {
 //     try {
 //         // Printer IP and port
@@ -244,7 +247,8 @@ Route::group(['middleware' => ['loginuser']], function () {
     Route::get('order-success/{id}', [FrontController::class, 'order_success'])->name('order-success');
     Route::get('success', [FrontController::class, 'order_success']);
     Route::post('submit-review', [FrontUserController::class, 'submit_review'])->name('submit-review');
-    Route::post('submit-service-review', [FrontUserController::class, 'submit_service_review'])->name('submit-service-review');
+    Route::post('submit-service-review', [FrontUserController::class, 'add_service_review'])->name('submit-service-review');
+    Route::post('submit-store-review', [FrontUserController::class, 'submit_service_review'])->middleware('loginuser')->name('submit-store-review');
 
 });
 // AI Chat — open to all (guests use session-based pseudo-ID)
@@ -271,7 +275,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home'); 
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
     Route::get('contact', [FrontController::class, 'contact'])->name('contact');
-    Route::get('cart', [FrontController::class, 'cart'])->name('cart');
+    Route::get('cart', [FrontController::class, 'cart'])->name('cart'); 
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
     Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');

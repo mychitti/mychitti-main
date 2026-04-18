@@ -60,6 +60,55 @@ class AppointmentController extends Controller
         ]);
     }
 
+    // GET /hospital/doctor-slots?doctor_profile_id=&date=  (date defaults to today)
+    public function doctorSlots(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'doctor_profile_id' => 'required|integer|exists:doctor_profiles,id',
+            'date'              => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $date = Carbon::parse($request->date ?? now())->toDateString();
+
+        $slots = DoctorSlot::where('doctor_profile_id', $request->doctor_profile_id)
+            ->where('is_active', 1)
+            ->orderBy('day_of_week')
+            ->orderBy('slot_start')
+            ->get(['id', 'day_of_week', 'slot_start', 'slot_end', 'slot_duration_minutes', 'max_patients']);
+
+        $slotIds = $slots->pluck('id');
+
+        // Fetch all booking counts in one query
+        $bookedCounts = Appointment::whereIn('slot_id', $slotIds)
+            ->where('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->selectRaw('slot_id, COUNT(*) as booked')
+            ->groupBy('slot_id')
+            ->pluck('booked', 'slot_id');
+
+        $grouped = $slots->map(function ($slot) use ($bookedCounts) {
+            $booked          = $bookedCounts->get($slot->id, 0);
+            $slot->booked    = $booked;
+            $slot->available = max(0, $slot->max_patients - $booked);
+            return $slot;
+        })->groupBy('day_of_week')->map(function ($daySlots, $day) {
+            return [
+                'day'   => DoctorSlot::DAYS[$day],
+                'slots' => $daySlots->values(),
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => true,
+            'date'   => $date,
+            'data'   => $grouped,
+        ]);
+    }
+
     // GET /hospital/patient-lookup?store_id=&phone=
     public function patientLookup(Request $request)
     {
@@ -379,5 +428,40 @@ class AppointmentController extends Controller
         ]);
 
         return $tokenNumber;
+    }
+
+    // GET /hospital/doctors?store_id=&item_id=
+    public function doctors(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|integer|exists:stores,id',
+            'item_id'  => 'nullable|integer|exists:items,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $query = DoctorProfile::where('store_id', $request->store_id)
+            ->with(['employee:id,f_name,l_name,phone,image', 'services'])
+            ->whereHas('slots', fn($s) => $s->where('is_active', 1));
+
+        if ($request->filled('item_id')) {
+            $query->whereHas('services', fn($s) => $s->where('item_id', $request->item_id));
+        }
+
+        $doctors = $query->get()->map(fn($d) => [
+            'id'                => $d->id,
+            'name'              => 'Dr. ' . trim(($d->employee?->f_name ?? '') . ' ' . ($d->employee?->l_name ?? '')),
+            'image'             => $d->employee?->image,
+            'specialization'    => $d->specialization,
+            'qualification'     => $d->qualification,
+            'department'        => $d->department,
+            'consultation_fee'  => (float) $d->consultation_fee,
+            'available_days'    => $d->available_days,
+            'service_ids'       => $d->services->pluck('item_id'),
+        ]);
+
+        return response()->json(['doctors' => $doctors]);
     }
 }

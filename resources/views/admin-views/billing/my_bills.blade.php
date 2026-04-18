@@ -19,10 +19,10 @@
                     <span class="badge badge-soft-dark ml-2">{{ $bills->total() }}</span>
                 </span>
             </h1>
-            <div class="d-flex"> 
-                    <button class="btn btn_sm btn--primary mx-1" data-toggle="modal" data-target="#purchaseBillModal">Add
-                        Purchase
-                        Bill</button>
+            <div class="d-flex">
+                <button class="btn btn_sm btn--primary mx-1" data-toggle="modal" data-target="#purchaseBillModal">Add
+                    Purchase
+                    Bill</button>
                 {{-- @if (hasPermission('purchase_bill', 'import'))
                     <button data-toggle="modal" data-target="#importExcelModal" class="btn btn_sm btn--primary">Import
                         Excel</button>
@@ -31,133 +31,151 @@
         </div>
     </div>
     <!-- End Page Header -->
-                @if (hasPermission('purchase_bill', 'list'))
+    @if (hasPermission('purchase_bill', 'list'))
 
-    <!-- Card -->
-    <div class="card">
-        <!-- Header -->
-        <div class="card-header py-2 border-0">
-            <div class="search--button-wrapper justify-content-end">
+        <!-- Card -->
+        <div class="card">
+            <!-- Header -->
+            <div class="card-header py-2 border-0">
+                <div class="search--button-wrapper justify-content-end">
 
+                </div>
+                <!-- End Row -->
             </div>
-            <!-- End Row -->
-        </div>
-        <!-- End Header -->
-        <div class="card-body p-0">
-            <!-- Table -->
-            <div class="table-responsive datatable-custom">
-                <table id="datatable"
-                    class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
-                    <thead class="thead-light">
-                        <tr>
-                            <th class="border-0">
-                                {{ translate('messages.#') }}
-                            </th>
-                            <th class="border-0 table-column-pl-0">{{ translate('messages.invoice_id') }}</th>
-                            <th class="border-0">{{ translate('messages.total_amount') }}</th>
-                            <th class="border-0">{{ translate('messages.payment_method') }}</th>
-                            <th class="border-0 ">{{ translate('messages.due_by') }}</th>
-                            <th class="border-0 ">{{ translate('messages.ref. File') }}</th>
-                            <th class="border-0 ">{{ translate('messages.action') }}</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="set-rows">
-                        @foreach ($bills as $key => $order)
-                            <tr class="status-{{ $order['order_status'] }} class-all">
-                                <td class="">
-                                    {{ $key + $bills->firstItem() }}
-                                </td>
-                                <td class="table-column-pl-0">
-                                   <a href="{{ $order->pdf ? asset('storage/invoice') . '/' . $order->pdf : '#' }}" target="_blank">{{ $order['invoice_id'] }}</a>
-                                </td>
-                                <td>
-                                    <div class=" mw--85px">
-                                        <div>
-                                            {{ _price($order['total_amount']) }}
-                                        </div>
-                                        @if ($order->payment_status == 'Paid')
-                                            <strong class="text-success">
-                                                {{ translate('messages.paid') }}
-                                            </strong>
-                                        @else
-                                            <strong class="text-danger">
-                                                {{ translate('messages.unpaid') }}
-                                            </strong>
-                                        @endif
-                                    </div>
-                                </td>
-
-                                <td class="text-capitalize">
-
-                                    <span class="badge badge-soft-info">
-                                        {{ $order['payment_method'] }}
-                                    </span>
-                                </td>
-                                <td class="text-capitalize ">
-
-                                    {{ $order['payment_date'] }}
-
-                                </td>
-                                <td class="text-capitalize ">
-                                    @php
-                                        $file = $order->reference_file;
-                                        $filePath = asset('storage/app/public/store/docs/' . $file);
-                                        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                                    @endphp
-
-                                    @if ($file)
-                                        @if (in_array($ext, $imageExtensions))
-                                            <a href="{{ $filePath }}" target="_blank">
-                                                <img src="{{ $filePath }}" alt="Reference Image"
-                                                    style="max-width: 50px; height: auto; border: 1px solid #ccc;">
-                                            </a>
-                                        @else
-                                            <a href="{{ $filePath }}" target="_blank">View File</a>
-                                        @endif
-                                    @endif
-
-                                </td>
-                                <td>
-                                    <div class="btn--container ">
-                @if (hasPermission('purchase_bill', 'view'))
-
-                                        @if ($order['pdf'])
-                                            <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
-                                                target="_blank"
-                                                href="{{ asset('storage/app/public/invoice') . '/' . $order['pdf'] }}"><i
-                                                    class="tio-visible"></i></a>
-                                        @else
-                                            <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
-                                                target="_blank"
-                                                href="{{ route('admin.billing.manual-invoice-view', ['manual', $order['invoice_id']]) }}?store"><i
-                                                    class="tio-visible"></i></a>
-                                        @endif
-                                        @endif
-                                    </div>
-                                </td>
+            <!-- End Header -->
+            <div class="card-body p-0">
+                <!-- Table -->
+                <div class="table-responsive datatable-custom">
+                    <table id="datatable"
+                        class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th class="border-0">
+                                    {{ translate('messages.#') }}
+                                </th>
+                                <th class="border-0 table-column-pl-0">{{ translate('messages.invoice_id') }}</th>
+                                <th class="border-0">{{ translate('messages.total_amount') }}</th>
+                                <th class="border-0">{{ translate('messages.payment_method') }}</th>
+                                <th class="border-0">{{ translate('messages.payment_status') }}</th>
+                                <th class="border-0 ">{{ translate('messages.due_by') }}</th>
+                                <th class="border-0 ">{{ translate('messages.ref. File') }}</th>
+                                <th class="border-0 ">{{ translate('messages.action') }}</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @if (count($bills) === 0)
-                    <div class="empty--data">
-                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                        <h5>
-                            {{ translate('no_data_found') }}
-                        </h5>
-                    </div>
-                @endif
+                        </thead>
+
+                        <tbody id="set-rows">
+                            @foreach ($bills as $key => $order)
+                                <tr class="status-{{ $order['order_status'] }} class-all">
+                                    <td class="">
+                                        {{ $key + $bills->firstItem() }}
+                                    </td>
+                                    <td class="table-column-pl-0">
+                                        <a href="{{ $order->pdf ? asset('storage/invoice') . '/' . $order->pdf : '#' }}"
+                                            target="_blank">{{ $order['invoice_id'] }}</a>
+                                    </td>
+                                    <td>
+                                        <div class=" mw--85px">
+                                            <div>
+                                                {{ _price($order['total_amount']) }}
+                                            </div>
+                                            @if ($order->payment_status == 'Paid')
+                                                <strong class="text-success">
+                                                    {{ translate('messages.paid') }}
+                                                </strong>
+                                            @else
+                                                <strong class="text-danger">
+                                                    {{ translate('messages.unpaid') }}
+                                                </strong>
+                                            @endif
+                                        </div>
+                                    </td>
+
+                                    <td class="text-capitalize">
+
+                                        <span class="badge badge-soft-info">
+                                            {{ $order['payment_method'] }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if ($order->payment_status !== 'Paid')
+                                            @if (hasPermission('purchase_bill', 'update'))
+                                                <button type="button" class="badge badge-soft-warning  mark-paid-btn"
+                                                    data-id="{{ $order->id }}" data-invoice="{{ $order->invoice_id }}"
+                                                    title="Mark as Paid">
+                                                    Unpaid
+                                                </button>
+                                            @endif
+                                        @else
+                                            <span class="badge badge-soft-success">
+                                                <i class="tio-checkmark-circle"></i> Paid
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-capitalize ">
+
+                                        {{ $order['payment_date'] }}
+
+                                    </td>
+                                    <td class="text-capitalize ">
+                                        @php
+                                            $file = $order->reference_file;
+                                            $filePath = asset('storage/app/public/store/docs/' . $file);
+                                            $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                                            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                                        @endphp
+
+                                        @if ($file)
+                                            @if (in_array($ext, $imageExtensions))
+                                                <a href="{{ $filePath }}" target="_blank">
+                                                    <img src="{{ $filePath }}" alt="Reference Image"
+                                                        style="max-width: 50px; height: auto; border: 1px solid #ccc;">
+                                                </a>
+                                            @else
+                                                <a href="{{ $filePath }}" target="_blank">View File</a>
+                                            @endif
+                                        @endif
+
+                                    </td>
+                                    <td>
+                                        <div class="btn--container ">
+                                            @if (hasPermission('purchase_bill', 'view'))
+                                                @if ($order['pdf'])
+                                                    <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
+                                                        target="_blank"
+                                                        href="{{ asset('storage/app/public/invoice') . '/' . $order['pdf'] }}"><i
+                                                            class="tio-visible"></i></a>
+                                                @else
+                                                    <a class="btn btn-sm btn--primary btn-outline-primary action-btn"
+                                                        target="_blank"
+                                                        href="{{ route('admin.billing.manual-invoice-view', ['manual', $order['invoice_id']]) }}?store"><i
+                                                            class="tio-visible"></i></a>
+                                                @endif
+                                            @endif
+
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @if (count($bills) === 0)
+                        <div class="empty--data">
+                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
+                            <h5>
+                                {{ translate('no_data_found') }}
+                            </h5>
+                        </div>
+                    @endif
+                </div>
+                <!-- End Table -->
             </div>
-            <!-- End Table -->
+            <!-- Footer -->
+            <div class="card-footer">
+                {!! $bills->links() !!}
+            </div>
+            <!-- End Footer -->
         </div>
-        <!-- Footer -->
-        <div class="card-footer">
-            {!! $bills->links() !!}
-        </div>
-        <!-- End Footer -->
-    </div>
     @endif
     <!-- End Card -->
 
@@ -267,11 +285,49 @@
     @include('admin-views/form_modals/purchase_bill')
     @include('admin-views.form_modals.inventory_item_select')
 
+    <!-- Mark as Paid Modal -->
+    <div class="modal fade" id="markPaidModal" tabindex="-1" aria-labelledby="markPaidModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="markPaidModalLabel">Mark Bill as Paid</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="markPaidForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <p>Invoice: <strong id="markPaidInvoiceId"></strong></p>
+                        <div class="form-group">
+                            <label for="markPaidDate">Payment Date</label>
+                            <input type="date" name="payment_date" id="markPaidDate" class="form-control"
+                                value="{{ date('Y-m-d') }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm">Confirm Paid</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
     <script>
         $("#store_id").select2();
+
+        $(document).on('click', '.mark-paid-btn', function() {
+            var id = $(this).data('id');
+            var invoiceId = $(this).data('invoice');
+            $('#markPaidInvoiceId').text(invoiceId);
+            $('#markPaidForm').attr('action', '{{ url('admin/billing/purchase-invoice/mark-paid') }}/' + id);
+            $('#markPaidDate').val('{{ date('Y-m-d') }}');
+            $('#markPaidModal').modal('show');
+        });
     </script>
 
     @include('admin-views.billing.create_invoice_js')

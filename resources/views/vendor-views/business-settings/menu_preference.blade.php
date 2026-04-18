@@ -86,16 +86,16 @@
 
                                                     <label
                                                         @if ($value->business_type != 'all' && $value->business_type != strtolower($store_business_type)) disabled
-                                data-toggle="popover"
-                                title="Module Unavailable"
-                                data-content="{{ ucfirst($value->name) }} module is only available for business type {{ strtoupper($value->business_type) }}"
-                            @elseif($value->under_development)
-                                disabled
-                                data-toggle="popover"
-                                title="Under Development"
-                                data-content="Module under development. We will release it soon." @endif
-                                                        class="w-100 d-flex align-items-center p-3 border rounded shadow-sm hover-shadow transition cursor-pointer
-                            menu_card menu_card_{{ $value->slug }} {{ in_array($value->slug, $selectedMenus) ? 'active' : '' }}"
+                                                            data-toggle="popover"
+                                                            title="Module Unavailable"
+                                                            data-content="{{ ucfirst($value->name) }} module is only available for business type {{ strtoupper($value->business_type) }}"
+                                                        @elseif($value->under_development)
+                                                            disabled
+                                                            data-toggle="popover"
+                                                            title="Under Development"
+                                                            data-content="Module under development. We will release it soon." @endif
+                                                                                    class="w-100 d-flex align-items-center p-3 border rounded shadow-sm hover-shadow transition cursor-pointer
+                                                        menu_card menu_card_{{ $value->slug }} {{ in_array($value->slug, $selectedMenus) ? 'active' : '' }}"
                                                         style="min-height: 60px;">
                                                         <input @if (
                                                             ($value->business_type != 'all' && $value->business_type != strtolower($store_business_type)) ||

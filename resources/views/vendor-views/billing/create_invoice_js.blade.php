@@ -80,7 +80,8 @@
 
      function deleteQuoteRow(quoteId, type) {
          if (type == 'quote') {
-             $('[data-id="' + quoteId + '"]').remove()
+             $('[data-id="' + quoteId + '"]').remove();
+             recalculateInvoice();
          } else {
              $.ajaxSetup({
                  headers: {
@@ -133,12 +134,12 @@
                      completed++;
                      if (completed === totalRequests) {
                          $('#inventory_items').val(null).trigger('change');
-                         $('.inv_modal_close').click()
+                         $('.inv_modal_close').click();
+                         recalculateInvoice();
                      }
                  }
              });
          });
-         recalculateInvoice();
      }
 
 
@@ -165,8 +166,8 @@
 
      function deleteNewRow(rowId) {
          $('[data-id="' + rowId + '"]').remove();
-         updateEmptyState()
-
+         updateEmptyState();
+         recalculateInvoice();
      }
      var unitOptions = `{!! \App\Models\Unit::all()->map(function ($unit) {
              return "<option value='{$unit->id}'>{$unit->unit}</option>";
@@ -289,9 +290,10 @@
 
          $('.rows_parent').append(html)
          if (item) {
-             $('.unit_select' + dataId).val(item.unit).trigger('change');
+             $('.item_row[data-id="' + dataId + '"] .unit').val(item.unit).trigger('change');
          }
 
+         recalculateInvoice();
          updateEmptyState();
      }
 

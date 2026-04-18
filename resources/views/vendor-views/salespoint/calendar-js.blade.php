@@ -119,7 +119,7 @@
       }
 
       function createDayElement(day, isOtherMonth) {
-          var baseUrl =
+          var baseUrl = window.calendarDayLinkBase ||
               "{{ request()->routeIs('vendor.inventory.dashboard') || request()->routeIs('vendor.inventory.sale.orders') ? route('vendor.inventory.report.sale') : route('vendor.pos.report') }}";
           var path = 'date_range=custom&custom_date_range=' + currentYear + '-' + currentMonth + '-' + day + '+-+' +
               currentYear + '-' + currentMonth + '-' + day;

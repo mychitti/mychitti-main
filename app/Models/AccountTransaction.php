@@ -12,6 +12,17 @@ class   AccountTransaction extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'from_type',
+        'from_id',
+        'method',
+        'type',
+        'amount',
+        'reason',
+        'current_balance',
+        'created_by'
+    ];
+
     protected $casts = [
         'amount' => 'float',
         'current_balance' => 'float',

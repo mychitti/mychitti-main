@@ -24,9 +24,9 @@
         }
     </style>
     <input type="hidden" id="" name="customer_id" value="{{ isset($customer) ? $customer->id : '' }}">
-    @if( Route::currentRouteName() == "vendor.invoice.my-bills")
+    @if( Route::currentRouteName() == "vendor.invoice.my-bills" || Route::currentRouteName() == "vendor.inventory.purchase.orders" || Route::currentRouteName() == "vendor.laundry.challans.create")
     <input type="hidden" id="add_user_type" name="user_type" value="vendor">
-    @else 
+    @else
     <input type="hidden" id="add_user_type" name="user_type" value="customer">
     @endif
     <div class=" h-100 ">

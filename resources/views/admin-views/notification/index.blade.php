@@ -33,7 +33,7 @@
                             <div class="row gy-3">
                                 <div class="col-lg-6">
                                     <div class="row g-2">
-                                        <div class="col-12">
+                                        <div class="col-md-6">
                                             <div class="form-group mb-0">
                                                 <label class="input-label"
                                                     for="exampleFormControlInput1">{{ translate('messages.title') }}</label>
@@ -42,7 +42,7 @@
                                                     maxlength="191">
                                             </div>
                                         </div>
-                                        <div class="col-12">
+                                        <div class="col-md-6">
                                             <div class="form-group mb-0">
                                                 <label class="input-label"
                                                     for="exampleFormControlInput1">{{ translate('messages.zone') }}</label>
@@ -55,7 +55,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-12">
+                                        <div class="col-md-6">
                                             <div class="form-group mb-0">
                                                 <label class="input-label"
                                                     for="tergat">{{ translate('messages.send_to') }}</label>
@@ -67,6 +67,15 @@
                                                     </option>
                                                     <!-- <option value="store">{{ translate('messages.store') }}</option> -->
                                                 </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-0">
+                                                <label class="input-label"
+                                                    for="exampleFormControlInput1">{{ translate('messages.link') }}</label>
+                                                <input type="text" name="link" class="form-control"
+                                                    placeholder="{{ translate('messages.eg.:https://mychitti.net/blog') }}" 
+                                                    maxlength="191">
                                             </div>
                                         </div>
                                         <div class="col-12">

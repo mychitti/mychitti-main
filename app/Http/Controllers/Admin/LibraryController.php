@@ -28,10 +28,16 @@ class LibraryController extends Controller
 {
     public function select_template(Request $request)
     {
-        // prx($request->all());
-        $value = $request->value;
+        $value  = $request->value;
+        $action = $request->action ?? 'pos_token_template';
+
+        $allowed = ['pos_token_template', 'invoice_template'];
+        if (!in_array($action, $allowed)) {
+            $action = 'pos_token_template';
+        }
+
         StoreConfig::updateOrInsert(['store_id' => Helpers::get_store_id()], [
-            'pos_token_template' => $value
+            $action => $value,
         ]);
         Toastr::success('Updated Successfully');
         return back();

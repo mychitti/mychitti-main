@@ -5,26 +5,84 @@
             <div class="card-body row  align-items-start">
                 <input type="hidden" id="quote_id" name="quote_id" value="{{ $quote->id }}">
 
-                @if (isset($quote) && $quote->client_name)
-                    <input type="hidden" name="bill_to" value="{{ $quote->client_name }}">
-                    <div class="upgrade-card cust_det_card">
-                        <div class="customer_info">
-                            <h6>{{ $quote->storeCustomer?->f_name . ' ' . $quote->storeCustomer?->l_name }}</h6>
-                            <p class="mb-0" style="font-size:12px">{{ $quote->storeCustomer?->phone }}</p>
-                            <p class="mb-0" style="font-size:12px">{{ $quote->storeCustomer?->email }}</p>
+                @php
+                    $billToType = $quote->quote_detail?->bill_to_type ?? 'user';
+                    $billToId   = $quote->client_name;
+                    $billLabel  = null;
+                    $billSub1   = null;
+                    $billSub2   = null;
+                    if ($billToId) {
+                        if ($billToType === 'vendor') {
+                            $bRec = \App\Models\Store::find($billToId);
+                            if ($bRec) {
+                                $billLabel = $bRec->name;
+                                $billSub1  = $bRec->phone;
+                                $billSub2  = $bRec->email;
+                            }
+                        } elseif ($billToType === 'mychitti_client') {
+                            $bRec = \App\Models\StoreCustomer::find($billToId);
+                            if ($bRec) {
+                                $billLabel = trim($bRec->f_name . ' ' . $bRec->l_name);
+                                $billSub1  = $bRec->phone;
+                                $billSub2  = $bRec->email;
+                            }
+                        } else {
+                            $bRec = \App\Models\User::find($billToId);
+                            if ($bRec) {
+                                $billLabel = trim($bRec->f_name . ' ' . $bRec->l_name);
+                                $billSub1  = $bRec->phone;
+                                $billSub2  = $bRec->email;
+                            }
+                        }
+                    }
+                @endphp
+                @if ($billToId && $billLabel)
+                    <input type="hidden" name="bill_to" value="{{ $billToId }}">
+                    <input type="hidden" name="bill_to_type" value="{{ $billToType }}">
+                    <div class="upgrade-card cust_det_card col-md-3 p-2 mr-2">
+                        <small class="text-muted text-uppercase" style="font-size:10px;letter-spacing:.5px;">
+                            {{ $billToType === 'vendor' ? 'Store' : ($billToType === 'mychitti_client' ? 'Mychitti Client' : 'Customer') }}
+                        </small>
+                        <div class="customer_info mt-1">
+                            <h6 class="mb-0">{{ $billLabel }}</h6>
+                            @if($billSub1)<p class="mb-0" style="font-size:12px">{{ $billSub1 }}</p>@endif
+                            @if($billSub2)<p class="mb-0" style="font-size:12px">{{ $billSub2 }}</p>@endif
                         </div>
                     </div>
-                @else 
-                    <div class="form-check  col-md-3  p-1">
-                        <label class="form-check-label d-flex " for="flexRadioDefault2">Client</label>
-                        <div id="customer_id_elem">
-                            <select name="bill_to" class="customer_id2 form-control js-select2-custom">
+                @else
+                    <div class="col-md-3 p-1">
+                        <label class="form-check-label d-flex mb-1">Bill To</label>
+                        <div class="d-flex flex-wrap mb-2">
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="user" checked id="editQuoteRadioUser" name="bill_to_type"
+                                    class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="editQuoteRadioUser">Customer</label>
+                            </div>
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="vendor" id="editQuoteRadioVendor" name="bill_to_type"
+                                    class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="editQuoteRadioVendor">Store</label>
+                            </div>
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="mychitti_client" id="editQuoteRadioMychitti" name="bill_to_type"
+                                    class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="editQuoteRadioMychitti">Mychitti Client</label>
+                            </div>
+                        </div>
+                        <div id="quote_customer_list">
+                            <select name="bill_to" id="quote_user_select" class="form-control">
                                 <option value=""></option>
-                                @if (!isset($quote))
-                                    <option value="add_new">&#43; Add New Customer</option>
-                                @endif
                             </select>
-                            <span class="text-success user_type_show"></span>
+                        </div>
+                        <div id="quote_store_list" style="display:none;">
+                            <select name="" id="quote_vendor_select" class="form-control">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div id="quote_mychitti_client_list" style="display:none;">
+                            <select name="" id="quote_mychitti_select" class="form-control">
+                                <option value=""></option>
+                            </select>
                         </div>
                     </div>
                 @endif

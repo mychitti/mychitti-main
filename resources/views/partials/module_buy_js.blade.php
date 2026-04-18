@@ -50,6 +50,55 @@
             });
 
 
+            // ── Bed-tier click handler ────────────────────────────────────────────
+            $(document).on('click', '.bed-tier-option', function () {
+                $('.bed-tier-option').css('border-color', '#dee2e6').removeClass('selected');
+                $(this).css('border-color', '#00868f').addClass('selected');
+
+                var monthly = parseFloat($(this).data('price-monthly')) || 0;
+                var custom  = $(this).data('is-custom') == 1;
+                var tierId  = $(this).data('tier-id');
+
+                $('#selectedBedTierId').val(tierId);
+
+                // Update header price and duration-card data attributes for hospital module
+                $('.pc-module-item').each(function () {
+                    var name = $(this).find('.pc-module-name').text().toLowerCase();
+                    if (name.indexOf('hospital') === -1) return;
+
+                    $(this).find('.pc-price-amount').text(
+                        custom ? 'Custom Pricing'
+                               : '₹' + Math.round(monthly).toLocaleString('en-IN') + '/month'
+                    );
+
+                    $(this).find('.pc-duration-card').each(function () {
+                        var months = parseInt($(this).data('months'));
+                        var price  = custom ? 0 : monthly * months;
+                        $(this)
+                            .data('base-price', price).attr('data-base-price', price)
+                            .data('discount-amount', 0).attr('data-discount-amount', 0)
+                            .data('final-price', price).attr('data-final-price', price);
+                    });
+
+                    // Update tier info banner text
+                    var tierName  = $(this).find('.bed-tier-option.selected div:first').text().trim();
+                    var tierRange = $(this).find('.bed-tier-option.selected div:nth-child(2)').text().trim();
+                    var priceText = custom ? 'Contact for pricing'
+                        : '₹' + Math.round(monthly).toLocaleString('en-IN') + '/month';
+                    $(this).find('.pc-tier-info-banner').html(
+                        '<strong>Selected Tier:</strong> ' + tierName + ' (' + tierRange + ') &mdash; ' + priceText
+                    );
+                });
+
+                recalculateAll();
+            });
+
+            // Auto-click pre-selected tier on load
+            var preSelected = $('.bed-tier-option.selected');
+            if (preSelected.length) {
+                preSelected.first().trigger('click');
+            }
+
             function recalculateAll() {
 
                 let totalBase = 0;
@@ -123,6 +172,8 @@
                 $('#grandTotalInput').val(total.toFixed(2));
                 $('#gstAmountInput').val(gstAmount.toFixed(2));
             }
+
+            window.pcRecalculateAll = recalculateAll;
 
         });
     </script>

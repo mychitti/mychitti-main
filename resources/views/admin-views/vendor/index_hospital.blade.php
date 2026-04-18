@@ -153,6 +153,13 @@
                             <div class="row g-3 my-0">
                                 <div class="col-lg-4">
                                     <div class="form-group">
+                                        <label class="input-label" for="bed_count">Total Beds <span class="text-danger">*</span></label>
+                                        <input type="number" name="bed_count" id="bed_count" class="form-control"
+                                            min="0" placeholder="e.g. 50" required
+                                            oninput="updateBedTierInfo(this.value)">
+                                        <small id="bedTierInfo" class="text-info mt-1 d-block"></small>
+                                    </div>
+                                    <div class="form-group">
                                         <label class="input-label" for="choice_zones">City<span
                                                 class="form-label-secondary" data-toggle="tooltip" data-placement="right"
                                                 data-original-title="{{ translate('messages.select_zone_for_map') }}"><img
@@ -1047,7 +1054,32 @@
             let type = $("#delivery_time_type").val();
             $("#floating--date").removeClass('active');
             $("#time_view").val(min + ' to ' + max + ' ' + type);
+        });
 
-        })
+        // Bed tier info lookup
+        var _bedTiers = @json(\App\Models\HospitalBedTier::where('is_active', true)->orderBy('min_beds')->get(['id','tier_name','min_beds','max_beds','price_monthly','price_yearly','is_custom']));
+
+        function updateBedTierInfo(val) {
+            var count = parseInt(val) || 0;
+            var info = document.getElementById('bedTierInfo');
+            var matched = null;
+            for (var i = 0; i < _bedTiers.length; i++) {
+                var t = _bedTiers[i];
+                if (count >= t.min_beds && (t.max_beds === null || count <= t.max_beds)) {
+                    matched = t;
+                    break;
+                }
+            }
+            if (!matched) {
+                info.textContent = count > 0 ? 'No matching pricing tier found.' : '';
+            } else if (matched.is_custom) {
+                info.textContent = 'Tier: ' + matched.tier_name + ' — Custom pricing (contact for quote)';
+            } else {
+                var bedRange = matched.max_beds ? matched.min_beds + '–' + matched.max_beds + ' beds' : matched.min_beds + '+ beds';
+                var price = '₹' + Number(matched.price_monthly).toLocaleString() + '/month';
+                if (matched.price_yearly > 0) price += '  |  ₹' + Number(matched.price_yearly).toLocaleString() + '/year';
+                info.textContent = 'Tier: ' + matched.tier_name + ' (' + bedRange + ')  —  ' + price;
+            }
+        }
     </script>
 @endpush

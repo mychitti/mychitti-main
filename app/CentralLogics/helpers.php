@@ -32,6 +32,7 @@ use App\Models\AcceptedServiceRequest;
 use App\Models\AdminAction;
 use App\Models\CouponCondition;
 use App\Models\DayBook;
+use App\Models\DoctorProfile;
 use App\Models\FreeTrialHistory;
 use App\Models\InventoryGatepass;
 use App\Models\InventoryGatepassItem;
@@ -229,7 +230,7 @@ class Helpers
 
         // GATEPASS FOR INVOICE
         if ($invoice) {
-            $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+            $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
             foreach ($invoice_items as $key => $value) {
                 $gpItem = new InventoryGatepassItem();
                 $gpItem->gatepass_id = $pass->id;
@@ -330,7 +331,7 @@ class Helpers
         $totalTaxAmount = 0;
         $subTotalAmount = 0;
 
-        $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->whereNotNull("inv_id")->get();
+        $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull("inv_id")->get();
 
         foreach ($invoice_items as $key => $item) {
             $price = $item->price ?? 0;
@@ -1228,7 +1229,7 @@ class Helpers
     }
     public static function _placeInventoryOrder($invoice)
     {
-        $invItemsInInvoice = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->whereNotNull('inv_id')->get();
+        $invItemsInInvoice = InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get();
 
         $order_id = self::_invOrderIdGenerate();
         if (count($invItemsInInvoice)) {
@@ -2093,6 +2094,46 @@ class Helpers
         }
         return $structured;
     }
+    public static function laundry_calendar()
+    {
+        $storeId = Helpers::get_store_id();
+
+        $orders = \App\Models\LaundryOrder::where('store_id', $storeId)
+            ->whereNotIn('status', ['cancelled'])
+            ->selectRaw('YEAR(drop_date) as year, MONTH(drop_date) as month, DAY(drop_date) as day, SUM(total_amount) as amount, COUNT(id) as tokens')
+            ->groupBy('year', 'month', 'day')
+            ->orderBy('year')->orderBy('month')->orderBy('day')
+            ->get();
+
+        $structured = [];
+        $monthlyAmounts = [];
+
+        foreach ($orders as $row) {
+            $structured[$row->year][$row->month][$row->day] = [
+                'amount'   => (float) $row->amount,
+                'tokens'   => (int) $row->tokens,
+                'category' => 'low',
+            ];
+            $monthlyAmounts[$row->year][$row->month][] = (float) $row->amount;
+        }
+
+        foreach ($structured as $year => $months) {
+            foreach ($months as $month => $days) {
+                $amounts = $monthlyAmounts[$year][$month] ?? [0];
+                $max = max($amounts);
+                $avg = array_sum($amounts) / count($amounts);
+                foreach ($days as $day => $data) {
+                    $amt = $data['amount'];
+                    if ($max > 0) {
+                        $structured[$year][$month][$day]['category'] = $amt >= $avg * 1.5 ? 'high' : ($amt >= $avg * 0.5 ? 'medium' : 'low');
+                    }
+                }
+            }
+        }
+
+        return $structured;
+    }
+
     public static function excelToCarbon($value)
     {
         // 1️⃣ If it's numeric (Excel serial date)
@@ -2146,18 +2187,33 @@ class Helpers
     public static function generate_RR_number($store,  $action2 = 'view', $custom_number = null)
     {
         $store_prefix = self::_storePrefix($store->name);
-        $ser_number = $custom_number ?? $store->receivable_receipt_serial_number;
 
-        $receipt_number = $store_prefix . 'RR-'  . $ser_number;
+        // Auto-reset serial when FY changes
+        if ($custom_number === null) {
+            $today      = now();
+            $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
+            $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
+
+            if (($store->receivable_receipt_fy ?? '') !== $year) {
+                DB::table('stores')->where('id', $store->id)->update([
+                    'receivable_receipt_serial_number' => 1,
+                    'receivable_receipt_fy'            => $year,
+                ]);
+                $store->receivable_receipt_serial_number = 1;
+                $store->receivable_receipt_fy            = $year;
+            }
+        }
+
+        $ser_number     = $custom_number ?? $store->receivable_receipt_serial_number;
+        $receipt_number = $store_prefix . 'RR-' . $ser_number;
 
         if ($action2 === 'view') {
             return $receipt_number;
         }
 
-        $new_num = $custom_number ? $custom_number + 1 : $receipt_number + 1;
         DB::table('stores')
-            ->where('id', Helpers::get_store_id())
-            ->update(['receivable_receipt_serial_number' => $new_num]);
+            ->where('id', $store->id)
+            ->update(['receivable_receipt_serial_number' => $ser_number + 1]);
 
         return $receipt_number;
     }
@@ -2171,18 +2227,36 @@ class Helpers
     }
     public static function generate_RR_serial_number($store = null, $action2 = 'view', $custom_number = null)
     {
+        $today       = now();
+        $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
+        $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
+
         if (auth('admin')->check()) {
-            $setting = DB::table('business_settings')->where('key', 'receivable_receipt_serial_number')->first();
+            // Auto-reset admin RR serial when FY changes
+            if ($custom_number === null) {
+                $fySetting = DB::table('business_settings')->where('key', 'admin_receivable_receipt_fy')->first();
+                if (!$fySetting || $fySetting->value !== $year) {
+                    DB::table('business_settings')->updateOrInsert(
+                        ['key' => 'admin_receivable_receipt_fy'],
+                        ['value' => $year]
+                    );
+                    DB::table('business_settings')->updateOrInsert(
+                        ['key' => 'receivable_receipt_serial_number'],
+                        ['value' => 1]
+                    );
+                }
+            }
+
+            $setting        = DB::table('business_settings')->where('key', 'receivable_receipt_serial_number')->first();
             $receipt_number = $custom_number ?? (int) ($setting->value ?? 1);
+
             if ($action2 === 'view') {
                 return $custom_number ?? $receipt_number;
             }
-            $new_num = $custom_number ? $custom_number + 1 : $receipt_number + 1;
-            DB::table('business_settings')
-                ->updateOrInsert( 
-                    ['key' => 'receivable_receipt_serial_number'],
-                    ['value' => $new_num]
-                );
+            DB::table('business_settings')->updateOrInsert(
+                ['key' => 'receivable_receipt_serial_number'],
+                ['value' => ($custom_number ?? $receipt_number) + 1]
+            );
             return $custom_number ?? $receipt_number;
         }
 
@@ -2190,35 +2264,61 @@ class Helpers
             $store = DB::table('stores')->where('id', Helpers::get_store_id())->first();
         }
 
+        // Auto-reset store RR serial when FY changes
+        if ($custom_number === null && ($store->receivable_receipt_fy ?? '') !== $year) {
+            DB::table('stores')->where('id', $store->id)->update([
+                'receivable_receipt_serial_number' => 1,
+                'receivable_receipt_fy'            => $year,
+            ]);
+            $store->receivable_receipt_serial_number = 1;
+            $store->receivable_receipt_fy            = $year;
+        }
+
         $receipt_number = $custom_number ?? $store->receivable_receipt_serial_number;
+
         if ($action2 === 'view') {
             return $custom_number ?? $receipt_number;
         }
-        $new_num = $custom_number ? $custom_number + 1 : $receipt_number + 1;
         DB::table('stores')
-            ->where('id', Helpers::get_store_id())
-            ->update(['receivable_receipt_serial_number' => $new_num]);
+            ->where('id', $store->id)
+            ->update(['receivable_receipt_serial_number' => ($custom_number ?? $receipt_number) + 1]);
 
         return $custom_number ?? $receipt_number;
     }
     public static function generate_jobcard_number($store = null, $action2 = 'view')
     {
-        $store_prefix = self::_storePrefix($store->name);
-        $prefix = $store_prefix . 'JC-';
-
         if (!$store) {
             $store = DB::table('stores')->where('id', Helpers::get_store_id())->first();
         }
-        $receipt_number =  $store->jobcard_serial_number;
-        if ($action2 === 'view') {
-            return $prefix .  $receipt_number;
-        }
-        $new_num =  $receipt_number + 1;
-        DB::table('stores')
-            ->where('id', Helpers::get_store_id())
-            ->update(['jobcard_serial_number' => $new_num]);
 
-        return $prefix . $receipt_number;
+        $store_prefix = self::_storePrefix($store->name);
+        $prefix       = $store_prefix . 'JC-';
+
+        // Auto-reset serial when FY changes
+        $today       = now();
+        $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
+        $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
+
+        if (($store->jobcard_fy ?? '') !== $year) {
+            DB::table('stores')->where('id', $store->id)->update([
+                'jobcard_serial_number' => 1,
+                'jobcard_fy'            => $year,
+            ]);
+            $store->jobcard_serial_number = 1;
+            $store->jobcard_fy            = $year;
+        }
+
+        $serial = $store->jobcard_serial_number;
+
+        if ($action2 === 'view') {
+            return $prefix . $serial;
+        }
+
+        DB::table('stores')
+            ->where('id', $store->id)
+            ->update(['jobcard_serial_number' => $serial + 1]);
+
+        return $prefix . $serial;
     }
     public static function ensureCashAccount()
     {
@@ -2590,7 +2690,7 @@ class Helpers
             ->pluck('stores.id')
             ->map(fn($id) => (int) $id)
             ->toArray();
-
+       
         $storeIds = array_values(array_intersect($storeIds, $existingStoreIds));
 
         if (empty($storeIds)) return [];
@@ -2756,22 +2856,7 @@ class Helpers
         } else {
             $exp_time = $count;
         }
-        return $exp_time . ' ' . $unit;
-    }
-    public static function createHospitalDefaultRoles(int $store_id): void
-    {
-        $defaultRoles = ['Doctor', 'Nurse', 'Receptionist'];
-        foreach ($defaultRoles as $roleName) {
-            $exists = \App\Models\EmployeeRole::where('store_id', $store_id)
-                ->where('name', $roleName)->exists();
-            if (!$exists) {
-                $role = new \App\Models\EmployeeRole();
-                $role->name = $roleName;
-                $role->store_id = $store_id;
-                $role->status = 1;
-                $role->save();
-            }
-        }
+        return $exp_time . ' ' . $unit; 
     }
 
     public static function _addWelcomeCouponsIfExist($store)
@@ -3827,7 +3912,8 @@ class Helpers
 
     public static function store_data_formatting_limited($data, $multi_data = false)
     {
-        $storage = [];
+        return [] ;
+        $storage = []; 
         $baseUrl = asset('storage/store') . '/';
         if ($multi_data == true) {
             foreach ($data as $item) {
@@ -3857,9 +3943,14 @@ class Helpers
             // $data['positive_rating'] = $ratings['positive_rating'];
 
             unset($data['positive_rating']);
+            if($data['business_type'] == 'Hospital'){
+                $data['doctors'] = DoctorProfile::where('store_id', $data['id'])->get();
+            }else{
+                $data['doctors'] = [];
+            }
         }
 
-        return $data;
+        // return $data;
     }
     public static function store_data_formatting($data, $multi_data = false)
     {

@@ -1650,7 +1650,7 @@ select.form-control {
 }
 
 .page-header .btn--primary {
-    margin-bottom: 8px;
+    /* margin-bottom: 8px; */
 }
 
 .page-header-title {
@@ -5816,7 +5816,7 @@ div.scroll-down {
 .navbar-vertical-aside-has-menu.active
     .js-navbar-vertical-aside-menu-link.nav-link
     span {
-    color: white ;
+    /* color: white ; */
 }
 .navbar-vertical-aside-mini-mode .nav_store_title{
     display: none;

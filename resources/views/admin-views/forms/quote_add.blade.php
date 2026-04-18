@@ -8,51 +8,82 @@
                 <div class="form-check  col-md-2  p-1">
                     <label class="form-check-label d-flex " for="flexRadioDefault2">Quotation Number</label>
                     <div id="">
-                      @php $next_quotation_num = \App\CentralLogics\Helpers::quoteId(0) @endphp
+                        @php $next_quotation_num = \App\CentralLogics\Helpers::quoteId(0) @endphp
                         <input type="number" name="quotation_id" class="form-control quotation_number" min="1"
                             value="{{ $next_quotation_num }}">
-                            <span class="text-danger quote_num_text"></span>
+                        <span class="text-danger quote_num_text"></span>
                     </div>
                 </div>
 
                 @if (isset($task) && $task->user_id)
                     <input type="hidden" name="customer_id" value="{{ $task->user_id }}">
                 @else
-                    <div class="form-check  col-md-2  p-1">
-                        <label class="form-check-label d-flex " for="flexRadioDefault2">Client</label>
-                        <div id="customer_id_elem">
-                            <select name="bill_to" class="customer_id2 form-control js-select2-custom" id="customer_id">
-                                <option value=""></option>
-                                @if (!isset($task))
-                                    <option value="add_new">&#43; Add New Customer</option>
-                                @endif
-                            </select>
-                            <span class="text-success user_type_show"></span>
+                    <div class="col-md-3 p-1">
+                        <label class="form-check-label d-flex mb-1">Bill To Type</label>
+                        <div class="d-flex flex-wrap mb-2">
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="user" checked id="quoteRadioUser" name="bill_to_type"
+                                    class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="quoteRadioUser">Customer</label>
+                            </div>
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="vendor" id="quoteRadioVendor" name="bill_to_type"
+                                    class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="quoteRadioVendor">Store</label>
+                            </div>
+                            <div class="custom-control custom-radio custom-control-inline">
+                                <input type="radio" value="mychitti_client" id="quoteRadioMychitti"
+                                    name="bill_to_type" class="custom-control-input quote_bill_to_type">
+                                <label class="custom-control-label" for="quoteRadioMychitti">Mychitti Client</label>
+                            </div>
                         </div>
+
+                    </div>
+                    <div class="col-md-3 p-1">
+                        <label class="form-check-label d-flex mb-1">Bill To </label>
+
+                        <div id="quote_customer_list">
+                            <select name="bill_to" id="quote_user_select" class="form-control">
+                                <option value=""></option>
+                                <option value="add_new">&#43; Add New Customer</option>
+                            </select>
+                        </div>
+                        <div id="quote_store_list" style="display:none;">
+                            <select name="" id="quote_vendor_select" class="form-control">
+                                <option value=""></option>
+                            </select>
+                        </div>
+                        <div id="quote_mychitti_client_list" style="display:none;">
+                            <select name="" id="quote_mychitti_select" class="form-control">
+                                <option value=""></option>
+                                <option value="add_new">&#43; Add New Customer</option>
+                            </select>
+                        </div>
+                        <span class="text-success user_type_show"></span>
                     </div>
                 @endif
-                <div class="form-check  col-md-2  p-1"> 
+                <div class="form-check  col-md-2  p-1">
                     <label class="form-check-label d-flex " for="flexRadioDefault2">Quotation Date</label>
                     <div id="">
                         @php
                             $today = date('Y-m-d');
                             $startOfFinancialYear = (date('m') >= 4 ? date('Y') : date('Y') - 1) . '-04-01';
                         @endphp
- 
+
                         <input type="date" name="invoice_date" class="form-control" min="{{ $startOfFinancialYear }}"
                             value="{{ $today }}">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="row w-100 mb-2 ml-4">
-                       
-                            <div class="form-check mr-5 ">
-                                <input class="form-check-input tax_type" value="gst" name="tax_type" type="radio"
-                                    id="gstRadio1">
-                                <label class="form-check-label" for="gstRadio1">
-                                    GST
-                                </label>
-                            </div>
+
+                        <div class="form-check mr-5 ">
+                            <input class="form-check-input tax_type" value="gst" name="tax_type" type="radio"
+                                id="gstRadio1">
+                            <label class="form-check-label" for="gstRadio1">
+                                GST
+                            </label>
+                        </div>
                         <div class="form-check">
                             <input class="form-check-input tax_type" value="non-gst" name="tax_type" type="radio"
                                 id="gstRadio2" checked>
@@ -73,8 +104,8 @@
                             $billingDisabled = '';
                         @endphp
                         <div class="form-check">
-                            <input {!! $billingDisabled !!} class="form-check-input " value="Unpaid" name="payment_stts"
-                                type="radio" id="payment_sttsRadio2">
+                            <input {!! $billingDisabled !!} class="form-check-input " value="Unpaid"
+                                name="payment_stts" type="radio" id="payment_sttsRadio2">
                             <label class="form-check-label" for="payment_sttsRadio2">
                                 Unpaid
                             </label>
@@ -113,10 +144,8 @@
         <div class="card h-100">
             <div class="card-body p-1">
                 <button type="button" class="btn btn-dark btn-sm" onclick="addMoreRowQuote(null)">Add More</button>
-                @if (_isSubscription() && Route::currentRouteName() === 'adminquotation.add')
-                    <button type="button" class="btn btn-dark btn-sm" data-toggle="modal"
-                        data-target="#inventoryItemModal">+ Add From Inventory</button>
-                @endif 
+                <button type="button" class="btn btn-dark btn-sm" data-toggle="modal"
+                    data-target="#inventoryItemModal">+ Add From Inventory</button>
                 <table class="table">
                     <thead class="" style=" background: #75b8b8; color: white;">
                         <tr>
@@ -132,34 +161,7 @@
                         </tr>
                     </thead>
                     <tbody class="rows_parent_quote">
-                        {{-- <tr class="item_row_inv" data-id="1">
-                            <input type="hidden" name="invoice_item_id[]">
-                            <td><input type="text" name="item_name[]" placeholder="Item Name"
-                                    class="form-control"></td>
-                            <td style="width: 100px;"><input type="number" step="0.001" name="item_price[]"
-                                    placeholder="Price" class="form-control price"></td>
-                            <td style="width: 58px;"><input type="number" name="item_qty[]" value="1"
-                                    placeholder="Quantity" class="form-control qty"></td>
-                            <td style="width:140px;"><select name="item_unit[]" id=""
-                                    class="form-control js-select2-custom">
-                                    <option value="">-- Unit --</option>
-                                    @foreach (\App\Models\Unit::all() as $unit)
-                                        <option value="{{ $unit->id }}">{{ $unit->unit }}</option>
-                                    @endforeach
-                                </select></td>
-                            <td style="width: 58px;" class="tax_inp_data hidden_tax"><input type="number"
-                                    name="item_tax[]" placeholder="Tax" class="form-control tax"></td>
-                            <td style="width: 93px;" class="hsn_inp hidden_hsn"><input type="text"
-                                    name="item_hsn[]" placeholder="HSN" class="form-control"></td>
-
-                            <td style="width: 93px;" class="hidden_tax"><input type="text" readonly
-                                    placeholder="Taxable" class="form-control item_taxable"></td>
-                            <td style="width: 93px;" class=""><input type="text" readonly
-                                    placeholder="Total" class="form-control item_total"></td>
-                            <td><button type="button" onclick="deleteNewRow('invoice')"
-                                    class="btn action-btn btn--danger btn-outline-danger"><i
-                                        class="tio-delete-outlined"></i></button></td>
-                        </tr> --}}
+                        
                     </tbody>
                 </table>
 
@@ -169,10 +171,11 @@
     <div class="col-md-3">
         <div class="card h-100">
             <div class="card-body p-1">
-                <p><strong>Total (Without GST): <span class="currency">₹</span><span
-                         class="totalWithoutGST"   id="totalWithoutGST">0</span></strong></p>
+                <p><strong>Total (Without GST): <span class="currency">₹</span><span class="totalWithoutGST"
+                            id="totalWithoutGST">0</span></strong></p>
                 <p class="totalWithGSTInp" style="display:none;"><strong>Total (With GST): <span
-                            class="currency">₹</span><span class="totalWithGST" id="totalWithGST">0</span></strong></p>
+                            class="currency">₹</span><span class="totalWithGST" id="totalWithGST">0</span></strong>
+                </p>
             </div>
         </div>
     </div>
@@ -219,9 +222,10 @@
     }
 
     @media (max-width: 768px) {
-        .item_row_quote td{
+        .item_row_quote td {
             width: 100% !important;
         }
+
         {{-- table {
             display: block;
             border: none;
@@ -257,9 +261,7 @@
 
     {{-- .table th {
         padding: 5px !important;
-    } --}}
-
-    #toast {
+    } --}} #toast {
         visibility: hidden;
         min-width: 250px;
         margin-left: -125px;

@@ -12,10 +12,10 @@ use App\Models\AccountTransaction;
 use App\Models\GatePass;
 use App\Models\ServiceQuoteItem;
 use App\Models\GatePassItem;
-use App\Models\InServiceQuotation; 
+use App\Models\InServiceQuotation;
 use App\Models\Salary;
 use App\Models\VendorEmpJob;
-use App\Models\Store;  
+use App\Models\Store;
 use App\Models\ServiceInvoice;
 use App\Models\InvoiceItem;
 use App\Models\LeadCharge;
@@ -54,57 +54,137 @@ class ServiceController extends Controller
 {
     public function applyCoupon(Request $request)
     {
-        $request->validate([
-            'coupon_code' => 'required|string',
-        ]);
+        $request->validate(['coupon_code' => 'required|string']);
 
-        $user_id   = auth()->id();
-        $code      = $request->coupon_code;
+        $code = $request->coupon_code;
 
         $coupon = Coupon::withoutGlobalScopes()
             ->where('code', $code)
             ->where('status', 1)
             ->whereDate('expire_date', '>=', now()->toDateString())
+            ->whereNull('claimed_at')
             ->first();
 
         if (!$coupon) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid or expired coupon.'
-            ]);
-        }
-
-        if (!in_array((string)$user_id, json_decode($coupon->customer_id, true))) {
-            return response()->json([
-                'status' => false,
-                'message' => 'This coupon is not assigned to your account.'
-            ]);
+            return response()->json(['status' => false, 'message' => 'Invalid, expired, or already claimed coupon.']);
         }
 
         if ($coupon->total_uses >= $coupon->limit) {
-            return response()->json([
-                'status' => false,
-                'message' => 'This coupon has already been used.'
-            ]);
+            return response()->json(['status' => false, 'message' => 'This coupon has already been used.']);
         }
-        // increment used count
-        $coupon->increment('total_uses');
 
+        // Identify the customer this coupon belongs to
+        $customerIds = json_decode($coupon->customer_id, true) ?? [];
+        if (empty($customerIds)) {
+            return response()->json(['status' => false, 'message' => 'No customer linked to this coupon.']);
+        }
+        $customerId = $customerIds[0];
+        $customer   = User::find($customerId);
+
+        if (!$customer) {
+            return response()->json(['status' => false, 'message' => 'Customer not found.']);
+        }
+
+        // Check minimum completed services requirement
+        if ($coupon->min_services > 0) {
+            $completedCount = ServiceRequest::where('user_id', $customerId)
+                ->whereNotNull('completed_at')
+                ->count();
+
+            if ($completedCount < $coupon->min_services) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => "Customer has only completed {$completedCount} service(s). "
+                                 . "{$coupon->min_services} required to redeem this coupon.",
+                ]);
+            }
+        }
+
+        // Generate 4-digit OTP and store on coupon (valid 10 minutes)
+        $otp = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+
+        $coupon->claim_otp            = $otp;
+        $coupon->claim_otp_expires_at = now()->addMinutes(10);
+        $coupon->save();
+
+        // Send OTP to customer's phone
+        try {
+            _send_confirmation_sms('otp', $customer->phone, $otp);
+        } catch (\Exception $e) {
+            // SMS failure is non-blocking
+        }
 
         return response()->json([
-            'status' => true,
-            'message' => 'Coupon applied successfully.',
-            'data' => [
-                'coupon_id' => $coupon->id,
-                'discount'  => $coupon->discount,
-                'type'      => $coupon->discount_type, // flat / percent
-            ]
+            'status'        => true,
+            'otp_sent'      => true,
+            'message'       => 'OTP sent to customer\'s phone. Ask the customer for the OTP to confirm.',
+            'customer_name' => trim($customer->f_name . ' ' . $customer->l_name),
+            'coupon_code'   => $coupon->code,
+            'discount'      => $coupon->discount,
+        ]);
+    }
+
+    public function verifyCoupon(Request $request)
+    {
+        $request->validate([
+            'coupon_code' => 'required|string',
+            'otp'         => 'required|string|size:4',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+        $store   = Store::find($storeId);
+
+        $coupon = Coupon::withoutGlobalScopes()
+            ->where('code', $request->coupon_code)
+            ->where('status', 1)
+            ->whereNull('claimed_at')
+            ->first();
+
+        if (!$coupon) {
+            return response()->json(['status' => false, 'message' => 'Invalid or already claimed coupon.']);
+        }
+
+        if ($coupon->claim_otp !== $request->otp) {
+            return response()->json(['status' => false, 'message' => 'Incorrect OTP.']);
+        }
+
+        if (!$coupon->claim_otp_expires_at || now()->isAfter($coupon->claim_otp_expires_at)) {
+            return response()->json(['status' => false, 'message' => 'OTP has expired. Please restart the process.']);
+        }
+
+        // Mark coupon as claimed
+        $coupon->claimed_at           = now();
+        $coupon->claimed_by_store_id  = $storeId;
+        $coupon->claim_otp            = null;
+        $coupon->claim_otp_expires_at = null;
+        $coupon->increment('total_uses');
+        $coupon->save();
+
+        // Credit vendor wallet
+        $vendorId = $store->vendor_id;
+        $amount   = $coupon->discount;
+
+        $wallet = StoreWallet::firstOrCreate(
+            ['vendor_id' => $vendorId],
+            ['total_earning' => 0, 'total_withdrawn' => 0, 'pending_withdraw' => 0]
+        );
+        $wallet->increment('total_earning', $amount);
+
+        // Record transaction
+        AccountTransaction::create([
+           
+        ]);
+
+        return response()->json([
+            'status'  => true,
+            'message' => "Coupon claimed! ₹{$amount} has been credited to your wallet.",
+            'amount'  => $amount,
         ]);
     }
 
     public function accept(Request $request, $serviceRequestId)
     {
-        
+
         // check if already tiedup with any other vendor
         $acExists = DB::table('accepted_service_requests')->where('service_request_id', $serviceRequestId)->where('tieup', 1)->exists();
         if ($acExists) {
@@ -116,7 +196,7 @@ class ServiceController extends Controller
             ->join('categories', 'categories.id', '=', 'items.category_id')
             ->where('service_requests.id', '=', $serviceRequestId)
             ->where('service_requests.expired',  0)
-            ->select('categories.id as cat_id', 'service_requests.item_id', 'service_requests.created_at')
+            ->select('categories.id as cat_id', 'service_requests.item_id', 'service_requests.created_at', 'service_requests.preferred_doctor_id')
             ->first();
         if (!$leadinfo) {
             DB::table('service_requests')->where('id', $serviceRequestId)->delete();
@@ -135,14 +215,14 @@ class ServiceController extends Controller
         }
         $zoneId = \App\CentralLogics\Helpers::get_store_data()->zone_id;
         $store_id = \App\CentralLogics\Helpers::get_store_id();
-        $vendor_id = \App\CentralLogics\Helpers::get_vendor_id(); 
+        $vendor_id = \App\CentralLogics\Helpers::get_vendor_id();
 
         // Try service-specific charge first, then fall back to category-level
         $leadChargeInfo = LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
             ->where('item_id', $leadinfo->item_id)->first()
             ?? LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
             ->whereNull('item_id')->first();
-        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first(); 
+        $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
@@ -191,13 +271,13 @@ class ServiceController extends Controller
                 Toastr::error('Insufficient wallet balance to accept leads. Minimum ' . _price($minimumBalanceRequired) . ' required');
                 return back();
             }
-            
+
             //deduct amount from wallet
             $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);
             $wallet->save();
-            
+
             //insert into transactions 
             $account_transaction = new AccountTransaction();
             $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');
@@ -210,14 +290,31 @@ class ServiceController extends Controller
             $account_transaction->created_by = 'store';
             $account_transaction->save();
         }
-
+        $appointmentConfirmed = false;
         $servieQty = ServiceRequest::find($serviceRequestId);
         // save acceptance 
         $acceptance = new AcceptedServiceRequest;
         $acceptance->vendor_id = $store_id;
         $acceptance->qty = $servieQty->qty;
+
         $acceptance->service_request_id = $serviceRequestId;
         $acceptance->created_at = date('Y-m-d H:i:s');
+
+        // for hospital flow only 
+        if (isset($leadinfo->preferred_doctor_id) && $leadinfo->preferred_doctor_id) {
+            // auto confirm and assign 
+            $doctorProfile = \App\Models\DoctorProfile::find($leadinfo->preferred_doctor_id);
+            if ($doctorProfile) {
+                $acceptance->assigned_status = 'Assigned';
+                $acceptance->assigned_type = 'staff';
+                $acceptance->assigned_to = $doctorProfile->emp_id;
+                $acceptance->assigned_at = NOW();
+                $acceptance->current_status = 'Confirmed';
+                $acceptance->confirmed_at = NOW();
+            }
+            $appointmentConfirmed = true;
+        }
+
 
         $serReq = ServiceRequest::find($serviceRequestId);
         $serReq->accepted = 1;
@@ -238,6 +335,35 @@ class ServiceController extends Controller
                 'status' => 'Requested Accepted',
                 'created_at' => date('Y-m-d H:i:s')
             ]);
+
+            // Notify customer — appointment confirmed (hospital) or enquiry accepted (general)
+            $user = User::find($serReq->user_id);
+            if ($user) {
+                $storeName = Helpers::get_store_data()?->name ?? 'The store';
+                if ($appointmentConfirmed) {
+                    $title       = 'Appointment Confirmed';
+                    $description = "Your appointment for \"{$serReq->item_name}\" has been confirmed by {$storeName}.";
+                } else {
+                    $title       = 'Enquiry Accepted';
+                    $description = "{$storeName} has accepted your enquiry for \"{$serReq->item_name}\". They will contact you shortly.";
+                }
+                $notifData = [
+                    'title'       => $title,
+                    'description' => $description,
+                    'order_id'    => $serReq->id,
+                    'image'       => '',
+                    'type'        => 'service',
+                ];
+                Helpers::send_push_notif_to_device($user->cm_firebase_token, $notifData);
+                DB::table('user_notifications')->insert([
+                    'data'       => json_encode($notifData),
+                    'user_id'    => $user->id,
+                    'type'       => 'service',
+                    'type_id'    => $serReq->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
         return back();
     }
@@ -305,22 +431,25 @@ class ServiceController extends Controller
         $item = DB::table('items')->where('id', $service_requests->item_id)->first();
         $user = DB::table('service_requests')->join('users', 'users.id', 'service_requests.user_id')->where('service_requests.id', $request_id)->select('users.*')->first();
         if ($user) {
-            $fcm_token = $user->cm_firebase_token;
+            $storeName = Helpers::get_store_data()?->name ?? 'The store';
+            $isAppointment = !empty($service_requests->preferred_doctor_id);
             $data = [
-                'title' => "Service Status Update",
-                'description' => "Status of " . $item->name . " is changed to Cancel.",
-                'order_id' => $request_id,
-                'image' => '',
-                'type' => 'block'
+                'title'       => $isAppointment ? 'Appointment Cancelled' : 'Enquiry Cancelled',
+                'description' => $isAppointment
+                    ? "Your appointment for \"{$item->name}\" has been cancelled by {$storeName}."
+                    : "{$storeName} has cancelled your enquiry for \"{$item->name}\".",
+                'order_id'    => $request_id,
+                'image'       => '',
+                'type'        => 'service',
             ];
-            Helpers::send_push_notif_to_device($fcm_token, $data);
+            Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
             DB::table('user_notifications')->insert([
-                'data' => json_encode($data),
-                'user_id' => $user->id,
-                'type' => 'service',
-                'type_id' => $request_id,
+                'data'       => json_encode($data),
+                'user_id'    => $user->id,
+                'type'       => 'service',
+                'type_id'    => $request_id,
                 'created_at' => now(),
-                'updated_at' => now()
+                'updated_at' => now(),
             ]);
         }
 
@@ -688,7 +817,6 @@ class ServiceController extends Controller
             } elseif ($status === 'credit') {
                 $invoices = fetchInvoices(ServiceInvoice::class, 'service', 'Paid', null, null, 'credit', $formatted_from, $formatted_to, $search)
                     ->merge(fetchInvoices(ManualInvoice::class, 'manual', 'Paid', null, null, 'credit', $formatted_from, $formatted_to, $search));
-            
             } elseif ($status === 'Unpaid') {
                 $invoices = fetchInvoices(ServiceInvoice::class, 'service', 'Unpaid', null, null, 'pending', $formatted_from, $formatted_to, $search)
                     ->merge(fetchInvoices(ManualInvoice::class, 'manual', 'Unpaid', null, null, 'pending', $formatted_from, $formatted_to, $search));
@@ -973,7 +1101,7 @@ class ServiceController extends Controller
     {
         $vendor_contact_det = Store::find(Helpers::get_store_id());
         if ($type == 'manual') {
-            $existingInvoice = ManualInvoice::where('invoice_id', $service_id)->first();
+            $existingInvoice = ManualInvoice::where('invoice_id', $service_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
             $service_det = User::find($existingInvoice->bill_to);
             $quotations = InvoiceItem::where('rand_invoice_id',  $service_id)->get();
             $invoic_num = $service_id;
@@ -993,7 +1121,7 @@ class ServiceController extends Controller
     }
     public function manual_invoice_view(Request $request, $type, $invoice_id)
     {
-        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->first();
+        $existingInvoice[0] = ManualInvoice::where('invoice_id', $invoice_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
         $quotations = InvoiceItem::where('rand_invoice_id',  $existingInvoice[0]->invoice_id)->get();
         if ($request->has('store')) {
             $service_det = Store::find($existingInvoice[0]->bill_to);
@@ -1040,7 +1168,7 @@ class ServiceController extends Controller
         // Keep incrementing until unique
         do {
             $invoice_num = $bill_num['prefix'] . $bill_num['number'];
-            $exists = ManualInvoice::where('invoice_id', $invoice_num)->exists();
+            $exists = ManualInvoice::where('invoice_id', $invoice_num)->where('vendor_id', Helpers::get_store_id())->where('financial_year', _currentFinancialYear())->exists();
             if ($exists) {
                 $bill_num['number']++;
             }
@@ -1202,7 +1330,7 @@ class ServiceController extends Controller
     public function lead_settings_update(Request $request)
     {
         $storeId = Helpers::get_store_id();
-        \App\Models\StoreConfig::where('store_id', $storeId)->update([ 
+        \App\Models\StoreConfig::where('store_id', $storeId)->update([
             'lead_available' => $request->has('lead_available') ? 1 : 0,
         ]);
         Toastr::success('Lead settings updated successfully');
@@ -1238,7 +1366,7 @@ class ServiceController extends Controller
                 'data' => json_encode($data),
                 'user_id' => $user->id,
                 'type' => 'service',
-                'type_id'=> $request_id,
+                'type_id' => $request_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -1434,7 +1562,7 @@ class ServiceController extends Controller
             ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
             ->when($search, function ($q) use ($search) {
                 $q->where('items.name', 'like', '%' . $search . '%');
-            }); 
+            });
         if (!$empId) {
             $query->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
         }
@@ -1574,7 +1702,7 @@ class ServiceController extends Controller
                 'accepted_service_requests.assigned_to',
                 'accepted_service_requests.accepted_by_staff'
             );
-        } 
+        }
         // prx($query->get());
 
         $query->groupBy('service_requests.id');
@@ -1743,7 +1871,7 @@ class ServiceController extends Controller
                 'data' => json_encode($data),
                 'user_id' => $user->id,
                 'type' => 'service',
-                'type_id'=> $service_id,
+                'type_id' => $service_id,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -1982,7 +2110,7 @@ class ServiceController extends Controller
                     'data' => json_encode($data),
                     'user_id' => $user->id,
                     'type' => 'service',
-                    'type_id'=> $request->service_id,
+                    'type_id' => $request->service_id,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -2068,7 +2196,7 @@ class ServiceController extends Controller
     public function quotation_add(Request $request)
     {
         $request->validate([
-            'item_name.*' => 'required|max:500', 
+            'item_name.*' => 'required|max:500',
             'item_price.*' => 'required|integer',
             'item_tax.*' =>  'required|integer',
         ]);

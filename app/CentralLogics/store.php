@@ -359,7 +359,7 @@ class StoreLogic
                 $qurey->where('slug', $store_id);
             })
             ->select('stores.id', 'stores.name',  'stores.phone', 'stores.email', 'stores.address', 'stores.secondary_phone', 'stores.meta_description',
-                'stores.logo', 'stores.cover_photo' , 'stores.latitude', 'stores.longitude', 'stores.delivery_time', 'stores.rating', 'stores.announcement','stores.announcement_message')
+                'stores.logo', 'stores.cover_photo' , 'stores.latitude', 'stores.longitude', 'stores.delivery_time', 'stores.rating', 'stores.announcement','stores.announcement_message', 'stores.business_type')
             ->first();
     }
 

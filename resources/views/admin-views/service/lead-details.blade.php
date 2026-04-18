@@ -306,8 +306,19 @@
                                     <h5 class="title" style="font-size:1.1rem; display:inline;">
                                         {{ $custDet->f_name . ' ' . $custDet->l_name }}</h5>
                                 </div>
-                                <div class="subtitle mb-1">{{ $custDet->email }}</div>
-                                <div class="subtitle">{{ $custDet->phone }}</div>
+                                <div class="subtitle mb-1">
+                                    {{ $reqDetails->address }}
+                                    @if($custDet->latitude && $custDet->longitude)
+                                        <a href="https://www.google.com/maps?q={{ $custDet->latitude }},{{ $custDet->longitude }}"
+                                           target="_blank"
+                                           class="text-primary ml-1"
+                                           title="Show on Map">
+                                            <i class="tio-map-outlined"></i> Navigate
+                                        </a>
+                                    @endif
+                                </div>
+                                <div class=" mb-1">{{ $custDet->email }}</div>
+                                <div class="">{{ $custDet->phone }}</div>
                                 <div class=""><i>Customer since: {{ _monthNYear($custDet->created_at) }}</i></div>
                             </div>
                         </div>

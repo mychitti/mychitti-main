@@ -53,7 +53,7 @@ class InventoryGatepassController extends Controller
                     ],
                 ]);
             }
-            $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->first();
+            $invoice = ManualInvoice::where('invoice_id', $request->invoice_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
         }
 
         if ($request->staff_id == 'add_new') {
@@ -134,7 +134,7 @@ class InventoryGatepassController extends Controller
     {
         $gatepass = InventoryGatepass::find($id);
         $store = Helpers::get_store_data();
-        $invoice = ManualInvoice::where("invoice_id", $gatepass->invoice_id)->first();
+        $invoice = ManualInvoice::where("invoice_id", $gatepass->invoice_id)->where('vendor_id', Helpers::get_store_id())->latest('id')->first();
         $gp_items = InventoryGatepassItem::with('unitId')->where('gatepass_id', $gatepass->id)->get();
         // prx($invoice_items);
         return view('vendor-views.inventory.gatepass.return', compact('gatepass', 'gp_items', 'invoice', 'store'));

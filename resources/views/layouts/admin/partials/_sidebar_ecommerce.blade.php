@@ -658,7 +658,8 @@
                                     <span class="text-truncate">View All</span>
                                 </a>
                             </li>
-                        </ul>
+                          
+                        </ul> 
                     </li>
                     @endif
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('store/terms-and-conditions') ? 'active' : '' }}">

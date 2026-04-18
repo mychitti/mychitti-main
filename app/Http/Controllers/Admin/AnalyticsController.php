@@ -35,6 +35,8 @@ class AnalyticsController extends Controller
         } elseif ($tab == 'phone_unmasks') {
             $storeIds = DB::table('analytics_logs')->where('screen_type', 'call')->distinct()->pluck('ref_id');
             $filterOptions = DB::table('stores')->select('id', 'name')->whereIn('id', $storeIds)->orderBy('name')->get();
+        } elseif ($tab == 'shares') {
+            $filterOptions = [];
         }
 
         $data = [];
@@ -178,6 +180,50 @@ class AnalyticsController extends Controller
             }
 
             $data['items'] = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+        } elseif ($tab == 'shares') {
+            $query = DB::table('analytics_logs as al')
+                ->leftJoin('users as u', 'al.user_id', '=', 'u.id')
+                ->where('al.screen_type', 'share')
+                ->select('al.*', 'u.f_name', 'u.l_name', 'u.phone as user_phone');
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('u.f_name', 'like', "%{$search}%")
+                      ->orWhere('u.l_name', 'like', "%{$search}%")
+                      ->orWhere('u.phone', 'like', "%{$search}%")
+                      ->orWhere('al.ip', 'like', "%{$search}%");
+                });
+            }
+
+            if ($dateFrom) {
+                $query->whereDate('al.created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('al.created_at', '<=', $dateTo);
+            }
+
+            $rawItems = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+            // Enrich each row with the shared entity name
+            $storeIds  = $rawItems->where('sub_type', 'store')->pluck('ref_id')->unique();
+            $itemIds   = $rawItems->where('sub_type', 'service')->pluck('ref_id')->unique();
+
+            $storeNames = DB::table('stores')->whereIn('id', $storeIds)->pluck('name', 'id');
+            $itemNames  = DB::table('items')->whereIn('id', $itemIds)->pluck('name', 'id');
+
+            $rawItems->getCollection()->transform(function ($row) use ($storeNames, $itemNames) {
+                if ($row->sub_type === 'store') {
+                    $row->entity_name = $storeNames[$row->ref_id] ?? 'Deleted Store';
+                } elseif ($row->sub_type === 'service') {
+                    $row->entity_name = $itemNames[$row->ref_id] ?? 'Deleted Service';
+                } else {
+                    $row->entity_name = '-';
+                }
+                return $row;
+            });
+
+            $data['items'] = $rawItems;
         }
 
         return view('admin-views.analytics.index', compact('tab', 'data', 'search', 'dateFrom', 'dateTo', 'filterOptions', 'refId', 'preset'));

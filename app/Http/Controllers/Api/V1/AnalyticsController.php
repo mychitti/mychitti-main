@@ -14,7 +14,7 @@ class AnalyticsController extends Controller
         $validator = Validator::make($request->all(), [
             'items'                => 'required|array|min:1',
             'items.*.ref_id'       => 'required|integer',
-            'items.*.screen_type'  => 'required|in:call,location,banner,store,ad',
+            'items.*.screen_type'  => 'required|in:call,location,banner,store,ad,share',
             'items.*.sub_type'     => 'nullable|string|max:50',
         ], [
             'items.required'              => 'items array is required',
@@ -39,11 +39,39 @@ class AnalyticsController extends Controller
             'ad'       => ['table' => 'notifications', 'count_col' => 'total_clicks', 'unique_col' => 'unique_clicks', 'label' => 'Ad'],
         ];
 
+        // share sub_type → which table to validate ref_id against
+        $shareTableMap = [
+            'store'   => ['table' => 'stores',  'label' => 'Store'],
+            'service' => ['table' => 'items',   'label' => 'Service'],
+        ];
+
         foreach ($request->items as $index => $item) {
             $refId      = $item['ref_id'];
             $screenType = $item['screen_type'];
             $subType    = $item['sub_type'] ?? null;
-            $config     = $tableConfig[$screenType];
+
+            if ($screenType === 'share') {
+                // Validate ref_id against the correct table based on sub_type
+                $shareConfig = $shareTableMap[$subType] ?? null;
+                if ($shareConfig) {
+                    $record = DB::table($shareConfig['table'])->where('id', $refId)->first();
+                    if (!$record) {
+                        return response()->json(['message' => "{$shareConfig['label']} not found (index: {$index}, id: {$refId})"], 404);
+                    }
+                }
+
+                DB::table('analytics_logs')->insert([
+                    'screen_type' => $screenType,
+                    'sub_type'    => $subType,
+                    'ref_id'      => $refId,
+                    'user_id'     => $userId,
+                    'ip'          => $ip,
+                    'created_at'  => now(),
+                ]);
+                continue;
+            }
+
+            $config = $tableConfig[$screenType];
 
             $record = DB::table($config['table'])->where('id', $refId)->first();
             if (!$record) {

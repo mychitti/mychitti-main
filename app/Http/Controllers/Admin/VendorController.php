@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\CentralLogics\Helpers;
 use App\Exports\DisbursementHistoryExport;
 use App\Models\DisbursementDetails;
 use App\Models\Item;
@@ -27,7 +28,6 @@ use Illuminate\Support\Str;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
 use App\Models\StoreSchedule; 
-use App\CentralLogics\Helpers;
 use App\Models\WithdrawRequest;
 use App\Exports\StoreListExportNew;
 use App\Exports\StoreListExport;
@@ -382,8 +382,14 @@ class VendorController extends Controller
             $store->delivery_time = $request->minimum_delivery_time . '-' . $request->maximum_delivery_time . ' ' . $request->delivery_time_type;
         }
         $store->module_id = Config::get('module.current_module_id');
+        if (Config::get('module.current_module_id') == 6) {
+            $store->bed_count = (int) ($request->bed_count ?? 0);
+        }
         try {
             $store->save();
+
+            // Ensure StoreConfig exists for every new store
+            StoreConfig::firstOrCreate(['store_id' => $store->id]);
 
             if (Config::get('module.current_module_id') == 6) {
 
@@ -395,7 +401,7 @@ class VendorController extends Controller
             Helpers::_addWelcomeCouponsIfExist($store);
             Helpers::_addWelcomeCouponsIfExist($store);
             if (strtolower($store->business_type) == 'hospital') {
-                Helpers::createHospitalDefaultRoles($store->id);
+                _createHospitalDefaultRoles($store->id);
             }
             //account details
             $bankAccount = new AccountDetail();
@@ -1010,8 +1016,29 @@ class VendorController extends Controller
         $subscription->duration_type = $planDetails->duration_type;
         $subscription->permitted_modules = $permitted_modules;
         $subscription->plan_expiry = $expDate;
-        $subscription->variation =  (isset($variationData) && $variationData) ? json_encode($variationData) : null;
-        $subscription->purchased_at = _discountedPrice($planDetails->price, $planDetails->discount, 'percent');
+        $subscription->variation = (isset($variationData) && $variationData) ? json_encode($variationData) : null;
+
+        // For hospital stores (module_id=6), resolve tier from store's bed_count
+        $store = \App\Models\Store::where('vendor_id', $vendorId)->first();
+        if ($store && $store->module_id == 6 && $store->bed_count > 0) {
+            $bedTier = \App\Models\HospitalBedTier::forBedCount($store->bed_count);
+            if ($bedTier && !$bedTier->is_custom) {
+                $subscription->bed_tier_id = $bedTier->id;
+                // Use tier pricing: yearly price if duration >= 12 months, else monthly
+                $durationMonths = (isset($variationData['duration']) && str_contains($variationData['duration'], '12')) ? 12
+                    : ((isset($label) && $label === 'Yearly') ? 12 : 1);
+                $tierPrice = ($durationMonths >= 12 && $bedTier->price_yearly > 0)
+                    ? $bedTier->price_yearly
+                    : ($bedTier->price_monthly * $durationMonths);
+                $subscription->purchased_at = $tierPrice;
+            } else {
+                $subscription->bed_tier_id = $bedTier?->id;
+                $subscription->purchased_at = _discountedPrice($planDetails->price, $planDetails->discount, 'percent');
+            }
+        } else {
+            $subscription->purchased_at = _discountedPrice($planDetails->price, $planDetails->discount, 'percent');
+        }
+
         $subscription->save();
 
         $zone_name = 'Tirupati';
@@ -1339,8 +1366,9 @@ class VendorController extends Controller
             $store->delivery_time = $request->minimum_delivery_time . '-' . $request->maximum_delivery_time . ' ' . $request->delivery_time_type;
         }
         $store->save();
+        StoreConfig::firstOrCreate(['store_id' => $store->id]);
         if (strtolower($store->business_type) == 'hospital') {
-            Helpers::createHospitalDefaultRoles($store->id);
+            _createHospitalDefaultRoles($store->id);
         }
         // prx($store);
         $default_lang = str_replace('_', '-', app()->getLocale());

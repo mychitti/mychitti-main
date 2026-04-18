@@ -72,8 +72,8 @@ class ServiceRequestController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|integer',
-            'item_id' => 'required|integer',
+            'user_id' => 'required|integer|exists:users,id',
+            'item_id' => 'required|integer|exists:items,id',
             // 'qty' => 'required|integer',
             // 'city' => 'required',
             'address_id' => 'required|integer'
@@ -135,6 +135,20 @@ class ServiceRequestController extends Controller
         $serviceReq->address_id = $request->address_id;
         $serviceReq->city =  $city;
         $serviceReq->gst =  $user->gst ?? null;
+        // Hospital preferred appointment fields
+        if ($request->filled('preferred_doctor_id')) {
+            $offersService = \App\Models\DoctorService::where('doctor_profile_id', $request->preferred_doctor_id)
+                ->where('item_id', $request->item_id)
+                ->exists();
+            if (!$offersService) {
+                return response()->json(['errors' => [['code' => 'preferred_doctor_id', 'message' => 'The selected doctor does not offer this service.']]], 422);
+            }
+            $serviceReq->preferred_doctor_id = $request->preferred_doctor_id;
+            $serviceReq->preferred_date      = $request->preferred_date;
+            $serviceReq->preferred_slot_id   = $request->preferred_slot_id ?: null;
+            $serviceReq->preferred_time      = $request->preferred_time ?: null;
+            $serviceReq->reason              = $request->reason ?: null;
+        }
         $serviceReq->created_at = date('Y-m-d H:i:s');
 
         try {

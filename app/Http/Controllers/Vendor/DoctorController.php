@@ -7,9 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\EmployeeRole;
+use App\Models\Item;
+use App\Models\Store;
 use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DoctorController extends Controller
 {
@@ -35,46 +39,85 @@ class DoctorController extends Controller
             ->whereNotIn('id', $assigned_emp_ids)
             ->get();
 
-        return view('vendor-views.doctor.add', compact('employees'));
+        $store_services = $this->getStoreServices($store_id);
+
+        return view('vendor-views.doctor.add', compact('employees', 'store_services'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'emp_id'          => 'required|exists:vendor_employees,id',
+        // emp_id is optional — if missing, we create a new staff member
+        $rules = [
             'specialization'  => 'required|string|max:150',
-            'consultation_fee'=> 'nullable|numeric|min:0',
-            'available_from'  => 'nullable|date_format:H:i',
-            'available_to'    => 'nullable|date_format:H:i',
-        ]);
+            'consultation_fee' => 'nullable|numeric|min:0',
+            'available_from'  => 'nullable|date_format:H:i,H:i:s',
+            'available_to'    => 'nullable|date_format:H:i,H:i:s',
+        ];
 
-        $store_id = Helpers::get_store_id();
-
-        DoctorProfile::create([
-            'emp_id'              => $request->emp_id,
-            'store_id'           => $store_id,
-            'specialization'      => $request->specialization,
-            'qualification'       => $request->qualification,
-            'registration_number' => $request->registration_number,
-            'department'          => $request->department,
-            'opd_room'            => $request->opd_room,
-            'consultation_fee'    => $request->consultation_fee ?? 0,
-            'available_days'      => $request->available_days ? implode(',', $request->available_days) : null,
-            'available_from'      => $request->available_from,
-            'available_to'        => $request->available_to,
-            'bio'                 => $request->bio,
-        ]);
-
-        // Auto-assign the Doctor role — create it if it doesn't exist
-        $doctorRole = EmployeeRole::where('store_id', $store_id)->where('name', 'Doctor')->first();
-        if (!$doctorRole) {
-            $doctorRole = new EmployeeRole();
-            $doctorRole->name     = 'Doctor';
-            $doctorRole->store_id = $store_id;
-            $doctorRole->status   = 1;
-            $doctorRole->save();
+        if ($request->filled('emp_id')) {
+            $rules['emp_id'] = 'exists:vendor_employees,id';
+        } else {
+            $rules['new_f_name'] = 'required|string|max:100';
+            $rules['new_l_name'] = 'nullable|string|max:100';
+            $rules['new_email']  = 'required|email|unique:vendor_employees,email';
+            $rules['new_phone']  = 'nullable|string|max:20';
         }
-        VendorEmployee::where('id', $request->emp_id)->update(['employee_role_id' => $doctorRole->id]);
+
+        $request->validate($rules);
+
+        $store_id  = Helpers::get_store_id();
+        $vendor_id = Helpers::get_vendor_id();
+
+        DB::beginTransaction();
+        try {
+            // Resolve or create the employee
+            if ($request->filled('emp_id')) {
+                $empId = $request->emp_id;
+            } else {
+                $emp           = new VendorEmployee();
+                $emp->f_name   = $request->new_f_name;
+                $emp->l_name   = $request->new_l_name;
+                $emp->email    = $request->new_email;
+                $emp->phone    = $request->new_phone;
+                $emp->store_id = $store_id;
+                $emp->vendor_id = $vendor_id;
+                $emp->status   = 1;
+                $emp->password = bcrypt(Str::random(16));
+                $emp->save();
+                $empId = $emp->id;
+            }
+
+            $doctor = DoctorProfile::create([
+                'emp_id'              => $empId,
+                'store_id'            => $store_id,
+                'specialization'      => $request->specialization,
+                'qualification'       => $request->qualification,
+                'registration_number' => $request->registration_number,
+                'department'          => $request->department,
+                'opd_room'            => $request->opd_room,
+                'consultation_fee'    => $request->consultation_fee ?? 0,
+                'available_days'      => $request->available_days ? implode(',', $request->available_days) : null,
+                'available_from'      => $request->available_from,
+                'available_to'        => $request->available_to,
+                'bio'                 => $request->bio,
+            ]);
+
+            // Save services
+            $this->syncServices($doctor->id, $request->input('services', []));
+
+            // Ensure Doctor role exists and assign it
+            $doctorRole = EmployeeRole::firstOrCreate(
+                ['store_id' => $store_id, 'name' => 'Doctor'],
+                ['status' => 1]
+            );
+            VendorEmployee::where('id', $empId)->update(['employee_role_id' => $doctorRole->id]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Toastr::error('Failed to create doctor: ' . $e->getMessage());
+            return back()->withInput();
+        }
 
         Toastr::success('Doctor profile created successfully');
         return redirect()->route('vendor.doctor.list');
@@ -83,29 +126,31 @@ class DoctorController extends Controller
     public function edit($id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
+        $doctor   = DoctorProfile::with('services')->where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
+
+        $store_services = $this->getStoreServices($store_id);
 
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
             ->where(function ($q) use ($doctor) {
                 $q->where('id', $doctor->emp_id)
-                  ->orWhereNotIn('id', DoctorProfile::where('store_id', $doctor->store_id)->pluck('emp_id'));
+                    ->orWhereNotIn('id', DoctorProfile::where('store_id', $doctor->store_id)->pluck('emp_id'));
             })
             ->get();
 
         $days = DoctorSlot::DAYS;
 
-        return view('vendor-views.doctor.edit', compact('doctor', 'employees', 'days'));
+        return view('vendor-views.doctor.edit', compact('doctor', 'employees', 'days', 'store_services'));
     }
 
     public function update(Request $request, $id)
     {
         $request->validate([
-            'emp_id'          => 'required|exists:vendor_employees,id',
-            'specialization'  => 'required|string|max:150',
-            'consultation_fee'=> 'nullable|numeric|min:0',
-            'available_from'  => 'nullable|date_format:H:i',
-            'available_to'    => 'nullable|date_format:H:i',
+            'emp_id'           => 'required|exists:vendor_employees,id',
+            'specialization'   => 'required|string|max:150',
+            'consultation_fee' => 'nullable|numeric|min:0',
+            'available_from'   => 'nullable|date_format:H:i,H:i:s',
+            'available_to'     => 'nullable|date_format:H:i,H:i:s',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -125,6 +170,8 @@ class DoctorController extends Controller
             'bio'                 => $request->bio,
         ]);
 
+        $this->syncServices($doctor->id, $request->input('services', []));
+
         Toastr::success('Doctor profile updated successfully');
         return redirect()->route('vendor.doctor.list');
     }
@@ -136,6 +183,54 @@ class DoctorController extends Controller
 
         Toastr::success('Doctor profile deleted');
         return redirect()->route('vendor.doctor.list');
+    }
+
+    public function export()
+    {
+        $store_id = Helpers::get_store_id();
+        $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee', 'services')->get();
+
+        $headings = ['#', 'Name', 'Email', 'Phone', 'Specialization', 'Qualification', 'Department', 'OPD Room', 'Fee', 'Available Days'];
+        $data = $doctors->map(fn($d) => [
+            $d->id,
+            'Dr. ' . trim(($d->employee?->f_name ?? '') . ' ' . ($d->employee?->l_name ?? '')),
+            $d->employee?->email,
+            $d->employee?->phone,
+            $d->specialization,
+            $d->qualification,
+            $d->department,
+            $d->opd_room,
+            $d->consultation_fee,
+            $d->available_days,
+        ])->toArray();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($data, $headings),
+            'doctors_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    // ── Helpers ────────────────────────────────────────────
+
+    private function getStoreServices(int $storeId): \Illuminate\Support\Collection
+    {
+        $store = Store::find($storeId);
+        $ids   = array_filter(array_unique(array_merge(
+            explode(',', $store->services_1 ?? ''),
+            explode(',', $store->services_2 ?? '')
+        )));
+        return Item::withoutGlobalScopes()->whereIn('id', $ids)->select('id', 'name')->get();
+    }
+
+    private function syncServices(int $doctorProfileId, array $serviceIds): void
+    {
+        \App\Models\DoctorService::where('doctor_profile_id', $doctorProfileId)->delete();
+        foreach (array_filter($serviceIds) as $itemId) {
+            \App\Models\DoctorService::create([
+                'doctor_profile_id' => $doctorProfileId,
+                'item_id'           => $itemId,
+            ]);
+        }
     }
 
     // ── Slots ──────────────────────────────────────────────

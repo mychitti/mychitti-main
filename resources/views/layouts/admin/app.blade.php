@@ -16,7 +16,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <!-- Favicon -->
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
     <link rel="shortcut icon" href="">
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/app/public/business/' . $logo ?? '') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('storage/business/' . $logo ?? '') }}">
     <!-- Font -->
     <link href="{{ asset('public/assets/admin/css/fonts.css') }}" rel="stylesheet">
     <!-- CSS Implementing Plugins -->

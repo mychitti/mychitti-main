@@ -1,83 +1,127 @@
  <script>
      @include('partials.inventory_stock_notify_js')
      $(document).ready(function() {
-         $('#customer_id').select2({
-             placeholder: 'Search for a client',
+         // Customer select2
+         $('#quote_user_select').select2({
+             placeholder: 'Search customer...',
              minimumInputLength: 3,
              ajax: {
-                 url: "{{ route('admin.client.get-matches') }}", // Change to your endpoint
+                 url: "{{ route('admin.ticket.search-customers') }}",
                  dataType: 'json',
                  delay: 250,
-                 data: function(params) {
-                     return {
-                         q: params.term // search term
-                     };
-                 },  
+                 data: function(params) { return { q: params.term }; },
                  processResults: function(data) {
-                     // Map your real customers
-                     let results = data.map(customer => ({
-                         id: customer.id,
-                         text: customer.f_name + ' (' + customer.phone + ')'
-                     }));
-
-                     // Push the "+ Add New Client" option at the end
-                     results.push({
-                         id: 'add_new',
-                         text: '+ Add New Client'
-                     });
-
-                     return {
-                         results: results
-                     };
+                     data.results.push({ id: 'add_new', text: '+ Add New Customer' });
+                     return data;
                  },
                  cache: true
              }
          });
-     });
-     $(document).ready(function() {
-         $('.customer_id2').select2({
-             placeholder: 'Search for a client',
+
+         // Vendor / Store select2
+         $('#quote_vendor_select').select2({
+             placeholder: 'Search store...',
              minimumInputLength: 3,
              ajax: {
-                 url: "{{ route('admin.client.get-matches') }}", // Change to your endpoint
+                 url: "{{ route('admin.ticket.search-vendors') }}",
                  dataType: 'json',
                  delay: 250,
-                 data: function(params) {
-                     return {
-                         q: params.term // search term
-                     };
-                 },
+                 data: function(params) { return { q: params.term }; },
+                 processResults: function(data) { return data; },
+                 cache: true
+             }
+         });
+
+         // Mychitti Client select2
+         $('#quote_mychitti_select').select2({
+             placeholder: 'Search mychitti client...',
+             minimumInputLength: 3,
+             ajax: {
+                 url: "{{ route('admin.search-mychitti-clients') }}",
+                 dataType: 'json',
+                 delay: 250,
+                 data: function(params) { return { q: params.term }; },
                  processResults: function(data) {
-                     // Map your real customers
-                     let results = data.map(customer => ({
-                         id: customer.id,
-                         text: customer.f_name + ' (' + customer.phone + ')'
-                     }));
-
-                     // Push the "+ Add New Client" option at the end
-                     results.push({
-                         id: 'add_new',
-                         text: '+ Add New Client'
-                     });
-
-                     return {
-                         results: results
-                     };
+                     data.results.push({ id: 'add_new', text: '+ Add New Customer' });
+                     return data;
                  },
                  cache: true
              }
          });
+
+         // Bill To toggle
+         $('.quote_bill_to_type').on('change', function() {
+             var val = $(this).val();
+             if (val === 'user') {
+                 $('#quote_customer_list').show();
+                 $('#quote_user_select').attr('name', 'bill_to');
+                 $('#quote_store_list').hide();
+                 $('#quote_vendor_select').attr('name', '');
+                 $('#quote_mychitti_client_list').hide();
+                 $('#quote_mychitti_select').attr('name', '');
+             } else if (val === 'vendor') {
+                 $('#quote_store_list').show();
+                 $('#quote_vendor_select').attr('name', 'bill_to');
+                 $('#quote_customer_list').hide();
+                 $('#quote_user_select').attr('name', '');
+                 $('#quote_mychitti_client_list').hide();
+                 $('#quote_mychitti_select').attr('name', '');
+             } else if (val === 'mychitti_client') {
+                 $('#quote_mychitti_client_list').show();
+                 $('#quote_mychitti_select').attr('name', 'bill_to');
+                 $('#quote_customer_list').hide();
+                 $('#quote_user_select').attr('name', '');
+                 $('#quote_store_list').hide();
+                 $('#quote_vendor_select').attr('name', '');
+             }
+         });
+
+         // Track which select triggered add_new
+         var $quoteActiveSelect = null;
+
+         $('#quote_user_select, #quote_mychitti_select').on('change', function() {
+             if ($(this).val() == 'add_new') {
+                 $quoteActiveSelect = $(this);
+                 // Clear the "add_new" selection so it doesn't submit
+                 $(this).val(null).trigger('change');
+                 $('#addCustomerModal').modal('show');
+             }
+         });
+
+         // After add-customer form submits, inject new customer into active select2
+         $(document).on('submit', '.customer_add_form', function(e) {
+             e.preventDefault();
+             var formData = new FormData($(this).get(0));
+             formData.append('form_type', 'ajax');
+             $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+             $.ajax({
+                 url: $(this).attr('action'),
+                 type: 'POST',
+                 data: formData,
+                 processData: false,
+                 contentType: false,
+                 success: function(data) {
+                     if (data.status && data.action == 'add_customer') {
+                         $('#addCustomerModal').modal('hide');
+                         toasterNotification(data.msg);
+                         if ($quoteActiveSelect) {
+                             var label = data.customer
+                                 ? (data.customer.f_name + (data.customer.l_name ? ' ' + data.customer.l_name : '') + ' (' + data.customer.phone + ')')
+                                 : data.msg;
+                             var newOption = new Option(label, data.customer_id, true, true);
+                             $quoteActiveSelect.append(newOption).trigger('change');
+                             $quoteActiveSelect = null;
+                         }
+                     } else if (data.errors) {
+                         for (var i = 0; i < data.errors.length; i++) {
+                             toasterNotification(data.errors[i]);
+                         }
+                     }
+                 },
+                 error: function(xhr) { console.log('error', xhr.responseText); }
+             });
+         });
      });
-     $("#customer_id").on('change', function() {
-         if ($(this).val() == 'add_new') {
-             $('#addCustomerModal').modal('show')
-         }
-     })
-     $("#customer_id2").on('change', function() {
-         if ($(this).val() == 'add_new') {
-             $('#addCustomerModal').modal('show')
-         }
-     })
      $(document).on('change', 'input[name="payment_stts"]', function() {
          var val = $(this).val();
          if (val == 'Paid') {
@@ -88,19 +132,6 @@
              $(".reminder_date_inp").show()
          }
      })
-
-     function hideCustomerInput() {
-         $("#customer_id").val('').select2()
-         $('#customer_id_elem').hide()
-         $('.delete_icon').hide()
-         $(".add_icon").show()
-     }
-
-     function showCustomerInput() {
-         $('#customer_id_elem').show()
-         $('.delete_icon').show()
-         $(".add_icon").hide()
-     }
 
      function toasterNotification(msg) {
          $("#toast").text(msg);
@@ -258,17 +289,6 @@
          $('.calc-form').each(function() {
              calculateTotals(this);
          });
-     });
-
-     $('#customer_id').on('change', function() {
-         var selectedOption = $(this).find('option:selected');
-         var userType = selectedOption.data('type'); // Gets data-type attribute
-
-         if (userType) {
-             $('.user_type_show').text(userType.charAt(0).toUpperCase() + userType.slice(1));
-         } else {
-             $('.user_type_show').text('');
-         }
      });
 
      function validateInvoiceNum(elem, tax_type) {

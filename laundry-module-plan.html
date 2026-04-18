@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Laundry Module — Plan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #000;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 30px;
+            line-height: 1.6;
+        }
+        h1 { font-size: 20px; border-bottom: 2px solid #000; padding-bottom: 6px; }
+        h2 { font-size: 15px; margin-top: 28px; margin-bottom: 6px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+        h3 { font-size: 13px; margin-top: 14px; margin-bottom: 4px; }
+        p, li { margin: 3px 0; }
+        ul { padding-left: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+        th { background: #f0f0f0; border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+        td { border: 1px solid #ccc; padding: 5px 8px; vertical-align: top; }
+        code { font-family: monospace; font-size: 12px; }
+        .sub { color: #555; font-size: 12px; margin-top: 2px; }
+        @media print {
+            body { margin: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Laundry Module — Development Plan</h1>
+<p class="sub">MyChitti Platform &nbsp;·&nbsp; April 2026</p>
+
+<h2>1. Two Operating Modes</h2>
+
+<h3>Mode 1 — Walk-in Laundry</h3>
+<p>Individual customer drops clothes at the laundry, picks up after processing.</p>
+<p>Flow: Drop-off → Tag items → Token receipt → Processing → Notify customer → Pickup → Payment + Invoice</p>
+
+<h3>Mode 2 — Hotel / B2B Challan</h3>
+<p>Hotel sends bulk linen in batches. Each batch is tracked via a challan with outward and inward dates.</p>
+<p>Flow: Hotel sends batch → Outward challan → Processing → Return + inward entry → Balance tracked → Monthly invoice</p>
+
+<h2>2. Existing Modules Reused</h2>
+<table>
+    <tr>
+        <th>Module</th>
+        <th>Status</th>
+        <th>How</th>
+    </tr>
+    <tr>
+        <td>StoreCustomer</td>
+        <td>Full reuse</td>
+        <td>Walk-in customers use <code>user_type=customer</code>. Hotels use <code>user_type=vendor</code>. No new table needed.</td>
+    </tr>
+    <tr>
+        <td>ManualInvoice</td>
+        <td>Full reuse</td>
+        <td>Payment invoices for both modes. Use <code>type='laundry_walkin'</code> or <code>type='laundry_hotel'</code> with <code>module_id</code> pointing to order/challan.</td>
+    </tr>
+    <tr>
+        <td>ReceivableReceipt</td>
+        <td>Full reuse</td>
+        <td>Drop-off token receipt for walk-in. Same pattern as task/lead receipts. Link via <code>laundry_order_id</code>.</td>
+    </tr>
+    <tr>
+        <td>InventoryGatepass</td>
+        <td>Not reused</td>
+        <td>Laundry challan needs balance carry-forward and per-item damage tracking. New <code>laundry_challans</code> table created instead.</td>
+    </tr>
+    <tr>
+        <td>Billing PDF (mPDF)</td>
+        <td>Full reuse</td>
+        <td>New blade template for challan print and invoice print, using existing mPDF helper.</td>
+    </tr>
+</table>
+
+<h2>3. Database — 5 New Tables</h2>
+<p>No artisan migrations. Use ALTER TABLE queries directly.</p>
+
+<h3>laundry_items — Item master / price list</h3>
+<table>
+    <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>id</td><td>bigint PK</td><td></td></tr>
+    <tr><td>store_id</td><td>bigint</td><td>FK → stores</td></tr>
+    <tr><td>name</td><td>varchar(100)</td><td>e.g. Pant, Shirt, Saree, Curtain</td></tr>
+    <tr><td>category</td><td>enum</td><td>normal | premium | dry_clean</td></tr>
+    <tr><td>price</td><td>decimal(10,2)</td><td>Per piece rate</td></tr>
+    <tr><td>unit</td><td>enum</td><td>piece | kg | pair</td></tr>
+    <tr><td>is_active</td><td>tinyint(1)</td><td>Default 1</td></tr>
+    <tr><td>created_at, updated_at</td><td>timestamp</td><td></td></tr>
+</table>
+
+<h3>laundry_orders — Walk-in orders</h3>
+<table>
+    <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>id</td><td>bigint PK</td><td></td></tr>
+    <tr><td>store_id</td><td>bigint</td><td>FK → stores</td></tr>
+    <tr><td>order_no</td><td>varchar(30)</td><td>Auto-generated e.g. LDY-2026-0001</td></tr>
+    <tr><td>store_customer_id</td><td>bigint</td><td>FK → store_customers, nullable (guest allowed)</td></tr>
+    <tr><td>customer_name</td><td>varchar(100)</td><td>nullable — for guest customers</td></tr>
+    <tr><td>customer_phone</td><td>varchar(20)</td><td>nullable</td></tr>
+    <tr><td>drop_date</td><td>date</td><td></td></tr>
+    <tr><td>expected_ready_date</td><td>date</td><td>nullable</td></tr>
+    <tr><td>pickup_date</td><td>date</td><td>nullable — filled on delivery</td></tr>
+    <tr><td>status</td><td>enum</td><td>received | processing | ready | delivered | cancelled</td></tr>
+    <tr><td>total_amount</td><td>decimal(10,2)</td><td></td></tr>
+    <tr><td>payment_status</td><td>enum</td><td>pending | paid</td></tr>
+    <tr><td>employee_id</td><td>bigint</td><td>FK → vendor_employees, nullable</td></tr>
+    <tr><td>receivable_receipt_id</td><td>bigint</td><td>FK → receivable_receipts, nullable</td></tr>
+    <tr><td>invoice_id</td><td>varchar</td><td>FK → manual_invoices.invoice_id, nullable</td></tr>
+    <tr><td>notes</td><td>text</td><td>nullable</td></tr>
+    <tr><td>created_at, updated_at</td><td>timestamp</td><td></td></tr>
+</table>
+
+<h3>laundry_order_items — Items per walk-in order</h3>
+<table>
+    <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>id</td><td>bigint PK</td><td></td></tr>
+    <tr><td>laundry_order_id</td><td>bigint</td><td>FK → laundry_orders</td></tr>
+    <tr><td>laundry_item_id</td><td>bigint</td><td>FK → laundry_items, nullable</td></tr>
+    <tr><td>item_name</td><td>varchar(100)</td><td>Snapshot of name at time of order</td></tr>
+    <tr><td>qty</td><td>int</td><td></td></tr>
+    <tr><td>rate</td><td>decimal(10,2)</td><td></td></tr>
+    <tr><td>amount</td><td>decimal(10,2)</td><td>qty × rate</td></tr>
+    <tr><td>notes</td><td>varchar(255)</td><td>nullable — e.g. stain, special care</td></tr>
+    <tr><td>created_at, updated_at</td><td>timestamp</td><td></td></tr>
+</table>
+
+<h3>laundry_challans — Hotel / B2B batch dispatch</h3>
+<table>
+    <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>id</td><td>bigint PK</td><td></td></tr>
+    <tr><td>store_id</td><td>bigint</td><td>FK → stores</td></tr>
+    <tr><td>challan_no</td><td>varchar(30)</td><td>Auto-generated e.g. CH-2026-0001</td></tr>
+    <tr><td>store_customer_id</td><td>bigint</td><td>FK → store_customers (user_type=vendor) — the hotel</td></tr>
+    <tr><td>outward_date</td><td>date</td><td>Date items sent to laundry</td></tr>
+    <tr><td>expected_inward_date</td><td>date</td><td>nullable</td></tr>
+    <tr><td>inward_date</td><td>date</td><td>nullable — filled on return</td></tr>
+    <tr><td>status</td><td>enum</td><td>pending | partial | returned</td></tr>
+    <tr><td>invoice_id</td><td>varchar</td><td>FK → manual_invoices.invoice_id, nullable</td></tr>
+    <tr><td>notes</td><td>text</td><td>nullable</td></tr>
+    <tr><td>created_at, updated_at</td><td>timestamp</td><td></td></tr>
+</table>
+
+<h3>laundry_challan_items — Per-item tracking with balance carry</h3>
+<table>
+    <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>id</td><td>bigint PK</td><td></td></tr>
+    <tr><td>laundry_challan_id</td><td>bigint</td><td>FK → laundry_challans</td></tr>
+    <tr><td>laundry_item_id</td><td>bigint</td><td>FK → laundry_items, nullable</td></tr>
+    <tr><td>item_name</td><td>varchar(100)</td><td>Snapshot of name</td></tr>
+    <tr><td>previous_balance</td><td>int</td><td>Carried from last challan for same hotel + item</td></tr>
+    <tr><td>sent_qty</td><td>int</td><td>Sent this batch</td></tr>
+    <tr><td>total</td><td>int</td><td>previous_balance + sent_qty</td></tr>
+    <tr><td>received_qty</td><td>int</td><td>Default 0, filled on inward</td></tr>
+    <tr><td>damaged_qty</td><td>int</td><td>Default 0</td></tr>
+    <tr><td>balance</td><td>int</td><td>total − received_qty − damaged_qty</td></tr>
+    <tr><td>remarks</td><td>varchar(255)</td><td>nullable</td></tr>
+    <tr><td>created_at, updated_at</td><td>timestamp</td><td></td></tr>
+</table>
+
+<h2>4. Pages — Vendor Panel</h2>
+
+<h3>Setup</h3>
+<ul>
+    <li><b>Laundry Items</b> — CRUD for item master (name, category, price, unit, active toggle)</li>
+    <li><b>Hotel Clients</b> — Reuse existing Customer module filtered by user_type=vendor. No new page needed.</li>
+</ul>
+
+<h3>Walk-in Orders</h3>
+<ul>
+    <li><b>New Order</b> — Customer lookup (existing JS), add items from master, custom items allowed, auto-total, set expected ready date</li>
+    <li><b>Order List</b> — Filter by status / date / customer. Status badges. Quick actions.</li>
+    <li><b>Order Detail</b> — View items, update status (Received → Processing → Ready → Delivered), collect payment, generate invoice</li>
+    <li><b>Token Receipt Print</b> — Reuse ReceivableReceipt template. Shows order no, customer, items, amount due, expected ready date</li>
+    <li><b>Invoice Print</b> — Reuse ManualInvoice / existing billing PDF with type=laundry_walkin</li>
+</ul>
+
+<h3>Hotel / Challan</h3>
+<ul>
+    <li><b>New Challan</b> — Select hotel (store_customer user_type=vendor), add items with sent qty. Auto-fetches previous balance from last challan per item.</li>
+    <li><b>Challan List</b> — Filter by hotel / status / date. Status: Pending / Partial / Returned.</li>
+    <li><b>Receive Challan</b> — Fill received qty + damaged qty per item, set inward date. Balance auto-computed. Option to generate invoice.</li>
+    <li><b>Challan PDF Print</b> — mPDF template matching hotel challan format (header, item table with prev balance / sent / total / received / damaged / balance / remarks, signatures)</li>
+    <li><b>Monthly Register</b> — Grid view: rows = items, columns = days 1–31, cells show daily movement. Export to PDF.</li>
+</ul>
+
+<h3>Reports</h3>
+<ul>
+    <li><b>Pending Balance</b> — Items still out at hotels, grouped by hotel with challan-wise breakdown</li>
+    <li><b>Revenue</b> — Walk-in + hotel invoice totals by date range</li>
+    <li><b>Item Volume</b> — Most processed items, category-wise breakdown</li>
+</ul>
+
+<h2>5. Pages — Admin Panel</h2>
+<ul>
+    <li><b>All Orders</b> — Cross-vendor view of all laundry orders with store filter</li>
+    <li><b>All Challans</b> — Cross-vendor challan list with pending balance highlights</li>
+</ul>
+
+<h2>6. Routes</h2>
+<table>
+    <tr><th>Method</th><th>URL</th><th>Description</th></tr>
+    <tr><td>GET</td><td>vendor/laundry/items</td><td>Item master list</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/items/store</td><td>Create item</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/items/update/{id}</td><td>Update item</td></tr>
+    <tr><td>DELETE</td><td>vendor/laundry/items/destroy/{id}</td><td>Delete item</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/orders</td><td>Order list</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/orders/create</td><td>New order form</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/orders/store</td><td>Save order</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/orders/{id}</td><td>Order detail</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/orders/status</td><td>Update order status</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/orders/{id}/receipt</td><td>Print token receipt</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/orders/{id}/invoice</td><td>Generate / print invoice</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/challans</td><td>Challan list</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/challans/create</td><td>New challan form</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/challans/store</td><td>Save challan</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/challans/{id}/receive</td><td>Receive / inward form</td></tr>
+    <tr><td>POST</td><td>vendor/laundry/challans/update-receive</td><td>Save inward data</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/challans/{id}/print</td><td>Challan PDF print</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/register</td><td>Monthly register view</td></tr>
+    <tr><td>GET</td><td>vendor/laundry/reports</td><td>Reports</td></tr>
+    <tr><td>GET</td><td>admin/laundry/orders</td><td>Admin — all orders</td></tr>
+    <tr><td>GET</td><td>admin/laundry/challans</td><td>Admin — all challans</td></tr>
+</table>
+
+<h2>7. Build Phases</h2>
+
+<h3>Phase 1 — Foundation</h3>
+<ul>
+    <li>Migration SQL (5 tables — ALTER TABLE queries)</li>
+    <li>5 Eloquent Models with relationships</li>
+    <li>Laundry Items CRUD (vendor settings page)</li>
+    <li>Sidebar menu entry</li>
+    <li>Route registration in vendor + admin route files</li>
+</ul>
+
+<h3>Phase 2 — Walk-in Orders</h3>
+<ul>
+    <li>New order form (customer lookup + item picker)</li>
+    <li>Order list with status filter</li>
+    <li>Status update flow (Received → Delivered)</li>
+    <li>Token receipt (reuse ReceivableReceipt print)</li>
+    <li>Invoice on delivery (reuse ManualInvoice)</li>
+    <li>SMS / notification on ready status</li>
+</ul>
+
+<h3>Phase 3 — Hotel / Challan</h3>
+<ul>
+    <li>Challan create with previous-balance auto-fill</li>
+    <li>Challan list page</li>
+    <li>Receive / inward flow (qty + damage tracking)</li>
+    <li>Challan PDF print (mPDF — matches hotel challan format)</li>
+    <li>Monthly register grid view</li>
+    <li>Hotel monthly invoice generation</li>
+</ul>
+
+<h3>Phase 4 — Reports + Admin</h3>
+<ul>
+    <li>Pending balance report (items out at hotels)</li>
+    <li>Revenue report by date range</li>
+    <li>Item volume report</li>
+    <li>Admin panel — all orders + challans view</li>
+    <li>Export to PDF / Excel</li>
+</ul>
+
+<br>
+<p class="sub">5 new tables &nbsp;·&nbsp; 13 vendor pages &nbsp;·&nbsp; 2 admin pages &nbsp;·&nbsp; 4 build phases</p>
+
+</body>
+</html>

@@ -471,11 +471,13 @@ class ItemController extends Controller
         //     ]);
         // }
 
-        // export service keywords
+        // import service keywords (supports multiple files)
         if ($request->hasFile('keyword_excel')) {
-            Excel::import(new KeywordsImport($item->id), $request->file('keyword_excel'));
+            foreach ($request->file('keyword_excel') as $file) {
+                Excel::import(new KeywordsImport($item->id), $file);
+            }
         }
-        // additional keywords 
+        // additional keywords
         if ($request->has('more_keywords') && $request->more_keywords != '') {
             $rows = explode(',', $request->more_keywords);
             foreach ($rows as $kw) {
@@ -686,7 +688,7 @@ class ItemController extends Controller
             'fee_category' => 'required',
             'name.0' => 'required',
             'hsn_code' => 'required',
-            'keyword_excel' => 'nullable|mimes:xlsx,xls',
+            'keyword_excel.*' => 'nullable|mimes:xlsx,xls',
             'description.0' => 'required',
             'faqs.*.question' => 'nullable|string|max:500',
             'faqs.*.answer'   => 'nullable|string',
@@ -982,12 +984,14 @@ class ItemController extends Controller
         }
 
 
-        if ($request->has('keyword_excel')) {
-            // delete old keywords
+        if ($request->hasFile('keyword_excel')) {
+            // delete old keywords before re-importing
             ServiceKeyword::where('service_id', $item->id)->delete();
-            Excel::import(new KeywordsImport($item->id), $request->file('keyword_excel'));
+            foreach ($request->file('keyword_excel') as $file) {
+                Excel::import(new KeywordsImport($item->id), $file);
+            }
         }
-        // additional keywords 
+        // additional keywords
         if ($request->has('more_keywords') && $request->more_keywords != '') {
             $rows = explode(',', $request->more_keywords);
             foreach ($rows as $kw) {

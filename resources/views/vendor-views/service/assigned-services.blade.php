@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Assigned Services')
+@section('title', _isHospital() ? 'My Appointments' : 'Assigned Leads')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -9,7 +9,7 @@
             min-width: 200px !important;
         }
 
-        /* otp element styling  */
+        /* otp element styling  */when 
         .otp-container {
             background-color: #fff;
             padding: 20px;
@@ -54,7 +54,7 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>Assigned Services<span
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{_isHospital() ? 'My Appointments' : 'Assigned Leads'}}  <span
                     class="badge badge-soft-dark ml-2" id="itemCount">{{ count($assignedServices) }}</span></h1>
             <div class="page-header-select-wrapper">
 
@@ -68,7 +68,7 @@
             <!-- Header -->
             <div class="card-header py-2">
                 <div class="search--button-wrapper">
-                    <h5 class="card-title">Assigned Services</h5>
+                    <h5 class="card-title">{{_isHospital() ? 'My Appointments' : 'Assigned Leads'}}  </h5>
 
                 </div>
             </div>

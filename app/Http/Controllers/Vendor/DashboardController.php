@@ -212,8 +212,8 @@ class DashboardController extends Controller
                 ->where('emp_id', $employee_id)
                 ->first();
 
-            $store_config = StoreConfig::where('store_id', $storeId)->first();
-            $leaves['allowed_leaves'] = ($store_config->cl_for_employees ?? 0) + $store_config->sl_for_employees ?? 0;
+            $store_config = StoreConfig::firstOrCreate(['store_id' => $storeId]);
+            $leaves['allowed_leaves'] = ($store_config->cl_for_employees ?? 0) + ($store_config->sl_for_employees ?? 0);
             $leaves['taken'] = $leaves['CL'] + $leaves['SL']  + ($leaves['HD'] / 2);
             // prx($leaves);
 

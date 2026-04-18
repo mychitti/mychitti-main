@@ -54,52 +54,108 @@
                       Duration 
                   </h3>
                   @php $sub_modules = _subMoudles(); $gst_settings = _planGstSettings(); @endphp
+                  @php
+                      $bedTier = $bedTier ?? null;
+                  @endphp
                   @if (isset($sub_modules) && count($sub_modules) > 0)
                       @foreach ($sub_modules as $module)
+                          @php
+                              $isHospitalModule = !Route::is('admin.plan.module-store')
+                                  && isset($store) && $store->module_id == 6
+                                  && str_contains(strtolower($module->name), 'hospital');
+                          @endphp
                           <div class="pc-module-item" data-module-id="{{ $module->id }}">
                               <div class="pc-module-top">
                                   <input type="checkbox" class="pc-checkbox pc-module-check"
                                       data-module-id="{{ $module->id }}">
                                   <div class="pc-module-name">{{ $module->name }}</div>
                                   <div class="pc-price-amount">
-                                      ₹{{ number_format($module->price_per_month) }}/month
+                                      @if($isHospitalModule)
+                                          @if($bedTier)
+                                              ₹{{ number_format($bedTier->price_monthly) }}/month
+                                          @else
+                                              Select a tier
+                                          @endif
+                                      @else
+                                          ₹{{ number_format($module->price_per_month) }}/month
+                                      @endif
                                   </div>
                               </div>
+
+                              @if($isHospitalModule)
+                                  @php $allBedTiers = \App\Models\HospitalBedTier::where('is_active', true)->orderBy('min_beds')->get(); @endphp
+                                  @if($allBedTiers->isNotEmpty())
+                                  <div class="mb-2 px-1">
+                                      <label class="pc-label mb-1"><b>Select Hospital Tier:</b></label>
+                                      <div class="d-flex flex-wrap" style="gap:8px;" id="bedTierSelector">
+                                          @foreach($allBedTiers as $tier)
+                                          <div class="bed-tier-option {{ ($bedTier && $bedTier->id == $tier->id) ? 'selected' : '' }}"
+                                              data-tier-id="{{ $tier->id }}"
+                                              data-price-monthly="{{ $tier->price_monthly }}"
+                                              data-price-yearly="{{ $tier->price_yearly }}"
+                                              data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
+                                              style="border: 2px solid {{ ($bedTier && $bedTier->id == $tier->id) ? '#00868f' : '#dee2e6' }};
+                                                     border-radius: 8px; padding: 8px 14px; cursor: pointer; background: #fff; min-width: 140px;">
+                                              <div style="font-weight:600; color:#333; font-size:13px;">{{ $tier->tier_name }}</div>
+                                              <div style="font-size:11px; color:#666;">{{ $tier->bed_range }}</div>
+                                              <div style="font-size:13px; font-weight:700; color:#00868f; margin-top:2px;">
+                                                  @if($tier->is_custom) Contact Us
+                                                  @else ₹{{ number_format($tier->price_monthly) }}/month
+                                                  @endif
+                                              </div>
+                                          </div>
+                                          @endforeach
+                                      </div>
+                                      <input type="hidden" id="selectedBedTierId" name="bed_tier_id" value="{{ $bedTier?->id }}">
+                                  </div>
+                                  <div class="alert alert-info py-2 px-3 mb-2 pc-tier-info-banner" style="font-size:13px;">
+                                      @if($bedTier)
+                                          <strong>Selected Tier:</strong> {{ $bedTier->tier_name }}
+                                          ({{ $bedTier->bed_range }}) &mdash;
+                                          ₹{{ number_format($bedTier->price_monthly) }}/month
+                                      @else
+                                          Please select a tier above to see pricing.
+                                      @endif
+                                  </div>
+                                  @endif
+                              @endif
+
                               <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
                                   <label class="pc-label">Select Duration:</label>
                                   <div class="pc-duration-grid">
                                       @foreach ($plan_durations as $duration)
                                           @php
-                                              $duration = (object) [
-                                                  'months' => $duration->months,
-                                                  'label' => $duration->label,
+                                              $dur = (object) [
+                                                  'months'   => $duration->months,
+                                                  'label'    => $duration->label,
                                                   'discount' => _moduleDiscount($module->id, $duration->id),
                                               ];
-                                          @endphp 
-                                          @php
-                                              $basePrice = $module->price_per_month * $duration->months;
-                                              $discountAmount = ($basePrice * $duration->discount) / 100;
-                                              $finalPrice = $basePrice - $discountAmount;
+                                              if ($isHospitalModule) {
+                                                  $basePrice      = $bedTier ? ($bedTier->price_monthly * $dur->months) : 0;
+                                                  $discountAmount = 0;
+                                                  $finalPrice     = $basePrice;
+                                              } else {
+                                                  $basePrice      = $module->price_per_month * $dur->months;
+                                                  $discountAmount = ($basePrice * $dur->discount) / 100;
+                                                  $finalPrice     = $basePrice - $discountAmount;
+                                              }
                                           @endphp
                                           <div class="pc-duration-card" data-module-id="{{ $module->id }}"
-                                              data-months="{{ $duration->months }}"
+                                              data-months="{{ $dur->months }}"
                                               data-base-price="{{ $basePrice }}"
-                                              data-discount="{{ $duration->discount }}"
+                                              data-discount="{{ $isHospitalModule ? 0 : $dur->discount }}"
                                               data-discount-amount="{{ $discountAmount }}"
                                               data-final-price="{{ $finalPrice }}">
-                                              <div class="pc-duration-title">{{ $duration->label }}</div>
-                                              <div class="p5 {{ $duration->discount > 0 ? 'mrp-cut' : '' }}">
-                                                  ₹{{ number_format($basePrice, 2) }}
-                                              </div>
-                                              <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}
-                                              </div>
-                                              <div class="pc-duration-save">
-                                                  @if ($duration->discount > 0)
-                                                      Save {{ $duration->discount }}%
-                                                  @else
-                                                      {{-- No discount --}}
-                                                  @endif
-                                              </div>
+                                              <div class="pc-duration-title">{{ $dur->label }}</div>
+                                              @if(!$isHospitalModule && $dur->discount > 0)
+                                                  <div class="p5 mrp-cut">₹{{ number_format($basePrice, 2) }}</div>
+                                              @endif
+                                              @if(!$isHospitalModule)
+                                                  <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}</div>
+                                                  <div class="pc-duration-save">
+                                                      @if($dur->discount > 0) Save {{ $dur->discount }}% @endif
+                                                  </div>
+                                              @endif
                                           </div>
                                       @endforeach
                                   </div>

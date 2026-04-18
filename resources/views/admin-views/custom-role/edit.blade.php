@@ -309,6 +309,13 @@
                             </div> --}}
                               <div class="check-item">
                                 <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="pricing" class="form-check-input"
+                                         {{in_array('pricing',(array)json_decode($role['modules']))?'checked':''}}  id="pricing">
+                                    <label class="form-check-label qcont text-dark" for="pricing">Pricing</label>
+                                </div>
+                            </div>
+                              <div class="check-item">
+                                <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="service_billing" class="form-check-input granular_permission_check"
                                          {{in_array('service_billing',(array)json_decode($role['modules']))?'checked':''}}  id="service_billing">
                                     <label class="form-check-label qcont text-dark" for="service_billing">Service Billing</label>

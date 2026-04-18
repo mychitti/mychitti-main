@@ -22,7 +22,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <!-- Favicon -->
     @php($logo = \App\Models\BusinessSetting::where(['key' => 'icon'])->first()->value)
     <link rel="shortcut icon" href="">
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/app/public/business/' . $logo ?? '') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('storage/business/' . $logo ?? '') }}">
     <!-- Font -->
     <link href="{{ asset('public/assets/admin/css/fonts.css') }}" rel="stylesheet">
     <!-- CSS Implementing Plugins -->
@@ -1380,8 +1380,11 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             let isAdvancedBill = "{{ Route::currentRouteName() }}" === "vendor.invoice.create-invoice";
             let purchasedBill = "{{ Route::currentRouteName() }}" === "vendor.invoice.my-bills";
             let quotation = "{{ Route::currentRouteName() }}" === "vendor.quotation.add";
+            let isChallanCreate = "{{ Route::currentRouteName() }}" === "vendor.laundry.challans.create";
+            let isOrderCreate = "{{ Route::currentRouteName() }}" === "vendor.laundry.orders.create";
             let user_type =
-                "{{ Route::currentRouteName() }}" == "vendor.inventory.purchase.orders" ?
+                "{{ Route::currentRouteName() }}" == "vendor.inventory.purchase.orders" ||
+                "{{ Route::currentRouteName() }}" == "vendor.laundry.challans.create" ?
                 'vendor' :
                 "{{ Route::currentRouteName() }}" == "vendor.account.add" ?
                 'vendor_customer' :
@@ -1419,8 +1422,8 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                         }));
 
                         if (isTokenAdd || isTaskAdd || isMasterLedger || isProject || isBill ||
-                            purchasedBill || quotation ||
-                            isAdvancedBill) {
+                            purchasedBill || quotation || isChallanCreate ||
+                            isAdvancedBill || isOrderCreate) {
                             if (isTokenAdd) {
                                 // Add "Walk In" at top
                                 results.unshift({

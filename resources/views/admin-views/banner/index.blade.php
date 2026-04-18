@@ -293,15 +293,26 @@
                                         </form>
 
                                     <td class="text-center">
+                                    <div class="d-flex flex-column">
                                         @if($banner->publish_at && $banner->publish_at > now())
                                             <span class="badge badge-soft-warning" title="{{ $banner->publish_at->format('Y-m-d H:i') }}">
                                                 <i class="tio-time"></i> {{ $banner->publish_at->format('d M H:i') }}
                                             </span>
+                                            <a href="javascript:"
+                                               class="btn btn-sm btn-outline-danger mt-1 form-alert"
+                                               data-id="cancel-publish-{{ $banner->id }}"
+                                               data-message="{{ translate('Want to cancel the scheduled publish for this banner?') }}"
+                                               title="{{ translate('Cancel scheduled publish') }}">
+                                                <i class="tio-clear"></i> {{ translate('Cancel') }}
+                                            </a>
+                                            <form id="cancel-publish-{{ $banner->id }}" action="{{ route('admin.banner.cancel-publish', $banner->id) }}" method="get"></form>
                                         @elseif($banner->publish_at)
                                             <span class="badge badge-soft-success">Published</span>
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif
+                                    </div>
+
                                     </td>
                                     <td  >
                                         <div class="d-flex justify-content-center">

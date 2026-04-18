@@ -937,11 +937,19 @@
                                                 <a href="{{ route('store.reviews', [$store->slug]) }}">View All Reviews <i
                                                         class="fa fa-solid fa-arrow-right"></i></a>
                                             </div>
-                                        @endif
+@endif
 
+                                    <!-- GIVE REVIEW BUTTON & MODAL -->
+                                    <div class="text-center mt-4 mb-3">
+                                        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#storeReviewModal{{ $store['id'] }}">
+                                            📝 <strong>Give Review</strong>
+                                        </button>
                                     </div>
-                                @endif
-                            </div>
+
+                                    @include('front-views.partials._store-review-form', ['store' => $store])
+
+                                </div>
+                            @endif
                         </div>
                     @endif
                     <div class="" id="contact" aria-labelledby="pills-contact-tab">
@@ -1004,7 +1012,7 @@
                             <div class=" rounded p-3 my-3">
                                 {!! $data['store_config']->about_us ?? '' !!}
                             </div>
-                        </div>
+                        </div> 
                     </div>
 
                 </div>

@@ -152,8 +152,8 @@
                                         class="form-check-input granular_permission_check"
                                         {{ in_array('leads_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}
                                         id="leads_manage">
-                                    <label class="form-check-label input-label " for="leads_manage">Service
-                                        Leads</label>
+                                    <label class="form-check-label input-label " for="leads_manage">
+                                   {{_isHospital() ? 'Appointments' : 'Service Leads' }}</label>
                                 </div>
                             </div>
                         @endif

@@ -399,7 +399,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $invoices = ManualInvoice::whereDate('created_at', '<', '2025-04-01')->get();
 
         foreach ($invoices as $key => $invoice) {
-            $invoice_items = InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->get();
+            $invoice_items = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
             $from = $invoice->vendor_id ? 'vendor' : 'admin';
 
             $totalPrice = 0;
@@ -2476,7 +2476,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
-       
+    //    prx(  $templateId);
         return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
     }
 

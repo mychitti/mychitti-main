@@ -11,6 +11,7 @@ class VendorSubscription extends Model
     protected $fillable = [
         'vendor_id',
         'plan_id',
+        'bed_tier_id',
         'duration_count',
         'duration_type',
         'permitted_modules',
@@ -19,14 +20,19 @@ class VendorSubscription extends Model
         'created_at', // optional
     ];
 
-    
     public function store()
     {
         return $this->belongsTo(Store::class, 'vendor_id', 'id');
     }
+
     public function plan()
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function bedTier()
+    {
+        return $this->belongsTo(HospitalBedTier::class, 'bed_tier_id');
     }
 
 }

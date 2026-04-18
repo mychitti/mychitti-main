@@ -178,4 +178,11 @@ class BannerController extends BaseController
         $this->bannerRepo->update(id: $request['id'], data: ['sort_order' => (int) $request['sort_order']]);
         return response()->json(['success' => true]);
     }
+
+    public function cancelPublish(int $id): RedirectResponse
+    {
+        $this->bannerRepo->update(id: $id, data: ['publish_at' => null]);
+        Toastr::success(translate('messages.banner_publish_cancelled'));
+        return back();
+    }
 }

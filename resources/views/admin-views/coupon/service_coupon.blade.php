@@ -272,18 +272,15 @@
         $(document).on('ready', function() {
 
             let module_id = {{ Config::get('module.current_module_id') }};
-            var  url = '';
-            @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
-                url: '{{ url('/') }}/admin/store/get-stores',
-            @else
-                url: '{{ url('/') }}/store/get-stores',
-            @endif
+            var url = @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))'{{ url('/') }}/admin/store/get-stores'@else'{{ url('/') }}/store/get-stores'@endif;
+
             $('.js-data-example-ajax').select2({
+                minimumInputLength: 3,
                 ajax: {
                     url: url,
                     data: function(params) {
                         return {
-                            q: params.term, // search term
+                            q: params.term,
                             page: params.page,
                             module_id: module_id
                         };
@@ -292,14 +289,6 @@
                         return {
                             results: data
                         };
-                    },
-                    __port: function(params, success, failure) {
-                        var $request = $.ajax(params);
-
-                        $request.then(success);
-                        $request.fail(failure);
-
-                        return $request;
                     }
                 }
             });

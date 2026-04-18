@@ -11,6 +11,11 @@ class ServiceRequest extends Model
     protected $fillable = [
         'notified',
         'user_notified',
+        'preferred_doctor_id',
+        'preferred_date',
+        'preferred_slot_id',
+        'preferred_time',
+        'requirements',
     ];
     protected function serializeDate(\DateTimeInterface $date)
     {

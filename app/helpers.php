@@ -14,7 +14,7 @@ use App\Models\Leave;
 use App\Models\AdminWallet;
 use App\Models\EmployeeTimeCard;
 use App\Models\DeliveryMan;
-use App\Models\WalletPayment; 
+use App\Models\WalletPayment;
 use App\Scopes\StoreScope;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use App\Mail\OrderVerificationMail;
 use Illuminate\Support\Facades\App;
 use App\CentralLogics\CustomerLogic;
+use App\CentralLogics\StoreLogic;
 use App\Models\AcceptedServiceRequest;
 use App\Models\Attendance;
 use App\Models\BusinessSetting;
@@ -96,6 +97,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\ActionLog;
+use App\Models\DoctorProfile;
 
 if (!function_exists('translate')) {
     function translate($key, $replace = [])
@@ -181,9 +183,9 @@ function _costCenters($storeId = null)
         $cost_centers->where('entity_type', 'admin');
     } else {
         $cost_centers->where('entity_type', 'store');
-    }  
+    }
     return $cost_centers->get();
-} 
+}
 function _sendToPermission($form_type)
 {
     // prx($form_type);
@@ -773,7 +775,7 @@ function _createBillPdfOld($invoice, $from, $shipping_address_id = null, $render
     if ($quotation == true) {
         $bill_data['invoice_items'] = QuotationDetailItem::where('quotation_det_id', $invoice->id)->get();
     } else {
-        $bill_data['invoice_items'] = InvoiceItem::with('unitId')->where('rand_invoice_id', $invoice->invoice_id)->get();
+        $bill_data['invoice_items'] = InvoiceItem::with('unitId')->where('manual_invoice_id', $invoice->id)->get();
     }
 
     if ($invoice->bill_to_type == 'user' && $invoice->bill_to) {
@@ -945,7 +947,11 @@ function _createBillPdfOld($invoice, $from, $shipping_address_id = null, $render
     ]);
     $bill_from_type = $bill_from_type . '_to_' . $invoice->bill_to_type;
 
-    $html = View::make('invoice_template.service_n_manual', compact('invoice', 'bill_from', 'bill_to', 'bill_data', 'bill_from_type', 'shipping_address'))->render();
+    $adminTemplate = \App\Models\BusinessSetting::where('key', 'admin_invoice_template')->first()?->value ?? 'service_n_manual';
+    $safeTemplates  = ['service_n_manual', 'service_n_manual_new'];
+    $adminTemplate  = in_array($adminTemplate, $safeTemplates) ? $adminTemplate : 'service_n_manual';
+
+    $html = View::make('invoice_template.' . $adminTemplate, compact('invoice', 'bill_from', 'bill_to', 'bill_data', 'bill_from_type', 'shipping_address'))->render();
 
     if ($renderOnly) {
         return $html;
@@ -1303,7 +1309,7 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
 
     $bill_data['invoice_items'] = $quotation
         ? QuotationDetailItem::where('quotation_det_id', $invoice->id)->get()
-        : InvoiceItem::with('unitId')->where('rand_invoice_id', $invoice->invoice_id)->get();
+        : InvoiceItem::with('unitId')->where('manual_invoice_id', $invoice->id)->get();
     [$bill_to, $shipping_address] = processBillToInfo($invoice, $shipping_address_id);
 
     $bill_from = processBillFromInfo($invoice, $from, $bill_data);
@@ -1346,6 +1352,8 @@ function processBillToInfo($invoice, $shipping_address_id)
         $bill_to = processVendorBillTo($invoice);
     } elseif ($invoice->bill_to_type === 'admin') {
         $bill_to = processAdminBillTo();
+    } elseif ($invoice->bill_to_type === 'patient' && $invoice->bill_to) {
+        $bill_to = processPatientBillTo($invoice);
     }
 
     return [$bill_to, $shipping_address];
@@ -1440,6 +1448,24 @@ function processAdminBillTo()
         'phone' => BusinessSetting::where('key', 'phone')->first()->value,
         'email' => BusinessSetting::where('key', 'email_address')->first()->value,
         'logo' => BusinessSetting::where('key', 'logo')->first()->value,
+    ];
+}
+
+function processPatientBillTo($invoice)
+{
+    $patient = \App\Models\Patient::find($invoice->bill_to);
+    if (!$patient) {
+        return ['full_name' => 'Patient', 'address' => '', 'gst' => '', 'state_code' => '', 'pin_code' => '', 'phone' => '', 'email' => ''];
+    }
+    $address = implode(', ', array_filter([$patient->address, $patient->city, $patient->state, $patient->pincode]));
+    return [
+        'full_name'  => $patient->name,
+        'address'    => $address,
+        'gst'        => '',
+        'state_code' => getStateCodeFromPincode($patient->pincode),
+        'pin_code'   => $patient->pincode ?? '',
+        'phone'      => $patient->phone ?? '',
+        'email'      => $patient->email ?? '',
     ];
 }
 
@@ -1605,6 +1631,9 @@ function handleDayBookEntry($invoice, $quotation, $renderOnly)
     } elseif ($invoice->bill_to_type === 'user' && $invoice->vendor_id) {
         // Vendor to user
         $entry_data = ['credit', $invoice->vendor_id, 'Sales'];
+    } elseif ($invoice->bill_to_type === 'patient' && $invoice->vendor_id) {
+        // Hospital billing — vendor receives from patient
+        $entry_data = ['credit', $invoice->vendor_id, 'Sales'];
     }
 
     if ($entry_data) {
@@ -1707,7 +1736,19 @@ function generatePdf($invoice, $bill_from, $bill_to, $bill_data, $from, $shippin
             'shipping_address'
         ))->render();
     } else {
-        $html = View::make('invoice_template.service_n_manual', compact(
+        $safeTemplates = ['service_n_manual', 'service_n_manual_new'];
+
+        if ($from === 'vendor' || $from === 'store_vendor') {
+            $storeId        = $invoice->vendor_id ?? 0;
+            $storeConfig    = \App\Models\StoreConfig::where('store_id', $storeId)->first();
+            $invoiceTemplate = $storeConfig?->invoice_template ?? 'service_n_manual';
+        } else {
+            $invoiceTemplate = \App\Models\BusinessSetting::where('key', 'admin_invoice_template')->first()?->value ?? 'service_n_manual';
+        }
+
+        $invoiceTemplate = in_array($invoiceTemplate, $safeTemplates) ? $invoiceTemplate : 'service_n_manual';
+
+        $html = View::make('invoice_template.' . $invoiceTemplate, compact(
             'invoice',
             'bill_from',
             'bill_to',
@@ -2320,6 +2361,57 @@ function wallet_recharge_fail($data)
     $store_id = $data->attribute_id;
     TmpWallet::where('store_id', $store_id)->delete();
 }
+
+function store_data_formatting_limited($data, $multi_data = false)
+{
+    $storage = [];
+    $baseUrl = asset('storage/store') . '/';
+    if ($multi_data == true) {
+        foreach ($data as $item) {
+            $ratings = StoreLogic::calculate_store_rating($item['rating']);
+            // $item['positive_rating'] = $ratings['positive_rating'];
+            $item['logo'] = Helpers::onerror_image_helper($item['logo'], $baseUrl . $item['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
+            $item['cover_photo'] = Helpers::onerror_image_helper($item['cover_photo'], $baseUrl . 'cover/' . $item['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
+
+            $store_config = StoreConfig::where('store_id', $item->id)->first();
+
+            $item['about_us'] = $store_config->about_us ?? null;
+            array_push($storage, $item);
+        }
+        $data = $storage;
+    } else {
+        $data['logo'] = Helpers::onerror_image_helper($data['logo'], $baseUrl . $data['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/');
+        $data['cover_photo'] = Helpers::onerror_image_helper($data['cover_photo'], $baseUrl . 'cover/' . $data['cover_photo'], asset('public/assets/admin/img/900x400/img1.jpg'), 'store/cover/');
+        $ratings = StoreLogic::calculate_store_rating($data['rating']);
+        unset($data['rating']);
+
+        $store_config = StoreConfig::where('store_id', $data['id'])->first();
+
+        $data['about_us'] = $store_config->about_us ?? null;
+
+        $data['avg_rating'] = $ratings['rating'];
+        $data['rating_count'] = $ratings['total'];
+        // $data['positive_rating'] = $ratings['positive_rating'];
+
+        unset($data['positive_rating']);
+        // if ($data['business_type'] == 'Hospital') {
+        //     $data['doctors'] = DoctorProfile::with('employee:id,f_name,l_name,image')
+        //         ->where('store_id', $data['id'])
+        //         ->get(['id', 'emp_id', 'specialization', 'qualification', 'department', 'consultation_fee', 'available_days', 'bio'])
+        //         ->map(function ($doctor) {
+        //             if ($doctor->employee && $doctor->employee->image) {
+        //                 $doctor->employee->image = asset('storage/vendor/' . $doctor->employee->image);
+        //             }
+        //             return $doctor;
+        //         });
+                
+        // } else {
+            $data['doctors'] = [];
+        // }
+    }
+
+    return $data;
+}
 function _getInvoicePrefix($tax_type, $store = null)
 {
     if (!$store) {
@@ -2351,7 +2443,7 @@ function _getInvoicePrefix($tax_type, $store = null)
     return $prefixe;
 }
 
-function is_serial_number_used($number, $prefix, $tax_type)
+function is_serial_number_used($number, $prefix, $tax_type, $vendor_id = null)
 {
     $today = now();
     $currentYear = $today->year;
@@ -2362,14 +2454,21 @@ function is_serial_number_used($number, $prefix, $tax_type)
     }
     $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March next year
     // if ($tax_type == 'gst') {
-    $manualExists = DB::table('manual_invoices')
+    $manualQuery = DB::table('manual_invoices')
         ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-        ->where("invoice_id", $prefix . $number)
-        ->exists();
-    $serviceExists = DB::table('service_invoices')
+        ->where("invoice_id", $prefix . $number);
+    if ($vendor_id !== null) {
+        $manualQuery->where('vendor_id', $vendor_id);
+    }
+    $manualExists = $manualQuery->exists();
+
+    $serviceQuery = DB::table('service_invoices')
         ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-        ->where("invoice_id", $prefix . $number)
-        ->exists();
+        ->where("invoice_id", $prefix . $number);
+    if ($vendor_id !== null) {
+        $serviceQuery->where('vendor_id', $vendor_id);
+    }
+    $serviceExists = $serviceQuery->exists();
     // } else {
     //     $manualExists = DB::table('manual_invoices')
     //         ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
@@ -2805,12 +2904,12 @@ if (!function_exists('_isCancelled')) {
             ->where('service_request_id', $req_id)
             ->where('vendor_id', $store_id)
             ->exists();
-        
+
 
         if ($charges2) {
             return true;
         } else {
-            return false;  
+            return false;
         }
     }
 }
@@ -2971,7 +3070,12 @@ if (!function_exists('_serviceRunning')) {
                 if ($reviews->isNotEmpty()) {
                     foreach ($reviews as $reviewKey => $review) {
                         if (!empty($review->attachment)) {
-                            $attachments = json_decode($review->attachment, true);
+                            if(is_string($review->attachment)) {
+                                $review->attachment = json_decode($review->attachment, true);
+                            }else{
+                                $attachments = $review->attachment;
+
+                            }
                             if (is_array($attachments)) {
                                 foreach ($attachments as $k => $v) {
                                     $attachments[$k] = asset('storage/app/public/review') . '/' . $v;
@@ -3437,10 +3541,13 @@ function _manualInvoice($id)
     $invoice = ManualInvoice::where("id", $id)->first();
     return $invoice;
 }
-function _manualInvoiceByInvoiceId($invoice_id)
+function _manualInvoiceByInvoiceId($invoice_id, $vendor_id = null)
 {
-    $invoice = ManualInvoice::where("invoice_id", $invoice_id)->first();
-    return $invoice ?? null;
+    $query = ManualInvoice::where("invoice_id", $invoice_id);
+    if ($vendor_id !== null) {
+        $query->where('vendor_id', $vendor_id);
+    }
+    return $query->latest('id')->first() ?? null;
 }
 function _vendorOrStaffName($id)
 {
@@ -4278,6 +4385,20 @@ if (!function_exists('_vendorTandCForQuotation')) {
         return  $cond ? $cond->terms_n_conditons  : null;
     }
 }
+if (!function_exists('_adminInvoiceTnC')) {
+    /**
+     * Returns the default admin invoice TnC (store_id = 0, tnc_type = 'invoice', is_default = 1).
+     * Falls back to the first entry if none is marked default.
+     * Configured in Admin → Invoice Settings.
+     */
+    function _adminInvoiceTnC(): ?\App\Models\StoreTnc
+    {
+        return \App\Models\StoreTnc::where('store_id', 0)
+            ->where('tnc_type', 'invoice')
+            ->orderByDesc('is_default') // default=1 sorts first
+            ->first();
+    }
+}
 if (!function_exists('_itemExistInCart')) {
     function _itemExistInCart($prId, $variation)
     {
@@ -4988,6 +5109,45 @@ if (!function_exists('_isCommonDashboard')) {
         }
     }
 }
+if (!function_exists('_isHospital')) {
+    function _isHospital()
+    {
+        $store = Helpers::get_store_data();
+        return strtolower($store->business_type) == 'hospital';
+    }
+}
+if (!function_exists('_currentFinancialYear')) {
+    function _currentFinancialYear(): string
+    {
+        $now = now();
+        if ($now->month >= 4) {
+            return $now->format('y') . '-' . str_pad($now->year - 1999, 2, '0', STR_PAD_LEFT);
+        }
+        return str_pad($now->year - 2001, 2, '0', STR_PAD_LEFT) . '-' . $now->format('y');
+    }
+}
+if (!function_exists('_moduleLabel')) {
+    function _moduleLabel(string $key): string
+    {
+        $labels = [
+            'inventory_manage' => 'Inventory Management',
+            'inventory' => 'Inventory',
+            'leads_manage' => 'Leads Management',
+        ];
+
+        $hospitalOverrides = [
+            'inventory_manage' => 'Pharmacy',
+            'inventory' => 'Pharmacy',
+            'leads_manage' => 'Appointment Management',
+        ];
+
+        if (_isHospital() && isset($hospitalOverrides[$key])) {
+            return $hospitalOverrides[$key];
+        }
+
+        return $labels[$key] ?? $key;
+    }
+}
 if (!function_exists('_sendSMS')) {
     function _sendSMS($phone, $msg)
     {
@@ -5029,10 +5189,10 @@ if (!function_exists('_sendWhatsApp')) {
 
         $ms  = rawurlencode($message);
         $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey
-             . '&senderid=' . $apisender
-             . '&channel=11'   // channel 11 = WhatsApp on smsgatewayhub
-             . '&DCS=0&flashsms=0&number=' . $phone
-             . '&text=' . $ms . '&route=1';
+            . '&senderid=' . $apisender
+            . '&channel=11'   // channel 11 = WhatsApp on smsgatewayhub
+            . '&DCS=0&flashsms=0&number=' . $phone
+            . '&text=' . $ms . '&route=1';
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -5630,5 +5790,23 @@ if (!function_exists('_convertNumberToWords')) {
         }
 
         return $words[(int)($number / 100)] . ' hundred' . ($number % 100 ? ' and ' . _convertLessThanThousand($number % 100, $words) : '');
+    }
+}
+
+if (!function_exists('_createHospitalDefaultRoles')) {
+    function _createHospitalDefaultRoles(int $store_id): void
+    {
+        $defaultRoles = ['Doctor', 'Nurse', 'Receptionist'];
+        foreach ($defaultRoles as $roleName) {
+            $exists = \App\Models\EmployeeRole::where('store_id', $store_id)
+                ->where('name', $roleName)->exists();
+            if (!$exists) {
+                $role = new \App\Models\EmployeeRole();
+                $role->name = $roleName;
+                $role->store_id = $store_id;
+                $role->status = 1;
+                $role->save();
+            }
+        }
     }
 }

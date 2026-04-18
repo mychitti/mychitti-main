@@ -1,14 +1,14 @@
  <script>
-     @include('partials.inventory_stock_notify_js')
-     let invoiceDeleteRowUrl = "{{ route('admin.billing.delete-row') }}";
-     let inventoryGetItemInfoUrl = "{{ route('admin.inventory.get-item-info') }}";
-     let customerFetchDetailsUrl = "{{ route('admin.client.fetch-details') }}";
-     let invoiceValidateInvoiceNumUrl = "{{ route('admin.billing.validate-invoicenum') }}";
-     let businessSettingsTncFetchUrl = "{{ route('admin.business-settings.tnc.fetch', ':id') }}";
-     let businessSettingsSignatureFetchUrl = "{{ route('admin.business-settings.signature.fetch') }}";
+{{-- @include('partials.inventory_stock_notify_js') --}}
+     let invoiceDeleteRowUrl = "{{ route('vendor.invoice.delete-row') }}";
+     let inventoryGetItemInfoUrl = "{{ route('vendor.inventory.get-item-info') }}";
+     let customerFetchDetailsUrl = "{{ route('vendor.customer.fetch-details') }}";
+     let invoiceValidateInvoiceNumUrl = "{{ route('vendor.invoice.validate-invoicenum') }}";
+     let businessSettingsTncFetchUrl = "{{ route('vendor.business-settings.tnc.fetch', ':id') }}";
+     let businessSettingsSignatureFetchUrl = "{{ route('vendor.business-settings.signature.fetch') }}";
      $('.submit_btn').on('click', function() {
          if ($('.item_row').length) {
-             $("#invoice_form").submit();  
+             $("#invoice_form").submit();
          } else {
              toasterNotification("Add Atleast One Item")
          } 
@@ -18,15 +18,15 @@
          console.log(val)
          if (val == 'Cash and Online') {
              $(".partial_payment").show()
-         } else {
+         } else { 
              $(".partial_payment").hide()
          }
      })
-     let ckeditorInstance = null;
+     ckeditorInstance = typeof ckeditorInstance !== 'undefined' ? ckeditorInstance : null;
 
      if (!ckeditorInstance) {
          if (typeof ClassicEditor !== 'undefined') {
-             ClassicEditor 
+             ClassicEditor
                  .create(document.querySelector('#ckeditor2'))
                  .then(editor => {
                      ckeditorInstance = editor;
@@ -48,14 +48,14 @@
                  'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
              }
          });
-         {{-- $.get({
-             url: "{{ route('admin.business-settings.tnc.fetch', ':id') }}".replace(':id', id),
+         $.get({
+             url: "{{ route('vendor.business-settings.tnc.fetch', ':id') }}".replace(':id', id),
              success: function(data) {
                  if (ckeditorInstance) {
                      ckeditorInstance.setData(data);
                  }
              }
-         }); --}}
+         });
      });
 
      $(document).on('change', 'input[name="payment_stts"]', function() {
@@ -80,7 +80,8 @@
 
      function deleteQuoteRow(quoteId, type) {
          if (type == 'quote') {
-             $('[data-id="' + quoteId + '"]').remove()
+             $('[data-id="' + quoteId + '"]').remove();
+             recalculateInvoice();
          } else {
              $.ajaxSetup({
                  headers: {
@@ -88,7 +89,7 @@
                  }
              });
              $.post({
-                 url: "{{ route('admin.billing.delete-row') }}",
+                 url: "{{ route('vendor.invoice.delete-row') }}",
                  data: {
                      type: type,
                      quoteId: quoteId
@@ -121,24 +122,24 @@
 
          selectedData.forEach(function(item) {
              $.post({
-                 url: "{{ route('admin.inventory.get-item-info') }}",
+                 url: "{{ route('vendor.inventory.get-item-info') }}",
                  data: {
                      id: item.id,
                  },
                  success: function(data) {
-                     notifyInventoryStockOnAdd(data);
+                     {{-- notifyInventoryStockOnAdd(data); --}}
                      addMoreRow(data);
                  },
                  complete: function() {
                      completed++;
                      if (completed === totalRequests) {
                          $('#inventory_items').val(null).trigger('change');
-                         $('.inv_modal_close').click()
+                         $('.inv_modal_close').click();
+                         recalculateInvoice();
                      }
                  }
              });
          });
-         recalculateInvoice();
      }
 
 
@@ -165,8 +166,8 @@
 
      function deleteNewRow(rowId) {
          $('[data-id="' + rowId + '"]').remove();
-         updateEmptyState()
-
+         updateEmptyState();
+         recalculateInvoice();
      }
      var unitOptions = `{!! \App\Models\Unit::all()->map(function ($unit) {
              return "<option value='{$unit->id}'>{$unit->unit}</option>";
@@ -252,7 +253,7 @@
          data-secondary-unit="${item?.secondary_unit ?? ''}"
     data-primary-qty="${item?.primary_qty ?? 0}"
     data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}"
+    data-primary-price="${item?.selling_price ?? 0}" 
     data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
                        <input type="hidden" name="inventory_item_id[]" value="` + item_id +
              `"  class="form-control">
@@ -263,9 +264,9 @@
              item_price + `"  step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price item_price"></td>
                       <td style="width: 58px;"><label class="small_label">Qty</label><input type="number" name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty item_qty"></td>
                        <td style="width:140px;">
-
-
-
+                       
+                       
+                       
                        <label class="small_label">Unit</label>
                             <select name="item_unit_new[]" class="form-control js-select2-custom unit_select unit ` +
              dataId + `">
@@ -289,9 +290,10 @@
 
          $('.rows_parent').append(html)
          if (item) {
-             $('.unit_select' + dataId).val(item.unit).trigger('change');
+             $('.item_row[data-id="' + dataId + '"] .unit').val(item.unit).trigger('change');
          }
 
+         recalculateInvoice();
          updateEmptyState();
      }
 
@@ -378,103 +380,6 @@
          $('#addCustomerModal').modal('show')
 
      })
-  $('#vendorSelect').select2({
-        ajax: {
-            url: '{{ route('admin.ticket.search-vendors') }}',
-            dataType: 'json',
-            delay: 300,
-            data: function(params) {
-                return {
-                    q: params.term
-                };
-            },
-            processResults: function(data) {
-                return {
-                    results: data.results
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 3,
-        placeholder: 'Search vendor by name or phone...',
-        allowClear: true
-    });
-    $('#mychittiClientSelect').select2({
-        ajax: {
-            url: '{{ route('admin.search-mychitti-clients') }}',
-            dataType: 'json',
-            delay: 300,
-            data: function(params) {
-                return {
-                    q: params.term
-                };
-            },
-            processResults: function(data) {
-                return {
-                    results: data.results
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 3,
-        placeholder: 'Search mychitti client by name or phone...',
-        allowClear: true
-    });
- $(".bill_to_type").on('change', function() {
-            const val = $(this).val();
-
-            if (val === 'user' && $(this).prop('checked') == true) {
-                $('#customer_list').show();
-                $('#customerSelect').attr('name', 'bill_to');
-
-                $('#store_list').hide();
-                $('#vendorSelect').attr('name', '');
-
-                $('#mychitti_client_list').hide();
-                $('#mychittiClientSelect').attr('name', '');
-
-            } else if (val === 'vendor') {
-                $('#store_list').show();
-                $('#vendorSelect').attr('name', 'bill_to');
-
-                $('#customer_list').hide();
-                $('#customerSelect').attr('name', '');
-
-                $('#mychitti_client_list').hide();
-                $('#mychittiClientSelect').attr('name', '');
-
-            } else if (val === 'mychitti_client') {
-                $('#mychitti_client_list').show();
-                $('#mychittiClientSelect').attr('name', 'bill_to');
-
-                $('#customer_list').hide();
-                $('#customerSelect').attr('name', '');
-
-                $('#store_list').hide();
-                $('#vendorSelect').attr('name', '');
-            }
-        });
-    $('#customerSelect').select2({
-        ajax: {
-            url: '{{ route('admin.ticket.search-customers') }}',
-            dataType: 'json',
-            delay: 300,
-            data: function(params) {
-                return {
-                    q: params.term
-                };
-            },
-            processResults: function(data) {
-                return {
-                    results: data.results
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 3,
-        placeholder: 'Search customer by name or phone...',
-        allowClear: true
-    });
 
      $(".customer_add_form").on('submit', function(e) {
          e.preventDefault();
@@ -551,7 +456,7 @@
      });
      $(document).on('change', '#customer_id', function() {
          var selectedVal = $(this).val();
-console.log('fasdfasf')
+
          if (selectedVal === 'add_new') {
              $('#addCustomerModal').modal('show');
              return;
@@ -569,7 +474,7 @@ console.log('fasdfasf')
          });
 
          $.ajax({
-             url: "{{ route('admin.client.fetch-details') }}",
+             url: "{{ route('vendor.customer.fetch-details') }}",
              type: 'POST',
              data: {
                  id: selectedVal,
@@ -642,7 +547,7 @@ console.log('fasdfasf')
              }
          });
          $.ajax({
-             url: "{{ route('admin.billing.validate-invoicenum') }}",
+             url: "{{ route('vendor.invoice.validate-invoicenum') }}",
              type: 'POST',
              data: {
                  number: $(elem).val(),
@@ -871,7 +776,7 @@ console.log('fasdfasf')
                  }
              });
              $.post({
-                 url: "{{ route('admin.business-settings.signature.fetch') }}",
+                 url: "{{ route('vendor.business-settings.signature.fetch') }}",
                  data: {
                      id: sign_id,
                  },
@@ -885,7 +790,7 @@ console.log('fasdfasf')
              });
          }
      })
-     let tcs_applied = tds_applied = false;
+     tcs_applied = tds_applied = false;
      $(".tax_rate").on('change', function() {
          // Helper to toggle visibility
          function toggle(show, selectors) {
@@ -1185,7 +1090,7 @@ console.log('fasdfasf')
 
              var landing_price = 0;
              $.ajax({
-                 url: "{{ route('admin.inventory.get_my_fee_amount') }}",
+                 url: "{{ route('vendor.inventory.get_my_fee_amount') }}",
                  type: "POST",
                  data: {
                      _token: $('[name="_token"]').val(),

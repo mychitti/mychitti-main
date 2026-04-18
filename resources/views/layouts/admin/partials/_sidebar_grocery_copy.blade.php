@@ -677,6 +677,7 @@
                 @endif
                 
                 @if (\App\CentralLogics\Helpers::module_permission_check('subscription_plan'))
+                fddf
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('plan*') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="Subscription Plan Management">
                         <i class="tio-calendar-note nav-icon"></i>
@@ -714,6 +715,8 @@
                                 <span class="text-truncate">Module Pricing</span>
                             </a>
                         </li>
+                         
+                         
                     </ul>
                 </li> 
                 @endif

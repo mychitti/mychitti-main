@@ -936,10 +936,12 @@
             const $inputEl = $('#mainSearchbar');
             const $placeholderEl = $('#animatedPlaceholder');
 
+            if (!$inputEl.length) return; // navbar hidden on store/domain pages
+
             setInterval(function() {
 
                 // hide animation when user types
-                if ($inputEl.val().trim() !== '') {
+                if (($inputEl.val() || '').trim() !== '') {
                     $placeholderEl.hide();
                     return;
                 } else {
@@ -961,8 +963,11 @@
         });
     </script>
 
+@include('front-views.partials._hospital_booking_modal')
+
 
     <script>
+    console.log( 'hop enabled' +  window._hospitalBookingEnabled);
         $("#mainSearchbar").on('focus', function() {
             $('#search_placeholder').show()
         });
@@ -1031,6 +1036,24 @@
         });
 
         function bookService(serviceId, elem, storeId = null) {
+            // Hospital stores: intercept and show doctor + slot modal
+            if (window._hospitalBookingEnabled) {
+                window._hbPending = { serviceId: serviceId, elem: elem, storeId: storeId };
+                if (typeof _hbReset === 'function') _hbReset();
+                $('#hospitalBookingModal').modal('show');
+                // Auto-select if only one doctor (handled by _hbAutoSelect set in partial)
+                if (window._hbAutoSelectId) {
+                    setTimeout(function() {
+                        var card = document.querySelector('.hb-doctor-card[data-id="' + window._hbAutoSelectId + '"]');
+                        if (card) hbSelectDoctor(window._hbAutoSelectId, card);
+                    }, 120);
+                }
+                console.log('Hospital booking flow', { serviceId: serviceId, storeId: storeId });
+                return;
+            }else{
+                    // Non-hospital stores: proceed with normal booking flow
+                    console.log('Booking service', { serviceId: serviceId, storeId: storeId });
+            }
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -1422,6 +1445,7 @@
         }
     </script>
 </body>
+@if(Route::currentRouteName() != 'store.details')
 @if (
     !request()->is('list-your-business') &&
         !request()->is('store*') &&
@@ -1748,6 +1772,9 @@
         </script>
     @endif
 @endif
+
+@endif
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {{-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> --}}
 {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> --}}

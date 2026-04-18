@@ -10,6 +10,8 @@ class EmployeeRole extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['name', 'store_id', 'status'];
+
     public function translations()
     {
         return $this->morphMany(Translation::class, 'translationable');
@@ -23,11 +25,11 @@ class EmployeeRole extends Model
                 }
             }
         }
-
         return $value;
     }
 
-       public function permissions()
+    
+    public function permissions()
     {
         return $this->belongsToMany(
             Permission::class,              // related model

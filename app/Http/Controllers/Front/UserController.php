@@ -16,7 +16,7 @@ use App\CentralLogics\StoreLogic;
 use App\Http\Controllers\Api\V1\ServiceRequestController;
 use App\Models\AcceptedServiceRequest;
 use App\Models\Coupon;
-use App\Models\User; 
+use App\Models\User;
 use App\Models\Order;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 use App\Models\Zone;
@@ -360,7 +360,6 @@ class UserController extends Controller
     }
     public function book_service(Request $request)
     {
-
         $user = auth('web')->user();
         $user_id = $user->id;
         $phone = $user->phone;
@@ -437,6 +436,21 @@ class UserController extends Controller
         $serviceReq->pin_code = $pin_code;
         $serviceReq->address = $address;
         $serviceReq->city =  $city;
+        $serviceReq->requirements = $request->requirements;
+        // Hospital preferred appointment fields
+        if ($request->filled('preferred_doctor_id')) {
+            $offersService = \App\Models\DoctorService::where('doctor_profile_id', $request->preferred_doctor_id)
+                ->where('item_id', $request->serviceId)
+                ->exists();
+            if (!$offersService) {
+                return response()->json(['status' => false, 'message' => 'The selected doctor does not offer this service.']);
+            }
+            $serviceReq->preferred_doctor_id = $request->preferred_doctor_id;
+            $serviceReq->preferred_date      = $request->preferred_date;
+            $serviceReq->preferred_slot_id   = $request->preferred_slot_id ?: null;
+            $serviceReq->preferred_time      = $request->preferred_time ?: null;
+            $serviceReq->reason              = $request->reason ?: null;
+        }
         $serviceReq->created_at = date('Y-m-d H:i:s');
 
         try {
@@ -630,7 +644,7 @@ class UserController extends Controller
                     'updated_at' => now()
                 ]);
             }
-         
+
             $ref_by = $referar_user->id;
         }
 
@@ -991,7 +1005,88 @@ class UserController extends Controller
 
         return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
     }
+    public function add_service_review(Request $request)
+    {
+        $authUser = auth()->user();
+        $validator = Validator::make($request->all(), [
+            'store_id'      => 'required|integer',
+            'acceptance_id' => 'nullable|integer',
+            'service_name'  => 'required|string|max:255',
+            'service_date'  => 'required|date',
+            'experience'    => 'required|in:good,bad',
+            'comment'       => 'required|string',
+            'rating'        => 'required|numeric|min:1|max:5',
+            'attachments'   => 'nullable|array',
+            'attachments.*' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:30720',
+        ]);
 
+        if ($validator->errors()->count() > 0) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $store = Store::find($request->store_id);
+        if (!$store) {
+            return response()->json(['errors' => [['code' => 'store_id', 'message' => translate('messages.store_not_found')]]], 403);
+        }
+
+        if ($request->acceptance_id) {
+            $order = AcceptedServiceRequest::find($request->acceptance_id);
+            if (!$order) {
+                return response()->json(['errors' => [['code' => 'acceptance_id', 'message' => translate('messages.service_data_not_found')]]], 403);
+            }
+            if ($order->current_status !== 'Completed') {
+                return response()->json(['errors' => [['code' => 'acceptance_id', 'message' => 'Service not completed yet']]], 403);
+            }
+        }
+
+        $duplicateQuery = StoreReview::where('store_id', $request->store_id)
+            ->where('user_id', $authUser->id)
+            ->where('service_name', $request->service_name)
+            ->where('service_date', $request->service_date);
+        if ($request->acceptance_id) {
+            $duplicateQuery->where('order_id', $request->acceptance_id);
+        }
+        if ($duplicateQuery->exists()) {
+            return response()->json(['errors' => [['code' => 'review', 'message' => translate('messages.already_submitted')]]], 403);
+        }
+
+        $image_array = [];
+        if (!empty($request->file('attachments'))) {
+            foreach ($request->file('attachments') as $image) {
+                if ($image != null) {
+                    if (!Storage::disk('public')->exists('review')) {
+                        Storage::disk('public')->makeDirectory('review');
+                    }
+                    array_push($image_array, Storage::disk('public')->put('review', $image));
+                }
+            }
+        }
+
+        $review = new StoreReview;
+        $review->user_id      = $authUser->id;
+        $review->store_id     = $request->store_id;
+        $review->order_id     = $request->acceptance_id;
+        $review->service_name = $request->service_name;
+        $review->service_date = $request->service_date;
+        $review->experience   = $request->experience;
+        $review->comment      = $request->comment;
+        $review->rating       = $request->rating;
+        $review->attachment   = $image_array;
+        $review->save();
+
+        $ratingData = DB::table('store_reviews')
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(rating) as rating_count')
+            ->where('store_id', $request->store_id)
+            ->first();
+
+        $store->rating_count   = $ratingData->rating_count;
+        $store->average_rating = $ratingData->avg_rating;
+        $store_rating = StoreLogic::update_store_rating($store->rating, (int)$request->rating);
+        $store->rating = $store_rating;
+        $store->save();
+
+        return response()->json(['message' => translate('messages.review_submited_successfully')], 200);
+    }
     public function submit_service_review(Request $request)
     {
         $validator = Validator::make($request->all(), [

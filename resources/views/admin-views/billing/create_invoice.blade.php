@@ -787,10 +787,10 @@
 @endsection
 
 @push('script_2')
-    @include('admin-views/billing/create_invoice_js')
 
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script>
-    <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/create_invoice.js"></script>
+    @include('admin-views/billing/create_invoice_js') 
+    {{-- <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/create_invoice.js"></script> --}}
 
     <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
     <script>

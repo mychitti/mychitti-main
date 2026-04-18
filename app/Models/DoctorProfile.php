@@ -22,4 +22,8 @@ class DoctorProfile extends Model
     {
         return $this->hasMany(DoctorSlot::class, 'doctor_profile_id');
     }
+    public function services()
+    {
+        return $this->hasMany(DoctorService::class, 'doctor_profile_id');
+    }
 }
