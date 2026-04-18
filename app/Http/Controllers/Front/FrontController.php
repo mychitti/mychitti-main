@@ -2540,9 +2540,10 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
                 ->where('items.slug', $slug)
                 ->where('items.is_approved', 1)
                 ->where('items.module_id', $module)
-                ->whereNull('items.inventory_item_id')
                 ->select('items.*', 'categories.name as category_name', 'categories.slug as category_slug')
                 ->first();
+
+                // prx($item);
             $zone_id = $this->zone_id;
             $store_ids = $item->store_ids;
 
@@ -2633,6 +2634,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
                 ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
                 ->whereNot('items.slug', $slug)
                 ->where('items.module_id', $module)
+                ->whereNull('items.inventory_item_id')
                 ->select('items.*', 'stores.delivery_time', 'categories.slug as cat_slug')
                 ->limit(12)
                 ->groupBy('items.id')
