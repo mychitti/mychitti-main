@@ -3912,7 +3912,6 @@ class Helpers
 
     public static function store_data_formatting_limited($data, $multi_data = false)
     {
-        return [] ;
         $storage = []; 
         $baseUrl = asset('storage/store') . '/';
         if ($multi_data == true) {
@@ -3943,14 +3942,14 @@ class Helpers
             // $data['positive_rating'] = $ratings['positive_rating'];
 
             unset($data['positive_rating']);
-            if($data['business_type'] == 'Hospital'){
-                $data['doctors'] = DoctorProfile::where('store_id', $data['id'])->get();
-            }else{
+            // if($data['business_type'] == 'Hospital'){
+            //     $data['doctors'] = DoctorProfile::where('store_id', $data['id'])->get();
+            // }else{
                 $data['doctors'] = [];
-            }
+            // }
         }
 
-        // return $data;
+        return $data;
     }
     public static function store_data_formatting($data, $multi_data = false)
     {

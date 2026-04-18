@@ -54,7 +54,7 @@
 
     @stack('css_or_js')
     <style>
-        .current-loc-btn {
+        .current-loc-btn-map {
             position: absolute;
             right: 25px;
             bottom: 160px;
@@ -828,7 +828,7 @@
                 </div>
                 <div class="modal-body">
                     <input type="text" id="searchInput" class="form-control">
-                    <div class="current-loc-btn" onclick="useCurrentLocation()" title="Use current location">
+                    <div class="current-loc-btn current-loc-btn-map" onclick="useCurrentLocation()" title="Use current location">
                         📍
                     </div>
                     <div id="map2"></div>
@@ -838,8 +838,9 @@
                     <input type="hidden" id="user_longitude">
                 </div>
                 <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary current-loc-btn" onclick="useCurrentLocation()">Detect my location</button>
                     @if (session()->has('latitude') && session()->has('longitude'))
-                        <button type="button" class="btn btn-grey" data-bs-dismiss="modal">Discard</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Discard</button>
                     @endif
                     <button type="button" onclick="saveLocation()" id="locBtn" class="btn btn-primary">Update
                         Location</button>

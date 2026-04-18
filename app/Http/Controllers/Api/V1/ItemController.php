@@ -36,7 +36,6 @@ class ItemController extends Controller
         $type = $request->query('type', 'all');
 
         $data = ProductLogic::stores_limited_columns($id, $zone_id, $request['limit'], $request['offset'], $type, $longitude, $latitude);
-        // prx( $data);
         $data['stores'] = Helpers::store_data_formatting_limited($data['stores'], true);
         return response()->json($data, 200);
     }
