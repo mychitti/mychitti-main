@@ -777,6 +777,8 @@ class BillingController extends Controller
             $invoice->total_amount = $totalPrice;
             $invoice->save();
 
+            InvoiceItem::where('rand_invoice_id', $invoice_number)->whereNull('manual_invoice_id')->update(['manual_invoice_id' => $invoice->id]);
+
             $data = _createBillPdf($invoice, 'admin');
             $invoice->update(['pdf' => $data['pdf']]);
 

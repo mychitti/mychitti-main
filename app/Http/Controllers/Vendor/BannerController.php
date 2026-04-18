@@ -165,6 +165,7 @@ class BannerController extends Controller
 
         $InvoiceItem = new InvoiceItem();
         $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+        $InvoiceItem->manual_invoice_id = $invoice->id;
         $InvoiceItem->name = 'Banner (' . $request->title . ')';
         $InvoiceItem->qty = 1;
         $InvoiceItem->price = 0;

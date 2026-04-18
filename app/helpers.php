@@ -2326,6 +2326,7 @@ function wallet_recharge($data)
 
     $InvoiceItem = new InvoiceItem();
     $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+    $InvoiceItem->manual_invoice_id = $invoice->id;
     $InvoiceItem->name = 'Wallet Recharge';
     $InvoiceItem->qty = 1;
     $InvoiceItem->price = $info->amount;

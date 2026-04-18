@@ -228,6 +228,7 @@ class QuoteController extends Controller
             foreach ($items as $key => $item) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $item->name;
                 $InvoiceItem->qty = $item->qty;
                 $InvoiceItem->price = $item->price;

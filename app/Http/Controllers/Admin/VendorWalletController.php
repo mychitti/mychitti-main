@@ -161,7 +161,8 @@ class VendorWalletController extends Controller
             // prx($invoice->final_tax);
             /* ================= INVOICE ITEM ================= */
             $item = new InvoiceItem();
-            $item->rand_invoice_id = $invoice->invoice_id;
+            $item->rand_invoice_id  = $invoice->invoice_id;
+            $item->manual_invoice_id = $invoice->id;
             $item->name            = 'Wallet Recharge';
             $item->qty             = 1;
             $item->price           = $taxable;

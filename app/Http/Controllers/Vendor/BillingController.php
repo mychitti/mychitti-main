@@ -536,6 +536,7 @@ class BillingController extends Controller
     foreach ($request->item_name as $key => $name) {
       $InvoiceItem = new InvoiceItem();
       $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+      $InvoiceItem->manual_invoice_id = $invoice->id;
       $InvoiceItem->name = $request->item_name[$key];
       $InvoiceItem->qty = $request->item_qty[$key];
       $InvoiceItem->price = $request->item_price[$key];
@@ -549,7 +550,8 @@ class BillingController extends Controller
       foreach ($request->item_name_new as $key => $id) {
         $InvoiceItem = new InvoiceItem();
         $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
-        $InvoiceItem->name = $request->item_name_new[$key]; 
+        $InvoiceItem->manual_invoice_id = $invoice->id;
+        $InvoiceItem->name = $request->item_name_new[$key];
         $InvoiceItem->price = $request->item_price_new[$key];
         $InvoiceItem->qty = $request->item_qty_new[$key];
         $InvoiceItem->unit = $request->item_unit_new[$key];
@@ -673,6 +675,7 @@ class BillingController extends Controller
       foreach ($request->item_name as $key => $name) {
         $InvoiceItem = new InvoiceItem();
         $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+        $InvoiceItem->manual_invoice_id = $invoice->id;
         $InvoiceItem->name = $request->item_name[$key];
         $InvoiceItem->qty = $request->item_qty[$key];
         $InvoiceItem->price = $request->item_price[$key];
@@ -687,6 +690,7 @@ class BillingController extends Controller
       foreach ($request->item_name_new as $key => $id) {
         $InvoiceItem = new InvoiceItem();
         $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+        $InvoiceItem->manual_invoice_id = $invoice->id;
         $InvoiceItem->name = $request->item_name_new[$key];
         $InvoiceItem->price = $request->item_price_new[$key];
         $InvoiceItem->qty = $request->item_qty_new[$key];
@@ -783,6 +787,7 @@ class BillingController extends Controller
     foreach ($data['items'] as $item) {
       $InvoiceItem = new InvoiceItem();
       $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+      $InvoiceItem->manual_invoice_id = $invoice->id;
       $InvoiceItem->name = $item['name'] ?? '';
       $InvoiceItem->price = $item['price'] ?? 0;
       $InvoiceItem->qty = $item['qty'] ?? 1;
@@ -1214,7 +1219,8 @@ class BillingController extends Controller
     }
 
     foreach ($invoiceItemsToSave as $item) {
-      $item->rand_invoice_id = $invoice->invoice_id; // assign foreign key if needed
+      $item->rand_invoice_id = $invoice->invoice_id;
+      $item->manual_invoice_id = $invoice->id;
       $item->save();
     }
     // RECHECK AMOUNT 

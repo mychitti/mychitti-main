@@ -692,6 +692,7 @@ class ServiceController extends Controller
             foreach ($request->item_name as $key => $name) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name[$key];
                 $InvoiceItem->qty = $request->item_qty[$key];
                 $InvoiceItem->price = $request->item_price[$key];
@@ -706,6 +707,7 @@ class ServiceController extends Controller
             foreach ($request->invoice_item_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                $InvoiceItem->manual_invoice_id = $invoice->id;
                 $InvoiceItem->name = $request->item_name_new[$key];
                 $InvoiceItem->price = $request->item_price_new[$key];
                 $InvoiceItem->qty = $request->item_qty_new[$key];

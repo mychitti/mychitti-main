@@ -179,6 +179,7 @@ class SalespointController extends Controller
         foreach ($token->tokenItems as $itemData) {
             $InvoiceItem = new InvoiceItem();
             $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+            $InvoiceItem->manual_invoice_id = $invoice->id;
             $InvoiceItem->name = $itemData['item_name'];
             $InvoiceItem->qty = $itemData['qty'];
             $InvoiceItem->price = $itemData['unit_price'];

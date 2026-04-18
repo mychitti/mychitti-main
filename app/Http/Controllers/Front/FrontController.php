@@ -2768,6 +2768,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
                 })
                 ->join('categories', 'categories.id', 'items.category_id')
                 ->where('stores.status', 1)
+                ->whereNull('items.inventory_item_id')
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
                 ->where('items.category_id', $catDetails->id)->select('items.*',  'categories.slug as cat_slug')->distinct()->where('items.status', 1)->get();
         } else {

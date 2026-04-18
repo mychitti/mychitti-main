@@ -649,7 +649,8 @@ class SettingsController extends Controller
         $invoice->save();
 
         $item = new InvoiceItem();
-        $item->rand_invoice_id = $invoice->invoice_id;
+        $item->rand_invoice_id  = $invoice->invoice_id;
+        $item->manual_invoice_id = $invoice->id;
         $item->name            = $template->name . ' - Webpage Template';
         $item->qty             = 1;
         $item->price           = $template->price;

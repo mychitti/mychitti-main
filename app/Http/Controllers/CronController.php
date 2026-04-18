@@ -979,6 +979,7 @@ class CronController extends Controller
                 foreach ($invoiceItemsData as $itemData) {
                     $InvoiceItem = new InvoiceItem();
                     $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+                    $InvoiceItem->manual_invoice_id = $invoice->id;
                     $InvoiceItem->name = $itemData['name'];
                     $InvoiceItem->qty = $itemData['qty'];
                     $InvoiceItem->price = $itemData['price'];
