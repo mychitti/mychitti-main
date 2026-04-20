@@ -13,16 +13,16 @@ class RequestForm extends Model
 
        public function requestedBy()
     {
-        // if($this->store_id == 0){
-        //    return $this->belongsTo(Admin::class, 'requested_by');
-        // }
+        if($this->store_id === 0){
+           return $this->belongsTo(Admin::class, 'requested_by');
+        }
         return $this->belongsTo(VendorEmployee::class, 'requested_by');
     }
        public function requestedTo()
     {
-        //   if($this->store_id == 0){
-        //    return $this->belongsTo(Admin::class, 'request_to');
-        // }
+          if($this->store_id === 0){
+           return $this->belongsTo(Admin::class, 'request_to');
+        }
         return $this->belongsTo(VendorEmployee::class, 'request_to');
     }
        public function createdBy()
