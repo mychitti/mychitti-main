@@ -10,10 +10,6 @@
         }
 
         .review-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 16px 16px 0 0;
             text-align: center;
         }
 
@@ -28,35 +24,28 @@
             display: block;
         }
 
-        .review-input,
-        .review-textarea,
         .review-select {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e2e8f0;
             border-radius: 12px;
             font-size: 16px;
             transition: all 0.3s;
             background: white;
         }
 
-        .review-input:focus,
-        .review-textarea:focus,
         .review-select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .review-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
+  
         .star-rating {
-            display: flex;
+            display: flex !important;
+            flex-direction: row !important;
+            direction: ltr !important;
             gap: 4px;
-            justify-content: center;
+            justify-content: center !important;
             font-size: 28px;
         }
 
@@ -67,7 +56,7 @@
         }
 
         .star-rating i.active,
-        .star-rating i:hover {
+        .star-rating i.hover-highlight {
             color: #fbbf24;
         }
 
@@ -110,7 +99,6 @@
             width: 80px;
             height: 80px;
             border-radius: 8px;
-            overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
@@ -199,22 +187,23 @@
                     @csrf
                     <input type="hidden" name="store_id" value="{{ $store['id'] }}">
 
-                    <div class="review-form-group">
+<div class="row">
+                    <div class="review-form-group col-md-6">
                         <label class="review-label">Service Name <span class="text-danger">*</span></label>
-                        <input type="text" name="service_name" class="review-input" required maxlength="255"
+                        <input type="text" name="service_name" class="form-control" required maxlength="255"
                             placeholder="e.g. Laundry Service">
                         <div class="error-message" id="service_name_error{{ $store['id'] }}"></div>
                     </div>
 
-                    <div class="review-form-group">
+                    <div class="review-form-group col-md-6">
                         <label class="review-label">Service Date <span class="text-danger">*</span></label>
-                        <input type="date" name="service_date" class="review-input" required>
+                        <input type="date" name="service_date" class="form-control" required>
                         <div class="error-message" id="service_date_error{{ $store['id'] }}"></div>
                     </div>
 
-                    <div class="review-form-group">
+                    <div class="review-form-group col-md-6">
                         <label class="review-label">Experience <span class="text-danger">*</span></label>
-                        <select name="experience" class="review-select" required>
+                        <select name="experience" class="form-control" required>
                             <option value="">Select experience</option>
                             <option value="good">Good</option>
                             <option value="bad">Bad</option>
@@ -222,7 +211,7 @@
                         <div class="error-message" id="experience_error{{ $store['id'] }}"></div>
                     </div>
 
-                    <div class="review-form-group">
+                    <div class="review-form-group col-md-6">
                         <label class="review-label">Your Rating <span class="text-danger">*</span></label>
                         <div class="star-rating" id="starRating{{ $store['id'] }}">
                             <i class="far fa-star" data-rating="1"></i>
@@ -235,10 +224,12 @@
                             required>
                         <div class="error-message" id="rating_error{{ $store['id'] }}"></div>
                     </div>
+</div>
+
 
                     <div class="review-form-group">
                         <label class="review-label">Comment <span class="text-danger">*</span></label>
-                        <textarea name="comment" class="review-textarea" required placeholder="Share your detailed experience..."></textarea>
+                        <textarea name="comment" class="form-control" required placeholder="Share your detailed experience..."></textarea>
                         <div class="error-message" id="comment_error{{ $store['id'] }}"></div>
                     </div>
 
@@ -277,14 +268,35 @@
 
             // Star rating
             const stars = document.querySelectorAll('#starRating' + storeId + ' i');
-            stars.forEach(star => {
+            let currentRating = 0;
+
+            function applyStars(upTo) {
+                stars.forEach(function(s, idx) {
+                    const filled = idx + 1 <= upTo;
+                    s.classList.toggle('fas', filled);
+                    s.classList.toggle('far', !filled);
+                    s.classList.toggle('active', filled);
+                    s.classList.remove('hover-highlight');
+                });
+            }
+
+            stars.forEach(function(star) {
                 star.addEventListener('click', function() {
-                    const rating = this.dataset.rating;
-                    document.getElementById('ratingValue' + storeId).value = rating;
-                    stars.forEach(s => s.classList.remove('active', 'fas', 'text-warning'));
-                    stars.forEach((s, index) => {
-                        if (index < rating) s.classList.add('active', 'fas', 'text-warning');
+                    currentRating = parseInt(this.dataset.rating);
+                    document.getElementById('ratingValue' + storeId).value = currentRating;
+                    applyStars(currentRating);
+                });
+                star.addEventListener('mouseover', function() {
+                    const hoverRating = parseInt(this.dataset.rating);
+                    stars.forEach(function(s, idx) {
+                        const filled = idx + 1 <= hoverRating;
+                        s.classList.toggle('hover-highlight', filled);
+                        s.classList.toggle('active', idx + 1 <= currentRating);
                     });
+                });
+                star.addEventListener('mouseout', function() {
+                    stars.forEach(function(s) { s.classList.remove('hover-highlight'); });
+                    applyStars(currentRating);
                 });
             });
 

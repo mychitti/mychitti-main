@@ -245,6 +245,10 @@ class BannerController extends Controller
     ->whereIn('zone_id', json_decode($zone_id, true))
     ->where('platform', 'app')
     ->where('data', $store_id)
+    ->where(function ($q) {
+        $q->where('created_by', 'admin')
+          ->orWhere('approval', 1);
+    })
     ->select("id","title", "image", "default_link", 'created_at')
     ->orderBy('sort_order')
     ->get()

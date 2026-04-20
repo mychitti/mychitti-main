@@ -43,6 +43,7 @@ class Notification extends Model
         'published_at',
         'scheduled_at',
         'link',
+        'days',
     ];
 
     /**

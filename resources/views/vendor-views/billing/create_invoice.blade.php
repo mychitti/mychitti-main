@@ -73,6 +73,13 @@
                                     </label>
                                 </div>
                             </div>
+                            <div class="info-group gst_inclusion_wrap gst_fld" style="display:none;">
+                                <label>Tax Inclusion</label>
+                                <select id="global_gst_status" name="global_gst_status" class="form-control">
+                                    <option value="excluding">Excluding GST</option>
+                                    <option value="including">Including GST</option>
+                                </select>
+                            </div>
                             <div class="info-group">
                                 <label>Invoice Number</label>
                                 <div class="gst_invoice_num gst_fld">
@@ -332,15 +339,8 @@
                                                 </td>
                                                 <td class="gst_fld hidden_gst_f">
                                                     <label class="small_label">Tax</label>
-                                                    <div class="input-group ">
-                                                        <input class="form-control small_field charges_tax" type="number"
-                                                            name="charges_tax[]" placeholder="Ex: 12">
-                                                        <select name="tax_status[]"
-                                                            class="form-control charges_tax_status" id="">
-                                                            <option value="included">Included</option>
-                                                            <option value="excluded">Excluded</option>
-                                                        </select>
-                                                    </div>
+                                                    <input class="form-control small_field charges_tax" type="number"
+                                                        name="charges_tax[]" placeholder="Ex: 12">
                                                 </td>
                                             </tr>
                                             <tr class="add_chrg_row">
@@ -355,15 +355,8 @@
                                                 </td>
                                                 <td class="gst_fld hidden_gst_f">
                                                     <label class="small_label">Tax</label>
-                                                    <div class="input-group ">
-                                                        <input class="form-control small_field charges_tax" type="number"
-                                                            name="charges_tax[]" placeholder="Ex: 12">
-                                                        <select name="tax_status[]"
-                                                            class="form-control charges_tax_status" id="">
-                                                            <option value="included">Included</option>
-                                                            <option value="excluded">Excluded</option>
-                                                        </select>
-                                                    </div>
+                                                    <input class="form-control small_field charges_tax" type="number"
+                                                        name="charges_tax[]" placeholder="Ex: 12">
                                                 </td>
                                             </tr>
                                             <tr class="row2">

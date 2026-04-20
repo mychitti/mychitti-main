@@ -330,9 +330,9 @@
                                                 <strong>Date:</strong>
                                                 {{ \Carbon\Carbon::parse($req->date)->format('d M, Y') }}<br>
                                                 <strong>Requested By:</strong>
-                                                {{ $req->requestedBy?->f_name . ' ' . $req->requestedBy?->l_name }}<br>
+                                              #{{$req->requested_by}}   {{ $req->requestedBy?->f_name . ' ' . $req->requestedBy?->l_name }}<br>
                                                 <strong>Requested To:</strong>
-                                                {{ $req->requestedTo?->f_name . ' ' . $req->requestedTo?->l_name }}<br>
+                                               #{{$req->requested_to}}  {{ $req->requestedTo?->f_name . ' ' . $req->requestedTo?->l_name }}<br>
                                                 <strong>Amount:</strong> ₹{{ number_format($req->amount, 2) }}<br>
                                                 <strong>Status:</strong>
                                                 @if ($req->status == 'pending')

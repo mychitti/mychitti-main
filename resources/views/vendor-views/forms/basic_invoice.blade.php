@@ -85,6 +85,13 @@
                         </div>
 
                     </div>
+                    <div class="col-md-2 p-1 gst_inclusion_wrap" style="display:none;">
+                        <label class="d-block mb-1 small">Tax Inclusion</label>
+                        <select id="global_gst_status" name="global_gst_status" class="form-control">
+                            <option value="excluding">Excluding GST</option>
+                            <option value="including">Including GST</option>
+                        </select>
+                    </div>
                     <div class="col-md-2 p-1">
 
                         <label class="d-block mb-1 small">Payment Status</label>
@@ -196,7 +203,6 @@
                             <th scope="col">Qty</th>
                             <th scope="col">Unit</th>
                             <th class="tax_inp_data hidden_tax" scope="col">Tax <i>(in %)</i></th>
-                            <th class="tax_inp_data hidden_tax" scope="col">GST Status</th>
                             <th class="hsn_inp hidden_hsn" scope="col">HSN</th>
                             <th class="hidden_tax" scope="col">Taxable</th>
                             <th class=" " scope="col">Total</th>

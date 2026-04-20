@@ -11,14 +11,13 @@
 
 @section('content')
 <!-- Single Page Header start -->
-<div class="container-fluid page-header py-5">
-    <h1 class="text-center text-white display-6">Terms and Conditions</h1>
-</div>
+    <div id="spacer" style="height:67px;"></div>
+
 <!-- Single Page Header End -->
 
 
 <!-- Contact Start -->
-<div class="container-fluid contact py-5">
+<div class="container-fluid contact ">
     <div class="container py-5">
         <h2>Terms and Conditions</h2>
         {!!$content->value!!} 

@@ -143,6 +143,14 @@
                                    </a>
                                </li>
                            @endif
+                             @if (\App\CentralLogics\Helpers::permission_check('advance_requests'))
+                            <li class="nav-item {{ Request::is('*all-advance-requests*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.users.salary.all-advance-requests') }}" title="Advance Requests">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Advance Requests</span>
+                                </a>
+                            </li>
+                            @endif
                            @if (hasAnyModulePermission(['task_salary_category']))
                                <li class="nav-item {{ Request::is('task-salary-categories') ? 'active' : '' }}">
                                    <a class="nav-link " href="{{ route('admin.task-salary-categories.index') }}"
@@ -177,11 +185,26 @@
 
 
                @if (hasAnyModulePermission(['leave_manage']))
-                   <li class="navbar-vertical-aside {{ Request::is('leave*') ? 'active' : '' }}">
+                   <li class="navbar-vertical-aside {{ Request::is('leave/list') ? 'active' : '' }}">
                        <a class="sub-link  nav-link" href="{{ route('admin.leave.all') }}" title="Leave Management">
                            <i class="tio-category nav-icon"></i>
                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Leave
                                Management</span>
+                       </a>
+                   </li>
+               @endif
+
+               @if (auth('admin')->user()->role_id != 1)
+                   <li class="navbar-vertical-aside {{ Request::is('leave/my-requests') ? 'active' : '' }}">
+                       <a class="sub-link nav-link" href="{{ route('admin.leave.my-requests') }}" title="My Leaves">
+                           <i class="tio-calendar-note nav-icon"></i>
+                           <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Leaves</span>
+                       </a>
+                   </li>
+                   <li class="navbar-vertical-aside {{ Request::is('advance-payment') ? 'active' : '' }}">
+                       <a class="sub-link nav-link" href="{{ route('admin.advance-payment') }}" title="My Salary Advance">
+                           <i class="tio-money nav-icon"></i>
+                           <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Salary Advance</span>
                        </a>
                    </li>
                @endif

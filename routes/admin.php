@@ -88,6 +88,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('chart-data', 'AnalyticsController@chartData')->name('chart-data')->middleware('permission:analytics,view');
         });
 
+        Route::group(['prefix' => 'marketing-dashboard', 'as' => 'marketing-dashboard.'], function () {
+            Route::get('/', 'MarketingDashboardController@index')->name('index')->middleware('permission:marketing_dashboard,view');
+            Route::get('chart-data', 'MarketingDashboardController@chartData')->name('chart-data')->middleware('permission:marketing_dashboard,view');
+        });
+
         // Laundry
         Route::group(['prefix' => 'laundry', 'as' => 'laundry.'], function () {
             Route::get('orders',   'LaundryController@orders')->name('orders');
@@ -787,7 +792,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('advance-payment', 'SalaryController@advance_payment')->name('advance-payment');
         Route::get('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
 
-        // LEAVE MANAGEMENT 
+        // LEAVE MANAGEMENT
         Route::group(['prefix' => 'leave', 'as' => 'leave.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('list', 'LeaveController@index')->name('all');
             Route::get('add', 'LeaveController@add')->name('add-new')->middleware('permission:leave_manage,add');
@@ -795,7 +800,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('save-info', 'LeaveController@save_info')->name('save-info')->middleware('permission:leave_manage,add');
             Route::post('save', 'LeaveController@save_leave')->name('save')->middleware('permission:leave_manage,add');
             Route::get('manage/{id}', 'LeaveController@manage')->name('manage');
+            Route::get('approve/{id}', 'LeaveController@approveLeave')->name('approve')->middleware('permission:leave_manage,add');
+            Route::get('reject/{id}', 'LeaveController@rejectLeave')->name('reject')->middleware('permission:leave_manage,add');
         });
+        Route::get('leave/my-requests', 'LeaveController@myLeaves')->name('leave.my-requests');
+        Route::post('leave/request', 'LeaveController@requestLeave')->name('leave.request');
 
         // HOLIDAYS
         Route::group(['prefix' => 'holidays', 'as' => 'holidays.'], function () {

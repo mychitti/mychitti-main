@@ -80,8 +80,10 @@ class BannerController extends Controller
         $banner->module_id = $store->module_id;
         $banner->default_link = $request->default_link;
         $banner->created_by = 'store';
+        $banner->status = 0;
+        $banner->approval = 0;
         $banner->save();
-        Toastr::success(translate('messages.banner_added_successfully'));
+        Toastr::success('Banner submitted for admin approval.');
         return back();
     }
 
@@ -93,7 +95,11 @@ class BannerController extends Controller
 
     public function status_update(Request $request)
     {
-        $banner = Banner::findOrFail($request->id);
+        $banner = Banner::where('id', $request->id)->where('data', Helpers::get_store_id())->firstOrFail();
+        if ($banner->approval !== 1) {
+            Toastr::error('Banner must be approved by admin before it can be activated.');
+            return back();
+        }
         $banner->status = $request->status;
         $banner->save();
         Toastr::success(translate('messages.banner_status_updated'));

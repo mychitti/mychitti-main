@@ -1436,39 +1436,16 @@ class ItemController extends Controller
 
     public function lead_charge_export()
     {
-        // All services (module 6) across all zones, with current lead charge values merged in
-        $rows = DB::table('items')
-            ->join('categories', 'categories.id', '=', 'items.category_id')
-            ->crossJoin('zones')
-            ->join('module_zone', function ($j) {
-                $j->on('module_zone.zone_id', '=', 'zones.id')
-                  ->where('module_zone.module_id', 6);
-            })
-            ->leftJoin('lead_charges', function ($j) {
-                $j->on('lead_charges.item_id', '=', 'items.id')
-                  ->on('lead_charges.zone_id', '=', 'zones.id');
-            })
-            ->where('items.module_id', 6)
-            ->select(
-                'zones.id as zone_id',
-                'zones.name as zone_name',
-                'categories.id as category_id',
-                'categories.name as category_name',
-                'items.id as item_id',
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(items.name, '$[0].name')) as service_name"),
-                'lead_charges.vendor_count',
-                'lead_charges.ven_1_charges',
-                'lead_charges.ven_2_charges',
-                'lead_charges.ven_3_charges',
-                'lead_charges.ven_other_charges',
-                'lead_charges.ven_same_charges',
-                'lead_charges.dedicated_lead_charge',
-                'lead_charges.confirmation_charge',
-                'lead_charges.completion_charge'
-            )
-            ->orderBy('zones.name')
-            ->orderBy('categories.name')
-            ->get();
+        set_time_limit(0);
+
+        $filename = 'lead_charges_template_' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type'              => 'text/csv; charset=UTF-8',
+            'Content-Disposition'       => "attachment; filename=\"{$filename}\"",
+            'X-Accel-Buffering'         => 'no',  // disable nginx buffering so data streams immediately
+            'Cache-Control'             => 'no-cache',
+        ];
 
         $headings = [
             'zone_id', 'zone_name', 'category_id', 'category_name',
@@ -1479,20 +1456,61 @@ class ItemController extends Controller
             'confirmation_charge', 'completion_charge',
         ];
 
-        $data = $rows->map(fn($r) => [
-            $r->zone_id, $r->zone_name, $r->category_id, $r->category_name,
-            $r->item_id, $r->service_name,
-            $r->vendor_count ?? '',
-            $r->ven_1_charges ?? '', $r->ven_2_charges ?? '',
-            $r->ven_3_charges ?? '', $r->ven_other_charges ?? '',
-            $r->ven_same_charges ?? '', $r->dedicated_lead_charge ?? '',
-            $r->confirmation_charge ?? '', $r->completion_charge ?? '',
-        ])->toArray();
+        $callback = function () use ($headings) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, $headings);
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\AttendanceExport($data, $headings),
-            'lead_charges_template_' . now()->format('Y-m-d') . '.xlsx'
-        );
+            DB::table('items')
+                ->join('categories', 'categories.id', '=', 'items.category_id')
+                ->crossJoin('zones')
+                ->join('module_zone', function ($j) {
+                    $j->on('module_zone.zone_id', '=', 'zones.id')
+                      ->where('module_zone.module_id', 6);
+                })
+                ->leftJoin('lead_charges', function ($j) {
+                    $j->on('lead_charges.item_id', '=', 'items.id')
+                      ->on('lead_charges.zone_id', '=', 'zones.id');
+                })
+                ->where('items.module_id', 6)
+                ->select(
+                    'zones.id as zone_id',
+                    'zones.name as zone_name',
+                    'categories.id as category_id',
+                    'categories.name as category_name',
+                    'items.id as item_id',
+                    DB::raw("JSON_UNQUOTE(JSON_EXTRACT(items.name, '$[0].name')) as service_name"),
+                    'lead_charges.vendor_count',
+                    'lead_charges.ven_1_charges',
+                    'lead_charges.ven_2_charges',
+                    'lead_charges.ven_3_charges',
+                    'lead_charges.ven_other_charges',
+                    'lead_charges.ven_same_charges',
+                    'lead_charges.dedicated_lead_charge',
+                    'lead_charges.confirmation_charge',
+                    'lead_charges.completion_charge'
+                )
+                ->orderBy('zones.name')
+                ->orderBy('categories.name')
+                ->chunk(500, function ($rows) use ($handle) {
+                    foreach ($rows as $r) {
+                        fputcsv($handle, [
+                            $r->zone_id, $r->zone_name, $r->category_id, $r->category_name,
+                            $r->item_id, $r->service_name,
+                            $r->vendor_count ?? '',
+                            $r->ven_1_charges ?? '', $r->ven_2_charges ?? '',
+                            $r->ven_3_charges ?? '', $r->ven_other_charges ?? '',
+                            $r->ven_same_charges ?? '', $r->dedicated_lead_charge ?? '',
+                            $r->confirmation_charge ?? '', $r->completion_charge ?? '',
+                        ]);
+                    }
+                    if (ob_get_level()) ob_flush();
+                    flush();
+                });
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     public function lead_charge_import(\Illuminate\Http\Request $request)

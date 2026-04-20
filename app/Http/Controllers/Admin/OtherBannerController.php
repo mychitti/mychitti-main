@@ -22,6 +22,7 @@ class OtherBannerController extends Controller
         $banners = OfferBanner::with('store', 'zoneData')->paginate(10);
         return view("admin-views.other-banners.offer_banner", compact('banners', 'zones'));
     }
+
     function store_offer_banner(Request $request)
     {
         $request->validate([

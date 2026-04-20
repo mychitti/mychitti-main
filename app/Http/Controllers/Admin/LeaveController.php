@@ -287,4 +287,103 @@ class LeaveController extends Controller
         $lead->save();
         return response()->json(['msg' => ucfirst($request->post('approval')) . 'ed', 'status' => true]);
     }
+
+    // ── Self-service: staff views own leave history + request form ────────────
+    public function myLeaves(Request $request)
+    {
+        $emp   = auth('admin')->user();
+        $v_id  = 0;
+
+        $filter_month = $request->month ?? date('m');
+        $filter_year  = $request->year  ?? date('Y');
+
+        $store_config = StoreConfig::where('store_id', $v_id)->first();
+
+        $clTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $emp->id, 'employee_type' => 'admin_employee',
+                                 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'CL', 'status' => 'approved'])->count();
+        $slTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $emp->id, 'employee_type' => 'admin_employee',
+                                 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->count();
+
+        $clBalance = ($store_config ? $store_config->cl_for_employees : 0) - $clTaken;
+        $slBalance = ($store_config ? $store_config->sl_for_employees : 0) - $slTaken;
+
+        $myLeaves = Leave::where(['vendor_id' => $v_id, 'emp_id' => $emp->id, 'employee_type' => 'admin_employee'])
+                         ->orderByDesc('leave_date')
+                         ->paginate(20);
+
+        return view('admin-views.leave.my-leaves', compact(
+            'myLeaves', 'clBalance', 'slBalance', 'clTaken', 'slTaken',
+            'filter_month', 'filter_year'
+        ));
+    }
+
+    // ── Self-service: staff submits a leave request ───────────────────────────
+    public function requestLeave(Request $request)
+    {
+        $request->validate([
+            'leave_date' => 'required|date',
+            'leave_type' => 'required|in:CL,SL,HDS,HDF',
+            'reason'     => 'required|string|max:500',
+        ]);
+
+        $emp   = auth('admin')->user();
+        $v_id  = 0;
+        $date  = \Carbon\Carbon::parse($request->leave_date);
+
+        $exists = Leave::where([
+            'vendor_id' => $v_id, 'emp_id' => $emp->id,
+            'day' => $date->day, 'month' => $date->month, 'year' => $date->year,
+        ])->exists();
+
+        if ($exists) {
+            Toastr::warning('A leave already exists for this date.');
+            return back();
+        }
+
+        Leave::create([
+            'vendor_id'     => $v_id,
+            'emp_id'        => $emp->id,
+            'employee_type' => 'admin_employee',
+            'leave_date'    => $date->toDateString(),
+            'day'           => $date->day,
+            'month'         => $date->month,
+            'year'          => $date->year,
+            'leave_type'    => $request->leave_type,
+            'reason'        => $request->reason,
+            'status'        => 'pending',
+            'added_by'      => 'self',
+            'created_at'    => now(),
+        ]);
+
+        Toastr::success('Leave request submitted. Awaiting approval.');
+        return back();
+    }
+
+    // ── HR approves a pending leave (creates attendance record) ──────────────
+    public function approveLeave(int $id)
+    {
+        $leave = Leave::where('id', $id)->where('vendor_id', 0)->where('employee_type', 'admin_employee')->firstOrFail();
+
+        $leave->update(['status' => 'approved']);
+
+        $leaveType = in_array($leave->leave_type, ['HDS', 'HDF']) ? 'HD' : $leave->leave_type;
+
+        Attendance::firstOrCreate(
+            ['vendor_id' => 0, 'employee_id' => $leave->emp_id, 'day' => $leave->day, 'month' => $leave->month, 'year' => $leave->year],
+            ['date' => $leave->leave_date, 'label' => $leaveType, 'created_at' => now()]
+        );
+
+        Toastr::success('Leave approved.');
+        return back();
+    }
+
+    // ── HR rejects a pending leave ────────────────────────────────────────────
+    public function rejectLeave(int $id)
+    {
+        Leave::where('id', $id)->where('vendor_id', 0)->where('employee_type', 'admin_employee')
+              ->update(['status' => 'rejected']);
+
+        Toastr::success('Leave rejected.');
+        return back();
+    }
 }

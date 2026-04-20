@@ -308,6 +308,8 @@ class EmployeeController extends Controller
             'main_department' => $request->main_department,
             'offer_letter' => $offer_letter ?? null, // file
             'tentative_joining_date' => $request->tentative_joining_date,
+            'employee_type' => $request->employee_type ?? 'permanent',
+            'employment_end_date' => ($request->employee_type === 'temporary') ? $request->employment_end_date : null,
 
             //emergency contact details
             'emergency_contact_details' => isset($emergency_contact_details) ? json_encode($emergency_contact_details) :  null,

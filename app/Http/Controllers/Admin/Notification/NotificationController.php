@@ -133,8 +133,10 @@ class NotificationController extends BaseController
         $notification = ModelsNotification::find($id);
         return view('admin-views.notification.detail', compact('notification'));
     }
-    public function approval(Request $request, $id)
+    public function approval(Request $request)
     {
+        $id = $request->id;
+        $days = $request->days;
         $notification = (array) DB::table('notifications')->where('id', $id)->first();
 
         if (!$notification) {
@@ -145,6 +147,7 @@ class NotificationController extends BaseController
         DB::table('notifications')->where('id', $id)->update([
             'approval' => 1,
             'status'   => 1,
+            'days'   => $days,
         ]);
 
         $notification['image'] = $notification['image'] ? url('/') . '/storage/app/public/notification/' . $notification['image'] : null;

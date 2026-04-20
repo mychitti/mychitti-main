@@ -320,14 +320,7 @@
                                     <span class="text-truncate">View</span>
                                 </a>
                             </li>
-                            @if (\App\CentralLogics\Helpers::permission_check('advance_requests'))
-                            <li class="nav-item {{ Request::is('*all-advance-requests*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('admin.users.salary.all-advance-requests') }}" title="Advance Requests">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Advance Requests</span>
-                                </a>
-                            </li>
-                            @endif
+                          
 
                         </ul>
                     </li>

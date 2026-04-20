@@ -1485,7 +1485,9 @@
                                             </div>
                                         @endif
 
-                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                        @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-card-compact" style="opacity:0.5;cursor:not-allowed;">
                                                 <i class="fas fa-paper-plane"></i> Enquire
                                             </button>
@@ -1603,7 +1605,9 @@
                                             </div>
                                         @endif
 
-                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                        @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-card-compact" style="opacity:0.5;cursor:not-allowed;">
                                                 <i class="fas fa-paper-plane"></i> Enquire
                                             </button>

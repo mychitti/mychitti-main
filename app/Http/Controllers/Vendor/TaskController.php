@@ -345,7 +345,7 @@ class TaskController extends Controller
             $query->whereBetween('created_at', [$formatted_from, $formatted_to]);
         }
 
-        $tasks = $query->get();
+        $tasks = $query->orderBy('created_at', 'desc')->get();
 
         $store = Helpers::get_store_data();
         $configuredStatuses = array_values(array_filter(array_map('trim', explode(',', $store->task_statuses ?? ''))));

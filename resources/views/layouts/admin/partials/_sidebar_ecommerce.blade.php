@@ -342,6 +342,17 @@
                                         <span class="text-truncate">Offer Banners</span>
                                     </a>
                                 </li>
+                                <li class="nav-item {{ Request::is('banner/vendor-approvals') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.banner.vendor-approvals') }}"
+                                        title="Vendor Banner Approvals">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Vendor Banner Approvals</span>
+                                        @php $pendingVB = \App\Models\Banner::where('created_by','store')->where('approval',0)->count(); @endphp
+                                        @if($pendingVB > 0)
+                                            <span class="badge badge-danger ml-1">{{ $pendingVB }}</span>
+                                        @endif
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 
@@ -404,6 +415,17 @@
                 </li>
                 @endif
                 <!-- End Notification -->
+
+                <!-- Marketing Dashboard -->
+                @if(hasMasterModulePermission('marketing_dashboard'))
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('marketing-dashboard*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.marketing-dashboard.index') }}" title="Marketing Dashboard">
+                        <i class="tio-chart-bar-4 nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Marketing Dashboard</span>
+                    </a>
+                </li>
+                @endif
+                <!-- End Marketing Dashboard -->
 
                 <!-- End marketing section -->
 

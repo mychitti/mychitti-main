@@ -641,7 +641,9 @@
 
                                                     {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
 
-                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                    @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                                        <span class="badge bg-danger">Out of Stock</span>
+                                                    @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                         <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
                                                             Enquiry
                                                         </button>
@@ -696,7 +698,9 @@
 
                                                     {{-- <p class="fw-bold mb-1">{{ _price($pro->price) }}</p> --}}
 
-                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                    @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                                        <span class="badge bg-danger">Out of Stock</span>
+                                                    @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                         <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
                                                             Enquiry
                                                         </button>

@@ -80,6 +80,19 @@
                 allowClear: true,
                 maximumSelectionLength: 6
             });
+
+            // Show/hide employment end date based on employee type
+            function toggleEndDate() {
+                if ($('#employee_type').val() === 'temporary') {
+                    $('#employment_end_date_wrap').show();
+                    $('#employment_end_date').attr('required', true);
+                } else {
+                    $('#employment_end_date_wrap').hide();
+                    $('#employment_end_date').removeAttr('required').val('');
+                }
+            }
+            $('#employee_type').on('change', toggleEndDate);
+            toggleEndDate();
         });
     </script>
 @endpush

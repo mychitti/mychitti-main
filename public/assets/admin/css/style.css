@@ -2637,7 +2637,7 @@ textarea.form-control[readonly] {
 }
 
 .select2:not(.select2-container--open) .select2-search--inline {
-    height: 2px;
+    /* height: 2px; */
 }
 
 .toggle-switch-sm .toggle-switch-label {

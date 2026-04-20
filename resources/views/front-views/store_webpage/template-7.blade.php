@@ -1699,7 +1699,9 @@
                                     @endif
 
                                     <div class="product-action-corp">
-                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                        @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-corp btn-corp-primary" style="opacity:0.5;cursor:not-allowed;">
                                                 <i class="fas fa-paper-plane"></i> Enquire Now
                                             </button>
@@ -1819,7 +1821,9 @@
                                     @endif
 
                                     <div class="product-action-corp">
-                                        @if (($data['store_config']->lead_available ?? 1) == 0)
+                                        @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-corp btn-corp-primary" style="opacity:0.5;cursor:not-allowed;">
                                                 <i class="fas fa-paper-plane"></i> Enquire Now
                                             </button>

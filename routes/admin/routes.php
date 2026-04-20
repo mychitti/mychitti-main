@@ -107,6 +107,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post(Banner::SEARCH[URI], [BannerController::class,'getSearchList'])->name('search');
             Route::post('sort-order', [BannerController::class,'updateSortOrder'])->name('sort-order');
             Route::get(Banner::CANCEL_PUBLISH[URI].'/{id}', [BannerController::class,'cancelPublish'])->name('cancel-publish');
+            Route::get('vendor-approvals', [BannerController::class,'vendorApprovals'])->name('vendor-approvals');
+            Route::get('vendor-approve/{id}', [BannerController::class,'vendorBannerApprove'])->name('vendor.approve');
+            Route::get('vendor-reject/{id}', [BannerController::class,'vendorBannerReject'])->name('vendor.reject');
         });
 
         Route::group(['prefix' => 'coupon', 'as' => 'coupon.', 'middleware' => ['module:coupon']], function () {
@@ -131,7 +134,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::delete(Notification::DELETE[URI].'/{id}', [NotificationController::class, 'delete'])->name('delete');
             Route::get(Notification::STATUS[URI].'/{id}/{status}', [NotificationController::class,'updateStatus'])->name('status');
             Route::get(Notification::EXPORT[URI], [NotificationController::class, 'exportList'])->name('export');
-            Route::post('approval/{id}/{action}', [NotificationController::class,'approval'])->name('approval');
+            Route::post('approval/{id?}/{action?}', [NotificationController::class,'approval'])->name('approval');
             Route::get('detail/{id}', [NotificationController::class,'detail'])->name('detail');
         });
        

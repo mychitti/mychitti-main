@@ -97,6 +97,11 @@ class Banner extends Model
         return $this->belongsTo(Zone::class);
     }
 
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'data');
+    }
+
     /**
      * @return BelongsTo
      */

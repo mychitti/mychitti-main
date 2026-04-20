@@ -309,21 +309,29 @@
      function calculateTotals() {
          let totalWithoutGST = 0;
          let totalWithGST = 0;
+         const gstStatus = $('#global_gst_status').val() || 'excluding';
 
          $('.item_row').each(function() {
              let price = parseFloat($(this).find('.price').val()) || 0;
              let qty = parseFloat($(this).find('.qty').val()) || 0;
              let tax = parseFloat($(this).find('.tax').val()) || 0;
 
-             let lineTotal = price * qty;
-             let gstAmount = lineTotal * (tax / 100);
-             let lineTotalWithGST = lineTotal + gstAmount;
+             let lineTotal, gstAmount, lineTotalWithGST;
+             if (gstStatus === 'including') {
+                 lineTotalWithGST = price * qty;
+                 lineTotal = lineTotalWithGST / (1 + tax / 100);
+                 gstAmount = lineTotalWithGST - lineTotal;
+             } else {
+                 lineTotal = price * qty;
+                 gstAmount = lineTotal * (tax / 100);
+                 lineTotalWithGST = lineTotal + gstAmount;
+             }
 
              totalWithoutGST += lineTotal;
              totalWithGST += lineTotalWithGST;
 
-             $(this).find('.item_taxable').val(lineTotal)
-             $(this).find('.item_total').val(lineTotalWithGST)
+             $(this).find('.item_taxable').val(lineTotal.toFixed(3))
+             $(this).find('.item_total').val(lineTotalWithGST.toFixed(3))
          });
 
          $('#totalWithoutGST').text(totalWithoutGST.toFixed(3));
@@ -734,14 +742,8 @@
                         placeholder="Ex: 90">
                 </td>
                 <td class="` + classNew + `">
-                    <div class="input-group mb-3">
-                         <label class="small_label">Tax</label><input type="number" class="form-control small_field charges_tax" name="charges_tax[]"
-                            placeholder="Ex: 12">
-                        <select name="tax_status[]" class="form-control charges_tax_status" id="">
-                            <option value="included">Included</option>
-                            <option value="excluded">Excluded</option>
-                        </select>
-                    </div>
+                    <label class="small_label">Tax</label><input type="number" class="form-control small_field charges_tax" name="charges_tax[]"
+                        placeholder="Ex: 12">
                 </td>
                 <td>
                     <a class="cursor-pointer"><i class="tio-remove-circle-outlined text-danger remove_add_charge" onclick="removeAddChargeRow(this)"></i></a>
@@ -886,6 +888,26 @@
          $(this).prop('checked', ischecked)
      })
 
+     $(document).on('change', '.tax_type', function() {
+         if ($(this).val() === 'gst') {
+             $('.nongst_fld').hide();
+             $('.gst_fld').show();
+             $(".gst_field").attr('name', 'number');
+             $(".non_gst_field").removeAttr('name');
+             $('#gst_section').show();
+             $('.gst_inclusion_wrap').show();
+         } else {
+             $('.nongst_fld').show();
+             $('.gst_fld').hide();
+             $(".gst_field").removeAttr('name');
+             $(".non_gst_field").attr('name', 'number');
+             $(".item_tax").val('');
+             $('#gst_section').hide();
+             $('.gst_inclusion_wrap').hide();
+         }
+         recalculateInvoice();
+         calculateTotals();
+     });
 
      function recalculateInvoice() {
          if ($('.tax_type[value="gst"]').is(':checked')) {
@@ -910,13 +932,22 @@
          let additionalChargesTotal = 0;
          let additionalChargesTax = 0;
 
+         const globalGstStatus = $('#global_gst_status').val() || 'excluding';
+
          $('.item_row').each(function() {
              const unitPrice = parseFloat($(this).find('.item_price').val()) || 0;
              const quantity = parseFloat($(this).find('.item_qty').val()) || 0;
              const taxPercent = parseFloat($(this).find('.item_tax').val()) || 0;
 
-             const amount = unitPrice * quantity;
-             const taxAmount = amount * (taxPercent / 100);
+             let amount, taxAmount;
+             if (globalGstStatus === 'including') {
+                 const lineTotal = unitPrice * quantity;
+                 amount = lineTotal / (1 + taxPercent / 100);
+                 taxAmount = lineTotal - amount;
+             } else {
+                 amount = unitPrice * quantity;
+                 taxAmount = amount * (taxPercent / 100);
+             }
 
              totalItemsAmount += amount;
              totalItemsTax += taxAmount;
@@ -929,12 +960,11 @@
          $('.add_chrg_row').each(function() {
              const chargeInput = parseFloat($(this).find('.additional_charges').val()) || 0;
              const taxPercent = parseFloat($(this).find('.charges_tax').val()) || 0;
-             const taxType = $(this).find('.charges_tax_status').val();
 
              let charges = 0;
              let taxAmount = 0;
 
-             if (taxType === 'included') {
+             if (globalGstStatus === 'including') {
                  const baseAmount = chargeInput / (1 + (taxPercent / 100));
                  taxAmount = chargeInput - baseAmount;
                  charges = baseAmount;
@@ -1041,7 +1071,7 @@
      }
 
      $('body').on('keyup change',
-         '.cash_amount, .online_amount, .price, .qty, .payment_mode .tax_type, .item_price, .item_tax, .charges_tax_status, .tds_under_gst, .tax_rate, .item_qty, #cess_inp, #surcharge_inp, .additional_charges, .charges_tax, .remove_add_charge, .tds_under_gst, .charges_tax_status, #tcs_rate_id, #tds_rate_id, .total_discount, .total_discount_type ',
+         '.cash_amount, .online_amount, .price, .qty, .item_price, .item_tax, .tds_under_gst, .tax_rate, .item_qty, #cess_inp, #surcharge_inp, .additional_charges, .charges_tax, .remove_add_charge, .tds_under_gst, #global_gst_status, #tcs_rate_id, #tds_rate_id, .total_discount, .total_discount_type ',
          function() {
              recalculateInvoice();
          });

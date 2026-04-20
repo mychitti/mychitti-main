@@ -251,9 +251,9 @@
                                                 <td> {{ $lead['reason'] }}</td>
                                                 <td>
                                                     @if (hasPermission('leave_manage', 'status_change'))
-                                                        <a href="{{ route('admin.approve-leave', ['id' => $lead['id']]) }}"
+                                                        <a href="{{ route('admin.leave.approve', ['id' => $lead['id']]) }}"
                                                             class="btn btn--primary">Approve</a>
-                                                        <a href="{{ route('admin.reject-leave', ['id' => $lead['id']]) }}"
+                                                        <a href="{{ route('admin.leave.reject', ['id' => $lead['id']]) }}"
                                                             class="btn btn--danger ">Reject</a>
                                                     @endif
                                                 </td>

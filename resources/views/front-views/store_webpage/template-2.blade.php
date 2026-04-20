@@ -634,7 +634,9 @@
                                                                                         </div>
                                                                                     @endif
 
-                                                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                                                    @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                                                                        <span class="badge bg-danger">Out of Stock</span>
+                                                                                    @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                                                         <button disabled
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
                                                                                                 class="fas fa-user-cog"></i>
@@ -809,7 +811,9 @@
                                                                                         </div>
                                                                                     @endif
 
-                                                                                    @if (($data['store_config']->lead_available ?? 1) == 0)
+                                                                                    @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
+                                                                                        <span class="badge bg-danger">Out of Stock</span>
+                                                                                    @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                                                         <button disabled
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
                                                                                                 class="fas fa-user-cog"></i>

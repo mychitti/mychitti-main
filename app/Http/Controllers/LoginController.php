@@ -256,6 +256,14 @@ class LoginController extends Controller
                     return redirect()->back()->withInput($request->only('email', 'remember'))
                         ->withErrors([translate('messages.inactive_vendor_warning')]);
                 }
+                if (
+                    $employee->employee_type === 'temporary' &&
+                    $employee->employment_end_date &&
+                    \Carbon\Carbon::parse($employee->employment_end_date)->isPast()
+                ) {
+                    return redirect()->back()->withInput($request->only('email', 'remember'))
+                        ->withErrors(['Your employment period has ended. Please contact your employer.']);
+                }
             }
         }
 

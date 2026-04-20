@@ -163,6 +163,7 @@
              $('.tax_inp_data').addClass('hidden_tax')
              $('.hsn_inp').addClass('hidden_hsn')
              $('.totalWithGSTInp').hide()
+             $('.gst_inclusion_wrap').hide()
          } else {
              $(".gst_invoice_num").show()
              $(".gst_field").attr('name', 'number')
@@ -173,7 +174,9 @@
              $('.tax_inp_data').removeClass('hidden_tax')
              $('.totalWithGSTInp').show()
              $('.hsn_inp').removeClass('hidden_hsn')
+             $('.gst_inclusion_wrap').show()
          }
+         calculateTotals()
      })
      var unitOptions = `{!! \App\Models\Unit::all()->map(function ($unit) {
              return "<option value='{$unit->id}'>{$unit->unit}</option>";
@@ -314,12 +317,6 @@
                     </td>
                       <td style="width: 58px;" class="tax_inp_data ` + className +
              ` tax_field" ><input type="number" value="` + item_tax + `" name="item_tax_new[]" placeholder="Tax" class="form-control tax"></td>
-                      <td style="width: 100px;" class="tax_inp_data ` + className + `">
-                        <select name="item_gst_status_new[]" class="form-control gst_status">
-                          <option value="excluding" ${item_gst_status == 'excluding' ? 'selected' : ''}>Excluding</option>
-                          <option value="including" ${item_gst_status == 'including' ? 'selected' : ''}>Including</option>
-                        </select>
-                      </td>
                       <td style="width: 93px;" class="hsn_inp ` + className2 +
              `"><input type="text" name="item_hsn_new[]" value="` + item_hsn + `" placeholder="HSN" class="form-control"></td>
                        <td style="width: 93px;" class="hidden_tax"><input type="text" readonly placeholder="Taxable" class="form-control item_taxable"></td>
@@ -343,7 +340,7 @@
              let price = parseFloat($(this).find('.price').val()) || 0;
              let qty = parseFloat($(this).find('.qty').val()) || 0;
              let tax = parseFloat($(this).find('.tax').val()) || 0;
-             let gstStatus = $(this).find('.gst_status').val() || 'excluding';
+             let gstStatus = $('#global_gst_status').val() || 'excluding';
 
              let lineTotal, gstAmount, lineTotalWithGST, taxableAmount;
 
@@ -383,7 +380,7 @@
      }
 
      // Trigger on input change
-     $(document).on('keyup input change', '.price, .qty, .tax, .gst_status, #delivery_charges, .unit', function() {
+     $(document).on('keyup input change', '.price, .qty, .tax, #global_gst_status, #delivery_charges, .unit', function() {
          let $row = $(this).closest('.item_row_inv');
 
          if ($(this).hasClass('unit')) {

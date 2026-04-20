@@ -61,6 +61,29 @@ class BannerController extends BaseController
         return view(BannerViewPath::INDEX[VIEW], compact('banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users'));
     }
 
+    public function vendorApprovals(Request $request): View
+    {
+        $vendor_banners = \App\Models\Banner::where('created_by', 'store')
+            ->with('store')
+            ->latest()
+            ->paginate(config('default_pagination'));
+        return view('admin-views.banner.vendor-approvals', compact('vendor_banners'));
+    }
+
+    public function vendorBannerApprove(int $id): RedirectResponse
+    {
+        \App\Models\Banner::where('id', $id)->where('created_by', 'store')->update(['approval' => 1, 'status' => 1]);
+        Toastr::success('Vendor banner approved.');
+        return back();
+    }
+
+    public function vendorBannerReject(int $id): RedirectResponse
+    {
+        \App\Models\Banner::where('id', $id)->where('created_by', 'store')->update(['approval' => 2, 'status' => 0]);
+        Toastr::success('Vendor banner rejected.');
+        return back();
+    }
+
     public function add(BannerAddRequest $request): JsonResponse
     {
         if ($request->user_id || $request->store_id) {

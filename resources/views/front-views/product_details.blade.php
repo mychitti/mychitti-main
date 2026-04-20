@@ -501,7 +501,7 @@
                                         @if ($item->store_open == 1)
                                             @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
                                             <br>
-                                            <input type="hidden" value="{{ !empty($variations) ? 0 : '' }}"
+                                            <input type="hidden" value=""
                                                 id="selected_variation">
                                             {{-- <a onclick="updateCartVr({{ $item->id }}, 'add',  '')"
                                                     class="btn border border-secondary rounded p-1 px-2 text-primary"><i
@@ -562,18 +562,21 @@
 
                             @php $variations = json_decode($item->variations) ?? []; @endphp
                             @if ($module == 5 || $is_inventory_product)
+                                @if ($is_inventory_product && ($item->stock ?? 1) <= 0)
+                                    <span class="badge bg-danger fs-6 mb-3">Out of Stock</span>
+                                @endif
                                 @php $firstVr = !empty($variations) ? json_encode($variations[0]) : "" @endphp
                                 <div class="d-flex align-items-end">
                                     <p class="text-dark fs-5 fw-bold mb-0 mx-1">
                                         {{ \App\CentralLogics\Helpers::currency_symbol() }}
                                         <span id="actual_price">
-                                            {{ $firstVr ? round(json_decode($firstVr)->price) : round($item->price) }}
+                                            {{ round($item->price) }}
                                         </span>
                                     </p>
                                     @if ($item->discount)
                                         <span class="text-danger text-decoration-line-through mb-0 mr_price">
                                             {{ \App\CentralLogics\Helpers::currency_symbol() }}
-                                            {{ $firstVr ? (isset(json_decode($firstVr)->mrpprice) ? number_format(json_decode($firstVr)->mrpprice) : number_format(round(json_decode($firstVr)->price))) : ($item->mrp_price ? number_format(round($item->mrp_price)) : round($item->price)) }}</span>
+                                            {{ $item->mrp_price ? number_format(round($item->mrp_price)) : number_format(round($item->price)) }}</span>
                                     @endif
 
                                 </div>
@@ -591,7 +594,7 @@
                                         {{-- @php print_r($vr); @endphp  --}}
                                         <input type="radio" id="meter{{ $key }}" data-id= "{{ $key }}"
                                             data-value="{{ $vr->type }}" class="vrtion_select"
-                                            {{ !$key ? 'checked' : '' }} name="options-outlined">
+                                             name="options-outlined">
                                         <label class="variation" for="meter{{ $key }}">
                                             <span>{{ preg_replace('/([a-z])([A-Z])/', '$1 $2', $vr->type) }}</span>
                                             <span class="price">₹{{ round($vr->price) }}
@@ -808,7 +811,7 @@
                         @php
                             $variations = json_decode($pro->variations) ?? [];
                             $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
-                            if ($firstVr) {
+                            if ($firstVr && $module != 5 && ($pro->item_type ?? '') != 'product') {
                                 $selling_price = json_decode($firstVr)->price;
                                 $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
                             } else {
@@ -943,7 +946,7 @@
                                     @php
                                         $variations = json_decode($fPro->variations);
                                         $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
-                                        if ($firstVr) {
+                                        if ($firstVr && $module != 5 && ($fPro->item_type ?? '') != 'product') {
                                             $selling_price = json_decode($firstVr)->price;
                                             $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
                                         } else {

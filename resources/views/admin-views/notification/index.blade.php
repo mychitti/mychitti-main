@@ -3,12 +3,14 @@
 @section('title', translate('messages.notification'))
 
 @push('css_or_js')
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<style>
-    #schedule_wrap { display:none; }
-</style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        #schedule_wrap {
+            display: none;
+        }
+    </style>
 @endpush
- 
+
 @section('content')
     <div class="content container-fluid">
         <!-- Page Header -->
@@ -74,7 +76,7 @@
                                                 <label class="input-label"
                                                     for="exampleFormControlInput1">{{ translate('messages.link') }}</label>
                                                 <input type="text" name="link" class="form-control"
-                                                    placeholder="{{ translate('messages.eg.:https://mychitti.net/blog') }}" 
+                                                    placeholder="{{ translate('messages.eg.:https://mychitti.net/blog') }}"
                                                     maxlength="191">
                                             </div>
                                         </div>
@@ -112,11 +114,13 @@
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="custom-control custom-switch mr-3">
                                             <input type="checkbox" class="custom-control-input" id="schedule_toggle">
-                                            <label class="custom-control-label" for="schedule_toggle">Schedule for later</label>
+                                            <label class="custom-control-label" for="schedule_toggle">Schedule for
+                                                later</label>
                                         </div>
                                     </div>
                                     <div id="schedule_wrap" class="mb-3">
-                                        <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
+                                        <label class="input-label">Schedule Date &amp; Time <span
+                                                class="text-danger">*</span></label>
                                         <input type="datetime-local" id="push_scheduled_at" class="form-control"
                                             min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
                                     </div>
@@ -254,8 +258,9 @@
                                             {{ translate($notification->tergat) }}
                                         </td>
                                         <td>
-                                            @if($notification->is_scheduled &&  $notification->sent_at == NULL && $notification->scheduled_at > now()) 
-                                                <label class="badge badge-soft-info">Scheduled for {{ date('Y-m-d H:i', strtotime($notification->scheduled_at)) }}</label>
+                                            @if ($notification->is_scheduled && $notification->sent_at == null && $notification->scheduled_at > now())
+                                                <label class="badge badge-soft-info">Scheduled for
+                                                    {{ date('Y-m-d H:i', strtotime($notification->scheduled_at)) }}</label>
                                             @else
                                                 <label class="badge badge-soft-success">Published</label>
                                             @endif
@@ -415,9 +420,10 @@
                                                 {{ strlen($notification['title']) > 25 ? '...' : '' }}
                                             </span>
                                         </td>
-                                        <td  title="{{ $notification['description'] }}"><a href="{{route('admin.notification.detail', [$notification['id']])}}">
-                                            {{ substr($notification['description'], 0, 25) }}
-                                            {{ strlen($notification['description']) > 25 ? '...' : '' }}</a>
+                                        <td title="{{ $notification['description'] }}"><a
+                                                href="{{ route('admin.notification.detail', [$notification['id']]) }}">
+                                                {{ substr($notification['description'], 0, 25) }}
+                                                {{ strlen($notification['description']) > 25 ? '...' : '' }}</a>
                                         </td>
                                         <td>
                                             @if ($notification['image'] != null)
@@ -452,21 +458,21 @@
                                         </td>
                                         <td>
                                             <div class="btn--container justify-content-center">
-                                                    <a class="btn action-btn btn-primary btn-outline-primary "
-                                                        href="{{route('admin.notification.detail', [$notification['id']])}}"
-                                                        title="{{ translate('messages.view_notification') }}"><i
-                                                            class="tio-visible-outlined"></i>
-                                                    </a>
+                                                <a class="btn action-btn btn-primary btn-outline-primary "
+                                                    href="{{ route('admin.notification.detail', [$notification['id']]) }}"
+                                                    title="{{ translate('messages.view_notification') }}"><i
+                                                        class="tio-visible-outlined"></i>
+                                                </a>
                                                 @if ($notification->status == 0)
-                                                    <a class="btn action-btn  btn-outline-success form-alert"
-                                                        href="javascript:"
+                                                    <a class="btn action-btn  btn-outline-success notif_approve_btn"
+                                                        type="button" data-toggle="modal"
+                                                        data-target="#approveNotificationModal"
                                                         style="    width: fit-content !important;padding: 0 8px !important;"
-                                                        data-id="notification_approve-{{ $notification['id'] }}"
-                                                        data-message="{{ translate('Want to approve and release this notification ?') }}"
+                                                        data-id="{{ $notification['id'] }}"
                                                         title="{{ translate('messages.approve_notification') }}"><i
                                                             class="tio-checkmark-square-outlined"></i> Approve
                                                     </a>
-                                                   
+
                                                     <a class="btn action-btn  btn-outline-danger form-alert"
                                                         href="javascript:"
                                                         style="    width: fit-content !important;padding: 0 8px !important;"
@@ -475,12 +481,7 @@
                                                         title="{{ translate('messages.reject_notification') }}"><i
                                                             class="tio-clear-square-outlined"></i> Reject
                                                     </a>
-                                                     <form
-                                                        action="{{ route('admin.notification.approval', [$notification['id'], 'approve']) }}"
-                                                        method="post"
-                                                        id="notification_approve-{{ $notification['id'] }}">
-                                                        @csrf
-                                                    </form>
+
                                                     <form
                                                         action="{{ route('admin.notification.approval', [$notification['id'], 'reject']) }}"
                                                         method="post"
@@ -517,10 +518,43 @@
         </div>
     </div>
 
+    <div class="modal fade" id="approveNotificationModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ route('admin.notification.approval') }}" class="approve_form">
+                        @csrf
+                        <input type="hidden" name="id" id="approve_notification_id" value="">
+                        <p id="approve_notification_description"></p>
+                        <input type="number" placeholder ="days" name="days" class="form-control" id="">
+<small>After given days the notification will disappear from user notifications page </small>
+<div class="w-100 d-flex justify-content-end mt-3">
+                        <button type="submit" class="btn btn-primary ">Approve</button>
+</div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/notification.js"></script>
+    <script>
+        $(".notif_approve_btn").on('click', function() {
+            var id = $(this).data('id');
+            $('#approve_notification_id').val(id);
+        });
+       
+    </script>
     <script>
         "use strict";
 
@@ -546,9 +580,9 @@
                 return;
             }
 
-            var confirmText = isScheduled
-                ? 'Schedule this notification for ' + scheduledAt + '?'
-                : '{{ translate('messages.you want to sent notification to') }}' + $('#tergat').val() + '?';
+            var confirmText = isScheduled ?
+                'Schedule this notification for ' + scheduledAt + '?' :
+                '{{ translate('messages.you want to sent notification to') }}' + $('#tergat').val() + '?';
 
             Swal.fire({
                 title: '{{ translate('messages.are_you_sure') }}',
@@ -563,8 +597,10 @@
             }).then((result) => {
                 if (result.value) {
                     $.ajaxSetup({
-                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
-                    }); 
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        }
+                    });
 
                     var formData = new FormData(this);
                     if (isScheduled) {
@@ -578,7 +614,8 @@
                         contentType: false,
                         processData: false,
                         success: function(data) {
-                            toastr.success(data.message || (isScheduled ? 'Scheduled!' : 'Sent!'));
+                            toastr.success(data.message || (isScheduled ? 'Scheduled!' :
+                                'Sent!'));
                             if (!isScheduled) {
                                 $('#notification')[0].reset();
                             }
@@ -586,7 +623,9 @@
                         error: function(xhr) {
                             var errors = xhr.responseJSON?.errors;
                             if (errors) {
-                                $.each(errors, function(k, v) { toastr.error(v[0]); });
+                                $.each(errors, function(k, v) {
+                                    toastr.error(v[0]);
+                                });
                             } else {
                                 toastr.error('Something went wrong.');
                             }
@@ -596,7 +635,7 @@
             });
         });
 
-$('#reset_btn').click(function() {
+        $('#reset_btn').click(function() {
             $('#zone').val('all').trigger('change');
             $('#viewer').attr('src', '{{ asset('public/assets/admin/img/900x400/img1.jpg') }}');
             $('#customFileEg1').val(null);

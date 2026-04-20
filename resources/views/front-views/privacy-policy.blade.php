@@ -10,19 +10,12 @@
 @endpush
 
 @section('content')
-<!-- Single Page Header start -->
-<div class="container-fluid page-header py-5">
-    <h1 class="text-center text-white display-6">Privacy Policy</h1>
-    <ol class="breadcrumb justify-content-center mb-0">
-        <li class="breadcrumb-item"><a href="{{route('home')}}">Home</a></li>
-        <li class="breadcrumb-item active text-white">Privacy Policy</li>
-    </ol>
-</div>
-<!-- Single Page Header End -->
+    <div id="spacer" style="height:67px;"></div>
+
 
 
 <!-- Contact Start -->
-<div class="container-fluid contact py-5">
+<div class="container-fluid contact ">
     <div class="container py-5">
         {!!$content->value!!} 
     </div> 

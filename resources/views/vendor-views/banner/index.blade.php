@@ -119,6 +119,7 @@
                                     <th class="border-0">{{translate('messages.title')}}</th>
                                     <th class="border-0">{{translate('messages.banner_Image')}}</th>
                                     <th class="border-0">{{translate('messages.redirection_Link')}}</th>
+                                    <th class="border-0 text-center">Approval</th>
                                     <th class="border-0 text-center">{{translate('messages.status')}}</th>
                                     <th class="border-0 text-center">{{translate('messages.action')}}</th>
                                 </tr>
@@ -137,12 +138,24 @@
                                         </span>
                                     </td>
                                     <td><a href="{{ $banner->default_link }}"> {{Str::limit($banner['default_link'], 60, '...')}}</a></td>
+                                    <td class="text-center">
+                                        @if($banner->approval === null || $banner->approval == 0)
+                                            <span class="badge badge-warning">Pending</span>
+                                        @elseif($banner->approval == 1)
+                                            <span class="badge badge-success">Approved</span>
+                                        @else
+                                            <span class="badge badge-danger">Rejected</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="d-flex justify-content-center">
-                                            <label class="toggle-switch toggle-switch-sm" for="statusCheckbox{{$banner->id}}">
+                                            <label class="toggle-switch toggle-switch-sm {{ $banner->approval != 1 ? 'disabled' : '' }}" for="statusCheckbox{{$banner->id}}"
+                                                   @if($banner->approval != 1) title="Waiting for admin approval" @endif>
                                             <input type="checkbox"
                                                    data-url="{{route('vendor.banner.status_update',[$banner['id'],$banner->status?0:1])}}"
-                                                   class="toggle-switch-input redirect-url" id="statusCheckbox{{$banner->id}}" {{$banner->status?'checked':''}}>
+                                                   class="toggle-switch-input redirect-url" id="statusCheckbox{{$banner->id}}"
+                                                   {{$banner->status?'checked':''}}
+                                                   {{ $banner->approval != 1 ? 'disabled' : '' }}>
                                             <span class="toggle-switch-label">
                                                 <span class="toggle-switch-indicator"></span>
                                             </span>

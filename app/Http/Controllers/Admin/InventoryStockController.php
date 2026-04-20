@@ -24,9 +24,9 @@ class InventoryStockController extends Controller
         $formatted_from = $range['start'];
         $formatted_to   = $range['end'];
 
-        // Stock-in: Supply Order Items
+        // Stock-in: Supply Order Items (created from purchase bills)
         $supply_order_items = SupplyOrderItem::with(['order.invoice', 'item'])
-            ->whereHas('order', fn($q) => $q->where('store_vendor_id', $storeId))
+            ->whereHas('order', fn($q) => $q->where('store_id', $storeId))
             ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->get()
             ->map(fn($item) => StockEntry::fromSupplyOrderItem($item));

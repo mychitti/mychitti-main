@@ -465,6 +465,20 @@
                              id="tentative_joining_date">
                      </div>
                      <div class="col-md-3">
+                         <label class="input-label text-capitalize" for="employee_type">Employee Type</label>
+                         <select name="employee_type" id="employee_type" class="form-control js-select2-custom js-example-basic-single">
+                             <option value="permanent" {{ old('employee_type') == 'permanent' ? 'selected' : '' }}>Permanent</option>
+                             <option value="temporary" {{ old('employee_type') == 'temporary' ? 'selected' : '' }}>Temporary</option>
+                         </select>
+                     </div>
+                     <div class="col-md-3" id="employment_end_date_wrap" style="display:none;">
+                         <label class="input-label text-capitalize" for="employment_end_date">Employment End Date</label>
+                         <input type="date" name="employment_end_date" id="employment_end_date"
+                             value="{{ old('employment_end_date') }}" class="form-control"
+                             min="{{ date('Y-m-d') }}">
+                         <small class="text-muted">Login will be blocked after this date.</small>
+                     </div>
+                     <div class="col-md-3">
                          <label class="input-label text-capitalize" for="shift">Shift</label>
                          <select name="shift" id="shift"
                              class="form-control js-select2-custom js-example-basic-single">

@@ -290,11 +290,29 @@
                 <!-- End Campaign -->
                 <!-- Banner -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('banner'))
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/banner*') ? 'active' : '' }}">
-                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.banner.add-new') }}" title="{{ translate('messages.banners') }}">
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('banner*') ? 'show active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('messages.banners') }}">
                         <i class="tio-image nav-icon"></i>
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.banners') }}</span>
                     </a>
+                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('banner*') ? 'block' : 'none' }}">
+                        <li class="nav-item {{ Request::is('banner/add-new') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.banner.add-new') }}" title="{{ translate('messages.banners') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('messages.banners') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('banner/vendor-approvals') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.banner.vendor-approvals') }}" title="Vendor Banner Approvals">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">Vendor Banner Approvals</span>
+                                @php $pendingVB = \App\Models\Banner::where('created_by','store')->where('approval',0)->count(); @endphp
+                                @if($pendingVB > 0)
+                                    <span class="badge badge-danger ml-1">{{ $pendingVB }}</span>
+                                @endif
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/promotional-banner*') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.promotional-banner.add-new') }}" title="{{ translate('messages.other_banners') }}">
@@ -326,6 +344,17 @@
                 </li>
                 @endif
                 <!-- End Notification -->
+
+                <!-- Marketing Dashboard -->
+                @if(hasMasterModulePermission('marketing_dashboard'))
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('marketing-dashboard*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.marketing-dashboard.index') }}" title="Marketing Dashboard">
+                        <i class="tio-chart-bar-4 nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Marketing Dashboard</span>
+                    </a>
+                </li>
+                @endif
+                <!-- End Marketing Dashboard -->
 
                 <!-- End marketing section -->
 

@@ -8,9 +8,11 @@ use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\CentralLogics\Helpers;
+
 class NotificationController extends Controller
 {
-    public function get_notifications(Request $request){
+    public function get_notifications(Request $request)
+    {
 
         if (!$request->hasHeader('zoneId')) {
             $errors = [];
@@ -19,37 +21,45 @@ class NotificationController extends Controller
                 'errors' => $errors
             ], 403);
         }
-        $zone_id= $request->header('zoneId');
-        
+        $zone_id = $request->header('zoneId');
+
         try {
             $notifications = Notification::active()
-            ->select('id', 'title', 'description', 'image', 'created_at')
-            ->where('tergat', 'customer')
-            ->where(function($q)use($zone_id){
-                $q->whereNull('zone_id')->orWhereIn('zone_id', json_decode($zone_id))->orWhere('zone_id', 0);
-            })
-            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by' ,'!=' ,'vendor')
-            ->get();
+                ->select('id', 'title', 'description', 'image', 'created_at')
+                ->where('tergat', 'customer')
+                ->where(function ($q) use ($zone_id) {
+                    $q->whereNull('zone_id')
+                        ->orWhereIn('zone_id', json_decode($zone_id))
+                        ->orWhere('zone_id', 0);
+                })
+                ->where('added_by', '!=', 'vendor')
+                ->whereRaw("
+        DATE_ADD(
+            COALESCE(sent_time, created_at),
+            INTERVAL COALESCE(days, 15) DAY
+        ) >= NOW()
+    ")
+                ->get();
             $notifications->append('data');
-            $notifications = $notifications->map(function($n) {
+            $notifications = $notifications->map(function ($n) {
                 if ($n->image) {
                     $n->image = asset('storage/notification/' . ltrim($n->image, '/'));
                 }
                 return $n;
-            }); 
+            });
 
             $user_notifications = UserNotification::select('id', 'data', 'created_at')->where('user_id', $request->user()->id)->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->get();
-            $user_notifications = $user_notifications->map(function($n) {
+            $user_notifications = $user_notifications->map(function ($n) {
                 $data = $n->data;
                 $image = !empty($data['image']) ? asset('storage/notification/' . ltrim($data['image'], '/')) : null;
                 if ($image) $data['image'] = $image;
                 return [
                     'id' => $n->id,
                     'title' => $data['title'] ?? null,
-                    'description' => $data['description'] ?? null, 
+                    'description' => $data['description'] ?? null,
                     'image' => $image,
                     'created_at' => $n->created_at,
-                    'data' => $data, 
+                    'data' => $data,
                 ];
             });
             $all = collect($notifications->toArray())->merge($user_notifications)->sortByDesc('created_at')->values();
@@ -59,14 +69,15 @@ class NotificationController extends Controller
                 $all->forPage($page, $perPage)->values(),
                 $all->count(),
                 $perPage,
-                $page 
+                $page
             );
             return response()->json($notifications, 200);
         } catch (\Exception $e) {
             return response()->json([], 200);
         }
-    } 
-    public function get_ad_details(Request $request, $id){
+    }
+    public function get_ad_details(Request $request, $id)
+    {
 
         $notification = Notification::active()->where('id', $id)
             ->select('id', 'title', 'description', 'image', 'created_at', 'zone_id', 'vendor_id as store_id')
@@ -78,13 +89,14 @@ class NotificationController extends Controller
         if ($notification->image) {
             $notification->image = asset('storage/notification/' . ltrim($notification->image, '/'));
         }
-        $notification->zone_name = $notification->zone->name ?? null; 
+        $notification->zone_name = $notification->zone->name ?? null;
         $notification->store_name = $notification->store->name ?? null;
         unset($notification->zone, $notification->store);
         return response()->json($notification, 200);
     }
-    public function get_ads(Request $request){
- 
+    public function get_ads(Request $request)
+    {
+
         if (!$request->hasHeader('zoneId')) {
             $errors = [];
             array_push($errors, ['code' => 'zoneId', 'message' => 'Zone id is required!']);
@@ -95,15 +107,15 @@ class NotificationController extends Controller
         $zone_id = $request->header('zoneId');
         try {
             $notifications = Notification::active()
-            ->select('id', 'title', 'description', 'image', 'created_at')
-            ->where('tergat', 'customer')
-            ->where(function($q)use($zone_id){
-                $q->whereNull('zone_id')->orWhereIn('zone_id', json_decode($zone_id))->orWhere('zone_id', 0);
-            })
-            ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by','vendor')
-            ->get();
-            $notifications->append('data'); 
-            $notifications = $notifications->map(function($n) {
+                ->select('id', 'title', 'description', 'image', 'created_at')
+                ->where('tergat', 'customer')
+                ->where(function ($q) use ($zone_id) {
+                    $q->whereNull('zone_id')->orWhereIn('zone_id', json_decode($zone_id))->orWhere('zone_id', 0);
+                })
+                ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))->where('added_by', 'vendor')
+                ->get();
+            $notifications->append('data');
+            $notifications = $notifications->map(function ($n) {
                 if ($n->image) {
                     $n->image = asset('storage/notification/' . ltrim($n->image, '/'));
                 }
@@ -115,5 +127,4 @@ class NotificationController extends Controller
             return response()->json([], 200);
         }
     }
-
 }

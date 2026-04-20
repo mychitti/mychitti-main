@@ -1442,6 +1442,7 @@ class BillingController extends Controller
         $totalItemsTax = 0;
         $inv_items = 0;
         $invoiceItemsToSave = [];
+        $globalGstStatus = $request->global_gst_status ?? 'excluding';
 
         foreach ($request->item_name_new as $key => $name) {
             $InvoiceItem = new InvoiceItem();
@@ -1453,9 +1454,16 @@ class BillingController extends Controller
             $InvoiceItem->tax = $taxPercent = $request->tax_type == 'gst' ? ($request->item_tax_new[$key] ?? 0) : 0;
             $InvoiceItem->hsn = $request->item_hsn_new[$key];
             $InvoiceItem->inv_id = $request->inventory_item_id[$key] ?? null;
+            $InvoiceItem->gst_status = $globalGstStatus;
 
-            $amount = $unitPrice * $quantity;
-            $taxAmount = $amount * ($taxPercent / 100);
+            $lineTotal = $unitPrice * $quantity;
+            if ($globalGstStatus === 'including' && $taxPercent > 0) {
+                $amount = $lineTotal / (1 + $taxPercent / 100);
+                $taxAmount = $lineTotal - $amount;
+            } else {
+                $amount = $lineTotal;
+                $taxAmount = $amount * ($taxPercent / 100);
+            }
 
             $totalItemsAmount += $amount;
             $totalItemsTax += $taxAmount;
@@ -1475,7 +1483,6 @@ class BillingController extends Controller
         $names = $request->charges_name;
         $amounts = $request->add_charges;
         $taxes = $request->charges_tax;
-        $statuses = $request->tax_status;
         $add_charges = [];
         foreach ($names as $index => $name) {
             if (trim($name) === '' || trim($amounts[$index]) === '') {
@@ -1483,9 +1490,9 @@ class BillingController extends Controller
             }
             $chargeInput = (float) $amounts[$index] ?? 0;
             $taxPercent = (float) $taxes[$index] ?? 0;
-            $taxStatus = $statuses[$index] ?? 'included';
+            $taxStatus = $globalGstStatus;
 
-            if (strtolower($taxStatus) === 'included') {
+            if (strtolower($taxStatus) === 'including') {
                 $baseAmount = $chargeInput / (1 + ($taxPercent / 100));
                 $taxAmount = $chargeInput - $baseAmount;
                 $charges = $baseAmount;
