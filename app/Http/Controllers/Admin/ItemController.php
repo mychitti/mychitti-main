@@ -1434,6 +1434,133 @@ class ItemController extends Controller
         return view('admin-views.service.charges-list', compact('charges'));
     }
 
+    public function lead_charge_export()
+    {
+        // All services (module 6) across all zones, with current lead charge values merged in
+        $rows = DB::table('items')
+            ->join('categories', 'categories.id', '=', 'items.category_id')
+            ->crossJoin('zones')
+            ->join('module_zone', function ($j) {
+                $j->on('module_zone.zone_id', '=', 'zones.id')
+                  ->where('module_zone.module_id', 6);
+            })
+            ->leftJoin('lead_charges', function ($j) {
+                $j->on('lead_charges.item_id', '=', 'items.id')
+                  ->on('lead_charges.zone_id', '=', 'zones.id');
+            })
+            ->where('items.module_id', 6)
+            ->select(
+                'zones.id as zone_id',
+                'zones.name as zone_name',
+                'categories.id as category_id',
+                'categories.name as category_name',
+                'items.id as item_id',
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(items.name, '$[0].name')) as service_name"),
+                'lead_charges.vendor_count',
+                'lead_charges.ven_1_charges',
+                'lead_charges.ven_2_charges',
+                'lead_charges.ven_3_charges',
+                'lead_charges.ven_other_charges',
+                'lead_charges.ven_same_charges',
+                'lead_charges.dedicated_lead_charge',
+                'lead_charges.confirmation_charge',
+                'lead_charges.completion_charge'
+            )
+            ->orderBy('zones.name')
+            ->orderBy('categories.name')
+            ->get();
+
+        $headings = [
+            'zone_id', 'zone_name', 'category_id', 'category_name',
+            'item_id', 'service_name',
+            'vendor_count',
+            'ven_1_charges', 'ven_2_charges', 'ven_3_charges', 'ven_other_charges',
+            'ven_same_charges', 'dedicated_lead_charge',
+            'confirmation_charge', 'completion_charge',
+        ];
+
+        $data = $rows->map(fn($r) => [
+            $r->zone_id, $r->zone_name, $r->category_id, $r->category_name,
+            $r->item_id, $r->service_name,
+            $r->vendor_count ?? '',
+            $r->ven_1_charges ?? '', $r->ven_2_charges ?? '',
+            $r->ven_3_charges ?? '', $r->ven_other_charges ?? '',
+            $r->ven_same_charges ?? '', $r->dedicated_lead_charge ?? '',
+            $r->confirmation_charge ?? '', $r->completion_charge ?? '',
+        ])->toArray();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($data, $headings),
+            'lead_charges_template_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    public function lead_charge_import(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv']);
+
+        $file = $request->file('file');
+        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(new class implements \Maatwebsite\Excel\Concerns\ToArray {
+            public function array(array $array) { return $array; }
+        }, $file)[0] ?? [];
+
+        if (empty($rows)) {
+            Toastr::error('File is empty or unreadable.');
+            return back();
+        }
+
+        // First row is headings — map by column index
+        $header = array_map('trim', $rows[0]);
+        $colMap = array_flip($header);
+
+        $required = ['zone_id', 'category_id', 'item_id'];
+        foreach ($required as $col) {
+            if (!isset($colMap[$col])) {
+                Toastr::error("Column '{$col}' not found. Please use the exported template.");
+                return back();
+            }
+        }
+
+        $updated = 0;
+        $skipped = 0;
+
+        foreach (array_slice($rows, 1) as $row) {
+            $zoneId     = $row[$colMap['zone_id']] ?? null;
+            $categoryId = $row[$colMap['category_id']] ?? null;
+            $itemId     = $row[$colMap['item_id']] ?? null;
+
+            if (!$zoneId || !$categoryId) { $skipped++; continue; }
+
+            $charges = [
+                'vendor_count'          => $row[$colMap['vendor_count']] ?? null,
+                'ven_1_charges'         => $row[$colMap['ven_1_charges']] ?? 0,
+                'ven_2_charges'         => $row[$colMap['ven_2_charges']] ?? 0,
+                'ven_3_charges'         => $row[$colMap['ven_3_charges']] ?? 0,
+                'ven_other_charges'     => $row[$colMap['ven_other_charges']] ?? 0,
+                'ven_same_charges'      => $row[$colMap['ven_same_charges']] ?? null,
+                'dedicated_lead_charge' => $row[$colMap['dedicated_lead_charge']] ?? null,
+                'confirmation_charge'   => $row[$colMap['confirmation_charge']] ?? null,
+                'completion_charge'     => $row[$colMap['completion_charge']] ?? null,
+                'updated_at'            => now(),
+            ];
+
+            // Skip rows where all charge values are blank (no data entered)
+            $chargeValues = array_filter([$charges['ven_1_charges'], $charges['ven_2_charges'],
+                $charges['ven_3_charges'], $charges['ven_other_charges']],
+                fn($v) => $v !== '' && $v !== null);
+            if (empty($chargeValues)) { $skipped++; continue; }
+
+            LeadCharge::updateOrCreate(
+                ['zone_id' => $zoneId, 'category_id' => $categoryId, 'item_id' => $itemId ?: null],
+                array_merge($charges, ['created_at' => now()])
+            );
+            $updated++;
+        }
+
+        Toastr::success("Import complete: {$updated} charges saved, {$skipped} rows skipped.");
+        return redirect()->route('admin.service.lead-charge-list');
+    }
+
     public function edit_charges($id)
     {
         $charges = LeadCharge::find($id);

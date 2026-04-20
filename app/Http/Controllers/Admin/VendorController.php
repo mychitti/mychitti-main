@@ -675,8 +675,9 @@ class VendorController extends Controller
     {
         // prx($request->all());
         $request->validate([
-            'store_id' => 'required',
-            'selected_modules' => 'required'
+            'store_id'         => 'required',
+            'selected_modules' => 'required',
+            'bed_tier_id'      => 'nullable|integer|exists:hospital_bed_tiers,id',
         ]);
 
         $selectedModules = json_decode($request->selected_modules, true);
@@ -684,6 +685,10 @@ class VendorController extends Controller
         if (!$selectedModules || !is_array($selectedModules)) {
             return back()->with('error', 'Invalid module selection');
         }
+
+        $bedTier = $request->filled('bed_tier_id')
+            ? \App\Models\HospitalBedTier::find($request->bed_tier_id)
+            : null;
 
         $grandTotal = 0;
         $finalData = [];
@@ -702,14 +707,22 @@ class VendorController extends Controller
             $ids[] = $module->id;
 
             $months = (int) $item['months'];
-            $basePrice = $module->price_per_month * $months;
+            $isHospital = $bedTier && str_contains(strtolower($module->name), 'hospital');
 
-            $discountPercent = SubModuleDiscount::where('sub_module_id', $module->id)
-                ->whereHas('duration', fn($q) => $q->where('months', $months))
-                ->value('discount') ?? 0;
+            if ($isHospital) {
+                $basePrice      = $bedTier->price_monthly * $months;
+                $discountAmount = 0;
+                $finalPrice     = $basePrice;
+            } else {
+                $basePrice = $module->price_per_month * $months;
 
-            $discountAmount = ($basePrice * $discountPercent) / 100;
-            $finalPrice = $basePrice - $discountAmount;
+                $discountPercent = SubModuleDiscount::where('sub_module_id', $module->id)
+                    ->whereHas('duration', fn($q) => $q->where('months', $months))
+                    ->value('discount') ?? 0;
+
+                $discountAmount = ($basePrice * $discountPercent) / 100;
+                $finalPrice     = $basePrice - $discountAmount;
+            }
 
             $expiryDate = now()->addMonths($months);
 
@@ -768,11 +781,15 @@ class VendorController extends Controller
             $subscription->plan_expiry = $expDate;
             $subscription->purchased_at = $tempPurchase->purchased_at;
             $subscription->created_at = date('Y-m-d H:i:s');
+            if ($isHospital) {
+                $subscription->bed_tier_id = $bedTier->id;
+            }
 
             $subscription->save();
 
+            $tierLabel = ($isHospital && $bedTier) ? ' [' . $bedTier->tier_name . ']' : '';
             $invoice_items[] = [
-                'name' =>  $planDetails->title . '<br>( Valid for ' . $subscription->duration_count . ' ' . $subscription->duration_type . ' )',
+                'name' =>  $planDetails->title . $tierLabel . '<br>( Valid for ' . $subscription->duration_count . ' ' . $subscription->duration_type . ' )',
                 'qty' => 1,
                 'price' => $subscription->purchased_at,
                 'hsn' => '',

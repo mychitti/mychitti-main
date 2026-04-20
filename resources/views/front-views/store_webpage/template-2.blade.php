@@ -506,7 +506,7 @@
                                                                         $firstVr = !empty($variations)
                                                                             ? json_encode($variations[0])
                                                                             : '';
-                                                                        if ($firstVr) {
+                                                                        if ($firstVr && $module != 5 && ($pro->item_type ?? '') != 'product') {
                                                                             $selling_price = json_decode($firstVr)
                                                                                 ->price;
                                                                             $mrp =
@@ -681,7 +681,7 @@
                                                                         $firstVr = !empty($variations)
                                                                             ? json_encode($variations[0])
                                                                             : '';
-                                                                        if ($firstVr) {
+                                                                        if ($firstVr && $module != 5 && ($pro->item_type ?? '') != 'product') {
                                                                             $selling_price = json_decode($firstVr)
                                                                                 ->price;
                                                                             $mrp =

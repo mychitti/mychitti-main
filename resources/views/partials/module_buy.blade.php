@@ -60,9 +60,8 @@
                   @if (isset($sub_modules) && count($sub_modules) > 0)
                       @foreach ($sub_modules as $module)
                           @php
-                              $isHospitalModule = !Route::is('admin.plan.module-store')
-                                  && isset($store) && $store->module_id == 6
-                                  && str_contains(strtolower($module->name), 'hospital');
+                              $isHospitalModule = str_contains(strtolower($module->name), 'hospital')
+                                  && (Route::is('admin.plan.module-store') || (isset($store) && $store->module_id == 6));
                           @endphp
                           <div class="pc-module-item" data-module-id="{{ $module->id }}">
                               <div class="pc-module-top">

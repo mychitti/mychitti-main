@@ -10,7 +10,15 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{count($charges)}}</span></h1>
+            <div class="d-flex align-items-center gap-2">
+            <h1 class="page-header-title mb-0"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{count($charges)}}</span></h1>
+            <a href="{{ route('admin.service.lead-charge-export') }}" class="btn btn-sm btn-outline-primary">
+                <i class="tio-download"></i> Export Template
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-success" data-toggle="modal" data-target="#importModal">
+                <i class="tio-upload"></i> Import
+            </button>
+        </div>
             <div class="page-header-select-wrapper"> 
  
                 {{-- <div class="select-item">
@@ -141,6 +149,40 @@
         </div>
 </div>
         <!-- End Card -->
+    </div>
+
+    {{-- Import Modal --}}
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="tio-upload mr-1"></i> Import Lead Charges</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <form action="{{ route('admin.service.lead-charge-import') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2" style="font-size:13px;">
+                            <strong>Steps:</strong>
+                            <ol class="mb-0 pl-3">
+                                <li>Click <strong>Export Template</strong> to download all services.</li>
+                                <li>Fill in the charge columns (leave blank rows to skip).</li>
+                                <li>Upload the file here — existing charges will be updated.</li>
+                            </ol>
+                        </div>
+                        <div class="form-group">
+                            <label>Excel / CSV File <span class="text-danger">*</span></label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">Accepted: .xlsx, .xls, .csv</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success"><i class="tio-upload"></i> Upload & Import</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
 @endsection

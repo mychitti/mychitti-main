@@ -148,6 +148,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('lead-charge-update', 'ItemController@lead_charge_update')->name('lead-charge-update');
             Route::get('lead-charge', 'ItemController@lead_charge')->name('lead-charge');
             Route::get('lead-charges', 'ItemController@lead_charge_list')->name('lead-charge-list');
+            Route::get('lead-charges/export', 'ItemController@lead_charge_export')->name('lead-charge-export');
+            Route::post('lead-charges/import', 'ItemController@lead_charge_import')->name('lead-charge-import');
             Route::get('edit-charges/{id}', 'ItemController@edit_charges')->name('edit-charges');
             Route::get('get-items-by-category/{category_id}', 'ItemController@get_items_by_category')->name('get-items-by-category');
             Route::get('get-items-by-categories', 'ItemController@get_items_by_categories')->name('get-items-by-categories');
