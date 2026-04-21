@@ -343,7 +343,7 @@ class BillingController extends Controller
     {
         // prx($invoice_id);
         if ($type == 'manual') {
-            $invoice = ManualInvoice::where('invoice_id', $invoice_id)->where('vendor_id', 0)->where('generated_by', 'admin')->latest('id')->first();
+            $invoice = ManualInvoice::where('invoice_id', $invoice_id)->where(function ($q) { $q->where('vendor_id', 0)->orWhereNull('vendor_id'); })->where('generated_by', 'admin')->latest('id')->first();
             if ($invoice) {
                 DayBook::where('invoice_id', $invoice->id)->first()?->delete();
             }
