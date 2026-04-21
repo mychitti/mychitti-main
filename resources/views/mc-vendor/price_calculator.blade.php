@@ -20,393 +20,352 @@
 
     <link href="{{ asset('assets/front/lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
     <style>
-        :root {
-            --pc-green:       #81c408;
-            --pc-green-dark:  #6aa006;
-            --pc-green-light: #f3ffdf;
-            --pc-green-mid:   #e6f9c4;
-            --pc-green-pale:  #f8fdf0;
-            --pc-text:        #1e2d00;
-            --pc-text-muted:  #5a6a44;
-            --pc-border:      #d4e8b0;
-        }
-
-        /* ── Page wrapper ── */
-        body { background: #f5f7f2; font-family: 'Inter', sans-serif; }
-
-        .pc-page-hero {
-            background: linear-gradient(135deg, #1a3300 0%, #2d5a00 60%, #3d7a00 100%);
-            color: white;
-            padding: 48px 24px 36px;
-            text-align: center;
-            margin-bottom: 0;
-        }
-        .pc-page-hero h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.3px; }
-        .pc-page-hero p  { font-size: 15px; color: rgba(255,255,255,0.75); margin: 0; }
-
-        .pc-container {
-            max-width: 1160px;
-            margin: 0 auto;
-            padding: 28px 16px 60px;
-        }
-
-        /* ── Panel ── */
-        .pc-panel { display: none; }
-        .pc-panel.pc-active { display: block; animation: pcFadeIn 0.3s; }
-        @keyframes pcFadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ── Global duration strip ── */
-        .pc-duration-strip {
-            background: white;
-            border: 1px solid var(--pc-border);
-            border-radius: 12px;
-            padding: 18px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,.06);
-        }
-        .pc-strip-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .8px;
-            color: var(--pc-text-muted);
-            margin-bottom: 12px;
-        }
-        .pc-duration-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-            gap: 10px;
-        }
         .pc-global-duration-card {
-            padding: 14px 10px;
-            background: var(--pc-green-light);
-            border: 2px solid transparent;
+            height: 100px;
+            padding: 10px;
+            background: #f3ffdf;
+            margin: 10px;
             border-radius: 10px;
             font-size: 14px;
-            font-weight: 600;
-            color: var(--pc-text);
+            font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all .2s;
-            text-align: center;
-        }
-        .pc-global-duration-card:hover { border-color: var(--pc-green); }
-        .pc-global-duration-card.pc-selected {
-            background: var(--pc-green);
-            border-color: var(--pc-green);
-            color: white;
-            box-shadow: 0 4px 12px rgba(129,196,8,.35);
         }
 
-        /* ── Two-column layout ── */
-        .pc-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
-        @media (max-width: 860px) { .pc-layout { grid-template-columns: 1fr; } }
-
-        /* ── Section headings ── */
-        .pc-section-title {
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .7px;
-            color: var(--pc-green-dark);
-            margin-bottom: 12px;
-        }
-
-        /* ── Module cards ── */
-        .pc-module-item {
+        .sidebar-card {
             background: white;
-            border-radius: 10px;
-            padding: 14px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .sidebar-card h3 {
+            font-size: 16px;
+            margin: 0 0 12px 0;
+            color: #333;
+        }
+
+        .sidebar-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }
+
+        .sidebar-card li {
+            font-size: 14px;
+            color: #666;
+            margin: 8px 0;
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .sidebar-card li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #81c408;
+        }
+
+        .sidebar-card a {
+            display: block;
+            text-align: center;
+            width: 100%;
+            text-decoration: none;
+            background: #81c408;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .sidebar-card a:hover {
+            background: #6fa607;
+        }
+
+        .pc-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pc-panel {
+            display: none;
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .pc-panel.pc-active {
+            display: block;
+            animation: pcFadeIn 0.3s;
+        }
+
+        @keyframes pcFadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .pc-heading {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .pc-calc-section {
+            margin-top: 15px;
+        }
+
+        .pc-module-item {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 12px;
             margin-bottom: 10px;
-            border: 2px solid #eaeaea;
-            transition: all .25s;
-            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
         }
-        .pc-module-item:hover { border-color: #c5e37a; }
+
         .pc-module-item.pc-selected {
-            border-color: var(--pc-green);
-            background: var(--pc-green-pale);
-            box-shadow: 0 2px 10px rgba(129,196,8,.15);
+            border-color: #81c408;
+            background: #f8fcf0;
         }
+
         .pc-module-top {
             display: flex;
             align-items: center;
-            gap: 12px;
+            margin-bottom: 10px;
         }
 
-        /* Custom checkbox */
         .pc-checkbox {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 20px; height: 20px;
-            border: 2px solid #ccc;
-            border-radius: 5px;
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
             cursor: pointer;
-            flex-shrink: 0;
-            transition: all .2s;
-            position: relative;
-        }
-        .pc-checkbox:checked {
-            background: var(--pc-green);
-            border-color: var(--pc-green);
-        }
-        .pc-checkbox:checked::after {
-            content: '';
-            position: absolute;
-            left: 4px; top: 1px;
-            width: 8px; height: 12px;
-            border: 2px solid white;
-            border-top: none; border-left: none;
-            transform: rotate(45deg);
         }
 
         .pc-module-name {
-            flex: 1;
-            font-size: 15px;
+            flex-grow: 1;
+            font-size: 16px;
             font-weight: 600;
-            color: #1a1a1a;
+            color: #333;
         }
-        .pc-module-item.pc-selected .pc-module-name { color: var(--pc-green-dark); }
-        .pc-price-tag {
-            background: var(--pc-green-light);
-            border: 1px solid var(--pc-border);
-            color: var(--pc-green-dark);
+
+        .pc-price-amount {
+            color: #81c408;
             font-weight: 700;
-            font-size: 13px;
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-        .pc-module-item.pc-selected .pc-price-tag {
-            background: var(--pc-green);
-            border-color: var(--pc-green);
-            color: white;
+            font-size: 14px;
         }
 
-        /* ── Duration wrap (hidden by default, shown for hospital) ── */
-        .pc-duration-wrap { display: none; }
-        .height_0 { display: none !important; }
-
-        /* ── Bed tier ── */
-        .pc-bed-tier-wrap {
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 1px dashed var(--pc-border);
+        .pc-duration-wrap {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
         }
+
         .pc-label {
             display: block;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .6px;
-            color: var(--pc-text-muted);
-            margin-bottom: 10px;
-        }
-        .pc-bed-tier-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 10px;
-        }
-        .pc-bed-tier-card {
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 12px 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all .2s;
-            background: white;
-        }
-        .pc-bed-tier-card:hover { border-color: var(--pc-green); background: var(--pc-green-light); }
-        .pc-bed-tier-card.pc-selected {
-            border-color: var(--pc-green);
-            background: var(--pc-green);
-            color: white;
-            box-shadow: 0 4px 12px rgba(129,196,8,.3);
-        }
-        .pc-bed-tier-name  { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
-        .pc-bed-tier-range { font-size: 11px; color: #999; margin-bottom: 6px; }
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-range { color: rgba(255,255,255,.8); }
-        .pc-bed-tier-price { font-size: 12px; font-weight: 700; color: var(--pc-green-dark); }
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: rgba(255,255,255,.9); }
-        .pc-bed-tier-contact { font-size: 12px; font-weight: 700; color: #d84315; }
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-contact { color: #ffe082; }
-
-        .pc-tier-selected-bar {
-            margin-top: 12px;
-            padding: 10px 16px;
-            background: linear-gradient(90deg, var(--pc-green-dark), var(--pc-green));
-            color: white;
-            border-radius: 8px;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
             font-size: 13px;
-            font-weight: 600;
-            display: none;
-            box-shadow: 0 2px 8px rgba(129,196,8,.3);
         }
 
-        /* ── Duration cards (inside module, hidden for hospital) ── */
+        .pc-duration-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .height_0 {
+            height: 0 !important;
+        }
+
         .pc-duration-card {
             padding: 10px;
             background: white;
             border: 1px solid #ddd;
-            border-radius: 6px;
-            transition: all .25s;
+            border-radius: 4px;
+            transition: all 0.3s;
             text-align: center;
         }
-        .pc-duration-card:hover { border-color: var(--pc-green); }
-        .pc-duration-card.pc-selected {
-            border-color: var(--pc-green);
-            background: var(--pc-green);
-            color: white;
-        }
-        .pc-duration-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-        .pc-duration-cost  { font-size: 13px; }
-        .pc-duration-save  { font-size: 11px; margin-top: 4px; color: #28a745; }
-        .pc-duration-card.pc-selected .pc-duration-save { color: #d4f4dd; }
 
-        /* ── Summary panel ── */
-        .pc-summary-wrap { position: sticky; top: 20px; }
-        .pc-summary {
-            background: linear-gradient(160deg, #1a3300 0%, #2d5a00 100%);
+        .pc-duration-card:hover {
+            border-color: #81c408;
+        }
+
+        .pc-global-duration-card.pc-selected,
+        .pc-duration-card.pc-selected {
+            border-color: #81c408;
+            background: #81c408;
             color: white;
-            padding: 22px 20px;
-            border-radius: 14px;
-            box-shadow: 0 6px 24px rgba(45,90,0,.3);
-            margin-bottom: 16px;
         }
-        .pc-summary-title {
+
+        .pc-duration-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .pc-duration-cost {
             font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .8px;
-            color: rgba(255,255,255,.6);
-            margin-bottom: 18px;
         }
+
+        .pc-duration-save {
+            font-size: 11px;
+            margin-top: 4px;
+            color: #28a745;
+        }
+
+        .pc-duration-card.pc-selected .pc-duration-save {
+            color: #d4f4dd;
+        }
+
+        .pc-summary {
+            background: #edffcd;
+            color: #090909;
+            padding: 15px;
+            border-radius: 6px;
+            height: fit-content;
+            margin-top: 46px;
+        }
+
         .pc-summary-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-size: 14px;
-            color: rgba(255,255,255,.85);
-        }
-        .pc-summary-row.pc-total {
-            border-top: 1px solid rgba(255,255,255,.2);
-            padding-top: 14px;
-            margin-top: 6px;
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--pc-green);
-            letter-spacing: -.3px;
-        }
-        .pc-summary-note {
-            font-size: 11px;
-            color: rgba(255,255,255,.5);
-            margin-top: 14px;
-            line-height: 1.5;
-        }
-        .pc-summary-note a { color: var(--pc-green); }
-        .pc-breakdown { margin-top: 14px; }
-        .pc-breakdown-item {
-            background: rgba(255,255,255,.08);
-            border: 1px solid rgba(255,255,255,.15);
-            border-radius: 8px;
-            padding: 9px 12px;
-            font-size: 12px;
-            color: rgba(255,255,255,.85);
-            margin: 6px 0;
-            line-height: 1.5;
-        }
-        .pc-breakdown-item.pc-tier-item {
-            border-color: var(--pc-green);
-            background: rgba(129,196,8,.12);
         }
 
-        /* ── Sidebar free card ── */
-        .sidebar-card {
+        .pc-summary-row.pc-total {
+            border-top: 1px solid rgba(0,0,0,0.15);
+            padding-top: 10px;
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .pc-breakdown {
+            margin-top: 8px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .pc-breakdown-item {
             background: white;
-            border: 1px solid var(--pc-border);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            padding: 10px;
+            border: 1px solid #81c408;
+            border-radius: 7px;
+            margin: 4px 0;
         }
-        .sidebar-card h3 { font-size: 15px; font-weight: 700; color: #1a1a1a; margin: 0 0 12px; }
-        .sidebar-card ul { list-style: none; padding: 0; margin: 0 0 16px; }
-        .sidebar-card li {
-            font-size: 13px; color: #555; margin: 7px 0;
-            padding-left: 20px; position: relative;
+
+        .pc-breakdown-item.pc-tier-item {
+            border-color: #81c408;
+            background: #f3ffdf;
         }
-        .sidebar-card li::before {
-            content: '✓'; position: absolute; left: 0;
-            color: var(--pc-green); font-weight: 700;
+
+        /* ── Bed tier (green theme) ── */
+        .pc-bed-tier-wrap {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
         }
-        .sidebar-card a {
-            display: block; text-align: center; width: 100%;
-            text-decoration: none;
-            background: var(--pc-green);
-            color: white; border: none;
-            padding: 11px; border-radius: 8px;
-            font-size: 14px; font-weight: 600;
-            transition: background .2s;
+
+        .pc-bed-tier-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
         }
-        .sidebar-card a:hover { background: var(--pc-green-dark); }
+
+        .pc-bed-tier-card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .pc-bed-tier-card:hover {
+            border-color: #81c408;
+            background: #f3ffdf;
+        }
+
+        .pc-bed-tier-card.pc-selected {
+            border-color: #81c408;
+            background: #81c408;
+            color: white;
+        }
+
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-range,
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: rgba(255,255,255,0.85); }
+
+        .pc-bed-tier-name  { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+        .pc-bed-tier-range { font-size: 11px; color: #888; margin-bottom: 5px; }
+        .pc-bed-tier-price { font-size: 12px; font-weight: 600; color: #81c408; }
+        .pc-bed-tier-contact { font-size: 12px; color: #e65100; font-weight: 600; }
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-contact { color: #ffe082; }
+
+        .pc-tier-selected-bar {
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: #81c408;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+        }
     </style>
 </head>
 
 <body>
     @include('mc-vendor.partials.nav')
 
-    <div class="pc-page-hero">
-        <h1>Module Price Calculator</h1>
-        <p>Select modules and plan duration to estimate your monthly or yearly cost</p>
-    </div>
-
     <div class="pc-container">
+
+        <!-- Calculator Panel -->
         <div class="pc-panel pc-active" id="calculator">
             @php $plan_durations = _planDurations(); @endphp
-
-            {{-- Global Duration Strip --}}
-            <div class="pc-duration-strip">
-                <div class="pc-strip-label">Select Plan Duration</div>
+            <h2 class="pc-heading">Module Price Calculator</h2>
+            <div class="pc-global-duration mb-3">
+                <label class="pc-label"><b>Select Plan Duration</b></label>
                 <div class="pc-duration-grid">
                     @foreach($plan_durations as $i => $dur)
-                    <div class="pc-global-duration-card {{ $i == 0 ? 'pc-selected' : '' }}" data-months="{{ $dur->months }}">
-                        {{ $dur->label }}
-                    </div>
+                    <div class="pc-global-duration-card {{ $i == 0 ? 'pc-selected' : '' }}" data-months="{{ $dur->months }}">{{ $dur->label }}</div>
                     @endforeach
                 </div>
             </div>
 
-            <div class="pc-layout">
-                {{-- Left: modules --}}
-                <div>
-                    <div class="pc-section-title">Select Modules</div>
+            <div class="row">
+                <div class="pc-calc-section col-md-8">
+                    <h3 style="color: #81c408; margin-bottom: 12px; font-size: 16px;">Select Modules & Duration</h3>
 
                     @if (isset($sub_modules) && count($sub_modules) > 0)
                         @foreach ($sub_modules as $module)
                             @php $isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false; @endphp
                             <div class="pc-module-item" data-module-id="{{ $module->id }}" data-is-hospital="{{ $isHospital ? 1 : 0 }}">
                                 <div class="pc-module-top">
-                                    <input type="checkbox" class="pc-checkbox pc-module-check" data-module-id="{{ $module->id }}">
+                                    <input type="checkbox" class="pc-checkbox pc-module-check"
+                                        data-module-id="{{ $module->id }}">
                                     <div class="pc-module-name">{{ $module->name }}</div>
-                                    <div class="pc-price-tag">₹{{ number_format($module->price_per_month) }}/mo</div>
+                                    <div class="pc-price-amount">₹{{ number_format($module->price_per_month) }}/month</div>
                                 </div>
-
-                                {{-- Hidden data cards for JS pricing (not visible) --}}
                                 <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
                                     <div class="pc-duration-grid height_0" @if($isHospital) style="display:none" @endif>
                                         @foreach ($plan_durations as $duration)
                                             @php
-                                                $dur_discount    = _moduleDiscount($module->id, $duration->id);
-                                                $basePrice       = $module->price_per_month * $duration->months;
-                                                $discountAmount  = ($basePrice * $dur_discount) / 100;
-                                                $finalPrice      = $basePrice - $discountAmount;
+                                                $dur_discount = _moduleDiscount($module->id, $duration->id);
+                                                $basePrice = $module->price_per_month * $duration->months;
+                                                $discountAmount = ($basePrice * $dur_discount) / 100;
+                                                $finalPrice = $basePrice - $discountAmount;
                                             @endphp
-                                            <div class="pc-duration-card"
-                                                data-module-id="{{ $module->id }}"
+                                            <div class="pc-duration-card" data-module-id="{{ $module->id }}"
                                                 data-price="{{ $finalPrice }}"
                                                 data-months="{{ $duration->months }}"
                                                 data-base-price="{{ $basePrice }}"
@@ -416,7 +375,8 @@
                                                 <div class="pc-duration-title">{{ $duration->label }}</div>
                                                 <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}</div>
                                                 <div class="pc-duration-save">
-                                                    @if ($dur_discount > 0) Save {{ $dur_discount }}% @else No discount @endif
+                                                    @if ($dur_discount > 0) Save {{ $dur_discount }}%
+                                                    @else No discount @endif
                                                 </div>
                                             </div>
                                         @endforeach
@@ -424,7 +384,7 @@
 
                                     @if($isHospital)
                                     <div class="pc-bed-tier-wrap">
-                                        <label class="pc-label">Select Hospital Bed Tier</label>
+                                        <label class="pc-label"><b>Select Hospital Tier:</b></label>
                                         <div class="pc-bed-tier-grid">
                                             @foreach($bedTiers as $tier)
                                             <div class="pc-bed-tier-card"
@@ -452,37 +412,38 @@
                             </div>
                         @endforeach
                     @else
-                        <p style="color:#888;text-align:center;padding:40px 0;">No modules available yet.</p>
+                        <p style="color: #666; text-align: center; padding: 40px;">No modules available yet. Please try again later.</p>
                     @endif
-                </div>
 
-                {{-- Right: summary + free card --}}
-                <div class="pc-summary-wrap">
+                </div>
+                <div class="col-md-4">
                     <div class="pc-summary">
-                        <div class="pc-summary-title">Price Summary</div>
                         <div class="pc-summary-row">
-                            <span>Subtotal</span>
+                            <span>Subtotal (Base):</span>
                             <span id="pcSubtotal">₹0.00</span>
                         </div>
                         <div class="pc-summary-row">
-                            <span>Discount</span>
-                            <span id="pcDiscount" style="color:#a8e063;">−₹0.00</span>
+                            <span>Discount:</span>
+                            <span id="pcDiscount">₹0.00</span>
+                        </div>
+                        <div class="pc-summary-row">
+                            <span>GST (18%):</span>
+                            <span id="pcTax">₹0.00</span>
                         </div>
                         <div class="pc-summary-row pc-total">
-                            <span>Total</span>
+                            <span>Total:</span>
                             <span id="pcTotal">₹0.00</span>
                         </div>
-                        <div class="pc-summary-note">
-                            Supports up to 10 users. Need more?
-                            <a href="{{ route('contact') }}">Contact us</a> for a custom plan.
+                        <div style="font-size: 12px;" class="bg-white p-2">
+                            <b>Note:</b> This plan supports only 10 users.
+                            Need for more users? <a href="{{ route('contact') }}">Contact us</a> for an upgrade.
                         </div>
                         <div class="pc-breakdown" id="pcBreakdown"></div>
                     </div>
-
-                    <div class="sidebar-card">
-                        <h3>Register FREE on MC Vendor Hub</h3>
+                    <div class="sidebar-card mt-4">
+                        <h3>Register for FREE on MC VENDOR HUB</h3>
                         <ul>
-                            <li>Free Billing – up to 1,000 bills</li>
+                            <li>Free Billing – up to 1000 bills</li>
                             <li>Free Business Webpage</li>
                         </ul>
                         <a href="https://mychitti.net/list-your-business">Register Now</a>
@@ -631,42 +592,55 @@
                 let hasCustomTier = false;
 
                 $.each(selections, function(moduleId, data) {
-                    const activeCard    = data.cards.filter(`[data-months="${globalMonths}"]`);
-                    const base          = parseFloat(activeCard.data('base-price'))      || 0;
-                    const discountAmount= parseFloat(activeCard.data('discount-amount')) || 0;
-                    const final         = parseFloat(activeCard.data('price'))           || 0;
+                    const activeCard     = data.cards.filter(`[data-months="${globalMonths}"]`);
+                    const base           = parseFloat(activeCard.data('base-price'))      || 0;
+                    const discountAmount = parseFloat(activeCard.data('discount-amount')) || 0;
+                    const final          = parseFloat(activeCard.data('price'))           || 0;
+                    const tier           = data.isHospital ? selectedBedTiers[moduleId] : null;
 
-                    totalBase     += base;
-                    totalDiscount += discountAmount;
-
-                    breakdownHTML += `<div class="pc-breakdown-item">
-                        ${data.name} &nbsp;·&nbsp; ${globalMonths} month${globalMonths > 1 ? 's' : ''} &nbsp;—&nbsp;
-                        ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </div>`;
-
-                    // Add bed tier for hospital modules
-                    if (data.isHospital && selectedBedTiers[moduleId]) {
-                        const tier = selectedBedTiers[moduleId];
+                    if (data.isHospital && tier) {
+                        // Hospital: use only bed tier price, skip module base price
                         if (tier.isCustom) {
                             hasCustomTier = true;
                             breakdownHTML += `<div class="pc-breakdown-item pc-tier-item">
-                                🏥 Bed Tier: ${tier.name} — <span style="color:#a8e063;">Contact us for pricing</span>
+                                🏥 ${data.name}: ${tier.name} (${tier.bedRange}) — <span style="color:#e65100;">Contact us for pricing</span>
                             </div>`;
                         } else {
                             const bedPrice = globalMonths === 12 ? tier.yearly : tier.monthly * globalMonths;
                             totalBase += bedPrice;
                             breakdownHTML += `<div class="pc-breakdown-item pc-tier-item">
-                                🏥 Bed Tier: ${tier.name} (${tier.bedRange}) &nbsp;—&nbsp;
+                                🏥 ${data.name}: ${tier.name} (${tier.bedRange}) —
                                 ₹${bedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>`;
                         }
+                    } else if (!data.isHospital) {
+                        // Regular module
+                        totalBase     += base;
+                        totalDiscount += discountAmount;
+                        breakdownHTML += `<div class="pc-breakdown-item">
+                            ${data.name} (${globalMonths} months) —
+                            ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </div>`;
+                    } else {
+                        // Hospital with no tier selected yet — show base price
+                        totalBase     += base;
+                        totalDiscount += discountAmount;
+                        breakdownHTML += `<div class="pc-breakdown-item">
+                            ${data.name} (${globalMonths} months) —
+                            ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </div>`;
                     }
                 });
 
-                const total = totalBase - totalDiscount;
+                const afterDiscount = totalBase - totalDiscount;
+                const gst   = hasCustomTier ? 0 : afterDiscount * 0.18;
+                const total = afterDiscount + gst;
 
                 $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-                $('#pcDiscount').text('−₹' + totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#pcTax').text(hasCustomTier
+                    ? '—'
+                    : '₹' + gst.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
                 $('#pcTotal').text(hasCustomTier
                     ? 'Contact Us'
                     : '₹' + total.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
