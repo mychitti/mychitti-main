@@ -20,6 +20,9 @@ class MCVendorController extends Controller
 {
     public function module_info(Request $request, $module)
     {
+        if($module== 'mc-hmis'){
+            return view('mc-vendor.MC_HMIS');
+        }
         $module = VendorModuleInstruction::where('slug', $module)->first();
         return view('mc-vendor.vendor_module', compact('module'));
     }
