@@ -770,6 +770,67 @@
   </div>
 </section>
 
+<!-- CONTACT -->
+<section style="background: #F0F6FF; padding: 72px 5%;" id="hmis-contact">
+  <div style="max-width: 780px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 40px;">
+      <div style="display:inline-block; background:#E3F2FD; color:#1565C0; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:6px 18px; border-radius:100px; margin-bottom:14px;">Get in Touch</div>
+      <h2 style="font-size: clamp(1.6rem,3.5vw,2.4rem); font-weight:800; color:#0D1117; letter-spacing:-0.5px; margin-bottom:10px;">Interested in MC-HMIS?</h2>
+      <p style="color:#4A5568; font-size:15px; max-width:520px; margin:0 auto;">Tell us about your hospital and we'll get back to you with the right plan.</p>
+    </div>
+
+    <form id="hmisContactForm" action="{{ route('send-message') }}" method="post"
+          style="background:white; border-radius:16px; padding:36px 40px; box-shadow:0 4px 24px rgba(21,101,192,0.10);">
+      @csrf
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Your Name <span style="color:#e53e3e;">*</span></label>
+          <input type="text" name="name" placeholder="Dr. Ramesh Kumar" required
+            style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'">
+        </div>
+        <div>
+          <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Phone Number <span style="color:#e53e3e;">*</span></label>
+          <input type="tel" name="phone" placeholder="+91 98765 43210" required
+            style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div>
+          <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Hospital / Clinic Name</label>
+          <input type="text" name="business_name" placeholder="City Care Hospital"
+            style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'">
+        </div>
+        <div>
+          <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Subject</label>
+          <input type="text" name="subject" placeholder="Demo request / Pricing query"
+            style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'">
+        </div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Message <span style="color:#e53e3e;">*</span></label>
+        <textarea name="message" rows="4" placeholder="Tell us about your hospital size, requirements, or questions…" required
+          style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; resize:vertical; transition:border-color .2s;"
+          onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'"></textarea>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <button type="submit" id="hmisSubmitBtn"
+          style="background:#1565C0; color:white; border:none; padding:12px 32px; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; transition:background .2s;">
+          Send Message
+        </button>
+        <span id="hmisFormMsg" style="font-size:14px; display:none;"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">MC Vendor Hub</div>
@@ -777,5 +838,38 @@
   Tirupati, Andhra Pradesh, India &nbsp;|&nbsp; My Chitti Technologies Private Limited</p>
 </footer>
 
+<script>
+document.getElementById('hmisContactForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('hmisSubmitBtn');
+    const msg = document.getElementById('hmisFormMsg');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    msg.style.display = 'none';
+
+    const formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        msg.style.display = 'inline';
+        msg.style.color = '#1565C0';
+        msg.textContent = data.message;
+        document.getElementById('hmisContactForm').reset();
+    })
+    .catch(() => {
+        msg.style.display = 'inline';
+        msg.style.color = '#e53e3e';
+        msg.textContent = 'Something went wrong. Please try again.';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Message';
+    });
+});
+</script>
 </body>
 </html>
