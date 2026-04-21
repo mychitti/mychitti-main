@@ -792,7 +792,7 @@
         </div>
         <div>
           <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Phone Number <span style="color:#e53e3e;">*</span></label>
-          <input type="tel" name="phone" placeholder="+91 98765 43210" required
+          <input type="tel" name="phone" placeholder="9876543210" required
             style="width:100%; padding:10px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; outline:none; transition:border-color .2s;"
             onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#E2E8F0'">
         </div>
@@ -850,7 +850,7 @@ document.getElementById('hmisContactForm').addEventListener('submit', function(e
     const formData = new FormData(this);
     fetch(this.action, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+        headers: { 'X-CSRF-TOKEN': document.querySelector('#hmisContactForm input[name="_token"]').value },
         body: formData
     })
     .then(r => r.json())
