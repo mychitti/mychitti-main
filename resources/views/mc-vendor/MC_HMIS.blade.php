@@ -825,7 +825,7 @@
           style="background:#1565C0; color:white; border:none; padding:12px 32px; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; transition:background .2s;">
           Send Message
         </button>
-        <span id="hmisFormMsg" style="font-size:14px; display:none;"></span>
+        <span id="hmisFormMsg" style="font-size:14px; display:none; background: #effff0; padding: 10px;"></span>
       </div>
     </form>
   </div>
@@ -859,6 +859,10 @@ document.getElementById('hmisContactForm').addEventListener('submit', function(e
         msg.style.color = '#1565C0';
         msg.textContent = data.message;
         document.getElementById('hmisContactForm').reset();
+
+        setTimeout(()=>{
+          msg.style.display = 'none';
+        },2000)
     })
     .catch(() => {
         msg.style.display = 'inline';
