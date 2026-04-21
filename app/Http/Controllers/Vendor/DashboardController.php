@@ -11,7 +11,7 @@ use App\Models\BusinessSetting;
 use App\Models\Coupon;
 use App\Models\InAppNotification;
 use App\Models\InventoryItem;
-use App\Models\InventoryOrderDetail; 
+use App\Models\InventoryOrderDetail;
 use App\Models\Item;
 use App\Models\Leave;
 use App\Models\ManualInvoice;
@@ -45,6 +45,20 @@ class DashboardController extends Controller
 {
 
     public function dashboard(Request $request)
+    {
+        $store = Helpers::get_store_data();
+        $businessType = $store->business_type;
+        if ($businessType == 'Hospital') {
+            return $this->hospital_dashboard($request);
+        } else {
+            return $this->master_dashboard($request);
+        }
+    }
+    public function hospital_dashboard(Request $request)
+    {
+       return (new HospitalDashboardController)->index($request);
+    }
+    public function master_dashboard(Request $request)
     {
         $storeId = Helpers::get_store_id();
         if (auth('vendor')->check()) {
@@ -81,7 +95,7 @@ class DashboardController extends Controller
                 ->where('service_requests.created_at', '<', now()->subMinutes(Helpers::get_lead_exp_minutes()))
                 ->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to])
                 ->count();
- 
+
             $data['total_leads_count'] = (clone $leadsQuery)->count() + $data['missed_leads_count'];
 
             $data['completed_leads_count'] = (clone $leadsQuery)
@@ -156,7 +170,7 @@ class DashboardController extends Controller
             $completionWallet     = $storeWallet && ($storeWallet->balance ?? 0) >= $minimumBalance;
 
             $cChecks          = [$completionHasDoc, $completionHasService, $completionHasProfile, $completionHasSub, $completionWallet];
-            $completionDone    = collect($cChecks)->filter()->count(); 
+            $completionDone    = collect($cChecks)->filter()->count();
             $completionTotal   = count($cChecks);
             $completionPercent = (int) round(($completionDone / $completionTotal) * 100);
             $completionRing    = $completionPercent >= 80 ? '#1cc88a' : ($completionPercent >= 50 ? '#f6c23e' : '#e74a3b');
@@ -168,7 +182,7 @@ class DashboardController extends Controller
                 ['icon' => '🖼️', 'label' => 'Profile, Cover & Logo',   'done' => $completionHasProfile],
                 ['icon' => '💳', 'label' => 'Subscription Purchased',  'done' => $completionHasSub],
                 ['icon' => '💰', 'label' => 'Wallet Min Balance ₹' . $minimumBalance,   'done' => $completionWallet],
-            ];  
+            ];
 
             $inactiveWarning = \App\Models\InAppNotification::where('reciever', \App\CentralLogics\Helpers::get_store_id())
                 ->where('message', 'inactive_warning')
@@ -177,9 +191,16 @@ class DashboardController extends Controller
                 ->first();
 
             return view('vendor-views.dashboard', compact(
-                'data', 'chart_data', 'preset',
-                'completionPercent', 'completionDone', 'completionTotal',
-                'completionRing', 'completionCircumf', 'completionOffset', 'completionItems',
+                'data',
+                'chart_data',
+                'preset',
+                'completionPercent',
+                'completionDone',
+                'completionTotal',
+                'completionRing',
+                'completionCircumf',
+                'completionOffset',
+                'completionItems',
                 'inactiveWarning'
             ));
         } else {

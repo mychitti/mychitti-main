@@ -14,11 +14,12 @@ use App\Models\OpdVisit;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Ward;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class HospitalDashboardController extends Controller
 {
-    public function index(\Illuminate\Http\Request $request)
+    public function index(Request $request)
     {
         $store_id = Helpers::get_store_id();
 

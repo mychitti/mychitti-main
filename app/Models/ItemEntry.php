@@ -13,6 +13,8 @@ class ItemEntry extends Model
     'store_id',
     'date',
     'bill_number',
+    'batch_number',
+    'expiry_date',
     'item_id',
     'variation_type',
     'quantity',

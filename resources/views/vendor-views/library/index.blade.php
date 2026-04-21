@@ -52,10 +52,12 @@
         .bg2 {
             background-color: #efffedff;
         }
+
         .bg3 {
             background-color: #edf9ffff;
         }
-        .bg4{
+
+        .bg4 {
             background-color: #f9edffff;
         }
     </style>
@@ -72,33 +74,6 @@
         <div class="row g-2">
             <div class="col-md-2 p-2">
                 <div class="card ">
-                    <div class="placeholder bg1">Receivable Receipt</div>
-                    <div class="card-body">
-                        <h4>Receivable Receipt</h4>
-                        <a href="{{ route('vendor.documents.receivable-receipt.create') }}">Create</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 p-2">
-                <div class="card ">
-                    <div class="placeholder bg2">Job Card</div>
-                    <div class="card-body">
-                        <h4>Job Card</h4>
-                        <a href="{{ route('vendor.documents.job-card.create') }}">Create</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 p-2">
-                <div class="card ">
-                    <div class="placeholder bg3">POS Token</div>
-                    <div class="card-body">
-                        <h4>POS Token</h4>
-                        <a type="button" data-toggle="modal" data-target="#tokenTemplateModal">Templates</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 p-2">
-                <div class="card ">
                     <div class="placeholder bg1">Invoice</div>
                     <div class="card-body">
                         <h4>Invoice</h4>
@@ -106,25 +81,54 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 p-2">
-                <div class="card ">
-                    <div class="placeholder bg4">Purchase Gatepass</div>
-                    <div class="card-body">
-                        <h4>Purchase Gatepass</h4>
-                    <a href="{{route('vendor.library.gatepass.add', ['purchase'])}}">Create</a>
+            @if (\App\CentralLogics\Helpers::get_store_data()->business_type !== 'Hospital')
+                <div class="col-md-2 p-2">
+                    <div class="card ">
+                        <div class="placeholder bg1">Receivable Receipt</div>
+                        <div class="card-body">
+                            <h4>Receivable Receipt</h4>
+                            <a href="{{ route('vendor.documents.receivable-receipt.create') }}">Create</a>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-2 p-2">
-                <div class="card ">
-                    <div class="placeholder bg4">Sale Gatepass</div>
-                    <div class="card-body">
-                        <h4>Sale Gatepass</h4>
-                    <a href="{{route('vendor.library.gatepass.add', ['sale'])}}">Create</a>
+                <div class="col-md-2 p-2">
+                    <div class="card ">
+                        <div class="placeholder bg2">Job Card</div>
+                        <div class="card-body">
+                            <h4>Job Card</h4>
+                            <a href="{{ route('vendor.documents.job-card.create') }}">Create</a>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div class="col-md-2 p-2">
+                    <div class="card ">
+                        <div class="placeholder bg3">POS Token</div>
+                        <div class="card-body">
+                            <h4>POS Token</h4>
+                            <a type="button" data-toggle="modal" data-target="#tokenTemplateModal">Templates</a>
+                        </div>
+                    </div>
+                </div>
 
+                <div class="col-md-2 p-2">
+                    <div class="card ">
+                        <div class="placeholder bg4">Purchase Gatepass</div>
+                        <div class="card-body">
+                            <h4>Purchase Gatepass</h4>
+                            <a href="{{ route('vendor.library.gatepass.add', ['purchase']) }}">Create</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 p-2">
+                    <div class="card ">
+                        <div class="placeholder bg4">Sale Gatepass</div>
+                        <div class="card-body">
+                            <h4>Sale Gatepass</h4>
+                            <a href="{{ route('vendor.library.gatepass.add', ['sale']) }}">Create</a>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
     <div class="modal fade" id="tokenTemplateModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -136,35 +140,37 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form action="{{route('vendor.library.select-template')}}" method="post">
-                @csrf
-                <input type="hidden" name="action" value="pos_token_template" >
-                <div class="modal-body">
-                    <div class="d-flex gap-2 flex-wrap">
-                        @php $tempCount = [1,2,3];@endphp
-                        @foreach ($tempCount as $key => $value)
-                        @php $select = isset($store_config) && $store_config && $store_config->pos_token_template == $value ?  true : false; @endphp
-                            <div class="template-option {{$select ?  'selected' : '' }}">
-                                <label>
-                                    <input class="" {{$select ?  'checked' : '' }} type="radio" name="value" value="{{ $value }}">
-                                    <img src="{{ asset('storage/app/public/templates/token') . '/' . 'template_' . $value . '.png' }}"
-                                        alt="Template {{ $value }} Preview">
-                                    <div>Template {{ $value }}</div>
-                                </label>
-                            </div>
-                        @endforeach
+                <form action="{{ route('vendor.library.select-template') }}" method="post">
+                    @csrf
+                    <input type="hidden" name="action" value="pos_token_template">
+                    <div class="modal-body">
+                        <div class="d-flex gap-2 flex-wrap">
+                            @php $tempCount = [1,2,3];@endphp
+                            @foreach ($tempCount as $key => $value)
+                                @php $select = isset($store_config) && $store_config && $store_config->pos_token_template == $value ?  true : false; @endphp
+                                <div class="template-option {{ $select ? 'selected' : '' }}">
+                                    <label>
+                                        <input class="" {{ $select ? 'checked' : '' }} type="radio" name="value"
+                                            value="{{ $value }}">
+                                        <img src="{{ asset('storage/app/public/templates/token') . '/' . 'template_' . $value . '.png' }}"
+                                            alt="Template {{ $value }} Preview">
+                                        <div>Template {{ $value }}</div>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save changes</button>
-                </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
     <!-- Invoice Template Modal -->
-    <div class="modal fade" id="invoiceTemplateModal" tabindex="-1" aria-labelledby="invoiceTemplateModalLabel" aria-hidden="true">
+    <div class="modal fade" id="invoiceTemplateModal" tabindex="-1" aria-labelledby="invoiceTemplateModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -180,17 +186,22 @@
                         <div class="d-flex gap-2 flex-wrap">
                             @php
                                 $invoiceTemplates = [
-                                    'service_n_manual'     => 'Template 1 (Classic)',
+                                    'service_n_manual' => 'Template 1 (Classic)',
                                     'service_n_manual_new' => 'Template 2 (New)',
                                 ];
-                                $currentInvoiceTemplate = isset($store_config) && $store_config ? ($store_config->invoice_template ?? 'service_n_manual') : 'service_n_manual';
+                                $currentInvoiceTemplate =
+                                    isset($store_config) && $store_config
+                                        ? $store_config->invoice_template ?? 'service_n_manual'
+                                        : 'service_n_manual';
                             @endphp
                             @foreach ($invoiceTemplates as $value => $label)
                                 @php $selected = $currentInvoiceTemplate === $value; @endphp
                                 <div class="template-option {{ $selected ? 'selected' : '' }}">
                                     <label>
-                                        <input type="radio" name="value" value="{{ $value }}" {{ $selected ? 'checked' : '' }}>
-                                        <div style="padding:20px 10px;font-size:13px;font-weight:500;">{{ $label }}</div>
+                                        <input type="radio" name="value" value="{{ $value }}"
+                                            {{ $selected ? 'checked' : '' }}>
+                                        <div style="padding:20px 10px;font-size:13px;font-weight:500;">{{ $label }}
+                                        </div>
                                     </label>
                                 </div>
                             @endforeach

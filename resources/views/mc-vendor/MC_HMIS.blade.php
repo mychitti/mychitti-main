@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hospital Management Module – My Chitti</title>
+<title>Hospital Management Module – MC Vendor Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -300,10 +300,10 @@
   <div class="hero-inner">
     <div class="hero-badge">
       <span></span>
-      My Chitti — Hospital Management Module
+      MC Vendor Hub — Hospital Management Module
     </div>
     <h1>Hospital Management,<br><em>Built Into Your Panel</em></h1>
-    <p>Everything your hospital needs — OPD, IPD, doctors, nurses, wards, prescriptions, billing, and consent — managed from a single unified dashboard inside the My Chitti store panel.</p>
+    <p>Everything your hospital needs — OPD, IPD, doctors, nurses, wards, prescriptions, billing, and consent — managed from a single unified dashboard inside the MC Vendor Hub store panel.</p>
   </div>
 </section>
 
@@ -338,7 +338,7 @@
   <div class="section-inner">
     <div class="section-label">About This Module</div>
     <h2 class="section-title">What the Hospital Management Module Does</h2>
-    <p class="section-sub">When your store's business type is set to <strong>Hospital</strong>, this module activates a dedicated set of features — giving you a fully equipped HMIS right inside My Chitti.</p>
+    <p class="section-sub">When your store's business type is set to <strong>Hospital</strong>, this module activates a dedicated set of features — giving you a fully equipped HMIS right inside MC Vendor Hub.</p>
     <div class="objectives-grid">
       <!-- <div class="obj-card">
         <div class="obj-icon" style="background:#E3F2FD;">🏥</div>
@@ -772,8 +772,8 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">My Chitti <span>Technologies</span></div>
-  <p>Hospital Management Module &nbsp;|&nbsp; My Chitti Store Panel<br>
+  <div class="footer-logo">MC Vendor Hub</div>
+  <p>Hospital Management Module &nbsp;|&nbsp; MC Vendor Hub Store Panel<br>
   Tirupati, Andhra Pradesh, India &nbsp;|&nbsp; My Chitti Technologies Private Limited</p>
 </footer>
 

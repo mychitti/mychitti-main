@@ -3,7 +3,6 @@
 @section('title', 'Menu Preference')
 
 @push('css_or_js')
-    @include('vendor-views/ck_editor_form')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         .hover-shadow:hover {
@@ -78,34 +77,41 @@
 
                                         <div class="row">
                                             @foreach ($menus as $key => $value)
-                                                <div class="col-md-3 col-sm-6 mb-2">
-                                                    @php
-                                                        $store_business_type = \App\CentralLogics\Helpers::get_store_data()
-                                                            ->business_type;
-                                                    @endphp
+                                                    <div class="col-md-3 col-sm-6 mb-2">
+                                                        @php
+                                                            $store_business_type = \App\CentralLogics\Helpers::get_store_data()
+                                                                ->business_type;
+                                                        @endphp
 
-                                                    <label
-                                                        @if ($value->business_type != 'all' && $value->business_type != strtolower($store_business_type)) disabled
-                                                            data-toggle="popover"
-                                                            title="Module Unavailable"
-                                                            data-content="{{ ucfirst($value->name) }} module is only available for business type {{ strtoupper($value->business_type) }}"
-                                                        @elseif($value->under_development)
-                                                            disabled
+                                                        <label
+                                                            @if ($value->under_development) disabled
                                                             data-toggle="popover"
                                                             title="Under Development"
                                                             data-content="Module under development. We will release it soon." @endif
-                                                                                    class="w-100 d-flex align-items-center p-3 border rounded shadow-sm hover-shadow transition cursor-pointer
+                                                            class="w-100 d-flex align-items-center p-3 border rounded shadow-sm hover-shadow transition cursor-pointer
                                                         menu_card menu_card_{{ $value->slug }} {{ in_array($value->slug, $selectedMenus) ? 'active' : '' }}"
-                                                        style="min-height: 60px;">
-                                                        <input @if (
-                                                            ($value->business_type != 'all' && $value->business_type != strtolower($store_business_type)) ||
-                                                                $value->under_development) disabled @endif
-                                                            type="checkbox" name="menu[]" value="{{ $value->slug }}"
-                                                            class="mr-2 menu_check"
-                                                            {{ in_array($value->slug, $selectedMenus) ? 'checked' : '' }}>
-                                                        <span>{{ $value->name }}</span>
-                                                    </label>
-                                                </div>
+                                                            style="min-height: 60px;">
+                                                            <input @if (
+                                                                ($value->business_type != 'all' && $value->business_type != strtolower($store_business_type)) ||
+                                                                    $value->under_development) disabled @endif
+                                                                type="checkbox" name="menu[]" value="{{ $value->slug }}"
+                                                                class="mr-2 menu_check"
+                                                                {{ in_array($value->slug, $selectedMenus) ? 'checked' : '' }}>
+                                                            <span>
+                                                                @if ($store_business_type == 'Hospital')
+                                                                    @if ($value->slug == 'inventory_manage')
+                                                                        Pharmacy
+                                                                    @elseif($value->slug == 'leads_manage')
+                                                                        Appointment Manage
+                                                                         @else
+                                                                    {{ $value->name }}
+                                                                    @endif
+                                                                @else
+                                                                    {{ $value->name }}
+                                                                @endif
+                                                            </span>
+                                                        </label>
+                                                    </div>
                                             @endforeach
                                         </div>
 

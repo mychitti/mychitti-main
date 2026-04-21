@@ -589,6 +589,8 @@ class InventoryController extends Controller
             $entry->landing_price = $request->landing_price[$key];
             $entry->price_gst_status = $request->price_gst_status[$key];
             $entry->bill_number = $request->bill_number;
+            $entry->batch_number = $request->batch_number[$key] ?? null;
+            $entry->expiry_date = !empty($request->expiry_date[$key]) ? $request->expiry_date[$key] : null;
             $entry->total_amount = $selling_price * $request->quantity[$key];
             $entry->product_condition = $request->product_conditon[$key];
             $entry->selling_price = $selling_price;

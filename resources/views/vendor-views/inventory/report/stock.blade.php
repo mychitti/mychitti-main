@@ -54,6 +54,14 @@
                          <p class="report-value"><i class="fs-1 tio-stairs-down"></i>
                              {{ $items->where('stock', '<', 1)->count() }}</p>
                      </div>
+                     <div class="report-card" style="border-color:#f0ad4e;">
+                         <h4 class="report-title">Expiring Soon</h4>
+                         <p class="report-value text-warning">
+                             <i class="fs-1 tio-date-range"></i>
+                             {{ \App\Models\ItemEntry::where('store_id', \App\CentralLogics\Helpers::get_store_id())->whereNotNull('expiry_date')->whereDate('expiry_date', '>=', now())->whereDate('expiry_date', '<=', now()->addDays(90))->count() }}
+                         </p>
+                         <a href="{{ route('vendor.inventory.report.batch-expiry', ['filter' => 'expiring_soon']) }}" class="small">View Batches →</a>
+                     </div>
                  </div>
              </div>
          @endif

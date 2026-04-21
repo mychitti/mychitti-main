@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
+use App\Models\ItemEntry;
 use Maatwebsite\Excel\Facades\Excel;
 
 class InventoryReportController extends Controller
@@ -774,6 +775,40 @@ class InventoryReportController extends Controller
         $fileUrl = Helpers::savePdfToPublic($mpdf, 'store_reports/profit_and_loss', $fileName);
         return ['success' => true, 'file_name' => $fileName,  'url'  => asset('storage/app/public/store_reports/profit_and_loss/' . $fileName)];
     }
+    public function batchExpiry(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+        $filter   = $request->get('filter', 'all'); // all | expired | expiring_soon | active
+
+        $query = ItemEntry::with('item')
+            ->where('item_entries.store_id', $store_id)
+            ->whereNotNull('batch_number')
+            ->join('inventory_items', 'inventory_items.id', '=', 'item_entries.item_id')
+            ->select('item_entries.*', 'inventory_items.item_name', 'inventory_items.sku_id');
+
+        if ($filter === 'expired') {
+            $query->whereNotNull('expiry_date')->whereDate('expiry_date', '<', now());
+        } elseif ($filter === 'expiring_soon') {
+            $query->whereNotNull('expiry_date')
+                  ->whereDate('expiry_date', '>=', now())
+                  ->whereDate('expiry_date', '<=', now()->addDays(90));
+        } elseif ($filter === 'active') {
+            $query->where(function ($q) {
+                $q->whereNull('expiry_date')->orWhereDate('expiry_date', '>', now()->addDays(90));
+            });
+        }
+
+        $batches = $query->orderBy('expiry_date')->paginate(30);
+
+        $expiredCount      = ItemEntry::where('store_id', $store_id)->whereNotNull('batch_number')->whereNotNull('expiry_date')->whereDate('expiry_date', '<', now())->count();
+        $expiringSoonCount = ItemEntry::where('store_id', $store_id)->whereNotNull('batch_number')->whereNotNull('expiry_date')->whereDate('expiry_date', '>=', now())->whereDate('expiry_date', '<=', now()->addDays(90))->count();
+        $totalBatches      = ItemEntry::where('store_id', $store_id)->whereNotNull('batch_number')->count();
+
+        return view('vendor-views.inventory.report.batch_expiry', compact(
+            'batches', 'filter', 'expiredCount', 'expiringSoonCount', 'totalBatches'
+        ));
+    }
+
     public function  save_report($fileName, $data, $type, $fileType)
     {
         $lastReport = InventoryReport::where('store_id', Helpers::get_store_id())

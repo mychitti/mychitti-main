@@ -392,10 +392,28 @@ class SettingsController extends Controller
     {
         $storeId = Helpers::get_store_id();
 
-        $full_menu = DB::table('menu')->where('menu_type', 'sidebar')->where('status', 1)->orderBy('name', 'asc')->get();
+        $businessType = Helpers::get_store_data()->business_type ?? '';
+
+        // prx($businessType);
+        $full_menu = DB::table('menu')
+            ->where('menu_type', 'sidebar')
+            ->where('under_development', 0)
+            ->where('status', 1)
+            ->where(function ($q) use ($businessType) {
+                $q->where('business_type', 'all')
+                  ->orWhere('business_type', $businessType);
+            })
+            ->orderBy('name', 'asc')
+            ->get()
+            ->filter(function ($item) use ($businessType) {
+                if (empty($item->not_for)) return true;
+                $notFor = is_string($item->not_for) ? json_decode($item->not_for, true) : (array) $item->not_for;
+                return !in_array($businessType, (array) $notFor);
+            });
         $groupedMenus = $full_menu->groupBy(function ($item) {
             return $item->group ?? 'other';
         });
+
 
         $full_quick_actions = DB::table('menu')->where('menu_type', 'quick_action')->where('status', 1)->get();
 

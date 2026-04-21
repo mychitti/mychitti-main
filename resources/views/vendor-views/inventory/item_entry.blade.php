@@ -100,6 +100,14 @@
                                 <input type="number" id="taxable_amount" name="taxable_amount" placeholder="Ex: 12"
                                     class="form-control">
                             </div>
+                            <div class="form-row col-3">
+                                <label>Batch Number</label>
+                                <input type="text" name="batch_number[]" placeholder="e.g. BT-2024-001" class="form-control">
+                            </div>
+                            <div class="form-row col-3">
+                                <label>Expiry Date</label>
+                                <input type="date" name="expiry_date[]" class="form-control">
+                            </div>
 
                             <div class="form-row col-12">
                                 <div class="col my-2">
@@ -128,6 +136,8 @@
                                     <th class="border-0">Company SKU ID</th>
                                     <th class="border-0">SKU ID</th>
                                     <th class="border-0">Bill No.</th>
+                                    <th class="border-0">Batch No.</th>
+                                    <th class="border-0">Expiry Date</th>
                                     <th class="border-0">Item Name</th>
                                     <th class="border-0">MRP</th>
                                     <th class="border-0 ">Landing Price</th>
@@ -155,6 +165,19 @@
                                         </td>
                                         <td>
                                             {{ $entry->bill_number }}
+                                        </td>
+                                        <td>
+                                            {{ $entry->batch_number ?? '—' }}
+                                        </td>
+                                        <td>
+                                            @if($entry->expiry_date)
+                                                @php $exp = \Carbon\Carbon::parse($entry->expiry_date); @endphp
+                                                <span class="{{ $exp->isPast() ? 'text-danger font-weight-bold' : ($exp->diffInDays(now()) <= 90 ? 'text-warning font-weight-bold' : '') }}">
+                                                    {{ $exp->format('M Y') }}
+                                                </span>
+                                            @else
+                                                —
+                                            @endif
                                         </td>
                                         <td>
                                             {{ $entry->item_name }}

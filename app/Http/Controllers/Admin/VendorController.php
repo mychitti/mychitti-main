@@ -304,6 +304,7 @@ class VendorController extends Controller
         $faker = Faker::create();
         $randomEmail = $faker->unique()->safeEmail;
         $randomPhone = $faker->phoneNumber;
+        $pass = $request->password ?? generatePassword();
 
         $vendor = new Vendor();
         $vendor->f_name = $request->f_name;
@@ -314,7 +315,7 @@ class VendorController extends Controller
         $vendor->email = $request->email ?? '';
         $vendor->phone = $request->phone;
         $vendor->secondary_phone = $request->secondary_phone;
-        $vendor->password = bcrypt(generatePassword());
+        $vendor->password = bcrypt($pass);
         $vendor->created_by = auth('admin')->user()->id;
         if (!Helpers::module_permission_check('store')) {
             $vendor->status = null;

@@ -49,6 +49,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/reject-leave/{id}', 'VendorEmployeeController@leave_reject')->name('reject-leave');
 
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
+        Route::get('/master-dashboard', 'DashboardController@master_dashboard')->name('master-dashboard');
         Route::get('/dashboard', 'DashboardController@dashboard')->name('dashboard');
         // Route::get('/', 'DashboardController@dashboard')->name('dashboard'); 
         Route::get('/get-store-data', 'DashboardController@store_data')->name('get-store-data');
@@ -302,6 +303,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('profit-and-loss/{export?}/{file_type?}', 'InventoryReportController@profit_and_loss')->name('profit-and-loss');
                 Route::get('purchase/{export?}/{file_type?}', 'InventoryReportController@purchase')->name('purchase');
                 Route::get('stock/{export?}/{file_type?}', 'InventoryReportController@stock')->name('stock');
+                Route::get('batch-expiry', 'InventoryReportController@batchExpiry')->name('batch-expiry');
             });
             Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
                 Route::get('/', 'InventoryController@category')->name('index');
