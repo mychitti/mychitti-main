@@ -95,7 +95,7 @@ class ServiceController extends Controller
                 return response()->json([
                     'status'  => false,
                     'message' => "Customer has only completed {$completedCount} service(s). "
-                                 . "{$coupon->min_services} required to redeem this coupon.",
+                        . "{$coupon->min_services} required to redeem this coupon.",
                 ]);
             }
         }
@@ -171,9 +171,7 @@ class ServiceController extends Controller
         $wallet->increment('total_earning', $amount);
 
         // Record transaction
-        AccountTransaction::create([
-           
-        ]);
+        AccountTransaction::create([]);
 
         return response()->json([
             'status'  => true,
@@ -556,7 +554,6 @@ class ServiceController extends Controller
 
     public function save_manual_invoice(Request $request, $task_id = null)
     {
-        // prx($request->all());
         $request->validate([
             'item_name.*' => 'required',
         ]);
@@ -844,7 +841,7 @@ class ServiceController extends Controller
             $invoices = $overdue->concat($pending)->concat($credit)->unique('invoice_id')->values();;
         }
         // prx($invoices);
-    // die;
+        // die;
 
         return view('vendor-views.service.invoices', compact('preset', 'invoices', 'from', 'to', 'status', 'search'));
     }
@@ -934,12 +931,14 @@ class ServiceController extends Controller
 
         $existInvoice = ServiceInvoice::where('service_id', $service_id)->exists();
         $totalPrice = 0;
-        foreach ($request->item_price as $key => $price) {
-            if ($tax_type == 'gst') {
-                $rtax = $request->item_tax[$key] ?? 0;
-                $totalPrice += _taxIncludedPrice($price, $rtax, 'actual') *  $request->item_qty[$key];
-            } else {
-                $totalPrice += _taxIncludedPrice($price, 0, 'actual') *  $request->item_qty[$key];
+        if ($request->has('item_price')) {
+            foreach ($request->item_price as $key => $price) {
+                if ($tax_type == 'gst') {
+                    $rtax = $request->item_tax[$key] ?? 0;
+                    $totalPrice += _taxIncludedPrice($price, $rtax, 'actual') *  $request->item_qty[$key];
+                } else {
+                    $totalPrice += _taxIncludedPrice($price, 0, 'actual') *  $request->item_qty[$key];
+                }
             }
         }
         if ($request->has('item_price_new')) {
@@ -958,7 +957,9 @@ class ServiceController extends Controller
         $pdfName = 'invoice_' . date('YmdHis') . '.pdf';
 
         if ($existInvoice) {
-            $serviceInvoice = ServiceInvoice::where('service_id', $service_id)->first();
+            $serviceInvoice = $request->filled('manual_invoice_id')
+                ? ServiceInvoice::find($request->manual_invoice_id)
+                : ServiceInvoice::where('service_id', $service_id)->first();
 
 
             if ($serviceInvoice->correction) {
@@ -1031,21 +1032,24 @@ class ServiceController extends Controller
             }
         } else { // insert quote items to invoic
 
-            foreach ($request->item_name as $key => $name) {
-                $InvoiceItem = new InvoiceItem();
-                $InvoiceItem->rand_invoice_id = $serviceInvoice->invoice_id;
-                $InvoiceItem->invoice_id = $serviceInvoice->id;
-                $InvoiceItem->service_id = $service_id;
-                $InvoiceItem->name = $request->item_name[$key];
-                $InvoiceItem->price = $request->item_price[$key];
-                $InvoiceItem->hsn = $request->item_hsn[$key];
-                $InvoiceItem->qty = $request->item_qty[$key];
-                $InvoiceItem->unit = $request->item_unit[$key];
-                $InvoiceItem->tax = $request->item_tax[$key] ?? 0;
-                $InvoiceItem->save();
+            if ($request->has('item_name')) {
+                foreach ($request->item_name as $key => $name) {
+                    $InvoiceItem = new InvoiceItem();
+                    $InvoiceItem->rand_invoice_id = $serviceInvoice->invoice_id;
+                    $InvoiceItem->invoice_id = $serviceInvoice->id;
+                    $InvoiceItem->service_id = $service_id;
+                    $InvoiceItem->name = $request->item_name[$key];
+                    $InvoiceItem->price = $request->item_price[$key];
+                    $InvoiceItem->hsn = $request->item_hsn[$key];
+                    $InvoiceItem->qty = $request->item_qty[$key];
+                    $InvoiceItem->unit = $request->item_unit[$key];
+                    $InvoiceItem->tax = $request->item_tax[$key] ?? 0;
+                    $InvoiceItem->save();
+                }
             }
         }
-        if (isset($request->invoice_item_new)) { // insert new items to invoice
+        // echo '<pre>';
+        if ($request->has('invoice_item_new')) { // insert new items to invoice
             foreach ($request->invoice_item_new as $key => $id) {
                 $InvoiceItem = new InvoiceItem();
                 $InvoiceItem->invoice_id = $serviceInvoice->id;
@@ -1057,6 +1061,8 @@ class ServiceController extends Controller
                 $InvoiceItem->unit = $request->item_unit_new[$key];
                 $InvoiceItem->tax = $request->item_tax_new[$key] ?? 0;
                 $InvoiceItem->save();
+
+                // print_r($InvoiceItem);
             }
         }
 
@@ -1091,6 +1097,8 @@ class ServiceController extends Controller
         $data = _createBillPdf($serviceInvoice, 'vendor',  $service_req->address_id, false);
         $serviceInvoice->pdf = $data['pdf'];
         $serviceInvoice->save();
+
+        // prx($serviceInvoice);
 
 
         return redirect($data['url']);

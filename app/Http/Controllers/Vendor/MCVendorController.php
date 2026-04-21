@@ -8,6 +8,7 @@ use App\Models\BlogCategory;
 use App\Models\Contact;
 use App\Models\DataSetting;
 use App\Models\Plan;
+use App\Models\HospitalBedTier;
 use App\Models\SubModule;
 use App\Models\SubscriptionPlanRequest;
 use App\Models\VendorModuleInstruction;
@@ -110,7 +111,8 @@ class MCVendorController extends Controller
     public function price_calculator()
     {
         $sub_modules = SubModule::all();
-        return view('mc-vendor.price_calculator', compact('sub_modules'));
+        $bedTiers = HospitalBedTier::where('is_active', true)->orderBy('sort_order')->get();
+        return view('mc-vendor.price_calculator', compact('sub_modules', 'bedTiers'));
     }
     public function contact()
     {

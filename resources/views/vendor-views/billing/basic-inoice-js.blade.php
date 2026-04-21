@@ -106,6 +106,7 @@
      function deleteQuoteRow(quoteId, type) {
          if (type == 'quote') {
              $('[data-id="' + quoteId + '"]').remove()
+             calculateTotals();
          } else {
              $.ajaxSetup({
                  headers: {
@@ -151,6 +152,7 @@
 
      function deleteNewRow(rowId) {
          $('[data-id="' + rowId + '"]').remove()
+         calculateTotals();
      }
      $(".tax_type").on('change', function() {
          if ($(this).val() == 'non-gst') {

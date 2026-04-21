@@ -220,6 +220,9 @@
                 </div>
                 <div class="col-md-12 p-1">
                     <input type="hidden" id="service_id" name="service_id" value="{{ $service_id }}">
+                    @if ($is_invoice && $invoice)
+                        <input type="hidden" name="manual_invoice_id" value="{{ $invoice->id }}">
+                    @endif
                     <div class="card h-100">
                         <div class="card-body  ">
                             <table class="table">
@@ -277,8 +280,7 @@
                                             @endif
                                             <td style="width: 93px;"><input type="text" readonly placeholder="Total"
                                                     class="form-control item_total"></td>
-                                            <td>-</td>
-                                            <!-- <td><button type="button" onclick="deleteQuoteRow(1,'quote')" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></button></td> -->
+                                            <td><button type="button" onclick="deleteQuoteRow(1,'quote')" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></button></td>
                                         </tr>
                                         @foreach ($quotations as $qt)
                                             <tr class="item_row" data-id="{{ $qt->id }}">
@@ -361,12 +363,10 @@
                                                 <td style="width: 93px;"><input type="text" readonly
                                                         placeholder="Total" class="form-control item_total"></td>
                                                 <td>
-                                                    @if ($key)
-                                                        <button type="button"
-                                                            onclick="deleteQuoteRow({{ $qt->id }}, 'invoice')"
-                                                            class="btn action-btn btn--danger btn-outline-danger"><i
-                                                                class="tio-delete-outlined"></i></button>
-                                                    @endif
+                                                    <button type="button"
+                                                        onclick="deleteQuoteRow({{ $qt->id }}, 'invoice')"
+                                                        class="btn action-btn btn--danger btn-outline-danger"><i
+                                                            class="tio-delete-outlined"></i></button>
                                                 </td>
                                             </tr>
                                         @endforeach

@@ -311,6 +311,57 @@
             border-radius: 7px;
             margin: 4px 0;
         }
+
+        .pc-hospital-section {
+            margin-top: 24px;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pc-hospital-header {
+            background: #e8f4ff;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .pc-hospital-body {
+            padding: 14px 16px;
+            display: none;
+        }
+        .pc-hospital-body.pc-open { display: block; }
+        .pc-bed-tier-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .pc-bed-tier-card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+        .pc-bed-tier-card:hover { border-color: #0d6efd; }
+        .pc-bed-tier-card.pc-selected {
+            border-color: #0d6efd;
+            background: #0d6efd;
+            color: white;
+        }
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-range,
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: white; }
+        .pc-bed-tier-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+        .pc-bed-tier-range { font-size: 12px; color: #666; margin-bottom: 6px; }
+        .pc-bed-tier-price { font-size: 13px; font-weight: 600; color: #0d6efd; }
+        .pc-bed-tier-contact { font-size: 12px; color: #e65100; font-weight: 600; }
     </style>
 </head>
 
@@ -388,6 +439,41 @@
                             again later.</p>
                     @endif
 
+                    {{-- Hospital Bed Tier Add-on --}}
+                    @if($bedTiers->count())
+                    <div class="pc-hospital-section" id="hospitalBedSection">
+                        <div class="pc-hospital-header" onclick="toggleHospitalSection()">
+                            <span>🏥</span>
+                            <span>Hospital Add-on — Bed-based Pricing</span>
+                            <small class="ms-auto text-muted" id="hospitalToggleHint" style="font-size:12px;font-weight:400;">Click to expand</small>
+                        </div>
+                        <div class="pc-hospital-body" id="hospitalBedBody">
+                            <p style="font-size:13px;color:#555;margin-bottom:10px;">
+                                Select your bed capacity tier. This is an add-on charge on top of the Hospital Management module price.
+                            </p>
+                            <div class="pc-bed-tier-grid">
+                                @foreach($bedTiers as $tier)
+                                <div class="pc-bed-tier-card"
+                                    data-tier-id="{{ $tier->id }}"
+                                    data-tier-name="{{ $tier->tier_name }}"
+                                    data-monthly="{{ $tier->price_monthly }}"
+                                    data-yearly="{{ $tier->price_yearly }}"
+                                    data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
+                                    onclick="selectBedTier(this)">
+                                    <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
+                                    <div class="pc-bed-tier-range">{{ $tier->bed_range }}</div>
+                                    @if($tier->is_custom)
+                                        <div class="pc-bed-tier-contact">Contact Us</div>
+                                    @else
+                                        <div class="pc-bed-tier-price">₹{{ number_format($tier->price_monthly) }}/mo</div>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="clearBedTier()">Remove Bed Add-on</button>
+                        </div>
+                    </div>
+                    @endif
 
                 </div>
                 <div class=" col-md-4">
@@ -440,6 +526,38 @@
     <script src="{{ asset('assets/admin') }}/js/theme.min.js"></script>
     <script src="{{ asset('assets/admin') }}/js/toastr.js"></script>
     <script>
+        function toggleHospitalSection() {
+            const body = document.getElementById('hospitalBedBody');
+            const hint = document.getElementById('hospitalToggleHint');
+            body.classList.toggle('pc-open');
+            hint.textContent = body.classList.contains('pc-open') ? 'Click to collapse' : 'Click to expand';
+        }
+
+        let selectedBedTier = null;
+
+        function selectBedTier(el) {
+            document.querySelectorAll('.pc-bed-tier-card').forEach(c => c.classList.remove('pc-selected'));
+            el.classList.add('pc-selected');
+            const isCustom = el.dataset.isCustom === '1';
+            if (isCustom) {
+                selectedBedTier = { name: el.dataset.tierName, monthly: 0, yearly: 0, isCustom: true };
+            } else {
+                selectedBedTier = {
+                    name: el.dataset.tierName,
+                    monthly: parseFloat(el.dataset.monthly) || 0,
+                    yearly: parseFloat(el.dataset.yearly) || 0,
+                    isCustom: false
+                };
+            }
+            if (typeof recalculateAll === 'function') recalculateAll();
+        }
+
+        function clearBedTier() {
+            document.querySelectorAll('.pc-bed-tier-card').forEach(c => c.classList.remove('pc-selected'));
+            selectedBedTier = null;
+            if (typeof recalculateAll === 'function') recalculateAll();
+        }
+
         $(document).ready(function() {
 
             let selections = {};
@@ -511,10 +629,31 @@
 
                     breakdownHTML += `
                 <div class="pc-breakdown-item">
-                    ${data.name} (${globalMonths} months) - 
+                    ${data.name} (${globalMonths} months) -
                     ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </div>`;
                 });
+
+                // ✅ BED TIER ADD-ON
+                if (selectedBedTier) {
+                    if (selectedBedTier.isCustom) {
+                        breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
+                            🏥 ${selectedBedTier.name} — <span style="color:#e65100;">Contact us for pricing</span>
+                        </div>`;
+                    } else {
+                        let bedPrice;
+                        if (globalMonths === 12) {
+                            bedPrice = selectedBedTier.yearly;
+                        } else {
+                            bedPrice = selectedBedTier.monthly * globalMonths;
+                        }
+                        totalBase += bedPrice;
+                        breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
+                            🏥 Hospital Beds: ${selectedBedTier.name} (${globalMonths} months) —
+                            ₹${bedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </div>`;
+                    }
+                }
 
                 const total = totalBase - totalDiscount;
 
@@ -524,9 +663,9 @@
                 $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', {
                     minimumFractionDigits: 2
                 }));
-                $('#pcTotal').text('₹' + total.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2
-                }));
+                $('#pcTotal').text(selectedBedTier?.isCustom
+                    ? 'Contact Us'
+                    : '₹' + total.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
 
                 $('#pcBreakdown').html(breakdownHTML ? `<div style="margin-top:15px;">${breakdownHTML}</div>` : '');
             }

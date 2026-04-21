@@ -29,6 +29,7 @@
     function deleteQuoteRow(quoteId, type) {
         if (type == 'quote') {
             $('[data-id="' + quoteId + '"]').remove()
+            calculateTotals();
         } else {
             $.ajaxSetup({
                 headers: {
@@ -61,6 +62,7 @@
 
     function deleteNewRow(rowId) {
         $('[data-id="' + rowId + '"]').remove()
+        calculateTotals();
     }
 
     $(document).on('change', '.tax_type', function() {
