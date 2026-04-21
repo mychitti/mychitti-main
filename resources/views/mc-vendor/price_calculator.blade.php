@@ -312,39 +312,21 @@
             margin: 4px 0;
         }
 
-        .pc-hospital-section {
-            margin-top: 24px;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            overflow: hidden;
+        .pc-bed-tier-wrap {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
         }
-        .pc-hospital-header {
-            background: #e8f4ff;
-            padding: 12px 16px;
-            font-size: 15px;
-            font-weight: 600;
-            color: #0d6efd;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            user-select: none;
-        }
-        .pc-hospital-body {
-            padding: 14px 16px;
-            display: none;
-        }
-        .pc-hospital-body.pc-open { display: block; }
         .pc-bed-tier-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 8px;
         }
         .pc-bed-tier-card {
             border: 1px solid #ddd;
             border-radius: 6px;
-            padding: 12px;
+            padding: 10px 12px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
@@ -357,11 +339,21 @@
             color: white;
         }
         .pc-bed-tier-card.pc-selected .pc-bed-tier-range,
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: white; }
-        .pc-bed-tier-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-        .pc-bed-tier-range { font-size: 12px; color: #666; margin-bottom: 6px; }
-        .pc-bed-tier-price { font-size: 13px; font-weight: 600; color: #0d6efd; }
+        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: rgba(255,255,255,0.85); }
+        .pc-bed-tier-name { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+        .pc-bed-tier-range { font-size: 11px; color: #888; margin-bottom: 5px; }
+        .pc-bed-tier-price { font-size: 12px; font-weight: 600; color: #0d6efd; }
         .pc-bed-tier-contact { font-size: 12px; color: #e65100; font-weight: 600; }
+        .pc-tier-selected-bar {
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: #0d6efd;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+        }
     </style>
 </head>
 
@@ -391,7 +383,8 @@
 
                     @if (isset($sub_modules) && count($sub_modules) > 0)
                         @foreach ($sub_modules as $module)
-                            <div class="pc-module-item" data-module-id="{{ $module->id }}">
+                            @php $isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false; @endphp
+                            <div class="pc-module-item" data-module-id="{{ $module->id }}" data-is-hospital="{{ $isHospital ? 1 : 0 }}">
                                 <div class="pc-module-top">
                                     <input type="checkbox" class="pc-checkbox pc-module-check"
                                         data-module-id="{{ $module->id }}">
@@ -399,10 +392,8 @@
                                     <div class="pc-price-amount">₹{{ number_format($module->price_per_month) }}/month
                                     </div>
                                 </div>
-                                <div class="pc-duration-wrap invisible h-0 p-0 m-0"
+                                <div class="pc-duration-wrap"
                                     data-module-id="{{ $module->id }}">
-                                    {{-- <label class="pc-label">Select Duration:</label> --}}
-                                    {{-- [ 'months' => 6, 'label' => '6 Months', 'discount' => $module->discount_6_month ?? 0, ], --}}
                                     <div class="pc-duration-grid height_0">
                                         @foreach ($plan_durations as $duration)
                                             @php
@@ -411,7 +402,7 @@
                                                 $discountAmount = ($basePrice * $dur_discount) / 100;
                                                 $finalPrice = $basePrice - $discountAmount;
                                             @endphp
-                                            <div class="pc-duration-card " data-module-id="{{ $module->id }}"
+                                            <div class="pc-duration-card" data-module-id="{{ $module->id }}"
                                                 data-price="{{ $finalPrice }}"
                                                 data-months="{{ $duration->months }}"
                                                 data-base-price="{{ $basePrice }}"
@@ -419,60 +410,47 @@
                                                 data-discount-amount="{{ $discountAmount }}"
                                                 data-final-price="{{ $finalPrice }}">
                                                 <div class="pc-duration-title">{{ $duration->label }}</div>
-                                                <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}
-                                                </div>
+                                                <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}</div>
                                                 <div class="pc-duration-save">
-                                                    @if ($dur_discount > 0)
-                                                        Save {{ $dur_discount }}%
-                                                    @else
-                                                        No discount
-                                                    @endif
+                                                    @if ($dur_discount > 0) Save {{ $dur_discount }}%
+                                                    @else No discount @endif
                                                 </div>
                                             </div>
                                         @endforeach
                                     </div>
+
+                                    @if($isHospital)
+                                    <div class="pc-bed-tier-wrap">
+                                        <label class="pc-label"><b>Select Hospital Tier:</b></label>
+                                        <div class="pc-bed-tier-grid">
+                                            @foreach($bedTiers as $tier)
+                                            <div class="pc-bed-tier-card"
+                                                data-tier-id="{{ $tier->id }}"
+                                                data-tier-name="{{ $tier->tier_name }}"
+                                                data-bed-range="{{ $tier->bed_range }}"
+                                                data-monthly="{{ $tier->price_monthly }}"
+                                                data-yearly="{{ $tier->price_yearly }}"
+                                                data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
+                                                onclick="selectBedTier(this, {{ $module->id }})">
+                                                <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
+                                                <div class="pc-bed-tier-range">{{ $tier->bed_range }}</div>
+                                                @if($tier->is_custom)
+                                                    <div class="pc-bed-tier-contact">Contact Us</div>
+                                                @else
+                                                    <div class="pc-bed-tier-price">₹{{ number_format($tier->price_monthly) }}/month</div>
+                                                @endif
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                        <div class="pc-tier-selected-bar" id="tierBar_{{ $module->id }}"></div>
+                                    </div>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
                     @else
                         <p style="color: #666; text-align: center; padding: 40px;">No modules available yet. Please try
                             again later.</p>
-                    @endif
-
-                    {{-- Hospital Bed Tier Add-on --}}
-                    @if($bedTiers->count())
-                    <div class="pc-hospital-section" id="hospitalBedSection">
-                        <div class="pc-hospital-header" onclick="toggleHospitalSection()">
-                            <span>🏥</span>
-                            <span>Hospital Add-on — Bed-based Pricing</span>
-                            <small class="ms-auto text-muted" id="hospitalToggleHint" style="font-size:12px;font-weight:400;">Click to expand</small>
-                        </div>
-                        <div class="pc-hospital-body" id="hospitalBedBody">
-                            <p style="font-size:13px;color:#555;margin-bottom:10px;">
-                                Select your bed capacity tier. This is an add-on charge on top of the Hospital Management module price.
-                            </p>
-                            <div class="pc-bed-tier-grid">
-                                @foreach($bedTiers as $tier)
-                                <div class="pc-bed-tier-card"
-                                    data-tier-id="{{ $tier->id }}"
-                                    data-tier-name="{{ $tier->tier_name }}"
-                                    data-monthly="{{ $tier->price_monthly }}"
-                                    data-yearly="{{ $tier->price_yearly }}"
-                                    data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
-                                    onclick="selectBedTier(this)">
-                                    <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
-                                    <div class="pc-bed-tier-range">{{ $tier->bed_range }}</div>
-                                    @if($tier->is_custom)
-                                        <div class="pc-bed-tier-contact">Contact Us</div>
-                                    @else
-                                        <div class="pc-bed-tier-price">₹{{ number_format($tier->price_monthly) }}/mo</div>
-                                    @endif
-                                </div>
-                                @endforeach
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="clearBedTier()">Remove Bed Add-on</button>
-                        </div>
-                    </div>
                     @endif
 
                 </div>
@@ -526,80 +504,115 @@
     <script src="{{ asset('assets/admin') }}/js/theme.min.js"></script>
     <script src="{{ asset('assets/admin') }}/js/toastr.js"></script>
     <script>
-        function toggleHospitalSection() {
-            const body = document.getElementById('hospitalBedBody');
-            const hint = document.getElementById('hospitalToggleHint');
-            body.classList.toggle('pc-open');
-            hint.textContent = body.classList.contains('pc-open') ? 'Click to collapse' : 'Click to expand';
-        }
+        // Per-module bed tier selections, keyed by moduleId
+        let selectedBedTiers = {};
+        // Exposed so selectBedTier (called from inline onclick) can access it
+        let _globalMonths = 1;
+        let _recalculateAll;
 
-        let selectedBedTier = null;
-
-        function selectBedTier(el) {
-            document.querySelectorAll('.pc-bed-tier-card').forEach(c => c.classList.remove('pc-selected'));
+        function selectBedTier(el, moduleId) {
+            // Deselect only cards within this module
+            const moduleItem = document.querySelector(`.pc-module-item[data-module-id="${moduleId}"]`);
+            moduleItem.querySelectorAll('.pc-bed-tier-card').forEach(c => c.classList.remove('pc-selected'));
             el.classList.add('pc-selected');
-            const isCustom = el.dataset.isCustom === '1';
-            if (isCustom) {
-                selectedBedTier = { name: el.dataset.tierName, monthly: 0, yearly: 0, isCustom: true };
-            } else {
-                selectedBedTier = {
-                    name: el.dataset.tierName,
-                    monthly: parseFloat(el.dataset.monthly) || 0,
-                    yearly: parseFloat(el.dataset.yearly) || 0,
-                    isCustom: false
-                };
-            }
-            if (typeof recalculateAll === 'function') recalculateAll();
-        }
 
-        function clearBedTier() {
-            document.querySelectorAll('.pc-bed-tier-card').forEach(c => c.classList.remove('pc-selected'));
-            selectedBedTier = null;
-            if (typeof recalculateAll === 'function') recalculateAll();
+            const isCustom = el.dataset.isCustom === '1';
+            const tierBar = document.getElementById('tierBar_' + moduleId);
+
+            if (isCustom) {
+                selectedBedTiers[moduleId] = {
+                    name: el.dataset.tierName,
+                    bedRange: el.dataset.bedRange,
+                    monthly: 0, yearly: 0, isCustom: true
+                };
+                if (tierBar) {
+                    tierBar.style.display = 'block';
+                    tierBar.innerHTML = '🏥 ' + el.dataset.tierName + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
+                }
+            } else {
+                const monthly = parseFloat(el.dataset.monthly) || 0;
+                const yearly  = parseFloat(el.dataset.yearly)  || 0;
+                selectedBedTiers[moduleId] = {
+                    name: el.dataset.tierName,
+                    bedRange: el.dataset.bedRange,
+                    monthly, yearly, isCustom: false
+                };
+                if (tierBar) {
+                    const price = _globalMonths === 12 ? yearly : monthly * _globalMonths;
+                    tierBar.style.display = 'block';
+                    tierBar.textContent = '🏥 ' + el.dataset.tierName
+                        + ' (' + el.dataset.bedRange + ') — ₹'
+                        + price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                }
+            }
+
+            if (typeof _recalculateAll === 'function') _recalculateAll();
         }
 
         $(document).ready(function() {
 
             let selections = {};
             let globalMonths = 1;
+            _globalMonths = globalMonths;
 
-            // ✅ GLOBAL DURATION CLICK
+            // GLOBAL DURATION CLICK
             $('.pc-global-duration-card').on('click', function() {
                 $('.pc-global-duration-card').removeClass('pc-selected');
                 $(this).addClass('pc-selected');
 
                 globalMonths = parseInt($(this).data('months'));
+                _globalMonths = globalMonths;
 
-                // Highlight matching duration price for all modules
+                // Highlight matching duration card for all modules
                 $('.pc-duration-card').removeClass('pc-selected');
                 $(`.pc-duration-card[data-months="${globalMonths}"]`).addClass('pc-selected');
+
+                // Update tier bars to reflect new duration price
+                $.each(selectedBedTiers, function(moduleId, tier) {
+                    const tierBar = document.getElementById('tierBar_' + moduleId);
+                    if (!tierBar) return;
+                    if (tier.isCustom) {
+                        tierBar.innerHTML = '🏥 ' + tier.name + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
+                    } else {
+                        const price = globalMonths === 12 ? tier.yearly : tier.monthly * globalMonths;
+                        tierBar.textContent = '🏥 ' + tier.name
+                            + ' (' + tier.bedRange + ') — ₹'
+                            + price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                    }
+                });
 
                 recalculateAll();
             });
 
+            // MODULE CHECKBOX
             $('.pc-module-check').on('change', function() {
-
-                const moduleId = $(this).data('module-id');
+                const moduleId  = $(this).data('module-id');
                 const moduleBox = $(`.pc-module-item[data-module-id="${moduleId}"]`);
                 const durationWrap = $(`.pc-duration-wrap[data-module-id="${moduleId}"]`);
                 const moduleName = moduleBox.find('.pc-module-name').text();
+                const isHospital = moduleBox.data('is-hospital') == 1;
 
                 if ($(this).is(':checked')) {
-
-                    // ✅ OPEN DURATION SECTION
-                    durationWrap.addClass('pc-show');
                     moduleBox.addClass('pc-selected');
-
+                    if (isHospital) {
+                        durationWrap.show();
+                    }
                     selections[moduleId] = {
                         name: moduleName,
+                        isHospital,
                         cards: $(`.pc-duration-card[data-module-id="${moduleId}"]`)
                     };
-
                 } else {
-
-                    // ✅ CLOSE DURATION SECTION
-                    durationWrap.removeClass('pc-show');
                     moduleBox.removeClass('pc-selected');
+                    durationWrap.hide();
+
+                    // Clear bed tier selection for this module
+                    if (isHospital) {
+                        moduleBox.find('.pc-bed-tier-card').removeClass('pc-selected');
+                        const tierBar = document.getElementById('tierBar_' + moduleId);
+                        if (tierBar) tierBar.style.display = 'none';
+                        delete selectedBedTiers[moduleId];
+                    }
 
                     delete selections[moduleId];
                 }
@@ -607,69 +620,60 @@
                 recalculateAll();
             });
 
-
-
-            // ✅ TOTAL CALCULATION
+            // TOTAL CALCULATION
             function recalculateAll() {
-
-                let totalBase = 0;
+                let totalBase     = 0;
                 let totalDiscount = 0;
                 let breakdownHTML = '';
+                let hasCustomTier = false;
 
                 $.each(selections, function(moduleId, data) {
+                    const activeCard    = data.cards.filter(`[data-months="${globalMonths}"]`);
+                    const base          = parseFloat(activeCard.data('base-price'))      || 0;
+                    const discountAmount= parseFloat(activeCard.data('discount-amount')) || 0;
+                    const final         = parseFloat(activeCard.data('price'))           || 0;
 
-                    const activeCard = data.cards.filter(`[data-months="${globalMonths}"]`);
-
-                    const base = parseFloat(activeCard.data('base-price'));
-                    const discountAmount = parseFloat(activeCard.data('discount-amount'));
-                    const final = parseFloat(activeCard.data('price'));
-
-                    totalBase += base;
+                    totalBase     += base;
                     totalDiscount += discountAmount;
 
-                    breakdownHTML += `
-                <div class="pc-breakdown-item">
-                    ${data.name} (${globalMonths} months) -
-                    ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </div>`;
-                });
+                    breakdownHTML += `<div class="pc-breakdown-item">
+                        ${data.name} (${globalMonths} months) —
+                        ₹${final.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </div>`;
 
-                // ✅ BED TIER ADD-ON
-                if (selectedBedTier) {
-                    if (selectedBedTier.isCustom) {
-                        breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
-                            🏥 ${selectedBedTier.name} — <span style="color:#e65100;">Contact us for pricing</span>
-                        </div>`;
-                    } else {
-                        let bedPrice;
-                        if (globalMonths === 12) {
-                            bedPrice = selectedBedTier.yearly;
+                    // Add bed tier for hospital modules
+                    if (data.isHospital && selectedBedTiers[moduleId]) {
+                        const tier = selectedBedTiers[moduleId];
+                        if (tier.isCustom) {
+                            hasCustomTier = true;
+                            breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
+                                🏥 Hospital Bed Tier: ${tier.name} — <span style="color:#e65100;">Contact us for pricing</span>
+                            </div>`;
                         } else {
-                            bedPrice = selectedBedTier.monthly * globalMonths;
+                            const bedPrice = globalMonths === 12 ? tier.yearly : tier.monthly * globalMonths;
+                            totalBase += bedPrice;
+                            breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
+                                🏥 Hospital Bed Tier: ${tier.name} (${tier.bedRange}, ${globalMonths} months) —
+                                ₹${bedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </div>`;
                         }
-                        totalBase += bedPrice;
-                        breakdownHTML += `<div class="pc-breakdown-item" style="border-color:#0d6efd;">
-                            🏥 Hospital Beds: ${selectedBedTier.name} (${globalMonths} months) —
-                            ₹${bedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </div>`;
                     }
-                }
+                });
 
                 const total = totalBase - totalDiscount;
 
-                $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2
-                }));
-                $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2
-                }));
-                $('#pcTotal').text(selectedBedTier?.isCustom
+                $('#pcSubtotal').text('₹' + totalBase.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#pcDiscount').text('₹' + totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                $('#pcTotal').text(hasCustomTier
                     ? 'Contact Us'
                     : '₹' + total.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
 
-                $('#pcBreakdown').html(breakdownHTML ? `<div style="margin-top:15px;">${breakdownHTML}</div>` : '');
+                $('#pcBreakdown').html(breakdownHTML
+                    ? `<div style="margin-top:15px;">${breakdownHTML}</div>`
+                    : '');
             }
 
+            _recalculateAll = recalculateAll;
         });
     </script>
 
