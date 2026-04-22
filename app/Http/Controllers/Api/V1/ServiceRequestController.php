@@ -107,9 +107,12 @@ class ServiceRequestController extends Controller
         }
 
         $storeId = $request->storeId ?? false;
-        // prx($storeId);
         $storesChunk = Helpers::get_store_range($request->item_id, $request->header('zoneId'), $request->user_id, $storeId);
 
+         if (empty($storesChunk)) {
+            return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
+        }
+        
         // Check if this is a dedicated lead
         $isDedicated = false;
         if ($storeId) {

@@ -1309,7 +1309,9 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
 
     $bill_data['invoice_items'] = $quotation
         ? QuotationDetailItem::where('quotation_det_id', $invoice->id)->get()
-        : InvoiceItem::with('unitId')->where('manual_invoice_id', $invoice->id)->get();
+        : ($invoice instanceof ServiceInvoice
+            ? InvoiceItem::with('unitId')->where('invoice_id', $invoice->id)->get()
+            : InvoiceItem::with('unitId')->where('manual_invoice_id', $invoice->id)->get());
     [$bill_to, $shipping_address] = processBillToInfo($invoice, $shipping_address_id);
 
     $bill_from = processBillFromInfo($invoice, $from, $bill_data);
@@ -2446,39 +2448,26 @@ function _getInvoicePrefix($tax_type, $store = null)
 
 function is_serial_number_used($number, $prefix, $tax_type, $vendor_id = null)
 {
-    $today = now();
-    $currentYear = $today->year;
-    $financialYearStart = Carbon::createFromDate($currentYear, 4, 1);
+    $today       = now();
+    $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
+    $currentFY   = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
 
-    if ($today->month < 4) {
-        $financialYearStart->subYear();
-    }
-    $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March next year
-    // if ($tax_type == 'gst') {
     $manualQuery = DB::table('manual_invoices')
-        ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-        ->where("invoice_id", $prefix . $number);
+        ->where('financial_year', $currentFY)
+        ->where('invoice_id', $prefix . $number);
     if ($vendor_id !== null) {
         $manualQuery->where('vendor_id', $vendor_id);
     }
     $manualExists = $manualQuery->exists();
 
     $serviceQuery = DB::table('service_invoices')
-        ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-        ->where("invoice_id", $prefix . $number);
+        ->where('financial_year', $currentFY)
+        ->where('invoice_id', $prefix . $number);
     if ($vendor_id !== null) {
         $serviceQuery->where('vendor_id', $vendor_id);
     }
     $serviceExists = $serviceQuery->exists();
-    // } else {
-    //     $manualExists = DB::table('manual_invoices')
-    //         ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-    //         ->where("invoice_id", $number)
-    //         ->exists();
-    //     $serviceExists = DB::table('service_invoices')
-    //         ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
-    //         ->where("invoice_id", $number)->exists();
-    // }
+
     return $serviceExists || $manualExists;
 }
 if (!function_exists('shortAmount')) {

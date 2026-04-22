@@ -469,9 +469,10 @@ class SettingsController extends Controller
         }
 
 
-        // Fetch GST setting and compute GST-inclusive total
+        // Fetch GST settings — if price already includes GST, use as-is; otherwise add GST on top
         $gstPercent  = (float) (BusinessSetting::where('key', 'template_gst_percent')->value('value') ?? 0);
-        $totalAmount = _taxIncludedPrice($template->price, $gstPercent, 'actual');
+        $gstIncl     = (bool)  (BusinessSetting::where('key', 'template_gst_include')->value('value') ?? 0);
+        $totalAmount = ($gstIncl || $gstPercent == 0) ? $template->price : _taxIncludedPrice($template->price, $gstPercent, 'actual');
 
         // Create invoice following the same pattern as ProfileController::buyModule
         $invoice = new ManualInvoice();
@@ -495,14 +496,16 @@ class SettingsController extends Controller
         $item->name            = $template->name . ' - Webpage Template';
         $item->qty             = 1;
         $item->price           = $template->price;
-        $item->tax             = $gstPercent;
+        $item->tax             = $gstIncl ? 0 : $gstPercent;
         $item->hsn             = '';
         $item->save();
 
+        $pdfUrl = null;
         try {
             $pdfResult = _createBillPdf($invoice, 'admin');
             if ($pdfResult && isset($pdfResult['pdf'])) {
                 $invoice->update(['pdf' => $pdfResult['pdf']]);
+                $pdfUrl = $pdfResult['url'];
             }
         } catch (\Exception $e) {
             // PDF generation failure should not block purchase recording
@@ -566,15 +569,57 @@ class SettingsController extends Controller
         // Auto-select the template
         StoreConfig::updateOrInsert(['store_id' => $vendorId], ['template_id' => $template->id]);
 
-        return true;
+        return ['success' => true, 'pdf_url' => $pdfUrl];
     }
 
     // ─── Webpage Template Management ───────────────────────────────────────────
 
     public function webpageTemplates()
     {
-        $templates = DB::table('store_webpage_templates')->orderBy('id')->get();
-        return view('admin-views.settings.webpage-templates', compact('templates'));
+        $templates  = DB::table('store_webpage_templates')->orderBy('id')->get();
+        $stores     = Store::select('id', 'name')->where('status', 1)->orderBy('name')->get();
+        $gstPercent = BusinessSetting::where('key', 'template_gst_percent')->value('value') ?? 0;
+        $gstInclude = BusinessSetting::where('key', 'template_gst_include')->value('value') ?? 0;
+        return view('admin-views.settings.webpage-templates', compact('templates', 'stores', 'gstPercent', 'gstInclude'));
+    }
+
+    public function templateGstSettings(Request $request)
+    {
+        $request->validate([
+            'template_gst_percent' => 'required|numeric|min:0|max:100',
+            'template_gst_include' => 'required|in:0,1',
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'template_gst_percent'], ['value' => $request->template_gst_percent, 'updated_at' => now()]);
+        BusinessSetting::updateOrInsert(['key' => 'template_gst_include'], ['value' => $request->template_gst_include, 'updated_at' => now()]);
+        return response()->json(['success' => true, 'message' => 'GST settings saved.']);
+    }
+
+    public function assignTemplateToStore(Request $request)
+    {
+        $request->validate([
+            'store_id'    => 'required|integer|exists:stores,id',
+            'template_id' => 'required|integer|exists:store_webpage_templates,id',
+        ]);
+
+        $template = DB::table('store_webpage_templates')->where('id', $request->template_id)->first();
+        if (!$template || !$template->status) {
+            return response()->json(['success' => false, 'message' => 'Template not found or inactive.'], 422);
+        }
+
+        if ($template->price == 0) {
+            StoreConfig::updateOrInsert(['store_id' => $request->store_id], ['template_id' => $template->id]);
+            return response()->json(['success' => true, 'message' => 'Template assigned successfully (free — no bill generated).']);
+        }
+
+        $result = $this->completeTemplatePurchase($request->store_id, $request->template_id);
+        if ($result && $result['success']) {
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Template assigned and bill generated for the store.',
+                'pdf_url'  => $result['pdf_url'],
+            ]);
+        }
+        return response()->json(['success' => false, 'message' => 'Failed to assign template.'], 500);
     }
 
     public function webpageTemplateUpdate(Request $request)

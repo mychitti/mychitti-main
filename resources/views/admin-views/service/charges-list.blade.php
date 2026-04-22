@@ -11,7 +11,7 @@
         <!-- Page Header -->
         <div class="page-header">
             <div class="d-flex align-items-center gap-2">
-            <h1 class="page-header-title mb-0"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{count($charges)}}</span></h1>
+            <h1 class="page-header-title mb-0"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{$charges->total()}}</span></h1>
             <a href="{{ route('admin.service.lead-charge-export') }}" class="btn btn-sm btn-outline-primary">
                 <i class="tio-download"></i> Export Template
             </a>
@@ -132,7 +132,8 @@
                         @endforeach
                     </tbody>
                 </table>
-              @if(count($charges))
+              @if($charges->count())
+                <div class="px-3 py-2">{{ $charges->links() }}</div>
                 <hr>
               @else
                 <div class="page-area">

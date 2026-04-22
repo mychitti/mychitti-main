@@ -659,8 +659,13 @@
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/store/types')  }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.store.types') }}" title="{{ translate('messages.stores_config') }}">
                         <span class="tio-layout nav-icon"></span>
-                        <span class="text-truncate">Business Type
-                           Config</span>
+                        <span class="text-truncate">Business Type Config</span>
+                    </a>
+                </li>
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('webpage-templates*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.webpage-templates.index') }}" title="Webpage Templates">
+                        <span class="tio-pages-outlined nav-icon"></span>
+                        <span class="text-truncate">Webpage Templates</span>
                     </a>
                 </li>
                 <li class="navbar-item {{ Request::is('store/recommended-store') ? 'active' : '' }}">

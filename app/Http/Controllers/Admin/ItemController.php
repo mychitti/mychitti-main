@@ -1430,87 +1430,88 @@ class ItemController extends Controller
             ->join('zones', 'zones.id', '=',  'lead_charges.zone_id')
             ->leftJoin('items', 'items.id', '=', 'lead_charges.item_id')
             ->select('lead_charges.*', 'categories.name as cat_name', 'zones.name as zone_name', 'items.name as item_name')
-            ->get();
+            ->paginate(50);
         return view('admin-views.service.charges-list', compact('charges'));
-    }
+    } 
 
     public function lead_charge_export()
     {
         set_time_limit(0);
+        while (ob_get_level()) ob_end_clean();
 
-        $filename = 'lead_charges_template_' . now()->format('Y-m-d') . '.csv';
+        $filename = 'lead_charges_' . date('Y-m-d') . '.csv';
 
-        $headers = [
-            'Content-Type'              => 'text/csv; charset=UTF-8',
-            'Content-Disposition'       => "attachment; filename=\"{$filename}\"",
-            'X-Accel-Buffering'         => 'no',  // disable nginx buffering so data streams immediately
-            'Cache-Control'             => 'no-cache',
-        ];
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('X-Accel-Buffering: no');
+        header('Cache-Control: no-store, no-cache');
 
-        $headings = [
-            'zone_id', 'zone_name', 'category_id', 'category_name',
-            'item_id', 'service_name',
-            'vendor_count',
+        $pdo = DB::connection()->getPdo();
+        $pdo->setAttribute(\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+
+        $handle = fopen('php://output', 'w');
+        fputcsv($handle, [
+            'category_id', 'category_name', 'item_id', 'item_name',
             'ven_1_charges', 'ven_2_charges', 'ven_3_charges', 'ven_other_charges',
             'ven_same_charges', 'dedicated_lead_charge',
             'confirmation_charge', 'completion_charge',
-        ];
+        ]);
+        flush();
 
-        $callback = function () use ($headings) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, $headings);
+        // "All Services" rows — one per category
+        $stmt = $pdo->query("
+            SELECT lc.category_id, c.name,
+                   0, 'All Services',
+                   MAX(lc.ven_1_charges), MAX(lc.ven_2_charges),
+                   MAX(lc.ven_3_charges), MAX(lc.ven_other_charges),
+                   MAX(lc.ven_same_charges), MAX(lc.dedicated_lead_charge),
+                   MAX(lc.confirmation_charge), MAX(lc.completion_charge)
+            FROM lead_charges lc
+            JOIN categories c ON c.id = lc.category_id
+            WHERE lc.item_id IS NULL
+            GROUP BY lc.category_id, c.name
+            ORDER BY c.name
+        ");
+        while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
+            fputcsv($handle, $row);
+        }
+        $stmt->closeCursor();
 
-            DB::table('items')
-                ->join('categories', 'categories.id', '=', 'items.category_id')
-                ->crossJoin('zones')
-                ->join('module_zone', function ($j) {
-                    $j->on('module_zone.zone_id', '=', 'zones.id')
-                      ->where('module_zone.module_id', 6);
-                })
-                ->leftJoin('lead_charges', function ($j) {
-                    $j->on('lead_charges.item_id', '=', 'items.id')
-                      ->on('lead_charges.zone_id', '=', 'zones.id');
-                })
-                ->where('items.module_id', 6)
-                ->select(
-                    'zones.id as zone_id',
-                    'zones.name as zone_name',
-                    'categories.id as category_id',
-                    'categories.name as category_name',
-                    'items.id as item_id',
-                    DB::raw("JSON_UNQUOTE(JSON_EXTRACT(items.name, '$[0].name')) as service_name"),
-                    'lead_charges.vendor_count',
-                    'lead_charges.ven_1_charges',
-                    'lead_charges.ven_2_charges',
-                    'lead_charges.ven_3_charges',
-                    'lead_charges.ven_other_charges',
-                    'lead_charges.ven_same_charges',
-                    'lead_charges.dedicated_lead_charge',
-                    'lead_charges.confirmation_charge',
-                    'lead_charges.completion_charge'
-                )
-                ->orderBy('zones.name')
-                ->orderBy('categories.name')
-                ->chunk(500, function ($rows) use ($handle) {
-                    foreach ($rows as $r) {
-                        fputcsv($handle, [
-                            $r->zone_id, $r->zone_name, $r->category_id, $r->category_name,
-                            $r->item_id, $r->service_name,
-                            $r->vendor_count ?? '',
-                            $r->ven_1_charges ?? '', $r->ven_2_charges ?? '',
-                            $r->ven_3_charges ?? '', $r->ven_other_charges ?? '',
-                            $r->ven_same_charges ?? '', $r->dedicated_lead_charge ?? '',
-                            $r->confirmation_charge ?? '', $r->completion_charge ?? '',
-                        ]);
-                    }
-                    if (ob_get_level()) ob_flush();
-                    flush();
-                });
+        // Per-item rows — aggregate lead_charges to one row per item first, then join items
+        $stmt = $pdo->query("
+            SELECT c.id, c.name, i.id, i.name,
+                   lc.ven_1_charges, lc.ven_2_charges,
+                   lc.ven_3_charges, lc.ven_other_charges,
+                   lc.ven_same_charges, lc.dedicated_lead_charge,
+                   lc.confirmation_charge, lc.completion_charge
+            FROM items i
+            JOIN categories c ON c.id = i.category_id
+            LEFT JOIN (
+                SELECT item_id,
+                       MAX(ven_1_charges)         AS ven_1_charges,
+                       MAX(ven_2_charges)         AS ven_2_charges,
+                       MAX(ven_3_charges)         AS ven_3_charges,
+                       MAX(ven_other_charges)     AS ven_other_charges,
+                       MAX(ven_same_charges)      AS ven_same_charges,
+                       MAX(dedicated_lead_charge) AS dedicated_lead_charge,
+                       MAX(confirmation_charge)   AS confirmation_charge,
+                       MAX(completion_charge)     AS completion_charge
+                FROM lead_charges
+                WHERE item_id IS NOT NULL
+                GROUP BY item_id
+            ) lc ON lc.item_id = i.id
+            WHERE i.module_id = 6
+            ORDER BY c.name, i.id
+        ");
+        while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
+            fputcsv($handle, $row);
+            flush();
+        }
+        $stmt->closeCursor();
 
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        fclose($handle);
+        $pdo->setAttribute(\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+        exit;
     }
 
     public function lead_charge_import(\Illuminate\Http\Request $request)
@@ -1531,7 +1532,7 @@ class ItemController extends Controller
         $header = array_map('trim', $rows[0]);
         $colMap = array_flip($header);
 
-        $required = ['zone_id', 'category_id', 'item_id'];
+        $required = ['category_id', 'item_id'];
         foreach ($required as $col) {
             if (!isset($colMap[$col])) {
                 Toastr::error("Column '{$col}' not found. Please use the exported template.");
@@ -1539,43 +1540,66 @@ class ItemController extends Controller
             }
         }
 
+        set_time_limit(0);
+
+        $now     = now()->toDateTimeString();
         $updated = 0;
         $skipped = 0;
+        $batch   = [];
+
+        $flush = function () use (&$batch) {
+            if (empty($batch)) return;
+            DB::table('lead_charges')->insert($batch);
+            $batch = [];
+        };
 
         foreach (array_slice($rows, 1) as $row) {
-            $zoneId     = $row[$colMap['zone_id']] ?? null;
             $categoryId = $row[$colMap['category_id']] ?? null;
             $itemId     = $row[$colMap['item_id']] ?? null;
 
-            if (!$zoneId || !$categoryId) { $skipped++; continue; }
+            if (!$categoryId) { $skipped++; continue; }
 
-            $charges = [
-                'vendor_count'          => $row[$colMap['vendor_count']] ?? null,
-                'ven_1_charges'         => $row[$colMap['ven_1_charges']] ?? 0,
-                'ven_2_charges'         => $row[$colMap['ven_2_charges']] ?? 0,
-                'ven_3_charges'         => $row[$colMap['ven_3_charges']] ?? 0,
-                'ven_other_charges'     => $row[$colMap['ven_other_charges']] ?? 0,
-                'ven_same_charges'      => $row[$colMap['ven_same_charges']] ?? null,
+            $v1 = $row[$colMap['ven_1_charges']]     ?? null;
+            $v2 = $row[$colMap['ven_2_charges']]     ?? null;
+            $v3 = $row[$colMap['ven_3_charges']]     ?? null;
+            $vo = $row[$colMap['ven_other_charges']] ?? null;
+
+            if (!$v1 && !$v2 && !$v3 && !$vo) { $skipped++; continue; }
+
+            $resolvedItemId = ($itemId && $itemId != 0) ? $itemId : null;
+
+            // Delete the single existing record for this category+item+zone=0
+            $q = DB::table('lead_charges')
+                ->where('category_id', $categoryId)
+                ->where('zone_id', 0);
+            $resolvedItemId === null
+                ? $q->whereNull('item_id')
+                : $q->where('item_id', $resolvedItemId);
+            $q->delete();
+
+            $batch[] = [
+                'zone_id'               => 0,
+                'category_id'           => $categoryId,
+                'item_id'               => $resolvedItemId,
+                'ven_1_charges'         => $v1,
+                'ven_2_charges'         => $v2,
+                'ven_3_charges'         => $v3,
+                'ven_other_charges'     => $vo,
+                'ven_same_charges'      => $row[$colMap['ven_same_charges']]      ?? null,
                 'dedicated_lead_charge' => $row[$colMap['dedicated_lead_charge']] ?? null,
-                'confirmation_charge'   => $row[$colMap['confirmation_charge']] ?? null,
-                'completion_charge'     => $row[$colMap['completion_charge']] ?? null,
-                'updated_at'            => now(),
+                'confirmation_charge'   => $row[$colMap['confirmation_charge']]   ?? null,
+                'completion_charge'     => $row[$colMap['completion_charge']]     ?? null,
+                'created_at'            => $now,
+                'updated_at'            => $now,
             ];
-
-            // Skip rows where all charge values are blank (no data entered)
-            $chargeValues = array_filter([$charges['ven_1_charges'], $charges['ven_2_charges'],
-                $charges['ven_3_charges'], $charges['ven_other_charges']],
-                fn($v) => $v !== '' && $v !== null);
-            if (empty($chargeValues)) { $skipped++; continue; }
-
-            LeadCharge::updateOrCreate(
-                ['zone_id' => $zoneId, 'category_id' => $categoryId, 'item_id' => $itemId ?: null],
-                array_merge($charges, ['created_at' => now()])
-            );
             $updated++;
+
+            if (count($batch) >= 500) $flush();
         }
 
-        Toastr::success("Import complete: {$updated} charges saved, {$skipped} rows skipped.");
+        $flush();
+
+        Toastr::success("Import complete: {$updated} items saved, {$skipped} rows skipped.");
         return redirect()->route('admin.service.lead-charge-list');
     }
 

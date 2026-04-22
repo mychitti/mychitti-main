@@ -304,6 +304,7 @@
     </div>
     <h1>Hospital Management,<br><em>Built Into Your Panel</em></h1>
     <p>Everything your hospital needs — OPD, IPD, doctors, nurses, wards, prescriptions, billing, and consent — managed from a single unified dashboard inside the MC Vendor Hub store panel.</p>
+      <button id="#" style="display:inline-block; background:#E3F2FD; color:#1565C0; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:6px 18px; border-radius:100px; margin-bottom:14px;">Get in Touch</button>
   </div>
 </section>
 

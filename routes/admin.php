@@ -688,6 +688,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('/', 'SettingsController@webpageTemplates')->name('index');
             Route::post('update', 'SettingsController@webpageTemplateUpdate')->name('update');
             Route::post('toggle', 'SettingsController@webpageTemplateToggle')->name('toggle');
+            Route::post('gst-settings', 'SettingsController@templateGstSettings')->name('gst-settings');
+            Route::post('assign-to-store', 'SettingsController@assignTemplateToStore')->name('assign-to-store');
         });
 
         // Suspicious Activity

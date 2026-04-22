@@ -60,11 +60,43 @@
 <div class="content container-fluid">
     <div class="page-header d-flex flex-wrap align-items-center justify-content-between __gap-15px">
         <h1 class="page-header-title">
-            <span class="page-header-icon">
-                <i class="tio-layout"></i>
-            </span>
+            <span class="page-header-icon"><i class="tio-layout"></i></span>
             <span>Webpage Templates</span>
         </h1>
+    </div>
+
+    {{-- GST Settings --}}
+    <div class="card mb-3">
+        <div class="card-header py-3">
+            <h5 class="card-title mb-0"><i class="tio-receipt-outlined mr-1"></i> Template Pricing GST Settings</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end g-3">
+                <div class="col-sm-4">
+                    <label class="form-label">GST Rate (%)</label>
+                    <input type="number" id="gstPercent" class="form-control" min="0" max="100" step="0.01"
+                        value="{{ $gstPercent }}">
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label d-block">GST in Template Price</label>
+                    <div class="d-flex gap-3 mt-1">
+                        <div class="custom-control custom-radio custom-control-inline">
+                            <input type="radio" id="gstExclude" name="gst_include" class="custom-control-input" value="0"
+                                {{ $gstInclude ? '' : 'checked' }}>
+                            <label class="custom-control-label" for="gstExclude">Exclude (add on top)</label>
+                        </div>
+                        <div class="custom-control custom-radio custom-control-inline">
+                            <input type="radio" id="gstInclude" name="gst_include" class="custom-control-input" value="1"
+                                {{ $gstInclude ? 'checked' : '' }}>
+                            <label class="custom-control-label" for="gstInclude">Include (already in price)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <button class="btn btn-primary" id="saveGstBtn">Save GST Settings</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -80,6 +112,7 @@
                             <th>Price ({{ \App\CentralLogics\Helpers::currency_symbol() }})</th>
                             <th>Status</th>
                             <th class="text-right">Action</th>
+                            <th>Assign to Store</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -138,14 +171,54 @@
                                 </label>
                             </td>
                             <td class="text-right">
-                                <button class="btn btn-sm btn-primary save-btn" data-id="{{ $template->id }}">
-                                    Save
+                                <button class="btn btn-sm btn-primary save-btn" data-id="{{ $template->id }}">Save</button>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-success assign-btn"
+                                    data-id="{{ $template->id }}"
+                                    data-name="{{ $template->name ?? 'Template '.$template->id }}"
+                                    data-price="{{ $template->price ?? 0 }}">
+                                    <i class="tio-store-outlined"></i> Assign
                                 </button>
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Assign to Store Modal --}}
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Template to Store</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3" id="assignTemplateSummary"></div>
+                <div class="form-group">
+                    <label class="form-label font-weight-bold">Select Store</label>
+                    <select class="form-control" id="assignStoreSelect">
+                        <option value="">-- Select a store --</option>
+                        @foreach($stores as $store)
+                        <option value="{{ $store->id }}">{{ $store->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="tio-info-outined"></i>
+                    If the template price is greater than ₹0, a bill will be automatically generated for the selected store.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmAssignBtn">
+                    <i class="tio-checkmark-circle-outlined"></i> Assign &amp; Generate Bill
+                </button>
             </div>
         </div>
     </div>
@@ -216,6 +289,75 @@
             error: function () {
                 $toggle.prop('checked', !$toggle.prop('checked'));
                 toastr.error('Failed to update status.');
+            }
+        });
+    });
+
+    // GST settings save
+    $('#saveGstBtn').on('click', function () {
+        var btn     = $(this);
+        var percent = $('#gstPercent').val();
+        var include = $('input[name="gst_include"]:checked').val();
+
+        btn.prop('disabled', true).text('Saving...');
+        $.ajax({
+            url: "{{ route('admin.webpage-templates.gst-settings') }}",
+            method: 'POST',
+            data: { _token: csrfToken, template_gst_percent: percent, template_gst_include: include },
+            success: function (res) { toastr.success(res.message || 'GST settings saved.'); },
+            error: function (xhr) {
+                var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error saving.';
+                toastr.error(msg);
+            },
+            complete: function () { btn.prop('disabled', false).text('Save GST Settings'); }
+        });
+    });
+
+    // Assign to Store — open modal
+    var assignTemplateId = null;
+    $(document).on('click', '.assign-btn', function () {
+        assignTemplateId = $(this).data('id');
+        var name  = $(this).data('name');
+        var price = parseFloat($(this).data('price')) || 0;
+        var sym   = '{{ \App\CentralLogics\Helpers::currency_symbol() }}';
+
+        var summary = '<strong>' + name + '</strong>';
+        if (price > 0) {
+            summary += ' — ' + sym + price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+            summary += '<br><span class="text-success font-weight-bold">A bill will be generated for the store.</span>';
+        } else {
+            summary += ' — <span class="badge badge-success">Free</span> (no bill generated)';
+        }
+        $('#assignTemplateSummary').html(summary);
+        $('#assignStoreSelect').val('');
+        $('#assignModal').modal('show');
+    });
+
+    // Confirm assign
+    $('#confirmAssignBtn').on('click', function () {
+        var storeId = $('#assignStoreSelect').val();
+        if (!storeId) { toastr.warning('Please select a store.'); return; }
+
+        var btn = $(this);
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+
+        $.ajax({
+            url: "{{ route('admin.webpage-templates.assign-to-store') }}",
+            method: 'POST',
+            data: { _token: csrfToken, store_id: storeId, template_id: assignTemplateId },
+            success: function (res) {
+                toastr.success(res.message || 'Assigned successfully.');
+                $('#assignModal').modal('hide');
+                if (res.pdf_url) {
+                    window.open(res.pdf_url, '_blank');
+                }
+            },
+            error: function (xhr) {
+                var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error assigning template.';
+                toastr.error(msg);
+            },
+            complete: function () {
+                btn.prop('disabled', false).html('<i class="tio-checkmark-circle-outlined"></i> Assign &amp; Generate Bill');
             }
         });
     });

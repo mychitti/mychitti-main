@@ -2188,22 +2188,6 @@ class Helpers
     {
         $store_prefix = self::_storePrefix($store->name);
 
-        // Auto-reset serial when FY changes
-        if ($custom_number === null) {
-            $today      = now();
-            $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
-            $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
-
-            if (($store->receivable_receipt_fy ?? '') !== $year) {
-                DB::table('stores')->where('id', $store->id)->update([
-                    'receivable_receipt_serial_number' => 1,
-                    'receivable_receipt_fy'            => $year,
-                ]);
-                $store->receivable_receipt_serial_number = 1;
-                $store->receivable_receipt_fy            = $year;
-            }
-        }
-
         $ser_number     = $custom_number ?? $store->receivable_receipt_serial_number;
         $receipt_number = $store_prefix . 'RR-' . $ser_number;
 
@@ -2227,26 +2211,7 @@ class Helpers
     }
     public static function generate_RR_serial_number($store = null, $action2 = 'view', $custom_number = null)
     {
-        $today       = now();
-        $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
-        $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
-
         if (auth('admin')->check()) {
-            // Auto-reset admin RR serial when FY changes
-            if ($custom_number === null) {
-                $fySetting = DB::table('business_settings')->where('key', 'admin_receivable_receipt_fy')->first();
-                if (!$fySetting || $fySetting->value !== $year) {
-                    DB::table('business_settings')->updateOrInsert(
-                        ['key' => 'admin_receivable_receipt_fy'],
-                        ['value' => $year]
-                    );
-                    DB::table('business_settings')->updateOrInsert(
-                        ['key' => 'receivable_receipt_serial_number'],
-                        ['value' => 1]
-                    );
-                }
-            }
-
             $setting        = DB::table('business_settings')->where('key', 'receivable_receipt_serial_number')->first();
             $receipt_number = $custom_number ?? (int) ($setting->value ?? 1);
 
@@ -2262,16 +2227,6 @@ class Helpers
 
         if (!$store) {
             $store = DB::table('stores')->where('id', Helpers::get_store_id())->first();
-        }
-
-        // Auto-reset store RR serial when FY changes
-        if ($custom_number === null && ($store->receivable_receipt_fy ?? '') !== $year) {
-            DB::table('stores')->where('id', $store->id)->update([
-                'receivable_receipt_serial_number' => 1,
-                'receivable_receipt_fy'            => $year,
-            ]);
-            $store->receivable_receipt_serial_number = 1;
-            $store->receivable_receipt_fy            = $year;
         }
 
         $receipt_number = $custom_number ?? $store->receivable_receipt_serial_number;
