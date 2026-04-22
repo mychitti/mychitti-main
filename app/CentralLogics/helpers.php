@@ -2498,15 +2498,9 @@ class Helpers
         $store_prefix = substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3);
         $infix = $infix ?? 'INV';
 
-        $today = now();
-        $currentYear = $today->year;
-        $financialYearStart = Carbon::createFromDate($currentYear, 4, 1);
-
-        if ($today->month < 4) {
-            $financialYearStart->subYear();
-        }
-        $financialYearEnd = $financialYearStart->copy()->addYear()->subDay(); // 31 March
-        $year = $financialYearStart->format('y') . '-' . $financialYearEnd->format('y');
+        $today       = now();
+        $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
+        $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
 
         // Reset serial number if financial year has changed
         if ($serial_num === null) {
@@ -2530,12 +2524,12 @@ class Helpers
             }
 
             $manualExists = DB::table('manual_invoices')
-                ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
+                ->where('financial_year', $year)
                 ->where('invoice_id', $invoice_id)
                 ->exists();
 
             $serviceExists = DB::table('service_invoices')
-                ->whereBetween('created_at', [$financialYearStart, $financialYearEnd])
+                ->where('financial_year', $year)
                 ->where('invoice_id', $invoice_id)
                 ->exists();
 

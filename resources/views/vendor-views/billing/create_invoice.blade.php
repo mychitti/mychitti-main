@@ -93,7 +93,8 @@
                                     </div>
                                     <span class="text-danger invoice_error"></span>
                                 </div>
-                                <input type="hidden" name="prefixe" value = "{{ $bill_num['prefix'] }}">
+                                <input type="hidden" name="prefixe" value="{{ $bill_num['prefix'] }}">
+                                <input type="hidden" name="number" id="hiddenInvoiceNumber">
                                 <div class="nongst_invoice_num nongst_fld">
 
                                     <div class="input-group">

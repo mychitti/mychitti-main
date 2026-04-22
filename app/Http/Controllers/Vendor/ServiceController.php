@@ -655,6 +655,7 @@ class ServiceController extends Controller
         $invoice = new ManualInvoice;
         $invoice->task_id =  $task_id;
         $invoice->invoice_id = $invoice_id;
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->reference_number = $request->reference_number;
         $invoice->vendor_id = $store_id;
         $invoice->bill_to = $bill_to;

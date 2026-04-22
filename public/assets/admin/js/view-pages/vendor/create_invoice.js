@@ -1,5 +1,10 @@
 $(".submit_btn").on("click", function () {
     if ($(".item_row").length) {
+        var taxType = $("#global_gst_status").val();
+        var num = taxType === "non_gst"
+            ? $(".invoice_num.non_gst_field").val()
+            : $(".invoice_num.gst_field").val();
+        $("#hiddenInvoiceNumber").val(num);
         $("#invoice_form").submit();
     } else {
         toasterNotification("Add Atleast One Item");
