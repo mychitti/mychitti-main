@@ -1,26 +1,32 @@
-<?php 
+<?php
+
+namespace App\Http\Middleware;
+
 use Closure;
+use Illuminate\Http\Request;
 use App\Models\VendorLoginLog;
 
-public function handle($request, Closure $next)
+class TrackVendorActivity
 {
-    if (auth()->check() && session()->has('login_log_id')) {
+    public function handle(Request $request, Closure $next)
+    {
+        if (auth('vendor')->check() && session()->has('login_log_id')) {
 
-        $lastUpdate = session('last_activity_update');
-        $now = now();
+            $lastUpdate = session('last_activity_update');
+            $now = now();
 
-        // only update every 2 minutes
-        if (!$lastUpdate || $now->diffInSeconds($lastUpdate) > 120) {
+            // throttle: update only every 2 minutes
+            if (!$lastUpdate || $now->diffInSeconds($lastUpdate) > 120) {
 
-            VendorLoginLog::where('id', session('login_log_id'))
-                ->update([
-                    'last_activity_at' => $now
-                ]);
+                VendorLoginLog::where('id', session('login_log_id'))
+                    ->update([
+                        'last_activity_at' => $now
+                    ]);
 
-            // store last update time in session
-            session(['last_activity_update' => $now]);
+                session(['last_activity_update' => $now]);
+            }
         }
-    }
 
-    return $next($request);
+        return $next($request);
+    }
 }
