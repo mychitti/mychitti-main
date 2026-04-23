@@ -328,11 +328,17 @@ Route::get('storage/{path}', function ($path) {
             return redirect('/login');
         }
     } elseif (in_array($host, ['mychitti.net', 'www.mychitti.net'])) {
-        // On the shop domain, block sensitive business/document paths entirely
+        // Invoices require customer login
+        if (str_starts_with($path, 'invoice/')) {
+            if (!\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+                return redirect('/login');
+            }
+        }
+        // All other sensitive business/document paths are blocked entirely
         $sensitivePrefixes = [
             'store/docs/', 'store/documents/', 'store/banking/', 'store/signature/',
             'store/branch/docs/', 'store/service_reports/', 'store/jobcards/',
-            'store/recivable-receipts/', 'store_reports/', 'invoice/',
+            'store/recivable-receipts/', 'store_reports/',
             'customer/documents/', 'vendor/documents/', 'admin/emp_documents/',
             'temp/',
         ];
