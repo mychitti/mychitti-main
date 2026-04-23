@@ -316,6 +316,7 @@ Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')-
 // Route storage files through Laravel — enforce auth per domain
 Route::get('storage/{path}', function ($path) {
     $host = request()->getHost();
+
     if ($host === 'admin.mychitti.net') {
         if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
@@ -326,7 +327,22 @@ Route::get('storage/{path}', function ($path) {
         if (!$vendorAuth) {
             return redirect('/login');
         }
+    } elseif (in_array($host, ['mychitti.net', 'www.mychitti.net'])) {
+        // On the shop domain, block sensitive business/document paths entirely
+        $sensitivePrefixes = [
+            'store/docs/', 'store/documents/', 'store/banking/', 'store/signature/',
+            'store/branch/docs/', 'store/service_reports/', 'store/jobcards/',
+            'store/recivable-receipts/', 'store_reports/', 'invoice/',
+            'customer/documents/', 'vendor/documents/', 'admin/emp_documents/',
+            'temp/',
+        ];
+        foreach ($sensitivePrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                abort(403);
+            }
+        }
     }
+
     if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
         abort(404);
     }
