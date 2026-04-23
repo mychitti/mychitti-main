@@ -296,10 +296,10 @@ class LoginController extends Controller
                 'last_activity_at' => now(),
             ]);
 
-            }
             // store log id in session (VERY IMPORTANT)
             session(['login_log_id' => $log->id]);
-
+            
+            }
 
             if ($request->role === 'vendor_employee') {
                 $employee = VendorEmployee::where('email', $request->email)->first();
