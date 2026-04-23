@@ -2035,6 +2035,11 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             });
         });
     </script>
+    <script>
+setInterval(() => {
+    fetch('/heartbeat');
+}, 180000); // every 3 minutes
+</script>
 
 </body>
 

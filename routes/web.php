@@ -531,7 +531,26 @@ Route::get('update-live-location/user/{id}', [LocationController::class, 'update
 Route::get('category/{category_slug}/{city}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be later
 Route::get('{category_slug}/{slug}', [FrontController::class, 'product_details'])->name('product.details');// needs to be later
 
+Route::get('/heartbeat', function () {
 
+    if (auth()->check() && session()->has('login_log_id')) {
+
+        $lastUpdate = session('last_activity_update');
+        $now = now();
+
+        if (!$lastUpdate || $now->diffInSeconds($lastUpdate) > 120) {
+
+            \App\Models\VendorLoginLog::where('id', session('login_log_id'))
+                ->update([
+                    'last_activity_at' => $now
+                ]);
+
+            session(['last_activity_update' => $now]);
+        }
+    }
+
+    return response()->json(['status' => 'ok']);
+});
 // WEBSITE SETTINGS ROUTE (VENDOR)
 
 // Route::middleware(['auth'])->group(function () {
