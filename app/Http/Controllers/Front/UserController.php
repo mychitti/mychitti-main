@@ -450,6 +450,7 @@ class UserController extends Controller
             $serviceReq->preferred_slot_id   = $request->preferred_slot_id ?: null;
             $serviceReq->preferred_time      = $request->preferred_time ?: null;
             $serviceReq->reason              = $request->reason ?: null;
+            $serviceReq->service_type        = 'doctor_appointment';
         }
         $serviceReq->created_at = date('Y-m-d H:i:s');
 

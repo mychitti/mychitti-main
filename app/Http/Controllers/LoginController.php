@@ -236,6 +236,7 @@ class LoginController extends Controller
         } elseif ($role == 'vendor') {
             $vendor = Vendor::where('email', $request->email)->first();
             if ($vendor) {
+                
                 if ($vendor->stores[0]->suspended == 1) {
                     return redirect()->back()->withInput($request->only('email', 'remember'))
                         ->withErrors([translate('messages.your_account_is_suspended')]);
@@ -286,10 +287,22 @@ class LoginController extends Controller
         if ($data == 'vendor') {
             // dd(auth('vendor')->check(), auth('vendor')->user());
 
+            //  SAVE LOGIN LOG HERE
+            $log = \App\Models\VendorLoginLog::create([
+                'vendor_id' => auth('vendor')->id(),
+                'login_at' => now(),
+                'last_activity_at' => now(),
+            ]);
+
+            // store log id in session (VERY IMPORTANT)
+            session(['login_log_id' => $log->id]);
+
+
             if ($request->role === 'vendor_employee') {
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
+                
 
                 if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
@@ -339,6 +352,16 @@ class LoginController extends Controller
         Auth::guard('vendor')->login($vendor);
 
         if (auth('vendor')->check()) {
+            //  SAVE LOGIN LOG HERE
+            $log = \App\Models\VendorLoginLog::create([
+                'vendor_id' => auth('vendor')->id(),
+                'login_at' => now(),
+                'last_activity_at' => now(),
+            ]);
+
+            // store log id in session (VERY IMPORTANT)
+            session(['login_log_id' => $log->id]);
+
             return redirect()->route('vendor.dashboard');
         }
 
@@ -460,7 +483,15 @@ class LoginController extends Controller
         if (!_verify_otp($request->phone, $otp)) {
             return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
         }
+            //  SAVE LOGIN LOG HERE
+            $log = \App\Models\VendorLoginLog::create([
+                'vendor_id' => auth('vendor')->id(),
+                'login_at' => now(),
+                'last_activity_at' => now(),
+            ]);
 
+            // store log id in session (VERY IMPORTANT)
+            session(['login_log_id' => $log->id]);
         return response()->json(['status' => true, 'message' => 'OTP verification successful']);
     }
     public function reloadCaptcha()

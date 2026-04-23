@@ -151,6 +151,7 @@ class ServiceRequestController extends Controller
             $serviceReq->preferred_slot_id   = $request->preferred_slot_id ?: null;
             $serviceReq->preferred_time      = $request->preferred_time ?: null;
             $serviceReq->reason              = $request->reason ?: null;
+            $serviceReq->service_type        = 'doctor_appointment';
         }
         $serviceReq->created_at = date('Y-m-d H:i:s');
 
@@ -368,7 +369,7 @@ class ServiceRequestController extends Controller
             'quotation.items:id,quote_id,name,price,qty,tax,total',
 
         ])
-            ->select('id', 'item_id', 'user_id', 'status', 'cancelled_by', 'created_at')
+            ->select('id', 'item_id', 'user_id', 'status', 'cancelled_by', 'service_type', 'created_at')
             ->where('id', $request->service_id)
             ->first();
         $host = request()->getHost();

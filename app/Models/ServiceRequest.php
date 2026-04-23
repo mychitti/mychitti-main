@@ -16,6 +16,7 @@ class ServiceRequest extends Model
         'preferred_slot_id',
         'preferred_time',
         'requirements',
+        'service_type'
     ];
     protected function serializeDate(\DateTimeInterface $date)
     {
