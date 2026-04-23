@@ -25,8 +25,7 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Block direct file access to /storage/ on admin domain — route through Laravel for auth check
-    RewriteCond %{HTTP_HOST} ^admin\.mychitti\.net [NC]
+    # Route /storage/ through Laravel so auth can be enforced
     RewriteRule ^storage/ index.php [L]
 
     # Send Requests To Front Controller...

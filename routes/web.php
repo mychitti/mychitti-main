@@ -313,10 +313,12 @@ Route::post('send-message', 'HomeController@send_message')->name('send-message')
 Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')->name('newsletter.subscribe');
 
 
-// Protect storage files on admin domain — only accessible when admin is logged in
+// Route storage files through Laravel — enforce admin auth on admin domain
 Route::get('storage/{path}', function ($path) {
-    if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
-        return redirect('/login/admin');
+    if (request()->getHost() === 'admin.mychitti.net') {
+        if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+            return redirect('/login/admin');
+        }
     }
     if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
         abort(404);
