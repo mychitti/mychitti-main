@@ -313,11 +313,18 @@ Route::post('send-message', 'HomeController@send_message')->name('send-message')
 Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')->name('newsletter.subscribe');
 
 
-// Route storage files through Laravel — enforce admin auth on admin domain
+// Route storage files through Laravel — enforce auth per domain
 Route::get('storage/{path}', function ($path) {
-    if (request()->getHost() === 'admin.mychitti.net') {
+    $host = request()->getHost();
+    if ($host === 'admin.mychitti.net') {
         if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
+        }
+    } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor.mychitti.net'])) {
+        $vendorAuth = \Illuminate\Support\Facades\Auth::guard('vendor')->check()
+            || \Illuminate\Support\Facades\Auth::guard('vendor_employee')->check();
+        if (!$vendorAuth) {
+            return redirect('/login');
         }
     }
     if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
