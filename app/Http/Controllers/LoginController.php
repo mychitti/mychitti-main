@@ -325,6 +325,9 @@ class LoginController extends Controller
             return redirect()->back()->withInput($request->only('phone'))
                 ->withErrors(['Phone number does not exist.']);
         }
+
+        // save last login at time 
+
         if (!_verify_otp($request->phone, $otp)) {
             return redirect()->back()->withErrors(['Invalid or expired OTP.']);
         }

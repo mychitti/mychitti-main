@@ -313,6 +313,17 @@ Route::post('send-message', 'HomeController@send_message')->name('send-message')
 Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')->name('newsletter.subscribe');
 
 
+// Protect storage files on admin domain — only accessible when admin is logged in
+Route::get('storage/{path}', function ($path) {
+    if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+        return redirect('/login/admin');
+    }
+    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+})->where('path', '.*')->name('admin.storage.file');
+
 Route::get('login/{tab?}', 'LoginController@login')->name('login');
 Route::get('business-verification', 'LoginController@business_verification')->name('business-verification');
 Route::post('business-verify', 'LoginController@business_verify')->name('business-verify');
