@@ -320,7 +320,7 @@ Route::get('storage/{path}', function ($path) {
         if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
         }
-    } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor.mychitti.net'])) {
+    } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor.mychitti.net', 'vendor.mychitti.shop', 'vendor-employee.mychitti.shop'])) {
         $vendorAuth = \Illuminate\Support\Facades\Auth::guard('vendor')->check()
             || \Illuminate\Support\Facades\Auth::guard('vendor_employee')->check();
         if (!$vendorAuth) {
