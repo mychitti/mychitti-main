@@ -672,6 +672,27 @@ class VendorController extends Controller
 
         return $customers;
     }
+
+    public function get_vendor_log_matches(Request $request)
+    {
+        $query = $request->get('q');
+
+        $stores = Store::withoutGlobalScopes()->where(function ($q) use ($query) {
+            $q->where('name', 'like', "%{$query}%")
+                ->orWhere('phone', 'like', "%{$query}%")
+                ->orWhereHas('vendor', function ($vq) use ($query) {
+                    $vq->where('f_name', 'like', "%{$query}%")
+                        ->orWhere('l_name', 'like', "%{$query}%");
+                });
+        })
+            ->where('module_id', 6)
+            ->with('vendor:id,f_name,l_name')
+            ->select('id', 'name', 'phone', 'business_type', 'vendor_id')
+            ->limit(10)
+            ->get();
+
+        return $stores;
+    }
     public function buyModule(Request $request)
     {
         // prx($request->all());

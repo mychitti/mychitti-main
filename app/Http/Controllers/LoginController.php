@@ -287,6 +287,8 @@ class LoginController extends Controller
         if ($data == 'vendor') {
             // dd(auth('vendor')->check(), auth('vendor')->user());
 
+            if ($request->role === 'vendor') {
+
             //  SAVE LOGIN LOG HERE
             $log = \App\Models\VendorLoginLog::create([
                 'vendor_id' => auth('vendor')->id(),
@@ -294,6 +296,7 @@ class LoginController extends Controller
                 'last_activity_at' => now(),
             ]);
 
+            }
             // store log id in session (VERY IMPORTANT)
             session(['login_log_id' => $log->id]);
 

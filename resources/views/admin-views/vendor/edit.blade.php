@@ -654,7 +654,7 @@
                                     <div class="form-group mb-0">
                                         <label class="input-label"
                                             for="exampleFormControlInput1">{{ translate('messages.email') }}</label>
-                                        <input type="email" name="email" class="form-control"
+                                        <input type="email" name="email" autocomplete="off" class="form-control"
                                             placeholder="{{ translate('messages.Ex:') }} ex@example.com"
                                             value="{{ $store->email }}" required>
                                     </div>
@@ -669,7 +669,7 @@
                                                     alt="{{ translate('messages.Must_contain_at_least_one_number_and_one_uppercase_and_lowercase_letter_and_symbol,_and_at_least_8_or_more_characters') }}"></span></label>
 
                                         <div class="input-group input-group-merge">
-                                            <input type="password" class="js-toggle-password form-control"
+                                            <input type="password"  autocomplete="new-password" class="js-toggle-password form-control"
                                                 name="password" id="signupSrPassword"
                                                 pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
                                                 title="{{ translate('messages.Must_contain_at_least_one_number_and_one_uppercase_and_lowercase_letter_and_symbol,_and_at_least_8_or_more_characters') }}"

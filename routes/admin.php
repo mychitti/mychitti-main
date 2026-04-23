@@ -1204,6 +1204,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
 
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');
+            Route::get('get-vendor-log-matches', 'VendorController@get_vendor_log_matches')->name('get-vendor-log-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc')->middleware('permission:store,documents');
 
 

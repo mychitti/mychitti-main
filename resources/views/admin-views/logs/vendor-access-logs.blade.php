@@ -69,7 +69,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100">
                     <div class="d-flex align-items-center gap-2">
                         <form action="" method="GET" id="vendor-filter-form">
-                            <select name="store_id" id="store-search" class="js-select2-custom" style="min-width:240px;">
+                            <select name="store_id" id="store-search" class="form-control" style="min-width:240px;">
                                 <option value="">All Vendors</option>
                                 @if(request('store_id'))
                                     @php $selectedStore = \App\Models\Store::find(request('store_id')); @endphp
@@ -249,18 +249,22 @@
         "use strict";
 
         // Vendor/store search
-        $('#store-search').select2({
+        $('#store-search').select2({ 
             placeholder: 'Search vendor / store...',
             allowClear: true,
             ajax: {
-                url: '{{ route('admin.store.get-matches') }}',
+                url: '{{ route('admin.store.get-vendor-log-matches') }}',
                 dataType: 'json',
                 delay: 250,
                 data: function(params) { return { q: params.term }; },
                 processResults: function(data) {
                     return {
                         results: $.map(data, function(s) {
-                            return { id: s.id, text: s.name + (s.phone ? ' (' + s.phone + ')' : '') };
+                            var vendorName = s.vendor ? (s.vendor.f_name + ' ' + s.vendor.l_name).trim() : '';
+                            var text = s.name;
+                            if (vendorName) text += ' — ' + vendorName;
+                            if (s.phone) text += ' (' + s.phone + ')';
+                            return { id: s.id, text: text };
                         })
                     };
                 }

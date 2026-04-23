@@ -1427,7 +1427,7 @@ class ItemController extends Controller
     {
         $charges = DB::table('lead_charges')
             ->join('categories', 'categories.id', '=', 'lead_charges.category_id')
-            ->join('zones', 'zones.id', '=',  'lead_charges.zone_id')
+            ->leftJoin('zones', 'zones.id', '=',  'lead_charges.zone_id')
             ->leftJoin('items', 'items.id', '=', 'lead_charges.item_id')
             ->select('lead_charges.*', 'categories.name as cat_name', 'zones.name as zone_name', 'items.name as item_name')
             ->paginate(50);
@@ -1439,7 +1439,11 @@ class ItemController extends Controller
         set_time_limit(0);
         while (ob_get_level()) ob_end_clean();
 
-        $filename = 'lead_charges_' . date('Y-m-d') . '.csv';
+        $zoneId = (int) request('zone_id');
+        $zoneFilter = $zoneId ? "AND lc.zone_id = {$zoneId}" : '';
+        $innerZoneFilter = $zoneId ? "AND zone_id = {$zoneId}" : '';
+
+        $filename = 'lead_charges_' . date('Y-m-d') . ($zoneId ? "_zone{$zoneId}" : '') . '.csv';
 
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1451,6 +1455,7 @@ class ItemController extends Controller
 
         $handle = fopen('php://output', 'w');
         fputcsv($handle, [
+            'zone_id', 'zone_name',
             'category_id', 'category_name', 'item_id', 'item_name',
             'ven_1_charges', 'ven_2_charges', 'ven_3_charges', 'ven_other_charges',
             'ven_same_charges', 'dedicated_lead_charge',
@@ -1458,9 +1463,9 @@ class ItemController extends Controller
         ]);
         flush();
 
-        // "All Services" rows — one per category
+        // "All Services" rows — one per zone+category
         $stmt = $pdo->query("
-            SELECT lc.category_id, c.name,
+            SELECT lc.zone_id, COALESCE(z.name, 'All'), lc.category_id, c.name,
                    0, 'All Services',
                    MAX(lc.ven_1_charges), MAX(lc.ven_2_charges),
                    MAX(lc.ven_3_charges), MAX(lc.ven_other_charges),
@@ -1468,18 +1473,19 @@ class ItemController extends Controller
                    MAX(lc.confirmation_charge), MAX(lc.completion_charge)
             FROM lead_charges lc
             JOIN categories c ON c.id = lc.category_id
-            WHERE lc.item_id IS NULL
-            GROUP BY lc.category_id, c.name
-            ORDER BY c.name
+            LEFT JOIN zones z ON z.id = lc.zone_id
+            WHERE lc.item_id IS NULL {$zoneFilter}
+            GROUP BY lc.zone_id, z.name, lc.category_id, c.name
+            ORDER BY z.name, c.name
         ");
         while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
             fputcsv($handle, $row);
         }
         $stmt->closeCursor();
 
-        // Per-item rows — aggregate lead_charges to one row per item first, then join items
+        // Per-item rows — one row per zone+item
         $stmt = $pdo->query("
-            SELECT c.id, c.name, i.id, i.name,
+            SELECT lc.zone_id, COALESCE(z.name, 'All'), c.id, c.name, i.id, i.name,
                    lc.ven_1_charges, lc.ven_2_charges,
                    lc.ven_3_charges, lc.ven_other_charges,
                    lc.ven_same_charges, lc.dedicated_lead_charge,
@@ -1487,7 +1493,7 @@ class ItemController extends Controller
             FROM items i
             JOIN categories c ON c.id = i.category_id
             LEFT JOIN (
-                SELECT item_id,
+                SELECT zone_id, item_id,
                        MAX(ven_1_charges)         AS ven_1_charges,
                        MAX(ven_2_charges)         AS ven_2_charges,
                        MAX(ven_3_charges)         AS ven_3_charges,
@@ -1497,11 +1503,12 @@ class ItemController extends Controller
                        MAX(confirmation_charge)   AS confirmation_charge,
                        MAX(completion_charge)     AS completion_charge
                 FROM lead_charges
-                WHERE item_id IS NOT NULL
-                GROUP BY item_id
+                WHERE item_id IS NOT NULL {$innerZoneFilter}
+                GROUP BY zone_id, item_id
             ) lc ON lc.item_id = i.id
+            LEFT JOIN zones z ON z.id = lc.zone_id
             WHERE i.module_id = 6
-            ORDER BY c.name, i.id
+            ORDER BY z.name, c.name, i.id
         ");
         while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
             fputcsv($handle, $row);
@@ -1559,26 +1566,35 @@ class ItemController extends Controller
 
             if (!$categoryId) { $skipped++; continue; }
 
-            $v1 = $row[$colMap['ven_1_charges']]     ?? null;
-            $v2 = $row[$colMap['ven_2_charges']]     ?? null;
-            $v3 = $row[$colMap['ven_3_charges']]     ?? null;
-            $vo = $row[$colMap['ven_other_charges']] ?? null;
+            $v1  = $row[$colMap['ven_1_charges']]          ?? null;
+            $v2  = $row[$colMap['ven_2_charges']]          ?? null;
+            $v3  = $row[$colMap['ven_3_charges']]          ?? null;
+            $vo  = $row[$colMap['ven_other_charges']]      ?? null;
+            $vs  = $row[$colMap['ven_same_charges']        ?? -1] ?? null;
+            $vd  = $row[$colMap['dedicated_lead_charge']   ?? -1] ?? null;
+            $vc  = $row[$colMap['confirmation_charge']     ?? -1] ?? null;
+            $vco = $row[$colMap['completion_charge']       ?? -1] ?? null;
 
-            if (!$v1 && !$v2 && !$v3 && !$vo) { $skipped++; continue; }
+            $filled = fn($v) => $v !== null && $v !== '';
+            if (!$filled($v1) && !$filled($v2) && !$filled($v3) && !$filled($vo)
+                && !$filled($vs) && !$filled($vd) && !$filled($vc) && !$filled($vco)) {
+                $skipped++; continue;
+            }
 
             $resolvedItemId = ($itemId && $itemId != 0) ? $itemId : null;
+            $resolvedZoneId = isset($colMap['zone_id']) ? (int)($row[$colMap['zone_id']] ?? 0) : 0;
 
-            // Delete the single existing record for this category+item+zone=0
+            // Delete the single existing record for this category+item+zone
             $q = DB::table('lead_charges')
                 ->where('category_id', $categoryId)
-                ->where('zone_id', 0);
+                ->where('zone_id', $resolvedZoneId);
             $resolvedItemId === null
                 ? $q->whereNull('item_id')
                 : $q->where('item_id', $resolvedItemId);
             $q->delete();
 
             $batch[] = [
-                'zone_id'               => 0,
+                'zone_id'               => $resolvedZoneId,
                 'category_id'           => $categoryId,
                 'item_id'               => $resolvedItemId,
                 'ven_1_charges'         => $v1,

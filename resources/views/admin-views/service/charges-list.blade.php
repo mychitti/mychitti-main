@@ -12,7 +12,7 @@
         <div class="page-header">
             <div class="d-flex align-items-center gap-2">
             <h1 class="page-header-title mb-0"><i class="tio-filter-list"></i> Lead Charges<span class="badge badge-soft-dark ml-2" id="itemCount">{{$charges->total()}}</span></h1>
-            <a href="{{ route('admin.service.lead-charge-export') }}" class="btn btn-sm btn-outline-primary">
+            <a href="{{ route('admin.service.lead-charge-export') . (request('zone_id') ? '?zone_id='.request('zone_id') : '') }}" class="btn btn-sm btn-outline-primary">
                 <i class="tio-download"></i> Export Template
             </a>
             <button type="button" class="btn btn-sm btn-outline-success" data-toggle="modal" data-target="#importModal">
@@ -103,7 +103,7 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{$lead->cat_name}}</td>
                             <td>{{ $lead->item_name ?? 'All Services' }}</td>
-                            <td>{{$lead->zone_name}}</td>
+                            <td>{{$lead->zone_name ?? 'All'}}</td>
                             <td>
                                 <div class="info">
                                     <div class="text--title">
@@ -166,9 +166,10 @@
                         <div class="alert alert-info py-2" style="font-size:13px;">
                             <strong>Steps:</strong>
                             <ol class="mb-0 pl-3">
-                                <li>Click <strong>Export Template</strong> to download all services.</li>
-                                <li>Fill in the charge columns (leave blank rows to skip).</li>
-                                <li>Upload the file here — existing charges will be updated.</li>
+                                <li>Click <strong>Export Template</strong> (select a zone first if needed) to download services.</li>
+                                <li>Fill in the charge columns. Do <strong>not</strong> change <code>zone_id</code>, <code>category_id</code>, or <code>item_id</code>.</li>
+                                <li>Leave rows blank to skip them.</li>
+                                <li>Upload the file here — existing charges for the matching zone will be updated.</li>
                             </ol>
                         </div>
                         <div class="form-group">
