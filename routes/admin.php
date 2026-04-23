@@ -116,6 +116,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::delete('{id}', 'WebsiteErrorController@destroy')->name('destroy');
                 Route::post('bulk-delete', 'WebsiteErrorController@bulkDelete')->name('bulk-delete');
             });
+            Route::prefix('vendor-access-logs')->as('vendor-access-logs.')->group(function () {
+                Route::get('/', 'LogController@index')->name('index');
+                Route::post('{id}/status', 'LogController@updateStatus')->name('update-status');
+                Route::delete('{id}', 'LogController@destroy')->name('destroy');
+                Route::post('bulk-delete', 'LogController@bulkDelete')->name('bulk-delete');
+            });
         });
 
 

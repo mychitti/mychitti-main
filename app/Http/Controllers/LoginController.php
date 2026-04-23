@@ -236,7 +236,7 @@ class LoginController extends Controller
         } elseif ($role == 'vendor') {
             $vendor = Vendor::where('email', $request->email)->first();
             if ($vendor) {
-                
+
                 if ($vendor->stores[0]->suspended == 1) {
                     return redirect()->back()->withInput($request->only('email', 'remember'))
                         ->withErrors([translate('messages.your_account_is_suspended')]);
@@ -302,14 +302,13 @@ class LoginController extends Controller
                 $employee = VendorEmployee::where('email', $request->email)->first();
                 $employee->is_logged_in = 1;
                 $employee->save();
-                
+
 
                 if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                     return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
                 } else {
                     return redirect()->to('https://vendor-staff.mcvendorhub.com/dashboard');
                 }
-
             }
             if ($domain == 'staging.mychitti.net' || $domain == 'www.staging.mychitti.net') {
                 return redirect()->to('https://staging.mychitti.net/store-panel/dashboard');
@@ -483,15 +482,15 @@ class LoginController extends Controller
         if (!_verify_otp($request->phone, $otp)) {
             return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
         }
-            //  SAVE LOGIN LOG HERE
-            $log = \App\Models\VendorLoginLog::create([
-                'vendor_id' => auth('vendor')->id(),
-                'login_at' => now(),
-                'last_activity_at' => now(),
-            ]);
+        //  SAVE LOGIN LOG HERE
+        $log = \App\Models\VendorLoginLog::create([
+            'vendor_id' => auth('vendor')->id(),
+            'login_at' => now(),
+            'last_activity_at' => now(),
+        ]);
 
-            // store log id in session (VERY IMPORTANT)
-            session(['login_log_id' => $log->id]);
+        // store log id in session (VERY IMPORTANT)
+        session(['login_log_id' => $log->id]);
         return response()->json(['status' => true, 'message' => 'OTP verification successful']);
     }
     public function reloadCaptcha()
@@ -553,10 +552,10 @@ class LoginController extends Controller
             ]);
             $url = url('/') . '/password-reset?token=' . $token;
             try {
-                if(config('mail.status') && $vendor['email'] ){
-                Mail::to($vendor['email'])->send(new PasswordResetRequestMail($url, $vendor['f_name']));
-                session()->put('log_email_succ', 1);
-                }else{
+                if (config('mail.status') && $vendor['email']) {
+                    Mail::to($vendor['email'])->send(new PasswordResetRequestMail($url, $vendor['f_name']));
+                    session()->put('log_email_succ', 1);
+                } else {
                     Toastr::error(translate('messages.Failed_to_send_mail'));
                 }
             } catch (\Throwable $th) {
@@ -699,6 +698,13 @@ class LoginController extends Controller
             $vendor = Vendor::find(Helpers::get_loggedin_user()->id);
             $vendor->cm_firebase_token = null;
             $vendor->save();
+            if (auth('vendor')->check() && session()->has('login_log_id')) {
+
+                \App\Models\VendorLoginLog::where('id', session('login_log_id'))
+                    ->update([
+                        'logout_at' => now()
+                    ]);
+            }
 
             auth()->guard('vendor')->logout();
         } elseif (auth('vendor_employee')?->check()) {
@@ -721,6 +727,15 @@ class LoginController extends Controller
             $vendor->cm_firebase_token = null;
             $vendor->save();
             $user_link = Helpers::get_login_url('store_login_url');
+            
+             if (auth('vendor')->check() && session()->has('login_log_id')) {
+
+                \App\Models\VendorLoginLog::where('id', session('login_log_id'))
+                    ->update([
+                        'logout_at' => now()
+                    ]);
+            }
+
             auth()->guard('vendor')->logout();
         } elseif (auth('vendor_employee')?->check()) {
             $user_link = Helpers::get_login_url('store_employee_login_url');

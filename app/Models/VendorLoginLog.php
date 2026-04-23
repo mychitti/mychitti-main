@@ -12,4 +12,8 @@ class VendorLoginLog extends Model
         'login_at',
         'last_activity_at'
     ];
+
+    public function vendor(){
+        return $this->belongsTo(Vendor::class);
+    }
 }

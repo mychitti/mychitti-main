@@ -28,6 +28,11 @@
                             aria-disabled="true">Website Error Logs</a>
                     </li>
                     @endif
+                     <li class="nav-item">
+                        <a class="nav-link {{ Request::routeIs('admin.logs.vendor-access-logs.index') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.vendor-access-logs.index') }}"
+                            aria-disabled="true">Vendor Access Logs</a>
+                    </li>
                 </ul>
                 <!-- End Nav -->
             </div>

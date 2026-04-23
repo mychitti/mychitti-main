@@ -317,6 +317,22 @@ Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')-
 Route::get('storage/{path}', function ($path) {
     $host = request()->getHost();
 
+    // Normalize legacy storage/app/public/... URLs
+    if (str_starts_with($path, 'app/public/')) {
+        $path = substr($path, strlen('app/public/'));
+    }
+
+    // Always public — no auth required on any server
+    $alwaysPublic = ['vendor_login/'];
+    foreach ($alwaysPublic as $prefix) {
+        if (str_starts_with($path, $prefix)) {
+            if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                abort(404);
+            }
+            return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+        }
+    }
+
     if ($host === 'admin.mychitti.net') {
         if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
