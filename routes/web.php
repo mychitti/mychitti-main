@@ -322,7 +322,7 @@ Route::get('storage/{path}', function ($path) {
         $path = substr($path, strlen('app/public/'));
     }
 
-    // Always public — no auth required on any server
+    // Always public paths regardless of extension — no auth required on any server
     $alwaysPublic = ['vendor_login/'];
     foreach ($alwaysPublic as $prefix) {
         if (str_starts_with($path, $prefix)) {
@@ -334,7 +334,19 @@ Route::get('storage/{path}', function ($path) {
     }
 
     if ($host === 'admin.mychitti.net') {
-        if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+        // store/ images (logos, cover photos, etc.) are public — but sensitive subdirs still require auth
+        $storeSensitive = [
+            'store/docs/', 'store/documents/', 'store/banking/', 'store/signature/',
+            'store/branch/', 'store/service_reports/', 'store/jobcards/', 'store/recivable-receipts/',
+        ];
+        $isPublicStorePath = str_starts_with($path, 'store/');
+        foreach ($storeSensitive as $sensitive) {
+            if (str_starts_with($path, $sensitive)) {
+                $isPublicStorePath = false;
+                break;
+            }
+        }
+        if (!$isPublicStorePath && !\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
         }
     } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com', 'vendor.mychitti.net', 'vendor.mychitti.shop', 'vendor-employee.mychitti.shop'])) {
