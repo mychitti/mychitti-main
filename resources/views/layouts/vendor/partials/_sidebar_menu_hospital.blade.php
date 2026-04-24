@@ -2395,7 +2395,7 @@
                 @endif
 
 
-                @if (selected_menu('notifications') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                @if ( \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link "

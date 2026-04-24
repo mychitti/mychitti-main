@@ -143,6 +143,7 @@
                 </li>
                 @endif
                 <!-- End Campaign -->
+              
                 <!-- Banner -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('banner'))
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('banner*') ? 'show active' : '' }}">

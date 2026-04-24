@@ -1172,6 +1172,46 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
 
+        // ── Marketing Campaigns (mc) ──────────────────────────────────────────
+        Route::group(['prefix' => 'mc', 'as' => 'mc.'], function () {
+            Route::get('/',                                    'MarketingCampaignController@index')->name('index');
+            Route::get('create',                              'MarketingCampaignController@create')->name('create');
+            Route::post('store',                              'MarketingCampaignController@store')->name('store');
+            Route::get('{id}/edit',                           'MarketingCampaignController@edit')->name('edit');
+            Route::post('{id}/update',                        'MarketingCampaignController@update')->name('update');
+            Route::get('{id}/status/{status}',                'MarketingCampaignController@status')->name('status');
+            Route::delete('{id}/delete',                      'MarketingCampaignController@destroy')->name('destroy');
+
+            // Sponsors
+            Route::post('{id}/sponsors',                      'MarketingCampaignController@storeSponsor')->name('sponsors.store');
+            Route::delete('{id}/sponsors/{sid}',              'MarketingCampaignController@destroySponsor')->name('sponsors.destroy');
+            // Influencers
+            Route::post('{id}/influencers',                   'MarketingCampaignController@storeInfluencer')->name('influencers.store');
+            Route::delete('{id}/influencers/{rid}',           'MarketingCampaignController@destroyInfluencer')->name('influencers.destroy');
+            // Guests
+            Route::post('{id}/guests',                        'MarketingCampaignController@storeGuest')->name('guests.store');
+            Route::delete('{id}/guests/{rid}',                'MarketingCampaignController@destroyGuest')->name('guests.destroy');
+            // Collaborations
+            Route::post('{id}/collaborations',                'MarketingCampaignController@storeCollaboration')->name('collaborations.store');
+            Route::delete('{id}/collaborations/{rid}',        'MarketingCampaignController@destroyCollaboration')->name('collaborations.destroy');
+            // Budget
+            Route::post('{id}/budget',                        'MarketingCampaignController@storeBudgetItem')->name('budget.store');
+            Route::delete('{id}/budget/{rid}',                'MarketingCampaignController@destroyBudgetItem')->name('budget.destroy');
+            // Expenses
+            Route::post('{id}/expenses',                      'MarketingCampaignController@storeExpense')->name('expenses.store');
+            Route::delete('{id}/expenses/{rid}',              'MarketingCampaignController@destroyExpense')->name('expenses.destroy');
+            // Targets
+            Route::post('{id}/targets',                       'MarketingCampaignController@storeTarget')->name('targets.store');
+            Route::patch('{id}/targets/{rid}',                'MarketingCampaignController@updateTarget')->name('targets.update');
+            Route::delete('{id}/targets/{rid}',               'MarketingCampaignController@destroyTarget')->name('targets.destroy');
+            // Team
+            Route::post('{id}/team',                          'MarketingCampaignController@storeTeamMember')->name('team.store');
+            Route::delete('{id}/team/{rid}',                  'MarketingCampaignController@destroyTeamMember')->name('team.destroy');
+            // Winners
+            Route::post('{id}/winners',                       'MarketingCampaignController@storeWinner')->name('winners.store');
+            Route::delete('{id}/winners/{rid}',               'MarketingCampaignController@destroyWinner')->name('winners.destroy');
+        });
+
         Route::group(['prefix' => 'flash-sale', 'as' => 'flash-sale.'], function () {
             Route::get('add-new', 'FlashSaleController@index')->name('add-new');
             Route::post('store', 'FlashSaleController@store')->name('store');

@@ -1,46 +1,50 @@
 @extends('front-views.campaign_layout')
 
-@section('title','Campaign')
+@section('title', ($campaign?->meta_title ?? $campaign?->name ?? 'Campaign'))
 
-@push('css_or_js')
-<meta name="csrf-token" content="{{ csrf_token() }}">
-@endpush
+@section('meta_description', $campaign?->meta_description ?? '')
 
 @section('content')
- 
 
-    <!-- ══════════════════════════════════════
-       PAGE HERO  (optional — use per page)
-       ══════════════════════════════════════ -->
-    <section class="page-hero">
+@if($campaign)
+<section class="page-hero">
+    <div class="container">
+        @if($campaign->start_date && $campaign->end_date)
+        <span class="hero-eyebrow">
+            {{ $campaign->start_date->format('d M Y') }} – {{ $campaign->end_date->format('d M Y') }}
+        </span>
+        @endif
+        <h1 class="hero-title">{{ ucwords($campaign->name) }}</h1>
+        @if($campaign->prize_title)
+        <p class="hero-subtitle">Win: {{ $campaign->prize_title }}{{ $campaign->prize_value ? ' — worth ₹' . number_format($campaign->prize_value) : '' }}</p>
+        @endif
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:32px;">
+            <a href="{{ route('campaign.enter', $campaign->slug) }}" class="btn btn-primary btn-lg">Enter now →</a>
+            <a href="{{ route('campaign.how-it-works', $campaign->slug) }}" class="btn btn-secondary btn-lg" style="color:#fff; border-color:rgba(255,255,255,.3);">How it works</a>
+        </div>
+    </div>
+</section>
+
+@if($campaign->page_content)
+<main class="site-main">
+    <section class="section">
         <div class="container">
-            <span class="hero-eyebrow">2026 Campaign</span>
-            <h1 class="hero-title">Win Something<br />Extraordinary</h1>
-            <p class="hero-subtitle">Enter for your chance to be part of something remarkable. Simple, fair,
-                unforgettable.</p>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:32px;">
-                <a href="/enter" class="btn btn-primary btn-lg">Enter now →</a>
-                <a href="/how-it-works" class="btn btn-secondary btn-lg"
-                    style="color:#fff; border-color:rgba(255,255,255,.3);">How it works</a>
+            <div class="campaign-rich-content">
+                {!! $campaign->page_content !!}
             </div>
         </div>
     </section>
+</main>
+@endif
 
-    <!-- ══════════════════════════════════════
-       MAIN CONTENT  ← replace with page content
-       ══════════════════════════════════════ -->
-    <main class="site-main">
-
-        <!-- ─── DELETE THIS BLOCK — it's just a placeholder ─── -->
-        <div class="content-placeholder">
-            content
+@else
+<main class="site-main">
+    <section class="section">
+        <div class="container" style="text-align:center; padding:80px 0;">
+            <p style="color:var(--color-text-muted); font-size:18px;">No active campaign at the moment. Check back soon!</p>
         </div>
-        <!-- ─────────────────────────────────────────────────── -->
-
-    </main>
+    </section>
+</main>
+@endif
 
 @endsection
-
-@push('script_2')
-
-@endpush

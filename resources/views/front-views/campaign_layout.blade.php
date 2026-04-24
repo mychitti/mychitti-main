@@ -26,10 +26,10 @@
     <link rel="canonical" href="{{ url()->current() }}" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Campaign Name – Page Title" />
-    <meta property="og:description" content="Page description goes here." />
-    <meta property="og:image" content="https://example.com/og-image.jpg" />
-    <meta property="og:url" content="https://example.com/page" />
+    <meta property="og:title" content="{{ $campaign?->meta_title ?? $campaign?->name ?? 'Campaign' }}" />
+    <meta property="og:description" content="{{ $campaign?->meta_description ?? '' }}" />
+    <meta property="og:image" content="{{ $campaign?->og_image ? asset('storage/app/public/'.$campaign->og_image) : '' }}" />
+    <meta property="og:url" content="{{ url()->current() }}" />
     <meta property="og:type" content="website" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />

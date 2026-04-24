@@ -119,14 +119,20 @@ Route::post('app-config/update', [FrontController::class, 'app_config_update'])-
  
 
 // CAMPAIGN =================================
-Route::group(['prefix'=> 'campaign', 'as'=> 'campaign.'], function(){
-    Route::get('/', 'Front\CampaignController@index')->name('index');
-    Route::get('how-it-works', 'Front\CampaignController@how_it_works')->name('how-it-works');
-    Route::get('results', 'Front\CampaignController@results')->name('results');
-    Route::get('winners', 'Front\CampaignController@winners')->name('winners');
-    Route::get('faq', 'Front\CampaignController@faq')->name('faq');
-    Route::get('tnc', 'Front\CampaignController@tnc')->name('tnc');
-    Route::get('enter', 'Front\CampaignController@enter')->name('enter');
+Route::get('campaigns', 'Front\CampaignController@list')->name('campaigns.list');
+
+Route::group(['prefix' => 'campaign/{slug}', 'as' => 'campaign.'], function () {
+    Route::get('/',            'Front\CampaignController@index')->name('index');
+    Route::get('how-it-works','Front\CampaignController@how_it_works')->name('how-it-works');
+    Route::get('results',     'Front\CampaignController@results')->name('results');
+    Route::get('winners',     'Front\CampaignController@winners')->name('winners');
+    Route::get('faq',         'Front\CampaignController@faq')->name('faq');
+    Route::get('tnc',         'Front\CampaignController@tnc')->name('tnc');
+    Route::get('enter',       'Front\CampaignController@enter')->name('enter');
+    Route::get('sponsors',    'Front\CampaignController@sponsors')->name('sponsors');
+    Route::get('ambassadors', 'Front\CampaignController@ambassadors')->name('ambassadors');
+    Route::get('team',        'Front\CampaignController@team')->name('team');
+    Route::get('partners',    'Front\CampaignController@partners')->name('partners');
 });
 
  

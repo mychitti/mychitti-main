@@ -266,7 +266,14 @@
                             </ul>
                         </li>
                     @endif
-
+  <!-- Marketing Campaigns -->
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('mc*') ? 'show active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.mc.index') }}" title="Marketing Campaigns">
+                        <i class="tio-layers-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Marketing Campaigns</span>
+                    </a>
+                </li>
+                <!-- End Marketing Campaigns -->
 
                 <!-- Marketing section -->
                  @if (\App\CentralLogics\Helpers::module_permission_check('banner') || \App\CentralLogics\Helpers::module_permission_check('coupon'))

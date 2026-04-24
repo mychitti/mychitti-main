@@ -314,7 +314,7 @@
     }
 
     .hero-title {
-      font-family: var(--font-display);
+      /* font-family: var(--font-display); */
       font-size: clamp(32px, 5vw, 45px);
       font-weight: 800;
       line-height: 1.1;
@@ -535,6 +535,28 @@
     }
 
     .footer-legal-link:hover { color: rgba(255,255,255,.8); }
+
+    /* ════════════════════════════════════
+       RICH CONTENT (CKEditor output)
+       ════════════════════════════════════ */
+    .campaign-rich-content h1,
+    .campaign-rich-content h2,
+    .campaign-rich-content h3,
+    .campaign-rich-content h4 {
+      font-family: var(--font-display);
+      color: var(--color-accent);
+      margin: 1.5em 0 .5em;
+      line-height: 1.25;
+    }
+    .campaign-rich-content p { margin-bottom: 1em; color: var(--color-text-muted); line-height: 1.75; }
+    .campaign-rich-content ul, .campaign-rich-content ol { padding-left: 1.5em; margin-bottom: 1em; color: var(--color-text-muted); }
+    .campaign-rich-content li { margin-bottom: .4em; }
+    .campaign-rich-content strong { color: var(--color-text); }
+    .campaign-rich-content a { color: var(--color-primary); text-decoration: underline; }
+    .campaign-rich-content img { border-radius: var(--radius-md); margin: 1em 0; }
+    .campaign-rich-content table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+    .campaign-rich-content th, .campaign-rich-content td { border: 1px solid var(--color-border); padding: 8px 12px; font-size: 14px; }
+    .campaign-rich-content th { background: var(--color-surface-alt); font-weight: 600; }
 
     /* ════════════════════════════════════
        PLACEHOLDER  — remove for real pages
