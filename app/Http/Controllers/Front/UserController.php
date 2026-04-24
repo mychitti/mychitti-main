@@ -871,6 +871,7 @@ class UserController extends Controller
             $user_addresses = CustomerAddress::where('user_id', $user_id)->get();
         } else if ($tab == 'bookings') {
             // user services ================
+            prx('fsds');
             $services['history'] = _serviceHistory($user_id);
             $services['running'] = _serviceRunning($user_id);
         } else if ($tab == 'favourites') {
