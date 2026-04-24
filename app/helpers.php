@@ -2940,6 +2940,7 @@ if (!function_exists('_serviceHistory')) {
             $confirmationReq = $confirmationReq1
                 ->union($confirmationReq2)
                 ->orderByDesc('created_at')
+                ->limit(100)
                 ->get();
 
             if ($confirmationReq->isEmpty()) {
@@ -3070,12 +3071,8 @@ if (!function_exists('_serviceRunning')) {
             $items = $paginate ? $confirmationReq->items() : $confirmationReq;
 
             // Batch lookups — collect IDs first
-            $storeIds     = collect($items)->pluck('store_id')->filter()->unique()->values()->toArray();
             $acceptedIds  = collect($items)->pluck('id')->filter()->unique()->values()->toArray();
             $srIds        = collect($items)->pluck('service_request_id')->filter()->unique()->values()->toArray();
-
-            // Reviews grouped by store_id (limit per store to avoid huge result sets)
-            $reviewsByStore = StoreReview::whereIn('store_id', $storeIds)->get()->groupBy('store_id');
 
             // Gatepass / quotation existence sets
             $gatepassIds  = GatePass::whereIn('accepted_service_id', $acceptedIds)->pluck('accepted_service_id')->flip();
@@ -3108,17 +3105,6 @@ if (!function_exists('_serviceRunning')) {
                 // Images
                 $req->item_image = asset('storage/product') . '/' . ($req->item_image ?? 'default_image.png');
                 $req->store_logo = asset('storage/store') . '/' . ($req->store_logo ?? 'default_logo.png');
-
-                // Reviews (already fetched in batch)
-                $reviews = $reviewsByStore->get($req->store_id, collect());
-                foreach ($reviews as $review) {
-                    $attachments = (array) $review->attachment;
-                    foreach ($attachments as $k => $v) {
-                        $attachments[$k] = asset('storage/app/public/review') . '/' . $v;
-                    }
-                    $review->attachment = $attachments;
-                }
-                $req->reviews = $reviews;
 
                 // Assignment logic
                 if (isset($req->id)) {
