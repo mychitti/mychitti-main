@@ -208,7 +208,7 @@ class StoreController extends Controller
         $review->order_id = $request->acceptance_id;
         $review->comment = $request->comment;
         $review->rating = $request->rating;
-        $review->attachment = json_encode($image_array);
+        $review->attachment = $image_array;
         $review->save();
 
         $ratingData = DB::table('store_reviews')
