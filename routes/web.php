@@ -314,6 +314,7 @@ Route::group(['middleware' => ['frontuser']], function () {
 
 Route::group(['middleware' => ['registereduser']], function () {
     Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
+    Route::get('dashboard-bookings', [FrontUserController::class, 'load_bookings'])->name('dashboard.bookings');
 });
 
 Route::get('lang/{locale}', 'HomeController@lang')->name('lang');

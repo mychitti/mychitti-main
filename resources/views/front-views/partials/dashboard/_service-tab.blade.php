@@ -1,6 +1,6 @@
 <div class="tab-pane fade show active" id="v-pills-service" role="tabpanel" aria-labelledby="v-pills-service-tab">
     <div class="container tab_inner">
-        <h3 class="text-primary  my-2">Bookings</h3>
+        <h3 class="text-primary my-2">Bookings</h3>
         <nav>
             <div class="nav nav-tabs" id="nav-tab" role="tablist">
                 <button class="col-6 nav-link active" id="nav-Running-service-tab" data-bs-toggle="tab"
@@ -9,644 +9,44 @@
                 <button class="col-6 nav-link" id="nav-History-service-tab" data-bs-toggle="tab"
                     data-bs-target="#nav-History-service" type="button" role="tab"
                     aria-controls="nav-History-service" aria-selected="false">Booking History</button>
-            </div>  
+            </div>
         </nav>
         <div class="tab-content" id="nav-tabContent">
-            <div class="tab-pane fade show active " id="nav-Running-service" role="tabpanel"
+
+            {{-- RUNNING BOOKINGS --}}
+            <div class="tab-pane fade show active" id="nav-Running-service" role="tabpanel"
                 aria-labelledby="nav-Running-service-tab">
-                <div class="accordion" id="accordionExample">
-                    @if (count($services['running']))
-                        <div class="service-history-container">
-                            @foreach ($services['running'] as $key => $serRun)
-                                <div class="service-accordion-item mb-4">
-                                    <!-- Service Card Header -->
-                                    <div class="service-card-header" data-bs-toggle="collapse"
-                                        data-bs-target="#serviceCollapse{{ $key }}"
-                                        aria-expanded="{{ !$key ? 'true' : 'false' }}" role="button">
-                                        <div class="row align-items-center g-3">
-                                            <!-- Service Image & Info -->
-                                            <div class="col-md-6 col-lg-7">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    @if (isset($serRun->item_image))
-                                                        <div class="service-img-box">
-                                                            <img class="service-img"
-                                                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                src="{{ strpos($serRun->item_image, 'http') !== 0 ? asset('storage/app/public/product') . '/' : '' }}{{ $serRun->item_image }}"
-                                                                alt="{{ $serRun->item_name }}">
-                                                        </div>
-                                                    @endif
-
-                                                    <div class="service-info-box">
-                                                        <h5 class="service-name mb-1">{{ $serRun->item_name }}</h5>
-                                                        <div class="service-meta-info">
-                                                            <span
-                                                                class="service-id-badge">#{{ $serRun->service_request_id }}</span>
-                                                            <span class="service-date-text">
-                                                                <i class="far fa-calendar-alt me-1"></i>
-                                                                {{ date('d M Y, H:i', strtotime($serRun->created_at)) }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Status & Toggle -->
-                                            <div class="col-md-6 col-lg-5">
-                                                <div class="d-flex align-items-center justify-content-md-end gap-3">
-                                                    <span
-                                                        class="status-pill status-{{ strtolower(str_replace(' ', '-', $serRun->current_status)) }}">
-                                                        {{ $serRun->current_status }}
-                                                    </span>
-                                                    <div class="collapse-toggle-icon">
-                                                        <i class="fas fa-chevron-down"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Service Card Body (Collapsible) -->
-                                    <div id="serviceCollapse{{ $key }}"
-                                        class="collapse {{ !$key ? 'show' : '' }}"
-                                        data-bs-parent=".service-history-container">
-                                        <div class="service-card-body">
-                                            <div class="row g-4">
-                                                <!-- Left Column -->
-                                                <div class="col-lg-6">
-                                                    <!-- Service Details Card -->
-                                                    <div class="detail-card">
-                                                        <div class="detail-card-header">
-                                                            <i class="fas fa-info-circle me-2"></i>
-                                                            <span>Service Details</span>
-                                                        </div>
-                                                        <div class="detail-card-content">
-                                                            <div class="detail-row">
-                                                                <span class="detail-label">Service ID</span>
-                                                                <span
-                                                                    class="detail-value">#{{ $serRun->service_request_id }}</span>
-                                                            </div>
-                                                            <div class="detail-row">
-                                                                <span class="detail-label">Booking Date</span>
-                                                                <span
-                                                                    class="detail-value">{{ date('d M Y  H:i', strtotime($serRun->created_at)) }}</span>
-                                                            </div>
-                                                            <div class="detail-row">
-                                                                <span class="detail-label">Current Status</span>
-                                                                <span class="detail-value">
-                                                                    <span
-                                                                        class="status-pill-sm status-{{ strtolower(str_replace(' ', '-', $serRun->current_status)) }}">
-                                                                        {{ $serRun->current_status }}
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Staff Details Card -->
-                                                    @if ($serRun->assigned_to)
-                                                        <div class="detail-card mt-3">
-                                                            <div class="detail-card-header">
-                                                                <i class="fas fa-user-tie me-2"></i>
-                                                                <span>Assigned Staff</span>
-                                                            </div>
-                                                            <div class="detail-card-content">
-                                                                <div class="profile-box">
-                                                                    <img class="profile-avatar"
-                                                                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                        src="{{ $serRun->staff_image }}"
-                                                                        alt="{{ $serRun->staff_name }}">
-                                                                    <div class="profile-info">
-                                                                        <h6 class="profile-name">
-                                                                            {{ $serRun->staff_name }}</h6>
-                                                                        <p class="profile-designation">
-                                                                            {{ $serRun->staff_role }}</p>
-                                                                        <p class="profile-contact">
-                                                                            <i class="fas fa-phone me-1"></i>
-                                                                            {{ $serRun->staff_contact }}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                <!-- Right Column -->
-                                                <div class="col-lg-6">
-                                                    @if ($serRun->store_id)
-                                                        <!-- Store Details Card -->
-                                                        <div class="detail-card">
-                                                            <div class="detail-card-header">
-                                                                <i class="fas fa-store me-2"></i>
-                                                                <span>Store Information</span>
-                                                            </div>
-                                                            <div class="detail-card-content">
-                                                                <div class="profile-box">
-                                                                    @if (isset($serRun->store_logo))
-                                                                        <img class="profile-avatar"
-                                                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                            src="{{ strpos($serRun->store_logo, 'http') !== 0 ? asset('storage/app/public/store') . '/' : '' }}{{ $serRun->store_logo }}"
-                                                                            alt="{{ $serRun->store_name }}">
-                                                                    @endif
-                                                                    <div class="profile-info">
-                                                                        <h6 class="profile-name">
-                                                                            <a href="{{ route('store.details', [_selectedCity(), $serRun->store_slug]) }}"
-                                                                                class="store-link">
-                                                                                {{ ucfirst($serRun->store_name) }}
-                                                                            </a>
-                                                                        </h6>
-                                                                        <p class="profile-address">
-                                                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                                                            {{ $serRun->store_address }}
-                                                                        </p>
-                                                                        <p class="profile-contact">
-                                                                            <i class="fas fa-phone me-1"></i>
-                                                                            {{ $serRun->store_phone }}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            @if (isset($serRun->store_id))
-                                                <!-- Pricing Section -->
-                                                <div class="pricing-section mt-4">
-                                                    <div class="pricing-box">
-                                                        <span class="pricing-label">Visiting Charges</span>
-                                                        <span
-                                                            class="pricing-amount">{{ \App\CentralLogics\Helpers::currency_symbol() }}{{ number_format($serRun->quoted_price, 2) }}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="cta-buttons-section mt-4">
-                                                    <div class="d-flex gap-2 action_outer_{{ $serRun->id }}">
-                                                        @include(
-                                                            'front-views.partials.dashboard._service-actions-element',
-                                                            ['acceptedReq' => $serRun]
-                                                        )
-                                                    </div>
-                                                </div>
-
-                                                <!-- Action Buttons Section -->
-                                                <div class="actions-section mt-4">
-                                                    <div class="row g-3">
-                                                        <!-- Gatepass Button -->
-                                                        <div class="col-sm-6 col-md-3">
-                                                            @if ($serRun->gatepass_exists)
-                                                                <button
-                                                                    class="action-button action-primary w-100 gatepass-modal-btn"
-                                                                    data-id="{{ $serRun->service_request_id }}"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#gatepassModal">
-                                                                    <i class="fas fa-id-card"></i>
-                                                                    <span>Gatepass</span>
-                                                                </button>
-                                                            @else
-                                                                <button class="action-button action-disabled w-100"
-                                                                    disabled>
-                                                                    <i class="fas fa-id-card"></i>
-                                                                    <span>Gatepass</span>
-                                                                </button>
-                                                            @endif
-                                                        </div>
-
-                                                        <!-- Quotation Button -->
-                                                        <div class="col-sm-6 col-md-3">
-                                                            @if ($serRun->quotation_exists)
-                                                                <button
-                                                                    class="action-button action-primary w-100 quotation-modal-btn"
-                                                                    data-id="{{ $serRun->service_request_id }}"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#quotationModal">
-                                                                    <i class="fas fa-file-invoice"></i>
-                                                                    <span>Quotation</span>
-                                                                </button>
-                                                            @else
-                                                                <button class="action-button action-disabled w-100"
-                                                                    disabled>
-                                                                    <i class="fas fa-file-invoice"></i>
-                                                                    <span>Quotation</span>
-                                                                </button>
-                                                            @endif
-                                                        </div>
-
-
-
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-center my-5"> No active bookings...</p>
-                    @endif
+                <div class="running-bookings-container mt-3">
+                    <div id="running-bookings-list"></div>
+                    <div id="running-bookings-spinner" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button id="load-more-running" class="btn btn-outline-primary d-none"
+                            data-page="2" data-type="running">Load More</button>
+                    </div>
                 </div>
             </div>
-            <div class="tab-pane fade " id="nav-History-service" role="tabpanel"
+
+            {{-- HISTORY BOOKINGS --}}
+            <div class="tab-pane fade" id="nav-History-service" role="tabpanel"
                 aria-labelledby="nav-History-service-tab">
-                <div class="accordion" id="accordionExample">
-                    @if (count($services['history']))
-                        @foreach ($services['history'] as $key => $serRun)
-                            <div class="service-history-container">
-                                @foreach ($services['history'] as $key => $serRun)
-                                    <div class="service-accordion-item mb-4">
-                                        <!-- Service Card Header -->
-                                        <div class="service-card-header" data-bs-toggle="collapse"
-                                            data-bs-target="#serviceCollapse{{ $key }}"
-                                            aria-expanded="{{ !$key ? 'true' : 'false' }}" role="button">
-                                            <div class="row align-items-center g-3">
-                                                <!-- Service Image & Info -->
-                                                <div class="col-md-6 col-lg-7">
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        @if (isset($serRun->item_image))
-                                                            <div class="service-img-box">
-                                                                <img class="service-img"
-                                                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                    src="{{ strpos($serRun->item_image, 'http') !== 0 ? asset('storage/app/public/product') . '/' : '' }}{{ $serRun->item_image }}"
-                                                                    alt="{{ $serRun->item_name }}">
-                                                            </div>
-                                                        @endif
-
-                                                        <div class="service-info-box">
-                                                            <h5 class="service-name mb-1">{{ $serRun->item_name }}
-                                                            </h5>
-                                                            <div class="service-meta-info">
-                                                                <span
-                                                                    class="service-id-badge">#{{ $serRun->service_request_id }}</span>
-                                                                <span class="service-date-text">
-                                                                    <i class="far fa-calendar-alt me-1"></i>
-                                                                    {{ date('d M Y, H:i', strtotime($serRun->created_at)) }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Status & Toggle -->
-                                                <div class="col-md-6 col-lg-5">
-                                                    <div
-                                                        class="d-flex align-items-center justify-content-md-end gap-3">
-                                                        <span
-                                                            class="status-pill status-{{ strtolower(str_replace(' ', '-', $serRun->current_status)) }}">
-                                                            {{ $serRun->current_status }}
-                                                        </span>
-                                                        <div class="collapse-toggle-icon">
-                                                            <i class="fas fa-chevron-down"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Service Card Body (Collapsible) -->
-                                        <div id="serviceCollapse{{ $key }}"
-                                            class="collapse {{ !$key ? 'show' : '' }}"
-                                            data-bs-parent=".service-history-container">
-                                            <div class="service-card-body">
-                                                <div class="row g-4">
-                                                    <!-- Left Column -->
-                                                    <div class="col-lg-6">
-                                                        <!-- Service Details Card -->
-                                                        <div class="detail-card service_info_{{ $serRun->id }}">
-                                                            <div class="detail-card-header">
-                                                                <i class="fas fa-info-circle me-2"></i>
-                                                                <span>Service Details</span>
-                                                            </div>
-                                                            <div class="detail-card-content">
-                                                                <div class="detail-row">
-                                                                    <span class="detail-label">Service ID</span>
-                                                                    <span
-                                                                        class="detail-value">#{{ $serRun->service_request_id }}</span>
-                                                                </div>
-                                                                <div class="detail-row">
-                                                                    <span class="detail-label">Booking Date</span>
-                                                                    <span
-                                                                        class="detail-value">{{ date('d M Y  H:i', strtotime($serRun->created_at)) }}</span>
-                                                                </div>
-                                                                <div class="detail-row">
-                                                                    <span class="detail-label">Current Status</span>
-                                                                    <span class="detail-value">
-                                                                        <span
-                                                                            class="status-pill-sm status-{{ strtolower(str_replace(' ', '-', $serRun->current_status)) }}">
-                                                                            {{ $serRun->current_status }}
-                                                                        </span>
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Staff Details Card -->
-                                                        @if ($serRun->assigned_to)
-                                                            <div class="detail-card mt-3">
-                                                                <div class="detail-card-header">
-                                                                    <i class="fas fa-user-tie me-2"></i>
-                                                                    <span>Assigned Staff</span>
-                                                                </div>
-                                                                <div class="detail-card-content">
-                                                                    <div class="profile-box">
-                                                                        <img class="profile-avatar"
-                                                                            data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                            src="{{ $serRun->staff_image }}"
-                                                                            alt="{{ $serRun->staff_name }}">
-                                                                        <div class="profile-info">
-                                                                            <h6 class="profile-name">
-                                                                                {{ $serRun->staff_name }}</h6>
-                                                                            <p class="profile-designation">
-                                                                                {{ $serRun->staff_role }}</p>
-                                                                            <p class="profile-contact">
-                                                                                <i class="fas fa-phone me-1"></i>
-                                                                                {{ $serRun->staff_contact }}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-
-                                                    <!-- Right Column -->
-                                                    <div class="col-lg-6">
-                                                        @if ($serRun->store_id)
-                                                            <!-- Store Details Card -->
-                                                            <div class="detail-card">
-                                                                <div class="detail-card-header">
-                                                                    <i class="fas fa-store me-2"></i>
-                                                                    <span>Store Information</span>
-                                                                </div>
-                                                                <div class="detail-card-content">
-                                                                    <div class="profile-box">
-                                                                        @if (isset($serRun->store_logo))
-                                                                            <img class="profile-avatar"
-                                                                                data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}"
-                                                                                src="{{ strpos($serRun->store_logo, 'http') !== 0 ? asset('storage/app/public/store') . '/' : '' }}{{ $serRun->store_logo }}"
-                                                                                alt="{{ $serRun->store_name }}">
-                                                                        @endif
-                                                                        <div class="profile-info">
-                                                                            <h6 class="profile-name">
-                                                                                <a href="{{ route('store.details', [_selectedCity(), $serRun->store_slug]) }}"
-                                                                                    class="store-link">
-                                                                                    {{ ucfirst($serRun->store_name) }}
-                                                                                </a>
-                                                                            </h6>
-                                                                            <p class="profile-address">
-                                                                                <i
-                                                                                    class="fas fa-map-marker-alt me-1"></i>
-                                                                                {{ $serRun->store_address }}
-                                                                            </p>
-                                                                            <p class="profile-contact">
-                                                                                <i class="fas fa-phone me-1"></i>
-                                                                                {{ $serRun->store_phone }}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            @if (_reviewStatus($serRun->id)['status'] === 'exists')
-                                                                <div class="detail-card">
-                                                                    <div class="detail-card-header">
-                                                                        <i class="fas fa-store me-2"></i>
-                                                                        <span>Rating & Review</span>
-                                                                    </div>
-                                                                    <div class="detail-card-content">
-                                                                        @php
-                                                                            $rev = isset(
-                                                                                _reviewStatus($serRun->id)['review'],
-                                                                            )
-                                                                                ? _reviewStatus($serRun->id)['review']
-                                                                                : null;
-                                                                            $store = App\Models\Store::find(
-                                                                                $serRun->store_id,
-                                                                            );
-                                                                        @endphp
-                                                                        <div class="d-flex border rounded my-2  p-2">
-
-                                                                            <div class="d-flex flex-column w-100">
-                                                                                <div
-                                                                                    class="d-flex justify-content-between review_info">
-                                                                                    <div class="">
-                                                                                        <p class="mb-2 date_time"
-                                                                                            style="">
-                                                                                            {{ _formatted_datetime($rev->created_at) }}
-                                                                                        </p>
-                                                                                        <div class="d-flex ">
-
-                                                                                            <div class="d-flex ">
-                                                                                                @for ($i = 1; $i < 6; $i++)
-                                                                                                    <i
-                                                                                                        class="rating_star fa fa-star {{ $rev->rating >= $i ? 'text-secondary' : '' }}"></i>
-                                                                                                @endfor
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <p class="text-dark">
-                                                                                            {{ $rev->comment }}</p>
-                                                                                    </div>
-
-                                                                                    @if ($rev->attachment)
-                                                                                        @php $attachments = (array) $rev->attachment; @endphp
-                                                                                        @if (!empty($attachments))
-                                                                                            <div class="d-flex">
-                                                                                                @foreach ($attachments as $img)
-                                                                                                    <a target="_blank"
-                                                                                                        class="mx-1"
-                                                                                                        href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
-                                                                                                            loading="lazy"
-                                                                                                            class="rounded"
-                                                                                                            style="width: 55px;"
-                                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                                                                            alt="review"></a>
-                                                                                                    <a target="_blank"
-                                                                                                        href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"><img
-                                                                                                            loading="lazy"
-                                                                                                            class="rounded"
-                                                                                                            style="width: 55px;"
-                                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                                                                            alt="review"></a>
-                                                                                                @endforeach
-                                                                                            </div>
-                                                                                        @endif
-                                                                                    @endif
-                                                                                </div>
-                                                                                @if ($rev->reply)
-                                                                                    <div
-                                                                                        class="d-flex border rounded  p-2">
-                                                                                        <img loading="lazy"
-                                                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store->logo, asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
-                                                                                            class="img-fluid rounded m-2 reply_img"
-                                                                                            style=""
-                                                                                            alt="{{ $store->name }}">
-                                                                                        <div class="">
-                                                                                            <p class="mb-0 date_time"
-                                                                                                style="">
-                                                                                                {{ _formatted_datetime($rev->replied_at) }}
-                                                                                            </p>
-
-                                                                                            <p class="text-dark">
-                                                                                                {{ $rev->reply }}</p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                @endif
-                                                                            </div>
-
-
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-
-                                                            @php $coupon = _serviceCoupon($serRun->id) @endphp
-                                                            @if ($coupon)
-                                                                <div class="detail-card">
-                                                                    <div class="detail-card-header">
-                                                                        <i class="fas fa-store me-2"></i>
-                                                                        <span>Coupon</span>
-                                                                    </div>
-                                                                    <div class="detail-card-content">
-                                                                     
-                                                                        <div class="">
-
-                                                                            <div class="d-flex flex-column w-100">
-                                                                                <div class="coupon-card p-0">
-                                                                                    <div class="coupon-top">
-                                                                                        <div class="coupon-name">
-                                                                                            {{ ucfirst($coupon->title) }}
-                                                                                        </div>
-                                                                                        <div class="coupon-code-box">
-                                                                                            {{ $coupon->code }}
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    <div class="coupon-bottom">
-                                                                                        <div class="coupon-info">
-                                                                                            <div class="info-item">
-                                                                                                <div
-                                                                                                    class="info-label">
-                                                                                                    Discount
-                                                                                                </div>
-                                                                                                <div
-                                                                                                    class="info-value discount-value">
-                                                                                                    {{ $coupon->discount_type == 'amount' ? \App\CentralLogics\Helpers::currency_symbol() : '' }}{{ $coupon->discount }}{{ $coupon->discount_type == 'percent' ? '%' : '' }}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div class="info-item">
-                                                                                                <div
-                                                                                                    class="info-label">
-                                                                                                    Minimum
-                                                                                                    Purchase
-                                                                                                </div>
-                                                                                                <div
-                                                                                                    class="info-value">
-                                                                                                    {{ $coupon->min_purchase }}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            @if ($coupon->discount_type == 'percent')
-                                                                                                <div class="info-item">
-                                                                                                    <div
-                                                                                                        class="info-label">
-                                                                                                        Max Off
-                                                                                                    </div>
-                                                                                                    <div
-                                                                                                        class="info-value">
-                                                                                                        {{ $coupon->max_discount }}
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            @endif
-                                                                                        </div>
-
-                                                                                        <div class="coupon-meta">
-                                                                                            <span>{{ date('M d', strtotime($coupon->start_date)) }}
-                                                                                                -
-                                                                                                {{ date('M d', strtotime($coupon->expire_date)) }}</span>
-                                                                                            <span>{{ $coupon->total_uses }}/{{ $coupon->limit }}</span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-                                                            
-                                                        @endif
-                                                    </div>
-                                                </div>
-
-                                                @if (isset($serRun->store_id))
-                                                    <!-- Pricing Section -->
-                                                    <div class="pricing-section mt-4">
-                                                        <div class="pricing-box">
-                                                            <span class="pricing-label">Visiting Charges</span>
-                                                            <span
-                                                                class="pricing-amount">{{ \App\CentralLogics\Helpers::currency_symbol() }}{{ number_format($serRun->quoted_price, 2) }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="cta-buttons-section mt-4">
-                                                        <div class="d-flex gap-2 action_outer_{{ $serRun->id }}">
-                                                            @include(
-                                                                'front-views.partials.dashboard._service-actions-element',
-                                                                ['acceptedReq' => $serRun]
-                                                            )
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Action Buttons Section -->
-                                                    <div class="actions-section mt-4">
-                                                        <div class="row g-3">
-
-                                                            <!-- Invoice Button -->
-                                                            <div class="col-sm-6 col-md-3">
-                                                                @if (_getServiceInvoice($serRun->service_request_id))
-                                                                    <a href="{{ asset('storage/app/public/invoice') . '/' . _getServiceInvoice($serRun->service_request_id) }}"
-                                                                        target="_blank"
-                                                                        class="action-button action-primary w-100">
-                                                                        <i class="fas fa-receipt"></i>
-                                                                        <span>Invoice</span>
-                                                                    </a>
-                                                                @else
-                                                                    <button
-                                                                        class="action-button action-primary w-100 action-disabled w-100"
-                                                                        disabled>
-                                                                        <i class="fas fa-receipt"></i>
-                                                                        <span>Invoice</span>
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-
-                                                            <!-- Review Button -->
-                                                            <div class="col-sm-6 col-md-3">
-
-                                                                @if (_reviewStatus($serRun->id)['status'] === true)
-                                                                    <button type="button"
-                                                                        class="action-button action-primary w-100  w-100 service_review_btn"
-                                                                        data-id="{{ $serRun->id }}"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#serviceReviewModal">
-                                                                        <i class="fas fa-star"></i>
-                                                                        <span>Review</span>
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endforeach
-                    @else
-                        <p class="text-center my-5"> No booking history...</p>
-                    @endif
+                <div class="history-bookings-container mt-3">
+                    <div id="history-bookings-list"></div>
+                    <div id="history-bookings-spinner" class="text-center py-4 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button id="load-more-history" class="btn btn-outline-primary d-none"
+                            data-page="2" data-type="history">Load More</button>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="gatepassModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1368,3 +768,62 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const BOOKINGS_URL = '{{ route("dashboard.bookings") }}';
+
+    function loadBookings(type, page, append) {
+        const listEl    = document.getElementById(type + '-bookings-list');
+        const spinner   = document.getElementById(type + '-bookings-spinner');
+        const moreBtn   = document.getElementById('load-more-' + type);
+
+        spinner.classList.remove('d-none');
+        moreBtn.classList.add('d-none');
+
+        fetch(BOOKINGS_URL + '?type=' + type + '&page=' + page, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (append) {
+                listEl.insertAdjacentHTML('beforeend', data.html);
+            } else {
+                listEl.innerHTML = data.html || '<p class="text-center my-5">No bookings found.</p>';
+            }
+
+            if (data.has_more) {
+                moreBtn.dataset.page = data.next_page;
+                moreBtn.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            listEl.innerHTML = '<p class="text-center text-danger my-4">Failed to load bookings. Please refresh.</p>';
+        })
+        .finally(() => {
+            spinner.classList.add('d-none');
+        });
+    }
+
+    // Load running on page ready
+    loadBookings('running', 1, false);
+
+    // Load history when its tab is first clicked
+    let historyLoaded = false;
+    document.getElementById('nav-History-service-tab').addEventListener('shown.bs.tab', function () {
+        if (!historyLoaded) {
+            historyLoaded = true;
+            document.getElementById('history-bookings-spinner').classList.remove('d-none');
+            loadBookings('history', 1, false);
+        }
+    });
+
+    // Load more buttons
+    document.getElementById('load-more-running').addEventListener('click', function () {
+        loadBookings('running', parseInt(this.dataset.page), true);
+    });
+    document.getElementById('load-more-history').addEventListener('click', function () {
+        loadBookings('history', parseInt(this.dataset.page), true);
+    });
+})();
+</script>

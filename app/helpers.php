@@ -2918,7 +2918,7 @@ if (!function_exists('addStatus')) {
     }
 }
 if (!function_exists('_serviceHistory')) {
-    function _serviceHistory($uid)
+    function _serviceHistory($uid, $paginate = false, $perPage = 10)
     {
         try {
             $confirmationReq1 =
@@ -2937,30 +2937,30 @@ if (!function_exists('_serviceHistory')) {
                 ->where('service_requests.user_id', $uid)
                 ->select('cancelled_service_requests.*', 'service_requests.id as service_id', 'items.name as item_name', 'items.image as item_image', 'stores.name as store_name', 'stores.logo as store_logo', 'stores.id as store_id', 'stores.address as store_address', 'stores.slug as store_slug', 'stores.phone as store_phone');
 
-            $confirmationReq = $confirmationReq1
-                ->union($confirmationReq2)
-                ->orderByDesc('created_at')
-                ->limit(100)
-                ->get();
+            $union = $confirmationReq1->union($confirmationReq2)->orderByDesc('created_at');
 
-            if ($confirmationReq->isEmpty()) {
-                return [];
+            $confirmationReq = $paginate ? $union->paginate($perPage) : $union->limit(100)->get();
+
+            $items = $paginate ? $confirmationReq->items() : $confirmationReq;
+
+            if (empty($items)) {
+                return $paginate ? $confirmationReq : [];
             }
 
             // Batch: invoices keyed by service_request_id
-            $serviceIds = $confirmationReq->pluck('service_request_id')->filter()->unique()->values()->toArray();
+            $serviceIds = collect($items)->pluck('service_request_id')->filter()->unique()->values()->toArray();
             $invoices = DB::table('service_invoices')
                 ->whereIn('service_id', $serviceIds)
                 ->get()->keyBy('service_id');
 
             // Batch: gatepass / quotation existence sets
-            $acceptedIds = $confirmationReq->pluck('id')->filter()->unique()->values()->toArray();
+            $acceptedIds = collect($items)->pluck('id')->filter()->unique()->values()->toArray();
             $gatepassIds = GatePass::whereIn('accepted_service_id', $acceptedIds)->pluck('accepted_service_id')->flip();
             $quotationIds = InServiceQuotation::whereIn('service_id', $serviceIds)->pluck('service_id')->flip();
 
             // Batch: staff — split by type
-            $vendorAssigned  = $confirmationReq->where('assigned_status', 'Assigned')->where('assigned_type', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
-            $employeeAssigned = $confirmationReq->where('assigned_status', 'Assigned')->where('assigned_type', '!=', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+            $vendorAssigned   = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+            $employeeAssigned = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', '!=', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
 
             $vendorInfoMap = collect();
             if (!empty($vendorAssigned)) {
@@ -2980,35 +2980,35 @@ if (!function_exists('_serviceHistory')) {
                     ->get()->keyBy('id');
             }
 
-            foreach ($confirmationReq as $key => $req) {
-                $confirmationReq[$key]->item_image = asset('storage/app/public/product') . '/' . $req->item_image;
+            foreach ($items as $req) {
+                $req->item_image = asset('storage/app/public/product') . '/' . $req->item_image;
 
                 $inv = $invoices->get($req->service_request_id);
-                $confirmationReq[$key]->invoice = $inv ? asset('storage/app/public/invoice') . '/' . $inv->pdf : null;
+                $req->invoice = $inv ? asset('storage/app/public/invoice') . '/' . $inv->pdf : null;
 
-                $confirmationReq[$key]->gatepass_exists  = isset($gatepassIds[$req->id]);
-                $confirmationReq[$key]->quotation_exists = isset($quotationIds[$req->service_request_id]);
+                $req->gatepass_exists  = isset($gatepassIds[$req->id]);
+                $req->quotation_exists = isset($quotationIds[$req->service_request_id]);
 
                 if ($req->assigned_status == 'Assigned' && $req->assigned_to != null) {
                     if ($req->assigned_type == 'vendor') {
                         $vendorInfo = $vendorInfoMap->get($req->assigned_to);
-                        $confirmationReq[$key]->staff_name    = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : '';
-                        $confirmationReq[$key]->staff_role    = 'Vendor';
-                        $confirmationReq[$key]->staff_image   = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : '';
-                        $confirmationReq[$key]->staff_contact = $vendorInfo ? $vendorInfo->phone : '';
+                        $req->staff_name    = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : '';
+                        $req->staff_role    = 'Vendor';
+                        $req->staff_image   = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : '';
+                        $req->staff_contact = $vendorInfo ? $vendorInfo->phone : '';
                     } else {
                         $staffInfo = $staffInfoMap->get($req->assigned_to);
-                        $confirmationReq[$key]->staff_name    = $staffInfo ? $staffInfo->f_name . ' ' . $staffInfo->l_name : '';
-                        $confirmationReq[$key]->staff_role    = $staffInfo ? $staffInfo->role_name : '';
-                        $confirmationReq[$key]->staff_image   = $staffInfo ? asset('storage/app/public/vendor') . '/' . $staffInfo->image : '';
-                        $confirmationReq[$key]->staff_contact = $staffInfo ? $staffInfo->phone : '';
+                        $req->staff_name    = $staffInfo ? $staffInfo->f_name . ' ' . $staffInfo->l_name : '';
+                        $req->staff_role    = $staffInfo ? $staffInfo->role_name : '';
+                        $req->staff_image   = $staffInfo ? asset('storage/app/public/vendor') . '/' . $staffInfo->image : '';
+                        $req->staff_contact = $staffInfo ? $staffInfo->phone : '';
                     }
                 }
             }
         } catch (\Throwable $th) {
             //throw $th;
         }
-        return $confirmationReq ?? [];
+        return $confirmationReq ?? ($paginate ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage) : []);
     }
 }
 if (!function_exists('_serviceRunning')) {

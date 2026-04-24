@@ -869,11 +869,6 @@ class UserController extends Controller
         } else if ($tab == 'address') {
             // user address ================
             $user_addresses = CustomerAddress::where('user_id', $user_id)->get();
-        } else if ($tab == 'bookings') {
-            // user services ================
-            prx('fsds');
-            $services['history'] = _serviceHistory($user_id);
-            $services['running'] = _serviceRunning($user_id);
         } else if ($tab == 'favourites') {
             // wishlist ================
             $wishlists['items'] = DB::table('wishlists')
@@ -931,6 +926,29 @@ class UserController extends Controller
         // }
 
         return view('front-views.dashboard', compact('coupons', 'user_details', 'user_addresses', 'orders', 'p_orders', 'wishlists', 'services'));
+    }
+
+    public function load_bookings(Request $request)
+    {
+        $user_id = auth('web')->id();
+        $type    = $request->get('type', 'running');
+        $page    = (int) $request->get('page', 1);
+
+        \Illuminate\Pagination\Paginator::currentPageResolver(fn() => $page);
+
+        if ($type === 'history') {
+            $paginator = _serviceHistory($user_id, true, 10);
+            $html = view('front-views.partials.dashboard._booking-cards-history', ['items' => $paginator->items()])->render();
+        } else {
+            $paginator = _serviceRunning($user_id, true, 10);
+            $html = view('front-views.partials.dashboard._booking-cards-running', ['items' => $paginator->items()])->render();
+        }
+
+        return response()->json([
+            'html'      => $html,
+            'has_more'  => $paginator->hasMorePages(),
+            'next_page' => $page + 1,
+        ]);
     }
 
     public function submit_review(Request $request)
