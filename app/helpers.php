@@ -2942,45 +2942,67 @@ if (!function_exists('_serviceHistory')) {
                 ->orderByDesc('created_at')
                 ->get();
 
+            if ($confirmationReq->isEmpty()) {
+                return [];
+            }
+
+            // Batch: invoices keyed by service_request_id
+            $serviceIds = $confirmationReq->pluck('service_request_id')->filter()->unique()->values()->toArray();
+            $invoices = DB::table('service_invoices')
+                ->whereIn('service_id', $serviceIds)
+                ->get()->keyBy('service_id');
+
+            // Batch: gatepass / quotation existence sets
+            $acceptedIds = $confirmationReq->pluck('id')->filter()->unique()->values()->toArray();
+            $gatepassIds = GatePass::whereIn('accepted_service_id', $acceptedIds)->pluck('accepted_service_id')->flip();
+            $quotationIds = InServiceQuotation::whereIn('service_id', $serviceIds)->pluck('service_id')->flip();
+
+            // Batch: staff — split by type
+            $vendorAssigned  = $confirmationReq->where('assigned_status', 'Assigned')->where('assigned_type', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+            $employeeAssigned = $confirmationReq->where('assigned_status', 'Assigned')->where('assigned_type', '!=', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+
+            $vendorInfoMap = collect();
+            if (!empty($vendorAssigned)) {
+                $vendorInfoMap = DB::table('vendors')
+                    ->join('stores', 'stores.vendor_id', 'vendors.id')
+                    ->whereIn('stores.id', $vendorAssigned)
+                    ->select('vendors.*', 'stores.id as store_id')
+                    ->get()->keyBy('store_id');
+            }
+
+            $staffInfoMap = collect();
+            if (!empty($employeeAssigned)) {
+                $staffInfoMap = DB::table('vendor_employees')
+                    ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
+                    ->whereIn('vendor_employees.id', $employeeAssigned)
+                    ->select('vendor_employees.*', 'employee_roles.name as role_name')
+                    ->get()->keyBy('id');
+            }
 
             foreach ($confirmationReq as $key => $req) {
-                $confirmationReq[$key]->item_image =  asset('storage/app/public/product') . '/' . $req->item_image;
+                $confirmationReq[$key]->item_image = asset('storage/app/public/product') . '/' . $req->item_image;
 
-                $existingInvoice = DB::table('service_invoices')->where('service_id', $req->service_request_id)->first();
+                $inv = $invoices->get($req->service_request_id);
+                $confirmationReq[$key]->invoice = $inv ? asset('storage/app/public/invoice') . '/' . $inv->pdf : null;
 
-                if ($existingInvoice) {
-                    $confirmationReq[$key]->invoice = asset('storage/app/public/invoice') . '/' .  $existingInvoice->pdf;
-                } else {
-                    $confirmationReq[$key]->invoice = null;
-                }
-                // print_r($existingInvoice);
+                $confirmationReq[$key]->gatepass_exists  = isset($gatepassIds[$req->id]);
+                $confirmationReq[$key]->quotation_exists = isset($quotationIds[$req->service_request_id]);
 
-                if ($req->assigned_status == 'Assigned' && $req->assigned_to != NULL) {
-
+                if ($req->assigned_status == 'Assigned' && $req->assigned_to != null) {
                     if ($req->assigned_type == 'vendor') {
-                        // self assigned 
-                        $vendorInfo = DB::table('vendors')->join('stores', 'stores.vendor_id', 'vendors.id')->where('stores.id',  $req->assigned_to)
-                            ->select('vendors.*')
-                            ->first();
-                        $confirmationReq[$key]->staff_name = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : '';
-                        $confirmationReq[$key]->staff_role = 'Vendor';
-                        $confirmationReq[$key]->staff_image = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : '';
+                        $vendorInfo = $vendorInfoMap->get($req->assigned_to);
+                        $confirmationReq[$key]->staff_name    = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : '';
+                        $confirmationReq[$key]->staff_role    = 'Vendor';
+                        $confirmationReq[$key]->staff_image   = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : '';
                         $confirmationReq[$key]->staff_contact = $vendorInfo ? $vendorInfo->phone : '';
                     } else {
-
-                        $staffInfo = DB::table('vendor_employees')->where('vendor_employees.id', $req->assigned_to)
-                            ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
-                            ->select('vendor_employees.*', 'employee_roles.name')
-                            ->first();
-                        $confirmationReq[$key]->staff_image = $staffInfo ? asset('storage/app/public/vendor') . '/' . $staffInfo->image : '';
-                        $confirmationReq[$key]->staff_name = $staffInfo ? $staffInfo->f_name . ' ' . $staffInfo->l_name : '';
-                        $confirmationReq[$key]->staff_role = $staffInfo ? $staffInfo->name : '';
+                        $staffInfo = $staffInfoMap->get($req->assigned_to);
+                        $confirmationReq[$key]->staff_name    = $staffInfo ? $staffInfo->f_name . ' ' . $staffInfo->l_name : '';
+                        $confirmationReq[$key]->staff_role    = $staffInfo ? $staffInfo->role_name : '';
+                        $confirmationReq[$key]->staff_image   = $staffInfo ? asset('storage/app/public/vendor') . '/' . $staffInfo->image : '';
                         $confirmationReq[$key]->staff_contact = $staffInfo ? $staffInfo->phone : '';
                     }
                 }
-                // prx($req);
-                $confirmationReq[$key]->gatepass_exists  = GatePass::where('accepted_service_id', $req->id)->exists();
-                $confirmationReq[$key]->quotation_exists = InServiceQuotation::where('service_id', $req->service_request_id)->exists();
             }
         } catch (\Throwable $th) {
             //throw $th;
@@ -3047,63 +3069,71 @@ if (!function_exists('_serviceRunning')) {
             // We must loop over items (important for paginator)
             $items = $paginate ? $confirmationReq->items() : $confirmationReq;
 
-            foreach ($items as $key => $req) {
+            // Batch lookups — collect IDs first
+            $storeIds     = collect($items)->pluck('store_id')->filter()->unique()->values()->toArray();
+            $acceptedIds  = collect($items)->pluck('id')->filter()->unique()->values()->toArray();
+            $srIds        = collect($items)->pluck('service_request_id')->filter()->unique()->values()->toArray();
+
+            // Reviews grouped by store_id (limit per store to avoid huge result sets)
+            $reviewsByStore = StoreReview::whereIn('store_id', $storeIds)->get()->groupBy('store_id');
+
+            // Gatepass / quotation existence sets
+            $gatepassIds  = GatePass::whereIn('accepted_service_id', $acceptedIds)->pluck('accepted_service_id')->flip();
+            $quotationIds = InServiceQuotation::whereIn('service_id', $srIds)->pluck('service_id')->flip();
+
+            // Staff batch
+            $vendorAssigned   = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+            $employeeAssigned = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', '!=', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
+
+            $vendorInfoMap = collect();
+            if (!empty($vendorAssigned)) {
+                $vendorInfoMap = DB::table('vendors')
+                    ->join('stores', 'stores.vendor_id', 'vendors.id')
+                    ->whereIn('stores.id', $vendorAssigned)
+                    ->select('vendors.*', 'stores.id as store_id')
+                    ->get()->keyBy('store_id');
+            }
+
+            $staffInfoMap = collect();
+            if (!empty($employeeAssigned)) {
+                $staffInfoMap = DB::table('vendor_employees')
+                    ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
+                    ->whereIn('vendor_employees.id', $employeeAssigned)
+                    ->select('vendor_employees.*', 'employee_roles.name as role_name')
+                    ->get()->keyBy('id');
+            }
+
+            foreach ($items as $req) {
 
                 // Images
-                $req->item_image  = asset('storage/product') . '/' . ($req->item_image ?? 'default_image.png');
-                $req->store_logo  = asset('storage/store') . '/' . ($req->store_logo ?? 'default_logo.png');
+                $req->item_image = asset('storage/product') . '/' . ($req->item_image ?? 'default_image.png');
+                $req->store_logo = asset('storage/store') . '/' . ($req->store_logo ?? 'default_logo.png');
 
-                // Reviews
-                $reviews = StoreReview::where('store_id', $req->store_id)->get();
-                $req->reviews = $reviews;
-
-                if ($reviews->isNotEmpty()) {
-                    foreach ($reviews as $reviewKey => $review) {
-                        if (!empty($review->attachment)) {
-                            if(is_string($review->attachment)) {
-                                $review->attachment = json_decode($review->attachment, true);
-                            }else{
-                                $attachments = $review->attachment;
-
-                            }
-                            if (is_array($attachments)) {
-                                foreach ($attachments as $k => $v) {
-                                    $attachments[$k] = asset('storage/app/public/review') . '/' . $v;
-                                }
-                            }
-                            $reviews[$reviewKey]->attachment = $attachments;
-                        }
+                // Reviews (already fetched in batch)
+                $reviews = $reviewsByStore->get($req->store_id, collect());
+                foreach ($reviews as $review) {
+                    $attachments = (array) $review->attachment;
+                    foreach ($attachments as $k => $v) {
+                        $attachments[$k] = asset('storage/app/public/review') . '/' . $v;
                     }
+                    $review->attachment = $attachments;
                 }
+                $req->reviews = $reviews;
 
                 // Assignment logic
                 if (isset($req->id)) {
-
                     if ($req->assigned_status == 'Assigned' && $req->assigned_to) {
-
                         if ($req->assigned_type == 'vendor') {
-
-                            $vendorInfo = DB::table('vendors')
-                                ->join('stores', 'stores.vendor_id', 'vendors.id')
-                                ->where('stores.id', $req->assigned_to)
-                                ->select('vendors.*')
-                                ->first();
-
+                            $vendorInfo = $vendorInfoMap->get($req->assigned_to);
                             $req->staff_name    = $vendorInfo ? $vendorInfo->f_name . ' ' . $vendorInfo->l_name : null;
                             $req->staff_role    = 'Vendor';
                             $req->staff_image   = $vendorInfo ? asset('storage/app/public/vendor') . '/' . $vendorInfo->image : null;
                             $req->staff_contact = $vendorInfo ? $vendorInfo->phone : null;
                         } else {
-
-                            $staffInfo = DB::table('vendor_employees')
-                                ->join('employee_roles', 'employee_roles.id', 'vendor_employees.employee_role_id')
-                                ->where('vendor_employees.id', $req->assigned_to)
-                                ->select('vendor_employees.*', 'employee_roles.name')
-                                ->first();
-
+                            $staffInfo = $staffInfoMap->get($req->assigned_to);
                             if ($staffInfo) {
                                 $req->staff_name    = $staffInfo->f_name . ' ' . $staffInfo->l_name;
-                                $req->staff_role    = $staffInfo->name;
+                                $req->staff_role    = $staffInfo->role_name;
                                 $req->staff_image   = asset('storage/app/public/vendor') . '/' . $staffInfo->image;
                                 $req->staff_contact = $staffInfo->phone;
                             } else {
@@ -3112,22 +3142,16 @@ if (!function_exists('_serviceRunning')) {
                         }
                     }
                 } else {
-                    // Defaults
                     $req->id = 0;
-                    $req->current_status = $req->current_status === 'cancelled' ? 'Cancelled' : 'Enquiry Sent';
+                    $req->current_status  = $req->current_status === 'cancelled' ? 'Cancelled' : 'Enquiry Sent';
                     $req->assigned_status = 'Not Assigned';
-                    $req->assigned_type = 'N/A';
+                    $req->assigned_type   = 'N/A';
                     $req->staff_name = $req->staff_role = $req->staff_image = $req->staff_contact = '';
                 }
 
-                // Exists checks
-                $req->gatepass_exists  = isset($req->id)
-                    ? GatePass::where('accepted_service_id', $req->id)->exists()
-                    : 0;
-
-                $req->quotation_exists = isset($req->service_request_id)
-                    ? InServiceQuotation::where('service_id', $req->service_request_id)->exists()
-                    : 0;
+                // Exists checks (from pre-fetched sets)
+                $req->gatepass_exists  = isset($gatepassIds[$req->id]) ? 1 : 0;
+                $req->quotation_exists = isset($quotationIds[$req->service_request_id]) ? 1 : 0;
             }
         }
 
