@@ -7,7 +7,7 @@ use App\Http\Controllers\LiqPayController;
 use App\Http\Controllers\PaymobController;
 use App\Http\Controllers\PaytabsController;
 use App\Http\Controllers\PaystackController;
-use App\Http\Controllers\RazorPayController;
+use App\Http\Controllers\RazorPayController; 
 use App\Http\Controllers\SenangPayController;
 use App\Http\Controllers\MercadoPagoController; 
 use App\Http\Controllers\BkashPaymentController;

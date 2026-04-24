@@ -8,7 +8,7 @@
 
 @push('css_or_js')
     {{-- <link href="{{ asset('public/assets/store-templates/template-2.css') }}" rel="stylesheet"> --}}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}"> 
     <style>
         .lg-object.lg-image {
             height: 100% !important; 

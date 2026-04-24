@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\InServiceQuotation;
-use App\Models\GatePass;
+use App\Models\GatePass; 
 use App\Models\AcceptedServiceRequest;
 use App\Models\ServiceRequest;
 use App\Models\Store;

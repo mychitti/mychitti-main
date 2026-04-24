@@ -4,7 +4,7 @@
 
 @section('meta_keywords', $keywords)
 @section('meta_description', $store['meta_description'])
-
+ 
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">

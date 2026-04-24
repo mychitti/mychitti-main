@@ -9,7 +9,7 @@
 @push('css_or_js') 
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-        :root {
+        :root { 
             --corp-primary: #1a1a1a;
             --corp-secondary: #ff6b35;
             --corp-accent: #f7931e;

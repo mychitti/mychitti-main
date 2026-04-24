@@ -12,7 +12,7 @@
         :root {
             --medical-blue: #0369a1;
             --medical-teal: #0891b2;
-            --medical-light: #e0f2fe;
+            --medical-light: #e0f2fe; 
             --medical-bg: #f0f9ff;
             --medical-white: #ffffff;
             --medical-text: #0c4a6e;

@@ -9,7 +9,7 @@
                 <button class="col-6 nav-link" id="nav-History-service-tab" data-bs-toggle="tab"
                     data-bs-target="#nav-History-service" type="button" role="tab"
                     aria-controls="nav-History-service" aria-selected="false">Booking History</button>
-            </div>
+            </div>  
         </nav>
         <div class="tab-content" id="nav-tabContent">
             <div class="tab-pane fade show active " id="nav-Running-service" role="tabpanel"

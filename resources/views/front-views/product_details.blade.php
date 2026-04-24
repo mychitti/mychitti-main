@@ -7,7 +7,7 @@
     $title = str_replace(
         ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
         [$service_name, $city_name, $item_area_keywords ?? ''],
-        $item->meta_title,
+        $item->meta_title, 
     );
     $desc = str_replace(
         ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],

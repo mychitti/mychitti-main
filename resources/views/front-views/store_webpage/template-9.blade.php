@@ -11,7 +11,7 @@
     <style> 
         :root {
             --soft-lavender: #e9e4f0;
-            --light-blue: #e3f2fd;
+            --light-blue: #e3f2fd; 
             --cream: #fef7e5;
             --pale-pink: #fce4ec;
             --soft-gray: #f5f5f5;

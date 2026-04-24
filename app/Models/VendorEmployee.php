@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notifiable;
 
 class VendorEmployee extends Authenticatable
 {
-    use Notifiable;
+    use Notifiable; 
 
     protected $fillable = ['remember_token', 'branch_id', 'ledger_account_id'];
 

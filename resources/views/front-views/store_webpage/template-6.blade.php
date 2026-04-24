@@ -7,7 +7,7 @@
 
  
 @push('css_or_js')
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}"> 
      <style>
         @media (max-width: 992px) {
 
