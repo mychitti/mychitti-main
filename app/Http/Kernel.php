@@ -81,6 +81,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         'module' => \App\Http\Middleware\ModulePermissionMiddleware::class,
         'frontuser' => \App\Http\Middleware\FrontUserMiddleware::class,
         'loginuser' => \App\Http\Middleware\LoginUserMiddleware::class,
+        'registereduser' => \App\Http\Middleware\RegisteredUserMiddleware::class,
         'installation-check' => InstallationMiddleware::class,
         'planwise' => \App\Http\Middleware\PermissionCheck::class,
         'actch' => ActivationCheckMiddleware::class,

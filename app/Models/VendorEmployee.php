@@ -55,6 +55,11 @@ class VendorEmployee extends Authenticatable
         return $this->belongsTo(Vendor::class);
     }
 
+    public function doctorProfile()
+    {
+        return $this->hasOne(DoctorProfile::class, 'emp_id');
+    }
+
     public function role()
     {
         return $this->belongsTo(EmployeeRole::class, 'employee_role_id');

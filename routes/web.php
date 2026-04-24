@@ -117,6 +117,18 @@ Route::get('ads/{id}', 'Front\FrontController@adDetail')->name('front.ads.detail
 Route::get('app-config', [FrontController::class, 'app_config'])->name('app-config');
 Route::post('app-config/update', [FrontController::class, 'app_config_update'])->name('app-config.update');
  
+
+// CAMPAIGN =================================
+Route::group(['prefix'=> 'campaign', 'as'=> 'campaign.'], function(){
+    Route::get('/', 'Front\CampaignController@index')->name('index');
+    Route::get('how-it-works', 'Front\CampaignController@how_it_works')->name('how-it-works');
+    Route::get('results', 'Front\CampaignController@results')->name('results');
+    Route::get('winners', 'Front\CampaignController@winners')->name('winners');
+    Route::get('faq', 'Front\CampaignController@faq')->name('faq');
+    Route::get('tnc', 'Front\CampaignController@tnc')->name('tnc');
+    Route::get('enter', 'Front\CampaignController@enter')->name('enter');
+});
+
  
 // Route::get('/', 'FrontController@index')->name('home');
 Route::get('check_depreciation', [CronController::class, 'check_depreciation']);
@@ -291,7 +303,6 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::post('get-delivery-charges', [CartController::class, 'get_delivery_charges'])->name('get-delivery-charges');
     Route::post('change-cart-quantity', [CartController::class, 'change_cart_quantity'])->name('change-cart-quantity');
     Route::post('update-wishlist', [WishlistController::class, 'update_wishlist'])->name('update-wishlist');
-    Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
     Route::post('update-profile', [FrontUserController::class, 'update_profile'])->name('update-profile');
     Route::post('update-address/{id}', [FrontUserController::class, 'update_address'])->name('update-address');
     Route::get('delete-address/{id}', [FrontUserController::class, 'delete_address'])->name('delete-address');
@@ -299,6 +310,10 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('remove-from-wishlist/{type}/{id}', [FrontUserController::class, 'remove_wishlist'])->name('remove-from-wishlist');
     Route::post('add-new-address', [FrontUserController::class, 'add_new_address'])->name('add-new-address');
     Route::get('add-new-address', [FrontUserController::class, 'add_address'])->name('add-address');
+});
+
+Route::group(['middleware' => ['registereduser']], function () {
+    Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
 });
 
 Route::get('lang/{locale}', 'HomeController@lang')->name('lang');

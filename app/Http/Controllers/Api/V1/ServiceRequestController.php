@@ -341,7 +341,7 @@ class ServiceRequestController extends Controller
                             'email',
                             'image',
                             'employee_role_id'
-                        );
+                        )->with(['doctorProfile:emp_id,specialization,department,consultation_fee,bio']);
                     },
 
                     \App\Models\Store::class => function ($q) {
