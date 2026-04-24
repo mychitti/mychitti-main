@@ -1564,7 +1564,7 @@
                         <p style="font-size: 14px; color: var(--t12-gray); line-height: 1.8;">{{ $rev->comment }}</p>
 
                         @if ($rev->attachment)
-                            @php $attachments = json_decode($rev->attachment); @endphp
+                            @php $attachments = (array) $rev->attachment; @endphp
                             @if (!empty($attachments))
                                 <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
                                     @foreach ($attachments as $img)

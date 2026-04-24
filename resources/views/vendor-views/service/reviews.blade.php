@@ -86,7 +86,7 @@
                                         {{ $rev->comment }}
                                     </span>
                                     @if ($rev->attachment)
-                                        @php $attachments = json_decode($rev->attachment); @endphp
+                                        @php $attachments = (array) $rev->attachment; @endphp
                                         @if (!empty($attachments))
                                             @foreach ($attachments as $img)
                                                 <img class="rounded" style="width: 30px;height:30px;"
@@ -139,7 +139,7 @@
                                                 {{ $rev->comment }}
                                             </span>
                                             @if ($rev->attachment)
-                                                @php $attachments = json_decode($rev->attachment); @endphp
+                                                @php $attachments = (array) $rev->attachment; @endphp
                                                 @if (!empty($attachments))
                                                     @foreach ($attachments as $img)
                                                         <a target="_blank"

@@ -1713,7 +1713,7 @@ class="timeline-card {{ $index % 2 === 0 ? 'tl-right' : 'tl-left' }}"
                         <p style="font-size: 15px; color: var(--text); line-height: 1.9;">{{ $rev->comment }}</p>
 
                         @if ($rev->attachment)
-                            @php $attachments = json_decode($rev->attachment); @endphp
+                            @php $attachments = (array) $rev->attachment; @endphp
                             @if (!empty($attachments))
                                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                                     @foreach ($attachments as $img)

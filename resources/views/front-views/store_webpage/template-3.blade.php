@@ -1620,7 +1620,7 @@
                         <p class="review-text">{{ $rev->comment }}</p>
 
                         @if ($rev->attachment)
-                            @php $attachments = json_decode($rev->attachment); @endphp
+                            @php $attachments = (array) $rev->attachment; @endphp
                             @if (!empty($attachments))
                                 <div class="review-images">
                                     @foreach ($attachments as $img)

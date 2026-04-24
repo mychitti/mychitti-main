@@ -775,7 +775,7 @@
                                                     </div>
                                                     <p class="text-dark">{{ $rev->comment }}</p>
                                                     @if ($rev->attachment)
-                                                        @php $attachments = json_decode($rev->attachment); @endphp
+                                                        @php $attachments = (array) $rev->attachment; @endphp
                                                         @if (!empty($attachments))
                                                             @foreach ($attachments as $img)
                                                                 <a target="_blank"
@@ -1053,7 +1053,7 @@
                             </div>
 
                             @if ($rev->attachment)
-                                @php $attachments = json_decode($rev->attachment); @endphp
+                                @php $attachments = (array) $rev->attachment; @endphp
                                 @if (!empty($attachments))
                                     <div class="d-flex">
                                         @foreach ($attachments as $img)
