@@ -23,17 +23,17 @@
         <div class="navbar-vertical-container">
             <div class="navbar-brand-wrapper justify-content-between">
                 <!-- Logo -->
-
                 @php($store_data = \App\CentralLogics\Helpers::get_store_data())
+{{asset('storage/store/') . '/' . $store_data->logo}}
                 @php($isHospital = strtolower($store_data->business_type ?? '') === 'hospital')
                 <a class="navbar-brand" href="{{ route('vendor.dashboard') }}" aria-label="Front">
                     <img class="navbar-brand-logo initial--36  onerror-image"
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_data->logo, asset('storage/app/public/store/') . '/' . $store_data->logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_data->logo, asset('storage/store/') . '/' . $store_data->logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'store/') }}"
                         alt="Logo">
                     <img class="navbar-brand-logo-mini initial--36 onerror-image"
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_data->logo, asset('storage/app/public/store/') . '/' . $store_data->logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'store/') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store_data->logo, asset('storage/store/') . '/' . $store_data->logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'store/') }}"
                         alt="Logo">
                 </a>
                 <b class="text-truncate nav_store_title" style="color: black">{{ $store_data->name }}</b>
