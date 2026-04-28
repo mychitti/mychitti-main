@@ -3484,6 +3484,7 @@ if (!function_exists('hasPermission')) {
                 return true;
             }
         }
+        
 
         $permissionRow = DB::table('role_feature_permissions as rfp')
             ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')

@@ -283,6 +283,15 @@
                                 <label class="form-check-label  " for="billing">Billing</label>
                             </div>
                         </div>
+                        <div class="check-item">
+                            <div class="form-group form-check form--check">
+                                <input type="checkbox" name="modules[]" value="hospital_manage"
+                                    class="form-check-input"
+                                    {{ in_array('hospital_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}
+                                    id="hospital_manage">
+                                <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
+                            </div>
+                        </div>
 
                         <div class="check-item">
                             <div class="form-group form-check form--check">

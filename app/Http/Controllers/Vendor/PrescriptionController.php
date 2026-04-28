@@ -39,6 +39,11 @@ class PrescriptionController extends Controller
 
     private function canEdit(\App\Models\Prescription $rx): bool
     {
+        // Pre-migration prescriptions (no ownership recorded) — allow anyone on this store
+        if (is_null($rx->created_by)) {
+            return true;
+        }
+
         // Original creator
         if ($rx->created_by === $this->currentUserId() && $rx->created_by_type === $this->currentUserType()) {
             return true;
@@ -272,11 +277,6 @@ class PrescriptionController extends Controller
     {
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->with('items')->findOrFail($id);
-
-        if ($rx->is_finalized) {
-            Toastr::warning('Finalized prescriptions cannot be edited');
-            return Redirect::route('vendor.prescription.show', $id);
-        }
 
         if (!$this->canEdit($rx)) {
             Toastr::error('You can only edit prescriptions you created.');
@@ -549,11 +549,6 @@ class PrescriptionController extends Controller
     {
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->findOrFail($id);
-
-        if ($rx->is_finalized) {
-            Toastr::warning('Finalized prescriptions cannot be edited');
-            return Redirect::route('vendor.prescription.show', $id);
-        }
 
         if (!$this->canEdit($rx)) {
             Toastr::error('You can only edit prescriptions you created.');

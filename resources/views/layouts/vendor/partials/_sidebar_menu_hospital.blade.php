@@ -23,7 +23,7 @@
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                             title="{{ _moduleLabel('leads_manage') }}">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
-                                alt="" class="nav-link-icon">
+                                falt="" class="nav-link-icon">
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                 {{ _moduleLabel('leads_manage') }} </span>
                         </a>
@@ -82,7 +82,7 @@
                         </ul>
                     </li>
                 @endif
-                @if (\App\CentralLogics\Helpers::permission_check('hospital_manage'))
+                @if (\App\CentralLogics\Helpers::employee_module_permission_check('hospital_manage') )
                     {{-- Outpatient --}}
                     @if (selected_menu('outpatient'))
                         <li
@@ -220,10 +220,9 @@
                         </a>
                     </li>
 
-                @endif
+              @endif
                 {{-- =============================== iNVENTORY Management=========================== --}}
                 @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
-
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('inventory*') || Request::is('item/entry') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"

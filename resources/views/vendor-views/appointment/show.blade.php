@@ -249,29 +249,6 @@
         </div>
 
         <div id="rxBody" style="{{ $rxOpen ? '' : 'display:none;' }}">
-            @if($existingRx && $existingRx->is_finalized)
-                {{-- Finalized: read-only summary --}}
-                <div class="card-body">
-                    <div class="alert alert-success mb-3" style="font-size:13px;">
-                        <i class="tio-checkmark-circle mr-1"></i>
-                        This prescription is finalized and cannot be edited.
-                        <a href="{{ route('vendor.prescription.show', $existingRx->id) }}" class="alert-link ml-2">
-                            View full prescription →
-                        </a>
-                    </div>
-                    @if($existingRx->diagnosis)
-                        <p class="mb-1"><strong>Diagnosis:</strong> {{ $existingRx->diagnosis }}</p>
-                    @endif
-                    @if($existingRx->items->count())
-                        <p class="mb-1"><strong>Medicines ({{ $existingRx->items->count() }}):</strong>
-                            {{ $existingRx->items->pluck('medicine_name')->implode(', ') }}
-                        </p>
-                    @endif
-                    @if($existingRx->follow_up_date)
-                        <p class="mb-0"><strong>Follow-up:</strong> {{ $existingRx->follow_up_date->format('d M Y') }}</p>
-                    @endif
-                </div>
-            @else
                 {{-- Editable inline form --}}
                 <div class="card-body p-3">
                     @if(session('rx_saved'))
@@ -279,6 +256,13 @@
                             Prescription saved.
                             <a href="{{ route('vendor.prescription.show', session('rx_saved')) }}" class="alert-link">View / Print</a>
                             <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
+                    @endif
+                    @if($existingRx && $existingRx->is_finalized)
+                        <div class="alert alert-info mb-3" style="font-size:13px;">
+                            <i class="tio-checkmark-circle mr-1"></i>
+                            This prescription is marked as <strong>Finalized</strong>. You can still edit and re-save it.
+                            <a href="{{ route('vendor.prescription.show', $existingRx->id) }}" class="alert-link ml-2">View / Print →</a>
                         </div>
                     @endif
 
@@ -362,7 +346,6 @@
                         </div>
                     </form>
                 </div>
-            @endif
         </div>
     </div>
 

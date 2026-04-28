@@ -69,7 +69,7 @@
                 @endif
 
                 @include('vendor-views/form_modals/date_range')
-                <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#dateRangeModal">
+                <button type="button" class="btn btn-outline-warning " data-toggle="modal" data-target="#dateRangeModal">
                     <i class="tio-calendar"></i> {{ translate($preset) }}
                 </button>
 
@@ -88,11 +88,11 @@
                         class="form-control form-control-sm" placeholder="Search by name or description...">
                 </div>
 
-                <button type="submit" class="btn btn--primary btn-sm">
+                <button type="submit" class="btn btn--primary ">
                     <i class="tio-filter-list"></i> Filter
                 </button>
                 <a href="{{ route('vendor.hospital.activity-log', $category ? ['category' => $category] : []) }}"
-                   class="btn btn-outline-secondary btn-sm">Reset</a>
+                   class="btn btn-outline-secondary "><i class="tio-refresh"></i></a>
             </form>
         </div>
     </div>

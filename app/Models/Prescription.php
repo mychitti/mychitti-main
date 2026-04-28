@@ -26,6 +26,7 @@ class Prescription extends Model
     protected $casts = [
         'follow_up_date' => 'date',
         'is_finalized'   => 'boolean',
+        'created_by'     => 'integer',
     ];
 
     public function patient()
