@@ -30,13 +30,13 @@
                     <i class="tio-calendar"></i> {{ translate($preset) }}
                 </button>
                 <div>
-                    <label class="input-label d-block mb-1" style="font-size:12px;">Patient</label>
+                    {{-- <label class="input-label d-block mb-1" style="font-size:12px;"></label> --}}
                     <input type="text" name="patient" value="{{ request('patient') }}"
-                        class="form-control form-control-sm" placeholder="Name or UID" style="min-width:180px;">
+                        class="form-control form-control-sm" placeholder="Patient name or UID" style="min-width:180px;">
                 </div>
                 <div>
-                    <label class="input-label d-block mb-1" style="font-size:12px;">Doctor</label>
-                    <select name="doctor" class="form-control form-control-sm" style="min-width:160px;">
+                    {{-- <label class="input-label d-block mb-1" style="font-size:12px;">Doctor</label> --}}
+                    <select name="doctor" class="form-control form-control-sm js-select1-custom" style="min-width:160px;">
                         <option value="">All Doctors</option>
                         @foreach($doctors as $d)
                             <option value="{{ $d->id }}" {{ request('doctor') == $d->id ? 'selected' : '' }}>
