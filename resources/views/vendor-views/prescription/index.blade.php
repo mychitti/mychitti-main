@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Prescriptions')
 
 @push('css_or_js')
@@ -13,13 +13,18 @@
             Prescriptions
         </h1>
         <div class="d-flex gap-2">
+            @if (hasPermission('prescription', 'export'))
             <a href="{{ route('vendor.prescription.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'patient'=>request('patient'),'doctor'=>request('doctor')])) }}"
                class="btn btn-outline-success"><i class="tio-download"></i> Export</a>
+            @endif
+            @if (hasPermission('prescription', 'add'))
             <a href="{{ route('vendor.prescription.create') }}" class="btn btn--primary btn-sm">
                 <i class="tio-add"></i> New Prescription
             </a>
+            @endif
         </div>
     </div>
+    @if(hasPermission('prescription', 'list'))
 
     {{-- Filters --}}
     <div class="card mb-3">
@@ -98,14 +103,16 @@
                             </td>
                             <td>{{ $rx->created_at->format('d M Y') }}</td>
                             <td class="text-right">
+                                @if (hasPermission('prescription', 'print'))
                                 <a href="{{ route('vendor.prescription.show', $rx->id) }}"
                                    class="btn btn-sm btn-outline-primary" title="View / Print">
                                     <i class="tio-print"></i>
                                 </a>
+                                @endif
                                 @if(!$rx->is_finalized && (
                                         ($rx->created_by == $currentId && $rx->created_by_type === $currentType)
                                         || ($myDoctorProfileId && $rx->appointment?->doctor_profile_id == $myDoctorProfileId)
-                                    ))
+                                    ) && (hasPermission('prescription', 'edit')))
                                 <a href="{{ route('vendor.prescription.edit', $rx->id) }}"
                                    class="btn btn-sm btn-outline-secondary" title="Edit">
                                     <i class="tio-edit"></i>
@@ -126,6 +133,7 @@
             @endif
         </div>
     </div>
+    @endif
 </div>
 @endsection
 

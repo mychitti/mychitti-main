@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Consent Forms')
 
 @section('content')
@@ -8,11 +8,14 @@
             <span class="page-header-icon"><i class="tio-document-text" style="font-size:22px;"></i></span>
             Consent Forms
         </h1>
+        @if (hasPermission('consent_form', 'add'))
         <a href="{{ route('vendor.consent.create') }}" class="btn btn-sm btn--primary">
             <i class="tio-add"></i> New Consent
         </a>
+        @endif
     </div>
 
+    @if(hasPermission('consent_form', 'list'))
     <div class="card">
         <div class="card-header py-2">
             <form method="GET" class="d-flex gap-2" style="max-width:360px;">
@@ -60,10 +63,12 @@
                             <td style="font-size:12px;">{{ $c->signatory_name ?: '—' }}</td>
                             <td style="font-size:12px;">{{ $c->signed_at?->format('d M Y H:i') }}</td>
                             <td>
+                                @if (hasPermission('consent_form', 'view'))
                                 <a href="{{ route('vendor.consent.show', $c->id) }}"
                                    class="btn btn-xs btn-outline-primary">
                                     <i class="tio-visible"></i>
                                 </a>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -79,5 +84,6 @@
         <div class="card-footer">{{ $consents->links() }}</div>
         @endif
     </div>
+    @endif
 </div>
 @endsection

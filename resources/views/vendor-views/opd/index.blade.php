@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'OPD Register')
 
 @section('content')
@@ -12,19 +12,26 @@
                 <small class="text-muted font-size-14 ml-2">{{ translate($preset) }}</small>
             </h1>
             <div class="d-flex gap-2">
+                @if (hasPermission('opd_register', 'export'))
                 <a href="{{ route('vendor.opd.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'doctor'=>request('doctor'),'search'=>request('search')])) }}"
                    class="btn btn-sm btn-outline-success"><i class="tio-download"></i> Export</a>
+                @endif
+                @if (hasPermission('opd_register', 'add'))
                 <a href="{{ route('vendor.opd.create') }}" class="btn btn--primary btn-sm">
                     <i class="tio-add"></i> Register Visit
                 </a>
+                @endif
             </div>
         </div>
+
+        @if(hasPermission('opd_register', 'list'))
+        
 
         {{-- Filters --}}
         <div class="card  mb-3 py-2">
             <div class="d-flex flex-wrap gap-2 align-items-end ">
 
-                <form method="GET" class="  date-range-form">
+                <form method="GET" class=" date-range-form">
                     @include('vendor-views/form_modals/date_range')
                     <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
                         data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
@@ -110,10 +117,12 @@
                                         @endif
                                     </td>
                                     <td>
+                                        @if (hasPermission('opd_register', 'view'))
                                         <a href="{{ route('vendor.opd.show', $visit->id) }}"
                                             class="btn btn-xs btn--primary">
                                             <i class="tio-visible"></i> View
                                         </a>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -129,6 +138,7 @@
         </div>
 
         <div class="mt-3">{{ $visits->appends(request()->query())->links() }}</div>
+        @endif
     </div>
 
 @endsection

@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Beds — ' . $ward->ward_name)
 
 @section('content')
@@ -45,6 +45,7 @@
     </div>
 
     {{-- Add bed form --}}
+    @if (hasPermission('bed', 'add'))
     <div class="card mb-3">
         <div class="card-header py-2">
             <h6 class="mb-0">Add Bed</h6>
@@ -81,7 +82,9 @@
             </form>
         </div>
     </div>
+    @endif
 
+    @if(hasPermission('bed', 'list'))
     {{-- Beds grid --}}
     <div class="row">
         @forelse($beds as $bed)
@@ -116,11 +119,13 @@
                     @endif
                 </div>
                 <div class="card-footer p-1 d-flex justify-content-center gap-1">
+                    @if (hasPermission('bed', 'edit'))
                     <button type="button" class="btn btn-xs btn-outline-secondary"
                         onclick="editBed({{ $bed->id }}, '{{ $bed->bed_number }}', '{{ $bed->bed_type }}', '{{ $bed->status }}', {{ $bed->daily_charge }})">
                         <i class="tio-edit"></i>
                     </button>
-                    @if($bed->status !== 'occupied')
+                    @endif
+                    @if($bed->status !== 'occupied' && (hasPermission('bed', 'delete')))
                     <form action="{{ route('vendor.ward.bed.destroy', [$ward->id, $bed->id]) }}" method="POST"
                           onsubmit="return confirm('Delete this bed?')">
                         @csrf
@@ -137,6 +142,7 @@
         </div>
         @endforelse
     </div>
+    @endif
 </div>
 
 {{-- Edit bed modal --}}

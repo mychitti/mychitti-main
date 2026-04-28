@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Consent — ' . $consent->title)
 
 @section('content')
@@ -95,6 +95,7 @@
             </div>
 
             {{-- Delete button (outside print area) --}}
+            @if (hasPermission('consent_form', 'delete'))
             <div class="d-flex justify-content-end mt-2 no-print">
                 <form action="{{ route('vendor.consent.destroy', $consent->id) }}"
                       method="POST" onsubmit="return confirm('Delete this consent record?')">
@@ -104,6 +105,7 @@
                     </button>
                 </form>
             </div>
+            @endif
         </div>
     </div>
 </div>

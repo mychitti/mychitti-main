@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'OPD Visit #' . $visit->id)
 
 @section('content')
@@ -13,16 +13,22 @@
             <span class="badge badge-primary ml-2" style="font-size:16px;">Token {{ $visit->token_number }}</span>
         </h1>
         <div class="d-flex gap-2">
+        @if (hasPermission('prescription', 'add'))
          <a href="{{ route('vendor.prescription.create', ['patient_id' => $visit->patient_id, 'doctor_profile_id' => $visit->doctor_profile_id]) }}"
            class="btn btn-sm btn-primary">
             <i class="tio-file-text"></i> Write Prescription
         </a>
+        @endif
+        @if (hasPermission('ipd_admission', 'add'))
            <a href="{{ route('vendor.ipd.create', ['patient_id' => $visit->patient_id]) }}" class="btn btn-sm btn-outline-warning">
             <i class="tio-hospital"></i> Admit to IPD
         </a>
+        @endif
+        @if (hasPermission('ipd_admission', 'generate_bill'))
             <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}" class="btn btn-sm btn-outline-success">
                 <i class="tio-receipt"></i> Generate Bill
             </a>
+        @endif
             <a href="{{ route('vendor.opd.index') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-arrow-backward"></i> Register
             </a>
@@ -170,12 +176,14 @@
     <div class="card mb-3">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">
             <h6 class="mb-0"><i class="tio-user mr-1"></i> Patient Profile</h6>
+            @if(hasPermission('patient_documents', 'list') || hasPermission('patient_documents', 'add'))
             <button class="btn btn-xs btn-outline-info" onclick="openDocsPanel();">
                 <i class="tio-file mr-1"></i> Documents
                 @if($patient?->documents?->count())
                     <span class="badge badge-soft-info ml-1">{{ $patient->documents->count() }}</span>
                 @endif
             </button>
+            @endif
         </div>
         <div class="card-body pb-2">
             {{-- Summary row --}}
@@ -320,12 +328,14 @@
 
         {{-- Upload toggle --}}
         <div style="padding:6px 16px; border-bottom:1px solid #f3f4f6;">
+        @if(hasPermission('patient_documents', 'add'))
             <button onclick="toggleUploadForm()" id="uploadToggleBtn"
                     style="background:none; border:none; padding:0; font-size:12px; color:red; cursor:pointer;">
                 <i class="tio-add-circle mr-1"></i> Upload documents
             </button>
+            @endif
         </div>
-
+@if(hasPermission('patient_documents', 'add'))
         {{-- Upload form (collapsed by default) --}}
         <div id="docUploadForm" style="display:none; padding:10px 16px; border-bottom:1px solid #f0f0f0; background:#fafafa;">
             <div class="d-flex gap-2 align-items-end flex-wrap">
@@ -357,7 +367,8 @@
                 </div>
             </div>
         </div>
-
+        @endif
+@if(hasPermission('patient_documents', 'list'))
         {{-- Document list --}}
         <div style="padding:12px 16px; max-height:50vh; overflow-y:auto;">
             <ul class="list-group list-group-flush mb-0" id="docList">
@@ -377,12 +388,16 @@
                         @endif
                     </span>
                     <div class="d-flex gap-1" style="flex-shrink:0;">
+                    @if(hasPermission('patient_documents', 'view'))
                         <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-xs btn-soft-primary">
                             <i class="tio-visible"></i>
                         </a>
+                        @endif
+                        @if(hasPermission('patient_documents', 'delete'))
                         <button class="btn btn-xs btn-soft-danger" onclick="deleteDoc({{ $doc->id }}, this)" title="Delete">
                             <i class="tio-delete"></i>
                         </button>
+                        @endif
                     </div>
                 </li>
                 @empty
@@ -393,6 +408,7 @@
                 @endforelse
             </ul>
         </div>
+        @endif
 </div>
 
 @push('script_2')

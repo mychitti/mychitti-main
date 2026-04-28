@@ -30,6 +30,7 @@ class DoctorController extends Controller
 
     public function create()
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'add')) abort(403);
         $store_id  = Helpers::get_store_id();
 
         // Employees not already assigned a doctor profile
@@ -132,6 +133,7 @@ class DoctorController extends Controller
 
     public function edit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         $doctor   = DoctorProfile::with('services')->where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
 
@@ -192,6 +194,7 @@ class DoctorController extends Controller
 
     public function destroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         DoctorProfile::where('store_id', $store_id)->findOrFail($id)->delete();
 
@@ -201,6 +204,7 @@ class DoctorController extends Controller
 
     public function export()
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'export')) abort(403);
         $store_id = Helpers::get_store_id();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee', 'services')->get();
 
@@ -251,6 +255,7 @@ class DoctorController extends Controller
 
     public function slots($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'slots')) abort(403);
         $store_id = Helpers::get_store_id();
         $doctor   = DoctorProfile::where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
         $days     = DoctorSlot::DAYS;

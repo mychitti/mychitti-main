@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Ward Management')
 
 @section('content')
@@ -8,15 +8,18 @@
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
             Ward Management
         </h1>
+        @if (hasPermission('ward', 'add'))
         <a href="{{ route('vendor.ward.create') }}" class="btn btn--primary btn-sm">
             <i class="tio-add"></i> Add Ward
         </a>
+        @endif
     </div>
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
+    @if(hasPermission('ward', 'list'))
     <div class="row">
         @forelse($wards as $ward)
         <div class="col-md-6 col-xl-4 mb-3">
@@ -31,12 +34,16 @@
                         @endif
                     </div>
                     <div class="d-flex gap-1">
+                        @if (hasPermission('ward', 'edit'))
                         <a href="{{ route('vendor.ward.edit', $ward->id) }}" class="btn btn-xs btn-outline-secondary">
                             <i class="tio-edit"></i>
                         </a>
+                        @endif
+                        @if (hasPermission('bed', 'list'))
                         <a href="{{ route('vendor.ward.beds', $ward->id) }}" class="btn btn-xs btn--primary">
                             Beds
                         </a>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body py-3">
@@ -64,6 +71,7 @@
                     <span class="badge {{ $ward->is_active ? 'badge-success' : 'badge-secondary' }}">
                         {{ $ward->is_active ? 'Active' : 'Inactive' }}
                     </span>
+                    @if (hasPermission('ward', 'delete'))
                     <form action="{{ route('vendor.ward.destroy', $ward->id) }}" method="POST"
                           onsubmit="return confirm('Delete this ward and all its beds?')">
                         @csrf
@@ -72,6 +80,7 @@
                             <i class="tio-delete-outlined"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -87,5 +96,6 @@
         </div>
         @endforelse
     </div>
+    @endif
 </div>
 @endsection

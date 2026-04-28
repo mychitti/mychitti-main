@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Dispense Queue')
 
 @push('css_or_js')
@@ -13,8 +13,10 @@
             Pharmacy Dispense Queue
         </h1>
         <div class="d-flex gap-2">
+            @if (hasPermission('pharmacy_dispense_queue', 'export'))
             <a href="{{ route('vendor.prescription.dispense.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'patient'=>request('patient'),'filter'=>request('filter')])) }}"
                class="btn btn-sm btn-outline-success"><i class="tio-download"></i> Export</a>
+            @endif
             <a href="{{ route('vendor.prescription.list') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-document-outlined"></i> All Prescriptions
             </a>
@@ -45,6 +47,7 @@
         </div>
     </form>
 
+    @if(hasPermission('pharmacy_dispense_queue', 'list'))
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -89,11 +92,13 @@
                                     @endif
                                 </td>
                                 <td>
+                                    @if (hasPermission('pharmacy_dispense_queue', 'dispense'))
                                     <a href="{{ route('vendor.prescription.dispense.show', $rx->id) }}"
                                         class="btn btn-sm btn--primary">
                                         <i class="tio-medicine"></i>
                                         {{ $allDone ? 'View' : 'Dispense' }}
                                     </a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -106,6 +111,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <div class="mt-3">{{ $prescriptions->links() }}</div>
 </div>

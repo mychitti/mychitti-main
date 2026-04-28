@@ -50,6 +50,7 @@ class OpdController extends Controller
 
     public function export(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'export')) abort(403);
         $preset = $request->get('date_range', 'today');
         $custom = $request->get('custom_date_range');
         $range  = Helpers::calculatePresetDates($preset, $custom);
@@ -91,6 +92,7 @@ class OpdController extends Controller
 
     public function create(Request $request, $id = null)
     {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'add')) abort(403);
         $store_id = Helpers::get_store_id();
         $patients = Patient::where('store_id', $store_id)->where('status', 1)->orderBy('name')->get();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
@@ -303,6 +305,7 @@ class OpdController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'view')) abort(403);
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)
             ->with(['patient.documents', 'patient.medicalHistory', 'doctorProfile.employee', 'recorder'])

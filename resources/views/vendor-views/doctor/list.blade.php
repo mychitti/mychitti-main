@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Doctors')
 
 @section('content')
@@ -10,16 +10,21 @@
                     <span>Doctors <span class="badge badge-soft-dark ml-2">{{ $doctors->total() }}</span></span>
                 </h1>
                 <div class="d-flex gap-2 mb-2">
+                    @if (hasPermission('staff_doctor', 'export'))
                     <a href="{{ route('vendor.doctor.export') }}" class="btn  btn--warning">
                         <i class="tio-download"></i> Export
                     </a>
+                    @endif
+                    @if (hasPermission('staff_doctor', 'add'))
                     <a href="{{ route('vendor.doctor.create') }}" class="btn btn--primary">
                         <i class="tio-add-circle"></i> Add Doctor
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
 
+        @if(hasPermission('staff_doctor', 'list'))
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
@@ -73,19 +78,22 @@
                                         <i class="fa-solid fa-bars"></i>
                                     </button>
                                     <div class="dropdown-menu">
+                                            @if (hasPermission('staff_doctor', 'slots'))
                                             <a class="dropdown-item text-info"
                                                 href="{{ route('vendor.doctor.slots', $doctor->id) }}"
                                                 title="{{ translate('messages.slots') }}"><i
                                                     class="tio-grid"></i>
                                                 Slots
                                             </a>
-                                      
+                                            @endif
+                                            @if (hasPermission('staff_doctor', 'edit'))
                                             <a class="dropdown-item text-warning"
                                                 href="{{ route('vendor.doctor.edit', $doctor->id) }}"
                                                 title="{{ translate('messages.edit') }}"><i class="tio-edit"></i>
                                                 Edit
                                             </a>
-                                     
+                                            @endif
+                                            @if (hasPermission('staff_doctor', 'delete'))
                                             <a class="dropdown-item  text-danger form-alert " href="javascript:"
                                                 data-id="task-{{ $doctor['id'] }}"
                                                 data-message="{{ translate('Want_to_delete_this_task_?') }}"
@@ -97,6 +105,7 @@
                                                 id="task-{{ $doctor['id'] }}">
                                                 @csrf @method('post')
                                             </form>
+                                            @endif
                                     </div>
                                     {{-- <div class="btn--container">
                                         <a href="{{ }}" class="btn btn-sm btn-outline-info"
@@ -127,5 +136,6 @@
             </div>
             <div class="card-footer">{{ $doctors->links() }}</div>
         </div>
+        @endif
     </div>
 @endsection

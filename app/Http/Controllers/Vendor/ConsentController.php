@@ -53,6 +53,7 @@ class ConsentController extends Controller
 
     public function templateCreate()
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_template', 'add')) abort(403);
         return view('vendor-views.consent.template_form', ['template' => null]);
     }
 
@@ -76,6 +77,7 @@ class ConsentController extends Controller
 
     public function templateEdit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_template', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         $template = ConsentTemplate::where('store_id', $store_id)->findOrFail($id);
         return view('vendor-views.consent.template_form', compact('template'));
@@ -102,6 +104,7 @@ class ConsentController extends Controller
 
     public function templateDestroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_template', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         ConsentTemplate::where('store_id', $store_id)->findOrFail($id)->delete();
         Toastr::success('Template deleted.');
@@ -113,6 +116,7 @@ class ConsentController extends Controller
     /** Show create form — can be called with ?admission_id=X */
     public function create(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_form', 'add')) abort(403);
         $store_id   = Helpers::get_store_id();
         $templates  = ConsentTemplate::where('store_id', $store_id)
             ->where('is_active', true)->orderBy('title')->get();
@@ -195,6 +199,7 @@ class ConsentController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_form', 'view')) abort(403);
         $store_id = Helpers::get_store_id();
         $consent  = PatientConsent::where('store_id', $store_id)
             ->with(['patient', 'admission', 'createdBy'])
@@ -204,6 +209,7 @@ class ConsentController extends Controller
 
     public function destroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('consent_form', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         $consent  = PatientConsent::where('store_id', $store_id)->findOrFail($id);
         $admId    = $consent->ipd_admission_id;

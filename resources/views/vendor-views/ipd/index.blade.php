@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'IPD Admissions')
 
 @push('css_or_js')
@@ -13,16 +13,21 @@
             IPD Admissions
         </h1>
         <div class="d-flex gap-2">
+            @if (hasPermission('ipd_admission', 'export'))
             <a href="{{ route('vendor.ipd.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'status'=>$status,'search'=>request('search')])) }}"
                class="btn btn-outline-success"><i class="tio-download"></i> Export</a>
+            @endif
             <a href="{{ route('vendor.ipd.bed-dashboard') }}" class="btn btn-outline-secondary">
                 <i class="tio-grid-squares"></i> Bed View
             </a>
+            @if (hasPermission('ipd_admission', 'add'))
             <a href="{{ route('vendor.ipd.create') }}" class="btn btn--primary btn-sm">
                 <i class="tio-add"></i> Admit Patient
             </a>
+            @endif
         </div>
     </div>
+    @if(hasPermission('ipd_admission', 'list'))
 
     {{-- Filters --}}
     <form method="GET" class="card card-body mb-3 py-2 date-range-form">
@@ -95,10 +100,12 @@
                                 @endif
                             </td>
                             <td>
+                                @if (hasPermission('ipd_admission', 'view'))
                                 <a href="{{ route('vendor.ipd.show', $adm->id) }}" class="btn btn-xs btn-outline-primary">
                                     View
                                 </a>
-                                @if($adm->status === 'admitted')
+                                @endif
+                                @if($adm->status === 'admitted' && (hasPermission('ipd_admission', 'discharge')))
                                 <a href="{{ route('vendor.ipd.discharge-form', $adm->id) }}" class="btn btn-xs btn-outline-warning">
                                     Discharge
                                 </a>
@@ -117,6 +124,7 @@
     </div>
 
     <div class="mt-3">{{ $admissions->appends(request()->query())->links() }}</div>
+    @endif
 </div>
 @endsection
 

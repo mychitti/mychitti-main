@@ -29,6 +29,7 @@ class NurseController extends Controller
 
     public function export()
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_nurse', 'export')) abort(403);
         $store_id = Helpers::get_store_id();
         $nurses   = NurseProfile::where('store_id', $store_id)->with(['employee', 'ward'])->get();
 
@@ -135,6 +136,7 @@ class NurseController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_nurse', 'view')) abort(403);
         $store_id = Helpers::get_store_id();
         $nurse    = NurseProfile::where('store_id', $store_id)
             ->with(['employee', 'ward'])
@@ -145,6 +147,7 @@ class NurseController extends Controller
 
     public function edit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_nurse', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         $nurse    = NurseProfile::where('store_id', $store_id)->with('employee', 'ward')->findOrFail($id);
 
@@ -190,6 +193,7 @@ class NurseController extends Controller
 
     public function destroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('staff_nurse', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         NurseProfile::where('store_id', $store_id)->findOrFail($id)->delete();
 

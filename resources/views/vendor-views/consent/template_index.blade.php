@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Consent Form Templates')
 
 @section('content')
@@ -8,15 +8,18 @@
             <span class="page-header-icon"><i class="tio-document-text" style="font-size:22px;"></i></span>
             Consent Form Templates
         </h1>
+        @if (hasPermission('consent_template', 'add'))
         <a href="{{ route('vendor.consent.template.create') }}" class="btn btn-sm btn--primary">
             <i class="tio-add"></i> New Template
         </a>
+        @endif
     </div>
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
+    @if(hasPermission('consent_template', 'list'))
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -40,10 +43,13 @@
                                 </span>
                             </td>
                             <td>
+                                @if (hasPermission('consent_template', 'edit'))
                                 <a href="{{ route('vendor.consent.template.edit', $t->id) }}"
                                    class="btn btn-xs btn-outline-primary mr-1">
                                     <i class="tio-edit"></i> Edit
                                 </a>
+                                @endif
+                                @if (hasPermission('consent_template', 'delete'))
                                 <form action="{{ route('vendor.consent.template.destroy', $t->id) }}"
                                       method="POST" class="d-inline"
                                       onsubmit="return confirm('Delete this template?')">
@@ -52,6 +58,7 @@
                                         <i class="tio-delete-outlined"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -70,5 +77,6 @@
         <div class="card-footer">{{ $templates->links() }}</div>
         @endif
     </div>
+    @endif
 </div>
 @endsection

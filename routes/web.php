@@ -103,6 +103,7 @@ Route::group(['prefix' => 'mc-vendor', 'as' => 'mc-vendor.'], function () {
     Route::get('contact', [McVendorController::class, 'contact'])->name('contact');
     Route::post('send-message', [McVendorController::class, 'send_message'])->name('send-message');
 }); 
+Route::get('add-feature-actions', [FrontController::class,'add_feature_actions']);
 // Route::get('/', [UserController::class,'index']);
 // Route::get('expire', [UserController::class,'expire']);
 Route::get('/generate-sitemap', [SitemapController::class, 'generate'])->name('generate-sitemap');

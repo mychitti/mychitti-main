@@ -8,15 +8,15 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 use App\CentralLogics\CustomerLogic;
 use App\CentralLogics\Helpers;
-use App\CentralLogics\OrderLogic;  
+use App\CentralLogics\OrderLogic;
 use App\Http\Controllers\Controller;
-use App\Models\User; 
+use App\Models\User;
 use App\Models\DMVehicle;
 use App\Mail\PlaceOrder;
 use Illuminate\Support\Facades\Validator;
 use App\Mail\OrderVerificationMail;
 use Illuminate\Support\Facades\Mail;
-use App\CentralLogics\ProductLogic; 
+use App\CentralLogics\ProductLogic;
 use App\Http\Controllers\Api\V1\CategoryController as V1CategoryController;
 use App\Models\BlogCategory;
 use App\Models\BusinessSetting;
@@ -153,22 +153,22 @@ class FrontController extends Controller
     {
         return view('vendor-views.documents.approve_success');
     }
-    public function testing(Request $request) 
+    public function testing(Request $request)
     {
-hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
+        hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
 
-    die;
+        die;
         $user_fcm = $request->fcm_token;
-  $data = [
-                'title' => translate('messages.test_notification') ,
-                'description' => "Test Notification",
-                'order_id' => 3,
-                'image' => '', 
-                'type' => 'order_status',
-            ];
-          Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
+        $data = [
+            'title' => translate('messages.test_notification'),
+            'description' => "Test Notification",
+            'order_id' => 3,
+            'image' => '',
+            'type' => 'order_status',
+        ];
+        Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
 
-     $bookings = ServiceRequest::where('user_id', 925)
+        $bookings = ServiceRequest::where('user_id', 925)
             ->with([
                 'item:id,name',
                 'accepted:service_request_id,vendor_id,assigned_to,assigned_type',
@@ -188,7 +188,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             ->limit(10)
             ->get(['id', 'item_id', 'status', 'requirements', 'city', 'created_at', 'updated_at']);
         $data = [
-            'success'  => true, 
+            'success'  => true,
             'bookings' => $bookings->map(fn($b) => [
                 'id'           => $b->id,
                 'service_name' => $b->item?->name ?? 'Unknown Service',
@@ -240,21 +240,40 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
     }
     public function add_feature_actions(Request $request)
     {
-        // $data = [
-        // ['feature_id' => '99', 'action' => 'dashboard', 'display_name' => 'Dashboard'],
-        // ['feature_id' => '108', 'action' => 'add_for_others', 'display_name' => 'Add for others'],
-        // ['feature_id' => '108', 'action' => 'add', 'display_name' => 'Add for self'],
-        // ];
+        $features = [
+            // ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
+            // ['name' => 'patient', 'display_name' => 'Patient', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'delete', 'export']],
+            // ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'generate_bill']],
+            // ['name' => 'prescription', 'display_name' => 'Prescription', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'print', 'export']],
+            // ['name' => 'pharmacy_dispense_queue', 'display_name' => 'Pharmacy Dispense Queue', 'master_module' => 'hospital_manage', 'actions' => ['list', 'dispense', 'export']],
+            // ['name' => 'ipd_admission', 'display_name' => 'IPD Admission', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'discharge', 'generate_bill', 'consent']],
+            // ['name' => 'ward', 'display_name' => 'Ward', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
+            // ['name' => 'bed', 'display_name' => 'Beds', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete']],
 
-        // foreach ($data as $key => $value) {
-        //     DB::table('feature_permissions')->insert([
-        //         'feature_id' => $value['feature_id'],
-        //         'action' => $value['action'],
-        //         'display_name' => $value['display_name'] ?? ucfirst($value['action']),
-        //         'created_at' => now(),
-        //         'updated_at' => now(),
-        //     ]);
-        // }
+            // ['name' => 'staff_doctor', 'display_name' => 'Staff : Doctor', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'slots','edit','delete']],
+            // ['name' => 'staff_nurse', 'display_name' => 'Staff : Nurse', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'edit', 'delete','view']],
+            // ['name' => 'consent_form', 'display_name' => 'Consent Form', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'delete']],
+            // ['name' => 'consent_template', 'display_name' => 'Consent Template', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
+            // ['name' => 'nursing_notes', 'display_name' => 'Nursing Notes', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
+            // ['name' => 'diet_chart', 'display_name' => 'Diet Chart', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
+            ['name' => 'patient_documents', 'display_name' => 'Patient Documents', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete', 'view']],
+        ];
+
+        foreach ($features as $feature) {
+            $featureId = DB::table('features')->insertGetId([
+                'name'          => $feature['name'],
+                'display_name'  => $feature['display_name'],
+                'master_module' => $feature['master_module'],
+            ]);
+
+            foreach ($feature['actions'] as $action) {
+                DB::table('feature_permissions')->insert([
+                    'feature_id' => $featureId,
+                    'action'     => $action,
+                    'free'       => 0,
+                ]);
+            }
+        }
     }
     public function registration_success(Request $request)
     {
@@ -378,8 +397,8 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             // ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
-                  ->orWhereNull('zone_id')
-                  ->orWhere('zone_id', 0);
+                    ->orWhereNull('zone_id')
+                    ->orWhere('zone_id', 0);
             })
             ->inRandomOrder()
             ->limit(12)
@@ -2266,8 +2285,8 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             ->whereNotNull('image')
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
-                ->orWhereNull('zone_id')
-                ->orWhere('zone_id', 0);
+                    ->orWhereNull('zone_id')
+                    ->orWhere('zone_id', 0);
             })
             ->latest();
     }
@@ -2468,15 +2487,15 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $data['review_count'] = DB::table('store_reviews')
             ->join('stores', 'stores.id', 'store_reviews.store_id')
             ->where('stores.slug', $slug)
-            ->where('store_reviews.status', 1) 
+            ->where('store_reviews.status', 1)
             ->count();
-            // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
-        if ($request->has('template') && $request->template ) {
+        // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
+        if ($request->has('template') && $request->template) {
             return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
         }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
-    //    prx(  $templateId);
+        //    prx(  $templateId);
         return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
     }
 
@@ -2543,7 +2562,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
                 ->select('items.*', 'categories.name as category_name', 'categories.slug as category_slug')
                 ->first();
 
-                // prx($item);
+            // prx($item);
             $zone_id = $this->zone_id;
             $store_ids = $item->store_ids;
 
@@ -2700,7 +2719,7 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
             ->shuffle()
             ->take(8); // final 8 stores
 
-        // 2️⃣ Fetch up to 4 items per store separately
+        // 2️ Fetch up to 4 items per store separately
         $storeIds = $topStores->pluck('id')->toArray();
 
         // Get items for all top stores at once
@@ -2763,7 +2782,6 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
         $data['all_categories'] = DB::table('categories')->where('status', 1)->whereNull('added_by')->where('module_id', $module)->where('position', 0)->orderBy('priority', 'desc')->get()->toArray();
 
         if ($module == 6) {
-
             $catProducts  = DB::table('items')
                 ->where('items.is_approved', 1)
                 ->join('stores', function ($join) {
@@ -2775,8 +2793,6 @@ hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
                 ->where('items.category_id', $catDetails->id)->select('items.*',  'categories.slug as cat_slug')->distinct()->where('items.status', 1)->get();
         } else {
-
-
             $catProducts  = DB::table('items')
                 ->where('items.is_approved', 1)
                 ->join('stores', 'stores.id', 'items.store_id')

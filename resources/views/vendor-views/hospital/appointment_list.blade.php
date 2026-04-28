@@ -263,8 +263,8 @@
 
         <div class="col-sm-6 col-md-4 col-lg-3 mb-1">
         
-            <div class="appt-card appt-{{ $class }}"  onclick="handleClick('{{ route('vendor.opd.show', [$hOpdVisit->id ?? 0]) }}', event)"
-                 style="cursor:pointer;">
+            <div class="appt-card appt-{{ $class }}" @if($hOpdVisit?->id)  onclick="handleClick('{{ route('vendor.opd.show', [$hOpdVisit->id]) }}', event)" style="cursor:pointer;" @endif
+                 >
 
                 {{-- Top: status dot + label + ID + ⋮ dropdown --}}
                 <div class="appt-card__top">

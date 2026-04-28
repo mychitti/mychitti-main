@@ -1205,22 +1205,22 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     });
 
     // HOSPITAL MANAGEMENT ===================================
-    // Route::group(['middleware' => ['planwise:hospital_manage']], function () {
+    Route::group(['middleware' => ['planwise:hospital_manage']], function () {
 
         // doctor management ==============================
         Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
             Route::get('list', 'DoctorController@index')->name('list');
-            Route::get('export', 'DoctorController@export')->name('export');
-            Route::get('create', 'DoctorController@create')->name('create');
-            Route::post('store', 'DoctorController@store')->name('store');
-            Route::get('{id}/edit', 'DoctorController@edit')->name('edit');
-            Route::post('{id}/update', 'DoctorController@update')->name('update');
-            Route::post('{id}/delete', 'DoctorController@destroy')->name('delete');
-            Route::get('{id}/slots', 'DoctorController@slots')->name('slots');
-            Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store');
-            Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle');
-            Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete');
-            Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone');
+            Route::get('export', 'DoctorController@export')->name('export')->middleware('permission:staff_doctor,export');
+            Route::get('create', 'DoctorController@create')->name('create')->middleware('permission:staff_doctor,add');
+            Route::post('store', 'DoctorController@store')->name('store')->middleware('permission:staff_doctor,add');
+            Route::get('{id}/edit', 'DoctorController@edit')->name('edit')->middleware('permission:staff_doctor,edit');
+            Route::post('{id}/update', 'DoctorController@update')->name('update')->middleware('permission:staff_doctor,edit');
+            Route::post('{id}/delete', 'DoctorController@destroy')->name('delete')->middleware('permission:staff_doctor,delete');
+            Route::get('{id}/slots', 'DoctorController@slots')->name('slots')->middleware('permission:staff_doctor,slots');
+            Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store')->middleware('permission:staff_doctor,slots');
+            Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle')->middleware('permission:staff_doctor,slots');
+            Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete')->middleware('permission:staff_doctor,slots');
+            Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone')->middleware('permission:staff_doctor,slots');
         });
 
         // appointment management ==============================
@@ -1245,75 +1245,77 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // prescription management ==============================
         Route::group(['prefix' => 'prescription', 'as' => 'prescription.'], function () {
             Route::get('list',             'PrescriptionController@index')->name('list');
-            Route::get('export',           'PrescriptionController@export')->name('export');
-            Route::get('create',           'PrescriptionController@create')->name('create');
-            Route::post('store',           'PrescriptionController@store')->name('store');
+            Route::get('export',           'PrescriptionController@export')->name('export')->middleware('permission:prescription,export');
+            Route::get('create',           'PrescriptionController@create')->name('create')->middleware('permission:prescription,add');
+            Route::post('store',           'PrescriptionController@store')->name('store')->middleware('permission:prescription,add');
             Route::get('search-medicines', 'PrescriptionController@searchMedicines')->name('search-medicines');
+
             Route::get('dispense',         'PrescriptionController@dispenseQueue')->name('dispense.queue');
-            Route::get('dispense/export',  'PrescriptionController@dispenseExport')->name('dispense.export');
-            Route::get('{id}',             'PrescriptionController@show')->name('show');
-            Route::get('{id}/edit',        'PrescriptionController@edit')->name('edit');
-            Route::post('{id}/update',     'PrescriptionController@update')->name('update');
-            Route::get('{id}/dispense',    'PrescriptionController@dispenseShow')->name('dispense.show');
-            Route::post('{id}/dispense',   'PrescriptionController@dispenseProcess')->name('dispense.process');
+            Route::get('dispense/export',  'PrescriptionController@dispenseExport')->name('dispense.export')->middleware('permission:pharmacy_dispense_queue,export');
+            Route::get('{id}',             'PrescriptionController@show')->name('show')->middleware('permission:prescription,print');
+            Route::get('{id}/edit',        'PrescriptionController@edit')->name('edit')->middleware('permission:prescription,edit');
+            Route::post('{id}/update',     'PrescriptionController@update')->name('update')->middleware('permission:prescription,edit');
+            Route::get('{id}/dispense',    'PrescriptionController@dispenseShow')->name('dispense.show')->middleware('permission:pharmacy_dispense_queue,view');
+            Route::post('{id}/dispense',   'PrescriptionController@dispenseProcess')->name('dispense.process')->middleware('permission:pharmacy_dispense_queue,dispense');
         });
 
         // hospital dashboard ==============================
-        Route::get('hospital/dashboard', 'HospitalDashboardController@index')->name('hospital.dashboard');
-        Route::get('hospital/staff-dashboard', 'HospitalDashboardController@index')->name('hospital.staff-dashboard');
-        Route::get('hospital/settings', 'HospitalDashboardController@settings')->name('hospital.settings');
-        Route::post('hospital/settings', 'HospitalDashboardController@saveSettings')->name('hospital.settings.save');
+        Route::get('hospital/dashboard', 'HospitalDashboardController@index')->name('hospital.dashboard')->middleware('permission:hospital_manage,dashboard');
+        Route::get('hospital/staff-dashboard', 'HospitalDashboardController@index')->name('hospital.staff-dashboard')->middleware('permission:hospital_manage,dashboard');
+        Route::get('hospital/settings', 'HospitalDashboardController@settings')->name('hospital.settings')->middleware('permission:hospital_manage,settings');
+        Route::post('hospital/settings', 'HospitalDashboardController@saveSettings')->name('hospital.settings.save')->middleware('permission:hospital_manage,settings');
 
         // nurse management ==============================
         Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
             Route::get('list',         'NurseController@index')->name('list');
-            Route::get('export',       'NurseController@export')->name('export');
-            Route::get('create',       'NurseController@create')->name('create');
-            Route::post('store',       'NurseController@store')->name('store');
-            Route::get('{id}',         'NurseController@show')->name('show');
-            Route::get('{id}/edit',    'NurseController@edit')->name('edit');
-            Route::post('{id}/update', 'NurseController@update')->name('update');
-            Route::get('{id}/delete',  'NurseController@destroy')->name('delete');
+            Route::get('export',       'NurseController@export')->name('export')->middleware('permission:staff_nurse,export');
+            Route::get('create',       'NurseController@create')->name('create')->middleware('permission:staff_nurse,add');
+            Route::post('store',       'NurseController@store')->name('store')->middleware('permission:staff_nurse,add');
+            Route::get('{id}',         'NurseController@show')->name('show')->middleware('permission:staff_nurse,view');
+            Route::get('{id}/edit',    'NurseController@edit')->name('edit')->middleware('permission:staff_nurse,edit');
+            Route::post('{id}/update', 'NurseController@update')->name('update')->middleware('permission:staff_nurse,edit');
+            Route::get('{id}/delete',  'NurseController@destroy')->name('delete')->middleware('permission:staff_nurse,delete');
         });
 
         // ward & bed management ==============================
         Route::group(['prefix' => 'ward', 'as' => 'ward.'], function () {
             Route::get('',                           'WardController@index')->name('index');
-            Route::get('create',                     'WardController@create')->name('create');
-            Route::post('store',                     'WardController@store')->name('store');
-            Route::get('{id}/edit',                  'WardController@edit')->name('edit');
-            Route::put('{id}/update',                'WardController@update')->name('update');
-            Route::delete('{id}/delete',             'WardController@destroy')->name('destroy');
-            Route::post('{id}/toggle',               'WardController@toggleStatus')->name('toggle');
+            Route::get('create',                     'WardController@create')->name('create')->middleware('permission:ward,add');
+            Route::post('store',                     'WardController@store')->name('store')->middleware('permission:ward,add');
+            Route::get('{id}/edit',                  'WardController@edit')->name('edit')->middleware('permission:ward,edit');
+            Route::put('{id}/update',                'WardController@update')->name('update')->middleware('permission:ward,edit');
+            Route::delete('{id}/delete',             'WardController@destroy')->name('destroy')->middleware('permission:ward,delete');
+            Route::post('{id}/toggle',               'WardController@toggleStatus')->name('toggle')->middleware('permission:ward,status_change');
+
             Route::get('{wardId}/beds',              'WardController@beds')->name('beds');
-            Route::post('{wardId}/bed/store',        'WardController@bedStore')->name('bed.store');
-            Route::put('{wardId}/bed/{bedId}/update', 'WardController@bedUpdate')->name('bed.update');
-            Route::delete('{wardId}/bed/{bedId}/delete', 'WardController@bedDestroy')->name('bed.destroy');
+            Route::post('{wardId}/bed/store',        'WardController@bedStore')->name('bed.store')->middleware('permission:bed,add');
+            Route::put('{wardId}/bed/{bedId}/update', 'WardController@bedUpdate')->name('bed.update')->middleware('permission:bed,edit');
+            Route::delete('{wardId}/bed/{bedId}/delete', 'WardController@bedDestroy')->name('bed.destroy')->middleware('permission:bed,delete');
         });
 
         // OPD management ==============================
         Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
             Route::get('',             'OpdController@index')->name('index');
-            Route::get('export',       'OpdController@export')->name('export');
-            Route::get('create/{id?}',       'OpdController@create')->name('create');
-            Route::post('store',       'OpdController@store')->name('store');
-            Route::get('{id}',              'OpdController@show')->name('show');
-            Route::get('{id}/edit',         'OpdController@edit')->name('edit');
-            Route::put('{id}/update',       'OpdController@update')->name('update');
-            Route::patch('{id}/quick-update','OpdController@quickUpdate')->name('quick-update');
+            Route::get('export',       'OpdController@export')->name('export')->middleware('permission:opd_register,export');
+            Route::get('create/{id?}',       'OpdController@create')->name('create')->middleware('permission:opd_register,add');
+            Route::post('store',       'OpdController@store')->name('store')->middleware('permission:opd_register,add');
+            Route::get('{id}',              'OpdController@show')->name('show')->middleware('permission:opd_register,view');
+            Route::get('{id}/edit',         'OpdController@edit')->name('edit')->middleware('permission:opd_register,edit');
+            Route::put('{id}/update',       'OpdController@update')->name('update')->middleware('permission:opd_register,edit');
+            Route::patch('{id}/quick-update', 'OpdController@quickUpdate')->name('quick-update')->middleware('permission:opd_register,edit');
         });
 
         // IPD management ==============================
         Route::group(['prefix' => 'ipd', 'as' => 'ipd.'], function () {
             Route::get('',                        'IpdController@index')->name('index');
-            Route::get('export',                  'IpdController@export')->name('export');
-            Route::get('create',                  'IpdController@create')->name('create');
-            Route::post('store',                  'IpdController@store')->name('store');
+            Route::get('export',                  'IpdController@export')->name('export')->middleware('permission:ipd_admission,edit');
+            Route::get('create',                  'IpdController@create')->name('create')->middleware('permission:ipd_admission,add');
+            Route::post('store',                  'IpdController@store')->name('store')->middleware('permission:ipd_admission,add');
             Route::get('bed-dashboard',           'IpdController@bedDashboard')->name('bed-dashboard');
             Route::get('available-beds',          'IpdController@getAvailableBeds')->name('available-beds');
-            Route::get('{id}',                         'IpdController@show')->name('show');
-            Route::get('{id}/discharge',               'IpdController@dischargeForm')->name('discharge-form');
-            Route::put('{id}/discharge',               'IpdController@discharge')->name('discharge');
+            Route::get('{id}',                         'IpdController@show')->name('show')->middleware('permission:ipd_admission,view');
+            Route::get('{id}/discharge',               'IpdController@dischargeForm')->name('discharge-form')->middleware('permission:ipd_admission,discharge');
+            Route::put('{id}/discharge',               'IpdController@discharge')->name('discharge')->middleware('permission:ipd_admission,discharge');
             // nursing notes
             Route::post('{id}/nursing-note',           'PatientNotesController@nursingNoteStore')->name('nursing-note.store');
             Route::delete('{id}/nursing-note/{noteId}', 'PatientNotesController@nursingNoteDestroy')->name('nursing-note.destroy');
@@ -1327,25 +1329,25 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             // Templates
             Route::group(['prefix' => 'template', 'as' => 'template.'], function () {
                 Route::get('',           'ConsentController@templateIndex')->name('index');
-                Route::get('create',     'ConsentController@templateCreate')->name('create');
-                Route::post('store',     'ConsentController@templateStore')->name('store');
-                Route::get('{id}/edit',  'ConsentController@templateEdit')->name('edit');
-                Route::put('{id}',       'ConsentController@templateUpdate')->name('update');
-                Route::delete('{id}',    'ConsentController@templateDestroy')->name('destroy');
+                Route::get('create',     'ConsentController@templateCreate')->name('create')->middleware('permission:consent_template,add');
+                Route::post('store',     'ConsentController@templateStore')->name('store')->middleware('permission:consent_template,add');
+                Route::get('{id}/edit',  'ConsentController@templateEdit')->name('edit')->middleware('permission:consent_template,edit');
+                Route::put('{id}',       'ConsentController@templateUpdate')->name('update')->middleware('permission:consent_template,edit');
+                Route::delete('{id}',    'ConsentController@templateDestroy')->name('destroy')->middleware('permission:consent_template,delete');
             });
             // Patient consents
             Route::get('',                    'ConsentController@index')->name('index');
-            Route::get('create',              'ConsentController@create')->name('create');
-            Route::post('store',              'ConsentController@store')->name('store');
-            Route::get('{id}',               'ConsentController@show')->name('show');
-            Route::delete('{id}',            'ConsentController@destroy')->name('destroy');
-            Route::get('template-content/{id}', 'ConsentController@templateContent')->name('template-content');
+            Route::get('create',              'ConsentController@create')->name('create')->middleware('permission:consent_form,add');
+            Route::post('store',              'ConsentController@store')->name('store')->middleware('permission:consent_form,add');
+            Route::get('{id}',               'ConsentController@show')->name('show')->middleware('permission:consent_form,view');
+            Route::delete('{id}',            'ConsentController@destroy')->name('destroy')->middleware('permission:consent_form,delete');
+            Route::get('template-content/{id}', 'ConsentController@templateContent')->name('template-content')->middleware('permission:consent_template,view');
         });
 
         // Hospital billing ==============================
         Route::group(['prefix' => 'hospital-bill', 'as' => 'hospital-bill.'], function () {
-            Route::get('ipd/{id}',          'HospitalBillController@createForIPD')->name('create-ipd');
-            Route::get('opd/{id}',          'HospitalBillController@createForOPD')->name('create-opd');
+            Route::get('ipd/{id}',          'HospitalBillController@createForIPD')->name('create-ipd')->middleware('permission:ipd_admission,generate_bill');
+            Route::get('opd/{id}',          'HospitalBillController@createForOPD')->name('create-opd')->middleware('permission:opd_register,generate_bill');
             Route::post('store',            'HospitalBillController@store')->name('store');
             Route::get('inventory-search',  'HospitalBillController@searchInventory')->name('inventory-search');
         });
@@ -1355,17 +1357,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
             Route::post('quick-save', 'PatientController@quickSave')->name('quick-save');
             Route::get('list', 'PatientController@list')->name('list');
-            Route::get('export', 'PatientController@export')->name('export');
-            Route::post('save', 'PatientController@save')->name('save');
-            Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel');
-            Route::get('{id}', 'PatientController@show')->name('show');
-            Route::get('{id}/edit', 'PatientController@edit')->name('edit');
-            Route::post('{id}/update', 'PatientController@update')->name('update');
-            Route::post('{id}/upload-documents', 'PatientController@uploadDocuments')->name('upload-documents');
-            Route::delete('{id}/document/{docId}', 'PatientController@deleteDocument')->name('delete-document');
-            Route::get('{id}/delete', 'PatientController@destroy')->name('delete');
+            Route::get('export', 'PatientController@export')->name('export')->middleware('permission:patient,export');
+            Route::post('save', 'PatientController@save')->name('save')->middleware('permission:patient,add');
+            Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel')->middleware('permission:patient,export');
+            Route::get('{id}', 'PatientController@show')->name('show')->middleware('permission:patient,view');
+            Route::get('{id}/edit', 'PatientController@edit')->name('edit')->middleware('permission:patient,edit');
+            Route::post('{id}/update', 'PatientController@update')->name('update')->middleware('permission:patient,edit');
+            Route::post('{id}/upload-documents', 'PatientController@uploadDocuments')->name('upload-documents')->middleware('permission:patient_documents,add');
+            Route::delete('{id}/document/{docId}', 'PatientController@deleteDocument')->name('delete-document')->middleware('permission:patient_documents,delete');
+            Route::get('{id}/delete', 'PatientController@destroy')->name('delete')->middleware('permission:patient,delete');
         });
-    // });
+    });
 
     // laundry ==============================
     Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry']], function () {

@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Nurses')
 
 @section('content')
@@ -10,16 +10,21 @@
                 Nurses <span class="badge badge-soft-dark ml-2">{{ $nurses->total() }}</span>
             </h1>
             <div class="d-flex gap-2 mb-2">
+                @if (hasPermission('staff_nurse', 'export'))
                 <a href="{{ route('vendor.nurse.export') }}" class="btn  btn-outline-success">
                     <i class="tio-download"></i> Export
                 </a>
+                @endif
+                @if (hasPermission('staff_nurse', 'add'))
                 <a href="{{ route('vendor.nurse.create') }}" class="btn btn--primary">
                     <i class="tio-add-circle"></i> Add Nurse
                 </a>
+                @endif
             </div>
         </div>
     </div>
 
+    @if(hasPermission('staff_nurse', 'list'))
     <div class="card">
         <div class="table-responsive">
             <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
@@ -70,14 +75,19 @@
                                 <i class="fa-solid fa-bars"></i>
                             </button>
                             <div class="dropdown-menu">
+                                @if (hasPermission('staff_nurse', 'view'))
                                 <a class="dropdown-item"
                                    href="{{ route('vendor.nurse.show', $nurse->id) }}">
                                     <i class="tio-visible"></i> View
                                 </a>
+                                @endif
+                                @if (hasPermission('staff_nurse', 'edit'))
                                 <a class="dropdown-item text-warning"
                                    href="{{ route('vendor.nurse.edit', $nurse->id) }}">
                                     <i class="tio-edit"></i> Edit
                                 </a>
+                                @endif
+                                @if (hasPermission('staff_nurse', 'delete'))
                                 <a class="dropdown-item text-danger form-alert" href="javascript:"
                                    data-id="nurse-{{ $nurse->id }}"
                                    data-message="Delete this nurse profile?">
@@ -87,6 +97,7 @@
                                       method="post" id="nurse-{{ $nurse->id }}">
                                     @csrf
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -100,5 +111,6 @@
         </div>
         <div class="card-footer">{{ $nurses->links() }}</div>
     </div>
+    @endif
 </div>
 @endsection

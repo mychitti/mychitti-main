@@ -47,6 +47,7 @@ class IpdController extends Controller
 
     public function export(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'export')) abort(403);
         $store_id = Helpers::get_store_id();
         $status   = $request->status ?? 'all';
         $search   = $request->search;
@@ -91,6 +92,7 @@ class IpdController extends Controller
 
     public function create(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'add')) abort(403);
         $store_id = Helpers::get_store_id();
         $patients = Patient::where('store_id', $store_id)->where('status', 1)->orderBy('name')->get();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
@@ -179,6 +181,7 @@ class IpdController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'view')) abort(403);
         $store_id  = Helpers::get_store_id();
         $admission = IpdAdmission::where('store_id', $store_id)
             ->with(['patient', 'ward', 'bed', 'doctorProfile.employee', 'admittedBy', 'dischargedBy'])
@@ -203,6 +206,7 @@ class IpdController extends Controller
 
     public function dischargeForm($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'discharge')) abort(403);
         $store_id  = Helpers::get_store_id();
         $admission = IpdAdmission::where('store_id', $store_id)
             ->where('status', 'admitted')
@@ -214,6 +218,7 @@ class IpdController extends Controller
 
     public function discharge(Request $request, $id)
     {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'discharge')) abort(403);
         $request->validate([
             'discharge_date'    => 'required|date',
             'discharge_type'    => 'required|in:' . implode(',', array_keys(IpdAdmission::DISCHARGE_TYPES)),

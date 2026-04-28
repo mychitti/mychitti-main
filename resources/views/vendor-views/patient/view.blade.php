@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Patient Profile')
 @use('Illuminate\Support\Facades\Storage')
 
@@ -10,9 +10,11 @@
                 <i class="tio-user mr-2"></i> Patient Profile
             </h1>
             <div>
+                @if (hasPermission('patient', 'edit'))
                 <a href="{{ route('vendor.patient.edit', $patient->id) }}" class="btn btn-sm btn--warning">
                     <i class="tio-edit"></i> Edit
                 </a>
+                @endif
                 <a href="{{ route('vendor.patient.list') }}" class="btn btn-sm btn-soft-secondary ml-1">
                     <i class="tio-arrow-backward"></i> Back
                 </a>
@@ -332,10 +334,12 @@
                 {{-- Consent Forms --}}
                 <div class="tab-pane fade" id="tab-consents">
                     <div class="d-flex justify-content-end px-3 pt-2">
+                        @if (hasPermission('consent_form', 'add'))
                         <a href="{{ route('vendor.consent.create', ['patient_id' => $patient->id]) }}"
                            class="btn btn-xs btn--primary">
                             <i class="tio-add"></i> Add Consent
                         </a>
+                        @endif
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">

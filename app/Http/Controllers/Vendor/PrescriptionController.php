@@ -101,6 +101,7 @@ class PrescriptionController extends Controller
 
     public function export(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('prescription', 'export')) abort(403);
         $preset = $request->get('date_range', 'this_month');
         $custom = $request->get('custom_date_range');
         $range  = Helpers::calculatePresetDates($preset, $custom);
@@ -144,6 +145,7 @@ class PrescriptionController extends Controller
     /** Show create form — optionally pre-filled from appointment or service request */
     public function create(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('prescription', 'add')) abort(403);
         $storeId = $this->storeId();
         $doctors = DoctorProfile::where('store_id', $storeId)->with('employee')->get();
 
@@ -263,6 +265,7 @@ class PrescriptionController extends Controller
     /** View / print prescription */
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('prescription', 'print')) abort(403);
         $rx = Prescription::where('store_id', $this->storeId())
             ->with(['patient', 'doctorProfile.employee', 'items', 'store', 'appointment'])
             ->findOrFail($id);
@@ -275,6 +278,7 @@ class PrescriptionController extends Controller
     /** Edit form */
     public function edit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('prescription', 'edit')) abort(403);
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->with('items')->findOrFail($id);
 
@@ -324,6 +328,7 @@ class PrescriptionController extends Controller
 
     public function dispenseExport(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('pharmacy_dispense_queue', 'export')) abort(403);
         $storeId = $this->storeId();
         $preset  = $request->get('date_range', 'today');
         $custom  = $request->get('custom_date_range');
@@ -368,6 +373,7 @@ class PrescriptionController extends Controller
     /** Show single prescription dispense form */
     public function dispenseShow($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('pharmacy_dispense_queue', 'dispense')) abort(403);
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)
             ->where('is_finalized', true)

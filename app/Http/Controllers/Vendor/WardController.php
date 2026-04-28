@@ -30,6 +30,7 @@ class WardController extends Controller
 
     public function create()
     {
+        if (!auth('vendor')->check() && !hasPermission('ward', 'add')) abort(403);
         return view('vendor-views.ward.create');
     }
 
@@ -59,6 +60,7 @@ class WardController extends Controller
 
     public function edit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('ward', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         $ward     = Ward::where('store_id', $store_id)->findOrFail($id);
         return view('vendor-views.ward.edit', compact('ward'));
@@ -92,6 +94,7 @@ class WardController extends Controller
 
     public function destroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('ward', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         $ward     = Ward::where('store_id', $store_id)->findOrFail($id);
 
@@ -131,6 +134,7 @@ class WardController extends Controller
 
     public function bedStore(Request $request, $wardId)
     {
+        if (!auth('vendor')->check() && !hasPermission('bed', 'add')) abort(403);
         $store_id = Helpers::get_store_id();
         $ward     = Ward::where('store_id', $store_id)->findOrFail($wardId);
 
@@ -182,6 +186,7 @@ class WardController extends Controller
 
     public function bedUpdate(Request $request, $wardId, $bedId)
     {
+        if (!auth('vendor')->check() && !hasPermission('bed', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         Ward::where('store_id', $store_id)->findOrFail($wardId);
         $bed = Bed::where('ward_id', $wardId)->findOrFail($bedId);
@@ -215,6 +220,7 @@ class WardController extends Controller
 
     public function bedDestroy($wardId, $bedId)
     {
+        if (!auth('vendor')->check() && !hasPermission('bed', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         Ward::where('store_id', $store_id)->findOrFail($wardId);
         $bed = Bed::where('ward_id', $wardId)->findOrFail($bedId);

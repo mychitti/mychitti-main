@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Prescription #' . $rx->id)
 
 @section('content')
@@ -12,15 +12,17 @@
             <a href="{{ route('vendor.prescription.list') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-arrow-backward"></i> Back
             </a>
-            @if($canEditRx)
+            @if($canEditRx && (hasPermission('prescription', 'edit')))
             <a href="{{ route('vendor.prescription.edit', $rx->id) }}" class="btn btn-sm btn-outline-primary">
                 <i class="tio-edit"></i> Edit
             </a>
             @endif
         </div>
+        @if (hasPermission('prescription', 'print'))
         <button onclick="window.print()" class="btn btn--primary btn-sm">
             <i class="tio-print"></i> Print
         </button>
+        @endif
     </div>
 
     {{-- Printable Prescription --}}

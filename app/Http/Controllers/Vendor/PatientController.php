@@ -40,6 +40,7 @@ class PatientController extends Controller
 
     public function export(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('patient', 'export')) abort(403);
         $store_id = Helpers::get_store_id();
         $search   = $request->search;
 
@@ -166,6 +167,7 @@ class PatientController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('patient', 'view')) abort(403);
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)
             ->with('medicalHistory', 'documents')
@@ -209,6 +211,7 @@ class PatientController extends Controller
 
     public function edit($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('patient', 'edit')) abort(403);
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->with('medicalHistory')->findOrFail($id);
 
@@ -329,6 +332,7 @@ class PatientController extends Controller
 
     public function destroy($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('patient', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
         $patient->delete();

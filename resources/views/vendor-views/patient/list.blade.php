@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 @section('title', 'Patient List')
 
 @section('content')
@@ -15,16 +15,21 @@
                 </span>
             </h1>
             <div class="d-flex gap-2 mb-2">
+                @if (hasPermission('patient', 'export'))
                 <a href="{{ route('vendor.patient.export') }}" class="btn  btn-outline-success">
                     <i class="tio-download"></i> Export
                 </a>
+                @endif
+                @if (hasPermission('patient', 'add'))
                 <a href="{{ route('vendor.patient.add') }}" class="btn btn--primary">
                     <i class="tio-add-circle"></i> Add New Patient
                 </a>
+                @endif
             </div>
         </div>
     </div>
 
+    @if(hasPermission('patient', 'list'))
     <div class="card">
         <div class="card-header py-2 border-0">
             <form class="search-form ml-auto">
@@ -71,17 +76,23 @@
                                     <i class="fa-solid fa-bars"></i>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-right">
+                                    @if (hasPermission('patient', 'view'))
                                     <a class="dropdown-item text-primary" href="{{ route('vendor.patient.show', $p->id) }}">
                                         <i class="tio-visible mr-2"></i> View
                                     </a>
+                                    @endif
+                                    @if (hasPermission('patient', 'edit'))
                                     <a class="dropdown-item text-warning" href="{{ route('vendor.patient.edit', $p->id) }}">
                                         <i class="tio-edit mr-2"></i> Edit
                                     </a>
+                                    @endif
+                                    @if (hasPermission('patient', 'delete'))
                                     <a class="dropdown-item text-danger"
                                         href="{{ route('vendor.patient.delete', $p->id) }}"
                                         onclick="return confirm('Delete this patient?')">
                                         <i class="tio-delete mr-2"></i> Delete
                                     </a>
+                                    @endif
                                 </div>
                             </div>
                         </td>
@@ -99,5 +110,6 @@
             {{ $patients->appends(['search' => $search])->links() }}
         </div>
     </div>
+    @endif
 </div>
 @endsection

@@ -1,4 +1,6 @@
                 {{-- Hospital Dashboard --}}
+                    @if (hasPermission('hospital_manage', 'dashboard'))
+
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('dashboard') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.dashboard') }}"
                         title="Hospital Dashboard">
@@ -6,18 +8,23 @@
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Dashboard</span>
                     </a>
                 </li>
-
-                @if (!auth('vendor')->check())
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('my-doctor-profile*') ? 'active' : '' }}">
-                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.my-doctor-profile.edit') }}"
-                        title="My Profile & Slots">
-                        <i class="tio-user nav-icon"></i>
-                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Profile & Slots</span>
-                    </a>
-                </li>
                 @endif
 
-                @if (auth('vendor')->check() && selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6)
+                @if (!auth('vendor')->check())
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('my-doctor-profile*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('vendor.my-doctor-profile.edit') }}" title="My Profile & Slots">
+                            <i class="tio-user nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Profile &
+                                Slots</span>
+                        </a>
+                    </li>
+                @endif
+
+                @if (auth('vendor')->check() &&
+                        selected_menu('leads_manage') &&
+                        hasMasterModulePermission('leads_manage') &&
+                        $store_data->module->id == 6)
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -82,9 +89,22 @@
                         </ul>
                     </li>
                 @endif
-                @if (\App\CentralLogics\Helpers::employee_module_permission_check('hospital_manage') )
+                @if (selected_menu('hospital_manage') && hasMasterModulePermission('hospital_manage'))
                     {{-- Outpatient --}}
-                    @if (selected_menu('outpatient'))
+                    @if (selected_menu('outpatient') &&
+                            hasAnyPermission([
+                                'patient.list',
+                                'patient.add',
+                                'patient.export',
+                                'opd_register.list',
+                                'opd_register.add',
+                                'opd_register.export',
+                                'prescription.list',
+                                'prescription.add',
+                                'prescription.export',
+                                'pharmacy_dispense_queue.list',
+                                'pharmacy_dispense_queue.export',
+                            ]))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('patient*') || Request::is('opd*') || Request::is('prescription*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -95,37 +115,57 @@
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('patient*') || Request::is('opd*') || Request::is('prescription*') ? 'block' : 'none' }}">
-                                <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.patient.list') }}" title="Patients">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Patients</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('opd*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.opd.index') }}" title="OPD Register">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">OPD Register</span>
-                                    </a>
-                                </li>
-                                <li
-                                    class="nav-item {{ Request::is('prescription') || Request::is('prescription/list') || Request::is('prescription/create') || Request::is('prescription/*/edit') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.prescription.list') }}"
-                                        title="Prescriptions">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Prescriptions</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('prescription/dispense*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.prescription.dispense.queue') }}"
-                                        title="Dispense Queue">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Dispense Queue</span>
-                                    </a>
-                                </li>
+                                @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
+                                    <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.patient.list') }}" title="Patients">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Patients</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))
+                                    <li class="nav-item {{ Request::is('opd*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.opd.index') }}"
+                                            title="OPD Register">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">OPD Register</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['prescription.list', 'prescription.add', 'prescription.export']))
+                                    <li
+                                        class="nav-item {{ Request::is('prescription') || Request::is('prescription/list') || Request::is('prescription/create') || Request::is('prescription/*/edit') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.prescription.list') }}"
+                                            title="Prescriptions">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Prescriptions</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['pharmacy_dispense_queue.list', 'pharmacy_dispense_queue.export']))
+                                    <li class="nav-item {{ Request::is('prescription/dispense*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.prescription.dispense.queue') }}"
+                                            title="Dispense Queue">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Dispense Queue</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </li>
                     @endif
-                    @if (selected_menu('inpatient'))
+                    @if (selected_menu('inpatient') &&
+                            hasAnyPermission([
+                                'ipd_admission.list',
+                                'ipd_admission.add',
+                                'ipd_admission.export',
+                                'ipd_admission.export',
+                                'ward.list',
+                                'ward.add',
+                                'ward.edit',
+                                'ward.delete',
+                                'bed.list',
+                            ]))
                         {{-- Inpatient --}}
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('ipd*') || Request::is('ward*') ? 'active' : '' }}">
@@ -137,18 +177,24 @@
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('ipd*') || Request::is('ward*') ? 'block' : 'none' }}">
-                                <li class="nav-item {{ Request::is('ipd*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.ipd.index') }}" title="IPD Admissions">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">IPD Admissions</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('ward*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.ward.index') }}" title="Wards & Beds">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Wards &amp; Beds</span>
-                                    </a>
-                                </li>
+                                @if (hasAnyPermission(['ipd_admission.list', 'ipd_admission.add', 'ipd_admission.export', 'ipd_admission.export']))
+                                    <li class="nav-item {{ Request::is('ipd*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.ipd.index') }}"
+                                            title="IPD Admissions">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">IPD Admissions</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['ward.list', 'ward.add', 'ward.edit', 'ward.delete', 'bed.list']))
+                                    <li class="nav-item {{ Request::is('ward*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.ward.index') }}"
+                                            title="Wards & Beds">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Wards &amp; Beds</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </li>
                     @endif
@@ -156,32 +202,46 @@
 
 
                     {{-- Staff --}}
-                    <li
-                        class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                            title="Staff">
-                            <i class="tio-group-senior nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Staff</span>
-                        </a>
-                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                            style="display: {{ Request::is('doctor*') || Request::is('nurse*') ? 'block' : 'none' }}">
-                            <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.doctor.list') }}" title="Doctors">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Doctors</span>
-                                </a>
-                            </li>
-                            <li class="nav-item {{ Request::is('nurse*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.nurse.list') }}" title="Nurses">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Nurses</span>
-                                </a>
-                            </li>
+                    @if (hasAnyPermission([
+                            'staff_doctor.list',
+                            'staff_doctor.add',
+                            'staff_doctor.export',
+                            'staff_nurse.list',
+                            'staff_nurse.add',
+                            'staff_nurse.export',
+                        ]))
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Staff">
+                                <i class="tio-group-senior nav-icon"></i>
+                                <span
+                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Staff</span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('doctor*') || Request::is('nurse*') ? 'block' : 'none' }}">
+                                @if (hasAnyPermission(['staff_doctor.list', 'staff_doctor.add', 'staff_doctor.export']))
+                                    <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.doctor.list') }}"
+                                            title="Doctors">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Doctors</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['staff_nurse.list', 'staff_nurse.add', 'staff_nurse.export']))
+                                    <li class="nav-item {{ Request::is('nurse*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.nurse.list') }}" title="Nurses">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Nurses</span>
+                                        </a>
+                                    </li>
+                                @endif
 
-                        </ul>
-                    </li>
-
-                    @if (selected_menu('inpatient'))
+                            </ul>
+                        </li>
+                    @endif
+                    @if (hasAnyPermission(['consent_form.list', 'consent_form.add', 'consent_template.list', 'consent_template.add']))
                         {{-- Documents --}}
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('consent*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -193,34 +253,42 @@
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('consent*') ? 'block' : 'none' }}">
-                                <li
-                                    class="nav-item {{ Request::is('consent') || Request::is('consent/create') || Request::is('consent/[0-9]*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.consent.index') }}"
-                                        title="Consent Forms">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Consent Forms</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item {{ Request::is('consent/template*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.consent.template.index') }}"
-                                        title="Consent Templates">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Consent Templates</span>
-                                    </a>
-                                </li>
+                                @if (hasAnyPermission(['consent_form.list', 'consent_form.add']))
+                                    <li
+                                        class="nav-item {{ Request::is('consent') || Request::is('consent/create') || Request::is('consent/[0-9]*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.consent.index') }}"
+                                            title="Consent Forms">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Consent Forms</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if (hasAnyPermission(['consent_template.list', 'consent_template.add']))
+                                    <li class="nav-item {{ Request::is('consent/template*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.consent.template.index') }}"
+                                            title="Consent Templates">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Consent Templates</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </li>
                     @endif
 
-                    {{-- Hospital Settings --}}
-                    <li class="nav-item {{ Request::is('hospital/settings') ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ route('vendor.hospital.settings') }}" title="Hospital Settings">
-                            <i class="tio-settings-outlined nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Hospital Settings</span>
-                        </a>
-                    </li>
+                    @if (hasPermission('hospital_manage', 'settings'))
+                        {{-- Hospital Settings --}}
+                        <li class="nav-item {{ Request::is('hospital/settings') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('vendor.hospital.settings') }}"
+                                title="Hospital Settings">
+                                <i class="tio-settings-outlined nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Hospital
+                                    Settings</span>
+                            </a>
+                        </li>
+                    @endif
 
-              @endif
+                @endif
                 {{-- =============================== iNVENTORY Management=========================== --}}
                 @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
                     <li
@@ -500,8 +568,10 @@
                                                 </span>
                                             </a>
                                         </li>
-                                        <li class="nav-item {{ Request::is('inventory/report/batch-expiry') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('vendor.inventory.report.batch-expiry') }}"
+                                        <li
+                                            class="nav-item {{ Request::is('inventory/report/batch-expiry') ? 'active' : '' }}">
+                                            <a class="nav-link"
+                                                href="{{ route('vendor.inventory.report.batch-expiry') }}"
                                                 title="Batch & Expiry">
                                                 <span class="tio-circle nav-indicator-icon"></span>
                                                 <span class="text-truncate sidebar--badge-container">
@@ -2413,7 +2483,7 @@
                 @endif
 
 
-                @if ( \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                @if (\App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link "
@@ -2519,20 +2589,21 @@
     text-align: center;
 ">
                     {{-- =============================== MENU PREFERENCE =========================== --}}
-                   
+
                 </li>
- @if (\App\CentralLogics\Helpers::employee_module_permission_check('menu_preference'))
-                            <a class="text-truncate" style="    position: absolute;
+                @if (\App\CentralLogics\Helpers::employee_module_permission_check('menu_preference'))
+                    <a class="text-truncate"
+                        style="    position: absolute;
     bottom: 2px;
     left: auto;
     background: #fff4f4;
     padding: 2px;
         font-size: 12px;
     text-align: center;
-    width: 96%;" href="{{ route('vendor.menu_preference') }}"
-                                title="Menu Preference">
+    width: 96%;"
+                        href="{{ route('vendor.menu_preference') }}" title="Menu Preference">
 
-                                <span class="text-truncate"><i class="tio-settings-outlined"></i> Menu
-                                    Preferences</span>
-                            </a>
-                    @endif
+                        <span class="text-truncate"><i class="tio-settings-outlined"></i> Menu
+                            Preferences</span>
+                    </a>
+                @endif
