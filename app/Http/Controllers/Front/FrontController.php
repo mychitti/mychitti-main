@@ -241,21 +241,21 @@ class FrontController extends Controller
     public function add_feature_actions(Request $request)
     {
         $features = [
-            // ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
-            // ['name' => 'patient', 'display_name' => 'Patient', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'delete', 'export']],
-            // ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'generate_bill']],
-            // ['name' => 'prescription', 'display_name' => 'Prescription', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'print', 'export']],
-            // ['name' => 'pharmacy_dispense_queue', 'display_name' => 'Pharmacy Dispense Queue', 'master_module' => 'hospital_manage', 'actions' => ['list', 'dispense', 'export']],
-            // ['name' => 'ipd_admission', 'display_name' => 'IPD Admission', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'discharge', 'generate_bill', 'consent']],
-            // ['name' => 'ward', 'display_name' => 'Ward', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
-            // ['name' => 'bed', 'display_name' => 'Beds', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete']],
+            ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
+            ['name' => 'patient', 'display_name' => 'Patient', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'delete', 'export']],
+            ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'generate_bill']],
+            ['name' => 'prescription', 'display_name' => 'Prescription', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'print', 'export']],
+            ['name' => 'pharmacy_dispense_queue', 'display_name' => 'Pharmacy Dispense Queue', 'master_module' => 'hospital_manage', 'actions' => ['list', 'dispense', 'export']],
+            ['name' => 'ipd_admission', 'display_name' => 'IPD Admission', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'discharge', 'generate_bill', 'consent']],
+            ['name' => 'ward', 'display_name' => 'Ward', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
+            ['name' => 'bed', 'display_name' => 'Beds', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete']],
 
-            // ['name' => 'staff_doctor', 'display_name' => 'Staff : Doctor', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'slots','edit','delete']],
-            // ['name' => 'staff_nurse', 'display_name' => 'Staff : Nurse', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'edit', 'delete','view']],
-            // ['name' => 'consent_form', 'display_name' => 'Consent Form', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'delete']],
-            // ['name' => 'consent_template', 'display_name' => 'Consent Template', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
-            // ['name' => 'nursing_notes', 'display_name' => 'Nursing Notes', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
-            // ['name' => 'diet_chart', 'display_name' => 'Diet Chart', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
+            ['name' => 'staff_doctor', 'display_name' => 'Staff : Doctor', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'slots','edit','delete']],
+            ['name' => 'staff_nurse', 'display_name' => 'Staff : Nurse', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'export', 'edit', 'delete','view']],
+            ['name' => 'consent_form', 'display_name' => 'Consent Form', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'delete']],
+            ['name' => 'consent_template', 'display_name' => 'Consent Template', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'delete', 'status_change']],
+            ['name' => 'nursing_notes', 'display_name' => 'Nursing Notes', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
+            ['name' => 'diet_chart', 'display_name' => 'Diet Chart', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete']],
             ['name' => 'patient_documents', 'display_name' => 'Patient Documents', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'delete', 'view']],
         ];
 
