@@ -68,7 +68,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="text-muted">UID</td>
+                                <td class="text-muted">MUID</td>
                                 <td>{{ $admission->patient?->patient_uid }}</td>
                             </tr>
                             <tr>

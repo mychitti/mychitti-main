@@ -14,6 +14,10 @@
                    @if (auth('vendor')->check())
                         <li class="list-inline-item">
                             <a class="list-separator-link"
+                                href="{{ route('vendor.hospital.activity-log') }}">Activity Logs</a>
+                        </li>
+                        <li class="list-inline-item">
+                            <a class="list-separator-link"
                                 href="{{ route('vendor.terms-and-conditions.view') }}">Terms and Conditions</a>
                         </li>
                     @elseif(auth('vendor_employee')->check())

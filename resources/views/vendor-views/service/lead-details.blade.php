@@ -453,12 +453,12 @@
                                     <i class="tio-edit"></i> Edit Prescription
                                 </a>
                                 @endif
-                            @else
+                            {{-- @else
                                 <a class="action-card text-decoration-none"
                                     style="background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8;"
                                     href="{{ route('vendor.prescription.create', ['service_request_id' => $acceptanceDetails->service_request_id]) }}">
                                     <i class="tio-medicine"></i> Add Prescription
-                                </a>
+                                </a> --}}
                             @endif
                         @endif
 

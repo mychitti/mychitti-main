@@ -69,6 +69,12 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $isEmployee  = auth('vendor_employee')->check();
+                            $currentId   = $isEmployee ? auth('vendor_employee')->id() : auth('vendor')->id();
+                            $currentType = $isEmployee ? 'vendor_employee' : 'vendor';
+                            // $myDoctorProfileId passed from controller (null if not a doctor employee)
+                        @endphp
                         @forelse($prescriptions as $rx)
                         <tr>
                             <td>{{ $rx->id }}</td>
@@ -96,7 +102,10 @@
                                    class="btn btn-sm btn-outline-primary" title="View / Print">
                                     <i class="tio-print"></i>
                                 </a>
-                                @if(!$rx->is_finalized)
+                                @if(!$rx->is_finalized && (
+                                        ($rx->created_by == $currentId && $rx->created_by_type === $currentType)
+                                        || ($myDoctorProfileId && $rx->appointment?->doctor_profile_id == $myDoctorProfileId)
+                                    ))
                                 <a href="{{ route('vendor.prescription.edit', $rx->id) }}"
                                    class="btn btn-sm btn-outline-secondary" title="Edit">
                                     <i class="tio-edit"></i>

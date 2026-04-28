@@ -32,7 +32,39 @@ class AppointmentController extends Controller
 
         return view('front-views.appointment.book', compact('store', 'doctors', 'selectedDoctorId'));
     }
+    public function doctors(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|integer|exists:stores,id',
+            'item_id'  => 'nullable|integer|exists:items,id',
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()]);
+        }
+
+        $query = DoctorProfile::where('store_id', $request->store_id)
+            ->with(['employee:id,f_name,l_name,phone,image', 'services'])
+            ->whereHas('slots', fn($s) => $s->where('is_active', 1));
+
+        if ($request->filled('item_id')) {
+            $query->whereHas('services', fn($s) => $s->where('item_id', $request->item_id));
+        }
+
+        $doctors = $query->get()->map(fn($d) => [
+            'id'                => $d->id,
+            'name'              => 'Dr. ' . trim(($d->employee?->f_name ?? '') . ' ' . ($d->employee?->l_name ?? '')),
+            'image'             => $d->employee?->image,
+            'specialization'    => $d->specialization,
+            'qualification'     => $d->qualification,
+            'department'        => $d->department,
+            'consultation_fee'  => (float) $d->consultation_fee,
+            'available_days'    => $d->available_days,
+            'service_ids'       => $d->services->pluck('item_id'),
+        ]);
+
+        return response()->json(['doctors' => $doctors]);
+    }
     public function slots(Request $request)
     {
         $request->validate([
@@ -40,23 +72,62 @@ class AppointmentController extends Controller
             'date'              => 'required|date',
         ]);
 
-        $dayOfWeek = Carbon::parse($request->date)->dayOfWeek;
+        $doctorId  = $request->doctor_profile_id;
+        $date      = $request->date;
+        $dayOfWeek = Carbon::parse($date)->dayOfWeek;
 
-        $slots = DoctorSlot::where('doctor_profile_id', $request->doctor_profile_id)
+        $slots = DoctorSlot::where('doctor_profile_id', $doctorId)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', 1)
             ->get();
 
-        $slots->each(function ($slot) use ($request) {
+        $slots->each(function ($slot) use ($date) {
             $booked = Appointment::where('slot_id', $slot->id)
-                ->where('appointment_date', $request->date)
+                ->where('appointment_date', $date)
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->count();
             $slot->booked    = $booked;
             $slot->available = max(0, $slot->max_patients - $booked);
         });
 
-        return response()->json($slots);
+        // Find next available date when no slots or all slots are full
+        $allFull = $slots->isNotEmpty() && $slots->every(fn($s) => $s->available <= 0);
+        $nextAvailable = null;
+
+        if ($slots->isEmpty() || $allFull) {
+            $activeDays = DoctorSlot::where('doctor_profile_id', $doctorId)
+                ->where('is_active', 1)
+                ->pluck('day_of_week')
+                ->unique()
+                ->toArray();
+
+            $check = Carbon::parse($date)->addDay();
+            for ($i = 0; $i < 60; $i++, $check->addDay()) {
+                if (!in_array($check->dayOfWeek, $activeDays)) continue;
+
+                $daySlots = DoctorSlot::where('doctor_profile_id', $doctorId)
+                    ->where('day_of_week', $check->dayOfWeek)
+                    ->where('is_active', 1)
+                    ->get();
+
+                foreach ($daySlots as $ds) {
+                    $booked = Appointment::where('slot_id', $ds->id)
+                        ->where('appointment_date', $check->toDateString())
+                        ->whereNotIn('status', ['cancelled', 'no_show'])
+                        ->count();
+                    if ($booked < $ds->max_patients) {
+                        $nextAvailable = $check->toDateString();
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        return response()->json([
+            'slots'          => $slots->values(),
+            'next_available' => $nextAvailable,
+            'all_full'       => $allFull,
+        ]);
     }
 
     public function book(Request $request, $city, $slug)

@@ -4,13 +4,15 @@
 @section('content')
 <div class="content container-fluid">
 
+    {{-- $canEditRx is passed from PrescriptionController::show() --}}
+
     {{-- Toolbar (hidden on print) --}}
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <div class="d-flex align-items-center gap-2">
             <a href="{{ route('vendor.prescription.list') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-arrow-backward"></i> Back
             </a>
-            @if(!$rx->is_finalized)
+            @if(!$rx->is_finalized && $canEditRx)
             <a href="{{ route('vendor.prescription.edit', $rx->id) }}" class="btn btn-sm btn-outline-primary">
                 <i class="tio-edit"></i> Edit
             </a>

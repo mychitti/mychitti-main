@@ -33,7 +33,19 @@ class ConsentController extends Controller
 
     public function templateIndex()
     {
-        $store_id  = Helpers::get_store_id();
+        $store_id = Helpers::get_store_id();
+
+        $cacheKey = "consent_default_seeded_{$store_id}";
+        if (!ConsentTemplate::where('store_id', $store_id)->exists() && !cache()->has($cacheKey)) {
+            ConsentTemplate::create([
+                'store_id'  => $store_id,
+                'title'     => 'General Consent Form',
+                'content'   => "I, {{patient_name}}, hereby voluntarily consent to receive medical examination, diagnosis, and treatment at this hospital under the care of Dr. {{doctor_name}} and/or their team.\n\nI understand that:\n- My condition has been explained to me in a language I understand.\n- The nature, purpose, and possible risks/benefits of the proposed treatment have been discussed.\n- No guarantee has been given regarding the outcome of the treatment.\n\nI authorize the hospital and its staff to:\n- Perform necessary diagnostic procedures, tests, and treatments.\n- Administer medications and injections as required.\n- Provide emergency care if needed.\n\nI also understand that:\n- I have the right to ask questions and seek clarification.\n- I can withdraw my consent at any time before the procedure.\n\nI confirm that:\n- I have disclosed all relevant medical history, allergies, and current medications.\n- All my questions have been answered to my satisfaction.\n\nI give my consent freely without any pressure or coercion.\n\nPatient Name: {{patient_name}}\nDate: {{date}}\nSignature: ______________________\nDoctor Name: {{doctor_name}}\nSignature: ______________________",
+                'is_active' => true,
+            ]);
+            cache()->forever($cacheKey, true);
+        }
+
         $templates = ConsentTemplate::where('store_id', $store_id)
             ->orderBy('title')->paginate(20);
         return view('vendor-views.consent.template_index', compact('templates'));

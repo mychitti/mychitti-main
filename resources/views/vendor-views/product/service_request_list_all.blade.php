@@ -1,4 +1,4 @@
-@extends('layouts.vendor.app')
+﻿@extends('layouts.vendor.app')
 
 @section('title', $type .  (_isHospital() ? 'Appointments' : ' Leads'))
 
@@ -116,7 +116,7 @@
         .button-container {
             display: flex;
             justify-content: center;
-            gap: 30px;
+            gap: 8px;
             margin-top: 15px;
         }
 
@@ -189,7 +189,9 @@
             <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ $type . (_isHospital() ? 'Appointments' : ' Leads') }} <span
                     class="badge badge-soft-dark ml-2" id="itemCount">{{ count($product) }}</span></h1>
             <div class="page-header-select-wrapper">
-                <!-- Button trigger modal -->
+                <button onclick="window.location.reload()" class="btn btn-outline-secondary btn-sm mr-1" title="Refresh">
+                    <i class="tio-refresh"></i>
+                </button>
                 @if (hasPermission('leads_manage', 'statuses') && !$empId)
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#sttsMOdal">
                         Available Statuses
@@ -240,10 +242,10 @@
                                 </select>
                             </form>
                         @endif
-                        @if (hasPermission('leads_manage', 'export'))
+                        {{-- @if (hasPermission('leads_manage', 'export'))
                             <a href="{{ route('vendor.service.leads_list', [0, 'export']) . '?' . http_build_query(array_filter(['search' => request('search'), 'type' => request('type'), 'date_range' => request('date_range'), 'custom_date_range' => request('custom_date_range')])) }}"
                                 class="btn btn--primary">Export</a>
-                        @endif
+                        @endif --}}
                     @endif
                 </div>
             </div>  
@@ -282,8 +284,8 @@
                                 $class = 'cancelled';
                             }
                             if ($class == '') {
-                                $class = 'new';
-                            }
+                                $class = 'new';  
+                            } 
                             $user_details = _getUserDetails($lead->uid);
                         @endphp
                         <div class="col-md-2">
@@ -297,12 +299,9 @@
                                             <button class="btn p-1 dropdown-toggle"
                                                 style="position: absolute; right: -5px; top: -22px;" type="button"
                                                 data-toggle="dropdown" aria-expanded="false">
-                                                <img style="width: 24px; filter: contrast(0)"
-                                                    src="{{ asset('storage/app/public/util/10025520.png') }}"
-                                                    alt="action" />
+                                                  <i class="fa-solid fa-bars" style="font-size:16px;"></i>
                                             </button>
                                             <div class="dropdown-menu">
-
                                                 @if ($isCompleted)
                                                     @if (in_array($invoiceStatus, ['new', 'editable']))
                                                         <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}"
@@ -526,7 +525,7 @@
 
                                     @if ($isCompleted)
                                         <div class="d-flex flex-wrap gap-1 mt-3">
-                                            @if (hasAnyModulePermission(['leads_gatepass']))
+                                            {{-- @if (hasAnyModulePermission(['leads_gatepass']))
                                                 <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
                                                     class="btn btn_sm btn-primary">
                                                     Gatepass</a>
@@ -535,7 +534,7 @@
                                                 <a href="{{ route('vendor.service.quotations', [$lead->id]) }}"
                                                     class="btn btn_sm btn-primary">
                                                     Quotation</a>
-                                            @endif
+                                            @endif --}}
                                             @if (hasPermission('leads_manage', 'edit') && in_array($invoiceStatus, ['new', 'editable']))
                                                 <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}"
                                                     class="btn btn_sm btn-primary"

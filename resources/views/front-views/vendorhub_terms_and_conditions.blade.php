@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>My Chitti — Terms and Conditions</title>
+    <title>My Chitti 2 — Terms and Conditions</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/vendor/icon-set/style.css') }}">

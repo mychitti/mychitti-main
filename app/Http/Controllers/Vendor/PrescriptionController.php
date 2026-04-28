@@ -27,6 +27,36 @@ class PrescriptionController extends Controller
         return Helpers::get_store_id();
     }
 
+    private function currentUserId(): int
+    {
+        return auth('vendor_employee')->id() ?? auth('vendor')->id();
+    }
+
+    private function currentUserType(): string
+    {
+        return auth('vendor_employee')->check() ? 'vendor_employee' : 'vendor';
+    }
+
+    private function canEdit(\App\Models\Prescription $rx): bool
+    {
+        // Original creator
+        if ($rx->created_by === $this->currentUserId() && $rx->created_by_type === $this->currentUserType()) {
+            return true;
+        }
+
+        // Doctor currently assigned to the linked appointment (covers reassignment)
+        if ($rx->appointment_id && auth('vendor_employee')->check()) {
+            $appt = $rx->relationLoaded('appointment') ? $rx->appointment : \App\Models\Appointment::find($rx->appointment_id);
+            if ($appt) {
+                return \App\Models\DoctorProfile::where('id', $appt->doctor_profile_id)
+                    ->where('emp_id', auth('vendor_employee')->id())
+                    ->exists();
+            }
+        }
+
+        return false;
+    }
+
     /** List all prescriptions for this store */
     public function index(Request $request)
     {
@@ -39,7 +69,7 @@ class PrescriptionController extends Controller
         $query = Prescription::where('store_id', $this->storeId())
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
-            ->with(['patient', 'doctorProfile.employee'])
+            ->with(['patient', 'doctorProfile.employee', 'appointment:id,doctor_profile_id'])
             ->latest();
 
         if ($request->filled('patient')) {
@@ -54,7 +84,14 @@ class PrescriptionController extends Controller
         $prescriptions = $query->paginate(20)->withQueryString();
         $doctors = DoctorProfile::where('store_id', $this->storeId())->with('employee')->get();
 
-        return view('vendor-views.prescription.index', compact('prescriptions', 'doctors', 'preset', 'from', 'to'));
+        $myDoctorProfileId = null;
+        if (auth('vendor_employee')->check()) {
+            $myDoctorProfileId = DoctorProfile::where('emp_id', auth('vendor_employee')->id())
+                ->where('store_id', $this->storeId())
+                ->value('id');
+        }
+
+        return view('vendor-views.prescription.index', compact('prescriptions', 'doctors', 'preset', 'from', 'to', 'myDoctorProfileId'));
     }
 
     public function export(Request $request)
@@ -174,6 +211,8 @@ class PrescriptionController extends Controller
                 'notes'             => $request->notes,
                 'follow_up_date'    => $request->follow_up_date ?: null,
                 'is_finalized'      => $request->has('finalize'),
+                'created_by'        => $this->currentUserId(),
+                'created_by_type'   => $this->currentUserType(),
             ]);
 
             foreach (($request->medicines ?? []) as $med) {
@@ -191,6 +230,16 @@ class PrescriptionController extends Controller
             }
 
             DB::commit();
+
+            $action = $request->has('finalize') ? 'finalized' : 'created';
+            $rx->load('patient');
+            $patName = $rx->patient?->name . ' (' . $rx->patient?->patient_uid . ')';
+            \App\Models\HospitalActivityLog::record(
+                $this->storeId(), 'prescription', $rx->id, $action,
+                "Prescription #{$rx->id} {$action} for {$patName}" . ($rx->appointment_id ? " (Appointment #{$rx->appointment_id})" : ''),
+                ['is_finalized' => $rx->is_finalized]
+            );
+
             Toastr::success('Prescription saved successfully');
 
             if ($request->appointment_id) {
@@ -210,10 +259,12 @@ class PrescriptionController extends Controller
     public function show($id)
     {
         $rx = Prescription::where('store_id', $this->storeId())
-            ->with(['patient', 'doctorProfile.employee', 'items', 'store'])
+            ->with(['patient', 'doctorProfile.employee', 'items', 'store', 'appointment'])
             ->findOrFail($id);
 
-        return view('vendor-views.prescription.show', compact('rx'));
+        $canEditRx = $this->canEdit($rx);
+
+        return view('vendor-views.prescription.show', compact('rx', 'canEditRx'));
     }
 
     /** Edit form */
@@ -224,6 +275,11 @@ class PrescriptionController extends Controller
 
         if ($rx->is_finalized) {
             Toastr::warning('Finalized prescriptions cannot be edited');
+            return Redirect::route('vendor.prescription.show', $id);
+        }
+
+        if (!$this->canEdit($rx)) {
+            Toastr::error('You can only edit prescriptions you created.');
             return Redirect::route('vendor.prescription.show', $id);
         }
 
@@ -499,6 +555,11 @@ class PrescriptionController extends Controller
             return Redirect::route('vendor.prescription.show', $id);
         }
 
+        if (!$this->canEdit($rx)) {
+            Toastr::error('You can only edit prescriptions you created.');
+            return Redirect::route('vendor.prescription.show', $id);
+        }
+
         $request->validate([
             'diagnosis'      => 'nullable|string|max:1000',
             'notes'          => 'nullable|string|max:2000',
@@ -533,6 +594,14 @@ class PrescriptionController extends Controller
             }
 
             DB::commit();
+
+            $action = $request->has('finalize') ? 'finalized' : 'updated';
+            \App\Models\HospitalActivityLog::record(
+                $storeId, 'prescription', $rx->id, $action,
+                "Prescription #{$rx->id} {$action}",
+                ['is_finalized' => $rx->is_finalized]
+            );
+
             Toastr::success('Prescription updated');
 
             if ($rx->appointment_id) {

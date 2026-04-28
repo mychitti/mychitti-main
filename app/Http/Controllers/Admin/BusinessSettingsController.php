@@ -2091,7 +2091,8 @@ class BusinessSettingsController extends Controller
             $data_setting->type = 'admin_landing_page';
             $data_setting->key = 'vendorhub_terms_and_conditions';
         }
-        $data_setting->value = $request->vendorhub_terms_and_conditions;
+        $encoded = $request->vendorhub_terms_and_conditions;
+        $data_setting->value = is_array($encoded) ? $this->base64UrlDecode($encoded[0]) : $this->base64UrlDecode($encoded);
         $data_setting->save();
         Toastr::success(translate('messages.vendorhub_terms_and_conditions_updated'));
         return back();
@@ -2173,7 +2174,8 @@ class BusinessSettingsController extends Controller
                 $data_setting->type = 'admin_landing_page';
                 $data_setting->key = 'vendorhub_terms_and_conditions';
             }
-            $data_setting->value = $request->vendorhub_terms_and_conditions;
+            $encoded = $request->vendorhub_terms_and_conditions;
+            $data_setting->value = is_array($encoded) ? $this->base64UrlDecode($encoded[0]) : $this->base64UrlDecode($encoded);
             $data_setting->save();
             return response()->json(['status' => true, 'message' => 'Updated Successfully']);
         }

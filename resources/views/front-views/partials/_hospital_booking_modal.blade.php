@@ -51,7 +51,7 @@
                                         <p class="hb-doc-name">{{ trim($dName) }}</p>
                                         <p class="hb-doc-spec">{{ $d->specialization }}</p>
                                         @if ($d->consultation_fee > 0)
-                                            <p class="hb-doc-fee">₹{{ number_format($d->consultation_fee, 0) }}</p>
+                                            <p class="hb-doc-fee">Appointment Fee : ₹{{ number_format($d->consultation_fee, 0) }}</p>
                                         @else
                                             <p class="hb-doc-fee" style="color:#7c3aed;">Free</p>
                                         @endif
@@ -79,9 +79,40 @@
                         </div>
                     </div>
 
-                    {{-- Step 4: Reason --}}
+                    {{-- Step 4: Appoint for? --}}
+                    <div class="hb-section mb-3">
+                        <div class="hb-label">4. Appointment for?</div>
+                        <div class="hb-for-toggle">
+                            <label class="hb-for-option hb-for-selected" id="hbForMyselfLabel">
+                                <input type="radio" name="hb_for" value="myself" checked onchange="hbToggleFor('myself')">
+                                <span class="hb-for-icon">👤</span>
+                                <span>Myself</span>
+                            </label>
+                            <label class="hb-for-option" id="hbForOtherLabel">
+                                <input type="radio" name="hb_for" value="other" onchange="hbToggleFor('other')">
+                                <span class="hb-for-icon">👥</span>
+                                <span>Someone else</span>
+                            </label>
+                        </div>
+                        <div id="hbPatientFields" style="display:none; margin-top:12px;">
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Patient name <span class="text-danger">*</span></label>
+                                    <input type="text" id="hbPatientName" class="form-control form-control-sm" placeholder="Full name">
+                                    <div class="text-danger small d-none" id="hbPatientNameErr">Required</div>
+                                </div>
+                                <div class="col-5">
+                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" id="hbPatientPhone" class="form-control form-control-sm" placeholder="Mobile no.">
+                                    <div class="text-danger small d-none" id="hbPatientPhoneErr">Required</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Step 5: Reason --}}
                     <div class="hb-section mb-1">
-                        <div class="hb-label">4. Reason <span class="text-muted"
+                        <div class="hb-label">5. Reason <span class="text-muted"
                                 style="font-weight:400;">(optional)</span></div>
                         <textarea id="hbReason" class="form-control" rows="2" name="reason" placeholder="Chief complaint or reason for visit..."></textarea>
                     </div>
@@ -238,6 +269,55 @@
             margin-top: 1px;
         }
 
+        .hb-no-slots {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .hb-next-avail-link {
+            font-size: 12px;
+            font-weight: 600;
+            color: #2563eb;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .hb-next-avail-link:hover {
+            text-decoration: underline;
+        }
+
+        .hb-for-toggle {
+            display: flex;
+            gap: 10px;
+        }
+        .hb-for-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            background: #fff;
+            transition: border-color .15s, background .15s;
+            flex: 1;
+            user-select: none;
+        }
+        .hb-for-option input[type="radio"] { display: none; }
+        .hb-for-option:hover { border-color: #93c5fd; }
+        .hb-for-option.hb-for-selected {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+        .hb-for-icon { font-size: 16px; }
+
         @media (max-width: 480px) {
             .hb-doctor-card {
                 max-width: 100%;
@@ -282,11 +362,27 @@
 
             fetch(`${window._hbSlotsUrl}?doctor_profile_id=${_hbDoctorId}&date=${date}`)
                 .then(r => r.json())
-                .then(slots => {
-                    if (!slots.length) {
-                        grid.innerHTML = '<span class="text-muted small">No slots configured for this day.</span>';
+                .then(data => {
+                    const slots = data.slots || [];
+                    const noSlots = slots.length === 0;
+                    const allFull = data.all_full;
+
+                    if (noSlots || allFull) {
+                        let msg = noSlots
+                            ? 'No slots available on this day.'
+                            : 'All slots are fully booked for this day.';
+                        let nextHtml = '';
+                        if (data.next_available) {
+                            const [y, m, d2] = data.next_available.split('-');
+                            const label = new Date(y, m - 1, d2).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                            nextHtml = `<a href="#" class="hb-next-avail-link" onclick="hbJumpToDate('${data.next_available}'); return false;">
+                                Next available: ${label} →
+                            </a>`;
+                        }
+                        grid.innerHTML = `<div class="hb-no-slots"><span class="text-muted small">${msg}</span>${nextHtml}</div>`;
                         return;
                     }
+
                     let html = '';
                     slots.forEach(s => {
                         const full = s.available <= 0;
@@ -326,6 +422,24 @@
             return `${hr > 12 ? hr - 12 : (hr || 12)}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
         }
 
+        function hbJumpToDate(dateStr) {
+            document.getElementById('hbDate').value = dateStr;
+            hbLoadSlots();
+        }
+
+        var _hbFor = 'myself';
+
+        function hbToggleFor(val) {
+            _hbFor = val;
+            document.getElementById('hbForMyselfLabel').classList.toggle('hb-for-selected', val === 'myself');
+            document.getElementById('hbForOtherLabel').classList.toggle('hb-for-selected', val === 'other');
+            document.getElementById('hbPatientFields').style.display = val === 'other' ? 'block' : 'none';
+            if (val === 'myself') {
+                document.getElementById('hbPatientNameErr').classList.add('d-none');
+                document.getElementById('hbPatientPhoneErr').classList.add('d-none');
+            }
+        }
+
         function hbConfirm() {
             // Validate doctor
             if (!_hbDoctorId) {
@@ -335,6 +449,14 @@
             if (!document.getElementById('hbDate').value) {
                 document.getElementById('hbDateErr').classList.remove('d-none');
                 return;
+            }
+            // Validate patient fields when booking for someone else
+            if (_hbFor === 'other') {
+                var nameOk  = document.getElementById('hbPatientName').value.trim();
+                var phoneOk = document.getElementById('hbPatientPhone').value.trim();
+                if (!nameOk)  document.getElementById('hbPatientNameErr').classList.remove('d-none');
+                if (!phoneOk) document.getElementById('hbPatientPhoneErr').classList.remove('d-none');
+                if (!nameOk || !phoneOk) return;
             }
 
             const btn = document.getElementById('hbConfirmBtn');
@@ -357,6 +479,9 @@
                     preferred_slot_id: _hbSlotId || null,
                     preferred_time: _hbSlotTime || null,
                     requirements: document.getElementById('hbReason').value || null,
+                    patient_for: _hbFor,
+                    patient_name: _hbFor === 'other' ? document.getElementById('hbPatientName').value.trim() : null,
+                    patient_phone: _hbFor === 'other' ? document.getElementById('hbPatientPhone').value.trim() : null,
                 },
                 success: function(data) {
                     $('#hospitalBookingModal').modal('hide');
@@ -386,22 +511,25 @@
             });
         }
 
-        function hbFilterDoctors(serviceId) {
-            var cards = document.querySelectorAll('.hb-doctor-card');
-            var anyVisible = false;
-            cards.forEach(function(card) {
-                var services = card.dataset.services ? card.dataset.services.split(',') : [];
-                // Show all if no services assigned to any doctor, or if this doctor offers the service
-                var show = !serviceId || services.length === 0 || services.indexOf(String(serviceId)) !== -1;
-                card.style.display = show ? '' : 'none';
-                if (show) anyVisible = true;
-            });
-            // Fallback: if no doctor matches, show all
-            if (!anyVisible) {
-                cards.forEach(function(card) { card.style.display = ''; });
-            }
-        }
+     function hbFilterDoctors(serviceId) {
+    var cards = document.querySelectorAll('.hb-doctor-card');
+    var anyVisible = false;
 
+    cards.forEach(function(card) {
+        var services = card.dataset.services ? card.dataset.services.split(',') : [];
+
+        // Only show if: no serviceId active, OR doctor explicitly has this service
+        var show = !serviceId || services.indexOf(String(serviceId)) !== -1;
+
+        card.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+    });
+
+    // Fallback: only if truly NO doctor is assigned to ANY service
+    if (!anyVisible) {
+        cards.forEach(function(card) { card.style.display = ''; });
+    }
+}
         $('#hospitalBookingModal').on('show.bs.modal', function() {
             hbFilterDoctors(window._hbPending ? window._hbPending.serviceId : null);
         });
@@ -410,11 +538,15 @@
             _hbDoctorId = null;
             _hbSlotId = null;
             _hbSlotTime = null;
+            _hbFor = 'myself';
             document.querySelectorAll('.hb-doctor-card').forEach(c => c.classList.remove('hb-selected'));
             document.querySelectorAll('.hb-slot-card').forEach(c => c.classList.remove('hb-slot-selected'));
             document.getElementById('hbSlotSection').style.display = 'none';
             document.getElementById('hbReason').value = '';
             document.getElementById('hbDate').value = '{{ date('Y-m-d') }}';
+            // Reset "appoint for"
+            document.querySelector('input[name="hb_for"][value="myself"]').checked = true;
+            hbToggleFor('myself');
         }
 
         // Signal to layout.blade.php bookService() that this is a hospital store

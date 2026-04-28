@@ -19,6 +19,8 @@ class Prescription extends Model
         'notes',
         'follow_up_date',
         'is_finalized',
+        'created_by',
+        'created_by_type',
     ];
 
     protected $casts = [

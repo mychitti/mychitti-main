@@ -362,7 +362,6 @@ class UserController extends Controller
     {
         $user = auth('web')->user();
         $user_id = $user->id;
-        $phone = $user->phone;
 
         // phone number check
         if (!$user->phone) {
@@ -411,17 +410,22 @@ class UserController extends Controller
             $user->save();
         }
         $storeId = $request->storeId ?? false;
-        $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
+        if ($request->filled('preferred_doctor_id')) {
+            $isDedicated =  true;
+            $storesChunk = [$storeId];
+        } else {
+            $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
 
-        if (empty($storesChunk)) {
-            return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
-        }
+            if (empty($storesChunk)) {
+                return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
+            }
 
-        // Check if this is a dedicated lead (store has dedicated_leads enabled)
-        $isDedicated = false;
-        if ($storeId) {
-            $dedicatedCheck = DB::table('stores')->where('id', $storeId)->value('dedicated_leads');
-            $isDedicated = $dedicatedCheck ? true : false;
+            // Check if this is a dedicated lead (store has dedicated_leads enabled)
+            $isDedicated = false;
+            if ($storeId) {
+                $dedicatedCheck = DB::table('stores')->where('id', $storeId)->value('dedicated_leads');
+                $isDedicated = $dedicatedCheck ? true : false;
+            }
         }
         $serviceReq = new ServiceRequest();
         $serviceReq->user_id = $user_id;
@@ -436,7 +440,10 @@ class UserController extends Controller
         $serviceReq->pin_code = $pin_code;
         $serviceReq->address = $address;
         $serviceReq->city =  $city;
-        $serviceReq->requirements = $request->requirements;
+        $serviceReq->requirements  = $request->requirements;
+        $serviceReq->patient_for   = $request->patient_for === 'other' ? 'other' : 'myself';
+        $serviceReq->patient_name  = $request->patient_for === 'other' ? $request->patient_name  : null;
+        $serviceReq->patient_phone = $request->patient_for === 'other' ? $request->patient_phone : null;
         // Hospital preferred appointment fields
         if ($request->filled('preferred_doctor_id')) {
             $offersService = \App\Models\DoctorService::where('doctor_profile_id', $request->preferred_doctor_id)
@@ -452,6 +459,7 @@ class UserController extends Controller
             $serviceReq->reason              = $request->reason ?: null;
             $serviceReq->service_type        = 'doctor_appointment';
         }
+
         $serviceReq->created_at = date('Y-m-d H:i:s');
 
         try {
@@ -459,27 +467,40 @@ class UserController extends Controller
                 $itemName = DB::table('items')->where('id', $request->serviceId)->value('name') ?? '';
                 SuspiciousActivity::checkEnquiry($user_id, $request->serviceId, $itemName, $request->ip());
 
+
+
+                $url = route('admin.service.lead-list');
+                if ($request->filled('preferred_doctor_id')) {
+                    $lead_status2 = 'User Requested Appointment';
+                    $title = 'New Appointment Request';
+                    $msg = "A new appointment request has been submitted. Please review the details";
+                    $msg_to_vendor = "Hello! , You have received a new APPOINTMENT request from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
+
+                } else {
+                    $lead_status2 = 'User Requested Service';
+                    $title = 'New Service Enquiry';
+                    $msg = "A new service enquiry has been submitted. Please review the details";
+                    $msg_to_vendor = "Hello! , You have received a new ENQUIRY from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
+
+                }
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $serviceReq->id,
-                    'status' => 'User Requested Service',
+                    'status' => $lead_status2,
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
 
-                $url = route('admin.service.lead-list');
-                $title = 'New Service Enquiry';
-                _sendSMSToAdmin("A new service enquiry has been submitted. Please review the details", $title, $url);
+                _sendSMSToAdmin($msg, $title, $url);
 
                 $itemDet = DB::table('items')->where('id', $request->serviceId)->first();
                 $userDet = User::find($user_id);
 
                 if (count($storesChunk)) {
-                    $msg = "Hello! , You have received a new ENQUIRY from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
                     foreach ($storesChunk as $store) {
                         $store2 = DB::table('stores')->where('id', $store)->first();
                         $url =  route('vendor.service.leads_list');
                         if ($store2) {
-                            _sendSMS($store2->phone, $msg);
-                            _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
+                            _sendSMS($store2->phone, $msg_to_vendor);
+                            _inAppNotification($title, $msg_to_vendor, null, $store2->id, $url, 'vendor');
                         }
                     }
                 }

@@ -2175,4 +2175,131 @@ Route::get('debug/logs', function (\Illuminate\Http\Request $request) {
     echo '</pre><script>window.scrollTo(0, document.body.scrollHeight);</script></body></html>';
     exit;
 });
+
+Route::get('debug/wallet-check', function (\Illuminate\Http\Request $request) {
+    $storeId  = (int) $request->get('store_id');
+    $itemId   = (int) $request->get('item_id');
+
+    $rows = [];
+
+    if ($storeId) {
+        // Single store mode
+        $store = \Illuminate\Support\Facades\DB::table('stores')->where('id', $storeId)->first();
+        if (!$store) {
+            $rows[] = ['store_id' => $storeId, 'error' => 'Store not found'];
+        } else {
+            $vendorId = $store->vendor_id;
+            $zoneId   = $store->zone_id;
+            $categoryId = $itemId
+                ? (\Illuminate\Support\Facades\DB::table('items')->where('id', $itemId)->value('category_id'))
+                : null;
+
+            $minimumBalance = \App\CentralLogics\Helpers::get_wallet_min_balance($zoneId, $categoryId);
+            $walletRow = \Illuminate\Support\Facades\DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
+
+            $totalEarning    = $walletRow ? (float)$walletRow->total_earning    : 0;
+            $totalWithdrawn  = $walletRow ? (float)$walletRow->total_withdrawn   : 0;
+            $pendingWithdraw = $walletRow ? (float)$walletRow->pending_withdraw  : 0;
+            $collectedCash   = $walletRow ? (float)$walletRow->collected_cash    : 0;
+            $actualBalance   = $walletRow ? max(0, $totalEarning - ($totalWithdrawn + $pendingWithdraw + $collectedCash)) : 0;
+
+            $rows[] = [
+                'store_id'         => $storeId,
+                'store_name'       => $store->name,
+                'vendor_id'        => $vendorId,
+                'zone_id'          => $zoneId,
+                'category_id'      => $categoryId,
+                'wallet_row_exists' => (bool)$walletRow,
+                'total_earning'    => $totalEarning,
+                'total_withdrawn'  => $totalWithdrawn,
+                'pending_withdraw' => $pendingWithdraw,
+                'collected_cash'   => $collectedCash,
+                'actual_balance'   => $actualBalance,
+                'minimum_required' => $minimumBalance,
+                'PASSES'           => $actualBalance >= $minimumBalance ? 'YES ✓' : 'NO ✗',
+            ];
+        }
+    } elseif ($itemId) {
+        // Item mode — check all stores linked to this item
+        $item = \Illuminate\Support\Facades\DB::table('items')->where('id', $itemId)->first();
+        if (!$item || empty($item->store_ids)) {
+            $rows[] = ['error' => 'Item not found or has no store_ids'];
+        } else {
+            $storeIds   = array_map('intval', array_filter(explode(',', trim($item->store_ids))));
+            $categoryId = $item->category_id ?? null;
+            $stores     = \Illuminate\Support\Facades\DB::table('stores')->whereIn('id', $storeIds)->get();
+
+            foreach ($stores as $s) {
+                $walletRow = \Illuminate\Support\Facades\DB::table('store_wallets')->where('vendor_id', $s->vendor_id)->first();
+                $minimumBalance  = \App\CentralLogics\Helpers::get_wallet_min_balance($s->zone_id, $categoryId);
+                $totalEarning    = $walletRow ? (float)$walletRow->total_earning    : 0;
+                $totalWithdrawn  = $walletRow ? (float)$walletRow->total_withdrawn   : 0;
+                $pendingWithdraw = $walletRow ? (float)$walletRow->pending_withdraw  : 0;
+                $collectedCash   = $walletRow ? (float)$walletRow->collected_cash    : 0;
+                $actualBalance   = $walletRow ? max(0, $totalEarning - ($totalWithdrawn + $pendingWithdraw + $collectedCash)) : 0;
+
+                $rows[] = [
+                    'store_id'         => $s->id,
+                    'store_name'       => $s->name,
+                    'vendor_id'        => $s->vendor_id,
+                    'zone_id'          => $s->zone_id,
+                    'category_id'      => $categoryId,
+                    'wallet_row_exists' => (bool)$walletRow,
+                    'total_earning'    => $totalEarning,
+                    'total_withdrawn'  => $totalWithdrawn,
+                    'pending_withdraw' => $pendingWithdraw,
+                    'collected_cash'   => $collectedCash,
+                    'actual_balance'   => $actualBalance,
+                    'minimum_required' => $minimumBalance,
+                    'PASSES'           => $actualBalance >= $minimumBalance ? 'YES ✓' : 'NO ✗',
+                ];
+            }
+        }
+    }
+
+    $fields = $rows ? array_keys($rows[0]) : [];
+    $thStyle = 'padding:8px 12px;text-align:left;border-bottom:1px solid #444;color:#9cdcfe;white-space:nowrap;';
+    $tdStyle = 'padding:7px 12px;border-bottom:1px solid #333;';
+
+    ob_start(); ?>
+    <!DOCTYPE html><html><head><title>Wallet Check Debug</title>
+    <style>
+        body{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:13px;margin:0;padding:0}
+        .bar{background:#252526;padding:12px 20px;border-bottom:1px solid #444;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+        .bar input{background:#3c3c3c;color:#d4d4d4;border:1px solid #555;border-radius:4px;padding:5px 10px;font-size:13px;width:100px}
+        .bar button{background:#0e639c;color:#fff;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-size:13px}
+        table{width:100%;border-collapse:collapse}
+        tr:hover td{background:#2a2d2e}
+        .pass{color:#4ec9b0;font-weight:700}.fail{color:#f48771;font-weight:700}
+        .hint{color:#888;padding:20px;font-size:13px}
+    </style></head><body>
+    <div class="bar">
+        <strong style="color:#fff;font-size:14px">Wallet Check Debug</strong>
+        <form method="get" style="display:flex;gap:8px;align-items:center">
+            store_id: <input name="store_id" value="<?= (int)$request->get('store_id') ?>" placeholder="e.g. 5">
+            item_id: <input name="item_id" value="<?= (int)$request->get('item_id') ?>" placeholder="e.g. 12">
+            <button type="submit">Run Check</button>
+        </form>
+        <span style="color:#888;font-size:12px">Pass = wallet balance &ge; minimum required</span>
+    </div>
+    <?php if (!$storeId && !$itemId): ?>
+        <p class="hint">Enter a <b>store_id</b> to check one store, or an <b>item_id</b> to check all stores linked to that item.</p>
+    <?php elseif ($rows): ?>
+    <table>
+        <thead><tr><?php foreach ($fields as $f) echo "<th style='$thStyle'>$f</th>"; ?></tr></thead>
+        <tbody>
+        <?php foreach ($rows as $row): ?>
+            <tr><?php foreach ($row as $k => $v):
+                $class = '';
+                if ($k === 'PASSES') $class = str_contains((string)$v, 'YES') ? 'pass' : 'fail';
+                $display = is_bool($v) ? ($v ? 'true' : 'false') : htmlspecialchars((string)$v);
+                echo "<td style='$tdStyle' class='$class'>$display</td>";
+            endforeach; ?></tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
+    </body></html>
+    <?php echo ob_get_clean(); exit;
+});
 }); // end debug middleware group

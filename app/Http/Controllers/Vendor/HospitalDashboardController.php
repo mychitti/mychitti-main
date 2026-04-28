@@ -5,22 +5,23 @@ namespace App\Http\Controllers\Vendor;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\Bed;
-use App\Models\DietChart;
 use App\Models\DoctorProfile;
 use App\Models\IpdAdmission;
 use App\Models\NurseProfile;
-use App\Models\NursingNote;
 use App\Models\OpdVisit;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Ward;
 use Illuminate\Http\Request;
+use App\Models\BusinessSetting;
 use Illuminate\Support\Facades\DB;
 
 class HospitalDashboardController extends Controller
 {
     public function index(Request $request)
     {
+        if(auth('vendor')->check()){
+
         $store_id = Helpers::get_store_id();
 
         $preset = $request->get('date_range', 'this_month');
@@ -116,5 +117,85 @@ class HospitalDashboardController extends Controller
             'wards', 'recentPatients', 'recentDoctors', 'recentNurses',
             'recentAdmissions', 'recentOpdVisits', 'preset', 'from', 'to'
         ));
+        }
+        else {
+            // Vendor employee (staff) — show their own OPD visits
+            $emp = auth('vendor_employee')->user();
+            $store_id = Helpers::get_store_id();
+
+            $preset = $request->get('date_range', 'today');
+            $custom = $request->get('custom_date_range');
+            $range  = Helpers::calculatePresetDates($preset, $custom);
+            $from   = $range['start']->toDateString();
+            $to     = $range['end']->toDateString();
+
+            $search = $request->get('search');
+
+            $doctorProfile = DoctorProfile::where('emp_id', $emp->id)
+                ->where('store_id', $store_id)
+                ->first();
+
+            $opdVisits = OpdVisit::where('store_id', $store_id)
+                ->when($doctorProfile, fn($q) => $q->where('doctor_profile_id', $doctorProfile->id))
+                ->when(!$doctorProfile, fn($q) => $q->whereRaw('1=0'))
+                ->whereBetween('visit_date', [$from, $to])
+                ->when($search, function ($q) use ($search) {
+                    $q->whereHas('patient', fn($p) => $p->where('name', 'like', "%$search%")
+                        ->orWhere('patient_uid', 'like', "%$search%"));
+                })
+                ->with('patient')
+                ->orderBy('token_number')
+                ->paginate(20);
+
+            return view('vendor-views.hospital.staff_dashboard', compact(
+                'doctorProfile', 'opdVisits', 'preset', 'from', 'to', 'search'
+            ));
+        }
+    }
+
+    public function settings()
+    {
+        $store_id = Helpers::get_store_id();
+        $prefix   = Helpers::get_business_settings('patient_uid_prefix_' . $store_id) ?? 'P';
+        $padding  = (int)(Helpers::get_business_settings('patient_uid_padding_' . $store_id) ?? 5);
+        $serial   = (int)(Helpers::get_business_settings('patient_uid_serial_' . $store_id) ?? 1);
+
+        // Preview: what the next MUID will look like
+        $lastUid  = Patient::where('store_id', $store_id)->orderByDesc('id')->value('patient_uid');
+        $autoNext = 1;
+        if ($lastUid && preg_match('/(\d+)$/', $lastUid, $m)) {
+            $autoNext = (int)$m[1] + 1;
+        }
+        $nextSerial  = max($autoNext, $serial);
+        $previewMuid = strtoupper($prefix) . '-' . str_pad($nextSerial, $padding, '0', STR_PAD_LEFT);
+
+        return view('vendor-views.hospital.settings', compact('prefix', 'padding', 'serial', 'previewMuid'));
+    }
+
+    public function saveSettings(Request $request)
+    {
+        $request->validate([
+            'prefix'  => 'required|string|max:10|alpha_dash',
+            'padding' => 'required|integer|min:1|max:10',
+            'serial'  => 'required|integer|min:1',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+
+        BusinessSetting::updateOrInsert(
+            ['key' => 'patient_uid_prefix_' . $store_id],
+            ['value' => strtoupper($request->prefix), 'updated_at' => now()]
+        );
+        BusinessSetting::updateOrInsert(
+            ['key' => 'patient_uid_padding_' . $store_id],
+            ['value' => $request->padding, 'updated_at' => now()]
+        );
+        BusinessSetting::updateOrInsert(
+            ['key' => 'patient_uid_serial_' . $store_id],
+            ['value' => $request->serial, 'updated_at' => now()]
+        );
+
+        \Brian2694\Toastr\Facades\Toastr::success('Hospital settings saved.');
+        return back();
     }
 }

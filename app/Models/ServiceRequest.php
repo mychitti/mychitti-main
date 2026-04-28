@@ -16,7 +16,10 @@ class ServiceRequest extends Model
         'preferred_slot_id',
         'preferred_time',
         'requirements',
-        'service_type'
+        'service_type',
+        'patient_for',
+        'patient_name',
+        'patient_phone',
     ];
     protected function serializeDate(\DateTimeInterface $date)
     {

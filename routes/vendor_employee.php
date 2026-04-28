@@ -40,6 +40,16 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
+        // ── My Doctor Profile (for doctor staff) ──────────────────────────────
+        Route::prefix('my-doctor-profile')->name('my-doctor-profile.')->group(function () {
+            Route::get('/', 'MyDoctorProfileController@edit')->name('edit');
+            Route::post('/', 'MyDoctorProfileController@update')->name('update');
+            Route::post('slots/store', 'MyDoctorProfileController@slotStore')->name('slot.store');
+            Route::get('slots/{slot_id}/toggle', 'MyDoctorProfileController@slotToggle')->name('slot.toggle');
+            Route::get('slots/{slot_id}/delete', 'MyDoctorProfileController@slotDestroy')->name('slot.delete');
+            Route::post('slots/{slot_id}/clone', 'MyDoctorProfileController@slotClone')->name('slot.clone');
+        });
+
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');
         Route::get('/clock-out', 'VendorEmployeeController@clock_out')->name('clockout');
         Route::get('/attendance', 'VendorEmployeeController@attendance')->name('employee-attendance');
@@ -1219,6 +1229,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('list', 'AppointmentController@index')->name('list');
         Route::get('create', 'AppointmentController@create')->name('create');
         Route::post('store', 'AppointmentController@store')->name('store');
+        Route::get('lookup-lead', 'AppointmentController@lookupLead')->name('lookup-lead');
+        Route::post('store-from-lead', 'AppointmentController@storeFromLead')->name('store-from-lead');
         Route::get('available-slots', 'AppointmentController@availableSlots')->name('available-slots');
         Route::get('search-patients', 'AppointmentController@searchPatients')->name('search-patients');
         Route::get('search-doctors', 'AppointmentController@searchDoctors')->name('search-doctors');

@@ -151,6 +151,33 @@
                 </div>
             </div>
 
+            {{-- Reassign Doctor --}}
+            @if(!in_array($appointment->status, ['completed', 'cancelled']))
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0">Reassign Doctor</h5></div>
+                <div class="card-body">
+                    <form action="{{ route('vendor.appointment.reassign', $appointment->id) }}" method="POST">
+                        @csrf
+                        <div class="form-group mb-2">
+                            <label class="input-label">Select Doctor <span class="text-danger">*</span></label>
+                            <select name="doctor_profile_id" class="form-control" required>
+                                @foreach($doctors as $d)
+                                    <option value="{{ $d->id }}"
+                                        {{ $appointment->doctor_profile_id == $d->id ? 'selected' : '' }}>
+                                        Dr. {{ $d->employee?->f_name }} {{ $d->employee?->l_name }}
+                                        @if($d->specialization) — {{ $d->specialization }} @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="tio-user-add"></i> Reassign
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
+
             {{-- Reschedule --}}
             @if(!in_array($appointment->status, ['completed', 'cancelled']))
             <div class="card mb-3">

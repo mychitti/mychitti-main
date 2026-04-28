@@ -56,7 +56,14 @@
     <!-- Contact Start -->
     <div class="container-fluid contact py-5" style="min-height: 70vh;">
         <div class="container py-5">
-           @if($terms_and_conditions) {!! $terms_and_conditions->value !!} @endif
+           @if($terms_and_conditions)
+               @php
+                   $tnc = $terms_and_conditions->value;
+                   $decoded = base64_decode($tnc, true);
+                   $tnc = ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) ? $decoded : $tnc;
+               @endphp
+               {!! $tnc !!}
+           @endif
         </div>
     </div>
  

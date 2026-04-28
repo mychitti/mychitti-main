@@ -302,13 +302,16 @@ class ServiceController extends Controller
         if (isset($leadinfo->preferred_doctor_id) && $leadinfo->preferred_doctor_id) {
             // auto confirm and assign 
             $doctorProfile = \App\Models\DoctorProfile::find($leadinfo->preferred_doctor_id);
-            if ($doctorProfile) {
+            if ($doctorProfile && $doctorProfile->emp_id) {
                 $acceptance->assigned_status = 'Assigned';
-                $acceptance->assigned_type = 'staff';
-                $acceptance->assigned_to = $doctorProfile->emp_id;
-                $acceptance->assigned_at = NOW();
+                $acceptance->assigned_type   = 'staff';
+                $acceptance->assigned_to     = $doctorProfile->emp_id;
+                $acceptance->assigned_at     = date('Y-m-d H:i:s');
+                $acceptance->current_status  = 'Confirmed';
+                $acceptance->confirmed_at    = date('Y-m-d H:i:s');
+            } elseif ($doctorProfile) {
                 $acceptance->current_status = 'Confirmed';
-                $acceptance->confirmed_at = NOW();
+                $acceptance->confirmed_at   = date('Y-m-d H:i:s');
             }
             $appointmentConfirmed = true;
         }
@@ -1734,8 +1737,11 @@ class ServiceController extends Controller
         $approval_pending = TempStoreStatus::with('serviceStatus')
             ->where('store_id', Helpers::get_store_id())
             ->get();
-        // prx($product);
-        return view('vendor-views.product.service_request_list_all', compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses'));
+        $view = _isHospital()
+            ? 'vendor-views.hospital.appointment_list'
+            : 'vendor-views.product.service_request_list_all';
+
+        return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses'));
     }
 
 

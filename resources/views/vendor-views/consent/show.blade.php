@@ -46,7 +46,7 @@
                     <div class="row mb-4" style="font-size:13px;">
                         <div class="col-6">
                             <strong>Patient:</strong> {{ $consent->patient?->name }}<br>
-                            <strong>UID:</strong> {{ $consent->patient?->patient_uid }}<br>
+                            <strong>MUID:</strong> {{ $consent->patient?->patient_uid }}<br>
                             @if($consent->patient?->phone)
                             <strong>Phone:</strong> {{ $consent->patient->phone }}
                             @endif

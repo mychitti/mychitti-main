@@ -149,6 +149,12 @@ class PatientController extends Controller
             }
 
             DB::commit();
+
+            \App\Models\HospitalActivityLog::record(
+                $store_id, 'patient', $patient->id, 'created',
+                "Patient registered: {$patient->name} ({$patient->patient_uid})"
+            );
+
             Toastr::success('Patient registered successfully');
             return redirect()->route('vendor.patient.list');
         } catch (\Exception $e) {
@@ -256,6 +262,15 @@ class PatientController extends Controller
             $history->save();
 
             DB::commit();
+
+            \App\Models\HospitalActivityLog::record(
+                $store_id, 'patient', $patient->id, 'updated',
+                "Patient record updated: {$patient->name} ({$patient->patient_uid})"
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => true]);
+            }
             Toastr::success('Patient updated successfully');
             return redirect()->route('vendor.patient.show', $id);
         } catch (\Exception $e) {
@@ -263,6 +278,53 @@ class PatientController extends Controller
             Toastr::error('Failed to update patient: ' . $e->getMessage());
             return back()->withInput();
         }
+    }
+
+    public function uploadDocuments(Request $request, $id)
+    {
+        $request->validate([
+            'files'         => 'required|array|min:1',
+            'files.*'       => 'required|file|max:10240',
+            'document_type' => 'required|in:id_proof,report,prescription,other',
+            'document_name' => 'nullable|string|max:100',
+        ]);
+
+        $store_id    = Helpers::get_store_id();
+        $patient     = Patient::where('store_id', $store_id)->findOrFail($id);
+        $dir         = 'patient/documents/';
+        $customName  = $request->document_name;
+        $uploaded    = [];
+
+        foreach ($request->file('files') as $file) {
+            $filename = Helpers::upload($dir, $file->getClientOriginalExtension(), $file);
+            $doc = PatientDocument::create([
+                'patient_id'    => $patient->id,
+                'document_type' => $request->document_type,
+                'document_name' => $customName ?: $file->getClientOriginalName(),
+                'file_path'     => $dir . $filename,
+                'uploaded_by'   => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            ]);
+            $uploaded[] = [
+                'id'            => $doc->id,
+                'document_name' => $doc->document_name,
+                'document_type' => $doc->document_type,
+                'url'           => asset('storage/' . $doc->file_path),
+            ];
+        }
+
+        return response()->json(['ok' => true, 'documents' => $uploaded]);
+    }
+
+    public function deleteDocument(Request $request, $id, $docId)
+    {
+        $store_id = Helpers::get_store_id();
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
+        $doc      = PatientDocument::where('patient_id', $patient->id)->findOrFail($docId);
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->file_path);
+        $doc->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     public function destroy($id)
@@ -321,14 +383,22 @@ class PatientController extends Controller
 
     private function generateUid(int $store_id): string
     {
-        // lockForUpdate() requires an active transaction (caller uses DB::beginTransaction)
+        $prefix  = strtoupper(Helpers::get_business_settings('patient_uid_prefix_' . $store_id) ?? 'P');
+        $padding = (int)(Helpers::get_business_settings('patient_uid_padding_' . $store_id) ?? 5);
+        $minSerial = (int)(Helpers::get_business_settings('patient_uid_serial_' . $store_id) ?? 1);
+
         $lastUid = Patient::where('store_id', $store_id)
             ->lockForUpdate()
             ->orderByDesc('id')
             ->value('patient_uid');
 
-        $next = ($lastUid && preg_match('/P-(\d+)$/', $lastUid, $m)) ? ((int)$m[1] + 1) : 1;
+        $autoNext = 1;
+        if ($lastUid && preg_match('/(\d+)$/', $lastUid, $m)) {
+            $autoNext = (int)$m[1] + 1;
+        }
 
-        return 'P-' . str_pad($next, 5, '0', STR_PAD_LEFT);
+        $next = max($autoNext, $minSerial);
+
+        return $prefix . '-' . str_pad($next, $padding, '0', STR_PAD_LEFT);
     }
 }

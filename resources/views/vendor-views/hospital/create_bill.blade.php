@@ -33,7 +33,7 @@
                     <div class="card-header py-2"><h6 class="mb-0"><i class="tio-user mr-1"></i>Patient</h6></div>
                     <div class="card-body py-2">
                         <p class="mb-1 font-weight-bold" style="font-size:15px;">{{ $patient->name }}</p>
-                        <p class="mb-1 text-muted" style="font-size:12px;">UID: {{ $patient->patient_uid }}</p>
+                        <p class="mb-1 text-muted" style="font-size:12px;">MUID: {{ $patient->patient_uid }}</p>
                         @if($patient->phone)
                             <p class="mb-1 text-muted" style="font-size:12px;"><i class="tio-call"></i> {{ $patient->phone }}</p>
                         @endif

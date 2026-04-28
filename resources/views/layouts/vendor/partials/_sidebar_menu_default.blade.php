@@ -2351,6 +2351,15 @@
                                         <span class="text-truncate">Dashboard</span>
                                     </a>
                                 </li>
+                                @if(auth('vendor_employee')->check())
+                                <li class="nav-item {{ Request::is('hospital/staff-dashboard') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.hospital.staff-dashboard') }}"
+                                        title="My OPD Visits">
+                                        <span class="tio-document-text nav-icon"></span>
+                                        <span class="text-truncate">My OPD Visits</span>
+                                    </a>
+                                </li>
+                                @endif
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('account/request-form*') ? 'active' : '' }}">
                                     <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -2639,7 +2648,7 @@
                             </ul>
                         </li>
                     @endif
-                    @if (selected_menu('notifications') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                    @if ( \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "

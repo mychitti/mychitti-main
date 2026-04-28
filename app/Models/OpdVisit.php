@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class OpdVisit extends Model
 {
     protected $fillable = [
-        'store_id', 'patient_id', 'doctor_profile_id', 'appointment_id',
+        'store_id', 'patient_id', 'doctor_profile_id', 'appointment_id', 'service_request_id',
         'visit_date', 'token_number', 'visit_type', 'chief_complaint',
         'bp_systolic', 'bp_diastolic', 'temperature', 'weight',
         'height', 'spo2', 'pulse_rate', 'respiratory_rate', 'notes', 'recorded_by', 'status',

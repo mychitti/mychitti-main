@@ -41,7 +41,7 @@
                 <thead class="thead-light">
                     <tr>
                         <th>#</th>
-                        <th>Patient UID</th>
+                        <th>MUID</th>
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Gender</th>

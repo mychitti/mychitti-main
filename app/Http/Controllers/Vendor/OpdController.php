@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\AcceptedServiceRequest;
 use App\Models\DoctorProfile;
+use App\Models\DoctorSlot;
 use App\Models\OpdVisit;
 use App\Models\Patient;
+use App\Models\ServiceRequest;
+use App\Models\User;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -65,7 +69,7 @@ class OpdController extends Controller
             ->orderBy('token_number')
             ->get();
 
-        $headings = ['Token', 'Visit Date', 'Patient', 'UID', 'Doctor', 'Chief Complaint', 'BP', 'Temperature', 'Weight', 'Status'];
+        $headings = ['Token', 'Visit Date', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'BP', 'Temperature', 'Weight', 'Status'];
         $data = $visits->map(fn($v) => [
             $v->token_number,
             $v->visit_date,
@@ -85,7 +89,7 @@ class OpdController extends Controller
         );
     }
 
-    public function create(Request $request)
+    public function create(Request $request, $id = null)
     {
         $store_id = Helpers::get_store_id();
         $patients = Patient::where('store_id', $store_id)->where('status', 1)->orderBy('name')->get();
@@ -99,38 +103,115 @@ class OpdController extends Controller
             ? Patient::where('store_id', $store_id)->find($request->patient_id)
             : null;
 
-        return view('vendor-views.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient'));
+        $prefillBooking = null;
+        if ($id) {
+            $sr = ServiceRequest::find((int) $id);
+            if ($sr) {
+                $sentTo = array_map('intval', array_filter(explode(',', $sr->sent_to ?? '')));
+                if (in_array((int) $store_id, $sentTo)) {
+                    $user   = User::find($sr->user_id);
+                    $doctor = $sr->preferred_doctor_id
+                        ? DoctorProfile::with('employee')->find($sr->preferred_doctor_id)
+                        : null;
+                    $slot   = $sr->preferred_slot_id
+                        ? DoctorSlot::find($sr->preferred_slot_id)
+                        : null;
+
+                    $isOther      = $sr->patient_for === 'other' && $sr->patient_name;
+                    $patientName  = $isOther
+                        ? $sr->patient_name
+                        : ($user ? (trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: $user->name) : 'Unknown');
+                    $patientPhone = $isOther ? $sr->patient_phone : $user?->phone;
+
+                    $slotLabel = $slot
+                        ? substr($slot->slot_start, 0, 5) . ' – ' . substr($slot->slot_end, 0, 5)
+                        : $sr->preferred_time;
+
+                    $prefillBooking = [
+                        'sr_id'            => $sr->id,
+                        'service_name'     => $sr->item?->name,
+                        'patient_name'     => $patientName,
+                        'patient_phone'    => $patientPhone,
+                        'doctor_name'      => $doctor
+                            ? 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''))
+                            : null,
+                        'appointment_date' => $sr->preferred_date,
+                        'slot_label'       => $slotLabel,
+                        'reason'           => $sr->requirements,
+                    ];
+                }
+            }
+        }
+
+        return view('vendor-views.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking'));
     }
 
     public function store(Request $request)
     {
+        $store_id = Helpers::get_store_id();
+
+        // ── Already Booked mode: resolve patient/doctor/date from service_request ──
+        if ($request->booking_mode === 'booked') {
+            $request->validate(['service_request_id' => 'required|integer']);
+
+            $sr = ServiceRequest::findOrFail($request->service_request_id);
+
+            $sentTo = array_map('intval', array_filter(explode(',', $sr->sent_to ?? '')));
+            if (!in_array((int)$store_id, $sentTo)) {
+                Toastr::error('This appointment does not belong to your store.');
+                return back();
+            }
+
+            if (!$sr->preferred_doctor_id) {
+                Toastr::error('No doctor was specified in this booking. Please register as walk-in.');
+                return back();
+            }
+
+            $patientId        = $this->resolvePatientId($sr, $store_id);
+            $doctorProfileId  = $sr->preferred_doctor_id;
+            $visitDate        = $sr->preferred_date ?? now()->toDateString();
+            $visitType        = 'new';
+        } else {
+            // ── Walk-in mode: standard validation ──────────────────────────────
+            $request->validate([
+                'patient_id'        => 'required|integer',
+                'doctor_profile_id' => 'required|integer',
+                'visit_date'        => 'required|date',
+                'visit_type'        => 'required|in:' . implode(',', array_keys(OpdVisit::VISIT_TYPES)),
+            ]);
+
+            $patientId       = $request->patient_id;
+            $doctorProfileId = $request->doctor_profile_id;
+            $visitDate       = $request->visit_date;
+            $visitType       = $request->visit_type;
+        }
+
         $request->validate([
-            'patient_id'        => 'required|integer',
-            'doctor_profile_id' => 'required|integer',
-            'visit_date'        => 'required|date',
-            'visit_type'        => 'required|in:' . implode(',', array_keys(OpdVisit::VISIT_TYPES)),
-            'chief_complaint'   => 'nullable|string|max:500',
-            'bp_systolic'       => 'nullable|integer|min:0|max:300',
-            'bp_diastolic'      => 'nullable|integer|min:0|max:200',
-            'temperature'       => 'nullable|numeric|min:90|max:110',
-            'weight'            => 'nullable|numeric|min:0|max:500',
-            'height'            => 'nullable|numeric|min:0|max:300',
-            'spo2'              => 'nullable|integer|min:0|max:100',
-            'pulse_rate'        => 'nullable|integer|min:0|max:300',
-            'respiratory_rate'  => 'nullable|integer|min:0|max:100',
-            'notes'             => 'nullable|string',
+            'chief_complaint'  => 'nullable|string|max:500',
+            'bp_systolic'      => 'nullable|integer|min:0|max:300',
+            'bp_diastolic'     => 'nullable|integer|min:0|max:200',
+            'temperature'      => 'nullable|numeric|min:90|max:110',
+            'weight'           => 'nullable|numeric|min:0|max:500',
+            'height'           => 'nullable|numeric|min:0|max:300',
+            'spo2'             => 'nullable|integer|min:0|max:100',
+            'pulse_rate'       => 'nullable|integer|min:0|max:300',
+            'respiratory_rate' => 'nullable|integer|min:0|max:100',
+            'notes'            => 'nullable|string',
         ]);
 
-        $store_id = Helpers::get_store_id();
+        $nextToken = (OpdVisit::where('store_id', $store_id)
+            ->whereDate('visit_date', $visitDate)
+            ->max('token_number') ?? 0) + 1;
 
         OpdVisit::create([
             'store_id'          => $store_id,
-            'patient_id'        => $request->patient_id,
-            'doctor_profile_id' => $request->doctor_profile_id,
-            'appointment_id'    => $request->appointment_id ?: null,
-            'visit_date'        => $request->visit_date,
-            'token_number'      => $request->token_number,
-            'visit_type'        => $request->visit_type,
+            'patient_id'        => $patientId,
+            'doctor_profile_id' => $doctorProfileId,
+            'appointment_id'      => $request->appointment_id ?: null,
+            'service_request_id'  => $request->booking_mode === 'booked' ? ($sr->id ?? null) : null,
+            'visit_date'        => $visitDate,
+            'token_number'      => $request->token_number ?? $nextToken,
+            'visit_type'        => $visitType,
             'chief_complaint'   => $request->chief_complaint,
             'bp_systolic'       => $request->bp_systolic,
             'bp_diastolic'      => $request->bp_diastolic,
@@ -145,18 +226,106 @@ class OpdController extends Controller
             'status'            => 'visited',
         ]);
 
+        // Assign service_request to the doctor employee so it shows in their leads
+        if ($request->booking_mode === 'booked' && isset($sr) && $doctorProfileId) {
+            $doctorProfile  = DoctorProfile::find($doctorProfileId);
+            $acceptedRecord = AcceptedServiceRequest::where('service_request_id', $sr->id)
+                ->where('vendor_id', $store_id)
+                ->first();
+
+            if ($acceptedRecord && $doctorProfile?->emp_id) {
+                $acceptedRecord->assigned_status = 'Assigned';
+                $acceptedRecord->assigned_type   = 'staff';
+                $acceptedRecord->assigned_to     = $doctorProfile->emp_id;
+                $acceptedRecord->assigned_at     = date('Y-m-d H:i:s');
+                $acceptedRecord->save();
+            }
+        }
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'opd_visit', null, 'created',
+            "OPD visit recorded for patient #{$patientId} with doctor #{$doctorProfileId} on {$visitDate} (token #{$nextToken})",
+            ['patient_id' => $patientId, 'doctor_profile_id' => $doctorProfileId, 'visit_date' => $visitDate]
+        );
+
         Toastr::success('OPD visit recorded.');
         return Redirect::route('vendor.opd.index');
+    }
+
+    private function resolvePatientId(ServiceRequest $sr, int $storeId): int
+    {
+        $isOther = $sr->patient_for === 'other' && $sr->patient_name;
+        $user    = User::find($sr->user_id);
+
+        if ($isOther) {
+            $last = Patient::where('store_id', $storeId)->latest('id')->first();
+            $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
+            return Patient::create([
+                'store_id'    => $storeId,
+                'user_id'     => null,
+                'patient_uid' => $uid,
+                'name'        => $sr->patient_name,
+                'phone'       => $sr->patient_phone,
+                'email'       => null,
+                'status'      => 1,
+            ])->id;
+        }
+
+        if ($user) {
+            $patient = Patient::where('user_id', $user->id)->where('store_id', $storeId)->first();
+            if ($patient) return $patient->id;
+
+            $last = Patient::where('store_id', $storeId)->latest('id')->first();
+            $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
+            return Patient::create([
+                'store_id'    => $storeId,
+                'user_id'     => $user->id,
+                'patient_uid' => $uid,
+                'name'        => trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: ($user->name ?? 'Patient'),
+                'phone'       => $user->phone,
+                'email'       => $user->email,
+                'status'      => 1,
+            ])->id;
+        }
+
+        $last = Patient::where('store_id', $storeId)->latest('id')->first();
+        $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
+        return Patient::create([
+            'store_id'    => $storeId,
+            'user_id'     => null,
+            'patient_uid' => $uid,
+            'name'        => 'Patient',
+            'phone'       => null,
+            'email'       => null,
+            'status'      => 1,
+        ])->id;
     }
 
     public function show($id)
     {
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)
-            ->with(['patient', 'doctorProfile.employee', 'recorder'])
+            ->with(['patient.documents', 'patient.medicalHistory', 'doctorProfile.employee', 'recorder'])
             ->findOrFail($id);
 
         return view('vendor-views.opd.show', compact('visit'));
+    }
+
+    public function quickUpdate(Request $request, $id)
+    {
+        $store_id = Helpers::get_store_id();
+        $visit    = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        $request->validate([
+            'chief_complaint' => 'nullable|string|max:500',
+            'notes'           => 'nullable|string',
+        ]);
+
+        $visit->chief_complaint = $request->chief_complaint;
+        $visit->notes           = $request->notes;
+        $visit->save();
+
+        return response()->json(['ok' => true]);
     }
 
     public function edit($id)

@@ -113,6 +113,13 @@ class DoctorController extends Controller
             VendorEmployee::where('id', $empId)->update(['employee_role_id' => $doctorRole->id]);
 
             DB::commit();
+
+            $doctor->load('employee');
+            $drName = 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''));
+            \App\Models\HospitalActivityLog::record(
+                $store_id, 'doctor', $doctor->id, 'created',
+                "Doctor profile created: {$drName} ({$doctor->specialization})"
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             Toastr::error('Failed to create doctor: ' . $e->getMessage());
@@ -171,6 +178,13 @@ class DoctorController extends Controller
         ]);
 
         $this->syncServices($doctor->id, $request->input('services', []));
+
+        $doctor->load('employee');
+        $drName = 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''));
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'doctor', $doctor->id, 'updated',
+            "Doctor profile updated: {$drName}"
+        );
 
         Toastr::success('Doctor profile updated successfully');
         return redirect()->route('vendor.doctor.list');
@@ -270,6 +284,14 @@ class DoctorController extends Controller
             ]);
         }
 
+        $doctor->load('employee');
+        $drName  = 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''));
+        $dayNames = array_map(fn($d) => DoctorSlot::DAYS[$d], $request->days_of_week);
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'slot', null, 'created',
+            "Slot(s) added for {$drName}: " . implode(', ', $dayNames) . " {$request->slot_start}–{$request->slot_end}"
+        );
+
         $count = count($request->days_of_week);
         Toastr::success($count === 1 ? 'Slot added' : "{$count} slots added");
         return back();
@@ -311,6 +333,12 @@ class DoctorController extends Controller
         $slot->is_active = !$slot->is_active;
         $slot->save();
 
+        $state = $slot->is_active ? 'activated' : 'deactivated';
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'slot', $slot->id, 'toggled',
+            "Slot #{$slot->id} {$state} ({$slot->slot_start}–{$slot->slot_end})"
+        );
+
         Toastr::success('Slot updated');
         return back();
     }
@@ -319,7 +347,14 @@ class DoctorController extends Controller
     {
         $store_id = Helpers::get_store_id();
         $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
-        DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id)->delete();
+        $slot     = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
+        $slotDesc = "{$slot->slot_start}–{$slot->slot_end} (" . (DoctorSlot::DAYS[$slot->day_of_week] ?? "Day {$slot->day_of_week}") . ")";
+        $slot->delete();
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'slot', $slot_id, 'deleted',
+            "Slot #{$slot_id} deleted: {$slotDesc}"
+        );
 
         Toastr::success('Slot deleted');
         return back();

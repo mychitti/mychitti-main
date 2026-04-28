@@ -301,6 +301,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::post('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'book'])->name('front.appointment.store');
     Route::get('{city}/store/{slug}/appointment/{id}/confirm', [FrontAppointmentController::class, 'confirm'])->name('front.appointment.confirm');
     Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');
+    Route::get('appointment/doctors', [FrontAppointmentController::class, 'doctors'])->name('front.appointment.doctors');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');
@@ -553,6 +554,8 @@ if (!$is_published) {
 }
 
 
+
+
 Route::get('module-test', function () {});
 
 Route::get('list-your-business', 'VendorController@create')->name('new-store.create');
@@ -601,50 +604,3 @@ Route::get('/heartbeat', function () {
 
     return response()->json(['status' => 'ok']);
 });
-// WEBSITE SETTINGS ROUTE (VENDOR)
-
-// Route::middleware(['auth'])->group(function () {
-    
-//     Route::prefix('vendor/settings')->name('vendor.settings.')->group(function () {
-        
-//         // Website Settings Main Page
-//         Route::get('/website', [WebsiteSettingsController::class, 'index'])->name('website');
-        
-//         // Domain Configuration
-//         Route::post('/update-domain', [WebsiteSettingsController::class, 'updateDomain'])->name('update-domain');
-//         Route::post('/check-domain', [WebsiteSettingsController::class, 'checkDomainAvailability'])->name('check-domain');
-//         Route::get('/dns-instructions', [WebsiteSettingsController::class, 'getDnsInstructions'])->name('dns-instructions');
-        
-//         // Layout Settings
-//         Route::post('/update-layout', [WebsiteSettingsController::class, 'updateLayout'])->name('update-layout');
-        
-//         // Contact Information
-//         Route::post('/webpage-update', [WebsiteSettingsController::class, 'webpageUpdate'])->name('webpage-update');
-        
-//         // Location
-//         Route::post('/update-location', [WebsiteSettingsController::class, 'updateLocation'])->name('update-location');
-        
-//         // Branding
-//         Route::post('/update-branding', [WebsiteSettingsController::class, 'updateBranding'])->name('update-branding');
-//     });
-// });
-
-// // Customer Store Routes - for subdomain access
-// Route::middleware(['subdomain'])->group(function () {
-//     Route::get('/', function (Illuminate\Http\Request $request) {
-//         $store = $request->attributes->get('vendor_store');
-//         $storeConfig = $request->attributes->get('store_config');
-        
-//         if (!$store) {
-//             abort(404, 'Store not found');
-//         }
-        
-//         return view('customer-views.customer-store-page', compact('store', 'storeConfig'));
-//     })->name('customer.store.home');
-    
-//     // Add more customer-facing routes as needed
-//     Route::get('/products', function (Illuminate\Http\Request $request) {
-//         $store = $request->attributes->get('vendor_store');
-//         // Load products logic
-//     })->name('customer.store.products');
-// });

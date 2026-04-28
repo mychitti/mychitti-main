@@ -138,6 +138,9 @@ class ServiceRequestController extends Controller
         $serviceReq->address_id = $request->address_id;
         $serviceReq->city =  $city;
         $serviceReq->gst =  $user->gst ?? null;
+        $serviceReq->patient_for   = $request->patient_for === 'other' ? 'other' : 'myself';
+        $serviceReq->patient_name  = $request->patient_for === 'other' ? $request->patient_name  : null;
+        $serviceReq->patient_phone = $request->patient_for === 'other' ? $request->patient_phone : null;
         // Hospital preferred appointment fields
         if ($request->filled('preferred_doctor_id')) {
             $offersService = \App\Models\DoctorService::where('doctor_profile_id', $request->preferred_doctor_id)
@@ -161,22 +164,27 @@ class ServiceRequestController extends Controller
                 $itemName = DB::table('items')->where('id', $request->item_id)->value('name') ?? '';
                 SuspiciousActivity::checkEnquiry($request->user_id, $request->item_id, $itemName, $request->ip());
 
+                $isAppointment = $request->filled('preferred_doctor_id');
+                $leadStatus    = $isAppointment ? 'User Requested Appointment' : 'User Requested Service';
+                $title         = $isAppointment ? 'New Appointment Request' : 'New Service Enquiry';
+                $adminMsg      = $isAppointment
+                    ? 'A new appointment request has been submitted. Please review the details.'
+                    : 'A new service enquiry has been submitted. Please review the details.';
+
                 DB::table('lead_statuses')->insert([
                     'service_request_id' => $serviceReq->id,
-                    'status' => 'User Requested Service',
+                    'status' => $leadStatus,
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
 
                 $url = route('admin.service.lead-list');
-                $msg = "A new service enquiry has been submitted. Please review the details";
-                $title =  'New Service Enquiry';
-                _sendSMSToAdmin($msg, $title, $url);
+                _sendSMSToAdmin($adminMsg, $title, $url);
 
                 $itemDet = DB::table('items')->where('id', $request->item_id)->first();
                 $userDet = User::find($request->user_id);
 
                 if (count($storesChunk)) {
-                    $msg = "Hello! , You have received a new ENQUIRY from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
+                    $msg = "Hello! , You have received a new " . ($isAppointment ? 'APPOINTMENT request' : 'ENQUIRY') . " from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
                     foreach ($storesChunk as $store) {
                         $store2 = DB::table('stores')->where('id', $store)->first();
                         $url =  route('vendor.service.leads_list');

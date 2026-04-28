@@ -2639,7 +2639,6 @@ class Helpers
             ->pluck('stores.id')
             ->map(fn($id) => (int) $id)
             ->toArray();
-       
         $storeIds = array_values(array_intersect($storeIds, $existingStoreIds));
 
         if (empty($storeIds)) return [];
@@ -2658,7 +2657,12 @@ class Helpers
         foreach ($storeVendorMap as $sId => $vendorId) {
             $zoneId = $storeZones[$sId] ?? null;
             $minimumBalance = Helpers::get_wallet_min_balance($zoneId, $categoryId);
-            $walletBalance = DB::table('store_wallets')->where('vendor_id', $vendorId)->value('total_earning') ?? 0;
+            $walletRow = DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
+            $totalEarning   = $walletRow ? (float)$walletRow->total_earning   : 0;
+            $totalWithdrawn = $walletRow ? (float)$walletRow->total_withdrawn  : 0;
+            $pendingWithdraw= $walletRow ? (float)$walletRow->pending_withdraw : 0;
+            $collectedCash  = $walletRow ? (float)$walletRow->collected_cash   : 0;
+            $walletBalance  = $walletRow ? max(0, $totalEarning - ($totalWithdrawn + $pendingWithdraw + $collectedCash)) : 0;
             if ($walletBalance >= $minimumBalance) {
                 $walletQualifiedStoreIds[] = (int) $sId;
             }

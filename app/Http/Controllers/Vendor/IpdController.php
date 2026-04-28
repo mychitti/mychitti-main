@@ -140,7 +140,7 @@ class IpdController extends Controller
 
             $admNumber = $this->generateAdmissionNumber($store_id);
 
-            IpdAdmission::create([
+            $admission = IpdAdmission::create([
                 'store_id'             => $store_id,
                 'patient_id'           => $request->patient_id,
                 'bed_id'               => $request->bed_id,
@@ -149,7 +149,7 @@ class IpdController extends Controller
                 'admission_number'     => $admNumber,
                 'admission_date'       => $request->admission_date,
                 'diagnosis'            => $request->diagnosis,
-                'admission_reason' => $request->admission_reason,
+                'admission_reason'     => $request->admission_reason,
                 'daily_charge'         => $bed->daily_charge,
                 'status'               => 'admitted',
                 'admitted_by'          => auth('vendor_employee')->id() ?? auth('vendor')->id(),
@@ -158,6 +158,15 @@ class IpdController extends Controller
             $bed->update(['status' => 'occupied']);
 
             DB::commit();
+
+            $admission->load(['patient', 'doctorProfile.employee']);
+            $patName = $admission->patient?->name . ' (' . $admission->patient?->patient_uid . ')';
+            $drName  = 'Dr. ' . trim(($admission->doctorProfile?->employee?->f_name ?? '') . ' ' . ($admission->doctorProfile?->employee?->l_name ?? ''));
+            \App\Models\HospitalActivityLog::record(
+                $store_id, 'ipd_admission', $admission->id, 'admitted',
+                "Patient admitted: {$patName} under {$drName}. Admission# {$admission->admission_number}",
+                ['admission_number' => $admission->admission_number, 'ward_id' => $request->ward_id, 'bed_id' => $request->bed_id]
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             Toastr::error('Error admitting patient: ' . $e->getMessage());
@@ -231,6 +240,14 @@ class IpdController extends Controller
             }
 
             DB::commit();
+
+            $admission->load('patient');
+            $patName = $admission->patient?->name . ' (' . $admission->patient?->patient_uid . ')';
+            \App\Models\HospitalActivityLog::record(
+                $store_id, 'ipd_admission', $admission->id, 'discharged',
+                "Patient discharged: {$patName}. Type: {$request->discharge_type}. Admission# {$admission->admission_number}",
+                ['discharge_type' => $request->discharge_type, 'discharge_date' => $request->discharge_date]
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             Toastr::error('Error discharging patient: ' . $e->getMessage());

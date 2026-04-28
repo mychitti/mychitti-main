@@ -7,7 +7,17 @@
                     </a>
                 </li>
 
-                @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6)
+                @if (!auth('vendor')->check())
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('my-doctor-profile*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.my-doctor-profile.edit') }}"
+                        title="My Profile & Slots">
+                        <i class="tio-user nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Profile & Slots</span>
+                    </a>
+                </li>
+                @endif
+
+                @if (auth('vendor')->check() && selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6)
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -201,6 +211,15 @@
                             </ul>
                         </li>
                     @endif
+
+                    {{-- Hospital Settings --}}
+                    <li class="nav-item {{ Request::is('hospital/settings') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('vendor.hospital.settings') }}" title="Hospital Settings">
+                            <i class="tio-settings-outlined nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Hospital Settings</span>
+                        </a>
+                    </li>
+
                 @endif
                 {{-- =============================== iNVENTORY Management=========================== --}}
                 @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
@@ -638,7 +657,7 @@
                     </a>
                 </li>
 
-                @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_leads'))
+                {{-- @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_leads'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -650,7 +669,7 @@
                             </span>
                         </a>
                     </li>
-                @endif
+                @endif --}}
                 @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_tasks'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('task/assigned-tasks*') ? 'active' : '' }}">
