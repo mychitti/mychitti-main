@@ -1757,7 +1757,7 @@ class VendorController extends Controller
         $conversionRate = $totalLeads > 0 ? round(($completedLeads / $totalLeads) * 100) : 0;
 
         // Wallet balance
-        $walletBalance = $wallet->balance ?? 0;
+        $walletBalance = $wallet->total_earning ?? 0;
 
         // Last login
         $lastLoginAt = $store->vendor->last_login_at;
@@ -1938,7 +1938,7 @@ class VendorController extends Controller
     {
         $store = Store::withoutGlobalScopes()->findOrFail($storeId);
         $wallet = StoreWallet::where('vendor_id', $storeId)->first();
-        $walletBalance = $wallet->balance ?? 0;
+        $walletBalance = $wallet->total_earning ?? 0;
         $lastLoginAt = $store->vendor->last_login_at;
         $lastLoginDays = $lastLoginAt ? (int) $lastLoginAt->diffInDays(now()) : null;
         $subscriptionExpired = !$store->subscriptions()->where('plan_expiry', '>=', now())->exists();
