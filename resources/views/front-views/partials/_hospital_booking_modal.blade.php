@@ -342,6 +342,9 @@
                 flex: 1 1 100%;
             }
         }
+        .card-hidden {
+    display: none !important;
+}
     </style>
 
     <script>
@@ -546,7 +549,8 @@
                 // Only show if: no serviceId active, OR doctor explicitly has this service
                 var show = !serviceId || services.indexOf(String(serviceId)) !== -1;
 
-                card.style.display = show ? '' : 'none';
+                // card.style.display = show ? '' : 'none';
+                card.classList.toggle('card-hidden', !show);
                 console.log('Doctor ID:', card.dataset.id, 'Services:', services, 'Show:', show);
                 if (show) anyVisible = true;
             });
