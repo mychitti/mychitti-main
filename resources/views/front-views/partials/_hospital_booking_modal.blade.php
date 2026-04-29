@@ -51,7 +51,8 @@
                                         <p class="hb-doc-name">{{ trim($dName) }}</p>
                                         <p class="hb-doc-spec">{{ $d->specialization }}</p>
                                         @if ($d->consultation_fee > 0)
-                                            <p class="hb-doc-fee">Appointment Fee : ₹{{ number_format($d->consultation_fee, 0) }}</p>
+                                            <p class="hb-doc-fee">Appointment Fee :
+                                                ₹{{ number_format($d->consultation_fee, 0) }}</p>
                                         @else
                                             <p class="hb-doc-fee" style="color:#7c3aed;">Free</p>
                                         @endif
@@ -84,7 +85,8 @@
                         <div class="hb-label">4. Appointment for?</div>
                         <div class="hb-for-toggle">
                             <label class="hb-for-option hb-for-selected" id="hbForMyselfLabel">
-                                <input type="radio" name="hb_for" value="myself" checked onchange="hbToggleFor('myself')">
+                                <input type="radio" name="hb_for" value="myself" checked
+                                    onchange="hbToggleFor('myself')">
                                 <span class="hb-for-icon">👤</span>
                                 <span>Myself</span>
                             </label>
@@ -97,13 +99,17 @@
                         <div id="hbPatientFields" style="display:none; margin-top:12px;">
                             <div class="row g-2">
                                 <div class="col-7">
-                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Patient name <span class="text-danger">*</span></label>
-                                    <input type="text" id="hbPatientName" class="form-control form-control-sm" placeholder="Full name">
+                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Patient name
+                                        <span class="text-danger">*</span></label>
+                                    <input type="text" id="hbPatientName" class="form-control form-control-sm"
+                                        placeholder="Full name">
                                     <div class="text-danger small d-none" id="hbPatientNameErr">Required</div>
                                 </div>
                                 <div class="col-5">
-                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Phone <span class="text-danger">*</span></label>
-                                    <input type="tel" id="hbPatientPhone" class="form-control form-control-sm" placeholder="Mobile no.">
+                                    <label class="form-label mb-1" style="font-size:12px; font-weight:600;">Phone <span
+                                            class="text-danger">*</span></label>
+                                    <input type="tel" id="hbPatientPhone" class="form-control form-control-sm"
+                                        placeholder="Mobile no.">
                                     <div class="text-danger small d-none" id="hbPatientPhoneErr">Required</div>
                                 </div>
                             </div>
@@ -114,7 +120,8 @@
                     <div class="hb-section mb-1">
                         <div class="hb-label">5. Reason <span class="text-muted"
                                 style="font-weight:400;">(optional)</span></div>
-                        <textarea id="hbReason" class="form-control" rows="2" name="reason" placeholder="Chief complaint or reason for visit..."></textarea>
+                        <textarea id="hbReason" class="form-control" rows="2" name="reason"
+                            placeholder="Chief complaint or reason for visit..."></textarea>
                     </div>
                 </div>
 
@@ -294,6 +301,7 @@
             display: flex;
             gap: 10px;
         }
+
         .hb-for-option {
             display: flex;
             align-items: center;
@@ -309,14 +317,24 @@
             flex: 1;
             user-select: none;
         }
-        .hb-for-option input[type="radio"] { display: none; }
-        .hb-for-option:hover { border-color: #93c5fd; }
+
+        .hb-for-option input[type="radio"] {
+            display: none;
+        }
+
+        .hb-for-option:hover {
+            border-color: #93c5fd;
+        }
+
         .hb-for-option.hb-for-selected {
             border-color: #2563eb;
             background: #eff6ff;
             color: #1e40af;
         }
-        .hb-for-icon { font-size: 16px; }
+
+        .hb-for-icon {
+            font-size: 16px;
+        }
 
         @media (max-width: 480px) {
             .hb-doctor-card {
@@ -368,18 +386,23 @@
                     const allFull = data.all_full;
 
                     if (noSlots || allFull) {
-                        let msg = noSlots
-                            ? 'No slots available on this day.'
-                            : 'All slots are fully booked for this day.';
+                        let msg = noSlots ?
+                            'No slots available on this day.' :
+                            'All slots are fully booked for this day.';
                         let nextHtml = '';
                         if (data.next_available) {
                             const [y, m, d2] = data.next_available.split('-');
-                            const label = new Date(y, m - 1, d2).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                            const label = new Date(y, m - 1, d2).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                            });
                             nextHtml = `<a href="#" class="hb-next-avail-link" onclick="hbJumpToDate('${data.next_available}'); return false;">
                                 Next available: ${label} →
                             </a>`;
                         }
-                        grid.innerHTML = `<div class="hb-no-slots"><span class="text-muted small">${msg}</span>${nextHtml}</div>`;
+                        grid.innerHTML =
+                            `<div class="hb-no-slots"><span class="text-muted small">${msg}</span>${nextHtml}</div>`;
                         return;
                     }
 
@@ -452,9 +475,9 @@
             }
             // Validate patient fields when booking for someone else
             if (_hbFor === 'other') {
-                var nameOk  = document.getElementById('hbPatientName').value.trim();
+                var nameOk = document.getElementById('hbPatientName').value.trim();
                 var phoneOk = document.getElementById('hbPatientPhone').value.trim();
-                if (!nameOk)  document.getElementById('hbPatientNameErr').classList.remove('d-none');
+                if (!nameOk) document.getElementById('hbPatientNameErr').classList.remove('d-none');
                 if (!phoneOk) document.getElementById('hbPatientPhoneErr').classList.remove('d-none');
                 if (!nameOk || !phoneOk) return;
             }
@@ -481,7 +504,8 @@
                     requirements: document.getElementById('hbReason').value || null,
                     patient_for: _hbFor,
                     patient_name: _hbFor === 'other' ? document.getElementById('hbPatientName').value.trim() : null,
-                    patient_phone: _hbFor === 'other' ? document.getElementById('hbPatientPhone').value.trim() : null,
+                    patient_phone: _hbFor === 'other' ? document.getElementById('hbPatientPhone').value.trim() :
+                        null,
                 },
                 success: function(data) {
                     $('#hospitalBookingModal').modal('hide');
@@ -511,25 +535,28 @@
             });
         }
 
-     function hbFilterDoctors(serviceId) {
-    var cards = document.querySelectorAll('.hb-doctor-card');
-    var anyVisible = false;
+        function hbFilterDoctors(serviceId) {
+            console.log('Filtering doctors for service ID:', serviceId);
+            var cards = document.querySelectorAll('.hb-doctor-card');
+            var anyVisible = false;
 
-    cards.forEach(function(card) {
-        var services = card.dataset.services ? card.dataset.services.split(',') : [];
+            cards.forEach(function(card) {
+                var services = card.dataset.services ? card.dataset.services.split(',') : [];
 
-        // Only show if: no serviceId active, OR doctor explicitly has this service
-        var show = !serviceId || services.indexOf(String(serviceId)) !== -1;
+                // Only show if: no serviceId active, OR doctor explicitly has this service
+                var show = !serviceId || services.indexOf(String(serviceId)) !== -1;
 
-        card.style.display = show ? '' : 'none';
-        if (show) anyVisible = true;
-    });
+                card.style.display = show ? '' : 'none';
+                if (show) anyVisible = true;
+            });
 
-    // Fallback: only if truly NO doctor is assigned to ANY service
-    if (!anyVisible) {
-        cards.forEach(function(card) { card.style.display = ''; });
-    }
-}
+            // Fallback: only if truly NO doctor is assigned to ANY service
+            if (!anyVisible) {
+                cards.forEach(function(card) {
+                    card.style.display = '';
+                });
+            }
+        }
         $('#hospitalBookingModal').on('show.bs.modal', function() {
             hbFilterDoctors(window._hbPending ? window._hbPending.serviceId : null);
         });
@@ -552,8 +579,8 @@
         // Signal to layout.blade.php bookService() that this is a hospital store
         // (the interception logic lives in layout.blade.php so execution order is guaranteed)
     </script>
-@else 
-<script>
-console.log('{{strtolower($store->business_type ?? '')}}') 
-</script>
+@else
+    <script>
+        console.log('{{ strtolower($store->business_type ?? '') }}')
+    </script>
 @endif {{-- $hbDoctors->isNotEmpty() --}}
