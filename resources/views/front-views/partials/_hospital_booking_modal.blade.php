@@ -547,6 +547,7 @@
                 var show = !serviceId || services.indexOf(String(serviceId)) !== -1;
 
                 card.style.display = show ? '' : 'none';
+                console.log('Doctor ID:', card.dataset.id, 'Services:', services, 'Show:', show);
                 if (show) anyVisible = true;
             });
 
