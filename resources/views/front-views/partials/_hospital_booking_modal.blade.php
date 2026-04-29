@@ -560,6 +560,9 @@
                 cards.forEach(function(card) {
                     card.style.display = '';
                 });
+                $(".hb-slot-grid").html(
+                    '<span class="text-muted small">No doctors are assigned to this service. Showing all doctors.</span>');
+                    
             }
         }
         $('#hospitalBookingModal').on('show.bs.modal', function() {
