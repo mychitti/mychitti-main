@@ -4,8 +4,7 @@
     $isCompleted = $status === 'Completed';
     $isCancelled = _isCancelled($lead->id);
     $isConfirmed = $status === 'Confirmed';
-    $canViewDetails =
-        ($isConfirmed || $isCancelled || $isCompleted) && $lead->status != 'cancelled';
+    $canViewDetails = ($isConfirmed || $isCancelled || $isCompleted) && $lead->status != 'cancelled';
     $isConfirmed2 = $status === 'Confirmed' || $canViewDetails;
     $isAcceptedReq = _acceptedReq($lead->id);
     $canAccept = !isset($lead->additional_status) || $lead->additional_status !== 'missed';
@@ -14,9 +13,7 @@
     $isClickable = !$isMissed && !($lead->status == 'new' && !$isAcceptedReq);
 
     $class = \Illuminate\Support\Str::slug(
-        strtolower(
-            $lead->current_status ?? ($lead->additional_status ?? $lead->assigned_status),
-        ),
+        strtolower($lead->current_status ?? ($lead->additional_status ?? $lead->assigned_status)),
         '_',
     );
     if ($isCancelled) {
@@ -35,7 +32,7 @@
     $leadNote = \App\Models\LeadNote::where('service_id', $lead->id)
         ->where('store_id', \App\CentralLogics\Helpers::get_store_id())
         ->first();
-    $hasGatepass  = $lead->acc_id && \App\Models\GatePass::where('accepted_service_id', $lead->acc_id)->exists();
+    $hasGatepass = $lead->acc_id && \App\Models\GatePass::where('accepted_service_id', $lead->acc_id)->exists();
     $hasQuotation = \App\Models\InServiceQuotation::where('service_id', $lead->id)->exists();
 @endphp
 
@@ -70,7 +67,8 @@
                         @if ($lead->assigned_status == 'Unassigned')
                             <span class="status-pill pill-unassigned">Unassigned</span>
                         @else
-                            <span class="status-pill pill-alotted">Assigned{{ $lead->assigned_type == 'vendor' ? ' (Self)' : '' }}</span>
+                            <span
+                                class="status-pill pill-alotted">Assigned{{ $lead->assigned_type == 'vendor' ? ' (Self)' : '' }}</span>
                         @endif
                     @elseif ($lead->current_status != '')
                         <span class="status-pill pill-{{ $class }}">{{ $lead->current_status }}</span>
@@ -83,35 +81,40 @@
                         <div class="lc-menu" style="position:relative;">
 
                             <button class="btn btn-transparent p-0"
-                                onclick="event.stopPropagation(); toggleLeadMenu(this)"><i class="fa fa-bars"></i></button>
+                                onclick="event.stopPropagation(); toggleLeadMenu(this)"><i
+                                    class="fa fa-bars"></i></button>
                             <div class="dropdown-menu dropdown-menu-right" onclick="event.stopPropagation()">
                                 {{-- Quotation --}}
                                 @if ($isAcceptedReq && hasAnyModulePermission(['leads_quotation']))
-                                    <a href="{{ route('vendor.service.quotations', [$lead->id]) }}"
-                                        class="dropdown-item text-primary">
-                                        <i class="tio-document-text-outlined"></i>
-                                        {{ $hasQuotation ? 'Edit' : 'Add' }} Quotation
-                                    </a>
+
                                     @if ($hasQuotation)
                                         <a href="{{ route('vendor.service.quotations', [$lead->id]) }}"
                                             class="dropdown-item text-success">
                                             <i class="tio-visible"></i> View Quotation
+                                        </a>
+                                    @else
+                                        <a href="{{ route('vendor.service.quotations', [$lead->id]) }}"
+                                            class="dropdown-item text-primary">
+                                            <i class="tio-document-text-outlined"></i>
+                                            Add Quotation
                                         </a>
                                     @endif
                                 @endif
 
                                 {{-- Gatepass --}}
                                 @if ($isConfirmed2 && !$isCancelled && hasAnyModulePermission(['leads_gatepass']))
-                                    <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
-                                        class="dropdown-item text-primary">
-                                        <i class="tio-document-outlined"></i>
-                                        {{ $hasGatepass ? 'Edit' : 'Add' }} Gatepass
-                                    </a>
+                                   
                                     @if ($hasGatepass)
                                         <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
                                             class="dropdown-item text-success">
                                             <i class="tio-eye-outlined"></i> View Gatepass
                                         </a>
+                                        @else
+                                         <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
+                                        class="dropdown-item text-primary">
+                                        <i class="tio-document-outlined"></i>
+                                        Add Gatepass
+                                    </a>
                                     @endif
                                 @endif
 
@@ -160,17 +163,17 @@
                                     @php $leadRx = \App\Models\Prescription::where('service_request_id',$lead->id)->first(); @endphp
                                     @if ($leadRx)
                                         <a href="{{ route('vendor.prescription.show', $leadRx->id) }}"
-                                            class="dropdown-item text-success"><i
-                                                class="tio-print"></i> View Prescription</a>
+                                            class="dropdown-item text-success"><i class="tio-print"></i> View
+                                            Prescription</a>
                                         @if (!$leadRx->is_finalized)
                                             <a href="{{ route('vendor.prescription.edit', $leadRx->id) }}"
-                                                class="dropdown-item text-primary"><i
-                                                    class="tio-edit"></i> Edit Prescription</a>
+                                                class="dropdown-item text-primary"><i class="tio-edit"></i> Edit
+                                                Prescription</a>
                                         @endif
                                     @else
                                         <a href="{{ route('vendor.prescription.create', ['service_request_id' => $lead->id]) }}"
-                                            class="dropdown-item text-success"><i
-                                                class="tio-medicine"></i> Write Prescription</a>
+                                            class="dropdown-item text-success"><i class="tio-medicine"></i> Write
+                                            Prescription</a>
                                     @endif
                                 @endif
                                 @if (!$canViewDetails && $isAcceptedReq && $user_details)
@@ -192,10 +195,7 @@
             <div class="lc-client">
                 @if ($isAcceptedReq && $user_details)
                     @php
-                        $av = strtoupper(
-                            substr($user_details->f_name, 0, 1) .
-                                substr($user_details->l_name, 0, 1),
-                        );
+                        $av = strtoupper(substr($user_details->f_name, 0, 1) . substr($user_details->l_name, 0, 1));
                     @endphp
                     <div class="lc-avatar">{{ $av }}</div>
                     <div style="flex:1;min-width:0;">
@@ -203,9 +203,8 @@
                             {{ $user_details->f_name . ' ' . $user_details->l_name }}</div>
                     </div>
                     <div class="lc-date">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10" />
                             <polyline points="12 6 12 12 16 14" />
                         </svg>
@@ -217,7 +216,11 @@
                         <div class="lc-client-unknown">Client not revealed</div>
                     </div>
                     <div class="lc-date">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
                         {{ $fmtDate }}
                     </div>
                 @endif
@@ -226,23 +229,20 @@
             {{-- Phone actions --}}
             @if ($isAcceptedReq && $user_details && $user_details->phone)
                 <div class="lc-phone-actions" onclick="event.stopPropagation()">
-                  
+
                     <button class="lc-btn-copy textToCopyBtn" data-phone="{{ $user_details->phone }}"
                         onclick="event.stopPropagation(); copyPhone(this)">
                         <span class="num">{{ $user_details->phone }}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" style="flex-shrink:0;">
-                            <rect x="9" y="9" width="13" height="13" rx="2"
-                                ry="2" />
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                             <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                         </svg>
                     </button>
-                      <a href="tel:{{ preg_replace('/\s+/', '', $user_details->phone) }}"
-                        class="lc-btn-call" onclick="event.stopPropagation()">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                            stroke-linejoin="round">
+                    <a href="tel:{{ preg_replace('/\s+/', '', $user_details->phone) }}" class="lc-btn-call"
+                        onclick="event.stopPropagation()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path
                                 d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
                         </svg>
@@ -254,8 +254,14 @@
             {{-- Date + assigned --}}
             <div class="lc-meta">
                 @if ($lead->assigned_status == 'Assigned' && isset($lead->assigned_to))
-                        @php if($lead->assigned_type == 'staff'){ $empInfo = _getWhereOne('vendor_employees', ['id' => $lead->assigned_to]); }else { $empInfo = _getWhereOne('vendors', ['id' => \App\CentralLogics\Helpers::get_vendor_id()]); }; @endphp
-                    @if ($empInfo) 
+                    @php
+                        if ($lead->assigned_type == 'staff') {
+                            $empInfo = _getWhereOne('vendor_employees', ['id' => $lead->assigned_to]);
+                        } else {
+                            $empInfo = _getWhereOne('vendors', ['id' => \App\CentralLogics\Helpers::get_vendor_id()]);
+                        }
+                    @endphp
+                    @if ($empInfo)
                         <div class="lc-assigned">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -272,29 +278,29 @@
             </div>
 
             {{-- Note --}}
-            @if(!$isMissed)
-            <div class="lc-notes-bar" onclick="event.stopPropagation()">
-                <div class="lc-note-input-row">
-                    <input type="text" id="noteText-{{ $lead->id }}" class="lc-note-input"
-                        placeholder="Note…"
-                        value="{{ $leadNote->note ?? '' }}"
-                        oninput="scheduleNoteSave({{ $lead->id }})">
-                    <input type="datetime-local" id="noteRemind-{{ $lead->id }}" class="lc-note-remind-input"
-                        value="{{ $leadNote?->remind_at ? $leadNote->remind_at->format('Y-m-d\TH:i') : '' }}"
-                        onchange="scheduleNoteSave({{ $lead->id }})"
-                        style="display:{{ $leadNote?->remind_at ? 'inline-block' : 'none' }};">
-                    <button class="lc-note-bell-btn{{ $leadNote?->remind_at ? ' bell-active' : '' }}"
-                        onclick="toggleRemindInput({{ $lead->id }})" title="Set reminder">🔔</button>
+            @if (!$isMissed)
+                <div class="lc-notes-bar" onclick="event.stopPropagation()">
+                    <div class="lc-note-input-row">
+                        <input type="text" id="noteText-{{ $lead->id }}" class="lc-note-input"
+                            placeholder="Note…" value="{{ $leadNote->note ?? '' }}"
+                            oninput="scheduleNoteSave({{ $lead->id }})">
+                        <input type="datetime-local" id="noteRemind-{{ $lead->id }}"
+                            class="lc-note-remind-input"
+                            value="{{ $leadNote?->remind_at ? $leadNote->remind_at->format('Y-m-d\TH:i') : '' }}"
+                            onchange="scheduleNoteSave({{ $lead->id }})"
+                            style="display:{{ $leadNote?->remind_at ? 'inline-block' : 'none' }};">
+                        <button class="lc-note-bell-btn{{ $leadNote?->remind_at ? ' bell-active' : '' }}"
+                            onclick="toggleRemindInput({{ $lead->id }})" title="Set reminder">🔔</button>
+                    </div>
                 </div>
-            </div>
             @endif
 
             {{-- Doc quick-links --}}
             @if (!$isMissed && $isAcceptedReq)
                 @php
                     $showQuotation = hasAnyModulePermission(['leads_quotation']);
-                    $showGatepass  = $isConfirmed2 && !$isCancelled && hasAnyModulePermission(['leads_gatepass']);
-                    $showBill      = $isConfirmed2;
+                    $showGatepass = $isConfirmed2 && !$isCancelled && hasAnyModulePermission(['leads_gatepass']);
+                    $showBill = $isConfirmed2;
                 @endphp
                 @if ($showQuotation || $showGatepass || $showBill)
                     <div class="lc-doc-bar" onclick="event.stopPropagation()">
@@ -311,10 +317,19 @@
                             </a>
                         @endif
                         @if ($showBill)
-                            <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}"
-                                class="lc-doc-btn {{ $invoiceStatus !== 'new' ? 'lc-doc-exists' : '' }}">
-                                🧾 Bill
-                            </a>
+
+                            @php $billPdf = _getServiceInvoice($lead->id); @endphp
+                            @if ($billPdf)
+                                <a href="{{ asset('storage/app/public/invoice/' . $billPdf) }}" target="_blank"
+                                    class="lc-doc-btn lc-doc-exists" title="View bill PDF">
+                                    🧾 Bill
+                                </a>
+                            @else
+                                <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}"
+                                    class="lc-doc-btn {{ $invoiceStatus !== 'new' ? 'lc-doc-exists' : '' }}">
+                                    🧾 Bill
+                                </a>
+                            @endif
                         @endif
                     </div>
                 @endif
@@ -335,7 +350,10 @@
                 <div class="lc-footer" onclick="event.stopPropagation()">
                     <button type="button" class="btn-accept-lead" id="acceptBtn-{{ $lead->id }}"
                         onclick="event.stopPropagation(); acceptLead({{ $lead->id }}, this)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
                         Accept Lead
                     </button>
                 </div>
@@ -348,8 +366,8 @@
                 </div>
             @elseif ($isCompleted && hasPermission('leads_manage', 'edit'))
                 <div class="lc-footer" onclick="event.stopPropagation()">
-                    <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}"
-                        class="btn-gen-bill" style="text-decoration:none;">
+                    <a href="{{ route('vendor.business-settings.generate-bill', [$lead->id]) }}" class="btn-gen-bill"
+                        style="text-decoration:none;">
                         🧾 {{ $invoiceStatus === 'new' ? 'Generate Bill' : 'Edit Bill' }}
                     </a>
                 </div>
@@ -365,10 +383,8 @@
                         {{ $lead->assigned_status == 'Unassigned' ? '+ Assign' : '✎ Reassign' }}
                     </button>
                     @if ($lead->assigned_status == 'Assigned' && hasPermission('leads_manage', 'status_change'))
-                        <select id="statusSelect-{{ $lead->id }}"
-                            class="lc-status-select"
-                            data-service-id="{{ $lead->id }}"
-                            data-acc-id="{{ $lead->acc_id ?? '' }}"
+                        <select id="statusSelect-{{ $lead->id }}" class="lc-status-select"
+                            data-service-id="{{ $lead->id }}" data-acc-id="{{ $lead->acc_id ?? '' }}"
                             onclick="event.stopPropagation()">
                             <option value="">Status…</option>
                             @foreach ($default_statuses as $st)
@@ -390,16 +406,14 @@
     </div>{{-- /lead-card --}}
 
     {{-- ── Assign modal ── --}}
-    <div class="modal fade" id="assignModal-{{ $lead->id }}" tabindex="-1" role="dialog"
-        aria-hidden="true">
+    <div class="modal fade" id="assignModal-{{ $lead->id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
                         <h5 class="modal-title">Assign Staff</h5>
                     </div>
-                    <button type="button" class="close"
-                        data-dismiss="modal"><span>&times;</span></button>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     @if ($lead->assigned_status == 'Unassigned' || $lead->assigned_type == 'vendor')
@@ -413,11 +427,13 @@
                             <label style="font-size:12px;font-weight:700;color:#52525b;">
                                 {{ $lead->assigned_status == 'Assigned' ? 'Reassign' : 'Assign' }} To
                             </label>
-                            <select id="staffSelect-{{ $lead->id }}" class="form-control js-select2-custom" style="border-radius:8px;font-family:inherit;">
+                            <select id="staffSelect-{{ $lead->id }}" class="form-control js-select2-custom"
+                                style="border-radius:8px;font-family:inherit;">
                                 <option></option>
                                 <option value="vendor">Self (Vendor)</option>
                                 @foreach ($allStaff as $staff)
-                                    <option value="{{ $staff->id }}">{{ $staff->f_name . ' ' . $staff->l_name }}</option>
+                                    <option value="{{ $staff->id }}">{{ $staff->f_name . ' ' . $staff->l_name }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -426,10 +442,15 @@
                             Assign
                         </button>
                     @else
-                        @php if($lead->assigned_type == 'staff'){ $empInfo = _getWhereOne('vendor_employees', ['id' => $lead->assigned_to]); }else { $empInfo = _getWhereOne('vendors', ['id' => \App\CentralLogics\Helpers::get_vendor_id()]); }; @endphp
+                        @php
+                            if ($lead->assigned_type == 'staff') {
+                                $empInfo = _getWhereOne('vendor_employees', ['id' => $lead->assigned_to]);
+                            } else {
+                                $empInfo = _getWhereOne('vendors', ['id' => \App\CentralLogics\Helpers::get_vendor_id()]);
+                            }
+                        @endphp
                         @if ($empInfo)
-                            <div
-                                style="background:#fafafa;border-radius:10px;padding:14px;font-size:14px;">
+                            <div style="background:#fafafa;border-radius:10px;padding:14px;font-size:14px;">
                                 <strong>Assigned To:</strong>
                                 {{ $empInfo->f_name . ' ' . $empInfo->l_name }}
                                 #{{ $lead->assigned_to }}
@@ -453,8 +474,7 @@
                         <div>
                             <h5 class="modal-title">{{ $lead->item_name }}</h5>
                         </div>
-                        <button type="button" class="close"
-                            data-dismiss="modal"><span>&times;</span></button>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     <div class="modal-body">
                         <div class="ci-box">
@@ -484,8 +504,7 @@
                                 <button class="copy-btn"><i class="tio-copy"></i></button>
                             </div>
                             <div class="mt-2" style="display:flex;gap:8px;">
-                                <a href="tel:{{ preg_replace('/\s+/', '', $user_details->phone) }}"
-                                    class="btn-lp"
+                                <a href="tel:{{ preg_replace('/\s+/', '', $user_details->phone) }}" class="btn-lp"
                                     style="flex:1;justify-content:center;text-decoration:none;">
                                     📞 Call
                                 </a>
@@ -498,8 +517,10 @@
                                     <div class="form-group">
                                         <label for="lp_{{ $lead->id }}">Visiting Charges</label>
                                         <div class="input-group mt-1">
-                                            <div class="input-group-prepend"><span class="input-group-text"><i class="tio-money"></i></span></div>
-                                            <input type="number" id="lp_{{ $lead->id }}" class="form-control" placeholder="Enter amount">
+                                            <div class="input-group-prepend"><span class="input-group-text"><i
+                                                        class="tio-money"></i></span></div>
+                                            <input type="number" id="lp_{{ $lead->id }}" class="form-control"
+                                                placeholder="Enter amount">
                                         </div>
                                     </div>
                                     <button type="button" class="btn-lp" style="width:100%;justify-content:center;"
@@ -520,21 +541,23 @@
                                     </div>
                                     @if (_getCurrentServiceStatus($lead->id) == 'Confirmed')
                                         <a href="{{ route('vendor.service.cancel', [$lead->id]) }}"
-                                            class="btn btn-outline-danger btn-sm"><i
-                                                class="tio-clear"></i> Cancel</a>
+                                            class="btn btn-outline-danger btn-sm"><i class="tio-clear"></i> Cancel</a>
                                     @endif
                                 </div>
                             </div>
                         @endif
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn-lp-outline"
-                            data-dismiss="modal">Close</button>
+                        <button type="button" class="btn-lp-outline" data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
         </div>
     @endif
 
-@php if(isset($statusCounts)) addStatus($statusCounts, $isMissed ? 'missed' : ($isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : ($isAcceptedReq ? 'accepted' : 'new')))); @endphp
+    @php
+        if (isset($statusCounts)) {
+            addStatus($statusCounts, $isMissed ? 'missed' : ($isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : ($isAcceptedReq ? 'accepted' : 'new'))));
+        }
+    @endphp
 </div>{{-- /lead-wrap --}}

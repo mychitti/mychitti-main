@@ -1,6 +1,41 @@
 @extends('layouts.vendor.app')
 @section('title', 'Doctor Slots')
 
+@push('css_or_js')
+<style>
+    .time-picker-wrap {
+        position: relative;
+    }
+    .time-picker-wrap input[type="time"].form-control {
+        padding-right: 44px;
+    }
+    .time-picker-wrap input[type="time"].form-control::-webkit-calendar-picker-indicator {
+        opacity: 0;
+        position: absolute;
+        right: 0;
+        width: 44px;
+        height: 100%;
+        cursor: pointer;
+    }
+    .time-clock-btn {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        color: #3766e8;
+        font-size: 1.15rem;
+        background: #e8f0fe;
+        border-radius: 0 6px 6px 0;
+        border-left: 1px solid #c5d5f8;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="content container-fluid">
     <div class="page-header">
@@ -54,11 +89,17 @@
                         <div class="row">
                             <div class="col-6 form-group">
                                 <label class="input-label">Start Time <span class="text-danger">*</span></label>
-                                <input type="time" name="slot_start" class="form-control" required>
+                                <div class="time-picker-wrap">
+                                    <input type="time" name="slot_start" class="form-control" required>
+                                    <span class="time-clock-btn"><i class="tio-time"></i></span>
+                                </div>
                             </div>
                             <div class="col-6 form-group">
                                 <label class="input-label">End Time <span class="text-danger">*</span></label>
-                                <input type="time" name="slot_end" class="form-control" required>
+                                <div class="time-picker-wrap">
+                                    <input type="time" name="slot_end" class="form-control" required>
+                                    <span class="time-clock-btn"><i class="tio-time"></i></span>
+                                </div>
                             </div>
                         </div>
                         <div class="row">
@@ -115,7 +156,7 @@
                                             <div class="btn--container">
                                                 {{-- Clone --}}
                                                 <button type="button"
-                                                    class="btn btn-sm btn-outline-info"
+                                                    class="btn action-btn btn-outline-info"
                                                     title="Clone to other days"
                                                     onclick="openCloneModal({{ $slot->id }}, '{{ $name }}', '{{ \Carbon\Carbon::parse($slot->slot_start)->format('h:i A') }} – {{ \Carbon\Carbon::parse($slot->slot_end)->format('h:i A') }}')">
                                                     <i class="tio-copy"></i>
@@ -123,14 +164,14 @@
 
                                                 {{-- Toggle --}}
                                                 <a href="{{ route('vendor.doctor.slot.toggle', [$doctor->id, $slot->id]) }}"
-                                                    class="btn btn-sm btn-outline-{{ $slot->is_active ? 'secondary' : 'success' }}"
+                                                    class="btn action-btn btn-outline-{{ $slot->is_active ? 'secondary' : 'success' }}"
                                                     title="{{ $slot->is_active ? 'Deactivate' : 'Activate' }}">
                                                     <i class="tio-{{ $slot->is_active ? 'block' : 'checkmark-circle' }}"></i>
                                                 </a>
 
                                                 {{-- Delete --}}
                                                 <a href="{{ route('vendor.doctor.slot.delete', [$doctor->id, $slot->id]) }}"
-                                                    class="btn btn-sm btn--danger btn-outline-danger form-alert"
+                                                    class="btn action-btn btn--danger btn-outline-danger form-alert"
                                                     data-id="slot-del-{{ $slot->id }}"
                                                     data-message="Delete this slot?">
                                                     <i class="tio-delete"></i>

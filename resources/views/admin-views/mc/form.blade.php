@@ -22,7 +22,7 @@
 }
 .mc-sidebar a {
     display: flex; align-items: center; gap: 8px;
-    padding: 0.45rem 1rem; font-size: 13.5px; color: #3d4451;
+    padding: 0.45rem 1rem; font-size: 15.5px; color: #3d4451;
     text-decoration: none; border-radius: 0; transition: background .15s;
 }
 .mc-sidebar a:hover { background: #eef0f5; color: #377dff; }
@@ -40,7 +40,7 @@
 .mc-section.active { display: block; }
 .mc-section-title {
     font-size: .8rem; font-weight: 700; text-transform: uppercase;
-    color: #8c98a4; letter-spacing: .04em; margin-bottom: 1.25rem;
+    color: #000000; letter-spacing: .04em; margin-bottom: 1.25rem;
 }
 /* Inline table add-row */
 .mc-inline-table th { font-size: 12px; }
@@ -54,6 +54,7 @@
 .tier-silver  { background:#A8A9AD;color:#fff; }
 .tier-bronze  { background:#CD7F32;color:#fff; }
 .tier-partner { background:#6c757d;color:#fff; }
+.form-label{color : black !important;}
 </style>
 @endpush
 
@@ -273,7 +274,7 @@
                             @foreach(old('faqs', $campaign?->faqs?->toArray() ?? []) as $fi => $faq)
                             <div class="faq-item border rounded p-3 mb-2">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <strong>Q{{ $fi + 1 }}</strong>
+                                    <strong style="color: black;">Q{{ $fi + 1 }}</strong>
                                     <button type="button" class="btn btn-sm btn-outline-danger faq-remove">✕</button>
                                 </div>
                                 <input type="text" name="faqs[{{ $fi }}][question]" class="form-control mb-2"
@@ -932,7 +933,7 @@ document.getElementById('faq-add')?.addEventListener('click', () => {
     const div = document.createElement('div');
     div.className = 'faq-item border rounded p-3 mb-2';
     div.innerHTML = `<div class="d-flex justify-content-between align-items-center mb-2">
-        <strong>Q${faqCount + 1}</strong>
+        <strong style="color:black;">Q${faqCount + 1}</strong>
         <button type="button" class="btn btn-sm btn-outline-danger faq-remove">✕</button></div>
         <input type="text" name="faqs[${faqCount}][question]" class="form-control mb-2" placeholder="Question">
         <textarea name="faqs[${faqCount}][answer]" class="form-control" rows="2" placeholder="Answer"></textarea>`;

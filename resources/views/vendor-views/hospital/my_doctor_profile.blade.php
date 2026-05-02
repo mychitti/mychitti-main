@@ -165,18 +165,18 @@
                                             </td>
                                             <td>
                                                 <div class="btn--container">
-                                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                                    <button type="button" class="btn action-btn btn-outline-info"
                                                         onclick="openCloneModal({{ $slot->id }}, '{{ $name }}', '{{ \Carbon\Carbon::parse($slot->slot_start)->format('h:i A') }} – {{ \Carbon\Carbon::parse($slot->slot_end)->format('h:i A') }}')"
                                                         title="Clone to other days">
                                                         <i class="tio-copy"></i>
                                                     </button>
                                                     <a href="{{ route('vendor.my-doctor-profile.slot.toggle', $slot->id) }}"
-                                                        class="btn btn-sm btn-outline-{{ $slot->is_active ? 'secondary' : 'success' }}"
+                                                        class="btn action-btn btn-outline-{{ $slot->is_active ? 'secondary' : 'success' }}"
                                                         title="{{ $slot->is_active ? 'Deactivate' : 'Activate' }}">
                                                         <i class="tio-{{ $slot->is_active ? 'block' : 'checkmark-circle' }}"></i>
                                                     </a>
                                                     <a href="{{ route('vendor.my-doctor-profile.slot.delete', $slot->id) }}"
-                                                        class="btn btn-sm btn--danger btn-outline-danger form-alert"
+                                                        class="btn action-btn btn--danger btn-outline-danger form-alert"
                                                         data-id="slot-del-{{ $slot->id }}"
                                                         data-message="Delete this slot?">
                                                         <i class="tio-delete"></i>

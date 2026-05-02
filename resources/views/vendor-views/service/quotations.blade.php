@@ -113,12 +113,16 @@
 @section('content')
     <div class="content container-fluid">
 
-
         <!-- Resturent Card Wrapper -->
         <div class="row">
-            <div class="col-md-12">
+            @php
+                $gp = $allQuotations;
+                $custDet = _customerDetByserviceId($serviceDetails->service_id);
+            @endphp
+
+            {{-- Left: quotation form --}}
+            <div class="col-md-8">
                 <h4 class="resturant-card" style="background-color:#f0f0f0">{{ $serviceDetails->item_name }}</h4>
-                @php   $gp = $allQuotations; @endphp
                 @if (
                     ($serviceDetails->current_status == 'Cancelled' || $serviceDetails->current_status == 'Completed') &&
                         !_quotationExist($serviceDetails->service_id))
@@ -253,27 +257,51 @@
                     </form>
                 @endif
 
-            </div>
-            @if ( hasPermission('leads_quotation', 'view') &&  _quotationExist($serviceDetails->service_id) && !$gp->approved)
-                <div class="col-md-5" style="    height: 90vh;
-    overflow: auto;">
+            </div>{{-- end col-md-8 --}}
+
+            {{-- Right sidebar: customer details + quotation preview --}}
+            <div class="col-md-4" style="height:90vh; overflow:auto;">
+
+                {{-- Customer Details --}}
+                @if ($custDet)
+                    <h3>Client Details</h3>
+                    <div class="col-12 mb-3 p-0">
+                        <div class="resturant-card card--bg-3 position-relative">
+                            <div class="my-1">
+                                <h5 class="title" style="font-size:1.1rem; display:inline;">
+                                    {{ $custDet->f_name . ' ' . $custDet->l_name }}
+                                </h5>
+                            </div>
+                            <div class="subtitle my-1">{{ $custDet->email }}</div>
+                            <div class="subtitle my-1">{{ $custDet->phone }}</div>
+                            @if (!empty($custDet->latitude) && !empty($custDet->longitude))
+                                <div class="subtitle my-1">
+                                    <a href="https://www.google.com/maps?q={{ $custDet->latitude }},{{ $custDet->longitude }}"
+                                        target="_blank">
+                                        <i class="fas fa-map-marker-alt mx-1"></i> View Location
+                                    </a>
+                                </div>
+                            @endif
+                            <div class="mt-1"><i>Client since: {{ _monthNYear($custDet->created_at) }}</i></div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Pending quotation preview --}}
+                @if (hasPermission('leads_quotation', 'view') && _quotationExist($serviceDetails->service_id) && !$gp->approved)
                     <h3>Current Quotation</h3>
-
-                    <div class="col-12 mb-1">
+                    <div class="col-12 mb-1 p-0">
                         <div class="resturant-card card--bg-1 position-relative">
-                            <h5 class="title" style="font-size:1.1rem;">
-                                {{ !$gp->approved ? 'Approval Pending' : ($gp->approved == 1 ? 'Approved' : 'Rejected') }}
-                            </h5>
-                            <span class="subtitle">Items : </span>
-
+                            <h5 class="title" style="font-size:1.1rem;">Approval Pending</h5>
+                            <span class="subtitle">Items:</span>
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">#</th>
-                                        <th scope="col">Name</th>
-                                        <th scope="col">Price</th>
-                                        <th scope="col">Qty</th>
-                                        <th scope="col">Tax</th>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Price</th>
+                                        <th>Qty</th>
+                                        <th>Tax</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -281,24 +309,18 @@
                                         <tr>
                                             <td>{{ $key + 1 }}</td>
                                             <td>{{ $item->name }}</td>
-                                            <td> {{ \App\CentralLogics\Helpers::currency_symbol() . $item->price }}</td>
+                                            <td>{{ \App\CentralLogics\Helpers::currency_symbol() . $item->price }}</td>
                                             <td>{{ $item->qty }}</td>
-                                            <td>{{ $item->tax . '% tax' }}</td>
+                                            <td>{{ $item->tax }}% tax</td>
                                         </tr>
                                     @endforeach
-
                                 </tbody>
                             </table>
-
-
                         </div>
                     </div>
+                @endif
 
-                    @if (empty($allQuotations))
-                        No Previous Quotations...
-                    @endif
-                </div>
-            @endif
+            </div>{{-- end col-md-4 --}}
         </div>
         <!-- Resturent Card Wrapper -->
 
