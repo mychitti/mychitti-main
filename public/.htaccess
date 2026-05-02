@@ -27,7 +27,13 @@ Options -Indexes
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Route /storage/ through Laravel on admin/vendor — shop handles this via VirtualHost
+    # Serve public storage assets directly (bypass Laravel) on vendor/admin domains
+    RewriteCond %{HTTP_HOST} !^(www\.)?mychitti\.net$ [NC]
+    RewriteCond %{REQUEST_URI} ^/storage/(store|profile|business|uploaded|vendor_login)/
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Route all other /storage/ through Laravel on admin/vendor (auth check)
     RewriteCond %{HTTP_HOST} !^(www\.)?mychitti\.net$ [NC]
     RewriteRule ^storage/ index.php [L]
 

@@ -339,10 +339,6 @@ Route::post('newsletter/subscribe', 'NewsletterController@newsLetterSubscribe')-
 
 // Route storage files through Laravel — enforce auth per domain
 Route::get('storage/{path}', function ($path) {
-    // TEMP DEBUG — remove after fixing
-    if (request()->has('_debug')) {
-        return response()->json(['host' => request()->getHost(), 'path' => $path]);
-    }
     $host = request()->getHost();
 
     // Normalize legacy storage/app/public/... URLs
