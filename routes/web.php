@@ -373,11 +373,36 @@ Route::get('storage/{path}', function ($path) {
         if (!$isPublicStorePath && !\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
             return redirect('/login/admin');
         }
-    } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com', 'vendor.mychitti.net', 'vendor.mychitti.shop', 'vendor-employee.mychitti.shop'])) {
-        $vendorAuth = \Illuminate\Support\Facades\Auth::guard('vendor')->check()
-            || \Illuminate\Support\Facades\Auth::guard('vendor_employee')->check();
-        if (!$vendorAuth) {
-            return redirect('/login');
+    } elseif (in_array($host, ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])) {
+        // Public paths: store logos/covers, profile photos, business assets, uploaded icons
+        $vendorPublicPrefixes = ['store/', 'profile/', 'business/', 'uploaded/', 'vendor_login/'];
+        $vendorSensitivePrefixes = [
+            'store/docs/', 'store/documents/', 'store/banking/', 'store/signature/',
+            'store/branch/', 'store/service_reports/', 'store/jobcards/', 'store/recivable-receipts/',
+            'invoice/', 'employee/', 'admin/',
+        ];
+
+        $isPublic = false;
+        foreach ($vendorPublicPrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $isPublic = true;
+                break;
+            }
+        }
+        // Override: sensitive subdirs always require auth even if they match a public prefix
+        foreach ($vendorSensitivePrefixes as $sensitive) {
+            if (str_starts_with($path, $sensitive)) {
+                $isPublic = false;
+                break;
+            }
+        }
+
+        if (!$isPublic) {
+            $vendorAuth = \Illuminate\Support\Facades\Auth::guard('vendor')->check()
+                || \Illuminate\Support\Facades\Auth::guard('vendor_employee')->check();
+            if (!$vendorAuth) {
+                return redirect('/login');
+            }
         }
     } elseif (in_array($host, ['mychitti.net', 'www.mychitti.net'])) {
         // Invoices require customer login
