@@ -1240,6 +1240,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
                 Route::get('/', 'VendorWalletController@index')->name('index');
                 Route::post('recharge', 'VendorWalletController@recharge')->name('recharge');
+                Route::post('deduct', 'VendorWalletController@deduct')->name('deduct');
+                Route::get('deduct-reasons', 'VendorWalletController@deductReasons')->name('deduct-reasons');
                 Route::get('view/{id}', 'VendorWalletController@view')->name('view');
             });
 

@@ -561,7 +561,19 @@
 
 @section('content')
 
+    @if (auth('vendor')->check())
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#defaultDashboardModal"
+            style="font-size:11px;font-weight:600;    position: absolute;
+    right: 79px;
+    background: white !important;">
+            <i class="tio-dashboard-outlined"></i>
+        </button>
+        @include('vendor-views/form_modals/default_dashboard')
+    @endif
+
+
     <div class="dashboard">
+
 
         <div class="main-content">
             <div class="left-section">
@@ -603,8 +615,8 @@
                     <div class="team-section">
                         <div class="d-flex justify-content-between">
                             <h3>Staff Members</h3>
-                            @if(hasPermission("staff_manage", 'list'))
-                            <a href="{{ route('vendor.employee.list') }}">view all</a>
+                            @if (hasPermission('staff_manage', 'list'))
+                                <a href="{{ route('vendor.employee.list') }}">view all</a>
                             @endif
                         </div>
                         <div class="team-stats">
@@ -647,11 +659,10 @@
                                         </div>
                                     </div>
                                     <div>
-                            @if(hasPermission("staff_manage", 'view'))
-
-                                        <a href="{{ route('vendor.employee.view', [$value->id]) }}"
-                                            class="btn action-btn btn-outline-primary"><i class="tio-visible"></i></a>
-                                            @endif
+                                        @if (hasPermission('staff_manage', 'view'))
+                                            <a href="{{ route('vendor.employee.view', [$value->id]) }}"
+                                                class="btn action-btn btn-outline-primary"><i class="tio-visible"></i></a>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -667,10 +678,10 @@
                     </div>
                     <div class="d-flex justify-content-between">
                         <h3>{{ count($data['resignations']) }}</h3>
-                        @if(hasPermission('staff_manage', 'resignation'))
-                        <a type="button" data-toggle="modal" data-target="#resignationModal"
-                            class="text-primary text-underline">View All</a>
-                            @endif
+                        @if (hasPermission('staff_manage', 'resignation'))
+                            <a type="button" data-toggle="modal" data-target="#resignationModal"
+                                class="text-primary text-underline">View All</a>
+                        @endif
                     </div>
                 </div>
                 <div class="updates-section">
@@ -684,8 +695,8 @@
                         <h3>Advance Payment Requests</h3>
                     </div>
                     <h3>{{ $data['advance_requests'] }}</h3>
-                    @if(hasPermission("salary_manage", 'advance_requests'))
-                    <a href="{{ route('vendor.salary.all-advance-requests') }}" class="text-underline">View All</a>
+                    @if (hasPermission('salary_manage', 'advance_requests'))
+                        <a href="{{ route('vendor.salary.all-advance-requests') }}" class="text-underline">View All</a>
                     @endif
                 </div>
                 <div class="updates-section">
@@ -702,15 +713,27 @@
                 <div class="week-schedule">
                     <div class="schedule-row fri">
                         <div class="day-label">Staff Information</div>
-                        <div>@if(hasPermission("staff_manage", 'list'))<a href="{{ route('vendor.staff.list') }}" class="btn btn-primary">-></a>@endif</div>
+                        <div>
+                            @if (hasPermission('staff_manage', 'list'))
+                                <a href="{{ route('vendor.staff.list') }}" class="btn btn-primary">-></a>
+                            @endif
+                        </div>
                     </div>
-                    <div class="schedule-row mon"> 
+                    <div class="schedule-row mon">
                         <div class="day-label">Leaves Manage</div>
-                        <div>@if(hasPermission("leave_manage", 'list'))<a href="{{ route('vendor.leave.all') }}" class="btn btn-primary">-></a>@endif</div>
+                        <div>
+                            @if (hasPermission('leave_manage', 'list'))
+                                <a href="{{ route('vendor.leave.all') }}" class="btn btn-primary">-></a>
+                            @endif
+                        </div>
                     </div>
                     <div class="schedule-row wed">
                         <div class="day-label">Tasks Tracker</div>
-                        <div>@if(hasPermission("task_manage", 'list'))<a href="{{ route('vendor.task.list') }}" class="btn btn-primary">-></a>@endif</div>
+                        <div>
+                            @if (hasPermission('task_manage', 'list'))
+                                <a href="{{ route('vendor.task.list') }}" class="btn btn-primary">-></a>
+                            @endif
+                        </div>
 
                     </div>
 
@@ -760,77 +783,76 @@
                 </div>
             </div>
         </div>
-                        @if(hasPermission('staff_manage', 'resignation'))
+        @if (hasPermission('staff_manage', 'resignation'))
 
-        <div class="modal fade" id="resignationModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Resignations</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <table class="table table-responsive">
-                            <thead>
-                                <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Staff Name</th>
-                                    <th scope="col">Reason</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Submitted at</th>
-                                    <th scope="col">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($data['resignations'] as $key => $value)
+            <div class="modal fade" id="resignationModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Resignations</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table table-responsive">
+                                <thead>
                                     <tr>
-                                        <th scope="row">{{ $key + 1 }}</th>
-                                        <td>{{ _userInfo($value->employee_id, 'staff')?->f_name . ' ' . _userInfo($value->employee_id, 'staff')?->l_name }}
-                                        </td>
-                                        <td>{{ $value->reason }}</td>
-                                        <td>{{ ucfirst($value->status) }}</td>
-                                        <td>{{ $value->created_at }}</td>
-                                        <td>
-                                        @if($value->status == 'pending')
-                                        <div class="btn--container">
-                                            <a class="btn  btn--danger btn-outline-danger form-alert"
-                                                href="javascript:" data-id="category-{{ $value->id }}"
-                                                data-message="{{ translate('Want to approve this resignation') }}"
-                                                title="{{ translate('messages.approve') }}">Approve
-                                            </a>  
-                                            <form
-                                                action="{{ route('vendor.employee.resignation-action', [$value->id, 'approved']) }}"
-                                                method="get" id="category-{{ $value->id }}">
-                                                @csrf @method('get')
-                                            </form>
-                                            <a class="btn  btn-dark form-alert"
-                                                href="javascript:" data-id="category2-{{ $value->id }}"
-                                                data-message="{{ translate('Want to reject this resignation') }}"
-                                                title="{{ translate('messages.reject') }}">Reject
-                                            </a>
-                                            <form
-                                                action="{{ route('vendor.employee.resignation-action', [$value->id, 'rejected']) }}"
-                                                method="get" id="category2-{{ $value->id }}">
-                                                @csrf @method('get')
-                                            </form>
-                                        </div>
-
-                                            @endif
-                                        </td>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Staff Name</th>
+                                        <th scope="col">Reason</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Submitted at</th>
+                                        <th scope="col">Action</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                </thead>
+                                <tbody>
+                                    @foreach ($data['resignations'] as $key => $value)
+                                        <tr>
+                                            <th scope="row">{{ $key + 1 }}</th>
+                                            <td>{{ _userInfo($value->employee_id, 'staff')?->f_name . ' ' . _userInfo($value->employee_id, 'staff')?->l_name }}
+                                            </td>
+                                            <td>{{ $value->reason }}</td>
+                                            <td>{{ ucfirst($value->status) }}</td>
+                                            <td>{{ $value->created_at }}</td>
+                                            <td>
+                                                @if ($value->status == 'pending')
+                                                    <div class="btn--container">
+                                                        <a class="btn  btn--danger btn-outline-danger form-alert"
+                                                            href="javascript:" data-id="category-{{ $value->id }}"
+                                                            data-message="{{ translate('Want to approve this resignation') }}"
+                                                            title="{{ translate('messages.approve') }}">Approve
+                                                        </a>
+                                                        <form
+                                                            action="{{ route('vendor.employee.resignation-action', [$value->id, 'approved']) }}"
+                                                            method="get" id="category-{{ $value->id }}">
+                                                            @csrf @method('get')
+                                                        </form>
+                                                        <a class="btn  btn-dark form-alert" href="javascript:"
+                                                            data-id="category2-{{ $value->id }}"
+                                                            data-message="{{ translate('Want to reject this resignation') }}"
+                                                            title="{{ translate('messages.reject') }}">Reject
+                                                        </a>
+                                                        <form
+                                                            action="{{ route('vendor.employee.resignation-action', [$value->id, 'rejected']) }}"
+                                                            method="get" id="category2-{{ $value->id }}">
+                                                            @csrf @method('get')
+                                                        </form>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         @endif
     @endsection
 

@@ -1502,33 +1502,7 @@ class ItemController extends Controller
         $heading = 'New Leads';
         return view('vendor-views.product.service_request_list', compact('product', 'heading'));
     }
-    public function service_request_accepted()
-    {
-        // ->where('accepted_service_requests.vendor_id', Helpers::get_store_id())
-        // ->whereRaw('FIND_IN_SET(?, service_requests.accepted_by)', [Helpers::get_store_id()])
-        // ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
-
-        $product = DB::table('service_requests')
-            ->join('items', 'service_requests.item_id', '=', 'items.id')
-            ->join('categories', 'items.category_id', '=', 'categories.id')
-            ->join('users', 'service_requests.user_id', '=', 'users.id')
-            ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->where(function ($query) {
-                $query->whereNull('accepted_service_requests.tieup')
-                    ->orWhere('accepted_service_requests.current_status', 'Confirmation Request Sent');
-            })
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
-            ->select('accepted_service_requests.tieup', 'service_requests.*', 'items.name as item_name', 'items.image as image', 'categories.name as category_name', 'users.f_name as f_name', 'users.id as uid')
-            ->distinct('service_requests.id')
-            ->get();
-
-        // prx($product);
-        // ->toSql();      
-        // echo '2w';
-        $heading = 'Accepted Leads';
-
-        return view('vendor-views.product.service_request_list', compact('product', 'heading'));
-    }
+  
 
     public function stock_update(Request $request)
     {

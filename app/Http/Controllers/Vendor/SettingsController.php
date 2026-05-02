@@ -664,6 +664,7 @@ class SettingsController extends Controller
         $invoice->payment_status = 'Paid';
         $invoice->payment_date   = now()->toDateString();
         $invoice->generated_by   = 'admin';
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         $item = new InvoiceItem();

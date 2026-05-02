@@ -802,6 +802,12 @@
                     <p class="page-header-text">Welcome to MyChitti Dashboard</p>
                 </div>
                 <div class="d-flex align-items-center" style="gap:8px;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-toggle="modal" data-target="#defaultDashboardModal"
+                        style="font-size:11px;font-weight:600;white-space:nowrap;">
+                       <i class="tio-dashboard-outlined"></i>
+                    </button>
+                    @include('vendor-views/form_modals/default_dashboard')
                     <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal"
                         data-target="#exampleModal">Apply Coupon for Customer</button>
                     <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal"

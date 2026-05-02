@@ -132,6 +132,13 @@
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i>Bill Generate</h1>
             <div class="page-header-select-wrapper">
+                @if (hasMasterModulePermission('billing'))
+                    @if (hasPermission('billing', 'add_advanced'))
+                        <a href="{{ route('vendor.invoice.create-invoice') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="tio-document-text mr-1"></i> Generate Advanced Invoice
+                        </a>
+                    @endif
+                @endif
             </div>
         </div>
         <!-- End Page Header -->

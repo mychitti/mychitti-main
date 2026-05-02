@@ -208,18 +208,20 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 </head>
 
 <body class="footer-offset ">
-    @if(session()->has('impersonator_id'))
-    <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;">
-        <i class="tio-user-big"></i>
-        Impersonating: {{ session('impersonated_label') }}
-        <form action="{{ route('vendor.impersonate.stop') }}" method="POST" style="margin:0">
-            @csrf
-            <button type="submit" style="background:#fff;color:#e74c3c;border:none;border-radius:4px;padding:3px 12px;font-weight:700;cursor:pointer;font-size:12px;">
-                ✕ Exit Impersonation
-            </button>
-        </form>
-    </div>
-    <div style="height:40px"></div>
+    @if (session()->has('impersonator_id'))
+        <div
+            style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;">
+            <i class="tio-user-big"></i>
+            Impersonating: {{ session('impersonated_label') }}
+            <form action="{{ route('vendor.impersonate.stop') }}" method="POST" style="margin:0">
+                @csrf
+                <button type="submit"
+                    style="background:#fff;color:#e74c3c;border:none;border-radius:4px;padding:3px 12px;font-weight:700;cursor:pointer;font-size:12px;">
+                    ✕ Exit Impersonation
+                </button>
+            </form>
+        </div>
+        <div style="height:40px"></div>
     @endif
 
     @if (env('APP_MODE') == 'demo')
@@ -278,7 +280,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
         {{-- <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a> --}}
-        <a type="button" class="animated-btn" type="button"  id="ai-chat-fab"
+        <a type="button" class="animated-btn" type="button" id="ai-chat-fab"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a>
 
         @yield('content')
@@ -354,10 +356,10 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 {{-- Header --}}
                 <div
                     style="padding:14px 16px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-                    <strong style="font-size:15px">AI Assistant</strong>
+                    <strong style="font-size:15px">Support</strong>
                     <div>
                         <button type="button" class="btn btn-sm px-2 py-0" id="ai-clear-memory"
-                            style="color:#fff;opacity:.8;font-size:12px;border:1px solid rgba(255,255,255,.4);margin-right:6px">
+                            style="background-color:#fff;color:red;font-size:12px;border:1px solid rgba(255,255,255,.4);margin-right:6px">
                             Clear
                         </button>
                         <button type="button" id="ai-chat-close"
@@ -385,21 +387,25 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                             </button>
                         </div>
                         <div id="ai-attach-preview" style="display:none;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
-                        <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
-                            <input type="file" id="ai-fileInput" name="file" accept="image/*,.pdf"
-                                style="display:none">
-                            <button type="button" class="btn btn-sm btn-light" id="ai-attachFileBtn"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                                <i class="tio-attachment"></i> File
-                            </button>
-                            <button type="button" class="btn btn-sm btn-light" id="ai-startRecord"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                                <i class="tio-mic"></i> Voice
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger d-none" id="ai-stopRecord"
-                                style="border-radius:16px;font-size:12px;padding:3px 10px">
-                                <i class="tio-stop"></i> Stop
-                            </button>
+                        <div class="d-flex justify-content-between">
+                            <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                                <input type="file" id="ai-fileInput" name="file" accept="image/*,.pdf"
+                                    style="display:none">
+                                <button type="button" class="btn btn-sm btn-light" id="ai-attachFileBtn"
+                                    style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                    <i class="tio-attachment"></i> File
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light" id="ai-startRecord"
+                                    style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                    <i class="tio-mic"></i> Voice
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger d-none" id="ai-stopRecord"
+                                    style="border-radius:16px;font-size:12px;padding:3px 10px">
+                                    <i class="tio-stop"></i> Stop
+                                </button>
+                                
+                            </div> 
+<button class="badge badge-soft-danger my-1" type="button" id="ai-ask-human-btn" data-toggle="modal" data-target="#helpModal">Human Support</button>
                         </div>
                     </form>
                 </div>
@@ -603,28 +609,28 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
     <script>
         //var notfUrl = "{{ route('vendor.last-notification') }}";
-//
+        //
         //setInterval(function() {
         //    $.getJSON(notfUrl, function(res) {
-//
+        //
         //        if (res.data) {
-//
+        //
         //            var $notifyText = $('#notf_message');
         //            var $notifyBadge = $('.notif_count_badge');
-//
+        //
         //            $notifyText.text(res.data.message);
-//
+        //
         //            playAudio();
         //            $("#notf_title").text(res.data.title);
         //            $('#notif-popup-modal').appendTo("body").modal('show');
         //        }
-//
+        //
         //    });
         //}, 300000); // 5 minutes
-//
-//
+        //
+        //
         //var audio = document.getElementById("myAudio");
-//
+        //
         //function playAudio() {
         //    audio.play();
         //}
@@ -1835,6 +1841,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
             $fab.on('click', openChat);
             $('#ai-chat-close, #ai-chat-overlay').on('click', closeChat);
+            $('#ai-ask-human-btn').on('click', closeChat);
             $(document).on('keydown', function(e) {
                 if (e.key === 'Escape') closeChat();
             });
@@ -1870,7 +1877,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                     } else {
                         $box.html(
                             '<div class="text-muted text-center" style="margin-top:40%">Start a conversation...</div>'
-                            );
+                        );
                     }
                 });
             }
@@ -1879,11 +1886,11 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 $('#ai-attach-preview').css('display', 'flex');
                 var chip = $('<span id="' + id +
                     '" style="display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:2px 10px;font-size:12px"></span>'
-                    );
+                );
                 chip.append(icon + ' ' + label);
                 var x = $(
                     '<button type="button" style="background:none;border:none;padding:0 0 0 4px;cursor:pointer;font-size:15px;line-height:1;color:inherit;opacity:.7">&times;</button>'
-                    );
+                );
                 x.on('click', function() {
                     chip.remove();
                     if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
@@ -1986,7 +1993,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 // Show typing indicator
                 $box.append(
                     '<div id="ai-typing" style="display:flex;margin-bottom:10px"><div style="padding:9px 13px;border-radius:16px 16px 16px 4px;background:#e9ecef;color:#999;font-size:13px"><i>Thinking...</i></div></div>'
-                    );
+                );
                 $box.scrollTop($box[0].scrollHeight);
                 $('#ai-send-btn').prop('disabled', true);
 
@@ -2019,7 +2026,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 }, function(res) {
                     if (res.success) $box.html(
                         '<div class="text-muted text-center" style="margin-top:40%">Chat cleared.</div>'
-                        );
+                    );
                 });
             });
 
@@ -2036,10 +2043,10 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         });
     </script>
     <script>
-setInterval(() => {
-    fetch('/heartbeat');
-}, 180000); // every 3 minutes
-</script>
+        setInterval(() => {
+            fetch('/heartbeat');
+        }, 180000); // every 3 minutes
+    </script>
 
 </body>
 

@@ -24,7 +24,7 @@
                             <div class="input-group input-group-sm inv__id-group">
                                 <span class="input-group-text invoice_prefix inv__id-prefix"
                                     style="border-right: none; padding-right: 0;">{{ $bill_num['prefix'] }}</span>
-                                <input type="number" onkeyup="validateInvoiceNum(this, 'gst')"
+                                <input type="number" onkeyup="validateInvoiceNum(this, 'gst')" name="number"
                                     class="form-control form-control-sm custom-input invoice_num gst_field inv__id-input"
                                     id="editableInput" value="{{ $bill_num['number'] }}">
                             </div>

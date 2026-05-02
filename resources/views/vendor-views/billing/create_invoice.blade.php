@@ -16,12 +16,9 @@
                 <h2>Create Invoice</h2>
             </div>
             <div class="top-actions">
-                {{-- <button class="btn btn-outline-dark action-btn d-block d-md-none" type="button"><i
-                        class="fas fa-eye"></i></button>
-                <button class="btn btn-light d-none d-md-block" type="button">View as Client</button>
-                <button class="btn btn-outline-dark action-btn d-block d-md-none" type="button"> <i
-                        class="fas fa-save"></i></button>
-                <button class="btn btn-light d-none d-md-block" type="button">Save as Draft</button> --}}
+                <a href="{{ route('vendor.invoice.manual-bill') }}" class="btn btn-light d-none d-md-block">
+                    <i class="tio-document-text"></i> Create Basic Invoice
+                </a>
                 <button class="btn btn-outline-dark action-btn submit_btn d-block d-md-none" type="button"><i
                         class="fas fa-share-square"></i></button>
                 <button class="btn--primary btn submit_btn d-none d-md-block" type="button"><i

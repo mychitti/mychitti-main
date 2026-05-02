@@ -646,7 +646,7 @@ class StoreController extends Controller
                 ->whereNotNull('items.inventory_item_id')
                 ->where('items.category_id', $cat->id)
                 ->where('items.status', 1)
-                ->where('inventory_items.stock', '>', 0)
+                // ->where('inventory_items.stock', '>', 0)
                 ->select(
                     'items.id',
                     'items.name',

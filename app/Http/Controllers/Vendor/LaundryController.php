@@ -660,6 +660,7 @@ class LaundryController extends Controller
 
             $invoice                 = new ManualInvoice();
             $invoice->invoice_id     = $invoiceId;
+            $invoice->invoice_serial = (int) substr($invoiceId, strrpos($invoiceId, '_') + 1);
             $invoice->vendor_id      = $storeId;
             $invoice->bill_to        = $hotel->id;
             $invoice->bill_to_type   = 'user';
@@ -679,6 +680,7 @@ class LaundryController extends Controller
                 'period_from'  => $request->from,
                 'period_to'    => $request->to,
             ];
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             foreach ($request->items as $item) {
@@ -765,6 +767,7 @@ class LaundryController extends Controller
 
             $invoice                 = new ManualInvoice();
             $invoice->invoice_id     = $invoiceId;
+            $invoice->invoice_serial = (int) substr($invoiceId, strrpos($invoiceId, '_') + 1);
             $invoice->vendor_id      = $storeId;
             $invoice->bill_to        = $customerId;
             $invoice->bill_to_type   = 'user';
@@ -783,6 +786,7 @@ class LaundryController extends Controller
                 'customer_name'   => $order->customer_display_name,
                 'customer_phone'  => $order->customer_display_phone,
             ];
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             foreach ($order->items as $item) {
@@ -850,6 +854,7 @@ class LaundryController extends Controller
 
             $invoice               = new ManualInvoice();
             $invoice->invoice_id   = $invoiceId;
+            $invoice->invoice_serial = (int) substr($invoiceId, strrpos($invoiceId, '_') + 1);
             $invoice->vendor_id    = $storeId;
             $invoice->bill_to      = $hotel ? $hotel->id : null;
             $invoice->bill_to_type = 'user';
@@ -874,6 +879,7 @@ class LaundryController extends Controller
             $invoice->total_amount = $taxType === 'gst'
                 ? round($baseTotal * (1 + $gstPercent / 100), 2)
                 : $baseTotal;
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             foreach ($challan->items as $item) {

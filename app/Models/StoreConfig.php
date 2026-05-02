@@ -69,6 +69,8 @@ class StoreConfig extends Model
         'printer_name',
         'printer_paper_width',
         'printer_auto_print',
+        'leads_guide_dismissed',
+        'default_dashboard',
     ];
 
     protected $table; 

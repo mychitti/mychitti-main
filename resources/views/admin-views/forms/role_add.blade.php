@@ -220,13 +220,7 @@
                 <label class="form-check-label input-label " for="client_manage">Client Management</label>
             </div>
         </div>
-        <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="assigned_leads" class="form-check-input"
-                    id="assigned_leads">
-                <label class="form-check-label input-label " for="assigned_leads">Assigned Leads</label>
-            </div>
-        </div>
+      
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"

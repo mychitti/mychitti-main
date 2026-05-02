@@ -13,12 +13,22 @@
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
             Hospital Dashboard
         </h1>
-        <form class="date-range-form">
-            @include('vendor-views/form_modals/date_range')
-            <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#dateRangeModal">
-                <i class="tio-calendar"></i> {{ translate($preset) }}
-            </button>
-        </form>
+        <div class="d-flex align-items-center" style="gap:8px;">
+            @if(auth('vendor')->check())
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                    data-toggle="modal" data-target="#defaultDashboardModal"
+                    style="font-size:11px;font-weight:600;white-space:nowrap;">
+                    <i class="tio-dashboard-outlined"></i>
+                </button>
+                @include('vendor-views/form_modals/default_dashboard')
+            @endif
+            <form class="date-range-form">
+                @include('vendor-views/form_modals/date_range')
+                <button type="button" class="btn btn-outline-warning btn-sm" data-toggle="modal" data-target="#dateRangeModal">
+                    <i class="tio-calendar"></i> {{ translate($preset) }}
+                </button>
+            </form>
+        </div>
     </div>
 
     {{-- ── Stat Cards ─────────────────────────────────────────────────── --}}

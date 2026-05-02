@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\InServiceQuotation;
-use App\Models\GatePass; 
+use App\Models\GatePass;
 use App\Models\AcceptedServiceRequest;
 use App\Models\ServiceRequest;
 use App\Models\Store;
@@ -76,43 +76,47 @@ class ServiceRequestController extends Controller
             'item_id' => 'required|integer|exists:items,id',
             // 'qty' => 'required|integer',
             // 'city' => 'required',
-            'address_id' => 'required|integer'
+            'address_id' => 'required_without:preferred_doctor_id|integer',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
         $user = User::find($request->user_id);
-
-        $address_exists = CustomerAddress::where('id', $request->address_id)->first();
-        if (!$address_exists) {
-            $errors = [];
-            array_push($errors, ['code' => 'address', 'message' => "Address not found"]);
-            return response()->json([
-                'errors' => $errors
-            ], 403);
-        } else {
-            $address = $address_exists->house . ', ' . $address_exists->floor . ', ' . $address_exists->road . ', ' . $address_exists->address;
-            $city = '';
-        }
-        if (!$address_exists->pin_code) {
-            $pin_code = getPincodeFromCoordinates((float)$request->header('latitude'), (float)$request->header('longitude'));
-            DB::table('customer_addresses')->where('id', $request->address_id)->update(['pin_code' =>  $pin_code]);
-        } else {
-            $pin_code = $address_exists->pin_code;
-        }
-        if (!$user->pin_code) {
-            $user->pin_code = $pin_code;
-            $user->save();
+        if (!$request->filled('preferred_doctor_id')) {
+            $address_exists = CustomerAddress::where('id', $request->address_id)->first();
+            if (!$address_exists) {
+                $errors = [];
+                array_push($errors, ['code' => 'address', 'message' => "Address not found"]);
+                return response()->json([
+                    'errors' => $errors
+                ], 403);
+            } else {
+                $address = $address_exists->house . ', ' . $address_exists->floor . ', ' . $address_exists->road . ', ' . $address_exists->address;
+                $city = '';
+            }
+            if (!$address_exists->pin_code) {
+                $pin_code = getPincodeFromCoordinates((float)$request->header('latitude'), (float)$request->header('longitude'));
+                DB::table('customer_addresses')->where('id', $request->address_id)->update(['pin_code' =>  $pin_code]);
+            } else {
+                $pin_code = $address_exists->pin_code;
+            }
+            if (!$user->pin_code) {
+                $user->pin_code = $pin_code;
+                $user->save();
+            }
+        }else{
+                $pin_code = getPincodeFromCoordinates((float)$request->header('latitude'), (float)$request->header('longitude'));
+ $address = null;
         }
 
         $storeId = $request->storeId ?? false;
         $storesChunk = Helpers::get_store_range($request->item_id, $request->header('zoneId'), $request->user_id, $storeId);
 
-         if (empty($storesChunk)) {
+        if (empty($storesChunk)) {
             return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
         }
-        
+
         // Check if this is a dedicated lead
         $isDedicated = false;
         if ($storeId) {
@@ -716,6 +720,7 @@ class ServiceRequestController extends Controller
                         $account_transaction->method = 'wallet';
                         $account_transaction->action = 'debit';
                         $account_transaction->reason = 'Lead Confirmation Charges';
+                        $account_transaction->service_request_id = $request->service_id;
                         $account_transaction->created_by = 'store';
                         $account_transaction->save();
                     } catch (\Throwable $th) {
@@ -803,7 +808,7 @@ class ServiceRequestController extends Controller
 
                 $cancelled = true;
             }
-        }else{ // cancel only in service_requests table if not accepted yet
+        } else { // cancel only in service_requests table if not accepted yet
             $serviceReq = ServiceRequest::where('id', $request->service_id)->first();
             if ($serviceReq) {
                 $serviceReq->status = 'cancelled';

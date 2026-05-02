@@ -519,6 +519,7 @@ class BillingController extends Controller
         $invoice->payment_date =  $request->payment_date;
         $invoice->invoice_date =  $request->invoice_date ?? NOW();
         $invoice->generated_by =  'admin';
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         foreach ($request->item_name as $key => $name) {
@@ -775,6 +776,7 @@ class BillingController extends Controller
                 $totalPrice += _taxIncludedPrice($price, $tax, 'actual') * $qty;
             }
             $invoice->total_amount = $totalPrice;
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             InvoiceItem::where('rand_invoice_id', $invoice_number)->whereNull('manual_invoice_id')->update(['manual_invoice_id' => $invoice->id]);
@@ -1248,8 +1250,8 @@ class BillingController extends Controller
             $request->merge(['bill_to' => $bill_to]);
         }
 
-        // check invoice number 
-        if (is_serial_number_used($request->number, 'MSM_',  $request->tax_type)) {
+        // check invoice number
+        if ($request->filled('number') && is_serial_number_used($request->number, $request->prefixe, $request->tax_type)) {
             Toastr::error("Serial Number Already Used");
             return  back();
         }
@@ -1264,7 +1266,6 @@ class BillingController extends Controller
                 $totalPrice += _taxIncludedPrice($price, $request->item_tax_new[$key], 'actual') * $request->item_qty_new[$key];
             }
         }
-
 
         if ($request->has('number')) {
             $invoice_id = $request->prefixe . $request->number;
@@ -1289,6 +1290,7 @@ class BillingController extends Controller
         $invoice = new ManualInvoice;
         $invoice->task_id =  $task_id;
         $invoice->invoice_id = $invoice_id;
+        $invoice->invoice_serial = (int) substr($invoice_id, strrpos($invoice_id, '_') + 1);
         $invoice->reference_number = $request->reference_number;
         $invoice->vendor_id = 0; // for admin invoice
         $invoice->bill_to = $bill_to;
@@ -1312,6 +1314,7 @@ class BillingController extends Controller
         $invoice->reminder_freq =  $request->reminder_freq;
         $invoice->reminder_freq_unit =  $request->reminder_freq_unit;
         $invoice->created_by = auth('admin')->check() ? 0 : auth('admin')->id();
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         if ($request->has('item_name')) {
@@ -1561,7 +1564,15 @@ class BillingController extends Controller
             $user_type = 'user';
         }
 
-        $invoice_id = Helpers::generateInvoiceIdAdmin(6);
+        if ($request->filled('number') && $request->filled('prefixe')) {
+            $invoice_id = $request->prefixe . $request->number;
+            if (is_serial_number_used($request->number, $request->prefixe, $request->tax_type)) {
+                Toastr::error('Serial Number Already Used');
+                return back();
+            }
+        } else {
+            $invoice_id = Helpers::generateInvoiceIdAdmin(6);
+        }
 
         // custom header labels
         $labels = $request->header_label ?? [];
@@ -1574,6 +1585,7 @@ class BillingController extends Controller
 
         $invoice = new ManualInvoice;
         $invoice->invoice_id = $invoice_id;
+        $invoice->invoice_serial = (int) substr($invoice_id, strrpos($invoice_id, '_') + 1);
         $invoice->vendor_id = 0; // admin
         $invoice->bill_to = $request->bill_to;
         $invoice->bill_to_type = $bill_to_type;
@@ -1624,6 +1636,7 @@ class BillingController extends Controller
         $invoice->taxable_amount = $taxableAmount;
         $invoice->final_tax = $finalTax;
         $invoice->total_amount = $total_amount;
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         // PETTY CASHBOOK ENTRY
@@ -2053,6 +2066,7 @@ class BillingController extends Controller
         }
         $invoice = new ManualInvoice;
         $invoice->invoice_id = $data['invoice_id'] ?? '';
+        $invoice->invoice_serial = (int) substr($data['invoice_id'] ?? '', strrpos($data['invoice_id'] ?? '_0', '_') + 1);
         $invoice->bill_to =  0;
         if ($data['vendor_type'] == 'store') {
             $invoice->vendor_id = $data['store_vendor_id'];
@@ -2072,6 +2086,7 @@ class BillingController extends Controller
         $invoice->reminder_date = $data['reminder_date'];
         $invoice->reminder_freq = $data['reminder_freq'];
         $invoice->reminder_freq_unit = $data['reminder_freq_unit'];
+        $invoice->financial_year = _currentFinancialYear();
 
         if ($isFile && isset($data['file'])) {
             $extension = $data['file']->getClientOriginalExtension();

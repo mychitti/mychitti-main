@@ -156,6 +156,7 @@ class VendorWalletController extends Controller
             $invoice->payment_status  = 'Paid';
             $invoice->payment_date    = now()->toDateString();
             $invoice->generated_by    = 'admin';
+            $invoice->financial_year  = _currentFinancialYear();
             $invoice->save();
 
             // prx($invoice->final_tax);
@@ -201,6 +202,65 @@ class VendorWalletController extends Controller
             // return back();
         }
     }
+    public function deduct(Request $request)
+    {
+        $request->validate([
+            'store_id'           => 'required|exists:stores,id',
+            'amount'             => 'required|numeric|min:0.01',
+            'reason'             => 'required|string|max:500',
+            'service_request_id' => 'nullable|integer|min:1|exists:service_requests,id',
+        ]);
+
+        $store_id  = $request->store_id;
+        $vendor_id = Store::where('id', $store_id)->value('vendor_id');
+        $amount    = round($request->amount, 2);
+
+        $wallet = StoreWallet::where('vendor_id', $vendor_id)->firstOrFail();
+
+        if ($wallet->balance < $amount) {
+            Toastr::error('Insufficient balance. Available: ' . _price($wallet->balance));
+            return back();
+        }
+
+        $wallet->decrement('total_earning', $amount);
+        $wallet->refresh();
+
+        $txn = new AccountTransaction();
+        $txn->from_type          = 'store';
+        $txn->from_id            = $vendor_id;
+        $txn->amount             = $amount;
+        $txn->method             = 'wallet';
+        $txn->type               = 'debit';
+        $txn->action             = 'debit';
+        $txn->reason             = $request->reason;
+        $txn->current_balance    = $wallet->total_earning;
+        $txn->service_request_id = $request->filled('service_request_id') ? (int) $request->service_request_id : null;
+        $txn->created_by         = 'admin';
+        $txn->save();
+
+        Toastr::success(_price($amount) . ' deducted from wallet successfully.');
+        return redirect()->route('admin.store.wallet.view', $wallet->id);
+    }
+
+    public function deductReasons(Request $request)
+    {
+        $q = $request->query('q', '');
+        $reasons = DB::table('account_transactions')
+            ->where('from_type', 'store')
+            ->where('method', 'wallet')
+            ->where('action', 'debit')
+            ->where('created_by', 'admin')
+            ->when($q, fn($query) => $query->where('reason', 'like', "%{$q}%"))
+            ->selectRaw('TRIM(SUBSTRING_INDEX(reason, " (SR#", 1)) as text')
+            ->groupBy('text')
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit(20)
+            ->pluck('text')
+            ->map(fn($r) => ['id' => $r, 'text' => $r]);
+
+        return response()->json(['results' => $reasons]);
+    }
+
     private function calculateGst(float $amount, float $gstPercent, string $status = 'included'): array
     {
         if ($status === 'included') {

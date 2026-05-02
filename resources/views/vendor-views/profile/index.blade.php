@@ -432,6 +432,53 @@
 
             </div>
         </div>
+
+        {{-- ── Default Dashboard Preference (vendor only) ────── --}}
+        @if(auth('vendor')->check())
+        @php
+            $storeConfig   = \App\Models\StoreConfig::where('store_id', \App\CentralLogics\Helpers::get_store_id())->first();
+            $currentDash   = $storeConfig?->default_dashboard ?? 'main';
+            $dashOptions   = [
+                'main'           => ['label' => 'Main Dashboard',     'desc' => 'Default overview'],
+                'leads_dashboard'=> ['label' => 'Leads Dashboard',    'desc' => 'Charts, stats & completion rates'],
+                'leads'          => ['label' => 'Leads List',         'desc' => 'All service requests'],
+                'hr'             => ['label' => 'HR Management',      'desc' => 'Staff, attendance & payroll'],
+                'hospital'       => ['label' => 'Hospital Management','desc' => 'Appointments & OPD'],
+            ];
+        @endphp
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0" style="font-size:14px;font-weight:700;">
+                    <i class="tio-home-vs-1-outlined mr-1"></i> Default Dashboard on Login
+                </h5>
+                <small class="text-muted" style="font-size:12px;">Choose which page opens when you log in or visit the panel.</small>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('vendor.profile.default-dashboard') }}">
+                    @csrf
+                    <div class="row g-2" style="display:flex;flex-wrap:wrap;gap:12px;">
+                        @foreach($dashOptions as $key => $opt)
+                        <div style="flex:1;min-width:160px;">
+                            <label style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:10px;border:2px solid {{ $currentDash === $key ? '#18181b' : '#e4e4e7' }};background:{{ $currentDash === $key ? '#18181b' : '#fff' }};cursor:pointer;transition:all .15s;">
+                                <input type="radio" name="default_dashboard" value="{{ $key }}"
+                                    {{ $currentDash === $key ? 'checked' : '' }}
+                                    style="margin-top:2px;accent-color:#fff;flex-shrink:0;"
+                                    onchange="this.form.submit()">
+                                <div>
+                                    <div style="font-size:13px;font-weight:700;color:{{ $currentDash === $key ? '#fff' : '#18181b' }};line-height:1.3;">
+                                        {{ $opt['label'] }}
+                                    </div>
+                                    <div style="font-size:11px;color:{{ $currentDash === $key ? 'rgba(255,255,255,0.65)' : '#71717a' }};margin-top:2px;">{{ $opt['desc'] }}</div>
+                                </div>
+                            </label>
+                        </div>
+                        @endforeach
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
+
     </div>
     <div class="modal fade" id="aboutStoreModal" tabindex="-1">
         <div class="modal-dialog modal-lg">

@@ -12,29 +12,6 @@
              <form class="row" action="{{ route('vendor.category.update-selected') }}" method="post">
                  @csrf
                  @if ($store_data->module_id == 6)
-                     <div class="col-md-6 mb-3">
-                         <div class="p-3 bg-light rounded">
-                             <div class="d-flex align-items-center justify-content-between">
-                                 <div>
-                                     <h5 class="mb-1">Dedicated Leads</h5>
-                                     <small class="text-muted">When enabled, enquiries made from your store page will
-                                         come only to you instead of being distributed to other vendors</small>
-                                 </div>
-                                 <label class="toggle-switch toggle-switch-sm">
-                                     <input type="checkbox" name="dedicated_leads" value="1"
-                                         class="toggle-switch-input"
-                                         {{ $store_data->dedicated_leads ? 'checked' : '' }}>
-                                     <span class="toggle-switch-label">
-                                         <span class="toggle-switch-indicator"></span>
-                                     </span>
-                                 </label>
-                             </div>
-                         </div>
-                     </div>
-                     <div class="col-md-6">
-                     </div>
-                 @endif
-                 @if ($store_data->module_id == 6)
                      <div class=" col-md-6 form-group">
                          <div class="form-group mb-1">
                              <label class="input-label" id="" for="other_verification">Category

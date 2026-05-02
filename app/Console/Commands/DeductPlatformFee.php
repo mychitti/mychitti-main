@@ -61,8 +61,7 @@ class DeductPlatformFee extends Command
 
                     $currentBalance = $wallet->balance;
 
-                    // Deduct by incrementing total_withdrawn
-                    $wallet->increment('total_withdrawn', $fee);
+                    $wallet->decrement('total_earning', $fee);
 
                     // Record transaction
                     AccountTransaction::create([
@@ -71,6 +70,7 @@ class DeductPlatformFee extends Command
                         'created_by'      => 'system',
                         'method'          => 'wallet',
                         'type'            => 'debit',
+                        'action'          => 'debit',
                         'amount'          => $fee,
                         'current_balance' => max(0, $currentBalance - $fee),
                         'reason'          => 'Platform Fee',

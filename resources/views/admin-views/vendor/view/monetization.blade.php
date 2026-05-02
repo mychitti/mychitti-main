@@ -28,7 +28,7 @@
         </div>
         <div class="col-sm-6 col-lg-3">
             <div class="card card-body py-3 px-3">
-                <div style="font-size:24px;font-weight:700;color:#007bff">{{ \App\CentralLogics\Helpers::format_currency($wallet->balance ?? 0) }}</div>
+                <div style="font-size:24px;font-weight:700;color:#007bff">{{ \App\CentralLogics\Helpers::format_currency($wallet->total_earning ?? 0) }}</div>
                 <small class="text-muted">Current Wallet Balance</small>
             </div>
         </div>

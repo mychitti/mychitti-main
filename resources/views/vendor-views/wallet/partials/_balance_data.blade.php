@@ -240,13 +240,19 @@
                                 <span aria-hidden="true">&times;</span>
                             </button>
                         </div>
+                        @php
+                            $gstStatus  = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->value('value') ?? 'included';
+                            $gstPercent = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->value('value') ?? 18;
+                            $gstLabel   = $gstStatus === 'included' ? '' : '+ ' . $gstPercent . '% GST';
+                        @endphp
                         <div class="modal-body">
                             <a class="btn btn-sm badge-soft-primary amount_btn_outer"><span
-                                    class="amount_btn">1000</span> +gst</a>
+                                    class="amount_btn text-dark "><b>1000</b></span> <small>{{ $gstLabel }}</small></a>
                             <a class="btn btn-sm badge-soft-primary amount_btn_outer"><span
-                                    class="amount_btn">2000</span> +gst</a>
+                                    class="amount_btn text-dark "><b>2000</b></span> <small>{{ $gstLabel }}</small></a>
                             <a class="btn btn-sm badge-soft-primary amount_btn_outer"><span
-                                    class="amount_btn">3000</span> +gst</a>
+                                    class="amount_btn text-dark "><b>3000</b></span> <small>{{ $gstLabel }}</small></a>
+                            
                             <br>
                             <br>
                             <form action="{{ route('vendor.wallet.wallet-recharge') }}" method="post">

@@ -272,7 +272,15 @@
         <div class="page-header d-flex flex-wrap justify-content-between">
             <h1 class="page-header-title"><i class="tio-filter-list"></i>Inventory Dashboard</h1>
 
-            <div class="d-flex gap-2 align-items-center flex-wrap   ">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                @if(auth('vendor')->check())
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-toggle="modal" data-target="#defaultDashboardModal"
+                        style="font-size:11px;font-weight:600;white-space:nowrap;">
+                        <i class="tio-dashboard-outlined"></i>
+                    </button>
+                    @include('vendor-views/form_modals/default_dashboard')
+                @endif
                 <form action="" class="d-flex date-range-form">
                     <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
                         data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>

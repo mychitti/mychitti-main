@@ -217,6 +217,8 @@ class QuoteController extends Controller
         if ($quotation) {
             $invoice = new ManualInvoice();
             $invoice->invoice_id =  Helpers::generateInvoiceId('M'); // M = manual
+            $invoice->invoice_serial = (int) substr($invoice->invoice_id, strrpos($invoice->invoice_id, '_') + 1);
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->vendor_id = Helpers::get_store_id();
             $invoice->bill_to =  $quotation_det->bill_to;
             $invoice->bill_to_type = $quotation_det->bill_to_type;

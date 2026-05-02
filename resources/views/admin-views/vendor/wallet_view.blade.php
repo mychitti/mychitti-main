@@ -23,6 +23,57 @@
             <div class="rounded bg-soft-primary px-3 py-2">
                 <span>Balance : {{ _price($wallet->total_earning) }}</span>
             </div>
+            <button type="button" class="btn btn-sm btn-outline-danger ml-auto"
+                data-toggle="modal" data-target="#deductModal">
+                <i class="tio-remove-circle-outlined mr-1"></i> Deduct Amount
+            </button>
+        </div>
+
+        {{-- Deduct Modal --}}
+        <div class="modal fade" id="deductModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:460px;" role="document">
+                <div class="modal-content" style="border-radius:12px;">
+                    <div class="modal-header" style="border-bottom:1px solid #f0f0f0;">
+                        <h5 class="modal-title" style="font-size:14px;font-weight:700;">
+                            Deduct from Wallet &mdash; {{ $wallet->vendorStore?->name }}
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <form action="{{ route('admin.store.wallet.deduct') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="store_id" value="{{ $wallet->vendorStore?->id }}">
+                        <div class="modal-body">
+                            <div class="alert alert-soft-warning d-flex align-items-center gap-2 mb-3" style="font-size:12px;">
+                                <i class="tio-info-outined" style="font-size:16px;"></i>
+                                Available balance: <strong>{{ _price($wallet->balance) }}</strong>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label">Amount <span class="text-danger">*</span></label>
+                                    <input type="number" name="amount" class="form-control" placeholder="0.00"
+                                        min="0.01" max="{{ $wallet->balance }}" step="0.01" required>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label">Service Request ID <span class="text-muted">(optional)</span></label>
+                                    <input type="number" name="service_request_id" class="form-control" placeholder="SR #" min="1">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Reason <span class="text-danger">*</span></label>
+                                    <select name="reason" id="deduct_reason_modal" class="form-control" required
+                                        data-placeholder="Type or select a reason..."></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top:1px solid #f0f0f0;">
+                            <button type="button" class="btn btn-white" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('Confirm deduction from this store\'s wallet?')">
+                                Deduct Amount
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <div class="card mt-3">
@@ -125,4 +176,34 @@
 @endsection
 
 @push('script_2')
+<script>
+$(document).ready(function() {
+    var reasonOpts = {
+        placeholder: 'Type or select a reason...',
+        tags: true,
+        minimumInputLength: 0,
+        ajax: {
+            url: "{{ route('admin.store.wallet.deduct-reasons') }}",
+            dataType: 'json',
+            delay: 200,
+            data: function(params) { return { q: params.term || '' }; },
+            processResults: function(data) { return data; },
+            cache: true
+        },
+        createTag: function(params) {
+            var term = $.trim(params.term);
+            if (!term) return null;
+            return { id: term, text: term, newTag: true };
+        },
+        templateResult: function(data) {
+            if (data.newTag) return $('<span><em>+ Add: </em>' + data.text + '</span>');
+            return data.text;
+        }
+    };
+
+    $('#deductModal').on('shown.bs.modal', function() {
+        $('#deduct_reason_modal').select2($.extend({}, reasonOpts, { dropdownParent: $('#deductModal') }));
+    });
+});
+</script>
 @endpush

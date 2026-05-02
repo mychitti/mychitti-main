@@ -153,7 +153,7 @@
                                         {{ in_array('leads_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}
                                         id="leads_manage">
                                     <label class="form-check-label input-label " for="leads_manage">
-                                   {{_isHospital() ? 'Appointments' : 'Service Leads' }}</label>
+                                   {{_isHospital() ? 'Appointments' : 'Leads Management' }}</label>
                                 </div>
                             </div>
                         @endif
@@ -309,14 +309,7 @@
                                 <label class="form-check-label" for="client_manage">Client Management</label>
                             </div>
                         </div>
-                        <div class="check-item">
-                            <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="assigned_leads" class="form-check-input"
-                                    id="assigned_leads"
-                                    {{ in_array('assigned_leads', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="assigned_leads">Assigned Leads</label>
-                            </div>
-                        </div>
+                      
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"

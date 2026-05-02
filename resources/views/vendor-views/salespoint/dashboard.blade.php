@@ -163,6 +163,7 @@
 
  @section('content')
 
+
      <div class="content container-fluid ">
          <!-- Period Selector -->
          <div class="page-header d-flex justify-content-between flex-wrap">
@@ -178,6 +179,14 @@
                  <p class="mb-0">Sales analytics and performance metrics</p>
              </div>
              <div class="d-flex gap-1 align-items-center">
+                 @if (auth('vendor')->check())
+                     <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal"
+                         data-target="#defaultDashboardModal" style="font-size:11px;font-weight:600;">
+                         <i class="tio-dashboard-outlined"></i>
+                     </button>
+                    @include('vendor-views/form_modals/default_dashboard')
+
+                 @endif
                  <button style="width:fit-content; white-space:nowrap;" class="btn btn-outline-warning " type="button"
                      data-toggle="modal" data-target="#dateRangeModal"><i class="fa-solid fa-filter "></i>
                      {{ translate($preset) }}</button>
@@ -200,10 +209,11 @@
                  <div class="card dashboard-card total-sales-card ">
                      <div class="card-body text-center">
                          <div class="icon-wrapper mx-auto">
-                             {{ \App\CentralLogics\Helpers::currency_symbol() }}  
-                         </div>  
+                             {{ \App\CentralLogics\Helpers::currency_symbol() }}
+                         </div>
                          <h2 class="stats-number" id="totalSales">{{ shortAmount($data['totalSales']) }}</h2>
-                                     <span class="">({{ _price($data['totalSales']) }}) in sales ({{ translate($preset) }})</span>
+                         <span class="">({{ _price($data['totalSales']) }}) in sales
+                             ({{ translate($preset) }})</span>
 
                          <p class="stats-label">Total Sales</p>
                          <p class=" mb-1">{{ $data['tokensSold'] }} tokens sold</p>
@@ -253,12 +263,13 @@
                                  <!-- Sales -->
                                  <div class=" align-items-center gap-1 mb-2">
                                      <h3 class="branch-amount mb-0"> {{ shortAmount($branch->totalSales) }}</h3>
-                                     <span class="">({{ _price($branch->totalSales) }}) in sales ({{ translate($preset) }})</span>
+                                     <span class="">({{ _price($branch->totalSales) }}) in sales
+                                         ({{ translate($preset) }})</span>
                                  </div>
                                  <div class="d-flex align-items-center gap-1 mb-2">
                                  </div>
 
-                                 <!-- Sub-metrics -->   
+                                 <!-- Sub-metrics -->
                                  <p class=" mb-1">{{ _price($branch->totalGSTAmount) }} GST (incl.) </p>
                                  <p class=" mb-1">{{ $branch->totalSalesPercent }}% of overall sales</p>
                                  <p class=" mb-1">{{ $branch->tokensSold }} tokens sold</p>
@@ -279,7 +290,8 @@
                      <div class="card dashboard-card h-100">
                          <div class="card-header bg-transparent border-0">
                              <h6 class="card-title mb-0"><i
-                                     class="fas fa-crown text-warning me-2"></i>{{ ucfirst($branch->name) }} - Top Products</h6>
+                                     class="fas fa-crown text-warning me-2"></i>{{ ucfirst($branch->name) }} - Top Products
+                             </h6>
                              @php
                                  $dFilter = '';
                                  if ($preset) {
@@ -367,11 +379,11 @@
                      data: displayValues,
                      backgroundColor: colors,
                      borderRadius: 8,
-                    barThickness: window.innerWidth <= 768 ? 40 : 140
+                     barThickness: window.innerWidth <= 768 ? 40 : 140
                  }]
              },
              options: {
-                maintainAspectRatio: false,
+                 maintainAspectRatio: false,
                  responsive: true,
                  plugins: {
                      legend: {

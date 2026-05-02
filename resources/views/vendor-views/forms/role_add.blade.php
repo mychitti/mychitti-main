@@ -89,7 +89,7 @@
                 <div class="form-group form-check form--check">
                     <input type="checkbox" name="modules[]" value="leads_manage"
                         class="form-check-input granular_permission_check" id="leads_manage">
-                    <label class="form-check-label input-label " for="leads_manage">Service Leads</label>
+                    <label class="form-check-label input-label " for="leads_manage">{{_isHospital() ? 'Appointments' : 'Leads Management' }}</label>
                 </div>
             </div>
         @endif
@@ -227,13 +227,7 @@
                 <label class="form-check-label input-label " for="client_manage">Client Management</label>
             </div>
         </div>
-        <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="assigned_leads" class="form-check-input"
-                    id="assigned_leads">
-                <label class="form-check-label input-label " for="assigned_leads">Assigned Leads</label>
-            </div>
-        </div>
+        
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"

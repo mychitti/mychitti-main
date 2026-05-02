@@ -6,7 +6,7 @@
                 <tr>
                     <th class="border-0">{{translate('sl')}}</th>
                     <th class="border-0">{{translate('messages.received_at')}}</th>
-                    <th class="border-0">{{translate('messages.balance_before_transaction')}}</th>
+                    {{-- <th class="border-0">{{translate('messages.balance_before_transaction')}}</th> --}}
                     <th class="border-0">{{translate('messages.amount')}}</th>
                     <th class="border-0">{{translate('messages.reference')}}</th>
                     {{-- <th class="border-0">{{translate('messages.action')}}</th> --}}
@@ -18,7 +18,7 @@
                 <tr>
                     <td>{{$k+$account_transaction->firstItem()}}</td>
                     <td>{{$at->created_at->format('Y-m-d '.config('timeformat'))}}</td>
-                    <td>{{\App\CentralLogics\Helpers::format_currency($at['current_balance'])}}</td>
+                    {{-- <td>{{\App\CentralLogics\Helpers::format_currency($at['current_balance'])}}</td> --}}
                     <td>{{\App\CentralLogics\Helpers::format_currency($at['amount'])}}</td>
                     <td>{{translate($at['ref'])}}</td>
                     <td>

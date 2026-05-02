@@ -155,7 +155,8 @@ class SalespointController extends Controller
         // generate bill 
         $invoice = new ManualInvoice();
         $invoice->invoice_id = $invoice_id;
-        $invoice->invoice_serial = null;
+        $invoice->invoice_serial = (int) substr($invoice_id, strrpos($invoice_id, '_') + 1);
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->vendor_id = $store->id;
         $invoice->bill_to =  $token->customer_id;
         $invoice->bill_to_type = $bill_to_type;

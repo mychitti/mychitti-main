@@ -17,10 +17,12 @@ class   AccountTransaction extends Model
         'from_id',
         'method',
         'type',
+        'action',
         'amount',
         'reason',
         'current_balance',
-        'created_by'
+        'service_request_id',
+        'created_by',
     ];
 
     protected $casts = [

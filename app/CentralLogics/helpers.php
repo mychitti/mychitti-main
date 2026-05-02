@@ -15,7 +15,7 @@ use App\Models\Store;
 use App\Models\Module;
 use App\Models\Review;
 use App\Models\Expense;
-use App\Mail\PlaceOrder;
+use App\Mail\PlaceOrder; 
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\DMReview;
@@ -1215,7 +1215,7 @@ class Helpers
 
         if ($gst_type == 'gst') {
             if (date('m') > 3) { // after March = new FY
-                $year = date('y') . '-' . (date('y') + 1) . '_';
+                $year = date('y') . '-' . (date('y') + 1) . '_'; 
             } else {
                 $year = (date('y') - 1) . '-' . date('y') . '_';
             }
@@ -2502,19 +2502,16 @@ class Helpers
         $fyStartYear = $today->month >= 4 ? $today->year : $today->year - 1;
         $year        = substr($fyStartYear, -2) . '-' . substr($fyStartYear + 1, -2);
 
-        // Reset serial number if financial year has changed
-        if ($serial_num === null) {
-            $fyColumn     = $tax_type == 'gst' ? 'bill_fy' : 'non_gst_fy';
-            $serialColumn = $tax_type == 'gst' ? 'bill_serial_number' : 'non_gst_sno';
+        if ($serial_num !== null) {
+            $store_serial = $serial_num;
+        } else {
+            $maxSerial = (int) DB::table('manual_invoices')
+                ->where('vendor_id', $store->id)
+                ->where('financial_year', $year)
+                ->max('invoice_serial');
 
-            if ($store->$fyColumn !== $year) {
-                $store->$serialColumn = 1;
-                $store->$fyColumn     = $year;
-                $store->save();
-            }
+            $store_serial = $maxSerial + 1;
         }
-
-        $store_serial = $serial_num ?? ($tax_type == 'gst' ? $store->bill_serial_number : $store->non_gst_sno);
 
         do {
             if ($tax_type == 'gst') {
@@ -2538,14 +2535,6 @@ class Helpers
             }
         } while ($manualExists || $serviceExists);
 
-        if ($update !== false) {
-            if ($tax_type == 'gst') {
-                $store->bill_serial_number = $store_serial + 1;
-            } else {
-                $store->non_gst_sno = $store_serial + 1;
-            }
-            $store->save();
-        }
         return $invoice_id;
     }
 
@@ -2564,35 +2553,19 @@ class Helpers
         $curFyStartYear     = $today->month >= 4 ? $today->year : $today->year - 1;
         $currentYear        = substr($curFyStartYear, -2) . '-' . substr($curFyStartYear + 1, -2);
  
-        $isCurrentFY = $year === $currentYear;
+        $serial = (int)(DB::table('manual_invoices')
+            ->where('financial_year', $year)
+            ->where('generated_by', 'admin')
+            ->max('invoice_serial') ?? 0) + 1;
 
-        if ($isCurrentFY) {
-            $fySetting     = BusinessSetting::firstOrCreate(['key' => 'admin_bill_fy'],     ['value' => '']);
-            $serialSetting = BusinessSetting::firstOrCreate(['key' => 'admin_bill_serial_number'], ['value' => 1]);
+        $invoice_id = $prefix . '_' . $year . '_' . $serial;
 
-            if ($fySetting->value !== $year) {
-                $fySetting->value     = $year; 
-                $fySetting->save();
-                $serialSetting->value = 1;
-                $serialSetting->save(); 
-            }
-
-            $serial = (int) $serialSetting->value;
-
-            if ($save) { 
-                $serialSetting->value = $serial + 1;
-                $serialSetting->save();
-            }
-        } else {
-            // Past FY — derive serial from existing invoices
-            $fyStart = Carbon::create($fyStartYear, 4, 1, 0, 0, 0);
-            $fyEnd   = Carbon::create($fyEndYear, 3, 31, 23, 59, 59);
-            $serial  = (DB::table('manual_invoices')
-                ->whereBetween('created_at', [$fyStart, $fyEnd])
-                ->max('invoice_serial') ?? 0) + 1;
+        while (DB::table('manual_invoices')->where('financial_year', $year)->where('invoice_id', $invoice_id)->exists()) {
+            $serial++;
+            $invoice_id = $prefix . '_' . $year . '_' . $serial;
         }
 
-        return $prefix . '_' . $year . '_' . $serial;
+        return $invoice_id;
     }
 
     public static function generateInvoiceSerialAdmin($module = 6)
@@ -2817,7 +2790,12 @@ class Helpers
         try {
             $coupons =  ServiceCoupon::where('user_type_id', 0)->where('user_type', 'new_stores')->get();
             foreach ($coupons as $coupon) {
-                // print_r($coupon);
+                $alreadyExists = ServiceCoupon::where('user_type_id', $store->id)
+                    ->where('user_type', 'store')
+                    ->where('code', $coupon->code)
+                    ->exists();
+                if ($alreadyExists) continue;
+
                 $coupon2 = new ServiceCoupon();
                 $coupon2->user_type_id = $store->id;
                 $coupon2->user_type = 'store';

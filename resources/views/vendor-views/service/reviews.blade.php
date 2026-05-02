@@ -33,7 +33,7 @@
             <!-- Table -->
             <div class="table-responsive datatable-custom">
                 <table id="columnSearchDatatable"
-                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
+                    class="table table-borderless table-thead-bordered table-align-middle card-table"
                     data-hs-datatables-options='{
                             "order": [],
                             "orderCellsTop": true,
@@ -46,7 +46,6 @@
                             <th class="border-0">User Info</th>
                             <th class="border-0">Rating</th>
                             <th class="border-0">Review</th>
-
                             <th class="border-0">Created at</th>
                             <th class="border-0">Status</th>
                             <th class="border-0">Action</th>
@@ -58,7 +57,7 @@
 
                             <tr>
                                 <td>{{ $key + 1 }}</td>
-                                <td>
+                                <td style="white-space: nowrap;">
                                     <div>
                                         <a href="" style="cursor:default;" class="table-rest-info" alt="view store">
                                             <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/') . '/' . $rev->profile_image, asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
@@ -81,21 +80,25 @@
                                         @endfor
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="d-block font-size-sm text-body">
+                                <td style="max-width: 280px; white-space: normal; word-break: break-word;">
+                                    <span class="d-block font-size-sm text-body mb-2">
                                         {{ $rev->comment }}
                                     </span>
                                     @if ($rev->attachment)
-                                        @php $attachments = (array) $rev->attachment; @endphp
+                                        @php $attachments = is_array($rev->attachment) ? $rev->attachment : (json_decode($rev->attachment, true) ?? []); @endphp
                                         @if (!empty($attachments))
-                                            @foreach ($attachments as $img)
-                                                <img class="rounded" style="width: 30px;height:30px;"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                    alt="">
-                                            @endforeach
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach ($attachments as $img)
+                                                    <a href="{{ asset('storage/app/public/' . $img) }}" target="_blank">
+                                                        <img class="rounded border"
+                                                            style="width: 48px; height: 48px; object-fit: cover; cursor: zoom-in;"
+                                                            src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                            alt="">
+                                                    </a>
+                                                @endforeach
+                                            </div>
                                         @endif
                                     @endif
-
                                 </td>
                                 <td>
                                     {{ _formatted_datetime($rev->created_at) }}
@@ -139,16 +142,18 @@
                                                 {{ $rev->comment }}
                                             </span>
                                             @if ($rev->attachment)
-                                                @php $attachments = (array) $rev->attachment; @endphp
+                                                @php $attachments = is_array($rev->attachment) ? $rev->attachment : (json_decode($rev->attachment, true) ?? []); @endphp
                                                 @if (!empty($attachments))
-                                                    @foreach ($attachments as $img)
-                                                        <a target="_blank"
-                                                            href="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}">
-                                                            <img class="rounded"
-                                                                style="width: 100px;height:100px;    cursor: zoom-in;"
-                                                                src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
-                                                                alt=""></a>
-                                                    @endforeach
+                                                    <div class="d-flex flex-wrap mt-2" style="gap: 8px;">
+                                                        @foreach ($attachments as $img)
+                                                            <a target="_blank" href="{{ asset('storage/app/public/' . $img) }}">
+                                                                <img class="rounded border"
+                                                                    style="width: 100px; height: 100px; object-fit: cover; cursor: zoom-in;"
+                                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper($img, asset('storage/app/public/') . '/' . $img, asset('public/assets/admin/img/160x160/img1.jpg'), '/') }}"
+                                                                    alt="">
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
                                                 @endif
                                             @endif
                                             @if ($rev->reply)

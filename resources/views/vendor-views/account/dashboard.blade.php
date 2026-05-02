@@ -405,10 +405,18 @@
             <div class="brand-title">
                 <span>Accounts Dashboard</span>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="gap:10px;display:flex;align-items:center;">
+                @if(auth('vendor')->check())
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-toggle="modal" data-target="#defaultDashboardModal"
+                        style="font-size:11px;font-weight:600;white-space:nowrap;">
+                        <i class="tio-dashboard-outlined"></i>
+                    </button>
+                    @include('vendor-views/form_modals/default_dashboard')
+                @endif
                 <form action="" class=" date-range-form">
                     @include('vendor-views/form_modals/date_range')
-                    <button style="width:fit-content; white-space:nowrap;    margin-left: -78%;"
+                    <button style="width:fit-content; white-space:nowrap; "
                         class="btn btn-outline-warning" type="button" data-toggle="modal" data-target="#dateRangeModal"><i
                             class="fas fa-filter"></i> {{ translate($preset) }}</button>
                 </form>

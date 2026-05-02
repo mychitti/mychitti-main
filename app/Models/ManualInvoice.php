@@ -41,6 +41,9 @@ class ManualInvoice extends Model
         'cash_amount',
         'online_amount',
         'meta',
+        'financial_year',
+        'subtotal_amount',
+        'round_off',
     ];
     protected $casts = [
         'reference_number' => 'array',

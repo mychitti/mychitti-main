@@ -12,9 +12,14 @@
                 </h1>
                 <small class="text-muted ml-5">{{ $doctor->specialization }}</small>
             </div>
-            <a href="{{ route('vendor.doctor.list') }}" class="btn btn-outline-secondary btn-sm">
-                <i class="tio-arrow-backward"></i> Back
-            </a>
+            <div class="d-flex gap-2" style="gap:8px;">
+                <button type="button" class="btn btn-outline-info btn-sm" data-toggle="modal" data-target="#slotHelpModal">
+                    <i class="tio-info-outined mr-1"></i> How it works
+                </button>
+                <a href="{{ route('vendor.doctor.list') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="tio-arrow-backward"></i> Back
+                </a>
+            </div>
         </div>
     </div>
 
@@ -141,6 +146,64 @@
                     </table>
                 </div>
                 @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Help / Instructions Modal --}}
+<div class="modal fade" id="slotHelpModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:520px;" role="document">
+        <div class="modal-content" style="border-radius:12px;">
+            <div class="modal-header" style="background:#f8f9fa;border-bottom:1px solid #e9ecef;">
+                <h5 class="modal-title d-flex align-items-center" style="font-size:15px;font-weight:700;">
+                    <i class="tio-time mr-2 text-primary" style="font-size:20px;"></i>
+                    How Doctor Slots Work
+                </h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="font-size:13.5px;line-height:1.7;">
+
+                <p class="mb-2"><strong>What is a slot?</strong><br>
+                A slot defines the doctor's availability for a specific day and time range. The system automatically divides that range into individual appointments based on the <strong>Duration</strong> you set.</p>
+
+                <hr class="my-2">
+
+                <p class="mb-1"><strong>How to add a slot:</strong></p>
+                <ol class="pl-3 mb-2">
+                    <li>Select one or more <strong>days</strong> (e.g. Mon, Wed, Fri).</li>
+                    <li>Set a <strong>Start Time</strong> and <strong>End Time</strong> for the availability window.</li>
+                    <li>Set the <strong>Duration</strong> (in minutes) for each appointment — e.g. 15 mins means a 9:00 AM–11:00 AM window gives 8 slots.</li>
+                    <li>Set <strong>Max Patients</strong> allowed per time slot.</li>
+                    <li>Click <strong>Add Slot</strong>.</li>
+                </ol>
+
+                <hr class="my-2">
+
+                <div class="alert alert-soft-info d-flex" style="font-size:13px;border-radius:8px;gap:10px;align-items:flex-start;">
+                    <i class="tio-info-outined mt-1" style="font-size:18px;flex-shrink:0;"></i>
+                    <div>
+                        <strong>Multiple shifts on the same day</strong><br>
+                        To add a <span class="text-dark"><b>morning shift</b></span> <em>and</em> an <span class="text-dark"><b>evening shift</b></span> on the same day, simply add the same day twice with different time ranges.<br><br>
+                        <strong>Example:</strong><br>
+                        &bull; Monday · 09:00 AM – 12:00 PM (Morning)<br>
+                        &bull; Monday · 05:00 PM – 08:00 PM (Evening)<br><br>
+                        Both will appear separately in the slot list and patients can book either shift.
+                    </div>
+                </div>
+
+                <hr class="my-2">
+
+                <p class="mb-1"><strong>Other actions:</strong></p>
+                <ul class="pl-3 mb-0">
+                    <li><i class="tio-copy text-info"></i> <strong>Clone</strong> — copy a slot's time range to other days instantly.</li>
+                    <li><i class="tio-block text-secondary"></i> / <i class="tio-checkmark-circle text-success"></i> <strong>Toggle</strong> — temporarily deactivate a slot without deleting it.</li>
+                    <li><i class="tio-delete text-danger"></i> <strong>Delete</strong> — permanently remove a slot.</li>
+                </ul>
+
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e9ecef;">
+                <button type="button" class="btn btn-primary btn-sm px-4" data-dismiss="modal">Got it</button>
             </div>
         </div>
     </div>

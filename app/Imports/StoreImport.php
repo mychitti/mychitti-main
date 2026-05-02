@@ -137,7 +137,6 @@ class StoreImport implements ToCollection, WithHeadingRow
                     array_push($storeIds, $store->id);
 
                     Helpers::_addWelcomeCouponsIfExist($store);
-                    Helpers::_addWelcomeCouponsIfExist($store);
                     $store->module->increment('stores_count');
                 } catch (\Exception $ex) {
                     $this->failedRows[] = [

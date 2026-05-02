@@ -372,6 +372,7 @@ class BillingController extends Controller
         $totalPrice += _taxIncludedPrice($price, $tax, 'actual') * $qty;
       }
       $invoice->total_amount =  $totalPrice;
+      $invoice->financial_year = _currentFinancialYear();
       $invoice->save();
 
       InvoiceItem::where('rand_invoice_id', $invoice_number)->whereNull('manual_invoice_id')->update(['manual_invoice_id' => $invoice->id]);
@@ -761,6 +762,7 @@ class BillingController extends Controller
 
     $invoice = new ManualInvoice;
     $invoice->invoice_id = $data['invoice_id'] ?? '';
+    $invoice->invoice_serial = (int) substr($data['invoice_id'] ?? '', strrpos($data['invoice_id'] ?? '_0', '_') + 1);
     $invoice->store_vendor_id = $data['store_vendor_id'];
     // $invoice->vendor_id =  $data['bill_from'];
     $invoice->bill_to = Helpers::get_store_id();
@@ -776,6 +778,7 @@ class BillingController extends Controller
     $invoice->reminder_date = $data['reminder_date'];
     $invoice->reminder_freq = $data['reminder_freq'];
     $invoice->reminder_freq_unit = $data['reminder_freq_unit'];
+    $invoice->financial_year = _currentFinancialYear();
 
     if ($isFile && isset($data['file'])) {
       $extension = $data['file']->getClientOriginalExtension();
@@ -1160,6 +1163,7 @@ class BillingController extends Controller
 
     $invoice = new ManualInvoice;
     $invoice->invoice_id = $invoice_id;
+    $invoice->invoice_serial = (int) substr($invoice_id, strrpos($invoice_id, '_') + 1);
     $invoice->vendor_id = Helpers::get_store_id();
     $invoice->bill_to = $request->bill_to;
     $invoice->bill_to_type = 'user';
@@ -1213,6 +1217,7 @@ class BillingController extends Controller
     $invoice->taxable_amount = $taxableAmount;
     $invoice->final_tax = $finalTax;
     $invoice->total_amount = $total_amount;
+    $invoice->financial_year = _currentFinancialYear();
     $invoice->save();
 
     // PETTY CASHBOOK ENTRY 

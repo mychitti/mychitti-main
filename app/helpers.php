@@ -2310,30 +2310,61 @@ function wallet_recharge($data)
     $wallet_recharge_hsn = \App\Models\BusinessSetting::where('key', 'wallet_recharge_hsn')->first();
     $wallet_recharge_gst_status = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->first()?->value ?? 'included';
 
-    // generate bill 
+    $gstPercent = (float)($wallet_recharge_gst_percent->value ?? 0);
+    $halfGst    = $gstPercent / 2;
+
+    if ($wallet_recharge_gst_status === 'included') {
+        $taxable     = round($info->amount / (1 + ($gstPercent / 100)), 2);
+        $cgst        = round($taxable * ($halfGst / 100), 2);
+        $sgst        = round($taxable * ($halfGst / 100), 2);
+        $taxTotal    = round($cgst + $sgst, 2);
+        $finalAmount = $info->amount;
+        $roundOff    = round($info->amount - ($taxable + $taxTotal), 2);
+    } else {
+        $taxable     = (float)$info->amount;
+        $cgst        = round($taxable * ($halfGst / 100), 2);
+        $sgst        = round($taxable * ($halfGst / 100), 2);
+        $taxTotal    = round($cgst + $sgst, 2);
+        $finalAmount = round($taxable + $taxTotal, 2);
+        $roundOff    = 0;
+    }
+
+    // generate bill
     $invoice = new ManualInvoice();
-    $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
-    $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
-    $invoice->vendor_id = NULL;
-    $invoice->bill_to = Helpers::get_store_id();
-    $invoice->bill_to_type = 'vendor';
-    $invoice->module_id =  Helpers::get_store_data()->module_id;
-    $invoice->total_amount = $wallet_recharge_gst_status == 'included' ? $info->amount :  floor(_taxIncludedPrice($info->amount, $wallet_recharge_gst_percent->value, 'actual'));
-    $invoice->payment_method = 'Cash';
-    $invoice->tax_type =  'gst';
-    $invoice->payment_status =  'Paid';
-    $invoice->payment_date =  date('Y-m-d');
-    $invoice->generated_by =  'admin';
+    $invoice->invoice_id      = Helpers::generateInvoiceIdAdmin();
+    $invoice->invoice_serial  = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
+    $invoice->vendor_id       = null;
+    $invoice->bill_to         = Helpers::get_store_id();
+    $invoice->bill_to_type    = 'vendor';
+    $invoice->module_id       = Helpers::get_store_data()->module_id;
+    $invoice->subtotal_amount = $taxable;
+    $invoice->taxable_amount  = $taxable;
+    $invoice->cgst            = $cgst;
+    $invoice->sgst            = $sgst;
+    $invoice->igst            = $cgst + $sgst;
+    $invoice->final_tax       = $taxTotal;
+    $invoice->round_off       = $roundOff;
+    $invoice->total_amount    = $finalAmount;
+    $invoice->payment_method  = 'Cash';
+    $invoice->tax_type        = 'gst';
+    $invoice->payment_status  = 'Paid';
+    $invoice->payment_date    = date('Y-m-d');
+    $invoice->generated_by    = 'admin';
+    $invoice->financial_year  = _currentFinancialYear();
     $invoice->save();
 
     $InvoiceItem = new InvoiceItem();
-    $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
+    $InvoiceItem->rand_invoice_id  = $invoice->invoice_id;
     $InvoiceItem->manual_invoice_id = $invoice->id;
     $InvoiceItem->name = 'Wallet Recharge';
-    $InvoiceItem->qty = 1;
-    $InvoiceItem->price = $info->amount;
-    $InvoiceItem->tax =  $wallet_recharge_gst_percent->value;
-    $InvoiceItem->hsn =  $wallet_recharge_hsn->value;
+    $InvoiceItem->qty  = 1;
+    $InvoiceItem->price = $taxable;
+    $InvoiceItem->cgst_rate   = $halfGst;
+    $InvoiceItem->cgst_amount = $cgst;
+    $InvoiceItem->sgst_rate   = $halfGst;
+    $InvoiceItem->sgst_amount = $sgst;
+    $InvoiceItem->tax = $gstPercent;
+    $InvoiceItem->hsn = $wallet_recharge_hsn->value;
     $InvoiceItem->save();
 
     // ledger entry 
@@ -5544,16 +5575,7 @@ if (!function_exists('_sendMailToVendor')) {
 if (!function_exists('_serviceInvoiceStatus')) {
     function _serviceInvoiceStatus($id)
     {
-        // print_r(ServiceInvoice::where('service_id',$id)->first());
-        if (ServiceInvoice::where('service_id', $id)->exists()) {
-            if (ServiceInvoice::where('service_id', $id)->first()->correction == 1) {
-                return ServiceInvoice::where('service_id', $id)->first()->pdf;
-            } else {
-                return 'editable';
-            }
-        } else {
-            return 'new';
-        }
+        return ServiceInvoice::where('service_id', $id)->exists() ? 'editable' : 'new';
     }
 }
 if (!function_exists('_getServiceInvoice')) {

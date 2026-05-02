@@ -77,10 +77,11 @@
                                             class="form-control js-select2-custom" multiple="multiple"
                                             data-placeholder="{{ translate('messages.select_customer') }}">
                                             <option value="all">{{ translate('messages.all') }} </option>
-                                            @foreach (\App\Models\User::get(['id', 'f_name', 'l_name']) as $user)
+                                            @foreach (\App\Models\User::get(['id', 'f_name', 'l_name', 'phone']) as $user)
                                                 <option class="select_customer_option" value="{{ $user->id }}"
                                                     {{ isset($customer) && is_numeric($customer) && $customer == $user->id ? 'selected' : '' }}>
-                                                    {{ $user->f_name . ' ' . $user->l_name }}</option>
+                                                    {{ $user->f_name . ' ' . $user->l_name }} ({{ $user->phone }})
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>

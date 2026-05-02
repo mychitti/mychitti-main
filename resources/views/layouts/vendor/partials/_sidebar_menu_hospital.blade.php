@@ -47,8 +47,14 @@
                                     </a>
                                 </li>
                             @endif
+                            <li class="nav-item {{ Request::is('service/leads-dashboard*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.service.leads-dashboard') }}" title="Leads Dashboard">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Leads Dashboard</span>
+                                    </a>
+                                </li>
                             @if (hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export']))
-                                <li class="nav-item  {{ Request::is('service/leads*') ? 'active' : '' }}">
+                                <li class="nav-item  {{ Request::is('service/leads*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.leads_list') }}" title=" Leads">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate sidebar--badge-container">
@@ -649,13 +655,13 @@
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('billing/manual-bill') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.invoice.manual-bill') }}"
-                                        title="{{ translate('messages.Generate Bill') }}">
+                                        title="{{ translate('messages.Add Bill') }}">
                                         <span class="tio-document-text nav-icon"></span>
-                                        <span class="text-truncate">Generate Bill</span>
+                                        <span class="text-truncate">Add Bill</span>
                                     </a>
                                 </li>
                             @endif
-                            @if (hasMasterModulePermission('billing'))
+                            {{-- @if (hasMasterModulePermission('billing'))
                                 @if (hasPermission('billing', 'add_advanced'))
                                     <li
                                         class="navbar-vertical-aside-has-menu {{ Request::is('billing/create-invoice') ? 'active' : '' }}">
@@ -666,7 +672,7 @@
                                         </a>
                                     </li>
                                 @endif
-                            @endif
+                            @endif --}}
                             @if (hasAnyPermission(['billing.list', 'billing.export', 'billing.import']))
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('billing/credit') ? 'active' : '' }}">
@@ -726,19 +732,7 @@
                     </a>
                 </li>
 
-                {{-- @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_leads'))
-                    <li
-                        class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{ route('vendor.service.assigned_services') }}" title="Assigned Leads">
-                            <img src="{{ asset('storage/app/public/nav/assignment.png') }}" alt=""
-                                class="nav-link-icon">
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                {{ _isHospital() ? 'My Appointments' : 'Assigned Leads' }}
-                            </span>
-                        </a>
-                    </li>
-                @endif --}}
+                
                 @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_tasks'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('task/assigned-tasks*') ? 'active' : '' }}">
@@ -1853,6 +1847,40 @@
                     </li>
                 @endif
 
+                {{-- =============================== Basic Staff (free, shown when HR not subscribed) --}}
+                @if (!\App\CentralLogics\Helpers::permission_check('hr_manage'))
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                            title="Staff Management">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}"
+                                alt="" class="nav-link-icon">
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Staff Management</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                            style="display: {{ Request::is('basic-staff*') ? 'block' : 'none' }}">
+                            <li class="nav-item {{ Request::is('basic-staff') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('vendor.basic-staff.index') }}" title="Staff List">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Staff List</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ Request::is('basic-staff/create') || Request::is('basic-staff/edit/*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('vendor.basic-staff.create') }}" title="Add Staff">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Add Staff</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ Request::is('basic-staff/roles*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('vendor.basic-staff.roles') }}" title="Roles">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Roles &amp; Permissions</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                @endif
+
                 {{-- =============================== HR Management=========================== --}}
                 @if (
                     (selected_menu('staff_manage') ||
@@ -2585,22 +2613,13 @@
                     </div>
                 </li>
 
-                <li class="nav-item pt-5 pb-2" style="
-    text-align: center;
-">
-                    {{-- =============================== MENU PREFERENCE =========================== --}}
+                <li class="nav-item pt-5 pb-2" style="text-align: center;">
 
                 </li>
+                    {{-- =============================== MENU PREFERENCE =========================== --}}
                 @if (\App\CentralLogics\Helpers::employee_module_permission_check('menu_preference'))
                     <a class="text-truncate"
-                        style="    position: absolute;
-    bottom: 2px;
-    left: auto;
-    background: #fff4f4;
-    padding: 2px;
-        font-size: 12px;
-    text-align: center;
-    width: 96%;"
+                        style="    position: absolute;bottom: 2px;left: auto;background: #fff4f4;padding: 2px;font-size: 12px;text-align: center;width: 96%;"
                         href="{{ route('vendor.menu_preference') }}" title="Menu Preference">
 
                         <span class="text-truncate"><i class="tio-settings-outlined"></i> Menu

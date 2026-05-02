@@ -26,6 +26,7 @@
 }
 }
 </style>
+
 <div id="headerMain" class="d-none">
     <header id="header"
             class="navbar navbar-expand-lg navbar-fixed navbar-height navbar-flush navbar-container navbar-bordered">
@@ -33,12 +34,19 @@
             <div class="navbar-nav-wrap-content-left  d-xl-none">
                 <!-- Navbar Vertical Toggle -->
                 <button type="button" class="js-navbar-vertical-aside-toggle-invoker close mr-3">
-                    <i class="tio-first-page navbar-vertical-aside-toggle-short-align"  data-toggle="tooltip"
-                       data-placement="right" title="Collapse"></i>
-                    <i class="tio-last-page navbar-vertical-aside-toggle-full-align"
+                    <i class="fa fa-bars navbar-vertical-aside-toggle-short-align" style="font-size: 21px;color: black;"  data-toggle="tooltip" data-placement="right" title="Collapse"></i>
+                    <i class="fa fa-bars navbar-vertical-aside-toggle-full-align" style="font-size: 21px;color: black;"
                        data-template='<div class="tooltip d-none d-sm-block" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'
                        data-toggle="tooltip" data-placement="right" title="Expand"></i>
                 </button>
+                
+                   <a class="" data-img="{{asset('storage/store/') . '/' . \App\CentralLogics\Helpers::get_store_data()->logo}}" href="{{ route('vendor.dashboard') }}" aria-label="Front">
+                    <img class="onerror-image" style="    height: 40px;
+    margin-left: 10px;"
+                        data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                        src="{{ \App\CentralLogics\Helpers::onerror_image_helper(\App\CentralLogics\Helpers::get_store_data()->logo, asset('storage/store/') . '/' . \App\CentralLogics\Helpers::get_store_data()->logo, asset('public/assets/admin/img/160x160/img2.jpg'), 'store/') }}"
+                        alt="Logo">
+                </a>
                 <!-- End Navbar Vertical Toggle -->
             </div>
             @if(auth('vendor')->check())
@@ -78,20 +86,19 @@
                 <ul class="navbar-nav align-items-center flex-row">
                 @if(\App\CentralLogics\Helpers::employee_module_permission_check('store_availability'))
               
-                   @php $store_data=\App\CentralLogics\Helpers::get_store_data(); @endphp
-                   <li class="d-flex align-items-center mr-2">
+                   <li class="d-flex align-items-center mr-2 flex-column">
                   
                    <label class="switch toggle-switch-lg m-0"> 
                         <input type="checkbox" class="toggle-switch-input restaurant-open-status"
-                            {{$store_data->active ?'checked':''}}>
+                            {{\App\CentralLogics\Helpers::get_store_data()->active ?'checked':''}}>
                         <span class="toggle-switch-label">
                             <span class="toggle-switch-indicator"></span>
                         </span>
                     </label>
-                   @if($store_data->active)
-                   <span class="text-success">Open</span> 
+                   @if(\App\CentralLogics\Helpers::get_store_data()->active)
+                   <span class="text-success" style="    font-size: 10px;">Open</span> 
                    @else
-                   <span class="text-danger">Closed</span>
+                   <span class="text-danger" style="    font-size: 10px;">Closed</span>
                     @endif
                    </li>
                   

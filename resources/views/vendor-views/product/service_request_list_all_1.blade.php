@@ -173,6 +173,7 @@
 
         /* ── Lead Card ─────────────────────────────────────── */
         .lead-card {
+            height: 100%;
             background: #fff;
             border-radius: 14px;
             border: 1px solid #e8edf2;

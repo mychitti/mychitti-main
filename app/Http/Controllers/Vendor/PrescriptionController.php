@@ -487,11 +487,12 @@ class PrescriptionController extends Controller
                 'bill_to_type'   => 'patient',
                 'user_type'      => 'hospital_patient',
                 'invoice_id'     => $serial,
-                'invoice_serial' => $serial,
+                'invoice_serial' => (int) substr($serial, strrpos($serial, '_') + 1),
                 'invoice_date'   => today(),
                 'payment_status' => 'unpaid',
                 'tax_type'       => $taxType,
                 'total_amount'   => 0,
+                'financial_year' => _currentFinancialYear(),
                 'meta'           => ['source' => 'pharmacy', 'prescription_id' => $rx->id],
             ]);
         }

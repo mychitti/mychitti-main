@@ -64,13 +64,18 @@ class WalletController extends Controller
     }
     public function wallet_recharge(Request $request)
     {
-        $gst = ($request->amount * 18) / 100;
+        $gstStatus  = \App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_status')->value('value') ?? 'included';
+        $gstPercent = (float)(\App\Models\BusinessSetting::where('key', 'wallet_recharge_gst_percent')->value('value') ?? 18);
+
+        // When GST is included, the entered amount already contains tax — no extra charge
+        $gst = $gstStatus === 'included' ? 0 : round($request->amount * $gstPercent / 100, 2);
+
         $tmpWallet = new TmpWallet;
         $tmpWallet->store_id = Helpers::get_store_id();
         $tmpWallet->amount = $request->amount;
         $tmpWallet->gst = $gst;
         $tmpWallet->save();
- 
+
         return redirect('wallet/payment-wallet/' . $tmpWallet->id);
     }
 
@@ -249,10 +254,11 @@ class WalletController extends Controller
                     }
                 });
             })
-            ->where('type', 'collected')
-            ->where('created_by', 'store')
+            // ->where('type', 'collected')
+            // ->where('created_by', 'store')
             ->where('from_id', Helpers::get_vendor_id())
             ->where('from_type', 'store')
+            ->where('created_at', '>=', date('Y-m-d H:i:s', strtotime('-3 months')))
             ->latest()->paginate(config('default_pagination'));
         return view('vendor-views.wallet.payment_list', compact('account_transaction', 'withdrawal_methods', 'data'));
     }

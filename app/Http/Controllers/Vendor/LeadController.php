@@ -34,7 +34,7 @@ use App\Models\LeadCharge;
 use App\Models\StoreWallet;
 use App\Models\AccountTransaction;
 use DateTime;
-use Carbon\Carbon; 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
 
 class LeadController extends Controller
@@ -142,10 +142,21 @@ class LeadController extends Controller
     }
     public function job_otp_verify2(Request $request)
     {
-        // change status  
+        // change status
         $acc = $request->acc_id;
         $stts_id = $request->status;
         $serviceReq = AcceptedServiceRequest::where('id', $acc)->first();
+        $ser3 = ServiceRequest::where('id', $serviceReq->service_request_id)->first();
+        // OTP verification required for completion
+        if ($stts_id == 12 && $request->has('otp')) {
+            $otp = $request->otp;
+            $userPhone = User::find($ser3->user_id)?->phone;
+            if (!$userPhone) {
+                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
+            } else if (!_verify_otp($userPhone, $otp)) {
+                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
+            }
+        }
         $service_id = $serviceReq->service_request_id;
         if ($stts_id == 14) { // for cancel 
             if (auth('vendor')->check()) {
@@ -161,11 +172,11 @@ class LeadController extends Controller
                 $serviceReq->file = Helpers::upload('store/orders/', $extension, $request->file('file'));
             }
             $serviceReq->update();
- 
+
             $empJob = VendorEmpJob::where('service_id', $serviceReq->service_request_id)->first();
             $empJob->ended_at = NOW();
             $empJob->update();
- 
+
             $serviceReq->accepted_by_staff = 1;
         } else if ($stts_id == 12) { // completed
             if ($request->hasFile('file')) {
@@ -203,7 +214,7 @@ class LeadController extends Controller
                     $wallet->decrement('total_earning', $completionCharges);
                     $wallet->increment('total_withdrawn', $completionCharges);
                     $wallet->refresh();
- 
+
                     $account_transaction = new AccountTransaction();
                     $account_transaction->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
                     $account_transaction->from_type = 'store';
@@ -212,6 +223,7 @@ class LeadController extends Controller
                     $account_transaction->method = 'wallet';
                     $account_transaction->action = 'debit';
                     $account_transaction->reason = 'Lead Completion Charges';
+                    $account_transaction->service_request_id = $service_id;
                     $account_transaction->created_by = 'store';
                     $account_transaction->save();
                 }

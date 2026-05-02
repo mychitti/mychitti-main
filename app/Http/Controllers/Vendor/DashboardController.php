@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\ServiceController;
+use App\Http\Controllers\Vendor\HRController;
+use App\Http\Controllers\Vendor\POSController;
+use App\Http\Controllers\Vendor\AccountController;
+use App\Http\Controllers\Vendor\InventoryController;
 use App\Models\AcceptedServiceRequest;
 use App\Models\AccountTransaction;
 use App\Models\Attendance;
@@ -46,13 +51,31 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
+        $storeId = Helpers::get_store_id();
+        $config  = StoreConfig::where('store_id', $storeId)->first();
+        $pref  = $config?->default_dashboard;
         $store = Helpers::get_store_data();
-        $businessType = $store->business_type;
-        if ($businessType == 'Hospital') {
-            return $this->hospital_dashboard($request);
-        } else {
-            return $this->master_dashboard($request);
+        
+        // Smart default when no preference has been saved
+        if ($pref === null) {
+            if ($store->business_type === 'Hospital') {
+                $pref = 'hospital';
+            } elseif (hasMasterModulePermission('leads_manage')) {
+                $pref = 'leads_dashboard';
+            }
         }
+        return match($pref) {
+            'leads_page'      => (new ServiceController)->leads_list($request),
+            'leads_dashboard' => (new ServiceController)->leadsDashboard($request),
+            'hr'              => (new HRController)->dashboard(),
+            'hospital'        => $this->hospital_dashboard($request),
+            'account'         => (new AccountController)->dashboard($request),
+            'inventory'       => (new InventoryController)->dashboard($request),
+            'pos'             => (new SalespointController)->dashboard($request),
+            default           => $store->business_type === 'Hospital'
+                                    ? $this->hospital_dashboard($request)
+                                    : $this->master_dashboard($request),
+        };
     }
     public function hospital_dashboard(Request $request)
     {

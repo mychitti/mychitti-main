@@ -53,6 +53,20 @@ class ProfileController extends Controller
         }
     }
 
+    public function saveDefaultDashboard(Request $request)
+    {
+        $allowed = ['main', 'leads_page','leads_dashboard', 'hr', 'hospital', 'account', 'inventory', 'pos'];
+        $value   = in_array($request->default_dashboard, $allowed) ? $request->default_dashboard : null;
+
+        StoreConfig::updateOrCreate(
+            ['store_id' => Helpers::get_store_id()],
+            ['default_dashboard' => $value]
+        );
+
+        Toastr::success('Default dashboard updated.');
+        return back();
+    }
+
     public function bank_view()
     {
         $data = Helpers::get_vendor_data();
@@ -428,6 +442,7 @@ class ProfileController extends Controller
         $invoice->reminder_date = null;
         $invoice->payment_date =  date('Y-m-d');
         $invoice->generated_by =  'admin';
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         // ledger entry 
@@ -620,6 +635,7 @@ class ProfileController extends Controller
         $invoice->reminder_date = null;
         $invoice->payment_date =  date('Y-m-d');
         $invoice->generated_by =  'admin';
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         // ledger entry 
@@ -725,6 +741,7 @@ class ProfileController extends Controller
         $sub_modules = SubModule::all();
         $subscriptions = VendorSubscription::with('plan')->where('vendor_id', $storeId)
             ->where('plan_expiry', '>', now())->get();
+
 
         // For hospital stores, pre-select tier from active subscription or bed_count
         $store = \App\Models\Store::find($storeId);

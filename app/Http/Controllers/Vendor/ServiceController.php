@@ -186,6 +186,7 @@ class ServiceController extends Controller
         // check if already tiedup with any other vendor
         $acExists = DB::table('accepted_service_requests')->where('service_request_id', $serviceRequestId)->where('tieup', 1)->exists();
         if ($acExists) {
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Already Tiedup with other vendor']);
             Toastr::error('Already Tiedup with other vendor');
             return back();
         }
@@ -198,6 +199,7 @@ class ServiceController extends Controller
             ->first();
         if (!$leadinfo) {
             DB::table('service_requests')->where('id', $serviceRequestId)->delete();
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Lead expired']);
             Toastr::error('Lead expired');
             return back();
         }
@@ -208,6 +210,7 @@ class ServiceController extends Controller
 
         if ($leadinfo->created_at < now()->subMinutes(Helpers::get_lead_exp_minutes())) {
             DB::table('service_requests')->where('id', $serviceRequestId)->update(['expired' => 1]);
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Lead expired']);
             Toastr::error('Lead expired');
             return back();
         }
@@ -222,6 +225,7 @@ class ServiceController extends Controller
             ->whereNull('item_id')->first();
         $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Insufficient wallet balance to accept leads']);
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
         }
@@ -266,6 +270,8 @@ class ServiceController extends Controller
         // check balance
         if ($chargesToBeApplied) {
             if ($avlblBalance < $minimumBalanceRequired) {
+                $msg = 'Insufficient wallet balance. Minimum ' . _price($minimumBalanceRequired) . ' required';
+                if ($request->ajax()) return response()->json(['status' => false, 'message' => $msg]);
                 Toastr::error('Insufficient wallet balance to accept leads. Minimum ' . _price($minimumBalanceRequired) . ' required');
                 return back();
             }
@@ -330,6 +336,7 @@ class ServiceController extends Controller
         }
 
         if ($acceptance->save() && $serReq->update()) {
+            if ($request->ajax()) return response()->json(['status' => true, 'message' => 'Lead accepted! You can now contact the customer.']);
             Toastr::success('You can now contact customer');
             DB::table('lead_statuses')->insert([
                 'service_request_id' => $serReq->id,
@@ -658,6 +665,7 @@ class ServiceController extends Controller
         $invoice = new ManualInvoice;
         $invoice->task_id =  $task_id;
         $invoice->invoice_id = $invoice_id;
+        $invoice->invoice_serial = (int) substr($invoice_id, strrpos($invoice_id, '_') + 1);
         $invoice->financial_year = _currentFinancialYear();
         $invoice->reference_number = $request->reference_number;
         $invoice->vendor_id = $store_id;
@@ -864,6 +872,124 @@ class ServiceController extends Controller
         Toastr::success('Reminder Status Changed Successfully');
         return back();
     }
+    public function leadsDashboard(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $preset  = $request->input('date_range', 'last_30_days');
+        $custom  = $request->input('custom_date_range');
+        $range   = Helpers::calculatePresetDates($preset, $custom);
+        $from    = $range['start']->startOfDay();
+        $to      = $range['end']->endOfDay();
+        $days    = max(1, $from->diffInDays($to) + 1);
+
+        $between = [$from, $to];
+
+        $total = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->whereBetween('created_at', $between)->count();
+
+        $accepted = DB::table('accepted_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->where('accepted_service_requests.vendor_id', $storeId)
+            ->whereBetween('service_requests.created_at', $between)->count();
+
+        $completed = DB::table('accepted_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->where('accepted_service_requests.vendor_id', $storeId)
+            ->where('accepted_service_requests.current_status', 'Completed')
+            ->whereBetween('service_requests.created_at', $between)->count();
+
+        $cancelled = DB::table('cancelled_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'cancelled_service_requests.service_request_id')
+            ->where('cancelled_service_requests.vendor_id', $storeId)
+            ->whereBetween('service_requests.created_at', $between)->count();
+
+        $expMins = Helpers::get_lead_exp_minutes();
+        $missed  = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->whereBetween('created_at', $between)
+            ->where('created_at', '<', now()->subMinutes($expMins))
+            ->whereNotExists(fn($q) => $q->from('accepted_service_requests')
+                ->whereColumn('service_request_id', 'service_requests.id')
+                ->where('vendor_id', $storeId))
+            ->whereNotExists(fn($q) => $q->from('cancelled_service_requests')
+                ->whereColumn('service_request_id', 'service_requests.id')
+                ->where('vendor_id', $storeId))
+            ->count();
+
+        $completionRate   = $accepted > 0 ? round($completed / $accepted * 100) : 0;
+        $acceptanceRate   = $total    > 0 ? round($accepted  / $total    * 100) : 0;
+        $cancellationRate = $accepted > 0 ? round($cancelled / $accepted * 100) : 0;
+
+        // Daily chart — iterate between from→to
+        $dailyRaw = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->whereBetween('created_at', $between)
+            ->selectRaw("DATE(created_at) as date, COUNT(*) as cnt")
+            ->groupBy('date')->get()->keyBy('date');
+
+        $dailyAccRaw = DB::table('accepted_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->where('accepted_service_requests.vendor_id', $storeId)
+            ->whereBetween('service_requests.created_at', $between)
+            ->selectRaw("DATE(service_requests.created_at) as date, COUNT(*) as cnt")
+            ->groupBy('date')->get()->keyBy('date');
+
+        $dailyLabels = $dailyNew = $dailyAccepted = [];
+        $cursor = $from->copy();
+        while ($cursor->lte($to)) {
+            $d = $cursor->format('Y-m-d');
+            $dailyLabels[]   = $cursor->format('d M');
+            $dailyNew[]      = $dailyRaw->get($d)->cnt ?? 0;
+            $dailyAccepted[] = $dailyAccRaw->get($d)->cnt ?? 0;
+            $cursor->addDay();
+        }
+
+        // Top services
+        $topServices = DB::table('service_requests')
+            ->join('items', 'items.id', '=', 'service_requests.item_id')
+            ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
+            ->whereBetween('service_requests.created_at', $between)
+            ->selectRaw("items.name, COUNT(*) as cnt")
+            ->groupBy('items.name')->orderByDesc('cnt')->limit(6)->get();
+
+        $recentLeads = DB::table('service_requests')
+            ->leftJoin('accepted_service_requests as acc', function ($j) use ($storeId) {
+                $j->on('acc.service_request_id', '=', 'service_requests.id')
+                  ->where('acc.vendor_id', $storeId);
+            })
+            ->leftJoin('cancelled_service_requests as can', function ($j) use ($storeId) {
+                $j->on('can.service_request_id', '=', 'service_requests.id')
+                  ->where('can.vendor_id', $storeId);
+            })
+            ->join('items', 'items.id', '=', 'service_requests.item_id')
+            ->join('users', 'users.id', '=', 'service_requests.user_id')
+            ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
+            ->whereBetween('service_requests.created_at', $between)
+            ->select(
+                'service_requests.id',
+                'service_requests.created_at',
+                'items.name as service_name',
+                'users.f_name',
+                'users.phone',
+                DB::raw('COALESCE(acc.current_status, can.current_status) as current_status'),
+                DB::raw("CASE
+                    WHEN acc.id IS NOT NULL AND can.id IS NULL THEN 'Accepted'
+                    WHEN can.id IS NOT NULL THEN 'Cancelled'
+                    WHEN service_requests.created_at < NOW() - INTERVAL {$expMins} MINUTE THEN 'Missed'
+                    ELSE 'New'
+                END as display_status")
+            )
+            ->orderByDesc('service_requests.created_at')
+            ->limit(5)->get();
+
+        return view('vendor-views.service.leads_dashboard', compact(
+            'preset', 'total', 'accepted', 'completed', 'cancelled', 'missed',
+            'completionRate', 'acceptanceRate', 'cancellationRate',
+            'dailyLabels', 'dailyNew', 'dailyAccepted', 'topServices', 'recentLeads'
+        ));
+    }
+
     public function report(Request $request)
     {
         // self service report 
@@ -1338,7 +1464,8 @@ class ServiceController extends Controller
     {
         $storeId = Helpers::get_store_id();
         $storeConfig = \App\Models\StoreConfig::firstOrCreate(['store_id' => $storeId]);
-        return view('vendor-views.service.lead_settings', compact('storeConfig'));
+        $store_data = Helpers::get_store_data();
+        return view('vendor-views.service.lead_settings', compact('storeConfig', 'store_data'));
     }
 
     public function lead_settings_update(Request $request)
@@ -1347,6 +1474,11 @@ class ServiceController extends Controller
         \App\Models\StoreConfig::where('store_id', $storeId)->update([
             'lead_available' => $request->has('lead_available') ? 1 : 0,
         ]);
+        $store = \App\Models\Store::withoutGlobalScopes()->find($storeId);
+        if ($store && $store->module_id == 6) {
+            $store->dedicated_leads = $request->has('dedicated_leads') ? 1 : 0;
+            $store->save();
+        }
         Toastr::success('Lead settings updated successfully');
         return back();
     }
@@ -1388,8 +1520,10 @@ class ServiceController extends Controller
 
 
         if ($serviceReq->update()) {
+            if ($request->ajax()) return response()->json(['status' => true, 'message' => 'Confirmation request sent successfully!']);
             Toastr::success('Confirmation request sent successfully!');
         } else {
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Some error occured']);
             Toastr::error('Some error occured');
         }
         return back();
@@ -1453,8 +1587,10 @@ class ServiceController extends Controller
             } else {
                 _sendMailToStaff($title, $msg, $to, $url);
             }
+            if ($request->ajax()) return response()->json(['status' => true, 'message' => 'Assigned successfully!']);
             Toastr::success('Assigned successfully!');
         } else {
+            if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Some Error Occured']);
             Toastr::error('Some Error Occured');
         }
         return back();
@@ -1551,11 +1687,7 @@ class ServiceController extends Controller
 
     public function leads_list(Request $request, $empId = null, $action = null)
     {
-
-        $preset = request('date_range') ?? Cookie::get('date_range')  ?? 'last_30_days';
-        if ($request->has('date_range')) {
-            Cookie::queue('date_range', $request->date_range, 60 * 24 * 360);
-        }
+        $preset = request('date_range') ?? 'this_year';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
         $formatted_from  = $range['start'];
@@ -1577,6 +1709,8 @@ class ServiceController extends Controller
             ->when($search, function ($q) use ($search) {
                 $q->where('items.name', 'like', '%' . $search . '%');
             });
+        $query->where('service_requests.created_at', '>=', now()->subYear());
+
         if (!$empId) {
             $query->whereBetween('service_requests.created_at', [$formatted_from, $formatted_to]);
         }
@@ -1731,19 +1865,210 @@ class ServiceController extends Controller
 
         $avlblSttsIds = Helpers::get_store_data()->lead_statuses;
 
-        $statuses = DB::table('service_statuses')->where('removable', 1)->get();
+        $statuses = DB::table('service_statuses')->where('removable', 1)->where(function ($q) use ($storeId) { $q->where('store_id', $storeId); })->get();
 
         $default_statuses = DB::table('service_statuses')->where('removable', 0)->get();
         $approval_pending = TempStoreStatus::with('serviceStatus')
             ->where('store_id', Helpers::get_store_id())
             ->get();
+        if ($request->ajax()) {
+            return view('vendor-views.product._leads_grid', compact('product', 'allStaff', 'statuses', 'default_statuses', 'store_data'));
+        }
+
+        $storeConfig = \App\Models\StoreConfig::firstOrCreate(['store_id' => $storeId]);
+
+        // ── Inline dashboard stats ────────────────────────────────
+        $between = [$formatted_from, $formatted_to];
+        $ld_total = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->whereBetween('created_at', $between)->count();
+        $ld_accepted = DB::table('accepted_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->where('accepted_service_requests.vendor_id', $storeId)
+            ->whereBetween('service_requests.created_at', $between)->count();
+        $ld_completed = DB::table('accepted_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
+            ->where('accepted_service_requests.vendor_id', $storeId)
+            ->where('accepted_service_requests.current_status', 'Completed')
+            ->whereBetween('service_requests.created_at', $between)->count();
+        $ld_cancelled = DB::table('cancelled_service_requests')
+            ->join('service_requests', 'service_requests.id', '=', 'cancelled_service_requests.service_request_id')
+            ->where('cancelled_service_requests.vendor_id', $storeId)
+            ->whereBetween('service_requests.created_at', $between)->count();
+        $ldExpMins = Helpers::get_lead_exp_minutes();
+        $ld_missed = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->whereBetween('created_at', $between)
+            ->where('created_at', '<', now()->subMinutes($ldExpMins))
+            ->whereNotExists(fn($q) => $q->from('accepted_service_requests')
+                ->whereColumn('service_request_id', 'service_requests.id')
+                ->where('vendor_id', $storeId))
+            ->whereNotExists(fn($q) => $q->from('cancelled_service_requests')
+                ->whereColumn('service_request_id', 'service_requests.id')
+                ->where('vendor_id', $storeId))
+            ->count();
+        $ld_completionRate   = $ld_accepted > 0 ? round($ld_completed / $ld_accepted * 100) : 0;
+        $ld_acceptanceRate   = $ld_total    > 0 ? round($ld_accepted  / $ld_total    * 100) : 0;
+        $ld_cancellationRate = $ld_accepted > 0 ? round($ld_cancelled / $ld_accepted * 100) : 0;
+        $ld_topServices = DB::table('service_requests')
+            ->join('items', 'items.id', '=', 'service_requests.item_id')
+            ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [$storeId])
+            ->whereBetween('service_requests.created_at', $between)
+            ->selectRaw("items.name, COUNT(*) as cnt")
+            ->groupBy('items.name')->orderByDesc('cnt')->limit(6)->get();
+
         $view = _isHospital()
             ? 'vendor-views.hospital.appointment_list'
             : 'vendor-views.product.service_request_list_all';
 
-        return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses'));
+        return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses', 'storeConfig',
+            'ld_total', 'ld_accepted', 'ld_completed', 'ld_cancelled', 'ld_missed',
+            'ld_completionRate', 'ld_acceptanceRate', 'ld_cancellationRate', 'ld_topServices'));
     }
 
+    public function dismissLeadsGuide(Request $request)
+    {
+        \App\Models\StoreConfig::where('store_id', Helpers::get_store_id())
+            ->update(['leads_guide_dismissed' => 1]);
+        return response()->json(['status' => true]);
+    }
+
+    public function addLeadNote(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $note = trim($request->note ?? '');
+
+        if ($note === '') {
+            \App\Models\LeadNote::where('service_id', $request->service_id)->where('store_id', $storeId)->delete();
+        } else {
+            \App\Models\LeadNote::updateOrCreate(
+                ['service_id' => $request->service_id, 'store_id' => $storeId],
+                ['note' => $note, 'remind_at' => $request->filled('remind_at') ? $request->remind_at : null, 'notified_at' => null]
+            );
+        }
+        return response()->json(['status' => true]);
+    }
+
+    public function addCustomStatus(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $name = trim($request->name);
+
+        if (!$name) {
+            return response()->json(['status' => false, 'message' => 'Status name is required.']);
+        }
+
+        $existing = DB::table('service_statuses')
+            ->where('status', $name)
+            ->where(function ($q) use ($storeId) {
+                $q->whereNull('store_id')->orWhere('store_id', $storeId);
+            })->first();
+
+        if ($existing) {
+            return response()->json(['status' => true, 'id' => $existing->id, 'name' => $existing->status]);
+        }
+
+        $id = DB::table('service_statuses')->insertGetId([
+            'status'     => $name,
+            'removable'  => 1,
+            'store_id'   => $storeId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['status' => true, 'id' => $id, 'name' => $name]);
+    }
+
+    public function sendCompletionOtp(Request $request)
+    {
+        $serviceId = $request->service_id;
+        $serviceDet = DB::table('service_requests')->where('id', $serviceId)->first();
+        $user = User::find($serviceDet->user_id ?? null);
+
+        if (!$user || !$user->phone) {
+            return response()->json(['status' => false, 'message' => 'Customer phone not found.']);
+        }
+
+        $check = _check_otp_send_allowed($user->phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']]);
+        }
+
+        $otp = rand(1000, 9999);
+        _store_otp($user->phone, $otp);
+
+        $data = [
+            'title' => 'Confirm Job Completion',
+            'description' => "Your service has been completed.\nPlease confirm the job by sharing this OTP: {$otp}\nThank you for choosing us!",
+            'order_id' => $serviceId,
+            'image' => '',
+            'type' => 'block',
+        ];
+        Helpers::send_push_notif_to_device($user->cm_firebase_token, $data, '');
+        DB::table('user_notifications')->insert([
+            'data' => json_encode($data),
+            'user_id' => $user->id,
+            'type' => 'service',
+            'type_id' => $serviceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        _send_confirmation_sms('job_msg', $user->phone, $otp);
+
+        return response()->json(['status' => true, 'message' => 'OTP sent to customer.']);
+    }
+
+    public function getLeadCard($id)
+    {
+        $storeId = Helpers::get_store_id();
+        $store_data = Helpers::get_store_data();
+        $allStaff = DB::table('vendor_employees')->where('store_id', $storeId)->where('status', 1)->get();
+        $statuses = DB::table('service_statuses')->where('removable', 1)->where(function ($q) use ($storeId) { $q->whereNull('store_id')->orWhere('store_id', $storeId); })->get();
+        $default_statuses = DB::table('service_statuses')->where('removable', 0)->get();
+
+        $lead = DB::table('service_requests')
+            ->join('items', 'service_requests.item_id', '=', 'items.id')
+            ->join('categories', 'items.category_id', '=', 'categories.id')
+            ->join('users', 'service_requests.user_id', '=', 'users.id')
+            ->leftJoin('accepted_service_requests', function ($join) use ($storeId) {
+                $join->on('service_requests.id', '=', 'accepted_service_requests.service_request_id')
+                    ->where('accepted_service_requests.vendor_id', '=', $storeId);
+            })
+            ->leftJoin('cancelled_service_requests', function ($join) use ($storeId) {
+                $join->on('service_requests.id', '=', 'cancelled_service_requests.service_request_id')
+                    ->where('cancelled_service_requests.vendor_id', '=', $storeId);
+            })
+            ->where('service_requests.id', $id)
+            ->select(
+                'service_requests.*',
+                'items.name as item_name',
+                'items.image as image',
+                'categories.name as category_name',
+                'users.f_name as f_name',
+                'users.id as uid',
+                DB::raw('COALESCE(accepted_service_requests.assigned_status, cancelled_service_requests.assigned_status) as assigned_status'),
+                DB::raw('COALESCE(accepted_service_requests.current_status, cancelled_service_requests.current_status) as current_status'),
+                DB::raw('COALESCE(accepted_service_requests.assigned_type, cancelled_service_requests.assigned_to) as assigned_type'),
+                DB::raw('COALESCE(accepted_service_requests.assigned_to, cancelled_service_requests.assigned_to) as assigned_to'),
+                DB::raw('COALESCE(accepted_service_requests.accepted_by_staff, cancelled_service_requests.accepted_by_staff) as accepted_by_staff'),
+                DB::raw('COALESCE(accepted_service_requests.id, cancelled_service_requests.id) as acc_id'),
+                DB::raw("CASE
+                    WHEN service_requests.created_at < '" . now()->subMinutes(Helpers::get_lead_exp_minutes()) . "'
+                        AND accepted_service_requests.id IS NULL
+                        AND cancelled_service_requests.id IS NULL
+                        AND FIND_IN_SET($storeId, service_requests.sent_to) > 0
+                    THEN 'missed'
+                    ELSE NULL
+                END as additional_status")
+            )
+            ->first();
+
+        if (!$lead) {
+            return response('', 404);
+        }
+
+        return view('vendor-views.product._lead_card', compact('lead', 'allStaff', 'statuses', 'default_statuses', 'store_data'));
+    }
 
     public function export_leads($products)
     {

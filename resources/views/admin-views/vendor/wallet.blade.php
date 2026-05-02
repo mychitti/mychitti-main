@@ -22,36 +22,88 @@
             </h1>
         </div>
         <div class="card">
+            <div class="card-header border-0 pb-0">
+                <ul class="nav nav-tabs card-header-tabs" id="walletActionTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="recharge-tab" data-toggle="tab" href="#tab-recharge" role="tab">
+                            <i class="tio-add-circle-outlined mr-1"></i> Recharge
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" id="deduct-tab" data-toggle="tab" href="#tab-deduct" role="tab">
+                            <i class="tio-remove-circle-outlined mr-1"></i> Deduct
+                        </a>
+                    </li>
+                </ul>
+            </div>
             <div class="card-body">
-                <form action="{{ route('admin.store.wallet.recharge') }}" class="formSubmitVerify" method="post">
-                    @csrf
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <label class="form-check-label" for="flexRadioDefault2">Store</label>
-                            <select data-placeholder="Select Store" required name="store_id" id="search_store_id"
-                                class="form-control js-select2-custom ">
-                                <option value=""></option>
+                <div class="tab-content" id="walletActionTabsContent">
 
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-check-label" for="flexRadioDefault2">Amount</label>
-                            <input type="number" name="amount" id="" placeholder="Ex: 1200" class="form-control">
-                        </div>
-                        <div class="col-md-4 my-3 d-flex gap-2 align-items-center">
-                            <input type="radio" value="1" name="billing" class="billing_status" id="billing"
-                                checked>
-                            <label for="billing" class="mb-0">Billing</label>
-                            <input type="radio" value="0" name="billing" class="billing_status" id="retail">
-                            <label for="retail" class="mb-0">Retail</label>
-                        </div>
-                        <div class="col-12">
-                            <div class="w-100 d-flex justify-content-end">
-                                <button class="btn btn-primary">Add To Wallet</button>
+                    {{-- ── Recharge ── --}}
+                    <div class="tab-pane fade show active" id="tab-recharge" role="tabpanel">
+                        <form action="{{ route('admin.store.wallet.recharge') }}" class="formSubmitVerify" method="post">
+                            @csrf
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">Store</label>
+                                    <select data-placeholder="Select Store" required name="store_id" id="search_store_id"
+                                        class="form-control js-select2-custom">
+                                        <option value=""></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" name="amount" placeholder="Ex: 1200" class="form-control" min="1" step="0.01">
+                                </div>
+                                <div class="col-md-4 d-flex gap-2 align-items-end pb-1">
+                                    <input type="radio" value="1" name="billing" class="billing_status" id="billing" checked>
+                                    <label for="billing" class="mb-0">Billing</label>
+                                    <input type="radio" value="0" name="billing" class="billing_status" id="retail">
+                                    <label for="retail" class="mb-0">Retail</label>
+                                </div>
+                                <div class="col-12 d-flex justify-content-end">
+                                    <button class="btn btn-primary">Add To Wallet</button>
+                                </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
-                </form>
+
+                    {{-- ── Deduct ── --}}
+                    <div class="tab-pane fade" id="tab-deduct" role="tabpanel">
+                        <form action="{{ route('admin.store.wallet.deduct') }}" method="POST">
+                            @csrf
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Store</label>
+                                    <select data-placeholder="Select Store" required name="store_id" id="deduct_store_id"
+                                        class="form-control js-select2-custom">
+                                        <option value=""></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Amount <span class="text-danger">*</span></label>
+                                    <input type="number" name="amount" placeholder="Ex: 500" class="form-control" min="0.01" step="0.01" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Service Request ID <span class="text-muted">(optional)</span></label>
+                                    <input type="number" name="service_request_id" placeholder="Ex: 1042" class="form-control" min="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Reason <span class="text-danger">*</span></label>
+                                    <select name="reason" id="deduct_reason" class="form-control" required
+                                        data-placeholder="Type or select a reason..."></select>
+                                </div>
+                                <div class="col-12 d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-danger"
+                                        onclick="return confirm('Deduct this amount from the store wallet?')">
+                                        <i class="tio-remove-circle-outlined mr-1"></i> Deduct from Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
             </div>
         </div>
         <div class="card mt-3">
@@ -181,35 +233,72 @@
 @push('script_2')
     <script>
         $(document).ready(function() {
-
-            let url =
-                "{{ route('admin.store.get-matches') }}";
-
-            $('#search_store_id').select2({
+            var storeAjaxOpts = {
                 placeholder: 'Search for a store',
                 minimumInputLength: 3,
                 ajax: {
-                    url: url,
+                    url: "{{ route('admin.store.get-matches') }}",
                     dataType: 'json',
                     delay: 250,
-                    data: function(params) {
-                        return {
-                            q: params.term
-                        };
-                    },
+                    data: function(params) { return { q: params.term }; },
                     processResults: function(data) {
-                        let results = data.map(store => ({
-                            id: store.id,
-                            text: store.name + ' (' + store.phone + ')'
-                        }));
-
-                        return {
-                            results: results
-                        };
+                        return { results: data.map(s => ({ id: s.id, text: s.name + ' (' + s.phone + ')' })) };
                     },
                     cache: true
                 }
-            });
+            };
+            $('#search_store_id').select2(storeAjaxOpts);
+            $('#deduct_store_id').select2(storeAjaxOpts);
+
+            var reasonAjaxOpts = {
+                placeholder: 'Type or select a reason...',
+                tags: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: "{{ route('admin.store.wallet.deduct-reasons') }}",
+                    dataType: 'json',
+                    delay: 200,
+                    data: function(params) { return { q: params.term || '' }; },
+                    processResults: function(data) { return data; },
+                    cache: true
+                },
+                createTag: function(params) {
+                    var term = $.trim(params.term);
+                    if (!term) return null;
+                    return { id: term, text: term, newTag: true };
+                },
+                templateResult: function(data) {
+                    if (data.newTag) return $('<span><em>+ Add: </em>' + data.text + '</span>');
+                    return data.text;
+                }
+            };
+            $('#deduct_reason').select2(reasonAjaxOpts);
+        });
+
+        // Re-init reason select2 when deduct tab is shown (hidden elements issue)
+        $('a[data-target="#tab-deduct"]').on('shown.bs.tab', function() {
+            $('#deduct_reason').select2($.extend({}, {
+                placeholder: 'Type or select a reason...',
+                tags: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: "{{ route('admin.store.wallet.deduct-reasons') }}",
+                    dataType: 'json',
+                    delay: 200,
+                    data: function(params) { return { q: params.term || '' }; },
+                    processResults: function(data) { return data; },
+                    cache: true
+                },
+                createTag: function(params) {
+                    var term = $.trim(params.term);
+                    if (!term) return null;
+                    return { id: term, text: term, newTag: true };
+                },
+                templateResult: function(data) {
+                    if (data.newTag) return $('<span><em>+ Add: </em>' + data.text + '</span>');
+                    return data.text;
+                }
+            }));
         });
     </script>
 @endpush

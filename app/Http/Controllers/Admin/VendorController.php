@@ -400,7 +400,6 @@ class VendorController extends Controller
             }
 
             Helpers::_addWelcomeCouponsIfExist($store);
-            Helpers::_addWelcomeCouponsIfExist($store);
             if (strtolower($store->business_type) == 'hospital') {
                 _createHospitalDefaultRoles($store->id);
             }
@@ -873,6 +872,7 @@ class VendorController extends Controller
             $invoice->invoice_date = $request->invoice_date ?? date('Y-m-d');
             $invoice->payment_date =  date('Y-m-d');
             $invoice->generated_by =  'admin';
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             // ledger entry 
@@ -1105,6 +1105,7 @@ class VendorController extends Controller
             $invoice->payment_date =  date('Y-m-d');
             $invoice->invoice_date = $invoiceDate ?? null;
             $invoice->generated_by =  'admin';
+            $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
 
             $InvoiceItem = new InvoiceItem();

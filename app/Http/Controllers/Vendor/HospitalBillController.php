@@ -192,6 +192,8 @@ class HospitalBillController extends Controller
 
             $invoice = ManualInvoice::create([
                 'invoice_id'     => $invoice_id,
+                'invoice_serial' => (int) substr($invoice_id, strrpos($invoice_id, '_') + 1),
+                'financial_year' => _currentFinancialYear(),
                 'bill_to'        => $patient->id,
                 'bill_to_type'   => 'patient',
                 'user_type'      => 'hospital_patient',

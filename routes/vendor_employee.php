@@ -951,7 +951,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('select', 'ItemController@select_view')->name('service_select');
             Route::post('save-services', 'ItemController@service_save')->name('service_save');
             Route::get('service-requests', 'ItemController@service_request_list')->name('service_request_list');
-            Route::get('accepted-requests', 'ItemController@service_request_accepted')->name('service_request_accepted');
             Route::post('variant-combination', 'ItemController@variant_combination')->name('variant-combination');
             Route::post('update-variant-combination', 'ItemController@update_variant_combination')->name('update-variant-combination');
             Route::post('store', 'ItemController@store')->name('store');

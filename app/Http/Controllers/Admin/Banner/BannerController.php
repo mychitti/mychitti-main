@@ -123,6 +123,7 @@ class BannerController extends BaseController
         $invoice->generated_by =  'admin';
         $invoice->reminder_date = null;
         $invoice->payment_date =  date('Y-m-d H:i:s');
+        $invoice->financial_year = _currentFinancialYear();
         $invoice->save();
 
         $InvoiceItem = new InvoiceItem;

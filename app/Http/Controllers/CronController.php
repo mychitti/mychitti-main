@@ -974,6 +974,7 @@ class CronController extends Controller
                 $invoice->service_key = json_encode($submodule_key);
                 $invoice->store_module_ids = json_encode($store_module_ids);
                 $invoice->other_details = json_encode($invoiceItemsData);
+                $invoice->financial_year = _currentFinancialYear();
                 $invoice->save();
 
                 foreach ($invoiceItemsData as $itemData) {

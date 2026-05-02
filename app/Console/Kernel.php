@@ -155,6 +155,28 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
 
+        // LEAD NOTE REMINDERS =======================================
+        $schedule->call(function () {
+            $due = \App\Models\LeadNote::whereNotNull('remind_at')
+                ->whereNull('notified_at')
+                ->where('remind_at', '<=', now())
+                ->with('store.vendor')
+                ->get();
+            foreach ($due as $note) {
+                $fcm = $note->store?->vendor?->cm_firebase_token;
+                if ($fcm) {
+                    \App\CentralLogics\Helpers::send_push_notif_to_device($fcm, [
+                        'title' => 'Lead Reminder',
+                        'description' => $note->note,
+                        'order_id' => $note->service_id,
+                        'image' => '',
+                        'type' => 'block',
+                    ]);
+                }
+                $note->update(['notified_at' => now()]);
+            }
+        })->everyMinute()->timezone($tz)->name('lead-note-reminders')->withoutOverlapping();
+
         // PLATFORM FEE MONTHLY DEDUCTION =======================================
         $schedule->command('platform-fee:deduct')
             ->monthlyOn(1, '00:00')

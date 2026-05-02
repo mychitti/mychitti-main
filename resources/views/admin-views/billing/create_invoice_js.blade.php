@@ -530,6 +530,7 @@
 
 
      function validateInvoiceNum(elem, tax_type) {
+         $('#hidden_bill_number').val($(elem).val());
          if ($(elem).val() == '') {
              if (tax_type == 'gst') {
                  $('.invoice_error').text('Invoice Id Required');

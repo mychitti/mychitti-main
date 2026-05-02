@@ -611,6 +611,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
+            Route::get('leads-dashboard', 'ServiceController@leadsDashboard')->name('leads-dashboard');
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
             Route::get('report/{id}', 'ServiceController@staff_report')->name('report.staff')->middleware('permission:leads_manage,report');
             Route::get('accept/{id}', 'ServiceController@accept')->name('accept')->middleware('permission:leads_manage,accept');
@@ -631,6 +632,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('delete-gatepass-item/{id}', 'ServiceController@delete_gatepass_item')->name('delete-gatepass-item')->middleware('permission:leads_gatepass,edit');
             Route::post('cancel', 'ServiceController@cancel')->name('cancel')->middleware('permission:leads_manage,cancel');
             Route::get('lead-details/{id}', 'ServiceController@lead_details')->name('lead-details')->middleware('permission:leads_manage,view');
+            Route::get('lead-card/{id}', 'ServiceController@getLeadCard')->name('lead-card');
+            Route::post('send-completion-otp', 'ServiceController@sendCompletionOtp')->name('send-completion-otp');
+            Route::post('add-custom-status', 'ServiceController@addCustomStatus')->name('add-custom-status');
+            Route::post('dismiss-leads-guide', 'ServiceController@dismissLeadsGuide')->name('dismiss-leads-guide');
+            Route::post('lead-note/add', 'ServiceController@addLeadNote')->name('lead-note.add');
             Route::get('task/{id}/{action}/{acc_id}', 'ServiceController@task_action')->name('task');
         });
 
@@ -688,6 +694,21 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('status-change', 'StaffController@status_change')->name('status-change')->middleware('permission:staff_department,status_change');
         });
         Route::get('terms-n-conditions-staff', 'EmployeeController@view_terms_and_conditions')->name('staff.terms-n-conditions');
+
+        // Basic staff — free tier (no HR subscription required), max 10 members
+        Route::group(['prefix' => 'basic-staff', 'as' => 'basic-staff.'], function () {
+            Route::get('/', 'BasicStaffController@index')->name('index');
+            Route::get('create', 'BasicStaffController@create')->name('create');
+            Route::post('store', 'BasicStaffController@store')->name('store');
+            Route::get('edit/{id}', 'BasicStaffController@edit')->name('edit');
+            Route::post('update/{id}', 'BasicStaffController@update')->name('update');
+            Route::delete('delete/{id}', 'BasicStaffController@destroy')->name('delete');
+            // Roles
+            Route::get('roles', 'BasicStaffController@roles')->name('roles');
+            Route::post('roles/store', 'BasicStaffController@storeRole')->name('roles.store');
+            Route::post('roles/update/{id}', 'BasicStaffController@updateRole')->name('roles.update');
+            Route::delete('roles/delete/{id}', 'BasicStaffController@destroyRole')->name('roles.delete');
+        });
 
         Route::group(['prefix' => 'staff', 'as' => 'staff.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('edit/{id}', 'EmployeeController@edit')->name('edit')->middleware('permission:staff_manage,edit');
@@ -932,7 +953,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('select', 'ItemController@select_view')->name('service_select');
             Route::post('save-services', 'ItemController@service_save')->name('service_save');
             Route::get('service-requests', 'ItemController@service_request_list')->name('service_request_list');
-            Route::get('accepted-requests', 'ItemController@service_request_accepted')->name('service_request_accepted');
             Route::post('variant-combination', 'ItemController@variant_combination')->name('variant-combination');
             Route::post('update-variant-combination', 'ItemController@update_variant_combination')->name('update-variant-combination');
             Route::post('store', 'ItemController@store')->name('store');
@@ -1166,6 +1186,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('profile/edit', 'ProfileController@edit')->name('profile.edit');
         Route::post('profile/update', 'ProfileController@update')->name('profile.update');
         Route::post('profile/change-password', 'ProfileController@staff_change_password')->name('profile.change-password');
+        Route::post('profile/default-dashboard', 'ProfileController@saveDefaultDashboard')->name('profile.default-dashboard');
         Route::group(['prefix' => 'profile', 'as' => 'profile.', 'middleware' => ['module:bank_info']], function () {
             Route::post('settings-password', 'ProfileController@settings_password_update')->name('settings-password');
             Route::get('bank-view', 'ProfileController@bank_view')->name('bankView');
