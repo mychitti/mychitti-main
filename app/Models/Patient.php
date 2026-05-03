@@ -51,4 +51,35 @@ class Patient extends Model
     {
         return $this->hasMany(Appointment::class, 'patient_id');
     }
+
+    /**
+     * Generate a globally-unique patient UID for the given store.
+     * Uses per-store sequence but bumps the number if taken by another store.
+     */
+    public static function generateUid(int $storeId): string
+    {
+        $prefix  = strtoupper(\App\CentralLogics\Helpers::get_business_settings('patient_uid_prefix_' . $storeId) ?? 'P');
+        $padding = (int)(\App\CentralLogics\Helpers::get_business_settings('patient_uid_padding_' . $storeId) ?? 5);
+        $minSerial = (int)(\App\CentralLogics\Helpers::get_business_settings('patient_uid_serial_' . $storeId) ?? 1);
+
+        $lastUid = static::where('store_id', $storeId)
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->value('patient_uid');
+
+        $next = 1;
+        if ($lastUid && preg_match('/(\d+)$/', $lastUid, $m)) {
+            $next = (int)$m[1] + 1;
+        }
+        $next = max($next, $minSerial);
+
+        // Loop until the candidate is not taken globally (handles cross-store collisions)
+        do {
+            $candidate = $prefix . '-' . str_pad($next, $padding, '0', STR_PAD_LEFT);
+            if (!static::where('patient_uid', $candidate)->exists()) {
+                return $candidate;
+            }
+            $next++;
+        } while (true);
+    }
 }

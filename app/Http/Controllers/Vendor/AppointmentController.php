@@ -474,12 +474,10 @@ class AppointmentController extends Controller
 
         if ($isOther) {
             // "Someone else" — create a standalone patient record (no user_id link)
-            $last = Patient::where('store_id', $storeId)->latest('id')->first();
-            $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
             return Patient::create([
                 'store_id'    => $storeId,
                 'user_id'     => null,
-                'patient_uid' => $uid,
+                'patient_uid' => Patient::generateUid($storeId),
                 'name'        => $sr->patient_name,
                 'phone'       => $sr->patient_phone,
                 'email'       => null,
@@ -491,12 +489,10 @@ class AppointmentController extends Controller
             $patient = Patient::where('user_id', $user->id)->where('store_id', $storeId)->first();
             if ($patient) return $patient;
 
-            $last = Patient::where('store_id', $storeId)->latest('id')->first();
-            $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
             return Patient::create([
                 'store_id'    => $storeId,
                 'user_id'     => $user->id,
-                'patient_uid' => $uid,
+                'patient_uid' => Patient::generateUid($storeId),
                 'name'        => trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: ($user->name ?? 'Patient'),
                 'phone'       => $user->phone,
                 'email'       => $user->email,
@@ -504,12 +500,10 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $last = Patient::where('store_id', $storeId)->latest('id')->first();
-        $uid  = 'P-' . str_pad(($last ? $last->id + 1 : 1), 5, '0', STR_PAD_LEFT);
         return Patient::create([
             'store_id'    => $storeId,
             'user_id'     => null,
-            'patient_uid' => $uid,
+            'patient_uid' => Patient::generateUid($storeId),
             'name'        => 'Patient',
             'phone'       => null,
             'email'       => null,

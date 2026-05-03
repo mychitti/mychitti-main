@@ -43,22 +43,33 @@ class BannerController extends BaseController
 
     private function getAddView(): View
     {
+        $filters = ['module_id' => Config::get('module.current_module_id'), 'created_by' => 'admin'];
+        if (request('platform')) {
+            $filters['platform'] = request('platform');
+        }
+        if (request('zone_id')) {
+            $filters['zone_id'] = request('zone_id');
+        }
+
         $banners = $this->bannerRepo->getListWhere(
-            filters: ['module_id' => Config::get('module.current_module_id'), 'created_by' => 'admin'],
+            filters: $filters,
             relations: ['module'],
             searchValue: request()->search,
             dataLimit: config('default_pagination')
         );
         $totalBannerCount = \App\Models\Banner::where('module_id', Config::get('module.current_module_id'))
             ->where('created_by', 'admin')
+            ->when(request('platform'), fn($q) => $q->where('platform', request('platform')))
+            ->when(request('zone_id'), fn($q) => $q->where('zone_id', request('zone_id')))
             ->count();
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
         $categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
         $users = User::where('status', 1)->get();
-        // prx( $categories);
-        return view(BannerViewPath::INDEX[VIEW], compact('banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users'));
+        $filterPlatform = request('platform', '');
+        $filterZoneId   = request('zone_id', '');
+        return view(BannerViewPath::INDEX[VIEW], compact('banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users', 'filterPlatform', 'filterZoneId'));
     }
 
     public function vendorApprovals(Request $request): View

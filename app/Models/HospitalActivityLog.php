@@ -13,6 +13,11 @@ class HospitalActivityLog extends Model
 
     protected $casts = ['properties' => 'array'];
 
+    public function store()
+    {
+        return $this->belongsTo(\App\Models\Store::class);
+    }
+
     public static function record(int $storeId, string $subjectType, ?int $subjectId, string $action, string $description, array $properties = []): void
     {
         $causerId   = null;

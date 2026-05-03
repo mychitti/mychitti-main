@@ -19,6 +19,7 @@
                 @csrf
                 @method('PUT')
                 @include('vendor-views.opd._form', ['visit' => $visit])
+                @include('vendor-views.opd._form_vitals_only', ['visit' => $visit])
                 <div class="d-flex gap-2 mt-3">
                     <button type="submit" class="btn btn--primary">Update Visit</button>
                     <a href="{{ route('vendor.opd.show', $visit->id) }}" class="btn btn-outline-secondary">Cancel</a>

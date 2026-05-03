@@ -122,6 +122,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::delete('{id}', 'LogController@destroy')->name('destroy');
                 Route::post('bulk-delete', 'LogController@bulkDelete')->name('bulk-delete');
             });
+            Route::get('hospital-activity-logs', 'HospitalActivityLogController@index')->name('hospital-activity-logs');
         });
 
 

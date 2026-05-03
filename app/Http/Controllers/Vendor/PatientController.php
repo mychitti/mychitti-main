@@ -387,22 +387,6 @@ class PatientController extends Controller
 
     private function generateUid(int $store_id): string
     {
-        $prefix  = strtoupper(Helpers::get_business_settings('patient_uid_prefix_' . $store_id) ?? 'P');
-        $padding = (int)(Helpers::get_business_settings('patient_uid_padding_' . $store_id) ?? 5);
-        $minSerial = (int)(Helpers::get_business_settings('patient_uid_serial_' . $store_id) ?? 1);
-
-        $lastUid = Patient::where('store_id', $store_id)
-            ->lockForUpdate()
-            ->orderByDesc('id')
-            ->value('patient_uid');
-
-        $autoNext = 1;
-        if ($lastUid && preg_match('/(\d+)$/', $lastUid, $m)) {
-            $autoNext = (int)$m[1] + 1;
-        }
-
-        $next = max($autoNext, $minSerial);
-
-        return $prefix . '-' . str_pad($next, $padding, '0', STR_PAD_LEFT);
+        return Patient::generateUid($store_id);
     }
 }

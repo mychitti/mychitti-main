@@ -90,11 +90,8 @@
                     @include('vendor-views.opd._form', ['visit' => null])
                 </div>
 
-                {{-- In booked mode the patient/doctor/date come from the service request,
-                     but we still show chief complaint, vitals, notes --}}
-                <div id="bookedVitalsBlock" {{ $isBooked ? '' : 'style="display:none;"' }}>
-                    @include('vendor-views.opd._form_vitals_only')
-                </div>
+                {{-- Chief Complaint, Vitals, Notes — always shown once regardless of mode --}}
+                @include('vendor-views.opd._form_vitals_only', ['visit' => null])
 
                 <div class="d-flex gap-2 mt-3 justify-content-end w-100">
                     <a href="{{ route('vendor.opd.index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -124,7 +121,6 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
         document.getElementById('bookingMode').value = mode;
         document.getElementById('bookedSection').style.display      = mode === 'booked' ? '' : 'none';
         document.getElementById('walkinPatientBlock').style.display = mode === 'walkin' ? '' : 'none';
-        document.getElementById('bookedVitalsBlock').style.display  = mode === 'booked' ? '' : 'none';
 
         // Toggle required off on all walk-in fields when hidden
         const walkinRequired = ['patientSelect', 'doctor_profile_id', 'visit_date', 'visit_type'];

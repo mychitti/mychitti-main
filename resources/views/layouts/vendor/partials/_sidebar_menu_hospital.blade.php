@@ -95,13 +95,28 @@
                         </ul>
                     </li>
                 @endif
+                
                 @if (selected_menu('hospital_manage') && hasMasterModulePermission('hospital_manage'))
+                {{-- Patients  --}}
+                 @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
+                 <li class="navbar-vertical-aside-has-menu {{ Request::is('patient/list') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.patient.list') }}"
+                        title="Patients">
+                        <i class="tio-user-big-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate"> Patients</span>
+                    </a>
+                </li>
+
+
+                                  
+                                @endif
+
                     {{-- Outpatient --}}
                     @if (selected_menu('outpatient') &&
                             hasAnyPermission([
-                                'patient.list',
+                                {{-- 'patient.list',
                                 'patient.add',
-                                'patient.export',
+                                'patient.export', --}}
                                 'opd_register.list',
                                 'opd_register.add',
                                 'opd_register.export',
@@ -121,14 +136,7 @@
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('patient*') || Request::is('opd*') || Request::is('prescription*') ? 'block' : 'none' }}">
-                                @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
-                                    <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.patient.list') }}" title="Patients">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Patients</span>
-                                        </a>
-                                    </li>
-                                @endif
+                               
                                 @if (hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))
                                     <li class="nav-item {{ Request::is('opd*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('vendor.opd.index') }}"

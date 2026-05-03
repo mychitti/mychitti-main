@@ -47,7 +47,7 @@ class BannerRepository implements BannerRepositoryInterface
                 }
             });
         })
-        ->latest()->paginate($dataLimit);
+        ->orderByDesc('status')->latest()->paginate($dataLimit);
     }
 
     public function update(string $id, array $data): bool|string|object

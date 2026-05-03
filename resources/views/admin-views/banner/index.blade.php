@@ -198,18 +198,35 @@
                             <h5 class="card-title">
                                 {{translate('messages.banner_list')}}<span class="badge badge-soft-dark ml-2" id="itemCount">{{$totalBannerCount}}</span>
                             </h5>
-                            <form  class="search-form">
-                                <!-- Search -->
-                                <div class="input-group input--group">
-                                    <input id="datatableSearch" type="search" value="{{ request()->get('search')?? '' }}" name="search" class="form-control" placeholder="{{translate('messages.search_by_title')}}" aria-label="{{translate('messages.search_here')}}">
+                            <form class="search-form" method="GET" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0;">
+                                {{-- Platform filter --}}
+                                <select name="platform" id="filter-platform" class="form-control form-control-sm" style="width:auto; min-width:120px;">
+                                    <option value="">All Platforms</option>
+                                    <option value="app" {{ $filterPlatform === 'app' ? 'selected' : '' }}>App</option>
+                                    <option value="web" {{ $filterPlatform === 'web' ? 'selected' : '' }}>Web</option>
+                                </select>
+
+<div  style="width:auto; max-width: 200px; min-width:130px;">
+                                {{-- City / Zone filter --}}
+                                <select name="zone_id" id="filter-zone" class="form-control form-control-sm js-select2-custom">
+                                    <option value="">All Cities</option>
+                                    @foreach($zones as $zone)
+                                        <option value="{{ $zone->id }}" {{ (string)$filterZoneId === (string)$zone->id ? 'selected' : '' }}>{{ $zone->name }}</option>
+                                    @endforeach
+                                </select>
+</div>
+                                {{-- Search --}}
+                                <div class="input-group input--group" style="width:220px; flex-shrink:0;">
+                                    <input id="datatableSearch" type="search" value="{{ request()->get('search') ?? '' }}" name="search" class="form-control" placeholder="{{translate('messages.search_by_title')}}" aria-label="{{translate('messages.search_here')}}">
                                     <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
                                 </div>
-                                <!-- End Search -->
-                            </form>
-                            @if(request()->get('search'))
-                            <button type="reset" class="btn btn--primary ml-2 location-reload-to-base" data-url="{{url()->full()}}">{{translate('messages.reset')}}</button>
-                            @endif
 
+                                @if(request()->get('search') || request()->get('platform') || request()->get('zone_id'))
+                                    <a href="{{ route('admin.banner.add-new') }}" class="btn btn-outline-secondary btn-sm" style="white-space:nowrap;">
+                                        <i class="tio-refresh"></i> Reset
+                                    </a>
+                                @endif
+                            </form>
                         </div>
                     </div>
                     <!-- Table -->
@@ -496,7 +513,11 @@
 
 
 
-        $('#reset_btn').click(function(){
+        $('#filter-platform, #filter-zone').on('change', function() {
+        $(this).closest('form').submit();
+    });
+
+    $('#reset_btn').click(function(){
         $('#module_select').val(null).trigger('change');
         $('#zone').val(null).trigger('change');
         $('#store_id').val(null).trigger('change');

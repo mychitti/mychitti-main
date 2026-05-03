@@ -33,6 +33,11 @@
                             href="{{ route('admin.logs.vendor-access-logs.index') }}"
                             aria-disabled="true">Vendor Access Logs</a>
                     </li>
+                    {{-- <li class="nav-item">
+                        <a class="nav-link {{ Request::routeIs('admin.logs.hospital-activity-logs') ? 'active' : '' }}"
+                            href="{{ route('admin.logs.hospital-activity-logs') }}"
+                            aria-disabled="true">Hospital Activity Logs</a>
+                    </li> --}}
                 </ul>
                 <!-- End Nav -->
             </div>
