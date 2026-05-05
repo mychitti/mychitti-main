@@ -912,7 +912,7 @@ class FrontController extends Controller
     public function all_stores(Request $request, $type = null)
     {
         if ($type == 'nearby') {
-            $stores = _nearbyStores($this->zone_id, null, 16);
+            $stores = _nearbyStoresOld($this->zone_id, null, 16);
         } else {
             $userLat = session('latitude');
             $userLng = session('longitude');
