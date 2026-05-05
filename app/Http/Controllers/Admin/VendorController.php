@@ -857,8 +857,16 @@ class VendorController extends Controller
 
             // create bill
             $invoice = new ManualInvoice();
-            $invoice->invoice_id = Helpers::generateInvoiceIdAdmin();
-            $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
+            if ($request->filled('bill_number')) {
+                $invPrefix  = BusinessSetting::where('key', 'admin_invoice_prefix')->first()?->value ?? 'MSM';
+                $fyStart    = now()->month >= 4 ? now()->year : now()->year - 1;
+                $fyYear     = substr($fyStart, -2) . '-' . substr($fyStart + 1, -2);
+                $invoice->invoice_id     = $invPrefix . '_' . $fyYear . '_' . (int) $request->bill_number;
+                $invoice->invoice_serial = (int) $request->bill_number;
+            } else {
+                $invoice->invoice_id     = Helpers::generateInvoiceIdAdmin();
+                $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()->value - 1;
+            }
             $invoice->vendor_id = NULL;
             $invoice->bill_to =  $request->store_id;
             $invoice->bill_to_type = 'vendor';
