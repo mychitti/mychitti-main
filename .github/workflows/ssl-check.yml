@@ -1,0 +1,59 @@
+name: SSL Certificate Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6am UTC
+  workflow_dispatch:      # Allow manual trigger
+
+jobs:
+  ssl-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check SSL certificates
+        run: |
+          DOMAINS=(
+            "admin.mychitti.net"
+            "vendor.mcvendorhub.com"
+            "vendor-staff.mcvendorhub.com"
+            "mcvendorhub.com"
+            "staging.mychitti.net"
+            "mychitti.net"
+            "ai-revised.mychitti.net"
+          )
+
+          WARN_DAYS=30
+          FAILED=0
+
+          echo "=============================="
+          echo "  SSL Certificate Check Report"
+          echo "=============================="
+
+          for DOMAIN in "${DOMAINS[@]}"; do
+            EXPIRY=$(echo | openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" 2>/dev/null \
+              | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+
+            if [ -z "$EXPIRY" ]; then
+              echo "❌ $DOMAIN — could not retrieve certificate"
+              FAILED=1
+              continue
+            fi
+
+            EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s)
+            NOW_EPOCH=$(date +%s)
+            DAYS=$(( ($EXPIRY_EPOCH - $NOW_EPOCH) / 86400 ))
+
+            if [ $DAYS -lt $WARN_DAYS ]; then
+              echo "⚠️  $DOMAIN — EXPIRES IN $DAYS DAYS ($EXPIRY)"
+              FAILED=1
+            else
+              echo "✅ $DOMAIN — OK ($DAYS days remaining)"
+            fi
+          done
+
+          echo "=============================="
+
+          if [ $FAILED -ne 0 ]; then
+            echo ""
+            echo "One or more certificates need attention. Renew before they expire!"
+            exit 1
+          fi
