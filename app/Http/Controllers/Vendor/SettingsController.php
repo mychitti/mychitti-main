@@ -193,7 +193,7 @@ class SettingsController extends Controller
             $domain         = Helpers::get_store_data()->domain;
             $domainCharge   = (float) (BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
             $domainGstPct   = (float) (BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
-            $domainGstIncl  = BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0;
+            $domainGstIncl  = (bool)(BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0);
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain', 'domainCharge', 'domainGstPct', 'domainGstIncl'));
         } else if ($tab == 'third-party') {
             return view('vendor-views.settings.webpage', compact('store', 'tab'));
@@ -557,6 +557,10 @@ class SettingsController extends Controller
 
             $store->domain = null;
             $store->save();
+
+            \App\Models\DomainPurchase::where('store_id', $store->id)
+                ->where('status', 'active')
+                ->update(['status' => 'removed', 'removed_at' => now()]);
         }
 
         Toastr::success('Domain removed successfully');
@@ -623,7 +627,7 @@ class SettingsController extends Controller
         Toastr::success('Domain saved successfully');
         return back();
     }
-    public function completeDomainRegistration($storeId, $domain)
+    public function completeDomainRegistration($storeId, $domain, $paymentData = null)
     {
         $store = Store::findOrFail($storeId);
         $store->domain = $domain;
@@ -634,6 +638,108 @@ class SettingsController extends Controller
                 'hostname' => $domain,
                 'ssl'      => ['method' => 'http', 'type' => 'dv'],
             ]);
+
+        $charge  = (float) (\App\Models\BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
+        $gstPct  = (float) (\App\Models\BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
+        $gstIncl = (bool)  (\App\Models\BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0);
+
+        // If payment happened, trust the actual amount paid; otherwise compute from settings
+        $total = $paymentData ? (float) $paymentData->payment_amount
+            : ($gstIncl ? $charge : round($charge * (1 + $gstPct / 100), 2));
+
+        // Base price (pre-tax) and GST amount
+        $basePrice = ($gstIncl && $gstPct > 0) ? round($charge / (1 + $gstPct / 100), 2) : $charge;
+        $gstAmt    = $charge > 0 && $gstPct > 0 ? round($total - $basePrice, 2) : 0;
+
+        \App\Models\DomainPurchase::where('store_id', $storeId)
+            ->where('status', 'active')
+            ->update(['status' => 'removed', 'removed_at' => now()]);
+
+        $invoiceId = null;
+
+        if ($total > 0) {
+            $invoice = new ManualInvoice();
+            $invoice->invoice_id     = Helpers::generateInvoiceIdAdmin();
+            $invoice->invoice_serial = BusinessSetting::where('key', 'admin_bill_serial_number')->first()?->value - 1;
+            $invoice->vendor_id      = null;
+            $invoice->bill_to        = $storeId;
+            $invoice->bill_to_type   = 'vendor';
+            $invoice->module_id      = null;
+            $invoice->total_amount   = $total;
+            $invoice->payment_method = 'Online';
+            $invoice->tax_type       = $gstPct > 0 ? 'gst' : 'non-gst';
+            $invoice->payment_status = 'Paid';
+            $invoice->payment_date   = now()->toDateString();
+            $invoice->generated_by   = 'admin';
+            $invoice->financial_year = _currentFinancialYear();
+            $invoice->save();
+
+            $item = new InvoiceItem();
+            $item->rand_invoice_id   = $invoice->invoice_id;
+            $item->manual_invoice_id = $invoice->id;
+            $item->name              = 'Custom Domain - ' . $domain;
+            $item->qty               = 1;
+            $item->price             = $basePrice;
+            $item->tax               = $gstPct;
+            $item->hsn               = '';
+            $item->save();
+
+            try {
+                $pdfResult = _createBillPdf($invoice, 'admin');
+                if ($pdfResult && isset($pdfResult['pdf'])) {
+                    $invoice->update(['pdf' => $pdfResult['pdf']]);
+                }
+            } catch (\Exception $e) {
+                // PDF failure should not block domain activation
+            }
+
+            $debit_account  = Helpers::ensurePurchaseAccount('Domain Purchase', $storeId);
+            $credit_account = Helpers::ensureSubscriptionRevenueAccount();
+
+            $voucher = _masterLedgerEntry(
+                [
+                    'date'         => now(),
+                    'amount'       => $total,
+                    'status'       => 'approved',
+                    'description'  => 'Custom Domain Activation - ' . $domain,
+                    'voucher_type' => 'Purchase',
+                    'invoice_id'   => $invoice->getKey(),
+                ],
+                $credit_account,
+                $debit_account,
+                'store',
+                'admin',
+                null,
+                $storeId
+            );
+
+            _saveDayBookEntry(
+                $total,
+                'debit',
+                $storeId,
+                'Domain Purchase',
+                $invoice->getKey(),
+                $voucher?->id,
+                null,
+                null,
+                'Online'
+            );
+
+            $invoiceId = $invoice->invoice_id;
+        }
+
+        \App\Models\DomainPurchase::create([
+            'store_id'       => $storeId,
+            'domain'         => $domain,
+            'charge'         => $charge,
+            'gst_percent'    => $gstPct,
+            'gst_amount'     => $gstAmt,
+            'total_amount'   => $total,
+            'transaction_id' => $paymentData?->transaction_id,
+            'invoice_id'     => $invoiceId,
+            'status'         => 'active',
+            'activated_at'   => now(),
+        ]);
 
         return true;
     }

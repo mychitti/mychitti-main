@@ -57,6 +57,15 @@
                         </a>
                     </li>
                     @endif
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/dev-agent*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.dev-agent.index') }}">
+                            <i class="tio-code nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Dev Agent
+                            </span>
+                        </a>
+                    </li>
                     <!-- Analyzing Tools -->
 
                     <li class="nav-item">
@@ -99,7 +108,25 @@
                         </a>
                     </li>
                     @endif
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/knowledge-base*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.knowledge-base.index') }}">
+                            <i class="tio-book-outlined nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Knowledge Base
+                            </span>
+                        </a>
+                    </li>
  
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/prompt-board*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.prompt-board.index') }}">
+                            <i class="tio-format-text nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Prompt Board
+                            </span>
+                        </a>
+                    </li>
+
                     <li class="__sidebar-hs-unfold px-2" id="tourb-9">
                         <div class="hs-unfold w-100">
                             <a class="js-hs-unfold-invoker navbar-dropdown-account-wrapper" href="javascript:;"

@@ -62,6 +62,9 @@ return [
         'url' => env('AI_SERVICE_URL'),
         'key' => env('AI_SERVICE_KEY'),
     ],
- 
+    'ai_server' => [
+        'url'   => env('AI_SERVER_URL'),
+        'token' => env('AI_SERVER_TOKEN'),
+    ],
 
 ];

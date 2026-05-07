@@ -172,22 +172,29 @@ Value : stores.mychitti.net</div>
 
                             @if(!empty($domainCharge) && $domainCharge > 0)
                             @php
-                                $gstAmount   = $domainGstIncl ? 0 : round($domainCharge * $domainGstPct / 100, 2);
-                                $totalAmount = $domainGstIncl ? $domainCharge : $domainCharge + $gstAmount;
+                                if ($domainGstIncl && $domainGstPct > 0) {
+                                    // GST is baked into the charge — extract it back out for display
+                                    $gstAmount   = round($domainCharge - $domainCharge / (1 + $domainGstPct / 100), 2);
+                                    $totalAmount = $domainCharge;
+                                } else {
+                                    // GST added on top
+                                    $gstAmount   = $domainGstPct > 0 ? round($domainCharge * $domainGstPct / 100, 2) : 0;
+                                    $totalAmount = $domainCharge + $gstAmount;
+                                }
                             @endphp
                             <div class="border rounded px-3 py-2 mb-3" style="background:#fffbeb; border-color:#fde68a !important; font-size:0.9rem;">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted">Custom domain charge</span>
                                     <span>
                                         ₹{{ number_format($domainCharge, 2) }}
-                                        @if(!$domainGstIncl && $domainGstPct > 0)
+                                        @if($domainGstIncl)
+                                            <span class="text-muted" style="font-size:0.82rem;">(GST incl.)</span>
+                                        @elseif($domainGstPct > 0)
                                             <span class="text-muted" style="font-size:0.82rem;">+ GST</span>
-                                            @else 
-                                            {{$domainGstPct}}
                                         @endif
                                     </span>
                                 </div>
-                                @if($domainGstPct > 0) 
+                                @if($domainGstPct > 0)
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted">
                                         GST ({{ $domainGstPct }}%)
@@ -195,13 +202,13 @@ Value : stores.mychitti.net</div>
                                             <span class="badge badge-secondary" style="font-size:0.7rem;">Included</span>
                                         @endif
                                     </span>
-                                    <span>{{ $domainGstIncl ? 'Included' : '₹'.number_format($gstAmount, 2) }}</span>
+                                    <span>₹{{ number_format($gstAmount, 2) }}</span>
                                 </div>
                                 @endif
                                 <div class="d-flex justify-content-between font-weight-bold border-top pt-1 mt-1">
                                     <span>Total</span>
                                     <span>₹{{ number_format($totalAmount, 2) }}</span>
-                                </div> 
+                                </div>
                             </div>
                             @endif 
 

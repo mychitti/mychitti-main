@@ -5,15 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\ClaudeService;
 use App\Services\MemoryService;
+use App\Services\RagService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class AIChatController extends Controller
 {
     public function __construct(
         private ClaudeService $claude,
-        private MemoryService $memory
+        private MemoryService $memory,
+        private RagService $rag
     ) {}
 
     public function chat(Request $request) 
@@ -82,6 +84,14 @@ class AIChatController extends Controller
             $this->memory->saveMessage($ownerId, 'user', $savedText, $msgType, $guard);
 
             [$system, $history] = $this->memory->buildContext($ownerId, $guard, $agentId);
+
+            $ragContext = $this->rag->search($finalMessage, $guard);
+            if ($ragContext) {
+                $system = "IMPORTANT: The following knowledge base information is accurate and must be used to answer the user's question. Always prioritize this over any general assumptions:\n\n"
+                    . $ragContext
+                    . "\n\n---\n\n"
+                    . $system;
+            }
 
             $userContent = [];
             if ($fileContent) {
@@ -177,16 +187,28 @@ class AIChatController extends Controller
         return $fallback;
     }
 
-    // ── agent_test: single-turn, no memory read/write ────────────────────
+    // ── agent_test: stateless, uses passed system prompt + optional history ─
     private function handleAgentTest(Request $request): \Illuminate\Http\JsonResponse
     {
         $message      = trim($request->input('message', ''));
         $systemPrompt = trim($request->input('system_prompt', ''));
         $fileContent  = $request->input('attachment');
-        $modelConfig  = $request->input('model_config');   // array or null
+        $modelConfig  = $request->input('model_config');
+        $historyInput = $request->input('history', []);
 
         if ($message === '' && !$fileContent) {
             return response()->json(['success' => false, 'message' => 'Empty message.'], 422);
+        }
+
+        // Build multi-turn history from previous turns
+        $history = [];
+        foreach ((array) $historyInput as $turn) {
+            if (!empty($turn['role']) && !empty($turn['content'])) {
+                $history[] = [
+                    'role'    => $turn['role'],
+                    'content' => [['type' => 'text', 'text' => (string) $turn['content']]],
+                ];
+            }
         }
 
         $userContent = [];
@@ -198,9 +220,7 @@ class AIChatController extends Controller
         } elseif ($fileContent) {
             $userContent[] = ['type' => 'text', 'text' => 'Please analyze this file.'];
         }
-
-        // Single-turn history — no memory loaded, no memory saved
-        $history = [['role' => 'user', 'content' => $userContent]];
+        $history[] = ['role' => 'user', 'content' => $userContent];
 
         try {
             $reply = $this->claude->chat($history, $systemPrompt ?: '', 4096, $modelConfig ?: null);

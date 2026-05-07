@@ -772,6 +772,13 @@
                         </a>
                     </li>
                     @endif
+                       {{-- Custom Domain --}}
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('custom-domain*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.custom-domain.index') }}" title="Custom Domain">
+                            <i class="tio-globe nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Custom Domain</span>
+                        </a>
+                    </li>
                 {{-- STORE WALLET END =========================== --}}
 
                   

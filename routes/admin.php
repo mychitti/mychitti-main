@@ -126,6 +126,35 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
 
+        Route::group(['prefix' => 'custom-domain', 'as' => 'custom-domain.'], function () {
+            Route::get('/',            'DomainController@index')->name('index');
+            Route::post('update-price','DomainController@updatePrice')->name('update-price');
+        });
+
+        Route::group(['prefix' => 'dev-agent', 'as' => 'dev-agent.'], function () {
+            Route::get('/',      'DevAgentController@index')->name('index');
+            Route::post('chat',  'DevAgentController@chat')->name('chat');
+            Route::post('clear', 'DevAgentController@clear')->name('clear');
+        });
+
+        Route::group(['prefix' => 'knowledge-base', 'as' => 'knowledge-base.'], function () {
+            Route::get('/',          'RagDocumentController@index')->name('index');
+            Route::post('store',     'RagDocumentController@store')->name('store');
+            Route::post('{id}',      'RagDocumentController@update')->name('update');
+            Route::delete('{id}',    'RagDocumentController@destroy')->name('destroy');
+        });
+
+Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () {
+            Route::get('/',                             'PromptBoardController@index')->name('index');
+            Route::post('store',                        'PromptBoardController@store')->name('store');
+            Route::get('{id}',                          'PromptBoardController@show')->name('show');
+            Route::post('{id}/suggestion',              'PromptBoardController@addSuggestion')->name('suggestion.add');
+            Route::delete('{id}/suggestion/{sid}',      'PromptBoardController@deleteSuggestion')->name('suggestion.delete');
+            Route::post('{id}/set-final',               'PromptBoardController@setFinal')->name('set-final');
+            Route::post('{id}/status',                  'PromptBoardController@updateStatus')->name('status');
+            Route::delete('{id}',                       'PromptBoardController@destroy')->name('destroy');
+        });
+
         Route::group(['prefix' => 'requirement', 'as' => 'requirement.'], function () {
             Route::get('delete/{id}', 'RequirementController@delete')->name('delete');
         });

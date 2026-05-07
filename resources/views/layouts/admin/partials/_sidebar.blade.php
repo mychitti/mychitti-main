@@ -687,6 +687,17 @@
                         </ul>
                     </li>
                     @endif
+
+                    {{-- Custom Domain --}}
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('custom-domain*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.custom-domain.index') }}" title="Custom Domain">
+                            <i class="tio-globe nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Custom Domain</span>
+                        </a>
+                    </li>
+                    {{-- End Custom Domain --}}
+
+
                     <!-- End Store -->
                 <!-- DeliveryMan -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('deliveryman'))
@@ -1078,6 +1089,48 @@
                 </li>
 
                 @endif
+
+                <!-- AI Module -->
+                <li class="nav-item">
+                    <small class="nav-subtitle" title="AI Module">AI Module</small>
+                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('dev-agent*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.dev-agent.index') }}" title="Dev Agent">
+                        <i class="tio-code nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Dev Agent</span>
+                    </a>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('ai-chat*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.ai-chat.index') }}" title="AI Chat">
+                        <i class="tio-chat-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">AI Chat</span>
+                    </a>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('prompt*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.prompt.index') }}" title="AI Agents">
+                        <i class="tio-flash-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">AI Agents</span>
+                    </a>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('knowledge-base*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.knowledge-base.index') }}" title="Knowledge Base">
+                        <i class="tio-book-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Knowledge Base</span>
+                    </a>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('prompt-board*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.prompt-board.index') }}" title="Prompt Board">
+                        <i class="tio-format-text nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Prompt Board</span>
+                    </a>
+                </li>
+                <!-- End AI Module -->
 
                 <!-- Employee-->
 

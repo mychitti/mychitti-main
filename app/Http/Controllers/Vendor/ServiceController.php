@@ -784,6 +784,13 @@ class ServiceController extends Controller
         }
 
         _auditLogs('Created Invoice : ' . $invoice->invoice_id);
+
+        if ($invoice->tax_type === 'non-gst') {
+            $currentStore = Helpers::get_store_data();
+            $currentStore->non_gst_sno = ((int) $currentStore->non_gst_sno) + 1;
+            $currentStore->save();
+        }
+
         $docData = Helpers::generateInventoryGatepass($invoice, (object)[], 'sale');
 
         // Inventory order 
@@ -1160,8 +1167,10 @@ class ServiceController extends Controller
                 $InvoiceItem->tax = $request->item_tax[$key] ?? 0;
                 $InvoiceItem->update();
             }
-        } else { // insert quote items to invoic
-
+        } else { // insert quote items to invoice
+            if ($existInvoice) {
+                InvoiceItem::where('invoice_id', $serviceInvoice->id)->delete();
+            }
             if ($request->has('item_name')) {
                 foreach ($request->item_name as $key => $name) {
                     $InvoiceItem = new InvoiceItem();
