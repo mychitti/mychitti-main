@@ -5,7 +5,7 @@
 @section('content')
     <div class="content container-fluid">
 
-        <div class="page-header">  
+        <div class="page-header">   
             <h4 class="page-title">AI Assistant</h4>
         </div>  
  
@@ -150,6 +150,7 @@ $('#chat-form').off('submit').on('submit', function(e){
 
     formData.append('_token', "{{ csrf_token() }}");
     formData.append('message', message);
+    formData.append('current_page', window.location.pathname + ' (' + document.title.replace(/\s*[-|]\s*.*$/, '').trim() + ')');
 
     const file = $('#fileInput')[0].files[0];
     if (file) formData.append('file', file);

@@ -23,59 +23,100 @@
         </div>
         <!-- End Page Header -->
 
-           {{-- Serial Number Settings --}}
-            <div class="card mb-1">
-                <div class="card-header">
-                    <h2 class="card-title h4">Invoice Serial Numbers</h2>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ route('vendor.invoice.update-serial') }}">
-                        @csrf
-                        <div class="row align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label">
-                                    GST Invoice Serial
-                                    <i class="tio-info-outined ml-1" title="Next GST invoice will use this number"></i>
-                                </label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">
-                                            {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_M_{{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}_
-                                        </span>
-                                    </div>
-                                    <input type="number" name="bill_serial_number" class="form-control"
-                                        value="{{ $store->bill_serial_number }}" min="1">
-                                </div>
-                                <small class="text-muted">Current FY: {{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">
-                                    Non-GST Invoice Serial
-                                    <i class="tio-info-outined ml-1" title="Next Non-GST invoice will use this number"></i>
-                                </label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">
-                                            {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_
-                                        </span>
-                                    </div>
-                                    <input type="number" name="non_gst_sno" class="form-control"
-                                        value="{{ $store->non_gst_sno }}" min="1">
-                                </div>
-                                <small class="text-muted">Current FY: {{ (date('m') >= 4 ? date('Y') : date('Y')-1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y')-1)+1) % 100 }}</small>
 
+
+        {{-- Serial Number Settings --}}
+        <div class="card mb-1">
+            <div class="card-header">
+                <h2 class="card-title h4">Invoice Serial Numbers</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('vendor.invoice.update-serial') }}">
+                    @csrf
+                    <div class="row align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                GST Invoice Serial
+                                <i class="tio-info-outined ml-1" title="Next GST invoice will use this number"></i>
+                            </label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_M_{{ (date('m') >= 4 ? date('Y') : date('Y') - 1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y') - 1) + 1) % 100 }}_
+                                    </span>
+                                </div>
+                                <input type="number" name="bill_serial_number" class="form-control"
+                                    value="{{ $store->bill_serial_number }}" min="1">
                             </div>
-                            <div class="col-md-4">
+                            <small class="text-muted">Current FY:
+                                {{ (date('m') >= 4 ? date('Y') : date('Y') - 1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y') - 1) + 1) % 100 }}</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                Non-GST Invoice Serial
+                                <i class="tio-info-outined ml-1" title="Next Non-GST invoice will use this number"></i>
+                            </label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        {{ substr(strtoupper(preg_replace('/[^A-Za-z]/', '', $store->name)), 0, 3) }}_
+                                    </span>
+                                </div>
+                                <input type="number" name="non_gst_sno" class="form-control"
+                                    value="{{ $store->non_gst_sno }}" min="1">
+                            </div>
+                            <small class="text-muted">Current FY:
+                                {{ (date('m') >= 4 ? date('Y') : date('Y') - 1) % 100 }}-{{ ((date('m') >= 4 ? date('Y') : date('Y') - 1) + 1) % 100 }}</small>
+
+                        </div>
+                        <div class="col-md-4">
                             <div class="d-flex w-100 justify-content-end">
                                 <button type="submit" class="btn btn-primary">
-                                     Update Serials
+                                    Update Serials
                                 </button>
                             </div>
-                            </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
+        </div>
+
+        {{-- Invoice Template --}}
+        <div class="card mb-1">
+            <div class="card-header">
+                <h2 class="card-title h4"><i class="tio-document-text mr-1"></i> Invoice Template</h2>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('vendor.invoice.save-invoice-template') }}" method="POST">
+                    @csrf
+                    <div class="d-flex flex-wrap mb-3" style="gap:12px">
+                        @php
+                            $templates = [
+                                'service_n_manual' => [
+                                    'label' => 'Template 1 (Classic)',
+                                    'desc' => 'Traditional layout',
+                                ],
+                                'service_n_manual_new' => ['label' => 'Template 2 (New)', 'desc' => 'Modern design'],
+                            ];
+                        @endphp
+                        @foreach ($templates as $value => $info)
+                            <label
+                                style="border:2px solid {{ $invoice_template === $value ? '#0f3460' : '#dee2e6' }};border-radius:8px;padding:12px 20px;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:500;transition:border-color .2s;">
+                                <input type="radio" name="invoice_template" value="{{ $value }}"
+                                    {{ $invoice_template === $value ? 'checked' : '' }} style="accent-color:#0f3460;">
+                                <span>
+                                    <strong>{{ $info['label'] }}</strong>
+                                    <small class="text-muted d-block">{{ $info['desc'] }}</small>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="d-flex w-100 justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save Template</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <div class="">
             @if (hasAnyModulePermission(['billing_bank_account']))
@@ -166,7 +207,7 @@
                 </div>
             @endif
             @if (hasAnyModulePermission(['billing_signatures']))
- 
+
                 <div class="card mb-1">
                     <div class="card-header  d-flex justify-content-between">
                         <h2 class="card-title h4">
@@ -247,12 +288,12 @@
             @endif
 
 
-           
-                @if (hasPermission('billing', 'settings'))
-                 <form class="w-100 p-0 " enctype="multipart/form-data"
-                action="{{ route('vendor.business-settings.terms-and-conditions.save') }}" method="post">
-                @csrf
-                <input type="hidden" id="" name="cType" value="for_customer">
+
+            @if (hasPermission('billing', 'settings'))
+                <form class="w-100 p-0 " enctype="multipart/form-data"
+                    action="{{ route('vendor.business-settings.terms-and-conditions.save') }}" method="post">
+                    @csrf
+                    <input type="hidden" id="" name="cType" value="for_customer">
                     <div class="card mb-1">
                         <div class="card-header">
                             <h2 class="card-title h4">
@@ -306,7 +347,7 @@
                                     <input type="text" id="jurisdiction_statement" name="jurisdiction_statement"
                                         value="{{ $store->jurisdiction_statement }}" class="form-control">
                                 </div>
-                            </div> 
+                            </div>
                             <div class="col-sm-3 p-2 mb-3">
                                 <div class="form-group mb-0">
                                     <label for="default_invoice_tnc_id">Default Terms & Conditions</label>
@@ -328,144 +369,141 @@
 
                         </div>
                     </div>
-                     </form>
-                @endif
-                @if (hasAnyModulePermission(['billing_tnc']))
+                </form>
+            @endif
+            @if (hasAnyModulePermission(['billing_tnc']))
 
-                    <div class="card mb-1">
-                        <div class="card-header">
-                            <h2 class="card-title h4">
-                                <i class="tio-document-outlined"></i>
-                                <span>{{ translate('messages.terms_and_conditions') }}</span>
-                            </h2>
-                            @if (hasPermission('billing_tnc', 'add'))
+                <div class="card mb-1">
+                    <div class="card-header">
+                        <h2 class="card-title h4">
+                            <i class="tio-document-outlined"></i>
+                            <span>{{ translate('messages.terms_and_conditions') }}</span>
+                        </h2>
+                        @if (hasPermission('billing_tnc', 'add'))
+                            <button class="btn btn-primary d-none d-sm-block" type="button" data-toggle="modal"
+                                data-target="#addTNCModal">
+                                + Add Terms and Conditions</button>
+                            <button class="btn action-btn btn-outline-primary d-block d-sm-none" type="button"
+                                data-toggle="modal" data-target="#addTNCModal">
+                                + </button>
+                        @endif
+                    </div>
+                    @if (hasPermission('billing_tnc', 'list'))
 
-                                <button class="btn btn-primary d-none d-sm-block" type="button" data-toggle="modal"
-                                    data-target="#addTNCModal">
-                                    + Add Terms and Conditions</button>
-                                <button class="btn action-btn btn-outline-primary d-block d-sm-none" type="button"
-                                    data-toggle="modal" data-target="#addTNCModal">
-                                    + </button>
-                            @endif
-                        </div>
-                        @if (hasPermission('billing_tnc', 'list'))
+                        <!-- Body -->
+                        <div class="card-body row">
 
-                            <!-- Body -->
-                            <div class="card-body row">
+                            <div class="table-responsive datatable-custom" id="table-div">
+                                <table id="columnSearchDatatable"
+                                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>{{ translate('messages.sl') }}</th>
+                                            <th>{{ translate('messages.For') }}</th>
+                                            <th>{{ translate('messages.Content') }}</th>
+                                            <th class="text-center">{{ translate('messages.action') }}</th>
+                                        </tr>
+                                    </thead>
 
-                                <div class="table-responsive datatable-custom" id="table-div">
-                                    <table id="columnSearchDatatable"
-                                        class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
-                                        <thead class="thead-light">
+                                    <tbody id="set-rows">
+                                        @foreach ($tncs as $key => $tnc)
                                             <tr>
-                                                <th>{{ translate('messages.sl') }}</th>
-                                                <th>{{ translate('messages.For') }}</th>
-                                                <th>{{ translate('messages.Content') }}</th>
-                                                <th class="text-center">{{ translate('messages.action') }}</th>
+                                                <td>{{ $key + 1 }}</td>
+                                                <td>
+                                                    <span class="d-block font-size-sm text-body for_{{ $tnc->id }}">
+                                                        {{ $tnc->tnc_for }}
+                                                    </span>
+                                                </td>
+                                                <td class="content_{{ $tnc->id }}">{!! $tnc->content !!}</td>
+
+                                                <td>
+                                                    <div class="btn--container justify-content-center">
+                                                        @if (hasPermission('billing_tnc', 'edit'))
+                                                            <a type="button" data-id="{{ $tnc->id }}"
+                                                                class="btn btn-sm btn--primary btn-outline-primary action-btn edit_tnc"
+                                                                data-toggle="modal" data-target="#tncEditModal"
+                                                                title="{{ translate('messages.edit_tnc') }}"><i
+                                                                    class="tio-edit"></i>
+                                                            </a>
+                                                        @endif
+                                                        @if (hasPermission('billing_tnc', 'delete'))
+                                                            <a class="btn btn-sm btn--danger btn-outline-danger action-btn form-alert"
+                                                                data-id="tnc-{{ $tnc['id'] }}"
+                                                                data-message="{{ translate('Want to delete this Terms and Conditions ?') }}"
+                                                                href="javascript:"
+                                                                title="{{ translate('messages.delete_tnc') }}"><i
+                                                                    class="tio-delete-outlined"></i>
+                                                            </a>
+                                                            <form
+                                                                action="{{ route('vendor.business-settings.tnc.delete', [$tnc['id']]) }}"
+                                                                method="get" id="tnc-{{ $tnc['id'] }}">
+                                                                @csrf @method('get')
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        </thead>
-
-                                        <tbody id="set-rows">
-                                            @foreach ($tncs as $key => $tnc)
-                                                <tr>
-                                                    <td>{{ $key + 1 }}</td>
-                                                    <td>
-                                                        <span
-                                                            class="d-block font-size-sm text-body for_{{ $tnc->id }}">
-                                                            {{ $tnc->tnc_for }}
-                                                        </span>
-                                                    </td>
-                                                    <td class="content_{{ $tnc->id }}">{!! $tnc->content !!}</td>
-
-                                                    <td>
-                                                        <div class="btn--container justify-content-center">
-                                                            @if (hasPermission('billing_tnc', 'edit'))
-                                                                <a type="button" data-id="{{ $tnc->id }}"
-                                                                    class="btn btn-sm btn--primary btn-outline-primary action-btn edit_tnc"
-                                                                    data-toggle="modal" data-target="#tncEditModal"
-                                                                    title="{{ translate('messages.edit_tnc') }}"><i
-                                                                        class="tio-edit"></i>
-                                                                </a>
-                                                            @endif
-                                                            @if (hasPermission('billing_tnc', 'delete'))
-                                                                <a class="btn btn-sm btn--danger btn-outline-danger action-btn form-alert"
-                                                                    data-id="tnc-{{ $tnc['id'] }}"
-                                                                    data-message="{{ translate('Want to delete this Terms and Conditions ?') }}"
-                                                                    href="javascript:"
-                                                                    title="{{ translate('messages.delete_tnc') }}"><i
-                                                                        class="tio-delete-outlined"></i>
-                                                                </a>
-                                                                <form
-                                                                    action="{{ route('vendor.business-settings.tnc.delete', [$tnc['id']]) }}"
-                                                                    method="get" id="tnc-{{ $tnc['id'] }}">
-                                                                    @csrf @method('get')
-                                                                </form>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                    @if (hasPermission('billing_tnc', 'edit'))
-                                        <div class="modal fade" id="tncEditModal" tabindex="-1"
-                                            aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="exampleModalLabel">Edit Terms And
-                                                            Conditions
-                                                        </h5>
-                                                        <button type="button" class="close" data-dismiss="modal"
-                                                            aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <form class="customer_add_form" enctype="multipart/form-data"
-                                                            class="w-100"
-                                                            action="{{ route('vendor.business-settings.tnc.update') }}"
-                                                            method="post">
-                                                            @csrf
-                                                            <div class="">
-                                                                <input type="hidden" name="tnc_id" class="tnc_edit_id">
-                                                                <div class="form-row ">
-                                                                    <label for="">For</label>
-                                                                    <input required type="text" name="for"
-                                                                        class="form-control edit_for"
-                                                                        placeholder="Ex: Staff">
-                                                                </div>
-                                                                <div class="form-row ">
-                                                                    <textarea name="tnc_content" id="ckeditor2"></textarea>
-                                                                </div>
-                                                                <div class="d-flex justify-content-end w-100">
-                                                                    <button class="btn btn-primary">Save</button>
-                                                                </div>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                                @if (hasPermission('billing_tnc', 'edit'))
+                                    <div class="modal fade" id="tncEditModal" tabindex="-1"
+                                        aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="exampleModalLabel">Edit Terms And
+                                                        Conditions
+                                                    </h5>
+                                                    <button type="button" class="close" data-dismiss="modal"
+                                                        aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <form class="customer_add_form" enctype="multipart/form-data"
+                                                        class="w-100"
+                                                        action="{{ route('vendor.business-settings.tnc.update') }}"
+                                                        method="post">
+                                                        @csrf
+                                                        <div class="">
+                                                            <input type="hidden" name="tnc_id" class="tnc_edit_id">
+                                                            <div class="form-row ">
+                                                                <label for="">For</label>
+                                                                <input required type="text" name="for"
+                                                                    class="form-control edit_for" placeholder="Ex: Staff">
                                                             </div>
-                                                        </form>
-                                                    </div>
+                                                            <div class="form-row ">
+                                                                <textarea name="tnc_content" id="ckeditor2"></textarea>
+                                                            </div>
+                                                            <div class="d-flex justify-content-end w-100">
+                                                                <button class="btn btn-primary">Save</button>
+                                                            </div>
+                                                        </div>
+                                                    </form>
                                                 </div>
                                             </div>
                                         </div>
-                                    @endif
-                                    @if (count($tncs) === 0)
-                                        <div class="empty--data">
-                                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}"
-                                                alt="public">
-                                            <h5>
-                                                {{ translate('no_data_found') }}
-                                            </h5>
-                                        </div>
-                                    @endif
-                                </div>
+                                    </div>
+                                @endif
+                                @if (count($tncs) === 0)
+                                    <div class="empty--data">
+                                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}"
+                                            alt="public">
+                                        <h5>
+                                            {{ translate('no_data_found') }}
+                                        </h5>
+                                    </div>
+                                @endif
                             </div>
-                        @endif
-                    </div>
-                @endif
+                        </div>
+                    @endif
+                </div>
+            @endif
 
-           
 
-         
+
+
 
         </div>
     </div>

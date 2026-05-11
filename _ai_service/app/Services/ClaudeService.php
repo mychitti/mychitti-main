@@ -45,7 +45,7 @@ class ClaudeService
         $provider = is_array($modelConfig) ? ($modelConfig['ai_provider'] ?? 'anthropic') : 'anthropic';
 
         return match (strtolower($provider)) {
-            'openai'    => $this->chatOpenAI($messages, $system, $maxTokens, $modelConfig),
+            'openai'    => $this->chatOpenAI($messages, $system, $maxTokens, $modelConfig, $userId, $guard, $agentId),
             'gemini'    => $this->chatGemini($messages, $system, $maxTokens, $modelConfig),
             default     => $this->chatClaude($messages, $system, $maxTokens, $modelConfig, $userId, $guard, $agentId),
         };
@@ -103,7 +103,7 @@ class ClaudeService
         $data = $response->json();
 
         if (isset($data['stop_reason']) && $data['stop_reason'] === 'tool_use') {
-            return $this->handleClaudeToolCall($data, $messages, $system, $maxTokens, $apiKey, $userId, $guard, $agentId);
+            return $this->handleClaudeToolCall($data, $messages, $system, $maxTokens, $apiKey, $model, $userId, $guard, $agentId);
         }
 
         return data_get($data, 'content.0.text', '');
@@ -111,24 +111,40 @@ class ClaudeService
 
     // ── OpenAI ────────────────────────────────────────────────────────────
 
-    private function chatOpenAI(array $messages, string $system, int $maxTokens, ?array $cfg): string
+    private function chatOpenAI(array $messages, string $system, int $maxTokens, ?array $cfg, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
     {
         $model     = $cfg['ai_model']   ?? 'gpt-4o';
         $maxTokens = (int) ($cfg['max_tokens'] ?? $maxTokens);
         $apiKey    = !empty($cfg['api_key_override']) ? $cfg['api_key_override'] : config('services.openai.key');
 
-        // Prepend system message in OpenAI format
+        // Build OpenAI message format
         $oaiMessages = [];
         if (!empty($system)) {
             $oaiMessages[] = ['role' => 'system', 'content' => $system];
         }
         foreach ($messages as $m) {
-            $oaiMessages[] = [
-                'role'    => $m['role'],
-                'content' => is_array($m['content'])
-                    ? collect($m['content'])->where('type', 'text')->pluck('text')->implode(' ')
-                    : $m['content'],
-            ];
+            if (!is_array($m['content'])) {
+                $oaiMessages[] = ['role' => $m['role'], 'content' => $m['content']];
+                continue;
+            }
+            $parts = [];
+            foreach ($m['content'] as $block) {
+                if (($block['type'] ?? '') === 'text') {
+                    $parts[] = ['type' => 'text', 'text' => $block['text']];
+                } elseif (($block['type'] ?? '') === 'image' && isset($block['source']['data'])) {
+                    // Convert Anthropic base64 image block → OpenAI image_url block
+                    $parts[] = [
+                        'type'      => 'image_url',
+                        'image_url' => [
+                            'url'    => 'data:' . $block['source']['media_type'] . ';base64,' . $block['source']['data'],
+                            'detail' => 'auto',
+                        ],
+                    ];
+                }
+            }
+            if ($parts) {
+                $oaiMessages[] = ['role' => $m['role'], 'content' => $parts];
+            }
         }
 
         $payload = [
@@ -136,7 +152,20 @@ class ClaudeService
             'max_tokens' => $maxTokens,
             'messages'   => $oaiMessages,
         ];
-        // OpenAI does not allow temperature and top_p together — use temperature if available, else top_p
+
+        // Inject vendor_api_call as an OpenAI function tool for vendor guard
+        if ($guard === 'vendor') {
+            $vendorTool = $this->vendorApiCallTool();
+            $payload['tools'] = [[
+                'type'     => 'function',
+                'function' => [
+                    'name'        => $vendorTool['name'],
+                    'description' => $vendorTool['description'],
+                    'parameters'  => $vendorTool['input_schema'],
+                ],
+            ]];
+        }
+
         $temperature = $cfg['temperature'] ?? null;
         $topP        = $cfg['top_p']        ?? null;
         if ($temperature !== null) {
@@ -155,7 +184,51 @@ class ClaudeService
             throw new \Exception('OpenAI API error: ' . $response->body());
         }
 
-        return data_get($response->json(), 'choices.0.message.content', '');
+        $data   = $response->json();
+        $choice = $data['choices'][0] ?? [];
+
+        // Handle tool calls (vendor_api_call)
+        if (($choice['finish_reason'] ?? '') === 'tool_calls' && !empty($choice['message']['tool_calls'])) {
+            return $this->handleOpenAIToolCalls($choice['message'], $oaiMessages, $payload, $apiKey, $userId, $guard, $agentId);
+        }
+
+        return $choice['message']['content'] ?? '';
+    }
+
+    private function handleOpenAIToolCalls(array $assistantMessage, array $oaiMessages, array $payload, string $apiKey, ?int $userId, ?string $guard, ?int $agentId): string
+    {
+        // Append assistant message with tool calls
+        $oaiMessages[] = $assistantMessage;
+
+        foreach ($assistantMessage['tool_calls'] as $toolCall) {
+            $toolName = $toolCall['function']['name'];
+            $input    = json_decode($toolCall['function']['arguments'], true) ?? [];
+
+            $result = $this->executeTool($toolName, $input, $userId, $agentId, $guard);
+
+            $this->debugLog[] = ['tool' => $toolName, 'input' => $input, 'result' => $result, 'via' => 'openai'];
+
+            $oaiMessages[] = [
+                'role'         => 'tool',
+                'tool_call_id' => $toolCall['id'],
+                'content'      => $result,
+            ];
+        }
+
+        $payload['messages'] = $oaiMessages;
+        unset($payload['tools']); // don't force another tool call
+
+        $followResponse = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type'  => 'application/json',
+        ])->timeout(120)->post($this->openaiUrl, $payload);
+
+        if ($followResponse->failed()) {
+            Log::error('OpenAI tool follow-up error', ['status' => $followResponse->status(), 'body' => $followResponse->body()]);
+            throw new \Exception('OpenAI API error: ' . $followResponse->body());
+        }
+
+        return data_get($followResponse->json(), 'choices.0.message.content', '');
     }
 
     // ── Google Gemini (via OpenAI-compatible endpoint) ────────────────────
@@ -209,14 +282,14 @@ class ClaudeService
 
     // ── Claude tool-call follow-up ────────────────────────────────────────
 
-    private function handleClaudeToolCall(array $data, array $messages, string $system, int $maxTokens, string $apiKey, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
+    private function handleClaudeToolCall(array $data, array $messages, string $system, int $maxTokens, string $apiKey, string $model, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
     {
-        $toolResults = []; 
+        $toolResults = [];
 
         foreach ($data['content'] as $block) {
             if ($block['type'] !== 'tool_use') continue;
 
-            $result   = $this->executeTool($block['name'], $block['input'], $userId, $agentId);
+            $result   = $this->executeTool($block['name'], $block['input'], $userId, $agentId, $guard);
             $isError  = false;
 
             if (is_string($result) && str_starts_with($result, 'PERMISSION_DENIED:')) {
@@ -246,7 +319,7 @@ class ClaudeService
         $messages[] = ['role' => 'user',      'content' => $toolResults];
 
         $followPayload = [
-            'model'      => $this->model,
+            'model'      => $model,
             'max_tokens' => $maxTokens,
             'messages'   => $messages,
             'tools'      => $this->getTools($guard, $agentId),
@@ -277,7 +350,7 @@ class ClaudeService
 
     // ── Tools (Claude format) ─────────────────────────────────────────────
 
-    private function executeTool(string $toolName, array $input, ?int $userId = null, ?int $agentId = null): string
+    private function executeTool(string $toolName, array $input, ?int $userId = null, ?int $agentId = null, ?string $guard = null): string
     {
         // ── Agent context: check for configured api_tool endpoint first ──
         if ($agentId) {
@@ -302,6 +375,7 @@ class ClaudeService
             'list_services'           => $this->fetchServices(),
             'get_user_addresses'      => $this->fetchUserAddresses($userId),
             'create_service_booking'  => $this->submitServiceBooking($userId, $input),
+            'vendor_api_call'         => $this->callVendorAction($input, $userId, $guard),
             default                   => 'Tool not found.',
         };
 
@@ -378,13 +452,20 @@ class ClaudeService
             );
 
             if (!empty($functions)) {
-                return array_map(fn($f) => [
+                $agentTools = array_map(fn($f) => [
                     'name'         => $f->function_name,
                     'description'  => $f->description,
                     'input_schema' => $f->json_schema
                         ? (is_string($f->json_schema) ? json_decode($f->json_schema, true) : (array) $f->json_schema)
                         : ['type' => 'object', 'properties' => new \stdClass(), 'required' => []],
                 ], $functions);
+
+                // Always inject vendor_api_call for vendor guard regardless of custom agent functions
+                if ($guard === 'vendor') {
+                    $agentTools[] = $this->vendorApiCallTool();
+                }
+
+                return $agentTools;
             }
 
             // ── No function schemas — build hardcoded tools, then add any
@@ -441,6 +522,10 @@ class ClaudeService
             ];
         }
 
+        if ($guard === 'vendor') {
+            $tools[] = $this->vendorApiCallTool();
+        }
+
         // ── If agent has api_tools not covered by hardcoded definitions, add them ──
         if ($agentId) {
             $apiTools = DB::select(
@@ -461,6 +546,65 @@ class ClaudeService
         }
 
         return $tools;
+    }
+
+    private function vendorApiCallTool(): array
+    {
+        return [
+            'name'        => 'vendor_api_call',
+            'description' => 'Perform any action in the MC Vendor Hub on behalf of the logged-in vendor — read data, create records, update records. Use the VENDOR CAPABILITIES listed in the system prompt to pick the correct module and action. Always confirm with the vendor before write operations (add/edit/delete).',
+            'input_schema' => [
+                'type'       => 'object',
+                'properties' => [
+                    'module' => [
+                        'type'        => 'string',
+                        'description' => 'The module to act on: staff, inventory, invoice, leads, crm, attendance, leave, salary, project, task, calendar, job_card, store, account, banking, assets, shifts, quotation, clients, orders, service, pos, documents, notification, items, campaign, coupon',
+                    ],
+                    'action' => [
+                        'type'        => 'string',
+                        'description' => 'The action to perform — see system prompt VENDOR CAPABILITIES for each module\'s available actions',
+                    ],
+                    'data' => [
+                        'type'                 => 'object',
+                        'description'          => 'Parameters for the action (fields depend on module/action — see system prompt capabilities)',
+                        'additionalProperties' => true,
+                    ],
+                ],
+                'required' => ['module', 'action'],
+            ],
+        ];
+    }
+
+    private function callVendorAction(array $input, ?int $vendorId, ?string $guard): string
+    {
+        if ($guard !== 'vendor') {
+            return 'PERMISSION_DENIED: vendor_api_call is only available for vendor users.';
+        }
+        if (!$vendorId) {
+            return 'Vendor context not available.';
+        }
+
+        $module = strtolower(trim($input['module'] ?? ''));
+        $action = strtolower(trim($input['action'] ?? ''));
+        $data   = $input['data'] ?? [];
+
+        if (!$module || !$action) {
+            return 'Invalid call: module and action are required.';
+        }
+
+        $result = $this->postMainApp("vendor/{$vendorId}/action", [
+            'module' => $module,
+            'action' => $action,
+            'data'   => $data,
+        ]);
+
+        $this->debugLog[] = ['tool' => 'vendor_api_call', 'input' => $input, 'result' => $result];
+
+        if (isset($result['error'])) {
+            return 'Action failed: ' . $result['error'];
+        }
+
+        return $result['message'] ?? json_encode($result);
     }
 
     private function fetchServices(): string

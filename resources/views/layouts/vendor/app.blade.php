@@ -585,6 +585,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
     <script src="{{ asset('public/assets/admin/js/app-blade/vendor.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     {!! Toastr::message() !!}
     <script src="{{ asset('public/assets/admin/intltelinput/js/intlTelInput.min.js') }}"></script>
 
@@ -1969,12 +1970,13 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 if (!$('#ai-attach-preview').children().length) $('#ai-attach-preview').hide();
             });
 
-            $('#ai-chat-form').on('submit', function(e) {
+            $('#ai-chat-form').on('submit', async function(e) {
                 e.preventDefault();
                 var formData = new FormData();
                 var message = $('#ai-message').val();
                 formData.append('_token', '{{ csrf_token() }}');
                 formData.append('message', message);
+                formData.append('current_page', window.location.pathname);
 
                 var file = $('#ai-fileInput')[0].files[0];
                 if (file) formData.append('file', file);
@@ -1989,6 +1991,107 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                 $('#ai-fileInput').val('');
                 aiRecordedBlob = null;
                 $('#ai-attach-preview').empty().hide();
+
+                // Extract visible DOM structure so Sam knows exactly what elements are on the page
+                try {
+                    var chatEls = ['ai-chat-panel','ai-chat-overlay','ai-chat-fab'];
+                    function inChat(el) { return chatEls.some(function(id){ return !!el.closest('#'+id); }); }
+                    function inViewport(el) {
+                        var r = el.getBoundingClientRect();
+                        return r.width > 0 && r.height > 0 && r.top < window.innerHeight && r.bottom > 0;
+                    }
+                    function elPos(el) {
+                        var r = el.getBoundingClientRect();
+                        var v = Math.round((r.top + r.height/2) / window.innerHeight * 100);
+                        var h = Math.round((r.left + r.width/2) / window.innerWidth * 100);
+                        return (v < 33 ? 'top' : v < 66 ? 'middle' : 'bottom') + '-' + (h < 50 ? 'left' : 'right');
+                    }
+                    var struct = [];
+                    var seen = {};
+
+                    // Page heading
+                    document.querySelectorAll('h1,h2,h3,h4,h5,.page-title,.card-title').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var t = el.innerText.trim().replace(/\s+/g,' ');
+                        if (t && !seen[t]) { seen[t]=1; struct.push('[Heading] "' + t + '" (' + elPos(el) + ')'); }
+                    });
+
+                    // Toolbar buttons and styled links
+                    document.querySelectorAll('button,.btn,a.btn,[type="button"],[type="submit"]').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var t = (el.innerText || el.value || '').trim().replace(/\s+/g,' ').substring(0,50);
+                        if (t && !seen[t]) { seen[t]=1; struct.push('[Button] "' + t + '" (' + elPos(el) + ')'); }
+                    });
+
+                    // Dropdowns with all their options
+                    document.querySelectorAll('select').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var opts = Array.from(el.options).map(function(o){ return o.text.trim(); }).filter(Boolean).join(' / ');
+                        if (opts) struct.push('[Dropdown] options: "' + opts + '" (' + elPos(el) + ')');
+                    });
+
+                    // Text inputs
+                    document.querySelectorAll('input[type="text"],input[type="search"],input:not([type])').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var lbl = el.placeholder || el.getAttribute('aria-label') || el.name || '';
+                        if (lbl && !seen[lbl]) { seen[lbl]=1; struct.push('[Input] "' + lbl + '" (' + elPos(el) + ')'); }
+                    });
+
+                    // Table column headers
+                    var thTexts = [];
+                    document.querySelectorAll('th').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var t = el.innerText.trim().replace(/\s+/g,' ');
+                        if (t) thTexts.push(t);
+                    });
+                    if (thTexts.length) struct.push('[TableColumns] ' + thTexts.join(' | '));
+
+                    // Clickable links inside table cells (first row as example, max 3)
+                    var tdLinkCount = 0;
+                    var tdLinkExamples = [];
+                    document.querySelectorAll('table td a, tbody td a').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el) || tdLinkCount >= 3) return;
+                        var t = el.innerText.trim().replace(/\s+/g,' ');
+                        if (t) { tdLinkExamples.push('"' + t + '"'); tdLinkCount++; }
+                    });
+                    if (tdLinkExamples.length) struct.push('[TableRowLinks] Clicking these opens the detail page: ' + tdLinkExamples.join(', ') + ' (same pattern for all rows)');
+
+                    // Action buttons inside table cells (Edit/View/Delete etc.)
+                    var tdBtnSeen = {};
+                    document.querySelectorAll('table td button, table td .btn, table td a.btn, tbody td button, tbody td .btn').forEach(function(el) {
+                        if (inChat(el) || !inViewport(el)) return;
+                        var t = (el.innerText || el.title || el.getAttribute('data-original-title') || '').trim().replace(/\s+/g,' ').substring(0,30);
+                        if (t && !tdBtnSeen[t]) { tdBtnSeen[t]=1; struct.push('[TableRowAction] "' + t + '" button available on each row'); }
+                    });
+
+                    if (struct.length) formData.append('page_structure', struct.join('\n'));
+                } catch(stErr) { /* structure extraction failed */ }
+
+                // Capture page screenshot for visual layout context
+                try {
+                    if (typeof html2canvas === 'function') {
+                        var canvas = await html2canvas(document.body, {
+                            scale: 0.85,
+                            useCORS: true,
+                            logging: false,
+                            imageTimeout: 3000,
+                            width: window.innerWidth,
+                            height: window.innerHeight,
+                            windowWidth: window.innerWidth,
+                            windowHeight: window.innerHeight,
+                            x: 0,
+                            y: window.scrollY,
+                            ignoreElements: function(el) {
+                                return el.id === 'ai-chat-panel' || el.id === 'ai-chat-overlay' || el.id === 'ai-chat-fab';
+                            }
+                        });
+                        var b64 = canvas.toDataURL('image/png').split(',')[1];
+                        if (b64) {
+                            formData.append('page_screenshot', b64);
+                            formData.append('page_screenshot_type', 'image/png');
+                        }
+                    }
+                } catch (ssErr) { /* screenshot failed — continue without it */ }
 
                 // Show typing indicator
                 $box.append(

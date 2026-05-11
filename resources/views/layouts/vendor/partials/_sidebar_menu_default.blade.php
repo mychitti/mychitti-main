@@ -2695,6 +2695,7 @@
                             </a>
                         </li>
                     @endif
+                    
                     {{-- Laundry --}}
                     @if (selected_menu('laundry') && \App\CentralLogics\Helpers::permission_check('laundry'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('laundry*') ? 'active' : '' }}">

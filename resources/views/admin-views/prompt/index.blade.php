@@ -1025,32 +1025,24 @@
                                 {{-- System Prompt --}}
                                 <div class="pm-section">System Prompt</div>
 
-                                <textarea class="pm-textarea" name="prompt" id="pm-prompt-input" oninput="pmUpdateTokens(this)">{{ old('prompt', $selected->prompt) }}</textarea>
-
-                                {{-- Token info --}}
                                 @php
-                                    $chars = strlen($selected->prompt ?? '');
-                                    $tokens = (int) ceil($chars / 4);
-                                    $pct = min(round(($tokens / 4096) * 100), 100);
-                                    $barColor = $pct > 80 ? '#dc2626' : ($pct > 60 ? '#d97706' : '#4f46e5');
-                                    $cost = number_format(($tokens / 1000) * 3, 3);
+                                    $promptFile = 'storage/app/prompts/' . $selected->user_type . '.txt';
+                                    $promptFileExists = is_file(storage_path('app/prompts/' . $selected->user_type . '.txt'));
                                 @endphp
-                                <div class="pm-token-row">
-                                    <div class="pm-token-stat"><strong id="pm-t-tokens">{{ $tokens }}</strong>
-                                        tokens
-                                    </div>
-                                    <div class="pm-token-stat"><strong id="pm-t-chars">{{ $chars }}</strong> chars
-                                    </div>
-                                    <div class="pm-token-bar-wrap">
-                                        <div class="pm-token-bar-bg">
-                                            <div class="pm-token-bar-fill" id="pm-t-bar"
-                                                style="width:{{ $pct }}%;background:{{ $barColor }}">
-                                            </div>
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:10px;">
+                                    <span style="font-size:16px;line-height:1.4">📄</span>
+                                    <div>
+                                        <div style="font-weight:600;margin-bottom:4px;">Prompt loaded from file</div>
+                                        <code style="background:#dcfce7;padding:3px 7px;border-radius:4px;font-size:12px;">{{ $promptFile }}</code>
+                                        <div style="margin-top:6px;color:#15803d;">
+                                            @if($promptFileExists)
+                                                ✓ File exists — edit it in your IDE and deploy to update the prompt.
+                                            @else
+                                                ⚠ File not found — create <code>{{ $promptFile }}</code> on the server.
+                                            @endif
                                         </div>
                                     </div>
-                                    <div class="pm-token-stat">~<strong id="pm-t-cost">${{ $cost }}</strong> / 1k
-                                        calls</div>
-                                </div>
+                                </div> 
 
                               
 
@@ -1158,22 +1150,6 @@
 
 @push('script_2')
     <script>
-        // ── TOKEN COUNTER ──
-        function pmUpdateTokens(el) {
-            const chars = el.value.length;
-            const tokens = Math.ceil(chars / 4);
-            const pct = Math.min(tokens / 4096 * 100, 100);
-            const color = pct > 80 ? '#dc2626' : pct > 60 ? '#d97706' : '#4f46e5';
-            const cost = (tokens / 1000 * 3).toFixed(3);
-
-            document.getElementById('pm-t-tokens').textContent = tokens;
-            document.getElementById('pm-t-chars').textContent = chars;
-            document.getElementById('pm-t-bar').style.width = pct + '%';
-            document.getElementById('pm-t-bar').style.background = color;
-            document.getElementById('pm-t-cost').textContent = '$' + cost;
-        }
-
-      
 
         function pmRemoveVar(i) {
             const row = document.getElementById('pm-var-' + i);

@@ -1803,7 +1803,12 @@
                             </div>
                             <div class="fg">
                                 <label class="fl">System Prompt</label>
-                                <textarea class="fc" id="ag-prompt">{{ $a->prompt }}</textarea>
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;">
+                                    📄 <strong>Prompt loaded from file</strong> 
+                                    {{-- <code style="background:#dcfce7;padding:2px 6px;border-radius:4px;font-size:12px;">storage/app/prompts/{{ $a->user_type }}.txt</code><br> --}}
+                                    <span style="color:#4b7a3b;font-size:12px;">✓ Edit the file in your IDE and deploy to update the prompt. Changes here are ignored.</span>
+                                </div>
+                                <input type="hidden" id="ag-prompt" value="{{ $a->prompt }}">
                             </div>
                             <label class="fl">Quick Skill Types</label>
                             <div class="chips">

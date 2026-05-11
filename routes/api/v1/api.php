@@ -3,7 +3,7 @@
 use App\WebSockets\Handler\DMLocationSocketHandler;
 use Illuminate\Support\Facades\Route;
 use BeyondCode\LaravelWebSockets\Facades\WebSocketsRouter;
-
+ 
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -575,4 +575,5 @@ Route::middleware('ai.internal')->prefix('ai-internal')->group(function () {
     Route::get('user/{userId}/addresses',         [\App\Http\Controllers\Api\AiInternalController::class, 'userAddresses']);
     Route::get('services',                        [\App\Http\Controllers\Api\AiInternalController::class, 'listServices']);
     Route::post('user/{userId}/service-booking',  [\App\Http\Controllers\Api\AiInternalController::class, 'createServiceBooking']);
+    Route::post('vendor/{vendorId}/action',       [\App\Http\Controllers\Api\VendorAgentController::class, 'action']);
 });

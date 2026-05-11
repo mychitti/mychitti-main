@@ -14,6 +14,12 @@
         <p class="text-muted mt-1 mb-0">Documents ingested here are used to answer vendor AI chat questions.</p>
     </div>
 
+    @if(isset($fetchError) && $fetchError)
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>RAG service issue:</strong> {{ $fetchError }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+    @endif
     @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
         {{ session('success') }}

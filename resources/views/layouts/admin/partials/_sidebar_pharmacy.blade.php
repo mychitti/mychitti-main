@@ -113,7 +113,7 @@
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.knowledge-base.index') }}">
                             <i class="tio-book-outlined nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                Knowledge Base
+                                Knowledge Base (RAG)
                             </span>
                         </a>
                     </li>

@@ -22,12 +22,14 @@ class AIChatController extends Controller
     {
         try {
             $request->validate([
-                'user_id'       => 'required|integer',
-                'guard'         => 'required|string|in:user,admin,vendor,agent_test,guest',
-                'message'       => 'nullable|string|max:50000',
-                'attachment'    => 'nullable|array',
-                'agent_id'      => 'nullable|integer',
-                'system_prompt' => 'nullable|string',
+                'user_id'         => 'required|integer',
+                'guard'           => 'required|string|in:user,admin,vendor,agent_test,guest',
+                'message'         => 'nullable|string|max:50000',
+                'attachment'      => 'nullable|array',
+                'page_screenshot' => 'nullable|array',
+                'page_structure'  => 'nullable|string|max:5000',
+                'agent_id'        => 'nullable|integer',
+                'system_prompt'   => 'nullable|string',
             ]);
             $guard = $request->string('guard')->toString();
 
@@ -38,9 +40,11 @@ class AIChatController extends Controller
 
             $ownerId      = $request->integer('user_id');
             $agentId      = $request->input('agent_id') ? (int) $request->input('agent_id') : null;
-            $finalMessage = trim($request->input('message', ''));
-            $fileContent  = $request->input('attachment');
-            $msgType      = $request->input('type', 'text'); 
+            $finalMessage      = trim($request->input('message', ''));
+            $fileContent       = $request->input('attachment');
+            $screenshotContent = $request->input('page_screenshot');
+            $pageStructure     = $request->input('page_structure');
+            $msgType           = $request->input('type', 'text');
             $incomingModelConfig = $request->input('model_config');
 
             if ($finalMessage === '' && !$fileContent) {
@@ -85,6 +89,12 @@ class AIChatController extends Controller
 
             [$system, $history] = $this->memory->buildContext($ownerId, $guard, $agentId);
 
+            // Use caller-supplied system prompt override when present (e.g. injected vendor context)
+            $overridePrompt = trim($request->input('system_prompt', ''));
+            if ($overridePrompt !== '') {
+                $system = $overridePrompt;
+            }
+
             $ragContext = $this->rag->search($finalMessage, $guard);
             if ($ragContext) {
                 $system = "IMPORTANT: The following knowledge base information is accurate and must be used to answer the user's question. Always prioritize this over any general assumptions:\n\n"
@@ -94,6 +104,13 @@ class AIChatController extends Controller
             }
 
             $userContent = [];
+            if ($pageStructure) {
+                $userContent[] = ['type' => 'text', 'text' => "[CURRENT PAGE ELEMENTS]\n{$pageStructure}\n[/CURRENT PAGE ELEMENTS]"];
+            }
+            if ($screenshotContent) {
+                $userContent[] = ['type' => 'text', 'text' => '[Current page view:]'];
+                $userContent[] = $screenshotContent;
+            }
             if ($fileContent) {
                 $userContent[] = $fileContent;
             }

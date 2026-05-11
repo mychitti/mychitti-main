@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class RagDocumentController extends Controller
 {
@@ -18,14 +19,33 @@ class RagDocumentController extends Controller
 
     public function index()
     {
+        $fetchError = null;
         try {
-            $response = Http::timeout(10)->get("{$this->ragUrl}/documents");
-            $documents = $response->ok() ? ($response->json()['documents'] ?? []) : [];
+            $response = Http::timeout(15)->get("{$this->ragUrl}/documents");
+            if ($response->ok()) {
+                $body = $response->json();
+                // Handle both { "documents": [...] } and bare array responses
+                if (isset($body['documents'])) {
+                    $documents = $body['documents'];
+                } elseif (is_array($body) && array_is_list($body)) {
+                    $documents = $body;
+                } else {
+                    $documents = [];
+                    Log::warning('RAG /documents unexpected format', ['body' => $body]);
+                    $fetchError = 'Unexpected response format from RAG service.';
+                }
+            } else {
+                $documents = [];
+                $fetchError = 'RAG service returned HTTP ' . $response->status() . ': ' . $response->body();
+                Log::error('RAG /documents error', ['status' => $response->status(), 'body' => $response->body()]);
+            }
         } catch (\Exception $e) {
             $documents = [];
+            $fetchError = 'Could not reach RAG service: ' . $e->getMessage();
+            Log::error('RAG /documents connection failed', ['error' => $e->getMessage()]);
         }
 
-        return view('admin-views.rag.index', compact('documents'));
+        return view('admin-views.rag.index', compact('documents', 'fetchError'));
     }
 
     public function store(Request $request)
@@ -48,10 +68,12 @@ class RagDocumentController extends Controller
             if ($response->ok()) {
                 return back()->with('success', 'Document added to knowledge base successfully.');
             }
-        } catch (\Exception $e) {
-        }
 
-        return back()->with('error', 'Failed to add document. Please try again.')->withInput();
+            $errorDetail = $response->json('message') ?? $response->json('error') ?? $response->body();
+            return back()->with('error', 'RAG service error (' . $response->status() . '): ' . $errorDetail)->withInput();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Connection failed: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function update(Request $request, int $id)

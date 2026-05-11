@@ -7,7 +7,7 @@ use App\Services\OpenAIService;
 use App\Services\AiServiceClient;
 use Illuminate\Http\Request;
 
-class AIChatController extends Controller
+class AIChatController extends Controller 
 {
     public function __construct(
         private OpenAIService $openai,
@@ -22,14 +22,32 @@ class AIChatController extends Controller
     public function chat(Request $request)
     {
         $request->validate([
-            'message' => 'nullable|string|max:10000',
-            'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:30720',
-            'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:30720',
+            'message'              => 'nullable|string|max:10000',
+            'file'                 => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:30720',
+            'voice'                => 'nullable|file|mimes:webm,wav,mp3,m4a|max:30720',
+            'current_page'         => 'nullable|string|max:500',
+            'page_screenshot'      => 'nullable|string',
+            'page_screenshot_type' => 'nullable|string',
+            'page_structure'       => 'nullable|string|max:5000',
         ]);
 
-        $vendorId    = auth('vendor')->id();
-        $message     = $request->input('message') ?? '';
-        $fileContent = null;
+        $vendorId        = auth('vendor')->id();
+        $message         = $request->input('message') ?? '';
+        $currentPage     = $request->input('current_page');
+        $fileContent     = null;
+        $screenshotContent = null;
+
+        // Page screenshot captured by html2canvas on the vendor's browser
+        if ($request->filled('page_screenshot')) {
+            $screenshotContent = [
+                'type'   => 'image',
+                'source' => [
+                    'type'       => 'base64',
+                    'media_type' => $request->input('page_screenshot_type', 'image/png'),
+                    'data'       => $request->input('page_screenshot'),
+                ],
+            ];
+        }
 
         // File upload (image or PDF) → base64 content block
         if ($request->hasFile('file')) {
@@ -86,7 +104,8 @@ class AIChatController extends Controller
         }
 
         $msgType = $request->hasFile('voice') ? 'voice' : ($request->hasFile('file') ? 'file' : 'text');
-        $result = $this->aiService->chat($vendorId, 'vendor', $finalMessage, $fileContent, type: $msgType);
+        $pageStructure = $request->input('page_structure');
+        $result = $this->aiService->chat($vendorId, 'vendor', $finalMessage, $fileContent, type: $msgType, currentPage: $currentPage, screenshotContent: $screenshotContent, pageStructure: $pageStructure);
 
         if ($request->hasFile('voice') && !empty($result['success']) && !empty($result['message'])) {
             try {

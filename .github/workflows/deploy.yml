@@ -25,7 +25,8 @@ jobs:
             path: /var/www/html/vendor
 
           - name: shop
-            host: 64.227.178.210
+            host: php artisan config:clear
+
             path: /var/www/html/mychitti
 
     steps:

@@ -138,6 +138,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('manual-bill', 'ServiceController@manual_bill')->name('manual-bill')->middleware('permission:billing,add_basic');
             Route::get('settings', 'SettingsController@invoice_settings')->name('settings');
             Route::post('update-serial', 'SettingsController@update_serial_number')->name('update-serial');
+            Route::post('save-invoice-template', 'SettingsController@save_invoice_template')->name('save-invoice-template');
             Route::post('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor')->middleware('permission:billing,list'); // only for manual invoices
             Route::get('veiw-invoice/{invoice_id}', 'BillingController@view_invoice')->name('view-invoice')->middleware('permission:billing,view'); // only for manual invoices
             Route::get('create-invoice', 'BillingController@create_invoice')->name('create-invoice')->middleware('permission:billing,add_advanced'); // only for manual invoices

@@ -33,7 +33,7 @@
         </div>
     </div>
     <!-- End Page Header -->
-                @if (hasPermission('purchase_bill', 'list'))
+                {{-- @if (hasPermission('purchase_bill', 'list')) --}}
 
     <!-- Card -->
     <div class="card">
@@ -171,7 +171,7 @@
         </div>
         <!-- End Footer -->
     </div>
-    @endif
+    {{-- @endif --}}
     <!-- End Card -->
 
     <div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">

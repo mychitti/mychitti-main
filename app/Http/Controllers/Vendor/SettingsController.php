@@ -50,7 +50,23 @@ class SettingsController extends Controller
         $staffs = VendorEmployee::where('store_id',  $store_id)->get();
         $signatures = StoreSignature::with('employee')->where('store_id', $store_id)->where('type', 'invoice')->get();
         $store = Store::where('id',  $store_id)->first();
-        return view('vendor-views.settings.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts',  'store'));
+        $storeConfig = StoreConfig::where('store_id', $store_id)->first();
+        $invoice_template = $storeConfig?->invoice_template ?? 'service_n_manual';
+        return view('vendor-views.settings.invoice_settings', compact('tncs', 'signatures', 'staffs', 'accounts', 'store', 'invoice_template'));
+    }
+
+    public function save_invoice_template(Request $request)
+    {
+        $allowed = ['service_n_manual', 'service_n_manual_new'];
+        $template = in_array($request->invoice_template, $allowed) ? $request->invoice_template : 'service_n_manual';
+
+        StoreConfig::updateOrInsert(
+            ['store_id' => Helpers::get_store_id()],
+            ['invoice_template' => $template]
+        );
+
+        Toastr::success('Invoice template updated successfully');
+        return back();
     }
     public function update_serial_number(Request $request)
     {
