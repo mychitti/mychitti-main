@@ -63,7 +63,6 @@
                             <tr>
                                 <th>#</th>
                                 <th>Amount</th>
-                                <th>Balance After</th>
                                 <th>Method</th>
                                 <th>By</th>
                                 <th>Date</th>
@@ -74,7 +73,6 @@
                             <tr>
                                 <td>{{ $recharges->firstItem() + $i }}</td>
                                 <td class="text-success font-weight-bold">+{{ \App\CentralLogics\Helpers::format_currency($r->amount) }}</td>
-                                <td>{{ \App\CentralLogics\Helpers::format_currency($r->current_balance) }}</td>
                                 <td>{{ ucfirst($r->method ?? '-') }}</td>
                                 <td>{{ ucfirst($r->created_by ?? 'admin') }}</td>
                                 <td>{{ $r->created_at->format('d M Y, h:i A') }}</td>
