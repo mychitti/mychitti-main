@@ -123,16 +123,28 @@
 
                                     </td> --}}
                                     <td>
-                                    @if(isset($lead->current_status ))
-                                        @if ($lead->current_status == '')
-                                            Accepted
-                                        @elseif($lead->current_status == 'Confirmed' && $lead->status )
-                                            {{ $lead->status }}
+                                        @php
+                                            $sentToCount = $lead->sent_to ? count(array_filter(explode(',', $lead->sent_to))) : 0;
+                                        @endphp
+                                        @if ($lead->cancelled_count > 0)
+                                            <span class="badge badge-soft-danger">Cancelled</span>
+                                            @if ($lead->accepted_count > 0)
+                                                <small class="text-dark d-block mt-1">
+                                                    accepted by {{ $lead->accepted_count }} vendor{{ $lead->accepted_count > 1 ? 's' : '' }}
+                                                </small>
+                                            @endif
+                                        @elseif ($lead->accepted_count > 0)
+                                            <span class="badge badge-soft-success">Accepted</span>
+                                            <small class="text-dark d-block mt-1">
+                                                {{ $lead->accepted_count }} vendor{{ $lead->accepted_count > 1 ? 's' : '' }}
+                                            </small>
                                         @else
-                                            {{ $lead->current_status }}
-                                        @endif
-                                        @else
-                                        New Enquiry
+                                            <span class="badge badge-soft-warning">New</span>
+                                            @if ($sentToCount > 0)
+                                                <small class="text-dark d-block mt-1">
+                                                    sent to {{ $sentToCount }} vendor{{ $sentToCount > 1 ? 's' : '' }}
+                                                </small>
+                                            @endif
                                         @endif
                                     </td>
                                     <td>

@@ -64,7 +64,10 @@ class ServiceController extends Controller
                 'items.image',
                 'stores.name as store_name',
                 'stores.logo',
-                'zones.name as zone_name'
+                'zones.name as zone_name',
+                'service_requests.sent_to',
+                DB::raw('(SELECT COUNT(*) FROM accepted_service_requests asr WHERE asr.service_request_id = service_requests.id) as accepted_count'),
+                DB::raw('(SELECT COUNT(*) FROM cancelled_service_requests csr WHERE csr.service_request_id = service_requests.id) as cancelled_count')
             )
             ->when($type && $type !== 'all', function ($q) use ($type) {
                 $q->where('accepted_service_requests.current_status', $type);
