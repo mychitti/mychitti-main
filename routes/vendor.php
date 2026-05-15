@@ -1135,7 +1135,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
         require app_path('Modules/HMIS/routes/vendor.php');
     }
-
+ 
     // laundry ==============================
     require app_path('Modules/Laundry/routes/vendor.php');
 
