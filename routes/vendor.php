@@ -1131,16 +1131,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
 
-    // hmis ==============================
-    if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
-        require app_path('Modules/HMIS/routes/vendor.php');
-    }
- 
-    // laundry ==============================
-    require app_path('Modules/Laundry/routes/vendor.php');
-
-    // pos ==============================
-    require app_path('Modules/POS/routes/vendor.php');
+    
 });
 
 // WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);
