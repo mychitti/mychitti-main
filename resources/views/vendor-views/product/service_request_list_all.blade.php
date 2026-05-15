@@ -1978,15 +1978,17 @@
         function cancelLead(serviceId, accId) {
             Swal.fire({
                 title: 'Cancel this lead?',
-                text: 'This action cannot be undone.',
-                type: 'warning',
+                input: 'textarea',
+                inputLabel: 'Reason for cancellation',
+                inputPlaceholder: 'Enter reason (optional)…',
+                inputAttributes: { 'aria-label': 'Reason' },
                 showCancelButton: true,
                 confirmButtonColor: '#dc2626',
                 cancelButtonText: 'Go Back',
                 confirmButtonText: 'Yes, Cancel',
                 reverseButtons: true
             }).then((result) => {
-                if (result.value) {
+                if (!result.dismiss) {
                     $.ajaxSetup({
                         headers: {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -1996,12 +1998,25 @@
                         url: '{{ route('vendor.service.cancel') }}',
                         data: {
                             service_id: serviceId,
-                            id: accId
+                            id: accId,
+                            reason: result.value
                         },
                         beforeSend: () => $('#loading').show(),
                         success: (data) => {
-                            data.status ? toastr.success(data.message) : toastr.error(data.message);
-                            setTimeout(() => window.location.reload(), 1000);
+                            if (data.status) {
+                                toastr.success(data.message);
+                                $.get('{{ url('vendor/service/lead-card') }}/' + serviceId, function (html) {
+                                    var $wrap = $('#lead-wrap-' + serviceId);
+                                    var $outer = $wrap.closest('.lp-new-outer');
+                                    if ($outer.length) {
+                                        $outer.replaceWith(html);
+                                    } else {
+                                        $wrap.replaceWith(html);
+                                    }
+                                });
+                            } else {
+                                toastr.error(data.message);
+                            }
                         },
                         complete: () => $('#loading').hide()
                     });

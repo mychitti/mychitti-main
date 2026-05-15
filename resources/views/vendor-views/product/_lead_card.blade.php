@@ -103,18 +103,18 @@
 
                                 {{-- Gatepass --}}
                                 @if ($isConfirmed2 && !$isCancelled && hasAnyModulePermission(['leads_gatepass']))
-                                   
+
                                     @if ($hasGatepass)
                                         <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
                                             class="dropdown-item text-success">
                                             <i class="tio-eye-outlined"></i> View Gatepass
                                         </a>
-                                        @else
-                                         <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
-                                        class="dropdown-item text-primary">
-                                        <i class="tio-document-outlined"></i>
-                                        Add Gatepass
-                                    </a>
+                                    @else
+                                        <a href="{{ route('vendor.service.gatepass-details', [$lead->id]) }}"
+                                            class="dropdown-item text-primary">
+                                            <i class="tio-document-outlined"></i>
+                                            Add Gatepass
+                                        </a>
                                     @endif
                                 @endif
 
@@ -277,8 +277,24 @@
                 @endif
             </div>
 
+            {{-- cancellation details --}}
+
+            @if ($isCancelled)
+            
+                <div class="lc-cancelled-info">
+                    <strong>Cancelled By:</strong>
+                    {{ ucfirst($lead->cancelled_by) }}
+                    @if ($lead->cancelled_by == 'staff')
+                        #{{ $lead->cancelled_by_id }}
+                    @endif
+                    <br>
+                    <strong>Reason:</strong>
+                    {{ $lead->reason ?? 'N/A' }}
+                </div>
+            @endif
+
             {{-- Note --}}
-            @if (!$isMissed)
+            @if (!$isMissed && !$isCancelled)
                 <div class="lc-notes-bar" onclick="event.stopPropagation()">
                     <div class="lc-note-input-row">
                         <input type="text" id="noteText-{{ $lead->id }}" class="lc-note-input"
@@ -446,7 +462,9 @@
                             if ($lead->assigned_type == 'staff') {
                                 $empInfo = _getWhereOne('vendor_employees', ['id' => $lead->assigned_to]);
                             } else {
-                                $empInfo = _getWhereOne('vendors', ['id' => \App\CentralLogics\Helpers::get_vendor_id()]);
+                                $empInfo = _getWhereOne('vendors', [
+                                    'id' => \App\CentralLogics\Helpers::get_vendor_id(),
+                                ]);
                             }
                         @endphp
                         @if ($empInfo)
@@ -557,7 +575,18 @@
 
     @php
         if (isset($statusCounts)) {
-            addStatus($statusCounts, $isMissed ? 'missed' : ($isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : ($isAcceptedReq ? 'accepted' : 'new'))));
+            addStatus(
+                $statusCounts,
+                $isMissed
+                    ? 'missed'
+                    : ($isCompleted
+                        ? 'completed'
+                        : ($isCancelled
+                            ? 'cancelled'
+                            : ($isAcceptedReq
+                                ? 'accepted'
+                                : 'new'))),
+            );
         }
     @endphp
 </div>{{-- /lead-wrap --}}
