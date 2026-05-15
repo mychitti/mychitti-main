@@ -12,10 +12,10 @@
                  <!-- List Dot -->
                  <ul class="list-inline list-separator">
                    @if (auth('vendor')->check())
-                        <li class="list-inline-item">
+                        {{-- <li class="list-inline-item">
                             <a class="list-separator-link"
                                 href="{{ route('vendor.hospital.activity-log') }}">Activity Logs</a>
-                        </li>
+                        </li> --}}
                         <li class="list-inline-item">
                             <a class="list-separator-link"
                                 href="{{ route('vendor.terms-and-conditions.view') }}">Terms and Conditions</a>
