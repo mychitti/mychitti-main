@@ -2134,7 +2134,7 @@ class ServiceController extends Controller
             return view('vendor-views.project.assigned-projects', compact('projects'));
         } else {
             echo 'Access Denied';
-        }
+        } 
     }
     public function assigned_services()
     {
