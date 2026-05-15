@@ -813,6 +813,7 @@ class ServiceRequestController extends Controller
             if ($serviceReq) {
                 $serviceReq->status = 'cancelled';
                 $serviceReq->cancelled_by = 'User';
+                $serviceReq->reason = $request->reason  ;
                 if ($serviceReq->update()) {
                     $cancelled = true;
                 }
