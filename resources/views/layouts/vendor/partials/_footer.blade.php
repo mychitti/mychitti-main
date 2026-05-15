@@ -1,4 +1,3 @@
-
  <div class="footer">
      <div class="row justify-content-between align-items-center">
          <div class="col">
@@ -12,10 +11,7 @@
                  <!-- List Dot -->
                  <ul class="list-inline list-separator">
                    @if (auth('vendor')->check())
-                        {{-- <li class="list-inline-item">
-                            <a class="list-separator-link"
-                                href="{{ route('vendor.hospital.activity-log') }}">Activity Logs</a>
-                        </li> --}} 
+
                         <li class="list-inline-item">
                             <a class="list-separator-link"
                                 href="{{ route('vendor.terms-and-conditions.view') }}">Terms and Conditions</a>
@@ -26,7 +22,7 @@
                                 href="{{ route('vendor.staff.terms-n-conditions') }}">Terms and Conditions</a>
                         </li>
                     @endif
-                    
+
                      <li class="list-inline-item">
                          <a class="list-separator-link"
                              href="{{ route('vendor.business-settings.store-setup') }}">{{ translate('messages.store_settings') }}</a>
