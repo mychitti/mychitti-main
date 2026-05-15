@@ -1,4 +1,5 @@
                     <!-- Dashboards -->
+                    @unless((isset($skipForLaundry) && $skipForLaundry) || (isset($skipForPOS) && $skipForPOS))
                     @if (selected_menu('dashboard'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.dashboard') }}"
@@ -11,20 +12,9 @@
                             </a>
                         </li>
                     @endif
+                    @endunless
 
-                    @if (!auth('vendor')->check() && hasPermission('assigned_leads', 'all'))
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.service.assigned_services') }}" title="Assigned Leads">
-                                <img src="{{ asset('storage/app/public/nav/assignment.png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                    {{ _isHospital() ? 'My Appointments' : 'Assigned Leads' }}
-                                </span>
-                            </a>
-                        </li>
-                    @endif
+                  
                     @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_tasks'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('task/assigned-tasks*') ? 'active' : '' }}">
@@ -52,6 +42,7 @@
                         </li>
                     @endif
                     {{-- hasMasterModulePermission('leads_manage') && --}}
+                    @unless(isset($skipForPOS) && $skipForPOS)
                     @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6)
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
@@ -75,19 +66,57 @@
                                         </a>
                                     </li>
                                 @endif --}}
+
+
+                                @if (hasAnyPermission(['leads_manage.dashboard']))
+
                                 <li class="nav-item {{ Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('vendor.service.leads-dashboard') }}" title="Leads Dashboard">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate">Leads Dashboard</span>
                                         </a>
                                     </li>
-                                @if (hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export']))
+                                    @endif
+                                      {{-- @if (!auth('vendor')->check() && hasAnyPermission(['assigned_leads.list']))
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                href="{{ route('vendor.service.assigned_services') }}" title="Assigned Leads">
+                                <img src="{{ asset('storage/app/public/nav/assignment.png') }}" alt=""
+                                    class="nav-link-icon">
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    {{ _isHospital() ? 'My Appointments' : 'Assigned Leads' }}
+                                </span>
+                            </a>
+                        </li>
+                    @endif --}}
+                                @if (hasAnyPermission([ 'leads_manage.assigned_list']))
+                                    {{-- <li class="nav-item  {{ Request::is('service/assigned-services*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.service.assigned_leads_list') }}"
+                                            title=" Leads">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                               Assigned {{ _isHospital() ? 'Appointments' : 'Leads' }}
+                                            </span>
+                                        </a>
+                                    </li> --}}
+                                    <li class="nav-item  {{ Request::is('service/assigned-services*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.service.assigned_services') }}"
+                                            title=" Leads">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                               Assigned {{ _isHospital() ? 'Appointments' : 'Leads' }}
+                                            </span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if ( hasAnyPermission(['leads_manage.list',  'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export']))
                                     <li class="nav-item  {{ Request::is('service/leads*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('vendor.service.leads_list') }}"
                                             title=" Leads">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate sidebar--badge-container">
-                                                {{ _isHospital() ? 'Appointments' : 'Leads' }}
+                                               All {{ _isHospital() ? 'Appointments' : 'Leads' }}
                                             </span>
                                         </a>
                                     </li>
@@ -112,6 +141,7 @@
                                         </a>
                                     </li>
                                 @endif
+                                @if(auth('vendor')->check())
                                 <li class="nav-item {{ Request::is('service/lead-settings') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.lead-settings') }}"
                                         title="Lead Settings">
@@ -120,13 +150,15 @@
                                             class="text-truncate">{{ _isHospital() ? 'Appointment Settings' : 'Lead Settings' }}</span>
                                     </a>
                                 </li>
+                                @endif
 
                             </ul>
                         </li>
                     @endif
+                    @endunless
 
                     {{-- =============================== TASK Management=========================== --}}
-
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (selected_menu('task_management') && hasMasterModulePermission('task_manage'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('task*') && !Request::is('task-salary-categories') && !Request::is('task/assigned-tasks') ? 'active' : '' }}">
@@ -178,7 +210,9 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- =============================== PROJECT Management=========================== --}}
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (selected_menu('project_manage') && hasMasterModulePermission('projects_manage'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('project*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -242,6 +276,7 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- =============================== ORDER Management=========================== --}}
                     @if (0 && selected_menu('order_manage') && \App\CentralLogics\Helpers::employee_module_permission_check('order_manage'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('order*') ? 'active' : '' }}">
@@ -451,6 +486,7 @@
 
                     @endif
                     {{-- =============================== CLIENT Management=========================== --}}
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (
                         (auth('vendor')->check() && selected_menu('client_manage') && hasMasterModulePermission('client_manage')) ||
                             (auth('vendor_employee')->check() && hasMasterModulePermission('client_manage')))
@@ -499,6 +535,7 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- ===============================CUSTOMER SUPPORT=========================== --}}
                     @if (0 &&
                             selected_menu('customer_support') &&
@@ -545,7 +582,7 @@
                         </li>
                     @endif
                     {{-- ===================================== BILLING ========================== --}}
-
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (\App\CentralLogics\Helpers::employee_module_permission_check('billing') && selected_menu('billing'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/settings') || Request::is('billing*') || Request::is('invoice-list') || Request::is('invoices') ? 'active' : '' }}">
@@ -648,7 +685,9 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- =============================== QUOTATION Management=========================== --}}
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (hasMasterModulePermission('quotaiton_manage') && selected_menu('quotation_manage'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('quotation*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -695,7 +734,9 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- =============================== POS Management=========================== --}}
+                    @unless(isset($skipForPOS) && $skipForPOS)
                     @if (selected_menu('pos') && hasMasterModulePermission('pos') && $store_data->module->module_type == 'ecommerce')
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('pos') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link  "
@@ -821,7 +862,9 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
                     {{-- =============================== ACCOUNT Management=========================== --}}
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (selected_menu('account_manage') && hasMasterModulePermission('account_manage'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('account*') || Request::is('asset*') ? 'active' : '' }}">
@@ -1299,6 +1342,8 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     {{-- =============================== iNVENTORY Management=========================== --}}
                     @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
 
@@ -1338,10 +1383,10 @@
                                         style="display: {{ Request::is('inventory') || Request::is('inventory/storage-spaces') ? 'block' : 'none' }}">
                                         <li class="nav-item  {{ Request::is('inventory') ? 'active' : '' }}">
                                             <a class="nav-link" href="{{ route('vendor.inventory.index') }}"
-                                                title=" {{ translate('messages.item_adding_book') }}">
+                                                title=" {{ translate('messages.add_inventory_item') }}">
                                                 <span class="tio-circle nav-indicator-icon"></span>
                                                 <span class="text-truncate sidebar--badge-container">
-                                                    Item Adding Book
+                                                   Inventory Items
                                                 </span>
                                             </a>
                                         </li>
@@ -1644,9 +1689,11 @@
                         </li>
                         {{-- ===================================== inventory END========================== --}}
                     @endif
+                    @endunless
 
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     {{-- =============================== Basic Staff (free, shown when HR not subscribed) --}}
-                    @if (!\App\CentralLogics\Helpers::permission_check('hr_manage'))
+                    @if (!\App\CentralLogics\Helpers::permission_check('hr_manage') && !\App\CentralLogics\Helpers::permission_check('laundry') && selected_menu('staff_manage'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Staff Management">
@@ -1678,7 +1725,9 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
 
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     {{-- =============================== HR Management=========================== --}}
                     @if (
                         (selected_menu('staff_manage') ||
@@ -1902,6 +1951,7 @@
                             </ul>
                         </li>
                     @endif
+                    @endunless
 
 
 
@@ -1931,6 +1981,13 @@
                                         title="Store Settings">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Store Settings</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('settings/service-setup') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.settings.service-setup') }}"
+                                        title="Service Setup">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Service Setup</span>
                                     </a>
                                 </li>
                                 <li class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
@@ -2533,31 +2590,6 @@
                             </ul>
                         </li>
                     @endif
-                    <!-- Business Section-->
-
-                    @if (0 && selected_menu('reports') && \App\CentralLogics\Helpers::employee_module_permission_check('reports'))
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/reports2*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                href="javascript:;" title="Reports">
-                                <img src="{{ asset('storage/app/public/nav/report.png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                    Reports</span>
-                            </a>
-                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
-                                <li class="nav-item {{ Request::is('business-settings/reports2') ? 'active' : '' }}"
-                                    style="margin-top:0 !important;">
-                                    <a class="nav-link " href="javascript:;" title="Coming Soon">
-                                        <span class="tio-settings nav-icon"></span>
-                                        <span class="text-truncate">Coming Soon</span>
-                                    </a>
-                                </li>
-
-                            </ul>
-                        </li>
-                    @endif
-
 
 
                     <!-- End StoreWallet -->
@@ -2621,7 +2653,10 @@
 
 
 
-                    @if (selected_menu('library') && \App\CentralLogics\Helpers::employee_module_permission_check('library'))
+                    {{-- @if (selected_menu('library') && \App\CentralLogics\Helpers::permission_check('library'))
+                         <li class="nav-item">
+                            <small class="nav-subtitle" title="{{ translate('Library') }}">{{ translate('Library') }}</small>
+                            <small class="tio-more-horizontal nav-subtitle-replacer"></small>
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('library*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.library.all') }}" title="Library">
@@ -2630,10 +2665,10 @@
                                 <span class=" text-truncate">Library</span>
                             </a>
                         </li>
-                    @endif
+                    @endif --}}
 
 
-                    @if (selected_menu('documents') && \App\CentralLogics\Helpers::employee_module_permission_check('documents'))
+                    @if (selected_menu('documents') && (\App\CentralLogics\Helpers::employee_module_permission_check('documents') || \App\CentralLogics\Helpers::employee_module_permission_check('library')))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('documents*') || Request::is('business-settings/settings/receivable-receipts') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -2647,7 +2682,7 @@
 
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('documents*') || Request::is('business-settings/settings/receivable-receipts') ? 'block' : 'none' }}">
-
+@if(\App\CentralLogics\Helpers::employee_module_permission_check('documents'))
                                 <li
                                     class="nav-item {{ Request::is('documents/receivable-receipt/list') ? 'active' : '' }}">
                                     <a class="nav-link "
@@ -2681,10 +2716,21 @@
                                         <span class="text-truncate">Inventory Gatepass</span>
                                     </a>
                                 </li>
+                                @endif
+                                @if(\App\CentralLogics\Helpers::employee_module_permission_check('library'))
+                                <li class="nav-item {{ Request::is('library*') ? 'active' : '' }}">
+                                    <a class="nav-link"
+                                        href="{{ route('vendor.library.all') }}"
+                                        title="Library">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Library</span>
+                                    </a>
+                                </li>
+                                @endif
                             </ul>
                         </li>
                     @endif
-                    @if ( \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                    @if (selected_menu('post_ads') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link "
@@ -2697,6 +2743,7 @@
                     @endif
                     
                     {{-- Laundry --}}
+                    @unless(isset($skipForLaundry) && $skipForLaundry)
                     @if (selected_menu('laundry') && \App\CentralLogics\Helpers::permission_check('laundry'))
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('laundry*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -2740,7 +2787,8 @@
                             </ul>
                         </li>
                     @endif
-                 
+                    @endunless
+
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('subscriptions') ? 'active' : '' }}">

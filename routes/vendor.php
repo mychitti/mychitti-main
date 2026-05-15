@@ -612,6 +612,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
+            Route::get('assigned-leads/{id?}/{action?}', 'ServiceController@assigned_leads_list')->name('assigned_leads_list');
             Route::get('leads-dashboard', 'ServiceController@leadsDashboard')->name('leads-dashboard');
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
             Route::get('report/{id}', 'ServiceController@staff_report')->name('report.staff')->middleware('permission:leads_manage,report');
@@ -779,103 +780,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('upload-excel', 'CustomerController@upload_excel')->name('upload-excel')->middleware('permission:client_manage,import');
             Route::post('comment-save', 'CustomerController@comment_save')->name('comment-save')->middleware('permission:client_manage,comment');
         });
-        //
-        Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos']], function () {
-
-            // restaurant tables
-            Route::get('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'index'])->name('restaurant-tables.index')->middleware('permission:restaurant_tables,list');
-            Route::get('restaurant-tables/create', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'create'])->name('restaurant-tables.create')->middleware('permission:restaurant_tables,create');
-            Route::post('restaurant-tables', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'store'])->name('restaurant-tables.store')->middleware('permission:restaurant_tables,create');
-            Route::get('restaurant-tables/{id}/edit', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'edit'])->name('restaurant-tables.edit')->middleware('permission:restaurant_tables,edit');
-            Route::put('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'update'])->name('restaurant-tables.update')->middleware('permission:restaurant_tables,edit');
-            Route::delete('restaurant-tables/{id}', [\App\Http\Controllers\Vendor\RestaurantTableController::class, 'destroy'])->name('restaurant-tables.destroy')->middleware('permission:restaurant_tables,delete');
-
-            // POS 
-            Route::get('dashboard', 'SalespointController@dashboard')->name('dashboard')->middleware('permission:pos,dashboard');
-            Route::post('new-bank-account', 'BusinessSettingsController@new_bank_account')->name('new-bank-account')->middleware('permission:pos,settings');
-            Route::get('delete-account/{id}', 'BusinessSettingsController@delete_account')->name('delete-account')->middleware('permission:pos,settings');
-            Route::get('calendar', 'SalespointController@calendar')->name('calendar');
-
-            // POS TOKEN 
-            Route::get('token/{id?}', 'SalespointController@token')->name('token')->middleware('permission:pos_token,generate');
-            Route::get('token-list', 'SalespointController@token_list')->name('token.list')->middleware('permission:pos_token,list');
-            Route::get('token-export', 'SalespointController@token_export')->name('token.export')->middleware('permission:pos_token,export');
-            Route::get('convert-to-bill/{id}', 'SalespointController@convert_to_bill')->name('token.convert-to-bill')->middleware('permission:pos_token,convert to invoice');
-            Route::get('token-delete/{id}', 'SalespointController@token_delete')->name('token.delete')->middleware('permission:pos_token,delete');
-            Route::get('token-cancel/{id}', 'SalespointController@token_cancel')->name('token.cancel')->middleware('permission:pos_token,cancel');
-            Route::post('token-generate', 'SalespointController@token_generate')->name('token-generate')->middleware('permission:pos_token,generate');
-            Route::get('mark-paid/{id}', 'SalespointController@mark_paid')->name('token.mark-paid')->middleware('permission:pos_token,mark_paid');
-            Route::post('payment-method', 'SalespointController@payment_method')->name('token.payment-method')->middleware('permission:pos_token,edit');
-
-            // DINE IN //
-            // Route::get('open-table', 'SalespointController@open_table')->name('open-table');
-            // Route::get('pos/{order}', 'SalespointController@order_show')->name('order.show');
-
-
-            Route::post('dine-in/open-table', 'SalespointController@openTable')->name('dinein.open');
-            Route::get('pos/dine-in/table-state', 'SalespointController@tableState')->name('dinein.table-state');
-            Route::post('pos/dine-in/update', 'SalespointController@updateDineOrder')->name('dinein.update');
-
-            // POS ITEMS 
-            Route::post('items-import', 'SalespointController@items_import')->name('items_import');
-            Route::get('items/{action?}', 'SalespointController@items')->name('items');
-            Route::post('items-save', 'SalespointController@items_save')->name('items.save')->middleware('permission:pos_items,add');
-            Route::get('item-remove/{item_id}/{branch_id}', 'SalespointController@item_remove')->name('item.remove')->middleware('permission:pos_items,delete');
-
-            // POS REPORT
-            Route::post('get-branch-item-data', 'SalespointController@getBranchData')->name('product-branch-data');
-            Route::get('report/{action?}', 'SalespointController@report')->name('report')->middleware('permission:pos,report');
-            Route::get('calendar-export', 'SalespointController@calendar_export')->name('calendar-export')->middleware('permission:pos,report');
-
-            // POS BRANCH 
-            Route::group(['prefix' => 'branch', 'as' => 'branch.'], function () {
-                Route::get('/', 'BranchController@index')->name('index');
-                Route::post('store', 'BranchController@store')->name('store')->middleware('permission:pos_branch,add');
-                Route::get('delete/{id}', 'BranchController@delete')->name('delete')->middleware('permission:pos_branch,delete');
-                Route::post('update', 'BranchController@update')->name('update')->middleware('permission:pos_branch,edit');
-            });
-
-            // POS ORDER TYPE
-            Route::group(['prefix' => 'order-type', 'as' => 'order-type.'], function () {
-                Route::post('store', 'OrderTypeController@store')->name('store')->middleware('permission:pos_order_type,add');
-                Route::get('delete/{id}', 'OrderTypeController@delete')->name('delete')->middleware('permission:pos_order_type,delete');
-                Route::post('update', 'OrderTypeController@update')->name('update')->middleware('permission:pos_order_type,edit');
-            });
-
-            // SETTING
-            Route::get('settings', 'SettingsController@pos')->name('settings')->middleware('permission:pos,settings');
-            Route::group(['prefix' => 'setting', 'as' => 'setting.'], function () {
-                Route::post('save', 'SalespointController@setting_save')->name('save')->middleware('permission:pos,settings');
-            });
-        });
-
-        // SHOP MODULE POS 
-        Route::group(['prefix' => 'pos', 'as' => 'pos.'], function () {
-            Route::post('variant_price', 'POSController@variant_price')->name('variant_price');
-            Route::group(['middleware' => ['module:pos']], function () {
-                Route::get('/', 'POSController@index')->name('index');
-                Route::get('quick-view', 'POSController@quick_view')->name('quick-view');
-                Route::get('quick-view-cart-item', 'POSController@quick_view_card_item')->name('quick-view-cart-item');
-                Route::post('add-to-cart', 'POSController@addToCart')->name('add-to-cart');
-                Route::post('add-delivery-info', 'POSController@addDeliveryInfo')->name('add-delivery-info');
-                Route::post('remove-from-cart', 'POSController@removeFromCart')->name('remove-from-cart');
-                Route::post('cart-items', 'POSController@cart_items')->name('cart_items');
-                Route::post('update-quantity', 'POSController@updateQuantity')->name('updateQuantity');
-                Route::post('empty-cart', 'POSController@emptyCart')->name('emptyCart');
-                Route::post('tax', 'POSController@update_tax')->name('tax');
-                Route::post('paid', 'POSController@update_paid')->name('paid');
-                Route::post('discount', 'POSController@update_discount')->name('discount');
-                Route::get('customers', 'POSController@get_customers')->name('customers');
-                Route::post('order', 'POSController@place_order')->name('order');
-                // Route::get('orders', 'POSController@order_list')->name('orders');
-                // Route::post('search', 'POSController@search')->name('search');
-                // Route::get('order-details/{id}', 'POSController@order_details')->name('order-details');
-                // Route::get('invoice/{id}', 'POSController@generate_invoice');
-                Route::post('customer-store', 'POSController@customer_store')->name('customer-store');
-                Route::get('data', 'POSController@extra_charge')->name('extra_charge');
-            });
-        });
-
         Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function () {
             Route::post('order-stats', 'DashboardController@order_stats')->name('order-stats');
             Route::post('filter-pnl', 'DashboardController@filter_pnl')->name('filter-pnl');
@@ -1159,6 +1063,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('webpage-template', 'SettingsController@webpage_template_update')->name('webpage-template');
             Route::post('purchase-template', 'SettingsController@purchase_template')->name('purchase-template');
 
+            Route::get('service-setup/{tab?}', 'SettingsController@service_setup')->name('service-setup');
 
             Route::group(['prefix' => 'domain', 'as' => 'domain.'], function () {
                 Route::post('update', 'SettingsController@domain_update')->name('update');
@@ -1226,207 +1131,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
 
-    // HOSPITAL MANAGEMENT ===================================
-    Route::group(['middleware' => ['planwise:hospital_manage']], function () {
-
-        // doctor management ==============================
-        Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
-            Route::get('list', 'DoctorController@index')->name('list');
-            Route::get('export', 'DoctorController@export')->name('export')->middleware('permission:staff_doctor,export');
-            Route::get('create', 'DoctorController@create')->name('create')->middleware('permission:staff_doctor,add');
-            Route::post('store', 'DoctorController@store')->name('store')->middleware('permission:staff_doctor,add');
-            Route::get('{id}/edit', 'DoctorController@edit')->name('edit')->middleware('permission:staff_doctor,edit');
-            Route::post('{id}/update', 'DoctorController@update')->name('update')->middleware('permission:staff_doctor,edit');
-            Route::post('{id}/delete', 'DoctorController@destroy')->name('delete')->middleware('permission:staff_doctor,delete');
-            Route::get('{id}/slots', 'DoctorController@slots')->name('slots')->middleware('permission:staff_doctor,slots');
-            Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store')->middleware('permission:staff_doctor,slots');
-            Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle')->middleware('permission:staff_doctor,slots');
-            Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete')->middleware('permission:staff_doctor,slots');
-            Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone')->middleware('permission:staff_doctor,slots');
-        });
-
-        // appointment management ==============================
-        Route::group(['prefix' => 'appointment', 'as' => 'appointment.'], function () {
-            Route::get('list', 'AppointmentController@index')->name('list');
-            Route::get('create', 'AppointmentController@create')->name('create');
-            Route::post('store', 'AppointmentController@store')->name('store');
-            Route::get('lookup-lead', 'AppointmentController@lookupLead')->name('lookup-lead');
-            Route::post('store-from-lead', 'AppointmentController@storeFromLead')->name('store-from-lead');
-            Route::get('available-slots', 'AppointmentController@availableSlots')->name('available-slots');
-            Route::get('search-patients', 'AppointmentController@searchPatients')->name('search-patients');
-            Route::get('search-doctors', 'AppointmentController@searchDoctors')->name('search-doctors');
-            Route::get('{id}', 'AppointmentController@show')->name('show');
-            Route::post('{id}/status', 'AppointmentController@updateStatus')->name('status');
-            Route::post('{id}/reschedule', 'AppointmentController@reschedule')->name('reschedule');
-            Route::post('{id}/reassign', 'AppointmentController@reassign')->name('reassign');
-        });
-
-        // hospital activity log ================================
-        Route::get('hospital/activity-log', 'HospitalActivityLogController@index')->name('hospital.activity-log');
-
-        // prescription management ==============================
-        Route::group(['prefix' => 'prescription', 'as' => 'prescription.'], function () {
-            Route::get('list',             'PrescriptionController@index')->name('list');
-            Route::get('export',           'PrescriptionController@export')->name('export')->middleware('permission:prescription,export');
-            Route::get('create',           'PrescriptionController@create')->name('create')->middleware('permission:prescription,add');
-            Route::post('store',           'PrescriptionController@store')->name('store')->middleware('permission:prescription,add');
-            Route::get('search-medicines', 'PrescriptionController@searchMedicines')->name('search-medicines');
-
-            Route::get('dispense',         'PrescriptionController@dispenseQueue')->name('dispense.queue');
-            Route::get('dispense/export',  'PrescriptionController@dispenseExport')->name('dispense.export')->middleware('permission:pharmacy_dispense_queue,export');
-            Route::get('{id}',             'PrescriptionController@show')->name('show')->middleware('permission:prescription,print');
-            Route::get('{id}/edit',        'PrescriptionController@edit')->name('edit')->middleware('permission:prescription,edit');
-            Route::post('{id}/update',     'PrescriptionController@update')->name('update')->middleware('permission:prescription,edit');
-            Route::get('{id}/dispense',    'PrescriptionController@dispenseShow')->name('dispense.show')->middleware('permission:pharmacy_dispense_queue,view');
-            Route::post('{id}/dispense',   'PrescriptionController@dispenseProcess')->name('dispense.process')->middleware('permission:pharmacy_dispense_queue,dispense');
-        });
-
-        // hospital dashboard ==============================
-        Route::get('hospital/dashboard', 'HospitalDashboardController@index')->name('hospital.dashboard')->middleware('permission:hospital_manage,dashboard');
-        Route::get('hospital/staff-dashboard', 'HospitalDashboardController@index')->name('hospital.staff-dashboard')->middleware('permission:hospital_manage,dashboard');
-        Route::get('hospital/settings', 'HospitalDashboardController@settings')->name('hospital.settings')->middleware('permission:hospital_manage,settings');
-        Route::post('hospital/settings', 'HospitalDashboardController@saveSettings')->name('hospital.settings.save')->middleware('permission:hospital_manage,settings');
-
-        // nurse management ==============================
-        Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
-            Route::get('list',         'NurseController@index')->name('list');
-            Route::get('export',       'NurseController@export')->name('export')->middleware('permission:staff_nurse,export');
-            Route::get('create',       'NurseController@create')->name('create')->middleware('permission:staff_nurse,add');
-            Route::post('store',       'NurseController@store')->name('store')->middleware('permission:staff_nurse,add');
-            Route::get('{id}',         'NurseController@show')->name('show')->middleware('permission:staff_nurse,view');
-            Route::get('{id}/edit',    'NurseController@edit')->name('edit')->middleware('permission:staff_nurse,edit');
-            Route::post('{id}/update', 'NurseController@update')->name('update')->middleware('permission:staff_nurse,edit');
-            Route::get('{id}/delete',  'NurseController@destroy')->name('delete')->middleware('permission:staff_nurse,delete');
-        });
-
-        // ward & bed management ==============================
-        Route::group(['prefix' => 'ward', 'as' => 'ward.'], function () {
-            Route::get('',                           'WardController@index')->name('index');
-            Route::get('create',                     'WardController@create')->name('create')->middleware('permission:ward,add');
-            Route::post('store',                     'WardController@store')->name('store')->middleware('permission:ward,add');
-            Route::get('{id}/edit',                  'WardController@edit')->name('edit')->middleware('permission:ward,edit');
-            Route::put('{id}/update',                'WardController@update')->name('update')->middleware('permission:ward,edit');
-            Route::delete('{id}/delete',             'WardController@destroy')->name('destroy')->middleware('permission:ward,delete');
-            Route::post('{id}/toggle',               'WardController@toggleStatus')->name('toggle')->middleware('permission:ward,status_change');
-
-            Route::get('{wardId}/beds',              'WardController@beds')->name('beds');
-            Route::post('{wardId}/bed/store',        'WardController@bedStore')->name('bed.store')->middleware('permission:bed,add');
-            Route::put('{wardId}/bed/{bedId}/update', 'WardController@bedUpdate')->name('bed.update')->middleware('permission:bed,edit');
-            Route::delete('{wardId}/bed/{bedId}/delete', 'WardController@bedDestroy')->name('bed.destroy')->middleware('permission:bed,delete');
-        });
-
-        // OPD management ==============================
-        Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
-            Route::get('',             'OpdController@index')->name('index');
-            Route::get('export',       'OpdController@export')->name('export')->middleware('permission:opd_register,export');
-            Route::get('create/{id?}',       'OpdController@create')->name('create')->middleware('permission:opd_register,add');
-            Route::post('store',       'OpdController@store')->name('store')->middleware('permission:opd_register,add');
-            Route::get('{id}',              'OpdController@show')->name('show')->middleware('permission:opd_register,view');
-            Route::get('{id}/edit',         'OpdController@edit')->name('edit')->middleware('permission:opd_register,edit');
-            Route::put('{id}/update',       'OpdController@update')->name('update')->middleware('permission:opd_register,edit');
-            Route::patch('{id}/quick-update', 'OpdController@quickUpdate')->name('quick-update')->middleware('permission:opd_register,edit');
-        });
-
-        // IPD management ==============================
-        Route::group(['prefix' => 'ipd', 'as' => 'ipd.'], function () {
-            Route::get('',                        'IpdController@index')->name('index');
-            Route::get('export',                  'IpdController@export')->name('export')->middleware('permission:ipd_admission,edit');
-            Route::get('create',                  'IpdController@create')->name('create')->middleware('permission:ipd_admission,add');
-            Route::post('store',                  'IpdController@store')->name('store')->middleware('permission:ipd_admission,add');
-            Route::get('bed-dashboard',           'IpdController@bedDashboard')->name('bed-dashboard');
-            Route::get('available-beds',          'IpdController@getAvailableBeds')->name('available-beds');
-            Route::get('{id}',                         'IpdController@show')->name('show')->middleware('permission:ipd_admission,view');
-            Route::get('{id}/discharge',               'IpdController@dischargeForm')->name('discharge-form')->middleware('permission:ipd_admission,discharge');
-            Route::put('{id}/discharge',               'IpdController@discharge')->name('discharge')->middleware('permission:ipd_admission,discharge');
-            // nursing notes
-            Route::post('{id}/nursing-note',           'PatientNotesController@nursingNoteStore')->name('nursing-note.store');
-            Route::delete('{id}/nursing-note/{noteId}', 'PatientNotesController@nursingNoteDestroy')->name('nursing-note.destroy');
-            // diet chart
-            Route::post('{id}/diet',                   'PatientNotesController@dietStore')->name('diet.store');
-            Route::delete('{id}/diet/{dietId}',        'PatientNotesController@dietDestroy')->name('diet.destroy');
-        });
-
-        // Consent Forms ==============================
-        Route::group(['prefix' => 'consent', 'as' => 'consent.'], function () {
-            // Templates
-            Route::group(['prefix' => 'template', 'as' => 'template.'], function () {
-                Route::get('',           'ConsentController@templateIndex')->name('index');
-                Route::get('create',     'ConsentController@templateCreate')->name('create')->middleware('permission:consent_template,add');
-                Route::post('store',     'ConsentController@templateStore')->name('store')->middleware('permission:consent_template,add');
-                Route::get('{id}/edit',  'ConsentController@templateEdit')->name('edit')->middleware('permission:consent_template,edit');
-                Route::put('{id}',       'ConsentController@templateUpdate')->name('update')->middleware('permission:consent_template,edit');
-                Route::delete('{id}',    'ConsentController@templateDestroy')->name('destroy')->middleware('permission:consent_template,delete');
-            });
-            // Patient consents
-            Route::get('',                    'ConsentController@index')->name('index');
-            Route::get('create',              'ConsentController@create')->name('create')->middleware('permission:consent_form,add');
-            Route::post('store',              'ConsentController@store')->name('store')->middleware('permission:consent_form,add');
-            Route::get('{id}',               'ConsentController@show')->name('show')->middleware('permission:consent_form,view');
-            Route::delete('{id}',            'ConsentController@destroy')->name('destroy')->middleware('permission:consent_form,delete');
-            Route::get('template-content/{id}', 'ConsentController@templateContent')->name('template-content')->middleware('permission:consent_template,view');
-        });
-
-        // Hospital billing ==============================
-        Route::group(['prefix' => 'hospital-bill', 'as' => 'hospital-bill.'], function () {
-            Route::get('ipd/{id}',          'HospitalBillController@createForIPD')->name('create-ipd')->middleware('permission:ipd_admission,generate_bill');
-            Route::get('opd/{id}',          'HospitalBillController@createForOPD')->name('create-opd')->middleware('permission:opd_register,generate_bill');
-            Route::post('store',            'HospitalBillController@store')->name('store');
-            Route::get('inventory-search',  'HospitalBillController@searchInventory')->name('inventory-search');
-        });
-
-        // patient management ==============================
-        Route::get('patient/add', 'PatientController@index')->name('patient.add');
-        Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
-            Route::post('quick-save', 'PatientController@quickSave')->name('quick-save');
-            Route::get('list', 'PatientController@list')->name('list');
-            Route::get('export', 'PatientController@export')->name('export')->middleware('permission:patient,export');
-            Route::post('save', 'PatientController@save')->name('save')->middleware('permission:patient,add');
-            Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel')->middleware('permission:patient,export');
-            Route::get('{id}', 'PatientController@show')->name('show')->middleware('permission:patient,view');
-            Route::get('{id}/edit', 'PatientController@edit')->name('edit')->middleware('permission:patient,edit');
-            Route::post('{id}/update', 'PatientController@update')->name('update')->middleware('permission:patient,edit');
-            Route::post('{id}/upload-documents', 'PatientController@uploadDocuments')->name('upload-documents')->middleware('permission:patient_documents,add');
-            Route::delete('{id}/document/{docId}', 'PatientController@deleteDocument')->name('delete-document')->middleware('permission:patient_documents,delete');
-            Route::get('{id}/delete', 'PatientController@destroy')->name('delete')->middleware('permission:patient,delete');
-        });
-    });
+    // hmis ==============================
+    require app_path('Modules/HMIS/routes/vendor.php');
 
     // laundry ==============================
-    Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry']], function () {
-        Route::get('dashboard',                'LaundryController@dashboard')->name('dashboard');
+    require app_path('Modules/Laundry/routes/vendor.php');
 
-        // Items master
-        Route::get('items',                    'LaundryController@items')->name('items');
-        Route::post('items/store',             'LaundryController@item_store')->name('items.store');
-        Route::post('items/update/{id}',       'LaundryController@item_update')->name('items.update');
-        Route::post('items/toggle/{id}',       'LaundryController@item_toggle')->name('items.toggle');
-        Route::get('items/destroy/{id}',       'LaundryController@item_destroy')->name('items.destroy');
-
-        // Walk-in orders
-        Route::get('orders',                   'LaundryController@orders')->name('orders');
-        Route::get('orders/create',            'LaundryController@order_create')->name('orders.create');
-        Route::post('orders/store',            'LaundryController@order_store')->name('orders.store');
-        Route::get('orders/{id}',              'LaundryController@order_show')->name('orders.show');
-        Route::post('orders/status',           'LaundryController@order_status')->name('orders.status');
-        Route::get('orders/{id}/receipt',      'LaundryController@order_receipt')->name('orders.receipt');
-        Route::post('orders/{id}/invoice',     'LaundryController@order_invoice')->name('orders.invoice');
-
-        // Challans
-        Route::get('challans',                 'LaundryController@challans')->name('challans');
-        Route::get('challans/create',          'LaundryController@challan_create')->name('challans.create');
-        Route::post('challans/store',          'LaundryController@challan_store')->name('challans.store');
-        Route::get('challans/{id}',            'LaundryController@challan_show')->name('challans.show');
-        Route::get('challans/{id}/receive',    'LaundryController@challan_receive')->name('challans.receive');
-        Route::post('challans/receive-update', 'LaundryController@challan_receive_update')->name('challans.receive-update');
-        Route::get('challans/{id}/print',      'LaundryController@challan_print')->name('challans.print');
-        Route::post('challans/{id}/invoice',   'LaundryController@challan_invoice')->name('challans.invoice');
-
-        // Monthly register
-        Route::get('register',                 'LaundryController@monthly_register')->name('register');
-        Route::get('register/export',          'LaundryController@monthly_register_export')->name('register.export');
-        Route::get('register/billing',         'LaundryController@monthly_billing_form')->name('register.billing');
-        Route::post('register/billing/store',  'LaundryController@monthly_billing_store')->name('register.billing.store');
-    });
+    // pos ==============================
+    require app_path('Modules/POS/routes/vendor.php');
 });
 
 // WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);

@@ -464,6 +464,11 @@ class ServiceController extends Controller
 
         if ($serviceReq->update()) {
 
+            DB::table('service_requests')->where('id', $service_id)->update([
+                'cancelled_by' => $cancelled_by,
+                'reason'       => $request->reason,
+            ]);
+
             $cancelledRequest = $serviceReq->replicate();
             $cancelledRequest->setTable('cancelled_service_requests');
             $cancelledRequest->save();
@@ -1694,7 +1699,7 @@ class ServiceController extends Controller
     }
 
 
-    public function leads_list(Request $request, $empId = null, $action = null)
+    public function leads_list(Request $request, $empId = null, $action = null, $mode = null)
     {
         $preset = request('date_range') ?? 'this_year';
         $custom = request('custom_date_range') ?? null;
@@ -1795,7 +1800,13 @@ class ServiceController extends Controller
                 });
 
 
-            if (!is_null($empId) && $empId != 0) {
+            if ($mode === 'assigned') {
+                $assignedEmpId = Helpers::get_loggedin_user()->id;
+                $query->where(function ($q) use ($assignedEmpId) {
+                    $q->where('accepted_service_requests.assigned_to', $assignedEmpId)
+                      ->orWhere('cancelled_service_requests.assigned_to', $assignedEmpId);
+                });
+            } elseif (!is_null($empId) && $empId != 0) {
                 $query->where(function ($q) use ($empId) {
                     $q->where('cancelled_service_requests.assigned_to', $empId)
                         ->orWhere('accepted_service_requests.assigned_to', $empId);
@@ -1933,6 +1944,10 @@ class ServiceController extends Controller
         return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses', 'storeConfig',
             'ld_total', 'ld_accepted', 'ld_completed', 'ld_cancelled', 'ld_missed',
             'ld_completionRate', 'ld_acceptanceRate', 'ld_cancellationRate', 'ld_topServices'));
+    }
+    public function assigned_leads_list(Request $request, $empId = null, $action = null)
+    {
+        return $this->leads_list($request, $empId, $action, 'assigned');
     }
 
     public function dismissLeadsGuide(Request $request)
@@ -2125,7 +2140,6 @@ class ServiceController extends Controller
     {
         if (auth('vendor_employee')->check()) {
             $empId = Helpers::get_loggedin_user()->id;
-            // prx($empId);
 
             $assignedServices = DB::table('accepted_service_requests')
                 ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
@@ -2135,7 +2149,6 @@ class ServiceController extends Controller
                 ->where('accepted_service_requests.assigned_to', $empId)
                 ->whereNot('accepted_service_requests.current_status', 'Cancelled')
                 ->get();
-
             $avlblSttsIds = Helpers::get_store_data()->lead_statuses;
             $statuses = [];
             if ($avlblSttsIds) {
