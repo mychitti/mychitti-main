@@ -152,9 +152,9 @@ class LeadController extends Controller
             $otp = $request->otp;
             $userPhone = User::find($ser3->user_id)?->phone;
             if (!$userPhone) {
-                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
-            } else if (!_verify_otp($userPhone, $otp)) {
-                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
+                return response()->json(['status' => false, 'message' => 'User phone number not valid.']);
+            } else if (!_verify_otp($userPhone, $otp)) { 
+                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP11.']);
             }
         }
         $service_id = $serviceReq->service_request_id;
@@ -209,7 +209,7 @@ class LeadController extends Controller
 
                 $completionCharges = $leadChargeInfo ? $leadChargeInfo->completion_charge : 0;
 
-                if ($completionCharges > 0) {
+                if ($completionCharges > 0 && !\App\CentralLogics\Helpers::store_has_active_lead_subscription((int)$serviceReq->vendor_id)) {
                     $wallet = StoreWallet::where('vendor_id', $vendorId)->first();
                     $wallet->decrement('total_earning', $completionCharges);
                     $wallet->increment('total_withdrawn', $completionCharges);
