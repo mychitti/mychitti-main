@@ -1025,7 +1025,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     // laundry ============================== 
     require app_path('Modules/Laundry/routes/vendor.php');
  
-    // pos ==============================
+    // pos ============================== 
     require app_path('Modules/POS/routes/vendor.php');
 });
 // DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES
