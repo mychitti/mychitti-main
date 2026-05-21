@@ -1016,7 +1016,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
-
+ 
     // hmis ==============================
     if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
         require app_path('Modules/HMIS/routes/vendor.php'); 
