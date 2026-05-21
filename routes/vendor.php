@@ -1028,6 +1028,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     // pos ============================== 
     require app_path('Modules/POS/routes/vendor.php');
 });
-// DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES
+// DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES 
 
 // WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);
