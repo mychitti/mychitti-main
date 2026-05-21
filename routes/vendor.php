@@ -956,7 +956,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('remove', 'SettingsController@domain_remove')->name('remove');
             });
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
-                Route::get('profile', 'SettingsController@profile_settings')->name('profile');
+                Route::get('profile', 'SettingsController@profile_settings')->name('profile'); 
                 Route::get('store', 'SettingsController@store_settings')->name('store');
                 Route::get('holidays', 'SettingsController@holiday_settings')->name('holidays');
                 Route::get('holiday/add', 'SettingsController@holiday_add')->name('holiday.add');

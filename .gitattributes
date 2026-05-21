@@ -1,4 +1,5 @@
 * text=auto
+*.php text eol=lf working-tree-encoding=UTF-8
 *.css linguist-vendored
 *.scss linguist-vendored
 *.js linguist-vendored
