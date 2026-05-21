@@ -1022,7 +1022,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         require app_path('Modules/HMIS/routes/vendor.php');
     }
  
-    // laundry ==============================
+    // laundry ============================== 
     require app_path('Modules/Laundry/routes/vendor.php');
  
     // pos ==============================
