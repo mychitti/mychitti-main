@@ -215,15 +215,9 @@
 
 
 
-                    {{-- Staff --}}
-                    @if (hasAnyPermission([
-                            'staff_doctor.list',
-                            'staff_doctor.add',
-                            'staff_doctor.export',
-                            'staff_nurse.list',
-                            'staff_nurse.add',
-                            'staff_nurse.export',
-                        ]))
+                    {{-- Staff — Doctors link is free (no hospital_manage plan required) --}}
+                    @php $hasHospitalPlan = \App\CentralLogics\Helpers::permission_check('hospital_manage'); @endphp
+                    @if ($hasHospitalPlan || hasAnyPermission(['staff_nurse.list','staff_nurse.add','staff_nurse.export']))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -235,16 +229,15 @@
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('doctor*') || Request::is('nurse*') ? 'block' : 'none' }}">
-                                @if (hasAnyPermission(['staff_doctor.list', 'staff_doctor.add', 'staff_doctor.export']))
-                                    <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.doctor.list') }}"
-                                            title="Doctors">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Doctors</span>
-                                        </a>
-                                    </li>
-                                @endif
-                                @if (hasAnyPermission(['staff_nurse.list', 'staff_nurse.add', 'staff_nurse.export']))
+                                {{-- Doctor list is always visible; add/export require the plan --}}
+                                <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.doctor.list') }}"
+                                        title="Doctors">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Doctors</span>
+                                    </a>
+                                </li>
+                                @if ($hasHospitalPlan && hasAnyPermission(['staff_nurse.list', 'staff_nurse.add', 'staff_nurse.export']))
                                     <li class="nav-item {{ Request::is('nurse*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('vendor.nurse.list') }}" title="Nurses">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -252,7 +245,6 @@
                                         </a>
                                     </li>
                                 @endif
-
                             </ul>
                         </li>
                     @endif
