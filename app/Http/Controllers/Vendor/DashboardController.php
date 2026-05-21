@@ -9,6 +9,7 @@ use App\Http\Controllers\Vendor\HRController;
 use App\Http\Controllers\Vendor\POSController;
 use App\Http\Controllers\Vendor\AccountController;
 use App\Http\Controllers\Vendor\InventoryController;
+use App\Modules\HMIS\Controllers\Vendor\HospitalDashboardController;
 use App\Models\AcceptedServiceRequest;
 use App\Models\AccountTransaction;
 use App\Models\Attendance;
