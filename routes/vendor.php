@@ -1024,7 +1024,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
  
     // laundry ==============================
     require app_path('Modules/Laundry/routes/vendor.php');
-
+ 
     // pos ==============================
     require app_path('Modules/POS/routes/vendor.php');
 });
