@@ -146,7 +146,56 @@ class SettingsController extends Controller
             $about_us = StoreConfig::where('store_id', Helpers::get_store_id())
                 ->value('about_us') ?? '';
             return view('vendor-views.settings.webpage', compact('store', 'tab', 'about_us'));
-        } else if ($tab == 'my-services') {
+        }   else if ($tab == 'webpage-templates') {
+            $store_template_id = StoreConfig::where('store_id', $store_id)->value('template_id') ?: 1;
+            $templates = DB::table("store_webpage_templates")->where('status', 1)->get();
+            $purchases = TemplatePurchase::where('vendor_id', $store_id)
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->get() 
+                ->keyBy('template_id');
+            $purchasedTemplateIds = $purchases->keys()->toArray();
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates', 'purchasedTemplateIds', 'purchases'));
+        } else if ($tab == 'domain-setup') {
+            $domain         = Helpers::get_store_data()->domain;
+            $domainCharge   = (float) (BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
+            $domainGstPct   = (float) (BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
+            $domainGstIncl  = (bool)(BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0);
+            return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain', 'domainCharge', 'domainGstPct', 'domainGstIncl'));
+        } else if ($tab == 'third-party') {
+            return view('vendor-views.settings.webpage', compact('store', 'tab'));
+        }
+    }
+
+    public function service_setup (Request $request, $tab = 'mychitti-services')
+    {
+          $store_id = Helpers::get_store_id();
+        $store = Store::where('id',  $store_id)->first();
+        if ($tab == 'mychitti-services') {
+            $store_data = Helpers::get_store_data();
+
+            $categoryIds = [
+                $store_data->category_1,
+                $store_data->category_2
+            ];
+            $children = Category::whereIn('parent_id', $categoryIds)->select('id', 'parent_id')->get()->groupBy('parent_id');
+            $allcategories_1 = array_merge(
+                [$store_data->category_1],
+                ($children->get($store_data->category_1, collect()))->pluck('id')->toArray()
+            );
+
+            $allcategories_2 = array_merge(
+                [$store_data->category_2],
+                ($children->get($store_data->category_2, collect()))->pluck('id')->toArray()
+            );
+
+            $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->whereNull("inventory_item_id")->get();
+            $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->whereNull("inventory_item_id")->get();
+            $module_categories = Category::where('module_id', $store_data->module_id)->where('position', 0)->where('status', 1)->get();
+
+            return view('vendor-views.settings.service-setup', compact('store', 'tab', 'store_data', 'items_1', 'items_2', 'module_categories'));
+        }else if ($tab == 'my-services') {
             $search  = $request->search ?? '';
             $type  = $request->type ?? '';
             $filter  = $request->filter ?? '';
@@ -169,51 +218,9 @@ class SettingsController extends Controller
                 })
                 ->orderBy('id', 'desc')
                 ->paginate(50);
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'inventory_items'));
-        } else if ($tab == 'mychitti-services') {
-            $mychitti_services = '';
-            $store_data = Helpers::get_store_data();
-
-            $categoryIds = [
-                $store_data->category_1,
-                $store_data->category_2
-            ];
-            $children = Category::whereIn('parent_id', $categoryIds)->select('id', 'parent_id')->get()->groupBy('parent_id');
-            $allcategories_1 = array_merge(
-                [$store_data->category_1],
-                ($children->get($store_data->category_1, collect()))->pluck('id')->toArray()
-            );
-
-            $allcategories_2 = array_merge(
-                [$store_data->category_2],
-                ($children->get($store_data->category_2, collect()))->pluck('id')->toArray()
-            );
-
-            $items_1 = DB::table('items')->whereIn('category_id', $allcategories_1)->whereNull("inventory_item_id")->get();
-            $items_2 = DB::table('items')->whereIn('category_id', $allcategories_2)->whereNull("inventory_item_id")->get();
-            $module_categories = Category::where('module_id', $store_data->module_id)->where('position', 0)->where('status', 1)->get();
-
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_data', 'items_1', 'items_2', 'module_categories'));
-        } else if ($tab == 'webpage-templates') {
-            $store_template_id = StoreConfig::where('store_id', $store_id)->value('template_id') ?: 1;
-            $templates = DB::table("store_webpage_templates")->where('status', 1)->get();
-            $purchases = TemplatePurchase::where('vendor_id', $store_id)
-                ->where(function ($q) {
-                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                })
-                ->get() 
-                ->keyBy('template_id');
-            $purchasedTemplateIds = $purchases->keys()->toArray();
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'store_template_id', 'templates', 'purchasedTemplateIds', 'purchases'));
-        } else if ($tab == 'domain-setup') {
-            $domain         = Helpers::get_store_data()->domain;
-            $domainCharge   = (float) (BusinessSetting::where('key', 'custom_domain_charge')->value('value') ?? 0);
-            $domainGstPct   = (float) (BusinessSetting::where('key', 'cd_gst_percent')->value('value') ?? 0);
-            $domainGstIncl  = (bool)(BusinessSetting::where('key', 'cd_gst_include')->value('value') ?? 0);
-            return view('vendor-views.settings.webpage', compact('store', 'tab', 'domain', 'domainCharge', 'domainGstPct', 'domainGstIncl'));
-        } else if ($tab == 'third-party') {
-            return view('vendor-views.settings.webpage', compact('store', 'tab'));
+            return view('vendor-views.settings.service-setup', compact('store', 'tab', 'inventory_items'));
         }
+        
     }
     public function common_setting_save(Request $request)
     {
@@ -410,24 +417,46 @@ class SettingsController extends Controller
 
         $businessType = Helpers::get_store_data()->business_type ?? '';
 
-        // prx($businessType);
+        $allSubModuleKeys = DB::table('sub_modules')->pluck('Key')->toArray();
+        $accessibleKeys   = array_keys(_accessibleModules());
+
         $full_menu = DB::table('menu')
             ->where('menu_type', 'sidebar')
             ->where('under_development', 0)
             ->where('status', 1)
             ->where(function ($q) use ($businessType) {
                 $q->where('business_type', 'all')
-                  ->orWhere('business_type', $businessType);
+                  ->orWhereRaw('LOWER(business_type) = ?', [strtolower($businessType)]);
             })
+            ->orderBy('group', 'asc')
             ->orderBy('name', 'asc')
             ->get()
-            ->filter(function ($item) use ($businessType) {
-                if (empty($item->not_for)) return true;
-                $notFor = is_string($item->not_for) ? json_decode($item->not_for, true) : (array) $item->not_for;
-                return !in_array($businessType, (array) $notFor);
+            ->filter(function ($item) use ($businessType, $allSubModuleKeys, $accessibleKeys) {
+                if (!empty($item->not_for)) {
+                    $notFor = is_string($item->not_for) ? json_decode($item->not_for, true) : (array) $item->not_for;
+                    if (in_array(strtolower($businessType), array_map('strtolower', (array) $notFor))) return false;
+                }
+                // Free items always show regardless of subscription or business type.
+                if (!empty($item->free)) return true;
+                // Business-type-specific items are already scoped to this store type by the SQL filter above.
+                if (!empty($item->business_type) && strtolower($item->business_type) !== 'all') {
+                    return true;
+                }
+                // Generic 'all' items: apply subscription/planwise checks.
+                if (!empty($item->planwise)) {
+                    if (in_array($item->planwise, $allSubModuleKeys)) {
+                        return in_array($item->planwise, $accessibleKeys);
+                    }
+                    return Helpers::permission_check($item->planwise);
+                }
+                if (in_array($item->slug, $allSubModuleKeys)) {
+                    return in_array($item->slug, $accessibleKeys);
+                }
+                return true;
             });
+
         $groupedMenus = $full_menu->groupBy(function ($item) {
-            return $item->group ?? 'other';
+            return $item->group ?: 'other';
         });
 
 
@@ -436,6 +465,7 @@ class SettingsController extends Controller
         $selectedMenus = DB::table('store_menu_visibility')
             ->where('store_id', $storeId)
             ->where('menu_type', 'sidebar')
+            ->where('is_visible', 1)
             ->pluck('menu_key')
             ->toArray();
 
@@ -445,32 +475,44 @@ class SettingsController extends Controller
             ->pluck('menu_key')
             ->toArray();
 
-        // prx($selectedQuickActions);
-
-        // default menu items
-        if (empty($selectedMenus)) {
-            $selectedMenus = DB::table('menu')
-                ->where('default', 1)
-                // slug is your menu_key
-                ->pluck('slug') // slug is your menu_key
-                ->toArray();
+        // No saved preferences yet — use menu defaults
+        if (DB::table('store_menu_visibility')->where('store_id', $storeId)->where('menu_type', 'sidebar')->doesntExist()) {
+            $selectedMenus = DB::table('menu')->where('default', 1)->pluck('slug')->toArray();
         }
-        return view('vendor-views.business-settings.menu_preference', compact('full_menu', 'full_quick_actions', 'selectedMenus', 'selectedQuickActions'));
+
+        return view('vendor-views.business-settings.menu_preference', compact('full_menu', 'groupedMenus', 'full_quick_actions', 'selectedMenus', 'selectedQuickActions'));
     }
     public function menu_preference_save(Request $request)
     {
-        $storeId = Helpers::get_store_id();
-        DB::table('store_menu_visibility')->where('store_id', $storeId)->where('menu_type', 'sidebar')->delete();
-        if ($request->menu) {
-            foreach ($request->menu as $key) {
-                DB::table('store_menu_visibility')->insert([
-                    'store_id' => $storeId,
-                    'menu_type' => 'sidebar',
-                    'menu_key' => $key,
-                    'is_visible' => 1
-                ]);
-            }
+        $storeId      = Helpers::get_store_id();
+        $visibleSlugs = $request->input('visible_slugs', []);
+        $checkedSlugs = $request->input('menu', []);
+
+        if (empty($visibleSlugs)) {
+            Toastr::error('Nothing to save.');
+            return back();
         }
+
+        // Delete only the slugs that were rendered in the form, preserving
+        // planwise-gated items the form never showed.
+        DB::table('store_menu_visibility')
+            ->where('store_id', $storeId)
+            ->where('menu_type', 'sidebar')
+            ->whereIn('menu_key', $visibleSlugs)
+            ->delete();
+
+        // Save explicit 1 for checked, explicit 0 for unchecked.
+        // Storing 0 prevents the selected_menu() default-fallback from
+        // showing items the user deliberately turned off.
+        foreach ($visibleSlugs as $slug) {
+            DB::table('store_menu_visibility')->insert([
+                'store_id'   => $storeId,
+                'menu_type'  => 'sidebar',
+                'menu_key'   => $slug,
+                'is_visible' => in_array($slug, $checkedSlugs) ? 1 : 0,
+            ]);
+        }
+
         Toastr::success('Menu Preference updated.');
         return back();
     }

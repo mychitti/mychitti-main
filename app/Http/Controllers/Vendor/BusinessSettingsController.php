@@ -343,6 +343,7 @@ class BusinessSettingsController extends Controller
         $data = [
             'invoice_footer_line'     => $request->invoice_footer_line ?? 0,
             'jurisdiction_statement'  => $request->jurisdiction_statement,
+            'paid_unpaid_options'  => $request->paid_unpaid_options,
         ];
 
         if ($request->hasFile('image')) {
@@ -357,10 +358,12 @@ class BusinessSettingsController extends Controller
         $tnc_quotation_status = $request->tnc_quotation_status ?? 0;
         $jurisdiction_statement_status = $request->jurisdiction_statement_status ?? 0;
         $bank_details_status = $request->bank_details_status ?? 0;
+        $paid_unpaid_options = $request->paid_unpaid_options ?? 'paid_unpaid';
 
         $store->storeConfig()->updateOrCreate(
             ['store_id' => $store->id], 
             [
+                'paid_unpaid_options' => $paid_unpaid_options,
                 'invoice_sign_status' => $invoice_status,
                 'jurisdiction_statement_status' => $jurisdiction_statement_status,
                 'tnc_invoice_status' => $tnc_invoice_status,

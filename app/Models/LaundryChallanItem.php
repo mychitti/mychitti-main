@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class LaundryChallanItem extends Model
 {
@@ -11,7 +11,7 @@ class LaundryChallanItem extends Model
 
     protected $fillable = [
         'laundry_challan_id',
-        'laundry_item_id',
+        'inventory_item_id',
         'item_name',
         'rate',
         'previous_balance',
@@ -38,9 +38,9 @@ class LaundryChallanItem extends Model
         return $this->belongsTo(LaundryChallan::class, 'laundry_challan_id');
     }
 
-    public function laundryItem()
+    public function inventoryItem()
     {
-        return $this->belongsTo(LaundryItem::class, 'laundry_item_id');
+        return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
     }
 
     public function computeTotals()

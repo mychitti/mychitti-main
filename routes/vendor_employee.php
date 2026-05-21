@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\URL;
 $currentHost = request()->getHost();
 
 if ($currentHost ==  'vendor-staff.mcvendorhub.com') {
-    URL::forceRootUrl('https://vendor-staff.mcvendorhub.com');
+    URL::forceRootUrl('https://vendor-staff.mcvendorhub.com'); 
     app('url')->forceRootUrl('https://vendor-staff.mcvendorhub.com');
 }
 // Route::get('home', 'LoginController@vendor_homepage')->name('vendor_homepage');
@@ -46,15 +46,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
-        // ── My Doctor Profile (for doctor staff) ──────────────────────────────
-        Route::prefix('my-doctor-profile')->name('my-doctor-profile.')->group(function () {
-            Route::get('/', 'MyDoctorProfileController@edit')->name('edit');
-            Route::post('/', 'MyDoctorProfileController@update')->name('update');
-            Route::post('slots/store', 'MyDoctorProfileController@slotStore')->name('slot.store');
-            Route::get('slots/{slot_id}/toggle', 'MyDoctorProfileController@slotToggle')->name('slot.toggle');
-            Route::get('slots/{slot_id}/delete', 'MyDoctorProfileController@slotDestroy')->name('slot.delete');
-            Route::post('slots/{slot_id}/clone', 'MyDoctorProfileController@slotClone')->name('slot.clone');
-        });
 
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');
         Route::get('/clock-out', 'VendorEmployeeController@clock_out')->name('clockout');
@@ -1223,163 +1214,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     });
 
     // HOSPITAL MANAGEMENT ===================================
-    // Route::group(['middleware' => ['planwise:hospital_manage']], function () {
-
-        // doctor management ==============================
-        Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
-            Route::get('list', 'DoctorController@index')->name('list');
-            Route::get('export', 'DoctorController@export')->name('export');
-            Route::get('create', 'DoctorController@create')->name('create');
-            Route::post('store', 'DoctorController@store')->name('store');
-            Route::get('{id}/edit', 'DoctorController@edit')->name('edit');
-            Route::post('{id}/update', 'DoctorController@update')->name('update');
-            Route::post('{id}/delete', 'DoctorController@destroy')->name('delete');
-            Route::get('{id}/slots', 'DoctorController@slots')->name('slots');
-            Route::post('{id}/slots/store', 'DoctorController@slotStore')->name('slot.store');
-            Route::get('{id}/slots/{slot_id}/toggle', 'DoctorController@slotToggle')->name('slot.toggle');
-            Route::get('{id}/slots/{slot_id}/delete', 'DoctorController@slotDestroy')->name('slot.delete');
-            Route::post('{id}/slots/{slot_id}/clone', 'DoctorController@slotClone')->name('slot.clone');
-        });
-
-        // appointment management ==============================
-        Route::group(['prefix' => 'appointment', 'as' => 'appointment.'], function () {
-            Route::get('list', 'AppointmentController@index')->name('list');
-            Route::get('create', 'AppointmentController@create')->name('create');
-            Route::post('store', 'AppointmentController@store')->name('store');
-            Route::get('lookup-lead', 'AppointmentController@lookupLead')->name('lookup-lead');
-            Route::post('store-from-lead', 'AppointmentController@storeFromLead')->name('store-from-lead');
-            Route::get('available-slots', 'AppointmentController@availableSlots')->name('available-slots');
-            Route::get('search-patients', 'AppointmentController@searchPatients')->name('search-patients');
-            Route::get('search-doctors', 'AppointmentController@searchDoctors')->name('search-doctors');
-            Route::get('{id}', 'AppointmentController@show')->name('show');
-            Route::post('{id}/status', 'AppointmentController@updateStatus')->name('status');
-            Route::post('{id}/reschedule', 'AppointmentController@reschedule')->name('reschedule');
-        });
-
-        // prescription management ==============================
-        Route::group(['prefix' => 'prescription', 'as' => 'prescription.'], function () {
-            Route::get('list',             'PrescriptionController@index')->name('list');
-            Route::get('export',           'PrescriptionController@export')->name('export');
-            Route::get('create',           'PrescriptionController@create')->name('create');
-            Route::post('store',           'PrescriptionController@store')->name('store');
-            Route::get('search-medicines', 'PrescriptionController@searchMedicines')->name('search-medicines');
-            Route::get('dispense',         'PrescriptionController@dispenseQueue')->name('dispense.queue');
-            Route::get('dispense/export',  'PrescriptionController@dispenseExport')->name('dispense.export');
-            Route::get('{id}',             'PrescriptionController@show')->name('show');
-            Route::get('{id}/edit',        'PrescriptionController@edit')->name('edit');
-            Route::post('{id}/update',     'PrescriptionController@update')->name('update');
-            Route::get('{id}/dispense',    'PrescriptionController@dispenseShow')->name('dispense.show');
-            Route::post('{id}/dispense',   'PrescriptionController@dispenseProcess')->name('dispense.process');
-        });
-
-        // hospital dashboard ==============================
-        Route::get('hospital/dashboard', 'HospitalDashboardController@index')->name('hospital.dashboard');
-        Route::get('hospital/staff-dashboard', 'HospitalDashboardController@index')->name('hospital.staff-dashboard');
-        Route::get('hospital/settings', 'HospitalDashboardController@settings')->name('hospital.settings');
-        Route::post('hospital/settings', 'HospitalDashboardController@saveSettings')->name('hospital.settings.save');
-
-        // nurse management ==============================
-        Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
-            Route::get('list',         'NurseController@index')->name('list');
-            Route::get('export',       'NurseController@export')->name('export');
-            Route::get('create',       'NurseController@create')->name('create');
-            Route::post('store',       'NurseController@store')->name('store');
-            Route::get('{id}',         'NurseController@show')->name('show');
-            Route::get('{id}/edit',    'NurseController@edit')->name('edit');
-            Route::post('{id}/update', 'NurseController@update')->name('update');
-            Route::get('{id}/delete',  'NurseController@destroy')->name('delete');
-        });
-
-        // ward & bed management ==============================
-        Route::group(['prefix' => 'ward', 'as' => 'ward.'], function () {
-            Route::get('',                           'WardController@index')->name('index');
-            Route::get('create',                     'WardController@create')->name('create');
-            Route::post('store',                     'WardController@store')->name('store');
-            Route::get('{id}/edit',                  'WardController@edit')->name('edit');
-            Route::put('{id}/update',                'WardController@update')->name('update');
-            Route::delete('{id}/delete',             'WardController@destroy')->name('destroy');
-            Route::post('{id}/toggle',               'WardController@toggleStatus')->name('toggle');
-            Route::get('{wardId}/beds',              'WardController@beds')->name('beds');
-            Route::post('{wardId}/bed/store',        'WardController@bedStore')->name('bed.store');
-            Route::put('{wardId}/bed/{bedId}/update', 'WardController@bedUpdate')->name('bed.update');
-            Route::delete('{wardId}/bed/{bedId}/delete', 'WardController@bedDestroy')->name('bed.destroy');
-        });
-
-        // OPD management ==============================
-        Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
-            Route::get('',             'OpdController@index')->name('index');
-            Route::get('export',       'OpdController@export')->name('export');
-            Route::get('create/{id?}',       'OpdController@create')->name('create');
-            Route::post('store',       'OpdController@store')->name('store');
-            Route::get('{id}',              'OpdController@show')->name('show');
-            Route::get('{id}/edit',         'OpdController@edit')->name('edit');
-            Route::put('{id}/update',       'OpdController@update')->name('update');
-            Route::patch('{id}/quick-update','OpdController@quickUpdate')->name('quick-update');
-        });
-
-        // IPD management ==============================
-        Route::group(['prefix' => 'ipd', 'as' => 'ipd.'], function () {
-            Route::get('',                        'IpdController@index')->name('index');
-            Route::get('export',                  'IpdController@export')->name('export');
-            Route::get('create',                  'IpdController@create')->name('create');
-            Route::post('store',                  'IpdController@store')->name('store');
-            Route::get('bed-dashboard',           'IpdController@bedDashboard')->name('bed-dashboard');
-            Route::get('available-beds',          'IpdController@getAvailableBeds')->name('available-beds');
-            Route::get('{id}',                         'IpdController@show')->name('show');
-            Route::get('{id}/discharge',               'IpdController@dischargeForm')->name('discharge-form');
-            Route::put('{id}/discharge',               'IpdController@discharge')->name('discharge');
-            // nursing notes
-            Route::post('{id}/nursing-note',           'PatientNotesController@nursingNoteStore')->name('nursing-note.store');
-            Route::delete('{id}/nursing-note/{noteId}', 'PatientNotesController@nursingNoteDestroy')->name('nursing-note.destroy');
-            // diet chart
-            Route::post('{id}/diet',                   'PatientNotesController@dietStore')->name('diet.store');
-            Route::delete('{id}/diet/{dietId}',        'PatientNotesController@dietDestroy')->name('diet.destroy');
-        });
-
-        // Consent Forms ==============================
-        Route::group(['prefix' => 'consent', 'as' => 'consent.'], function () {
-            // Templates
-            Route::group(['prefix' => 'template', 'as' => 'template.'], function () {
-                Route::get('',           'ConsentController@templateIndex')->name('index');
-                Route::get('create',     'ConsentController@templateCreate')->name('create');
-                Route::post('store',     'ConsentController@templateStore')->name('store');
-                Route::get('{id}/edit',  'ConsentController@templateEdit')->name('edit');
-                Route::put('{id}',       'ConsentController@templateUpdate')->name('update');
-                Route::delete('{id}',    'ConsentController@templateDestroy')->name('destroy');
-            });
-            // Patient consents
-            Route::get('',                    'ConsentController@index')->name('index');
-            Route::get('create',              'ConsentController@create')->name('create');
-            Route::post('store',              'ConsentController@store')->name('store');
-            Route::get('{id}',               'ConsentController@show')->name('show');
-            Route::delete('{id}',            'ConsentController@destroy')->name('destroy');
-            Route::get('template-content/{id}', 'ConsentController@templateContent')->name('template-content');
-        });
-
-        // Hospital billing ==============================
-        Route::group(['prefix' => 'hospital-bill', 'as' => 'hospital-bill.'], function () {
-            Route::get('ipd/{id}',          'HospitalBillController@createForIPD')->name('create-ipd');
-            Route::get('opd/{id}',          'HospitalBillController@createForOPD')->name('create-opd');
-            Route::post('store',            'HospitalBillController@store')->name('store');
-            Route::get('inventory-search',  'HospitalBillController@searchInventory')->name('inventory-search');
-        });
-
-        // patient management ==============================
-        Route::get('patient/add', 'PatientController@index')->name('patient.add');
-        Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
-            Route::post('quick-save', 'PatientController@quickSave')->name('quick-save');
-            Route::get('list', 'PatientController@list')->name('list');
-            Route::get('export', 'PatientController@export')->name('export');
-            Route::post('save', 'PatientController@save')->name('save');
-            Route::post('upload-excel', 'PatientController@upload_excel')->name('upload-excel');
-            Route::get('{id}', 'PatientController@show')->name('show');
-            Route::get('{id}/edit', 'PatientController@edit')->name('edit');
-            Route::post('{id}/update', 'PatientController@update')->name('update');
-            Route::post('{id}/upload-documents', 'PatientController@uploadDocuments')->name('upload-documents');
-            Route::delete('{id}/document/{docId}', 'PatientController@deleteDocument')->name('delete-document');
-            Route::get('{id}/delete', 'PatientController@destroy')->name('delete');
-        });
-    // });
+    require base_path('app/Modules/HMIS/routes/vendor.php');
 
     // laundry ==============================
     Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry']], function () {

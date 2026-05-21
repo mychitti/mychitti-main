@@ -131,7 +131,9 @@ class StoreImport implements ToCollection, WithHeadingRow
                 $store->longitude = $row['longitude'];
                 $store->vendor_id = $vendor->id;
                 $store->zone_id = $row['zone_id'];
-                $store->module_id = Config::get('module.current_module_id');
+                $store->module_id = strtolower($row['business_type'] ?? '') === 'ecommerce'
+                    ? 5
+                    : Config::get('module.current_module_id');
                 try {
                     $store->save();
                     array_push($storeIds, $store->id);

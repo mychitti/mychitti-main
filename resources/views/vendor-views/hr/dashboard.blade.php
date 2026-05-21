@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'HR Management')
+@section('title', 'common HR Management')
 
 @push('css_or_js')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -568,7 +568,7 @@
     background: white !important;">
             <i class="tio-dashboard-outlined"></i>
         </button>
-        @include('vendor-views/form_modals/default_dashboard')
+        @include('layouts.vendor.partials._default_dashboard_modal')
     @endif
 
 

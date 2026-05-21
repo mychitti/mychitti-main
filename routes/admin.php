@@ -94,10 +94,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         });
 
         // Laundry
-        Route::group(['prefix' => 'laundry', 'as' => 'laundry.'], function () {
-            Route::get('orders',   'LaundryController@orders')->name('orders');
-            Route::get('challans', 'LaundryController@challans')->name('challans');
-        });
+        require app_path('Modules/Laundry/routes/admin.php');
+
+        // HMIS
+        if (file_exists(app_path('Modules/HMIS/routes/admin.php'))) {
+            require app_path('Modules/HMIS/routes/admin.php');
+        }
 
         // Impersonation
         Route::post('impersonate/start', 'ImpersonateController@start')->name('impersonate.start');
@@ -122,7 +124,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::delete('{id}', 'LogController@destroy')->name('destroy');
                 Route::post('bulk-delete', 'LogController@bulkDelete')->name('bulk-delete');
             });
-            Route::get('hospital-activity-logs', 'HospitalActivityLogController@index')->name('hospital-activity-logs');
         });
 
 
@@ -200,6 +201,15 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('list', 'ServiceController@lead_list')->name('lead-list');
             Route::get('detail/{id}', 'ServiceController@lead_detail')->name('lead-detail');
             Route::get('lead-timeline/{id}', 'ServiceController@lead_timeline')->name('lead-timeline');
+
+            Route::group(['prefix' => 'lead-subscriptions', 'as' => 'lead-subscriptions.', 'namespace' => 'Admin'], function () {
+                Route::get('/', '\App\Http\Controllers\Admin\LeadSubscriptionController@index')->name('index');
+                Route::post('plan', '\App\Http\Controllers\Admin\LeadSubscriptionController@storePlan')->name('plan.store');
+                Route::post('plan/{id}', '\App\Http\Controllers\Admin\LeadSubscriptionController@updatePlan')->name('plan.update');
+                Route::get('plan/{id}/delete', '\App\Http\Controllers\Admin\LeadSubscriptionController@destroyPlan')->name('plan.destroy');
+                Route::post('grant', '\App\Http\Controllers\Admin\LeadSubscriptionController@grant')->name('grant');
+                Route::get('{id}/revoke', '\App\Http\Controllers\Admin\LeadSubscriptionController@revoke')->name('revoke');
+            });
         });
 
         Route::get('keywords', 'KeywordsController@index')->name('keywords');
@@ -271,10 +281,6 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('stores', 'PlanController@stores')->name('stores');
             Route::post('store', 'PlanController@store')->name('store');
 
-            Route::get('hospital-bed-tiers', 'HospitalBedTierController@index')->name('hospital-bed-tiers');
-            Route::post('hospital-bed-tiers', 'HospitalBedTierController@store')->name('hospital-bed-tiers.store');
-            Route::post('hospital-bed-tiers/{id}', 'HospitalBedTierController@update')->name('hospital-bed-tiers.update');
-            Route::delete('hospital-bed-tiers/{id}', 'HospitalBedTierController@destroy')->name('hospital-bed-tiers.destroy');
         });
         Route::group(['prefix' => 'ticket', 'as' => 'ticket.'], function () {
             Route::get('/', 'SupportTicketController@index')->name('index')->middleware('permission:support_ticket,list');

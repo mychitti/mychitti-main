@@ -10,9 +10,7 @@ class SitemapController extends Controller
 {
     public function generate()
     {
-        $items = DB::table('items')->where('status', 1)->get();
         $categories = DB::table('categories')->where('status', 1)->get();
-        $stores = DB::table('stores')->where('status', 1)->get();
 
         $host = request()->getHost();
         $baseUrl = $host === 'staging.mychitti.net'
@@ -20,6 +18,13 @@ class SitemapController extends Controller
             : 'https://mychitti.net';
 
         $today = date('Y-m-d');
+
+        // Zone slug map: zone_id → url-safe city slug (lowercase)
+        $zones = DB::table('zones')->pluck('name', 'id')
+            ->map(fn($name) => strtolower(str_replace(' ', '-', $name)));
+
+        $stores = DB::table('stores')->where('status', 1)->get();
+        $items  = DB::table('items')->where('status', 1)->get();
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
@@ -34,25 +39,37 @@ class SitemapController extends Controller
         $xml .= $this->urlTag($baseUrl . '/list-your-business', '2025-01-01', 'monthly', '0.6');
         $xml .= $this->urlTag($baseUrl . '/blog', $today, 'weekly', '0.7');
 
-        // Category pages
+        // Category pages — one entry per zone actually used
+        $usedZoneIds = $stores->pluck('zone_id')->unique()->filter();
         foreach ($categories as $cat) {
             $lastmod = $cat->updated_at ?? $today;
-            $xml .= $this->urlTag($baseUrl . '/category/' . $cat->slug . '/tirupati', $lastmod, 'weekly', '0.8');
-            $xml .= $this->urlTag($baseUrl . '/category/' . $cat->slug . '/hyderabad', $lastmod, 'weekly', '0.8');
+            foreach ($usedZoneIds as $zid) {
+                $citySlug = $zones[$zid] ?? null;
+                if (!$citySlug) continue;
+                $xml .= $this->urlTag($baseUrl . '/category/' . $cat->slug . '/' . $citySlug, $lastmod, 'weekly', '0.8');
+            }
         }
 
-        // Store pages
+        // Store pages + gallery — one city per store based on zone
         foreach ($stores as $store) {
-            $lastmod = $store->updated_at ?? $today;
-            $xml .= $this->urlTag($baseUrl . '/tirupati/store/' . $store->slug, $lastmod, 'weekly', '0.7');
-            $xml .= $this->urlTag($baseUrl . '/hyderabad/store/' . $store->slug, $lastmod, 'weekly', '0.7');
+            $lastmod   = $store->updated_at ?? $today;
+            $citySlug  = $store->zone_id ? ($zones[$store->zone_id] ?? null) : null;
+            if ($citySlug) {
+                $xml .= $this->urlTag($baseUrl . '/' . $citySlug . '/store/' . $store->slug, $lastmod, 'weekly', '0.7');
+            }
+            $xml .= $this->urlTag($baseUrl . '/gallery/' . $store->slug, $lastmod, 'monthly', '0.5');
         }
 
-        // Item pages
+        // Item pages — city from the store the item belongs to
+        $storeZones = $stores->pluck('zone_id', 'id');
         foreach ($items as $item) {
-            $lastmod = $item->updated_at ?? $today;
-            $xml .= $this->urlTag($baseUrl . '/tirupati/' . $item->slug, $lastmod, 'weekly', '0.6');
-            $xml .= $this->urlTag($baseUrl . '/hyderabad/' . $item->slug, $lastmod, 'weekly', '0.6');
+            $lastmod  = $item->updated_at ?? $today;
+            $citySlug = isset($item->store_id, $storeZones[$item->store_id])
+                ? ($zones[$storeZones[$item->store_id]] ?? null)
+                : null;
+            if ($citySlug) {
+                $xml .= $this->urlTag($baseUrl . '/' . $citySlug . '/' . $item->slug, $lastmod, 'weekly', '0.6');
+            }
         }
 
         // Policy pages - lastmod from data_settings

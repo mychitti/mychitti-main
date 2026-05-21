@@ -162,7 +162,7 @@ class VendorController extends Controller
         $store->vendor_id = $vendor->id;
         $store->zone_id = $request->zone_id;
         $store->vendor_type = $request->vendor_type ?? 'regular';
-        $store->module_id = $request->module_id;
+        $store->module_id = strtolower($request->business_type ?? '') === 'ecommerce' ? 5 : $request->module_id;
         if (!$request->has('minimum_delivery_time')) {
             $store->delivery_time = 0 . '-' . 0 . ' ' . 'min';
         } else {

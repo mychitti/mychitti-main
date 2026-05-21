@@ -33,7 +33,6 @@ use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use Illuminate\Http\File as IlluminateFile;
 use Mpdf\Mpdf;
 
-
 class InventoryController extends Controller
 {
     public function dashboard(Request $request)
@@ -670,13 +669,16 @@ class InventoryController extends Controller
     public function update_item(Request $request)
     {
         $validator = FacadesValidator::make($request->all(), [
-            'item_name'            => 'required|string|max:255',
             'mrp'                  => 'required',
             'unit'              => 'required',
             'gst_rate'            => 'required|numeric|min:0',
             // 'selling_price'            => 'required|numeric|min:0',
             'item_type'            => 'required',
             'category'            => 'required',
+            'item_name' => Rule::unique('items')->where(function ($query) use ($request) {
+                return $query->where('category', $request->category)
+                    ->where('store_id', $request->store_id);
+            })->ignore($itemId),
         ]);
         $inventory_item =  InventoryItem::findOrFail($request->item_id);
 
@@ -916,11 +918,16 @@ class InventoryController extends Controller
 
     public function save_item(Request $request)
     {
+        $store_id = Helpers::get_store_id();
         $rules = [
-            'item_name' => 'required|string|max:255',
             'item_type' => 'required',
             'category'  => 'required',
+            'item_name' => Rule::unique('items')->where(function ($query) use ($request, $store_id) {
+                return $query->where('category', $request->category)
+                    ->where('store_id', $store_id);
+            }),
         ];
+
 
         if ($request->item_type !== 'service') {
             $rules = array_merge($rules, [

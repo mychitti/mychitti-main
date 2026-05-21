@@ -155,6 +155,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
 
+        // LEAD ROUND DISPATCH =======================================
+        $schedule->command('leads:dispatch-rounds')
+            ->everyMinute()
+            ->timezone($tz)
+            ->name('lead-round-dispatch')
+            ->withoutOverlapping();
+
         // LEAD NOTE REMINDERS =======================================
         $schedule->call(function () {
             $due = \App\Models\LeadNote::whereNotNull('remind_at')

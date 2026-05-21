@@ -52,8 +52,12 @@
 //     utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.1.0/build/js/utils.js",
 //   });
 
-    $('#phoneInp').on('input', function() { 
+    $('#phoneInp').on('input', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
+    }).on('paste', function(e) {
+        e.preventDefault();
+        const digits = (e.originalEvent.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 10);
+        this.value = digits;
     });
 
   $('.loginForm').on('submit', function (e){

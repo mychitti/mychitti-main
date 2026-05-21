@@ -1,5 +1,5 @@
 @extends('layouts.vendor.app')
-@section('title', 'Leads Dashboard')
+@section('title', _isHospital() ? 'Appointments Dashboard' : 'Leads Dashboard')
 
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
@@ -108,14 +108,14 @@
     <div class="content container-fluid">
 
         <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-            <h1 class="page-header-title">Leads Dashboard</h1>
+            <h1 class="page-header-title">{{ _isHospital() ? 'Appointments Dashboard' : 'Leads Dashboard' }}</h1>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 @if (auth('vendor')->check())
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-sm" data-toggle="modal"
                         data-target="#defaultDashboardModal" style="font-size:17px;font-weight:600;">
                         <i class="tio-dashboard-outlined"></i>
                     </button>
-                    @include('vendor-views/form_modals/default_dashboard')
+                    @include('layouts.vendor.partials._default_dashboard_modal')
                 @endif
                 <form class="date-range-form" method="GET" action="{{ route('vendor.service.leads-dashboard') }}">
                     <input type="hidden" name="date_range" value="{{ $preset }}">
@@ -144,7 +144,7 @@
         @endphp
         <div class="ld-stat-grid">
             <a href="{{ $leadsUrl('All') }}" class="ld-stat ld-dark">
-                <div class="ld-stat-label">Total Leads</div>
+                <div class="ld-stat-label">{{ _isHospital() ? 'Total Appointments' : 'Total Leads' }}</div>
                 <div class="ld-stat-val">{{ $total }}</div>
             </a>
             <a href="{{ $leadsUrl('Accepted') }}" class="ld-stat ld-blue">
@@ -203,7 +203,7 @@
         <div class="row" style="margin:0 -5px;">
             <div class="col-md-6" style="padding:0 5px;">
                 <div class="ld-card">
-                    <div class="ld-card-title">Leads Over Time</div>
+                    <div class="ld-card-title">{{ _isHospital() ? 'Appointments Over Time' : 'Leads Over Time' }}</div>
                     <canvas id="lineChart" height="140"></canvas>
                 </div>
             </div>
@@ -228,12 +228,12 @@
         {{-- ── Recent Leads ── --}}
         <div class="ld-card" style="margin-top:10px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <div class="ld-card-title" style="margin:0;">Recent Leads</div>
+                <div class="ld-card-title" style="margin:0;">{{ _isHospital() ? 'Recent Appointments' : 'Recent Leads' }}</div>
                 <a href="{{ route('vendor.service.leads_list') }}?date_range={{ $preset }}&custom_date_range={{ request('custom_date_range', '') }}"
                     style="font-size:11px;font-weight:600;color:#3b82f6;text-decoration:none;">View All →</a>
             </div>
             @if ($recentLeads->isEmpty())
-                <p style="font-size:12px;color:#a1a1aa;text-align:center;padding:16px 0;margin:0;">No leads in this period.
+                <p style="font-size:12px;color:#a1a1aa;text-align:center;padding:16px 0;margin:0;">{{ _isHospital() ? 'No appointments in this period.' : 'No leads in this period.' }}
                 </p>
             @else
                 <div style="overflow-x:auto;">
@@ -321,7 +321,7 @@
             data: {
                 labels: @json($dailyLabels),
                 datasets: [{
-                        label: 'New Leads',
+                        label: '{{ _isHospital() ? "New Appointments" : "New Leads" }}',
                         data: @json($dailyNew),
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59,130,246,0.08)',
@@ -402,7 +402,7 @@
             data: {
                 labels: @json($topServices->pluck('name')),
                 datasets: [{
-                    label: 'Leads',
+                    label: '{{ _isHospital() ? "Appointments" : "Leads" }}',
                     data: @json($topServices->pluck('cnt')),
                     backgroundColor: 'rgba(59,130,246,0.75)'
                 }]

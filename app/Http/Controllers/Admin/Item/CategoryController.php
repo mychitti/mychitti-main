@@ -106,13 +106,13 @@ class CategoryController extends BaseController
     {
         $categories = $this->categoryRepo->getListWhere(
             searchValue: $request['search'],
-            filters: ['position' => $request['position']],
+            filters: ['position' => $request['position'], 'added_by' => null],
             relations: ['module'],
             dataLimit: config('default_pagination')
         );
 
         $mainCategories = $this->categoryRepo->getMainList(
-            filters: ['position' => 0],
+            filters: ['position' => 0, 'added_by' => null],
             relations: ['module'],
         );
 

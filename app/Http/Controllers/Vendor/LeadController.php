@@ -122,9 +122,9 @@ class LeadController extends Controller
             }
             if ($request->action == 'end') {
                 DB::table('accepted_service_requests')->where(['vendor_id' => $empId])->update(['completed_at' => NOW()]);
-                DB::table('vendor_emp_jobs')->where(['acc_id' => $acc_id, 'emp_id' =>  $empId])->update(['ended_at' => NOW()]);
+                DB::table('vendor_emp_jobs')->where('acc_id', $acc_id)->whereIn('emp_id', [$empId, 0])->update(['ended_at' => NOW()]);
             } else {
-                DB::table('vendor_emp_jobs')->where(['acc_id' => $acc_id, 'emp_id' =>  $empId])->update(['started_at' => NOW(), 'assign_type' => $accDet->assigned_type]);
+                DB::table('vendor_emp_jobs')->where('acc_id', $acc_id)->whereIn('emp_id', [$empId, 0])->update(['started_at' => NOW(), 'assign_type' => $accDet->assigned_type]);
             }
 
             DB::table('lead_statuses')->insert([
@@ -149,12 +149,12 @@ class LeadController extends Controller
         $ser3 = ServiceRequest::where('id', $serviceReq->service_request_id)->first();
         // OTP verification required for completion
         if ($stts_id == 12 && $request->has('otp')) {
-            $otp = $request->otp;
+            $otp = implode('', (array) $request->otp);
             $userPhone = User::find($ser3->user_id)?->phone;
             if (!$userPhone) {
                 return response()->json(['status' => false, 'message' => 'User phone number not valid.']);
             } else if (!_verify_otp($userPhone, $otp)) { 
-                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP11.']);
+                return response()->json(['status' => false, 'message' => 'Invalid or expired OTP.']);
             }
         }
         $service_id = $serviceReq->service_request_id;
@@ -328,23 +328,10 @@ class LeadController extends Controller
     }
     public function change_job_status(Request $request)
     {
-        $otp = rand(1000, 9999);
         $service_id = $request->service_id;
         $serviceDet = DB::table('service_requests')->where('id', $service_id)->first();
-        $phone = User::where('id', $serviceDet->user_id)->first()->phone;
-
-        $cm_firebase_token = User::where('id', $serviceDet->user_id)->first()->cm_firebase_token;
-
-        $data = [
-            'order_id' => '',
-            'image' => '',
-            'type' => 'block'
-        ];
-
-        $data['title'] =  "Confirm Job Completion";
-        $data['description'] = "Your service has been completed.\nPlease confirm the job by sharing this OTP: " . $otp . "\nThank you for choosing us!";
-
-        Helpers::send_push_notif_to_device($cm_firebase_token, $data, '');
+        $user       = User::where('id', $serviceDet->user_id)->first();
+        $phone      = $user->phone;
 
         $check = _check_otp_send_allowed($phone);
         if (!$check['allowed']) {
@@ -352,6 +339,24 @@ class LeadController extends Controller
         }
 
         $otp = rand(1000, 9999);
+
+        $data = [
+            'title'       => 'Confirm Job Completion',
+            'description' => "Your service has been completed.\nPlease confirm the job by sharing this OTP: {$otp}\nThank you for choosing us!",
+            'order_id'    => $service_id,
+            'image'       => '',
+            'type'        => 'block',
+        ];
+        Helpers::send_push_notif_to_device($user->cm_firebase_token, $data, '');
+        DB::table('user_notifications')->insert([
+            'data'       => json_encode($data),
+            'user_id'    => $user->id,
+            'type'       => 'service',
+            'type_id'    => $service_id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         _store_otp($phone, $otp);
         _send_confirmation_sms('job_msg', $phone, $otp);
         return 1;

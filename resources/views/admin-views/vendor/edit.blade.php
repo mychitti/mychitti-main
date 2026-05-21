@@ -338,7 +338,7 @@
                                                         @foreach ($business_types as $key => $value)
                                                             <option
                                                                 {{ $store->business_type == $value->name ? 'selected' : '' }}
-                                                                value="{{ $value->name }}">{{ $value->name }}
+                                                                value="{{ $value->name }}">{{ $value->display_name ?? $value->name }}
                                                             </option>
                                                         @endforeach
                                                     </select>
@@ -355,7 +355,7 @@
                                                         @foreach ($business_types as $key => $value)
                                                             <option
                                                                 {{ $store->business_type == $value->name ? 'selected' : '' }}
-                                                                value="{{ $value->name }}">{{ $value->name }}
+                                                                value="{{ $value->name }}">{{ $value->display_name ?? $value->name }}
                                                             </option>
                                                         @endforeach
                                                     </select>

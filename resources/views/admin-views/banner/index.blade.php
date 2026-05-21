@@ -118,28 +118,19 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-6  paid_field " id="">
+                                    <div class="form-group col-md-6" id="price_field">
                                         <label class="input-label" for="exampleFormControlInput1">Price</label>
-                                        <input name="price" required type="number" class="form-control" placeholder="Price">
+                                        <input name="price" type="number" class="form-control" placeholder="Price">
                                     </div>
-                                    <div class="form-group col-md-6 paid_field" id="">
-                                        <label class="input-label" for="exampleFormControlInput1">Validity</label>
-                                        <div class="row px-3">
-                                            <input name="validity_count" type="number" class="form-control col-6" placeholder="Validity">
-                                            <select name="validity_type" class="form-control col-6" id="">
-                                                <option value="Days">Days</option>
-                                                <option value="Months">Months</option>
-                                                <option value="Years">Years</option>
-                                            </select>
-                                        </div>
+                                    <div class="form-group col-md-6" id="expiry_field">
+                                        <label class="input-label">Expiry Date</label>
+                                        <input name="expiry_date" type="date" class="form-control" min="{{ date('Y-m-d') }}">
                                     </div>
-                                    <div class="form-group col-md-6  paid_field" id="">
+                                    <div class="form-group col-md-6" id="gst_field">
                                         <label class="input-label" for="exampleFormControlInput1">GST</label>
                                         <div class="row px-3">
-
-                                            <input name="gst_percent" required type="text" class="form-control col-6" placeholder="GST %">
+                                            <input name="gst_percent" type="text" class="form-control col-6" placeholder="GST %">
                                             <input name="hsn" type="text" class="form-control col-6" placeholder="HSN">
-                                          
                                         </div>
                                     </div>
 
@@ -399,6 +390,31 @@
     <script>
         "use strict";
 
+        function banner_type_change(order_type) {
+            $('#store_wise, #item_wise, #default, #module_wise, #category_wise').css('display', 'none');
+            if (order_type === 'self') {
+                $('#customer_wise, #price_field, #gst_field').css('display', 'none');
+                return;
+            }
+            $('#price_field, #gst_field').css('display', 'block');
+            if (order_type === 'store_wise') {
+                $('#store_wise').css('display', 'block');
+                $('#customer_wise').css('display', 'none');
+            } else {
+                $('#customer_wise').css('display', 'block');
+                if (order_type === 'item_wise')          $('#item_wise').css('display', 'block');
+                else if (order_type === 'default')       $('#default').css('display', 'block');
+                else if (order_type === 'module_wise')   $('#module_wise').css('display', 'block');
+                else if (order_type === 'category_wise') $('#category_wise').css('display', 'block');
+            }
+        }
+        $('#banner_type').on('change', function () {
+            banner_type_change($(this).val());
+        });
+        $(function () {
+            banner_type_change($('#banner_type').val() || 'store_wise');
+        });
+
         $(document).on('change', '.banner-sort-order', function () {
             const id = $(this).data('id');
             const sort_order = $(this).val();
@@ -533,14 +549,5 @@
         }
     });
 
-    $("#banner_type").on('change', function(){
-        if($(this).val() == 'store_wise'){
-            $("#store_wise").show();
-            $("#customer_wise").hide();
-        }else{
-            $("#store_wise").hide();
-            $("#customer_wise").show();
-        }
-    })
     </script>
 @endpush

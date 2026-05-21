@@ -82,6 +82,14 @@ class ServiceRequestController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
+        $recentCount = ServiceRequest::where('user_id', $request->user_id)
+            ->where('item_id', $request->item_id)
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->count();
+        if ($recentCount >= 2) {
+            return response()->json(['errors' => [['code' => 'rate_limit', 'message' => 'You have already submitted 2 requests for this service in the last 10 minutes. Please try again later.']]], 429);
+        }
+
         $user = User::find($request->user_id);
         if (!$request->filled('preferred_doctor_id')) {
             $address_exists = CustomerAddress::where('id', $request->address_id)->first();
@@ -111,7 +119,8 @@ class ServiceRequestController extends Controller
         }
 
         $storeId = $request->storeId ?? false;
-        $storesChunk = Helpers::get_store_range($request->item_id, $request->header('zoneId'), $request->user_id, $storeId);
+        $storeChunks = Helpers::get_stores_for_lead_rounds($request->item_id, $request->header('zoneId'), $request->user_id, $storeId);
+        $storesChunk = $storeChunks[0];
 
         if (empty($storesChunk)) {
             return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
@@ -124,11 +133,17 @@ class ServiceRequestController extends Controller
             $isDedicated = $dedicatedCheck ? true : false;
         }
 
+        $roundTimeout = (int)(Helpers::get_settings('leads_dispatch_round_timeout') ?: 5);
+
         $city = $request->city;
         $serviceReq = new ServiceRequest;
         $serviceReq->user_id = $request->user_id;
         $serviceReq->item_id = $request->item_id;
         $serviceReq->sent_to = implode(',', $storesChunk);
+        $serviceReq->dispatch_round = 1;
+        $serviceReq->dispatch_round_expires_at = now()->addMinutes($roundTimeout);
+        $serviceReq->round_2_stores = !empty($storeChunks[1]) ? implode(',', $storeChunks[1]) : null;
+        $serviceReq->round_3_stores = !empty($storeChunks[2]) ? implode(',', $storeChunks[2]) : null;
         $serviceReq->is_dedicated = $isDedicated ? 1 : 0;
         $serviceReq->qty = 1;
         $serviceReq->requirements = $request->requirements;
@@ -701,6 +716,9 @@ class ServiceRequestController extends Controller
             if ($acceptedReq->update()) {
 
                 // apply charges ============================
+                if ($applyCharges && !\App\CentralLogics\Helpers::store_has_active_lead_subscription((int)$acceptedReq->vendor_id)) {
+                    $applyCharges = false;
+                }
                 if ($applyCharges) {
                     try {
                         //code...

@@ -74,47 +74,6 @@
             position: relative;
         }
 
-        .card-ring {
-            position: absolute;
-            width: 20px;
-            height: 45px;
-            top: -18px;
-        }
-
-        /* Rounded bottom */
-        .card-ring::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #b8c4cf;
-            background: radial-gradient(circle at 30% 30%, #d8dfe5, #a8b4bf);
-            bottom: 9px;
-            left: -5px;
-            border-radius: 50%;
-        }
-
-        /* Main cylinder body */
-        .card-ring::after {
-            content: '';
-            position: absolute;
-            width: 6px;
-            height: 27px;
-            background: #a8b4bf;
-            background: linear-gradient(90deg, #98a4af 0%, #c8d0d8 50%, #98a4af 100%);
-            top: 0;
-            left: 2px;
-            border-radius: 8px;
-        }
-
-        .ring-left {
-            left: 70px;
-        }
-
-        .ring-right {
-            right: 70px;
-        }
-
         .repair-card-title {
             text-align: center;
             margin-top: 7px;
@@ -441,8 +400,6 @@
 
                         <div class="repair-card-container {{ $status . '-color' }} "
                             @if (hasPermission('project_task', 'view')) onclick="handleClick('{{ route('admin.project.task.detail', [$task->id]) }}', event)" @endif>
-                            <div class="card-ring ring-left"></div>
-                            <div class="card-ring ring-right"></div>
 
                             <div class="repair-card-title">{{ $task->title }}</div>
                             <div class="repair-card-title">Task Id: {{ $task->task_id }}</div>

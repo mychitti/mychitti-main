@@ -34,6 +34,17 @@
         async="async"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
+        .sticky_enq_btn {
+            background-color: #ff8517 !important;
+            border-color: #ff8517 !important;
+            animation: enq-pulse 1.8s ease-out infinite;
+        }
+        @keyframes enq-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255, 133, 23, 0.55); }
+            70%  { box-shadow: 0 0 0 12px rgba(255, 133, 23, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 133, 23, 0); }
+        }
+
         .rating-stars {
             position: relative;
             display: inline-block;
@@ -649,19 +660,19 @@
                                             Enquiry Now</a> --}}
 
                                     <a onclick="bookService({{ $item->id }}, this)"
-                                        class="btn btn-primary border-3 border-primary rounded sticky_action_btn text-light btn-lg"><i
-                                            class="fas fa-user-cog"></i> Enquiry
+                                        class="btn btn-primary border-3 border-primary rounded sticky_action_btn sticky_enq_btn text-light btn-lg"><i
+                                            class="fas fa-user-cog"></i> &nbsp; Enquiry
                                         Now</a>
                                 @else
                                     <a data-bs-toggle="modal" data-bs-target="#loginModal"
-                                        class="btn btn-primary border-3 border-primary rounded sticky_action_btn text-light btn-lg"><i
-                                            class="fas fa-user-cog"></i> Enquiry
+                                        class="btn btn-primary border-3 border-primary rounded sticky_action_btn sticky_enq_btn text-light btn-lg"><i
+                                            class="fas fa-user-cog"></i> &nbsp; Enquiry
                                         Now</a>
 
                                     <a data-bs-toggle="modal" data-bs-target="#loginModal"
                                         class="btn btn-lg btn-primary rounded text-light  px-3 my-3"><i
                                             class="fas fa-user-cog"></i>
-                                        Enquiry Now</a>
+                                         &nbsp;Enquiry Now</a>
                                 @endif
 
                             <p class="desc">

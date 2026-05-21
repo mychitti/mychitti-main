@@ -151,6 +151,10 @@
 
         $('#phoneInp').on('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
+        }).on('paste', function(e) {
+            e.preventDefault();
+            const digits = (e.originalEvent.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 10);
+            this.value = digits;
         });
 
         // Toggle between password and OTP login
@@ -166,6 +170,10 @@
         // OTP phone input - digits only
         $('#otpPhoneInp').on('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
+        }).on('paste', function(e) {
+            e.preventDefault();
+            const digits = (e.originalEvent.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 10);
+            this.value = digits;
         });
 
         // Auto-focus next OTP digit

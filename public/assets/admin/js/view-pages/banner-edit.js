@@ -23,26 +23,24 @@ $('#banner_type').on('change', function () {
     banner_type_change(order_type);
 })
 function banner_type_change(order_type) {
-    // Hide all first
-    $('#store_wise, #item_wise, #default, #module_wise, #category_wise').hide();
-    // Show/hide customer_wise based on store_wise
-    if(order_type=='store_wise'){
-        $('#store_wise').show();
-        $('#customer_wise').hide();
-    } else {
-        $('#customer_wise').show();
+    $('#store_wise, #item_wise, #default, #module_wise, #category_wise').css('display', 'none');
+
+    if (order_type === 'self') {
+        $('#customer_wise, #price_field, #gst_field').css('display', 'none');
+        return;
     }
 
-    if(order_type=='item_wise'){
-        $('#item_wise').show();
-    } else if(order_type=='store_wise'){
-        $('#store_wise').show();
-    } else if(order_type=='default'){
-        $('#default').show();
-    } else if(order_type=='module_wise'){
-        $('#module_wise').show();
-    } else if(order_type=='category_wise'){
-        $('#category_wise').show();
+    $('#price_field, #gst_field').css('display', 'block');
+
+    if (order_type === 'store_wise') {
+        $('#store_wise').css('display', 'block');
+        $('#customer_wise').css('display', 'none');
+    } else {
+        $('#customer_wise').css('display', 'block');
+        if (order_type === 'item_wise')          $('#item_wise').css('display', 'block');
+        else if (order_type === 'default')       $('#default').css('display', 'block');
+        else if (order_type === 'module_wise')   $('#module_wise').css('display', 'block');
+        else if (order_type === 'category_wise') $('#category_wise').css('display', 'block');
     }
 }
 

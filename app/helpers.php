@@ -1228,28 +1228,39 @@ function _quickActions()
 }
 function selected_menu($key, $menu_type = 'sidebar')
 {
-    // check if vendor has menu preference saved 
+    $storeId = Helpers::get_store_id();
+
     $saved_pref = DB::table('store_menu_visibility')
-        ->where('store_id', Helpers::get_store_id())
+        ->where('store_id', $storeId)
         ->where('menu_type', $menu_type)
         ->exists();
+
     if ($saved_pref) {
-        return DB::table('store_menu_visibility')
-            ->where('store_id', Helpers::get_store_id())
+        $record = DB::table('store_menu_visibility')
+            ->where('store_id', $storeId)
             ->where('menu_key', $key)
-            ->where('is_visible', 1)
             ->where('menu_type', $menu_type)
-            ->exists();
+            ->first();
+
+        // Explicit record found — honour it (is_visible 1 or 0)
+        if ($record !== null) {
+            return (bool) $record->is_visible;
+        }
+
+        // Key not yet in the table (e.g. new menu item added after first save).
+        // Return false — the vendor must save preferences once to activate it.
+        return false;
     }
-    // default options
-    elseif ($menu_type == 'sidebar') {
+
+    // No preferences saved at all → use menu defaults
+    if ($menu_type == 'sidebar') {
         return DB::table('menu')
             ->where('slug', $key)
             ->where('default', 1)
             ->exists();
-    } else {
-        return false;
     }
+
+    return false;
 }
 function _subMoudles()
 {
@@ -3502,7 +3513,7 @@ if (!function_exists('hasPermission')) {
             return true;
         }
 
-        // check if free 
+        // check if free
         if (auth('vendor')->check()) {
 
             $featureAction = DB::table('feature_permissions as fp')
@@ -3515,7 +3526,32 @@ if (!function_exists('hasPermission')) {
                 return true;
             }
         }
-        
+
+        // Features with no master_module are role-managed without a subscription requirement.
+        // Vendor owner always passes; staff employees check role_feature_permissions.
+        $isNullModuleFeature = DB::table('feature_permissions as fp')
+            ->join('features as f', 'fp.feature_id', '=', 'f.id')
+            ->where('f.name', $feature)
+            ->where('fp.action', $action)
+            ->whereNull('f.master_module')
+            ->exists();
+
+        if ($isNullModuleFeature) {
+            if (auth('vendor')->check()) {
+                return true;
+            }
+            $user = Auth::guard('vendor_employee')->user();
+            if (! $user || ! $user->employee_role_id) {
+                return false;
+            }
+            return DB::table('role_feature_permissions as rfp')
+                ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')
+                ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                ->where('rfp.role_id', $user->employee_role_id)
+                ->where('f.name', $feature)
+                ->where('fp.action', $action)
+                ->exists();
+        }
 
         $permissionRow = DB::table('role_feature_permissions as rfp')
             ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')
@@ -4961,7 +4997,7 @@ if (!function_exists('_navCats')) {
     function _navCats()
     {
         $cats = DB::table('categories')
-            ->where(['position' => 0, 'status' => 1,  'parent_id' => 0, 'module_id' => 6])
+            ->where(['position' => 0, 'status' => 1,  'parent_id' => 0, 'module_id' => 6])->whereNull('added_by')
             ->orderBy('priority', 'desc')->get();
 
         return $cats;

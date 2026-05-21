@@ -78,9 +78,8 @@ class ServiceController extends Controller
             if ($acceptedReq->update()) {
 
                 // apply charges ============================
-                if ($applyCharges) {
+                if ($applyCharges && !\App\CentralLogics\Helpers::store_has_active_lead_subscription((int)$acceptedReq->vendor_id)) {
                     try {
-                        //code...
                         $vendor_id = Store::where('id', $acceptedReq->vendor_id)->value('vendor_id');
 
                         $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
@@ -88,7 +87,6 @@ class ServiceController extends Controller
                         $wallet->increment('total_withdrawn', $confirmationCharges);
                         $wallet->save();
 
-                        //insert into transactions 
                         $account_transaction = new AccountTransaction();
                         $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');
                         $account_transaction->from_type = 'store';

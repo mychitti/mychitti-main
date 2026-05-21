@@ -10,6 +10,7 @@ class StoreConfig extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'paid_unpaid_options',
         'token_prefix',
         'pos_token_template',
         'invoice_template',

@@ -538,7 +538,13 @@
                                     <span class="text-truncate"> View Lead Charges</span>
                                 </a>
                             </li>
-                         
+                            <li class="nav-item {{ Request::is('service/lead-subscriptions*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.service.lead-subscriptions.index') }}" title="Lead Subscriptions">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Lead Subscriptions</span>
+                                </a>
+                            </li>
+
                             <li class="nav-item {{ Request::is('lead/add') ? 'active' : '' }}">
                                 <a class="nav-link " href="{{ route('admin.lead.add') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }} Lead">
                                     <span class="tio-circle nav-indicator-icon"></span>
@@ -572,6 +578,12 @@
                             <a class="nav-link " href="{{ route('admin.service.lead-charge-list') }}" title="Lead Charge">
                                 <span class="tio-circle nav-indicator-icon"></span>
                                 <span class="text-truncate"> View Lead Charges</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('service/lead-subscriptions*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.service.lead-subscriptions.index') }}" title="Lead Subscriptions">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">Lead Subscriptions</span>
                             </a>
                         </li>
                     </ul>

@@ -8,6 +8,7 @@ use App\Models\EmployeeRole;
 use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -148,65 +149,4 @@ class BasicStaffController extends Controller
         return back();
     }
 
-    // ─── Roles ───────────────────────────────────────────────────
-
-    public function roles()
-    {
-        $roles = EmployeeRole::where('store_id', Helpers::get_store_id())->latest()->get();
-
-        return view('vendor-views.basic-staff.roles', compact('roles'));
-    }
-
-    public function storeRole(Request $request)
-    {
-        $request->validate([
-            'name' => [
-                'required', 'string', 'max:100',
-                Rule::unique('employee_roles', 'name')->where(fn ($q) => $q->where('store_id', Helpers::get_store_id())),
-            ],
-        ]);
-
-        $role           = new EmployeeRole();
-        $role->name     = $request->name;
-        $role->modules  = null;
-        $role->status   = 1;
-        $role->store_id = Helpers::get_store_id();
-        $role->save();
-
-        Toastr::success('Role created.');
-        return back();
-    }
-
-    public function updateRole(Request $request, $id)
-    {
-        $role = EmployeeRole::where('store_id', Helpers::get_store_id())->findOrFail($id);
-
-        $request->validate([
-            'name' => [
-                'required', 'string', 'max:100',
-                Rule::unique('employee_roles', 'name')->where(fn ($q) => $q->where('store_id', Helpers::get_store_id()))->ignore($id),
-            ],
-        ]);
-
-        $role->name = $request->name;
-        $role->save();
-
-        Toastr::success('Role updated.');
-        return back();
-    }
-
-    public function destroyRole($id)
-    {
-        $role = EmployeeRole::where('store_id', Helpers::get_store_id())->findOrFail($id);
-
-        // Unassign staff from this role before deleting
-        VendorEmployee::where('store_id', Helpers::get_store_id())
-            ->where('employee_role_id', $id)
-            ->update(['employee_role_id' => null]);
-
-        $role->delete();
-
-        Toastr::success('Role deleted.');
-        return back();
-    }
 }

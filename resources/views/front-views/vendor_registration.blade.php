@@ -474,7 +474,7 @@
                                 <select name="business_type" class="form-select business_type" id="shop_business_type">
                                     <option value=""></option>
                                     @foreach ($shop_stores_type as $key => $value)
-                                        <option value="{{ $value->name }}">{{ $value->name }}</option>
+                                        <option value="{{ $value->name }}">{{ $value->display_name ?? $value->name }}</option>
                                     @endforeach
                                     <option value="other">Other</option>
                                 </select>
@@ -488,7 +488,7 @@
                                 <select class="form-select business_type" id="mycity_business_type">
                                     <option value=""></option>
                                     @foreach ($service_stores_type as $key => $value)
-                                        <option value="{{ $value->name }}">{{ $value->name }}</option>
+                                        <option value="{{ $value->name }}">{{ $value->display_name ?? $value->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

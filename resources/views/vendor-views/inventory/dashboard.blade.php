@@ -279,7 +279,7 @@
                         style="font-size:11px;font-weight:600;white-space:nowrap;">
                         <i class="tio-dashboard-outlined"></i>
                     </button>
-                    @include('vendor-views/form_modals/default_dashboard')
+                    @include('layouts.vendor.partials._default_dashboard_modal')
                 @endif
                 <form action="" class="d-flex date-range-form">
                     <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"

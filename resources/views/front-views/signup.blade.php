@@ -7,23 +7,16 @@
 @endpush
 
 @section('content')
-    <div id="spacer" style="height: 38px;"></div>
-    <!-- Single Page Header start -->
-    <div class="container-fluid page-header py-5">
-        <h1 class="text-center text-white display-6">Signup</h1>
-        <ol class="breadcrumb justify-content-center mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-            <li class="breadcrumb-item active text-white">Signup</li>
-        </ol>
-    </div>
-    <!-- Single Page Header End -->
+    <div id="spacer" style="height: 78px;"></div>
+        <h1 class="text-center display-6">Signup</h1>
+        <p class="text-center">Sign up free and unlock everything you need</p>
 
 
     <!-- Contact Start -->
     <div class="container-fluid contact py-1 mt-3">
         <div class="container">
             <div class="contact_div bg-light rounded" style="max-width: 550px;
-    margin: 0 auto;">
+    margin: 20px auto;">
                 <div class="row">
                     <form class="formSubmit2 row" action="{{ route('signup.post') }}" method="post">
                         @csrf
@@ -73,7 +66,7 @@
                             <input type="checkbox" class="form-check-input" id="exampleCheck1">
                             <label class="form-check-label" for="exampleCheck1">Remember Me</label>
                         </div> -->
-                        <button type="submit" class="w-100 btn btn-primary ">Signup</button>
+                        <button type="submit" class="w-100 btn btn-primary mb-3">Signup</button>
 
                         <small>Already have an account? <a href="{{ route('user-login') }}">Login</a></small><br>
                         <!-- <small><a href="{{ route('forgot-password') }}">Forgot Password?</a></small> -->
@@ -100,6 +93,11 @@
 
         $('#phoneInp').on('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
+        }).on('paste', function(e) {
+            e.preventDefault();
+            const pasted = (e.originalEvent.clipboardData || window.clipboardData).getData('text');
+            const digits = pasted.replace(/\D/g, '').slice(0, 10);
+            this.value = digits;
         });
 
         $(".formSubmit2").on("submit", function(e) {

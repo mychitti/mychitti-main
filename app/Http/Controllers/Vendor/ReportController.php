@@ -7,9 +7,11 @@ use App\Models\DisbursementDetails;
 use App\Models\Expense;
 use App\Models\WithdrawalMethod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use App\CentralLogics\Helpers;
 use App\Exports\ExpenseReportExport;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Rap2hpoutre\FastExcel\FastExcel;
 
@@ -230,6 +232,71 @@ class ReportController extends Controller
         }
         return Excel::download(new DisbursementVendorReportExport($data), 'DisbursementReport.xlsx');
 
+    }
+
+    public function staff_combined_report(Request $request)
+    {
+        if (!auth('vendor_employee')->check()) {
+            abort(403);
+        }
+
+        $storeId = Helpers::get_store_id();
+        $empId   = auth('vendor_employee')->id();
+
+        $preset = $request->input('date_range', Cookie::get('date_range', 'this_year'));
+        if ($request->has('date_range')) {
+            Cookie::queue('date_range', $preset, 60 * 24 * 360);
+        }
+        $custom = $request->input('custom_date_range');
+        $range  = Helpers::calculatePresetDates($preset, $custom);
+        $from   = $range['start']->toDateString();
+        $to     = $range['end']->toDateString();
+        $formattedFrom = $range['start'];
+        $formattedTo   = $range['end'];
+
+        $applyDate = function ($q, $col) use ($formattedFrom, $formattedTo) {
+            $q->whereBetween($col, [$formattedFrom, $formattedTo]);
+        };
+
+        // ── Leads ──────────────────────────────────────────────────────
+        $leadsQ = DB::table('accepted_service_requests as asr')
+            ->join('service_requests as sr', 'sr.id', 'asr.service_request_id')
+            ->join('items', 'items.id', 'sr.item_id')
+            ->where('asr.vendor_id', $storeId)
+            ->where('asr.assigned_to', $empId)
+            ->where('asr.assigned_type', 'staff');
+        $applyDate($leadsQ, 'asr.assigned_at');
+
+        $leads = $leadsQ->select('asr.*', 'items.name as item_name')
+            ->orderByDesc('asr.assigned_at')->get();
+
+        // ── Tasks ───────────────────────────────────────────────────────
+        $tasksQ = DB::table('store_tasks as t')
+            ->where('t.store_id', $storeId)
+            ->where('t.offered_to', $empId)
+            ->whereNull('t.parent_id');
+        $applyDate($tasksQ, 't.created_at');
+
+        $tasks = $tasksQ->select('t.*')->orderByDesc('t.created_at')->get();
+
+        // ── Projects (team leader OR team member) ───────────────────────
+        $projectsQ = DB::table('projects as p')
+            ->where('p.vendor_id', $storeId)
+            ->where(function ($q) use ($empId) {
+                $q->where('p.team_leader', $empId)
+                  ->orWhereExists(function ($sub) use ($empId) {
+                      $sub->from('project_team_members as ptm')
+                          ->whereColumn('ptm.project_id', 'p.id')
+                          ->where('ptm.employee_id', $empId);
+                  });
+            });
+        $applyDate($projectsQ, 'p.created_at');
+
+        $projects = $projectsQ->select('p.*')->orderByDesc('p.created_at')->get();
+
+        return view('vendor-views.report.staff-combined', compact(
+            'leads', 'tasks', 'projects', 'preset', 'from', 'to'
+        ));
     }
 
 }

@@ -1,10 +1,18 @@
+                {{-- Hospital Management label --}}
+                <li class="nav-item">
+                    <small class="nav-subtitle"
+                        title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
+                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                </li>
+ 
                 {{-- Hospital Dashboard --}}
                     @if (hasPermission('hospital_manage', 'dashboard'))
 
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('dashboard') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.dashboard') }}"
                         title="Hospital Dashboard">
-                        <i class="tio-hospital nav-icon"></i>
+                           <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}"
+                            alt="" class="nav-link-icon">
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Dashboard</span>
                     </a>
                 </li>
@@ -47,12 +55,7 @@
                                     </a>
                                 </li>
                             @endif
-                            <li class="nav-item {{ Request::is('service/leads-dashboard*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.service.leads-dashboard') }}" title="Leads Dashboard">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Leads Dashboard</span>
-                                    </a>
-                                </li>
+
                             @if (hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export']))
                                 <li class="nav-item  {{ Request::is('service/leads*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.leads_list') }}" title=" Leads">
@@ -96,13 +99,14 @@
                     </li>
                 @endif
                 
-                @if (selected_menu('hospital_manage') && hasMasterModulePermission('hospital_manage'))
+                @if (hasMasterModulePermission('hospital_manage'))
                 {{-- Patients  --}}
                  @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
                  <li class="navbar-vertical-aside-has-menu {{ Request::is('patient/list') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.patient.list') }}"
                         title="Patients">
-                        <i class="tio-user-big-outlined nav-icon"></i>
+                        <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
+                                alt="" class="nav-link-icon">
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate"> Patients</span>
                     </a>
                 </li>
@@ -112,11 +116,7 @@
                                 @endif
 
                     {{-- Outpatient --}}
-                    @if (selected_menu('outpatient') &&
-                            hasAnyPermission([
-                                {{-- 'patient.list',
-                                'patient.add',
-                                'patient.export', --}}
+                    @if (hasAnyPermission([
                                 'opd_register.list',
                                 'opd_register.add',
                                 'opd_register.export',
@@ -130,7 +130,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('patient*') || Request::is('opd*') || Request::is('prescription*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Outpatient">
-                                <i class="tio-user-add nav-icon"></i>
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/outpatient.png') }}"
+                                alt="" class="nav-link-icon">
                                 <span
                                     class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Outpatient</span>
                             </a>
@@ -168,11 +169,9 @@
                             </ul>
                         </li>
                     @endif
-                    @if (selected_menu('inpatient') &&
-                            hasAnyPermission([
+                    @if (hasAnyPermission([
                                 'ipd_admission.list',
                                 'ipd_admission.add',
-                                'ipd_admission.export',
                                 'ipd_admission.export',
                                 'ward.list',
                                 'ward.add',
@@ -185,7 +184,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('ipd*') || Request::is('ward*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Inpatient">
-                                <i class="tio-hospital nav-icon"></i>
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/inpatient.png') }}"
+                                alt="" class="nav-link-icon">
                                 <span
                                     class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Inpatient</span>
                             </a>
@@ -228,7 +228,8 @@
                             class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                 title="Staff">
-                                <i class="tio-group-senior nav-icon"></i>
+                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Patient Management_color.png') }}"
+                            alt="" class="nav-link-icon">
                                 <span
                                     class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Staff</span>
                             </a>
@@ -295,7 +296,8 @@
                         <li class="nav-item {{ Request::is('hospital/settings') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('vendor.hospital.settings') }}"
                                 title="Hospital Settings">
-                                <i class="tio-settings-outlined nav-icon"></i>
+                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/settings.png') }}"
+                                    alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Hospital
                                     Settings</span>
                             </a>
@@ -303,6 +305,14 @@
                     @endif
 
                 @endif
+
+                {{-- Other label --}}
+                <li class="nav-item">
+                    <small class="nav-subtitle"
+                        title="{{ translate('Other') }}">{{ translate('Other') }}</small>
+                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                </li>
+
                 {{-- =============================== iNVENTORY Management=========================== --}}
                 @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
                     <li
@@ -2556,6 +2566,13 @@
                                     title="Store Settings">
                                     <span class="tio-circle nav-indicator-icon"></span>
                                     <span class="text-truncate">Store Settings</span>
+                                </a>
+                            </li>
+                             <li class="nav-item {{ Request::is('settings/service-setup') ? 'active' : '' }}">
+                                <a class="nav-link " href="{{ route('vendor.settings.service-setup') }}"
+                                    title="Service Setup">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Service Setup</span>
                                 </a>
                             </li>
                             <li class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">

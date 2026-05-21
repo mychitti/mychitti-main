@@ -53,7 +53,7 @@
             "app/CentralLogics/campaign.php",
             "app/CentralLogics/item.php",
             "app/CentralLogics/store.php",
-            "app/CentralLogics/helpers.php",
+            "app/CentralLogics/Helpers.php",
             "app/CentralLogics/customer.php",
             "app/helpers.php",
             "app/CentralLogics/order.php",

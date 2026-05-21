@@ -15,6 +15,34 @@
             right: 8px;
             z-index: 1;
         }
+
+        @media (max-width: 576px) {
+            .template-card .card-img-top {
+                height: 90px !important;
+            }
+
+            .template-card .card-body {
+                padding: 6px !important;
+            }
+
+            .template-card .card-body p {
+                font-size: 11px !important;
+                margin-bottom: 2px !important;
+            }
+
+            .template-card .card-body .font-weight-bold {
+                font-size: 12px !important;
+            }
+
+            .template-card .btn-sm {
+                font-size: 10px;
+                padding: 3px 7px;
+            }
+
+            .template-card .mt-auto {
+                gap: 4px !important;
+            }
+        }
     </style>
 
     <div class="row">
@@ -24,7 +52,7 @@
                 $isSelected = $store_template_id == $template->id;
             @endphp
 
-            <div class="col-md-3 col-sm-6 mb-4">
+            <div class="col-6 col-md-3 mb-3">
                 <div class="card h-100 template-card position-relative"
                     style="border: {{ $isSelected ? '2px solid var(--primary)' : '1px solid #d7d7d7' }};">
 

@@ -50,8 +50,8 @@ class BannerAddRequest extends FormRequest
             'store_id' => 'required_if:banner_type,store_wise',
             'item_id' => 'required_if:banner_type,item_wise',
             'title.0' => 'required',
-            'price' => 'required',
-            'gst_percent' => 'required', 
+            'price' => 'required_unless:banner_type,self',
+            'gst_percent' => 'required_unless:banner_type,self',
         ];
     }
 

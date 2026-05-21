@@ -195,7 +195,7 @@ class ItemController extends Controller
         }
         // end keywords ====================
 
-        $matchingCategories = Category::where('name', 'like', '%' . $request->keyword . '%')->where(['position' => 0, 'status' => 1, 'featured' => 1])
+        $matchingCategories = Category::where('name', 'like', '%' . $request->keyword . '%')->where(['position' => 0, 'status' => 1, 'featured' => 1])->whereNull('added_by')
             ->when(config('module.current_module_data'), function ($query) {
                 $query->module(config('module.current_module_data')['id']);
             })->get();

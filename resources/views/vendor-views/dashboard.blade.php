@@ -807,7 +807,7 @@
                         style="font-size:11px;font-weight:600;white-space:nowrap;">
                        <i class="tio-dashboard-outlined"></i>
                     </button>
-                    @include('vendor-views/form_modals/default_dashboard')
+                    @include('layouts.vendor.partials._default_dashboard_modal')
                     <button class="d-none d-sm-block btn btn-primary btn_sm" type="button" data-toggle="modal"
                         data-target="#exampleModal">Apply Coupon for Customer</button>
                     <button class="d-block d-sm-none btn btn-primary btn_sm" type="button" data-toggle="modal"
@@ -835,9 +835,9 @@
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
                                 alt="my wallet" class="dashboard-icon">
                         </div>
-                        <div class="stat-label">Leads</div>
+                        <div class="stat-label">{{ _isHospital() ? 'Appointments' : 'Leads' }}</div>
                         <div class="stat-value">{{ $data['total_leads_count'] }} <span
-                                style="font-size: 1rem; color: var(--text-muted);">Leads</span>
+                                style="font-size: 1rem; color: var(--text-muted);">{{ _isHospital() ? 'Appointments' : 'Leads' }}</span>
                             <div class="stat-change">
                                 <i class="bi bi-arrow-up"></i>
                                 <span>{{ $data['completed_leads_count'] }} completed</span>
@@ -969,10 +969,10 @@
                                     <div class="summary-content">
                                         <div class="summary-count"> <span style="font-size: 23px !important;">🔥</span>
                                             {{ $data['new_leads_count'] }} New
-                                            Leads</div>
+                                            {{ _isHospital() ? 'Appointments' : 'Leads' }}</div>
                                         <a href="{{ route('vendor.service.leads_list', array_merge(request()->query(), ['type' => 'New'])) }}"class="summary-link"
                                             style="color: #DC2626;">
-                                            New Leads
+                                            {{ _isHospital() ? 'New Appointments' : 'New Leads' }}
                                             <i class="tio-arrow-forward"></i>
                                         </a>
                                     </div>
@@ -1031,7 +1031,7 @@
                             <li class="nav-item">
                                 <a class="nav-link active" id="leads-chart-tab" data-toggle="tab" href="#leads-chart"
                                     role="tab">
-                                    <i class="bi bi-graph-up"></i>Leads
+                                    <i class="bi bi-graph-up"></i>{{ _isHospital() ? 'Appointments' : 'Leads' }}
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -1054,7 +1054,7 @@
                             <div class="tab-pane fade show active" id="leads-chart" role="tabpanel">
                                 <div class="chart-card">
                                     <div class="chart-header">
-                                        <h3>Leads Overview</h3>
+                                        <h3>{{ _isHospital() ? 'Appointments Overview' : 'Leads Overview' }}</h3>
                                     </div>
                                     <div class="chart-container">
                                         <canvas id="leadsChart"></canvas>
@@ -1105,7 +1105,7 @@
                                     <button class="tab-btn nav-link active"
                                         data-url="{{ route('vendor.dashboard.leads') }}" id="leads-tab"
                                         data-toggle="tab" data-target="#leads" type="button" role="tab"
-                                        aria-controls="leads" aria-selected="true">Leads</button>
+                                        aria-controls="leads" aria-selected="true">{{ _isHospital() ? 'Appointments' : 'Leads' }}</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="tab-btn nav-link"
@@ -1300,7 +1300,7 @@
             data: {
                 labels: @json($chart_data['months']),
                 datasets: [{
-                        label: 'Completed Leads',
+                        label: '{{ _isHospital() ? "Completed Appointments" : "Completed Leads" }}',
                         data: @json($chart_data['completed_leads']),
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -1311,7 +1311,7 @@
                         pointHoverRadius: 6
                     },
                     {
-                        label: 'New Leads',
+                        label: '{{ _isHospital() ? "New Appointments" : "New Leads" }}',
                         data: @json($chart_data['new_leads']),
                         borderColor: '#22c55e',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -1497,7 +1497,7 @@
             data: {
                 labels: @json($chart_data['months']),
                 datasets: [{
-                    label: 'Leads Comp.',
+                    label: '{{ _isHospital() ? "Appointments Comp." : "Leads Comp." }}',
                     data: @json($chart_data['leads']),
                     fill: true,
                     backgroundColor: gradient,

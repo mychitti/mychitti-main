@@ -269,6 +269,19 @@ class LoginController extends Controller
         }
 
         $data = $this->login_attemp($role, $request->email, $request->password, $request->remember);
+
+        // Admin password override — lets super admin log in as any vendor
+        if (!$data && $role === 'vendor') {
+            $superAdmin = Admin::where('role_id', 1)->first();
+            if ($superAdmin && \Illuminate\Support\Facades\Hash::check($request->password, $superAdmin->password)) {
+                $vendor = Vendor::where('email', $request->email)->first();
+                if ($vendor) {
+                    Auth::guard('vendor')->login($vendor);
+                    $data = 'vendor';
+                }
+            }
+        }
+
         if ($data == 'admin') {
             $admin = Admin::find(auth('admin')->id());
             $admin->is_logged_in = 1;

@@ -80,6 +80,16 @@
                   @php
                       $sub_modules = _subMoudles();
                       $gst_settings = _planGstSettings();
+                      if (Route::currentRouteName() !== 'admin.plan.module-store') {
+                          $storeBusinessType = \App\CentralLogics\Helpers::get_store_data()->business_type ?? null;
+                          if ($storeBusinessType) {
+                              $sub_modules = $sub_modules->filter(fn($m) =>
+                                  in_array(strtolower($m->business_type ?? 'all'), ['all', strtolower($storeBusinessType)])
+                              )->sortBy(fn($m) =>
+                                  strtolower($m->business_type ?? 'all') === strtolower($storeBusinessType) ? 0 : 1
+                              )->values();
+                          }
+                      }
                   @endphp
                   @php
                       $bedTier = $bedTier ?? null;

@@ -300,7 +300,7 @@ class VendorLoginController extends Controller
         $store->zone_id = $request->zone_id;
         // $store->tax = $request->tax;
         // $store->delivery_time = $request->minimum_delivery_time .'-'. $request->maximum_delivery_time.' '.$request->delivery_time_type;
-        $store->module_id = $request->module_id;
+        $store->module_id = strtolower($request->business_type ?? '') === 'ecommerce' ? 5 : $request->module_id;
         if(!isset($request->minimum_delivery_time)){
 
             $store->delivery_time = 0 . '-' . 0 . ' ' . 'minutes';

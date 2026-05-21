@@ -223,13 +223,14 @@ class ServiceController extends Controller
             ->where('item_id', $leadinfo->item_id)->first()
             ?? LeadCharge::where('category_id', $cat_id)->where('zone_id', $zoneId)
             ->whereNull('item_id')->first();
+
         $balanceInfo  = StoreWallet::where('vendor_id', $vendor_id)->first();
         if (!$balanceInfo) {
             if ($request->ajax()) return response()->json(['status' => false, 'message' => 'Insufficient wallet balance to accept leads']);
             Toastr::error('Insufficient wallet balance to accept leads');
             return back();
         }
-        $avlblBalance = $balanceInfo->total_earning - $balanceInfo->pending_withdraw;
+        $avlblBalance = $balanceInfo->total_earning ;
 
         $totalVendors = DB::table('stores')
             ->join('items', function ($join) {
@@ -265,10 +266,11 @@ class ServiceController extends Controller
                 }
             }
         }
+        $hasLeadSubscription = Helpers::store_has_active_lead_subscription((int)$store_id, null, $zoneId, $cat_id);
+
         $walletMinBalance = Helpers::get_wallet_min_balance($zoneId, $cat_id);
         $minimumBalanceRequired = $chargesToBeApplied > $walletMinBalance ? $chargesToBeApplied : $walletMinBalance;
-        // check balance
-        if ($chargesToBeApplied) {
+        if ($chargesToBeApplied && !$hasLeadSubscription) {
             if ($avlblBalance < $minimumBalanceRequired) {
                 $msg = 'Insufficient wallet balance. Minimum ' . _price($minimumBalanceRequired) . ' required';
                 if ($request->ajax()) return response()->json(['status' => false, 'message' => $msg]);
@@ -276,13 +278,11 @@ class ServiceController extends Controller
                 return back();
             }
 
-            //deduct amount from wallet
             $wallet = StoreWallet::where('vendor_id', $vendor_id)->first();
             $wallet->decrement('total_earning', $chargesToBeApplied);
             $wallet->increment('total_withdrawn', $chargesToBeApplied);
             $wallet->save();
 
-            //insert into transactions 
             $account_transaction = new AccountTransaction();
             $account_transaction->current_balance = $wallet->sum('total_earning') - $wallet->sum('total_withdrawn');
             $account_transaction->from_type = 'store';
@@ -398,7 +398,13 @@ class ServiceController extends Controller
         if (!$acceptanceDetails) {
             $acceptanceDetails = DB::table('cancelled_service_requests')->where('service_request_id', $leadId)->where('vendor_id', Helpers::get_store_id())->first();
         }
-        $venJobDetails = DB::table('vendor_emp_jobs')->where(['acc_id' => $acceptanceDetails->id, 'emp_id' => Helpers::get_loggedin_user()->id])->first();
+        $empId = ($acceptanceDetails->assigned_type === 'vendor') ? Helpers::get_store_id() : Helpers::get_loggedin_user()->id;
+        $venJobDetails = DB::table('vendor_emp_jobs')
+            ->where('acc_id', $acceptanceDetails->id)
+            ->where(function ($q) use ($empId) {
+                $q->where('emp_id', $empId)->orWhere('emp_id', 0);
+            })
+            ->first();
         // prx($venJobDetails);
         $timeline = DB::table('lead_statuses')->where('service_request_id', $leadId)->get();
 
@@ -417,7 +423,55 @@ class ServiceController extends Controller
         $data['job_card'] = JobCard::where('lead_id', $leadId)->first();
         $data['receivable_rec'] = ReceivableReceipt::where('lead_id', $leadId)->first();
 
-        return view('vendor-views.service.lead-details', compact('data', 'reqDetails', 'statuses', 'acceptanceDetails', 'gatepass', 'quotation', 'quotationItems', 'gpItems', 'timeline', 'venJobDetails', 'default_statuses'));
+        $assignmentLogs = DB::table('lead_assignment_logs')
+            ->where('service_request_id', $leadId)
+            ->orderBy('assigned_at', 'desc')
+            ->get()
+            ->map(function ($log) {
+                if ($log->assigned_type === 'staff') {
+                    $person = DB::table('vendor_employees')->where('id', $log->assigned_to)->select('f_name', 'l_name')->first();
+                    $log->assignee_name = $person ? trim($person->f_name . ' ' . $person->l_name) : 'Unknown Staff';
+                } else {
+                    $person = DB::table('vendors')->where('id', $log->assigned_to)->select('f_name', 'l_name')->first();
+                    $log->assignee_name = $person ? trim($person->f_name . ' ' . $person->l_name) : 'Unknown Vendor';
+                }
+                $assigner = DB::table('vendors')->where('id', $log->assigned_by_vendor_id)->select('f_name', 'l_name')->first();
+                $log->assigner_name = $assigner ? trim($assigner->f_name . ' ' . $assigner->l_name) : 'System';
+                return $log;
+            });
+
+        return view('vendor-views.service.lead-details', compact('data', 'reqDetails', 'statuses', 'acceptanceDetails', 'gatepass', 'quotation', 'quotationItems', 'gpItems', 'timeline', 'venJobDetails', 'default_statuses', 'assignmentLogs'));
+    }
+
+    public function assignmentLogs($leadId)
+    {
+        $logs = DB::table('lead_assignment_logs')
+            ->where('service_request_id', $leadId)
+            ->orderBy('assigned_at', 'desc')
+            ->get()
+            ->map(function ($log) {
+                if ($log->assigned_type === 'staff') {
+                    $person = DB::table('vendor_employees')
+                        ->where('id', $log->assigned_to)
+                        ->select('f_name', 'l_name')
+                        ->first();
+                    $log->assignee_name = $person ? trim($person->f_name . ' ' . $person->l_name) : 'Unknown Staff';
+                } else {
+                    $person = DB::table('vendors')
+                        ->where('id', $log->assigned_to)
+                        ->select('f_name', 'l_name')
+                        ->first();
+                    $log->assignee_name = $person ? trim($person->f_name . ' ' . $person->l_name) : 'Unknown Vendor';
+                }
+                $assigner = DB::table('vendors')
+                    ->where('id', $log->assigned_by_vendor_id)
+                    ->select('f_name', 'l_name')
+                    ->first();
+                $log->assigner_name = $assigner ? trim($assigner->f_name . ' ' . $assigner->l_name) : 'System';
+                return $log;
+            });
+
+        return response()->json(['logs' => $logs]);
     }
 
     public function cancel(Request $request)
@@ -1577,13 +1631,23 @@ class ServiceController extends Controller
         // create job
         $empJob = new VendorEmpJob;
         $empJob->store_id = Helpers::get_store_id();
-        $empJob->emp_id = $request->staff_id == 'vendor' ? 0 : $request->staff_id;
+        $empJob->emp_id = $request->staff_id == 'vendor' ? Helpers::get_store_id() : $request->staff_id;
         $empJob->service_id = $service_id;
         $empJob->acc_id = $assignment_id;
         $empJob->created_at = date('Y-m-d H:i:s');
         $empJob->save();
 
         if ($serviceToUpdate->update()) {
+
+            DB::table('lead_assignment_logs')->insert([
+                'accepted_service_request_id' => $assignment_id,
+                'service_request_id'          => $service_id,
+                'assigned_to'                 => $serviceToUpdate->assigned_to,
+                'assigned_type'               => $serviceToUpdate->assigned_type,
+                'store_id'                    => $vid,
+                'assigned_by_vendor_id'       => auth('vendor')->id() ?? 0,
+                'assigned_at'                 => date('Y-m-d H:i:s'),
+            ]);
 
             DB::table('lead_statuses')->insert([
                 'service_request_id' => $service_id,
@@ -1937,13 +2001,23 @@ class ServiceController extends Controller
             ->selectRaw("items.name, COUNT(*) as cnt")
             ->groupBy('items.name')->orderByDesc('cnt')->limit(6)->get();
 
+        $new_leads_count = DB::table('service_requests')
+            ->whereRaw("FIND_IN_SET(?, sent_to)", [$storeId])
+            ->where('created_at', '>', now()->subMinutes($ldExpMins))
+            ->where(function ($q) use ($storeId) {
+                $q->whereRaw('NOT FIND_IN_SET(?, accepted_by)', [$storeId])
+                    ->orWhereNull('accepted_by');
+            })
+            ->count();
+
         $view = _isHospital()
             ? 'vendor-views.hospital.appointment_list'
             : 'vendor-views.product.service_request_list_all';
 
         return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses', 'storeConfig',
             'ld_total', 'ld_accepted', 'ld_completed', 'ld_cancelled', 'ld_missed',
-            'ld_completionRate', 'ld_acceptanceRate', 'ld_cancellationRate', 'ld_topServices'));
+            'ld_completionRate', 'ld_acceptanceRate', 'ld_cancellationRate', 'ld_topServices',
+            'new_leads_count'));
     }
     public function assigned_leads_list(Request $request, $empId = null, $action = null)
     {
@@ -2148,6 +2222,8 @@ class ServiceController extends Controller
                 ->select('service_requests.id as service_id', 'items.name as item_name', 'items.image as item_image',  'accepted_service_requests.*', 'users.f_name', 'users.l_name', 'users.phone')
                 ->where('accepted_service_requests.assigned_to', $empId)
                 ->whereNot('accepted_service_requests.current_status', 'Cancelled')
+                ->orderByRaw('accepted_service_requests.accepted_by_staff ASC')
+                ->orderBy('accepted_service_requests.assigned_at', 'desc')
                 ->get();
             $avlblSttsIds = Helpers::get_store_data()->lead_statuses;
             $statuses = [];
@@ -2392,7 +2468,10 @@ class ServiceController extends Controller
             $quoteItems = [];
         }
 
-        return view('vendor-views.service.quotations', compact('serviceDetails', 'allQuotations', 'quoteItems'));
+        $store = \App\Models\Store::withoutGlobalScopes()->find(Helpers::get_store_id());
+        $gstEnabled = $store ? (bool) $store->gst_status : false;
+
+        return view('vendor-views.service.quotations', compact('serviceDetails', 'allQuotations', 'quoteItems', 'gstEnabled'));
     }
 
 

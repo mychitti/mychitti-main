@@ -382,7 +382,9 @@ class VendorController extends Controller
             //   $store->tax = $request->tax;
             $store->delivery_time = $request->minimum_delivery_time . '-' . $request->maximum_delivery_time . ' ' . $request->delivery_time_type;
         }
-        $store->module_id = Config::get('module.current_module_id');
+        $store->module_id = strtolower($store->business_type ?? '') === 'ecommerce'
+            ? 5
+            : Config::get('module.current_module_id');
         if (Config::get('module.current_module_id') == 6) {
             $store->bed_count = (int) ($request->bed_count ?? 0);
         }

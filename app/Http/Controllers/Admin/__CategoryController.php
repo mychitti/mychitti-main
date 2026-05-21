@@ -20,7 +20,7 @@ class CategoryController extends Controller
     function index(Request $request)
     {
         $key = explode(' ', $request['search']);
-        $categories = Category::with('module')->where(['position' => 0])->module(Config::get('module.current_module_id'))
+        $categories = Category::with('module')->where(['position' => 0])->module(Config::get('module.current_module_id'))->whereNull('added_by')
             ->when(isset($key), function ($q) use ($key) {
                 $q->where(function ($q) use ($key) {
                     foreach ($key as $value) {

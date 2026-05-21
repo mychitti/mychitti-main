@@ -368,6 +368,14 @@ class UserController extends Controller
             return response()->json(['status' => false, 'message' => 'phone_missing']);
         }
 
+        $recentCount = ServiceRequest::where('user_id', $user_id)
+            ->where('item_id', $request->serviceId)
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->count();
+        if ($recentCount >= 2) {
+            return response()->json(['status' => false, 'message' => 'You have already submitted 2 requests for this service in the last 10 minutes. Please try again later.']);
+        }
+
         // lead availability check
         if ($request->storeId) {
             $leadAvailable = DB::table('store_configs')
@@ -414,8 +422,8 @@ class UserController extends Controller
             $isDedicated =  true;
             $storesChunk = [$storeId];
         } else {
+          
             $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
-
             if (empty($storesChunk)) {
                 return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
             }

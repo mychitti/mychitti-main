@@ -149,22 +149,17 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-6 paid_field">
+                                    <div class="form-group col-md-6" id="price_field" style="{{ $banner->type === 'self' ? 'display:none' : '' }}">
                                         <label class="input-label" for="exampleFormControlInput1">Price</label>
                                         <input name="price" type="number" class="form-control" placeholder="Price" value="{{ $banner->price ?? '' }}">
                                     </div>
-                                    <div class="form-group col-md-6 paid_field">
-                                        <label class="input-label" for="exampleFormControlInput1">Validity</label>
-                                        <div class="row px-3">
-                                            <input name="validity_count" type="number" class="form-control col-6" placeholder="Validity" value="{{ $banner->validity_count ?? '' }}">
-                                            <select name="validity_type" class="form-control col-6">
-                                                <option value="Days" {{ ($banner->validity_type ?? '') == 'Days' ? 'selected' : '' }}>Days</option>
-                                                <option value="Months" {{ ($banner->validity_type ?? '') == 'Months' ? 'selected' : '' }}>Months</option>
-                                                <option value="Years" {{ ($banner->validity_type ?? '') == 'Years' ? 'selected' : '' }}>Years</option>
-                                            </select>
-                                        </div>
+                                    <div class="form-group col-md-6" id="expiry_field">
+                                        <label class="input-label">Expiry Date</label>
+                                        <input name="expiry_date" type="date" class="form-control"
+                                            value="{{ $banner->expiry_date ? \Carbon\Carbon::parse($banner->expiry_date)->format('Y-m-d') : '' }}"
+                                            min="{{ date('Y-m-d') }}">
                                     </div>
-                                    <div class="form-group col-md-6 paid_field">
+                                    <div class="form-group col-md-6" id="gst_field" style="{{ $banner->type === 'self' ? 'display:none' : '' }}">
                                         <label class="input-label" for="exampleFormControlInput1">GST</label>
                                         <div class="row px-3">
                                             <input name="gst_percent" type="text" class="form-control col-6" placeholder="GST %" value="{{ $banner->gst_percent ?? '' }}">
@@ -233,6 +228,28 @@
     <script>
         "use strict";
 
+        function banner_type_change(order_type) {
+            $('#store_wise, #item_wise, #default, #module_wise, #category_wise').css('display', 'none');
+            if (order_type === 'self') {
+                $('#customer_wise, #price_field, #gst_field').css('display', 'none');
+                return;
+            }
+            $('#price_field, #gst_field').css('display', 'block');
+            if (order_type === 'store_wise') {
+                $('#store_wise').css('display', 'block');
+                $('#customer_wise').css('display', 'none');
+            } else {
+                $('#customer_wise').css('display', 'block');
+                if (order_type === 'item_wise')          $('#item_wise').css('display', 'block');
+                else if (order_type === 'default')       $('#default').css('display', 'block');
+                else if (order_type === 'module_wise')   $('#module_wise').css('display', 'block');
+                else if (order_type === 'category_wise') $('#category_wise').css('display', 'block');
+            }
+        }
+        $('#banner_type').on('change', function () {
+            banner_type_change($(this).val());
+        });
+
         $("#platform").on('change', function(){
             if($(this).val() == 'app'){
                 $("#ratio_hint").text('12:5');
@@ -266,7 +283,7 @@
                 }
             });
         }
-        $(document).on('ready', function () {
+        $(function () {
             banner_type_change('{{$banner->type}}');
             get_items();
 

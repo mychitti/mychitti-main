@@ -241,6 +241,7 @@ class FrontController extends Controller
     public function add_feature_actions(Request $request)
     {
         $features = [
+            ['name' => 'basic_staff_manage', 'display_name' => 'Staff Management', 'master_module' => null, 'actions' => ['list', 'add', 'edit', 'delete', 'role_manage']],
             ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
             ['name' => 'patient', 'display_name' => 'Patient', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'delete', 'export']],
             ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'generate_bill']],
@@ -644,6 +645,7 @@ class FrontController extends Controller
                 AND module_id = 6
                 AND position = 0
                 AND status = 1
+                  AND added_by IS NULL
             LIMIT 3
         )
         UNION ALL
@@ -2345,7 +2347,19 @@ class FrontController extends Controller
         if ($check_module) {
             $module = $check_module->module_id;
         } else {
-            return redirect()->route('home');
+            abort(404);
+        }
+
+        // Redirect to canonical city URL if the city in the URL doesn't match the store's zone
+        if ($check_module->zone_id) {
+            $zone = DB::table('zones')->where('id', $check_module->zone_id)->value('name');
+            if ($zone) {
+                $cityPart      = trim(explode(',', $zone)[0]);
+                $canonicalCity = strtolower(str_replace(' ', '-', $cityPart));
+                if ($city !== $canonicalCity) {
+                    return redirect()->to(url($canonicalCity . '/store/' . $slug), 301);
+                }
+            }
         }
         $invItemdata = [];
         $longitude = $this->longitude;
@@ -2412,15 +2426,23 @@ class FrontController extends Controller
                     ->select(DB::raw('MIN(price) AS min_price, MAX(price) AS max_price'))
                     ->get(['min_price', 'max_price']);
 
-                //products 
-
                 $productdata = DB::table('items')
                     ->join('categories', 'items.category_id', 'categories.id')
-                    ->where('items.store_id', $store->id)->where('items.status', 1)->where('items.is_approved', 1)->select('categories.id', 'categories.name', 'categories.slug as cat_slug')->distinct()->get()->toArray();
+                    ->where('items.store_id', $store->id)
+                    ->where('items.status', 1)
+                    ->where('items.is_approved', 1)
+                    ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
+                    ->distinct()
+                    ->get()
+                    ->toArray();
 
                 foreach ($productdata as $key => $cat) {
                     $cat->items = DB::table('items')
-                        ->where('store_id', $store->id)->where('category_id', $cat->id)->where('status', 1)->where('is_approved', 1)->get();
+                        ->where('store_id', $store->id)
+                        ->where('category_id', $cat->id)
+                        ->where('status', 1)
+                        ->where('is_approved', 1)
+                        ->get();
                 }
             } else {
                 $keywordsData = DB::table('items')
@@ -2490,12 +2512,11 @@ class FrontController extends Controller
             ->where('store_reviews.status', 1)
             ->count();
         // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
-        if ($request->has('template') && $request->template) {
-            return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        }
+        // if ($request->has('template') && $request->template) {
+        //     return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
-        //    prx(  $templateId);
         return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
     }
 
@@ -2537,7 +2558,7 @@ class FrontController extends Controller
         }
         $zone_id = $this->zone_id;
         if (!$item) {
-            return back();
+            abort(404);
         }
         // prx($item->id);
         $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'item_wise',  $item->id, 'web');
@@ -2749,16 +2770,21 @@ class FrontController extends Controller
             ->get();
         // prx(count($data['top_stores']));
 
-        return view('front-views.product_details', compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
+        $view = ($module == 5 || $is_inventory_product)
+            ? 'front-views.ecommerce_product_detail'
+            : 'front-views.product_details';
+        return view($view, compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
     public function category_listing(Request $request, $slug)
     {
         $zone_id = $this->zone_id;
 
-        $cat = DB::table('categories')->where('slug', $slug)->first();
+        $cat = DB::table('categories')->where('slug', $slug)->whereNull('added_by')->first();
         if ($cat) {
             $module = $cat->module_id;
+        }else{
+            return back();
         }
         $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'category_wise',  $cat->id, 'web');
         $catDetails = Category::where('slug', $slug)

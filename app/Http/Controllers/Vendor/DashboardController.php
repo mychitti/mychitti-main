@@ -51,6 +51,10 @@ class DashboardController extends Controller
 
     public function dashboard(Request $request)
     {
+        if (!auth('vendor')->check()) {
+            return $this->master_dashboard($request);
+        }
+
         $storeId = Helpers::get_store_id();
         $config  = StoreConfig::where('store_id', $storeId)->first();
         $pref  = $config?->default_dashboard;
@@ -60,15 +64,30 @@ class DashboardController extends Controller
         if ($pref === null) {
             if ($store->business_type === 'Hospital') {
                 $pref = 'hospital';
-            } elseif (hasMasterModulePermission('leads_manage')) {
-                $pref = 'leads_dashboard';
+            } elseif (strtolower($store->business_type) === 'laundry') {
+                $pref = 'laundry';
+            } elseif (strtolower($store->business_type) === 'pos') {
+                $pref = Helpers::permission_check('pos') ? 'pos' : 'leads_page';
+            } else {
+                $pref = 'leads_page';
             }
+        }
+        // Guard any subscription-required dashboard — if subscription is missing fall back to leads page
+        $subscriptionMap = [
+            'pos'       => 'pos',
+            'inventory' => 'inventory_manage',
+            'account'   => 'account_manage',
+            'hr'        => 'hr_manage',
+        ];
+        if (isset($subscriptionMap[$pref]) && !Helpers::permission_check($subscriptionMap[$pref])) {
+            $pref = 'leads_page';
         }
         return match($pref) {
             'leads_page'      => (new ServiceController)->leads_list($request),
             'leads_dashboard' => (new ServiceController)->leadsDashboard($request),
             'hr'              => (new HRController)->dashboard(),
             'hospital'        => $this->hospital_dashboard($request),
+            'laundry'         => redirect()->route('vendor.laundry.dashboard'),
             'account'         => (new AccountController)->dashboard($request),
             'inventory'       => (new InventoryController)->dashboard($request),
             'pos'             => (new SalespointController)->dashboard($request),

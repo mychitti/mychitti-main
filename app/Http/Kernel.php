@@ -93,6 +93,8 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         'fix-urls' => \App\Http\Middleware\FixVendorEmployeeUrls::class,
         'permission' => \App\Http\Middleware\Permission::class,
         'ai.internal' => \App\Http\Middleware\AiInternalApiKeyMiddleware::class,
+        'module.resolve' => \App\Http\Middleware\ResolveModuleControllers::class,
+        'module.resolve.views' => \App\Http\Middleware\ResolveModuleViews::class,
     ];
 }
  

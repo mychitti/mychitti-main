@@ -49,6 +49,10 @@ class Banner extends Model
         'platform',
         'sort_order',
         'publish_at',
+        'expiry_date',
+        'price',
+        'paid',
+        'user_id',
     ];
 
     /**
@@ -129,6 +133,9 @@ class Banner extends Model
         return $query->where('status', '=', 1)
             ->where(function ($q) {
                 $q->whereNull('publish_at')->orWhere('publish_at', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString());
             });
     }
 

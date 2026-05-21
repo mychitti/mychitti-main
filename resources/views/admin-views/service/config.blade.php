@@ -27,16 +27,17 @@
                     @php($leads_distribut_vendor = \App\CentralLogics\Helpers::get_business_settings('leads_distribut_vendor'))
                     @php($exp_count = \App\CentralLogics\Helpers::get_business_settings('exp_count'))
                     @php($exp_unit = \App\CentralLogics\Helpers::get_business_settings('exp_unit'))
+                    @php($leads_dispatch_round_timeout = \App\CentralLogics\Helpers::get_business_settings('leads_dispatch_round_timeout'))
 
                     <form class="row" action="{{ route('admin.service.config.update') }}" method="post">
                         @csrf
                         <div class="col-6">
-                            <label for="exampleInputEmail1">Vendor Limit (Leads Distribution)</label>
+                            <label>Vendor Limit (Leads Distribution)</label>
                             <input type="number" value="{{ $leads_distribut_vendor ?? '' }}" name="leads_distribut_vendor"
                                 placeholder="Vendor Limit" class="form-control">
                         </div>
                         <div class="col-6">
-                            <label for="exampleInputEmail1">Expire Lead In </label>
+                            <label>Expire Lead In</label>
                             <div class="row">
                                 <input value="{{ $exp_count ?? '' }}" type="number" name="exp_count" placeholder="Ex: 15"
                                     class="form-control col-6">
@@ -45,10 +46,18 @@
                                         value="minutes" selected>Minutes</option>
                                     <option {{ isset($exp_unit) && $exp_unit == 'hours' ? 'selected' : '' }} value="hours">
                                         Hours</option>
-                                    <select>
+                                </select>
                             </div>
                         </div>
-                        <button class="btn btn-primary m-3">Save Changes</button>
+                        <div class="col-6 mt-3">
+                            <label>Round Dispatch Timeout (minutes)</label>
+                            <input type="number" min="1" value="{{ $leads_dispatch_round_timeout ?? 5 }}"
+                                name="leads_dispatch_round_timeout" placeholder="Ex: 5" class="form-control">
+                            <small class="text-muted">If no vendor accepts within this many minutes, the lead is sent to the next batch (max 3 rounds).</small>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-primary m-3">Save Changes</button>
+                        </div>
                     </form>
                 </div>
                 <!-- End Header -->

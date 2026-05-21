@@ -746,7 +746,7 @@
 
         #ai-chat-fab {
             position: fixed;
-            bottom: 28px;
+            bottom: 78px;
             right: 28px;
             width: 56px;
             height: 56px;

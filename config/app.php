@@ -184,7 +184,11 @@ return [
         // Laravelpkg\Laravelchk\LaravelchkServiceProvider::class, // removed - 6amtech activation
         // FruitCake\Cors\CorsServiceProvider::class,
         Maatwebsite\Excel\ExcelServiceProvider::class,
-        InterfaceServiceProvider::class
+        InterfaceServiceProvider::class,
+        App\Modules\Laundry\LaundryServiceProvider::class,
+        App\Modules\POS\POSServiceProvider::class,
+        App\Modules\HMIS\HMISServiceProvider::class,
+        App\Modules\Ecommerce\EcommerceServiceProvider::class,
     ],
 
     /*

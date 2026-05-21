@@ -39,7 +39,9 @@
         font-family: monospace;
         font-size: 0.88rem;
         margin: 0.5rem 0 0;
-        white-space: pre;
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow-x: auto;
     }
     .step-highlight {
         background: #eaf0ff;
@@ -53,10 +55,51 @@
         height: 36px;
         font-size: 1rem;
     }
+
+    @media (max-width: 767px) {
+        .domain-active-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 10px;
+        }
+
+        .domain-active-row form {
+            width: 100%;
+        }
+
+        .domain-active-row form button {
+            width: 100%;
+        }
+
+        .card-body.px-4 {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        .setup-steps > li {
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-highlight {
+            padding: 1rem;
+        }
+
+        .dns-block {
+            font-size: 0.78rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .domain-charge-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 2px;
+        }
+    }
 </style>
 
-<div class="row w-100 justify-content-center">
-    <div class="col-md-9">
+<div style="max-width:780px;margin:0 auto;">
+    <div>
 
         <div class="card shadow-sm">
             <div class="card-header d-flex align-items-center gap-2">
@@ -67,7 +110,7 @@
             <div class="card-body px-4 py-4">
 
                 @if(!empty($domain))
-                <div class="d-flex align-items-center justify-content-between border rounded px-3 py-2 mb-4"
+                <div class="d-flex align-items-center justify-content-between border rounded px-3 py-2 mb-4 domain-active-row"
                      style="background:#f0fdf4; border-color:#bbf7d0 !important;">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-check-circle text-success mr-2"></i>
@@ -233,7 +276,7 @@ Value : stores.mychitti.net</div>
                                     @enderror
                                 </div>
 
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary btn-block">
                                     @if(!empty($domainCharge) && $domainCharge > 0)
                                         <i class="fas fa-credit-card mr-1"></i> Pay & Activate Domain
                                     @else

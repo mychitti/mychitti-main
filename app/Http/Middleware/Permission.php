@@ -54,6 +54,9 @@ class Permission
         }
 
         if (! $user) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status' => false, 'message' => translate('messages.unauthorized')], 403);
+            }
             Toastr::error(translate('messages.unauthorized'));
             return back();
         }
@@ -87,6 +90,9 @@ class Permission
             }
         }
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status' => false, 'message' => translate('messages.access_denied')], 403);
+        }
         Toastr::error(translate('messages.access_denied'));
         return back();
     }

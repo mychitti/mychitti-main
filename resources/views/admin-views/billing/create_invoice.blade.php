@@ -109,6 +109,7 @@
                             </div>
                             <div class="info-group">
                                 <label>Payment Status</label>
+                                
                                 <div class="btn-group btn-group-toggle m-0" data-toggle="buttons">
                                     <label class="btn btn-responsive btn-outline-primary active">
                                         <input type="radio" class="payment_stts" checked value="Paid"

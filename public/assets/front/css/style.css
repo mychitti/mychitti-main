@@ -182,7 +182,7 @@
 .sticky_action_btn {
     position: fixed;
     right: 30px;
-    bottom: 35px;
+    bottom: 13px;
     display: flex;
     align-items: center;
     justify-content: center;

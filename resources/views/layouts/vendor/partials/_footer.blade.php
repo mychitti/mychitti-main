@@ -10,24 +10,23 @@
             <div class="d-flex justify-content-end">
                 <!-- List Dot -->
                 <ul class="list-inline list-separator">
-                @if (auth('vendor')->check())
-
-                    <li class="list-inline-item">
-                        <a class="list-separator-link"
-                            href="{{ route('vendor.terms-and-conditions.view') }}">Terms and Conditions</a>
-                    </li>
-                @elseif(auth('vendor_employee')->check())
-                    <li class="list-inline-item">
-                        <a class="list-separator-link"
-                            href="{{ route('vendor.staff.terms-n-conditions') }}">Terms and Conditions</a>
-                    </li>
-                @endif
-
-                    <li class="list-inline-item">
-                        <a class="list-separator-link"
-                            href="{{ route('vendor.business-settings.store-setup') }}">{{ translate('messages.store_settings') }}</a>
-                    </li>
-
+                    @if (auth('vendor')->check())
+                        <li class="list-inline-item">
+                            <a class="list-separator-link" href="{{ route('vendor.terms-and-conditions.view') }}">Terms
+                                and Conditions</a>
+                        </li>
+                    @elseif(auth('vendor_employee')->check())
+                        <li class="list-inline-item">
+                            <a class="list-separator-link" href="{{ route('vendor.staff.terms-n-conditions') }}">Terms
+                                and Conditions</a>
+                        </li>
+                    @endif
+                    @if (auth('vendor')->check())
+                        <li class="list-inline-item">
+                            <a class="list-separator-link"
+                                href="{{ route('vendor.business-settings.store-setup') }}">{{ translate('messages.store_settings') }}</a>
+                        </li>
+                    @endif
                     <li class="list-inline-item">
                         <a class="list-separator-link"
                             href="{{ route('vendor.shop.view') }}">{{ translate('messages.profile') }}</a>
@@ -73,4 +72,4 @@
             </div>
         </div>
     </div>
-</div> 
+</div>

@@ -396,8 +396,6 @@
                     } @endphp
                     <div class="repair-card-container {{ $status . '-color' }} "
                         onclick="handleClick('{{ $task->parent_id ?  ($task->employee_id == null ? '#' : route('admin.project.task.subtask.detail', [$task->id]) ) : ($task->employee_id == null ? '#' : route('admin.project.task.detail', [$task->id]) )}}', event)">
-                        <div class="card-ring ring-left"></div>
-                        <div class="card-ring ring-right"></div>
 
                         <div class="repair-card-title">{{ $task->title }}</div>
                         <div class="repair-card-title">Task Id : {{ $task->task_id }}</div>

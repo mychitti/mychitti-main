@@ -87,12 +87,21 @@ class ProfileController extends Controller
             return back();
         }
 
-        // ALL MODULES
-        $business_type = Helpers::get_store_data()->business_type;
+        $business_type = strtolower(Helpers::get_store_data()->business_type ?? '');
+
+        // If specific modules exist for this business type, only give those.
+        // Otherwise fall back to generic 'all' modules.
+        $hasSpecific = DB::table('sub_modules')
+            ->whereRaw('LOWER(business_type) = ?', [$business_type])
+            ->where('business_type', '!=', 'all')
+            ->where('business_type', '!=', '')
+            ->exists();
 
         $modules = DB::table('sub_modules')
-            ->where('business_type', 'all')
-            ->orWhere('business_type', $business_type)
+            ->when($hasSpecific,
+                fn($q) => $q->whereRaw('LOWER(business_type) = ?', [$business_type]),
+                fn($q) => $q->where('business_type', 'all')
+            )
             ->get();
         foreach ($modules as $module) {
 

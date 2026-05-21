@@ -498,6 +498,10 @@ class ServiceController extends Controller
             'value' => $request['leads_distribut_vendor']
         ]);
 
+        DB::table('business_settings')->updateOrInsert(['key' => 'leads_dispatch_round_timeout'], [
+            'value' => (int)$request['leads_dispatch_round_timeout'] ?: 5
+        ]);
+
         Toastr::success('Configurations updated successfully!');
         return back();
     }

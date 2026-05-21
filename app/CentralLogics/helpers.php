@@ -2094,46 +2094,6 @@ class Helpers
         }
         return $structured;
     }
-    public static function laundry_calendar()
-    {
-        $storeId = Helpers::get_store_id();
-
-        $orders = \App\Models\LaundryOrder::where('store_id', $storeId)
-            ->whereNotIn('status', ['cancelled'])
-            ->selectRaw('YEAR(drop_date) as year, MONTH(drop_date) as month, DAY(drop_date) as day, SUM(total_amount) as amount, COUNT(id) as tokens')
-            ->groupBy('year', 'month', 'day')
-            ->orderBy('year')->orderBy('month')->orderBy('day')
-            ->get();
-
-        $structured = [];
-        $monthlyAmounts = [];
-
-        foreach ($orders as $row) {
-            $structured[$row->year][$row->month][$row->day] = [
-                'amount'   => (float) $row->amount,
-                'tokens'   => (int) $row->tokens,
-                'category' => 'low',
-            ];
-            $monthlyAmounts[$row->year][$row->month][] = (float) $row->amount;
-        }
-
-        foreach ($structured as $year => $months) {
-            foreach ($months as $month => $days) {
-                $amounts = $monthlyAmounts[$year][$month] ?? [0];
-                $max = max($amounts);
-                $avg = array_sum($amounts) / count($amounts);
-                foreach ($days as $day => $data) {
-                    $amt = $data['amount'];
-                    if ($max > 0) {
-                        $structured[$year][$month][$day]['category'] = $amt >= $avg * 1.5 ? 'high' : ($amt >= $avg * 0.5 ? 'medium' : 'low');
-                    }
-                }
-            }
-        }
-
-        return $structured;
-    }
-
     public static function excelToCarbon($value)
     {
         // 1️⃣ If it's numeric (Excel serial date)
@@ -2573,6 +2533,21 @@ class Helpers
         return self::generateInvoiceIdAdmin($module, true);
     }
 
+    public static function store_has_active_lead_subscription(int $storeId, string $type = null, int $zoneId = null, int $categoryId = null): bool
+    {
+        $query = DB::table('lead_subscriptions')
+            ->where('store_id', $storeId)
+            ->where('expires_at', '>=', now()->toDateString());
+        if ($type) $query->where('type', $type);
+        if ($zoneId) {
+            $query->where(fn($q) => $q->whereNull('zone_id')->orWhere('zone_id', $zoneId));
+        }
+        if ($categoryId) {
+            $query->where(fn($q) => $q->whereNull('category_id')->orWhere('category_id', $categoryId));
+        }
+        return $query->exists();
+    }
+
     public static function get_store_range($item_id, $zone_ids, $user_id, $storeId = null)
     {
         $forcedStoreId = null;
@@ -2626,27 +2601,45 @@ class Helpers
         $storeZones = DB::table('stores')->whereIn('id', $storeIds)->pluck('zone_id', 'id')->toArray();
         $categoryId = $item->category_id ?? null;
 
+        // Stores with active subscription bypass wallet gate entirely
+        $subscribedStoreIds = DB::table('lead_subscriptions')
+            ->whereIn('store_id', $storeIds)
+            ->where('expires_at', '>=', now()->toDateString())
+            ->pluck('store_id')
+            ->map(fn($id) => (int)$id)
+            ->toArray();
+
+        // Check for dedicated subscribers: they override normal dispatch
+        $dedicatedSubscribedStore = DB::table('lead_subscriptions')
+            ->whereIn('store_id', $storeIds)
+            ->where('type', 'dedicated')
+            ->where('expires_at', '>=', now()->toDateString())
+            ->value('store_id');
+
+        if ($dedicatedSubscribedStore) {
+            $dedicatedStore = DB::table('stores')->where('id', $dedicatedSubscribedStore)->first();
+            if ($dedicatedStore && $dedicatedStore->dedicated_leads) {
+                return [(int)$dedicatedSubscribedStore];
+            }
+            $forcedStoreId = (int)$dedicatedSubscribedStore;
+        }
+
         $walletQualifiedStoreIds = [];
         foreach ($storeVendorMap as $sId => $vendorId) {
+            if (in_array((int)$sId, $subscribedStoreIds)) {
+                $walletQualifiedStoreIds[] = (int)$sId;
+                continue;
+            }
             $zoneId = $storeZones[$sId] ?? null;
             $minimumBalance = Helpers::get_wallet_min_balance($zoneId, $categoryId);
             $walletRow = DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
-            $totalEarning   = $walletRow ? (float)$walletRow->total_earning   : 0;
-            $totalWithdrawn = $walletRow ? (float)$walletRow->total_withdrawn  : 0;
-            $pendingWithdraw= $walletRow ? (float)$walletRow->pending_withdraw : 0;
-            $collectedCash  = $walletRow ? (float)$walletRow->collected_cash   : 0;
-            $walletBalance  = $walletRow ? max(0, $totalEarning - ($totalWithdrawn + $pendingWithdraw + $collectedCash)) : 0;
+            $walletBalance = $walletRow ? (float)$walletRow->total_earning : 0;
             if ($walletBalance >= $minimumBalance) {
                 $walletQualifiedStoreIds[] = (int) $sId;
             }
         }
 
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
-
-        // Force-inject the prioritized store if it was filtered out by wallet/zone checks
-        if ($forcedStoreId && !in_array($forcedStoreId, $storeIds)) {
-            array_unshift($storeIds, $forcedStoreId);
-        }
 
         if (empty($storeIds)) return [];
 
@@ -2672,7 +2665,6 @@ class Helpers
 
         // Step 5: Prepare store chunk
         $prioritized = [];
-
         if ($forcedStoreId && in_array($forcedStoreId, $storeIds)) {
             $prioritized[] = $forcedStoreId;
             $storeIds = array_values(array_diff($storeIds, [$forcedStoreId]));
@@ -2710,6 +2702,134 @@ class Helpers
         }
 
         return $storesChunk;
+    }
+
+    public static function get_stores_for_lead_rounds($item_id, $zone_ids, $user_id, $storeId = null)
+    {
+        $empty = [[], [], []];
+        $forcedStoreId = null;
+
+        if ($storeId) {
+            $dedicatedStore = DB::table('stores')->where('id', $storeId)->where('status', 1)->first();
+            if ($dedicatedStore) {
+                if ($dedicatedStore->dedicated_leads) {
+                    return [[(int)$storeId], [], []];
+                }
+                $forcedStoreId = (int)$storeId;
+            }
+        }
+
+        $store_limit = (int)(self::get_settings('leads_distribut_vendor') ?: 3);
+        $zId = json_decode($zone_ids, true);
+
+        $item = DB::table('items')->where('id', $item_id)->first();
+        if (!$item || empty($item->store_ids)) return $empty;
+
+        $storeIds = array_unique(array_filter(explode(',', trim($item->store_ids))));
+        $storeIds = array_map('intval', $storeIds);
+
+        $existingStoreIds = DB::table('stores')
+            ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
+            ->whereIn('stores.id', $storeIds)
+            ->where('stores.status', 1)
+            ->whereIn('stores.zone_id', $zId)
+            ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
+            ->pluck('stores.id')
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+        $storeIds = array_values(array_intersect($storeIds, $existingStoreIds));
+
+        if (empty($storeIds)) return $empty;
+
+        $storeVendorMap = DB::table('stores')->whereIn('id', $storeIds)->pluck('vendor_id', 'id')->toArray();
+        $storeZones     = DB::table('stores')->whereIn('id', $storeIds)->pluck('zone_id', 'id')->toArray();
+        $categoryId     = $item->category_id ?? null;
+
+        $subscribedStoreIds = DB::table('lead_subscriptions')
+            ->whereIn('store_id', $storeIds)
+            ->where('expires_at', '>=', now()->toDateString())
+            ->pluck('store_id')->map(fn($id) => (int)$id)->toArray();
+
+        $dedicatedSubscribedStore = DB::table('lead_subscriptions')
+            ->whereIn('store_id', $storeIds)
+            ->where('type', 'dedicated')
+            ->where('expires_at', '>=', now()->toDateString())
+            ->value('store_id');
+
+        if ($dedicatedSubscribedStore) {
+            $ds = DB::table('stores')->where('id', $dedicatedSubscribedStore)->first();
+            if ($ds && $ds->dedicated_leads) return [[(int)$dedicatedSubscribedStore], [], []];
+            $forcedStoreId = (int)$dedicatedSubscribedStore;
+        }
+
+        $walletQualifiedStoreIds = [];
+        foreach ($storeVendorMap as $sId => $vendorId) {
+            if (in_array((int)$sId, $subscribedStoreIds)) {
+                $walletQualifiedStoreIds[] = (int)$sId;
+                continue;
+            }
+            $zoneId = $storeZones[$sId] ?? null;
+            $minBalance  = self::get_wallet_min_balance($zoneId, $categoryId);
+            $walletRow   = DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
+            $balance     = $walletRow ? (float)$walletRow->total_earning : 0;
+            if ($balance >= $minBalance) $walletQualifiedStoreIds[] = (int)$sId;
+        }
+        $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
+        if (empty($storeIds)) return $empty;
+
+        $lastDistribution = DB::table('leads_distributions')
+            ->where('item_id', $item_id)->orderBy('id', 'desc')->first();
+
+        $index = 0;
+        if ($lastDistribution) {
+            $lastIndex = array_search((int)$lastDistribution->to_id, $storeIds);
+            if ($lastIndex !== false) {
+                $index = ($lastIndex + 1) % count($storeIds);
+            }
+        }
+
+        $prioritized = [];
+        if ($forcedStoreId && in_array($forcedStoreId, $storeIds)) {
+            $prioritized[] = $forcedStoreId;
+            $storeIds = array_values(array_diff($storeIds, [$forcedStoreId]));
+            if (!empty($storeIds)) $index = $index % count($storeIds);
+        }
+
+        $rotated    = !empty($storeIds)
+            ? array_merge(array_slice($storeIds, $index), array_slice($storeIds, 0, $index))
+            : [];
+        $allOrdered = array_unique(array_merge($prioritized, $rotated));
+
+        // Split into chunks of $store_limit (up to 3 rounds)
+        $rawChunks = array_chunk($allOrdered, $store_limit);
+        $chunks    = [
+            $rawChunks[0] ?? [],
+            $rawChunks[1] ?? [],
+            $rawChunks[2] ?? [],
+        ];
+
+        // Update rotation tracker — same logic as get_store_range (based on chunk 1)
+        if (!empty($chunks[0])) {
+            $rotationChunk = array_slice($rotated, 0, $store_limit - count($prioritized));
+            $id_from = reset($chunks[0]);
+            $id_to   = !empty($rotationChunk) ? end($rotationChunk) : reset($chunks[0]);
+
+            $distData = [
+                'from_id'    => $id_from,
+                'to_id'      => $id_to,
+                'item_id'    => $item_id,
+                'store_ids'  => implode(',', $chunks[0]),
+                'updated_at' => now(),
+            ];
+            if ($lastDistribution) {
+                DB::table('leads_distributions')->where('item_id', $item_id)->update($distData);
+            } else {
+                $distData['created_at'] = now();
+                DB::table('leads_distributions')->insert($distData);
+            }
+        }
+
+        return $chunks;
     }
 
     public static function clean_item_store_ids($item_id)
@@ -5773,6 +5893,15 @@ class Helpers
     {
         if (auth('admin')->check()) {
             return true;
+        }
+
+        // Free by business type — no subscription needed
+        if (auth('vendor')->check() || auth('vendor_employee')->check()) {
+            $businessType = strtolower(Helpers::get_store_data()->business_type ?? '');
+            $freeModules  = config("planwise.free_by_business_type.$businessType", []);
+            if (in_array($module_name, $freeModules)) {
+                return true;
+            }
         }
 
         $v_id = Helpers::get_store_id();

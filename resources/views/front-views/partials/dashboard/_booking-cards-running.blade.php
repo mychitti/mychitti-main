@@ -29,7 +29,11 @@
                 <div class="col-md-6 col-lg-5">
                     <div class="d-flex align-items-center justify-content-md-end gap-3">
                         <span class="status-pill status-{{ strtolower(str_replace(' ', '-', $serRun->current_status)) }}">
-                            {{ $serRun->current_status }}
+                            @if($serRun->current_status == 'Confirmation Request Sent')
+                                Confirmation Request Received
+                            @else
+                                {{ $serRun->current_status }}
+                            @endif
                         </span>
                         <div class="collapse-toggle-icon"><i class="fas fa-chevron-down"></i></div>
                     </div>

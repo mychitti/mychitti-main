@@ -32,7 +32,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     Route::get('impersonate', 'ImpersonateController@start')->name('impersonate.start');
     Route::post('impersonate/stop', 'ImpersonateController@stop')->name('impersonate.stop');
 
-    Route::group(['middleware' => ['vendor']], function () {
+    Route::group(['middleware' => ['vendor', 'module.resolve', 'module.resolve.views']], function () {
         Route::middleware('throttle:60,1')->get('last-notification', 'DashboardController@lastNotification')->name('last-notification');
         Route::post('mark-inactive-read', 'DashboardController@markInactiveRead')->name('mark-inactive-read');
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
@@ -80,6 +80,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('accept/{id}', 'TaskController@accept')->name('accept');
             Route::get('reject/{id}', 'TaskController@reject')->name('reject');
         });
+        Route::get('my-performance', 'ReportController@staff_combined_report')->name('report.staff-combined');
         Route::group(['prefix' => 'form-builder', 'as' => 'form-builder.'], function () {
 
             Route::post('save-form', 'FormBuilderController@saveFields')->name('save-form');
@@ -610,6 +611,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
         Route::get('service/lead-settings', 'ServiceController@lead_settings')->name('service.lead-settings');
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
+        Route::get('service/lead-subscription', '\App\Http\Controllers\Vendor\LeadSubscriptionController@index')->name('service.lead-subscription');
+        Route::post('service/lead-subscription/buy', '\App\Http\Controllers\Vendor\LeadSubscriptionController@buy')->name('service.lead-subscription.buy');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
             Route::get('assigned-leads/{id?}/{action?}', 'ServiceController@assigned_leads_list')->name('assigned_leads_list');
@@ -622,7 +625,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('save-assignment', 'ServiceController@save_assignment')->name('save-assignment')->middleware('permission:leads_manage,alot');
             Route::get('assigned-services', 'ServiceController@assigned_services')->name('assigned_services');
             Route::get('assigned-projects', 'ServiceController@assigned_projects')->name('assigned_projects');
-            Route::post('change-status', 'ServiceController@change_status')->name('change-status')->middleware('permission:leads_manage,change_status');
+            Route::post('change-status', 'ServiceController@change_status')->name('change-status')->middleware('permission:leads_manage,status_change');
             Route::get('gatepass-details/{id}', 'ServiceController@details')->name('gatepass-details');
             Route::get('quotations/{id}', 'ServiceController@quotations')->name('quotations');
             Route::post('gatepass-update', 'ServiceController@gatepass_update')->name('gatepass-update')->middleware('permission:leads_gatepass,edit');
@@ -635,6 +638,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('cancel', 'ServiceController@cancel')->name('cancel')->middleware('permission:leads_manage,cancel');
             Route::get('lead-details/{id}', 'ServiceController@lead_details')->name('lead-details')->middleware('permission:leads_manage,view');
             Route::get('lead-card/{id}', 'ServiceController@getLeadCard')->name('lead-card');
+            Route::get('assignment-logs/{id}', 'ServiceController@assignmentLogs')->name('assignment-logs');
             Route::post('send-completion-otp', 'ServiceController@sendCompletionOtp')->name('send-completion-otp');
             Route::post('add-custom-status', 'ServiceController@addCustomStatus')->name('add-custom-status');
             Route::post('dismiss-leads-guide', 'ServiceController@dismissLeadsGuide')->name('dismiss-leads-guide');
@@ -699,17 +703,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
         // Basic staff — free tier (no HR subscription required), max 10 members
         Route::group(['prefix' => 'basic-staff', 'as' => 'basic-staff.'], function () {
-            Route::get('/', 'BasicStaffController@index')->name('index');
-            Route::get('create', 'BasicStaffController@create')->name('create');
-            Route::post('store', 'BasicStaffController@store')->name('store');
-            Route::get('edit/{id}', 'BasicStaffController@edit')->name('edit');
-            Route::post('update/{id}', 'BasicStaffController@update')->name('update');
-            Route::delete('delete/{id}', 'BasicStaffController@destroy')->name('delete');
-            // Roles
-            Route::get('roles', 'BasicStaffController@roles')->name('roles');
-            Route::post('roles/store', 'BasicStaffController@storeRole')->name('roles.store');
-            Route::post('roles/update/{id}', 'BasicStaffController@updateRole')->name('roles.update');
-            Route::delete('roles/delete/{id}', 'BasicStaffController@destroyRole')->name('roles.delete');
+            Route::get('/', 'BasicStaffController@index')->name('index')->middleware('permission:basic_staff_manage,list');
+            Route::get('create', 'BasicStaffController@create')->name('create')->middleware('permission:basic_staff_manage,add');
+            Route::post('store', 'BasicStaffController@store')->name('store')->middleware('permission:basic_staff_manage,add');
+            Route::get('edit/{id}', 'BasicStaffController@edit')->name('edit')->middleware('permission:basic_staff_manage,edit');
+            Route::post('update/{id}', 'BasicStaffController@update')->name('update')->middleware('permission:basic_staff_manage,edit');
+            Route::delete('delete/{id}', 'BasicStaffController@destroy')->name('delete')->middleware('permission:basic_staff_manage,delete');
+            // Roles — reuse paid HR custom-role controller/views, accessible via free-tier permission
+            Route::get('roles', 'CustomRoleController@create')->name('roles')->middleware('permission:basic_staff_manage,role_manage');
         });
 
         Route::group(['prefix' => 'staff', 'as' => 'staff.', 'middleware' => ['planwise:hr_manage']], function () {
@@ -793,17 +794,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('inventory-sales', 'DashboardController@inventory_sale_list')->name('inventory-sales');
         });
 
-        Route::group(['prefix' => 'category', 'as' => 'category.', 'middleware' => ['module:item']], function () {
-            Route::post('update-selected', 'CategoryController@update_selected')->name('update-selected');
-            Route::get('selected', 'CategoryController@selected')->name('selected');
-            Route::get('get-all', 'CategoryController@get_all')->name('get-all');
-            Route::get('list', 'CategoryController@index')->name('add');
-            Route::get('sub-category-list', 'CategoryController@sub_index')->name('add-sub-category');
-            //            Route::post('search', 'CategoryController@search')->name('search');
-            //            Route::post('sub-search', 'CategoryController@sub_search')->name('sub-search');
-            Route::get('export-categories', 'CategoryController@export_categories')->name('export-categories');
-            Route::get('export-sub-categories', 'CategoryController@export_sub_categories')->name('export-sub-categories');
-        });
+        // ECOMMERCE MODULE — item, category, order, addon, coupon, banner, campaign
+        require base_path('app/Modules/Ecommerce/routes/vendor.php');
 
         Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.'], function () {
             Route::get('create', 'CustomRoleController@create')->name('create')->middleware('permission:staff_role,add');
@@ -853,58 +845,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
 
 
-        Route::group(['prefix' => 'item', 'as' => 'item.', 'middleware' => ['module:item']], function () {
-            Route::get('add-new', 'ItemController@index')->name('add-new');
-            Route::get('select', 'ItemController@select_view')->name('service_select');
-            Route::post('save-services', 'ItemController@service_save')->name('service_save');
-            Route::get('service-requests', 'ItemController@service_request_list')->name('service_request_list');
-            Route::post('variant-combination', 'ItemController@variant_combination')->name('variant-combination');
-            Route::post('update-variant-combination', 'ItemController@update_variant_combination')->name('update-variant-combination');
-            Route::post('store', 'ItemController@store')->name('store');
-            Route::get('edit/{id}', 'ItemController@edit')->name('edit');
-            Route::post('update/{id}', 'ItemController@update')->name('update');
-            Route::get('list', 'ItemController@list')->name('list');
-            Route::delete('delete/{id}', 'ItemController@delete')->name('delete');
-            Route::get('status/{id}/{status}', 'ItemController@status')->name('status');
-            Route::post('search', 'ItemController@search')->name('search');
-            Route::get('view/{id}', 'ItemController@view')->name('view');
-            Route::get('remove-image', 'ItemController@remove_image')->name('remove-image');
-            Route::get('get-categories', 'ItemController@get_categories')->name('get-categories');
-            Route::get('recommended/{id}/{status}', 'ItemController@recommended')->name('recommended');
-            Route::get('pending/item/list', 'ItemController@pending_item_list')->name('pending_item_list');
-            Route::get('requested/item/view/{id}', 'ItemController@requested_item_view')->name('requested_item_view');
-
-            Route::get('product-gallery', 'ItemController@product_gallery')->name('product_gallery');
-
-            //Mainul
-            Route::get('get-variations', 'ItemController@get_variations')->name('get-variations');
-            Route::get('get-price-variations', 'ItemController@get_price_variations')->name('get-price-variations');
-            Route::get('stock-limit-list', 'ItemController@stock_limit_list')->name('stock-limit-list');
-            Route::post('stock-update', 'ItemController@stock_update')->name('stock-update');
-            Route::get('price-update-list', 'ItemController@price_update_list')->name('price-update-list');
-            Route::post('price-update', 'ItemController@price_update')->name('price-update');
-
-            Route::post('food-variation-generate', 'ItemController@food_variation_generator')->name('food-variation-generate');
-            Route::post('variation-generate', 'ItemController@variation_generator')->name('variation-generate');
-
-            //Import and export
-            Route::get('bulk-import', 'ItemController@bulk_import_index')->name('bulk-import');
-            Route::post('bulk-import', 'ItemController@bulk_import_data');
-            Route::get('bulk-export', 'ItemController@bulk_export_index')->name('bulk-export-index');
-            Route::post('bulk-export', 'ItemController@bulk_export_data')->name('bulk-export');
-
-
-            Route::get('flash-sale', 'ItemController@flash_sale')->name('flash_sale');
-        });
-
-        Route::group(['prefix' => 'campaign', 'as' => 'campaign.', 'middleware' => ['module:campaign']], function () {
-            Route::get('list', 'CampaignController@list')->name('list');
-            Route::get('item/list', 'CampaignController@itemlist')->name('itemlist');
-            Route::get('remove-store/{campaign}/{store}', 'CampaignController@remove_store')->name('remove-store');
-            Route::get('add-store/{campaign}/{store}', 'CampaignController@addstore')->name('add-store');
-            // Route::post('search', 'CampaignController@search')->name('search');
-            Route::post('search-item', 'CampaignController@searchItem')->name('searchItem');
-        });
 
         Route::group(['prefix' => 'wallet', 'as' => 'wallet.', 'middleware' => ['module:wallet']], function () {
             Route::get('/', 'WalletController@index')->name('index');
@@ -930,62 +870,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::delete('delete/{id}', 'WalletMethodController@delete')->name('delete');
         });
 
-        Route::group(['prefix' => 'coupon', 'as' => 'coupon.', 'middleware' => ['module:coupon']], function () {
-            Route::get('add-new', 'CouponController@add_new')->name('add-new');
-            Route::post('store', 'CouponController@store')->name('store');
-            Route::get('update/{id}', 'CouponController@edit')->name('update');
-            Route::post('update/{id}', 'CouponController@update');
-            Route::get('status/{id}/{status}', 'CouponController@status')->name('status');
-            Route::delete('delete/{id}', 'CouponController@delete')->name('delete');
-            //            Route::post('search', 'CouponController@search')->name('search');
-        });
-
-        Route::group(['prefix' => 'addon', 'as' => 'addon.', 'middleware' => ['module:addon']], function () {
-            Route::get('add-new', 'AddOnController@index')->name('add-new');
-            Route::post('store', 'AddOnController@store')->name('store');
-            Route::get('edit/{id}', 'AddOnController@edit')->name('edit');
-            Route::post('update/{id}', 'AddOnController@update')->name('update');
-            Route::delete('delete/{id}', 'AddOnController@delete')->name('delete');
-        });
-
-        Route::group(['prefix' => 'order', 'as' => 'order.', 'middleware' => ['module:order']], function () {
-            Route::get('list/{status}', 'OrderController@list')->name('list');
-            Route::put('status-update/{id}', 'OrderController@status')->name('status-update');
-            //            Route::post('search', 'OrderController@search')->name('search');
-            Route::post('add-to-cart', 'OrderController@add_to_cart')->name('add-to-cart');
-            Route::post('remove-from-cart', 'OrderController@remove_from_cart')->name('remove-from-cart');
-            Route::get('update/{order}', 'OrderController@update')->name('update');
-            Route::get('edit-order/{order}', 'OrderController@edit')->name('edit');
-            Route::get('details/{id}', 'OrderController@details')->name('details');
-            Route::get('status', 'OrderController@status')->name('status');
-            Route::get('quick-view', 'OrderController@quick_view')->name('quick-view');
-            Route::get('quick-view-cart-item', 'OrderController@quick_view_cart_item')->name('quick-view-cart-item');
-            Route::get('generate-invoice/{id}', 'OrderController@generate_invoice')->name('generate-invoice');
-            Route::get('generate-order-invoice/{id}', 'OrderController@generate_order_invoice')->name('generate-order-invoice');
-            Route::post('add-payment-ref-code/{id}', 'OrderController@add_payment_ref_code')->name('add-payment-ref-code');
-            Route::post('update-order-amount', 'OrderController@edit_order_amount')->name('update-order-amount');
-            Route::post('update-discount-amount', 'OrderController@edit_discount_amount')->name('update-discount-amount');
-            Route::post('add-order-proof/{id}', 'OrderController@add_order_proof')->name('add-order-proof');
-            Route::get('remove-proof-image', 'OrderController@remove_proof_image')->name('remove-proof-image');
-            Route::get('export-orders/{file_type}/{status}/{type}', 'OrderController@export_orders')->name('export');
-        });
         Route::group(['prefix' => 'requirement', 'as' => 'requirement.'], function () {
             Route::post('submit', 'BusinessSettingsController@submit_requirement')->name('submit');
-        });
-        Route::group(['prefix' => 'banner', 'as' => 'banner.'], function () {
-            Route::get('offer-banner', 'BannerController@offer_banner')->name('offer');
-            Route::post('store-offer-banner', 'BannerController@store_offer_banner')->name('store-offer-banner');
-            Route::get('delete-offer-banner/{id}', 'BannerController@delete_offer_banner')->name('delete-offer-banner');
-        });
-        Route::group(['prefix' => 'banner', 'as' => 'banner.', 'middleware' => ['module:banner']], function () {
-            Route::get('list', 'BannerController@list')->name('list');
-            Route::post('store', 'BannerController@store')->name('store');
-            Route::get('edit/{banner}', 'BannerController@edit')->name('edit');
-            Route::post('update/{banner}', 'BannerController@update')->name('update');
-            Route::get('status/{id}/{status}', 'BannerController@status_update')->name('status_update');
-            Route::delete('delete/{banner}', 'BannerController@delete')->name('delete');
-            // Route::post('search', 'BannerController@search')->name('search');
-            Route::get('join_campaign/{id}/{status}', 'BannerController@status')->name('status');
         });
 
 
@@ -1131,7 +1017,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
 
-    
+    // hmis ==============================
+    if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
+        require app_path('Modules/HMIS/routes/vendor.php');
+    }
+ 
+    // laundry ==============================
+    require app_path('Modules/Laundry/routes/vendor.php');
+
+    // pos ==============================
+    require app_path('Modules/POS/routes/vendor.php');
 });
+// DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES
 
 // WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);
