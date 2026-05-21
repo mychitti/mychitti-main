@@ -1019,7 +1019,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     // hmis ==============================
     if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
-        require app_path('Modules/HMIS/routes/vendor.php');
+        require app_path('Modules/HMIS/routes/vendor.php'); 
     } 
  
     // laundry ============================== 
