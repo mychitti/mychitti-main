@@ -399,7 +399,7 @@
     </div>
 
     <div class="t17-nav-right">
-      <a href="{{ route('cart-list') }}" class="t17-cart-btn">
+      <a href="{{ route('cart') }}" class="t17-cart-btn">
         🛒 Cart
         <span class="t17-cart-count-outer cart-count-outer">
           <span class="cart-count-inner">{{ count(\App\Models\Cart::where('user_id', auth()->id() ?? session()->getId())->get()) }}</span>
