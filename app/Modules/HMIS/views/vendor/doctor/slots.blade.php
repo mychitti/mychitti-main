@@ -363,7 +363,7 @@
         selectAllCloneDays(false);
 
         document.getElementById('cloneSlotLabel').textContent = `${dayName} · ${timeLabel}`;
-        document.getElementById('cloneForm').action = "{{ url('vendor/doctor/' . $doctor->id . '/slots') }}/" + slotId + "/clone";
+        document.getElementById('cloneForm').action = "{{ route('vendor.doctor.slot.clone', [$doctor->id, '_SLOT_']) }}".replace('_SLOT_', slotId);
 
         $('#cloneModal').modal('show');
     }
