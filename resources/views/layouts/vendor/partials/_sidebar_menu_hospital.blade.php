@@ -138,7 +138,7 @@
                             @endif
                         </ul>
                     </li>
-                @endif
+             @else still no permission   @endif
 
                 @if (hasMasterModulePermission('hospital_manage'))
                     {{-- Patients  --}}
