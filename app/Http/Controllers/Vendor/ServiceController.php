@@ -2011,7 +2011,7 @@ class ServiceController extends Controller
             ->count();
 
         $view = _isHospital()
-            ? 'vendor-views.hospital.appointment_list'
+            ? 'hmis::vendor.hospital.appointment_list'
             : 'vendor-views.product.service_request_list_all';
 
         return view($view, compact('preset', 'empId', 'approval_pending', 'store_data', 'product', 'type', 'allStaff', 'from', 'to', 'statuses', 'default_statuses', 'storeConfig',

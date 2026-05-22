@@ -277,7 +277,7 @@
 
 /* Image */
 .t17 .t17-pimg {
-  height: 148px; background: #f7f7f7;
+  height: 148px;
   position: relative; overflow: hidden; flex-shrink: 0;
 }
 .t17 .t17-pimg a { display: block; width: 100%; height: 100%; }
@@ -298,6 +298,7 @@
 .t17 .t17-pbody {
   padding: 10px 12px 12px;
   display: flex; flex-direction: column; flex: 1;
+  width: 100%;
 }
 .t17 .t17-pweight { font-size: .64rem; color: var(--mut); margin-bottom: 2px; }
 .t17 .t17-pname {
@@ -368,6 +369,29 @@
 .t17 [class*=" cartSec_"] a.btn:has(.fa-shopping-bag) {
   border-color: var(--gr) !important;
 }
+
+/* Out-of-stock & options states */
+.t17 .t17-oos-badge { background: #888 !important; }
+.t17 .t17-oos-img { opacity: .55; filter: grayscale(.4); }
+.t17 .t17-sold-out {
+  font-size: .65rem; font-weight: 700; color: #aaa;
+  letter-spacing: .03em; flex-shrink: 0;
+}
+.t17 .t17-options-btn {
+  font-size: .72rem; font-weight: 700; padding: 0 12px;
+  white-space: nowrap; border-radius: 10px;
+  border: 1.5px solid var(--pr); color: var(--pr);
+  text-decoration: none; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+.t17 .t17-options-btn:hover { background: var(--pr); color: #fff; }
+
+/* Soft pastel card image backgrounds — cycles per card position */
+.t17 .t17-pimg { background: #FFF4F0; }
+.t17 .t17-pgrid > .t17-pcard:nth-child(4n+2) .t17-pimg { background: #F0FBF4; }
+.t17 .t17-pgrid > .t17-pcard:nth-child(4n+3) .t17-pimg { background: #F0F5FF; }
+.t17 .t17-pgrid > .t17-pcard:nth-child(4n+4) .t17-pimg { background: #FFFAF0; }
 
 /* OFFER BANNER */
 .t17 .t17-offer {
@@ -592,26 +616,25 @@
             <div class="t17-pgrid">
               @foreach($cat->items as $pro)
                 @php
-                  $variations = json_decode($pro->variations);
-                  $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
-                  if ($firstVr && ($pro->item_type ?? '') != 'product') {
-                    $selling_price = json_decode($firstVr)->price;
-                    $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
-                  } else {
-                    $selling_price = $pro->price;
-                    $mrp = $pro->mrp_price ?? $pro->price;
-                  }
-                  $hasDiscount = $mrp && $mrp > $selling_price;
-                  $inCart = _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']'));
+                  $variations   = json_decode($pro->variations);
+                  $firstVr      = !empty($variations) ? json_encode($variations[0]) : '';
+                  $multiVariant = !empty($variations) && count($variations) > 1;
+                  $outOfStock   = isset($pro->stock) && $pro->stock <= 0;
+                  $selling_price = $pro->price;
+                  $mrp          = $pro->mrp_price ?? $pro->price;
+                  $hasDiscount  = $mrp && $mrp > $selling_price;
+                  $inCart       = _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']'));
                 @endphp
                 <div class="t17-pcard">
                   <div class="t17-pimg">
-                    @if($hasDiscount)
+                    @if($outOfStock)
+                      <div class="t17-pbadge t17-oos-badge">Out of Stock</div>
+                    @elseif($hasDiscount)
                       <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
                     @endif
                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                       <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
-                           alt="{{ $pro->name }}" loading="lazy">
+                           alt="{{ $pro->name }}" loading="lazy" class="{{ $outOfStock ? 't17-oos-img' : '' }}">
                     </a>
                   </div>
                   <div class="t17-pbody">
@@ -626,13 +649,19 @@
                           <span class="t17-pold">₹{{ number_format($mrp, 0) }}</span>
                         @endif
                       </div>
-                      <div class="cartSec_{{ $pro->id }}">
-                        @if($inCart)
-                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
-                        @else
-                          <a onclick="updateCart({{ $pro->id }}, 'add', '{{ !empty($variations) ? 0 : '' }}', '')" class="t17-add-btn" title="Add to cart">+</a>
-                        @endif
-                      </div>
+                      @if($outOfStock)
+                        <span class="t17-sold-out">Unavailable</span>
+                      @elseif($multiVariant)
+                        <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" class="t17-add-btn t17-options-btn">Options</a>
+                      @else
+                        <div class="cartSec_{{ $pro->id }}">
+                          @if($inCart)
+                            <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
+                          @else
+                            <a onclick="updateCart({{ $pro->id }}, 'add', '0', '')" class="t17-add-btn" title="Add to cart">+</a>
+                          @endif
+                        </div>
+                      @endif
                     </div>
                   </div>
                 </div>
@@ -667,18 +696,21 @@
               @foreach($cat->items as $pro)
                 @php
                   $selling_price = $pro->price;
-                  $mrp = $pro->mrp_price ?? $pro->price;
-                  $hasDiscount = $mrp && $mrp > $selling_price;
-                  $inCart = _itemExistInCart($pro->id, '');
+                  $mrp          = $pro->mrp_price ?? $pro->price;
+                  $hasDiscount  = $mrp && $mrp > $selling_price;
+                  $outOfStock   = isset($pro->stock) && $pro->stock <= 0;
+                  $inCart       = _itemExistInCart($pro->id, '');
                 @endphp
                 <div class="t17-pcard">
                   <div class="t17-pimg">
-                    @if($hasDiscount)
+                    @if($outOfStock)
+                      <div class="t17-pbadge t17-oos-badge">Out of Stock</div>
+                    @elseif($hasDiscount)
                       <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
                     @endif
                     <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                       <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
-                           alt="{{ $pro->name }}" loading="lazy">
+                           alt="{{ $pro->name }}" loading="lazy" class="{{ $outOfStock ? 't17-oos-img' : '' }}">
                     </a>
                   </div>
                   <div class="t17-pbody">
@@ -690,13 +722,17 @@
                           <span class="t17-pold">₹{{ number_format($mrp, 0) }}</span>
                         @endif
                       </div>
-                      <div class="cartSec_{{ $pro->id }}">
-                        @if($inCart)
-                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
-                        @else
-                          <a onclick="updateCart({{ $pro->id }}, 'add', '', '')" class="t17-add-btn" title="Add to cart">+</a>
-                        @endif
-                      </div>
+                      @if($outOfStock)
+                        <span class="t17-sold-out">Unavailable</span>
+                      @else
+                        <div class="cartSec_{{ $pro->id }}">
+                          @if($inCart)
+                            <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
+                          @else
+                            <a onclick="updateCart({{ $pro->id }}, 'add', '', '')" class="t17-add-btn" title="Add to cart">+</a>
+                          @endif
+                        </div>
+                      @endif
                     </div>
                   </div>
                 </div>

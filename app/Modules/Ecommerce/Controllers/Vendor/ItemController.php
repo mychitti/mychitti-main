@@ -47,14 +47,18 @@ class ItemController extends Controller
         $store_data = Helpers::get_store_data();
         if ($store_data->module_id == 5) {
             $ven_cats = $store_data->shop_categories;
+            $catQuery = Category::where('position', 0)->module(5);
+            if (!empty($ven_cats)) {
+                $catQuery->whereIn('id', explode(',', $ven_cats));
+            }
+            $categories = $catQuery->get();
         } else {
             $ven_cats = $store_data->category_1;
             if ($store_data->category_2) {
                 $ven_cats .= ',' . $store_data->category_2;
             }
+            $categories = Category::where(['position' => 0])->whereIn('id', explode(',', $ven_cats))->module($store_data->module_id)->get();
         }
-        // prx($ven_cats);
-        $categories = Category::where(['position' => 0])->whereIn('id', explode(',', $ven_cats))->module(Helpers::get_store_data()->module_id)->get();
 
         $conditions = CommonCondition::all();
         $module_data = config('module.' . Helpers::get_store_data()->module->module_type);
@@ -471,6 +475,11 @@ class ItemController extends Controller
         $store_data = Helpers::get_store_data();
         if ($store_data->module_id == 5) {
             $ven_cats = $store_data->shop_categories;
+            $catQuery = Category::where('position', 0)->module(5);
+            if (!empty($ven_cats)) {
+                $catQuery->whereIn('id', explode(',', $ven_cats));
+            }
+            $categories = $catQuery->get();
         } else {
             $ven_cats = $store_data->category_1;
             if ($store_data->category_2) {
@@ -479,9 +488,9 @@ class ItemController extends Controller
             if ($store_data->subcategories) {
                 $ven_cats .= (',' . $store_data->subcategories);
             }
+            $categories = Category::where(['position' => 0])->whereIn('id', explode(',', $ven_cats))->module($store_data->module_id)->get();
         }
         $fee_category = FeeCategory::find($product->fee_category);
-        $categories = Category::where(['position' => 0])->whereIn('id', explode(',', $ven_cats))->module(Helpers::get_store_data()->module_id)->get();
         // $keywords = ProductKeyword::where('status', 1)->get();
         $module_data = config('module.' . Helpers::get_store_data()->module->module_type);
         $conditions = CommonCondition::all();

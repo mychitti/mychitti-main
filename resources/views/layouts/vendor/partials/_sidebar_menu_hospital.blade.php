@@ -28,9 +28,8 @@
                     </li>
                 @endif
 
-                @if (auth('vendor')->check() &&
-                        selected_menu('leads_manage') &&
-                        hasMasterModulePermission('leads_manage') &&
+                @if (selected_menu('leads_manage') &&
+                        hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads_manage.report', 'leads_manage.settings']) &&
                         $store_data->module->id == 6)
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
