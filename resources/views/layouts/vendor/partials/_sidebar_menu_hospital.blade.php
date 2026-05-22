@@ -99,6 +99,47 @@
                     </li>
                 @endif
 
+                {{-- Staff (free for doctors — outside hospital_manage plan gate) --}}
+                @if (hasAnyPermission([
+                        'staff_doctor.list',
+                        'staff_doctor.add',
+                        'staff_doctor.export',
+                        'staff_nurse.list',
+                        'staff_nurse.add',
+                        'staff_nurse.export',
+                    ]))
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                            title="Staff">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Patient Management_color.png') }}"
+                                alt="" class="nav-link-icon">
+                            <span
+                                class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Staff</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                            style="display: {{ Request::is('doctor*') || Request::is('nurse*') ? 'block' : 'none' }}">
+                            @if (hasAnyPermission(['staff_doctor.list', 'staff_doctor.add', 'staff_doctor.export']))
+                                <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.doctor.list') }}"
+                                        title="Doctors">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Doctors</span>
+                                    </a>
+                                </li>
+                            @endif
+                            @if (hasAnyPermission(['staff_nurse.list', 'staff_nurse.add', 'staff_nurse.export']))
+                                <li class="nav-item {{ Request::is('nurse*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.nurse.list') }}" title="Nurses">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Nurses</span>
+                                    </a>
+                                </li>
+                            @endif
+                        </ul>
+                    </li>
+                @endif
+
                 @if (hasMasterModulePermission('hospital_manage'))
                     {{-- Patients  --}}
                     @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
@@ -207,51 +248,6 @@
                                         </a>
                                     </li>
                                 @endif
-                            </ul>
-                        </li>
-                    @endif
-
-                    {{ 'has any permission ' . hasAnyPermission(['staff_doctor.list']) }}
-                    {{ 'has permission ' . hasPermission('staff_doctor', 'list') }}
-
-                    {{-- Staff --}}
-                    @if (hasAnyPermission([
-                            'staff_doctor.list',
-                            'staff_doctor.add',
-                            'staff_doctor.export',
-                            'staff_nurse.list',
-                            'staff_nurse.add',
-                            'staff_nurse.export',
-                        ]))
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                                title="Staff">
-                                <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Patient Management_color.png') }}"
-                                    alt="" class="nav-link-icon">
-                                <span
-                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Staff</span>
-                            </a>
-                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                style="display: {{ Request::is('doctor*') || Request::is('nurse*') ? 'block' : 'none' }}">
-                                @if (hasAnyPermission(['staff_doctor.list', 'staff_doctor.add', 'staff_doctor.export']))
-                                    <li class="nav-item {{ Request::is('doctor*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.doctor.list') }}"
-                                            title="Doctors">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Doctors</span>
-                                        </a>
-                                    </li>
-                                @endif
-                                @if (hasAnyPermission(['staff_nurse.list', 'staff_nurse.add', 'staff_nurse.export']))
-                                    <li class="nav-item {{ Request::is('nurse*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.nurse.list') }}" title="Nurses">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Nurses</span>
-                                        </a>
-                                    </li>
-                                @endif
-
                             </ul>
                         </li>
                     @endif
