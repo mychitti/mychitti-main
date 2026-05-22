@@ -137,8 +137,7 @@
                                 </li>
                             @endif
                         </ul>
-                    </li>
-             @else still no permission   @endif
+                    </li>  @endif
 
                 @if (hasMasterModulePermission('hospital_manage'))
                     {{-- Patients  --}}
@@ -299,7 +298,7 @@
                         </li>
                     @endif
 
-             @else no perm   @endif
+             @endif
 
                 {{-- Other label --}}
                 <li class="nav-item">
