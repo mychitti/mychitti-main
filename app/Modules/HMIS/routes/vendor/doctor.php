@@ -2,7 +2,7 @@
 
 use App\Modules\HMIS\Controllers\Vendor\DoctorController;
 use App\Modules\HMIS\Controllers\Vendor\MyDoctorProfileController;
-
+ 
 Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
     Route::get('list',                               [DoctorController::class, 'index'])->name('list')->middleware('permission:staff_doctor,list');
     Route::get('export',                             [DoctorController::class, 'export'])->name('export')->middleware('permission:staff_doctor,export');
