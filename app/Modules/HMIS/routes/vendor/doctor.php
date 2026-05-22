@@ -5,8 +5,7 @@ use App\Modules\HMIS\Controllers\Vendor\MyDoctorProfileController;
 
 Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
     Route::get('export',                             [DoctorController::class, 'export'])->name('export')->middleware('permission:staff_doctor,export');
-    Route::get('create',                             [DoctorController::class, 'create'])->name('create')->middleware('permission:staff_doctor,add');
-    Route::post('store',                             [DoctorController::class, 'store'])->name('store')->middleware('permission:staff_doctor,add');
+    // create and store are registered outside the planwise group (free)
     Route::get('{id}/edit',                          [DoctorController::class, 'edit'])->name('edit')->middleware('permission:staff_doctor,edit');
     Route::post('{id}/update',                       [DoctorController::class, 'update'])->name('update')->middleware('permission:staff_doctor,edit');
     Route::post('{id}/delete',                       [DoctorController::class, 'destroy'])->name('delete')->middleware('permission:staff_doctor,delete');
