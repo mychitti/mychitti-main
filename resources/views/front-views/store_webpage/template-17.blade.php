@@ -260,52 +260,109 @@
 /* PRODUCT GRID */
 .t17 .t17-pgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 14px; margin-bottom: 32px;
 }
 .t17 .t17-pcard {
-  background: var(--wh); border-radius: var(--rad);
+  background: var(--wh); border-radius: 16px;
   overflow: hidden; box-shadow: var(--sh);
   transition: transform .2s, box-shadow .2s;
-  position: relative;
+  display: flex; flex-direction: column;
 }
 .t17 .t17-pcard:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
+
+/* Image */
 .t17 .t17-pimg {
-  height: 145px; background: #f5f5f5;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden; position: relative;
+  height: 148px; background: #f7f7f7;
+  position: relative; overflow: hidden; flex-shrink: 0;
 }
+.t17 .t17-pimg a { display: block; width: 100%; height: 100%; }
 .t17 .t17-pimg img {
   width: 100%; height: 100%; object-fit: cover;
-  transition: transform .3s;
+  transition: transform .35s;
 }
-.t17 .t17-pcard:hover .t17-pimg img { transform: scale(1.06); }
+.t17 .t17-pcard:hover .t17-pimg img { transform: scale(1.07); }
 .t17 .t17-pbadge {
-  position: absolute; top: 10px; left: 10px;
-  font-size: .62rem; font-weight: 700;
+  position: absolute; top: 8px; left: 8px;
+  font-size: .6rem; font-weight: 700;
   padding: 3px 8px; border-radius: 99px;
-  text-transform: uppercase; letter-spacing: .05em;
-  background: var(--pr-bg); color: var(--pr);
+  background: var(--pr); color: #fff;
+  letter-spacing: .04em; z-index: 1;
 }
-.t17 .t17-pbody { padding: 11px 12px 13px; }
-.t17 .t17-pname { font-size: .84rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; color: var(--ink); }
-.t17 .t17-pweight { font-size: .66rem; color: var(--mut); margin-bottom: 3px; }
-.t17 .t17-pfooter { display: flex; align-items: center; justify-content: space-between; }
-.t17 .t17-pprice { display: flex; flex-direction: column; }
-.t17 .t17-pcurr { font-size: .95rem; font-weight: 800; color: var(--ink); }
-.t17 .t17-pold { font-size: .68rem; color: var(--mut); text-decoration: line-through; }
+
+/* Body */
+.t17 .t17-pbody {
+  padding: 10px 12px 12px;
+  display: flex; flex-direction: column; flex: 1;
+}
+.t17 .t17-pweight { font-size: .64rem; color: var(--mut); margin-bottom: 2px; }
+.t17 .t17-pname {
+  font-size: .82rem; font-weight: 700; line-height: 1.35;
+  color: var(--ink); flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+  margin-bottom: 10px;
+}
+
+/* Footer row: price left, button right */
+.t17 .t17-pfooter {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 6px;
+  margin-top: auto;
+}
+.t17 .t17-pprice { display: flex; flex-direction: column; min-width: 0; }
+.t17 .t17-pcurr { font-size: .95rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.t17 .t17-pold  { font-size: .66rem; color: var(--mut); text-decoration: line-through; }
+
+/* Add / Remove button (initial render) */
 .t17 .t17-add-btn {
-  width: 34px; height: 34px; border-radius: 10px;
-  background: var(--pr-bg); color: var(--pr);
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--wh); color: var(--pr);
   border: 1.5px solid var(--pr);
-  font-size: 1.2rem; font-weight: 700;
+  font-size: 1.3rem; font-weight: 300; line-height: 1;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all .15s; flex-shrink: 0;
-  text-decoration: none;
+  text-decoration: none; user-select: none;
 }
 .t17 .t17-add-btn:hover { background: var(--pr); color: #fff; }
-.t17 .t17-add-btn.removing {
-  background: #fff0f0; color: #cc0000; border-color: #cc0000; font-size: .7rem;
+.t17 .t17-add-btn.in-cart {
+  background: var(--pr); color: #fff; font-size: .7rem;
+}
+
+/* ─── Override layout-injected cart buttons ─── */
+.t17 [class^="cartSec_"] a.btn,
+.t17 [class*=" cartSec_"] a.btn {
+  width: 36px !important; height: 36px !important;
+  border-radius: 10px !important; padding: 0 !important;
+  background: var(--wh) !important; color: var(--pr) !important;
+  border: 1.5px solid var(--pr) !important;
+  display: inline-flex !important; align-items: center !important;
+  justify-content: center !important;
+  font-size: 0 !important; /* hide text */
+  transition: all .15s !important; flex-shrink: 0;
+}
+.t17 [class^="cartSec_"] a.btn:hover,
+.t17 [class*=" cartSec_"] a.btn:hover {
+  background: var(--pr) !important; color: #fff !important;
+}
+.t17 [class^="cartSec_"] a.btn i,
+.t17 [class*=" cartSec_"] a.btn i {
+  font-size: .9rem !important; margin: 0 !important;
+  color: inherit !important;
+}
+/* "Remove" state — red tint */
+.t17 [class^="cartSec_"] a.btn .fa-times,
+.t17 [class*=" cartSec_"] a.btn .fa-times {
+  color: var(--pr) !important;
+}
+/* "Add" state after remove — green tint */
+.t17 [class^="cartSec_"] a.btn .fa-shopping-bag,
+.t17 [class*=" cartSec_"] a.btn .fa-shopping-bag {
+  color: var(--gr) !important;
+}
+.t17 [class^="cartSec_"] a.btn:has(.fa-shopping-bag),
+.t17 [class*=" cartSec_"] a.btn:has(.fa-shopping-bag) {
+  border-color: var(--gr) !important;
 }
 
 /* OFFER BANNER */
@@ -543,22 +600,20 @@
                   $inCart = _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']'));
                 @endphp
                 <div class="t17-pcard">
-                  <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" style="text-decoration:none;color:inherit;">
-                    <div class="t17-pimg">
-                      @if($hasDiscount)
-                        <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
-                      @endif
+                  <div class="t17-pimg">
+                    @if($hasDiscount)
+                      <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
+                    @endif
+                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                       <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                            alt="{{ $pro->name }}" loading="lazy">
-                    </div>
-                    <div class="t17-pbody">
-                      @if($pro->unit_type ?? null)
-                        <div class="t17-pweight">{{ $pro->unit_type }}</div>
-                      @endif
-                      <div class="t17-pname">{{ Str::limit($pro->name, 36) }}</div>
-                    </div>
-                  </a>
-                  <div class="t17-pbody" style="padding-top:0;">
+                    </a>
+                  </div>
+                  <div class="t17-pbody">
+                    @if($pro->unit_type ?? null)
+                      <div class="t17-pweight">{{ $pro->unit_type }}</div>
+                    @endif
+                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" class="t17-pname" style="text-decoration:none;">{{ $pro->name }}</a>
                     <div class="t17-pfooter">
                       <div class="t17-pprice">
                         <span class="t17-pcurr">₹{{ number_format($selling_price, 0) }}</span>
@@ -568,7 +623,7 @@
                       </div>
                       <div class="cartSec_{{ $pro->id }}">
                         @if($inCart)
-                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn removing" title="Remove">✕</a>
+                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
                         @else
                           <a onclick="updateCart({{ $pro->id }}, 'add', '{{ !empty($variations) ? 0 : '' }}', '')" class="t17-add-btn" title="Add to cart">+</a>
                         @endif
@@ -612,19 +667,17 @@
                   $inCart = _itemExistInCart($pro->id, '');
                 @endphp
                 <div class="t17-pcard">
-                  <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" style="text-decoration:none;color:inherit;">
-                    <div class="t17-pimg">
-                      @if($hasDiscount)
-                        <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
-                      @endif
+                  <div class="t17-pimg">
+                    @if($hasDiscount)
+                      <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
+                    @endif
+                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
                       <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
                            alt="{{ $pro->name }}" loading="lazy">
-                    </div>
-                    <div class="t17-pbody">
-                      <div class="t17-pname">{{ Str::limit($pro->name, 36) }}</div>
-                    </div>
-                  </a>
-                  <div class="t17-pbody" style="padding-top:0;">
+                    </a>
+                  </div>
+                  <div class="t17-pbody">
+                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" class="t17-pname" style="text-decoration:none;">{{ $pro->name }}</a>
                     <div class="t17-pfooter">
                       <div class="t17-pprice">
                         <span class="t17-pcurr">₹{{ number_format($selling_price, 0) }}</span>
@@ -634,7 +687,7 @@
                       </div>
                       <div class="cartSec_{{ $pro->id }}">
                         @if($inCart)
-                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn removing" title="Remove">✕</a>
+                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn in-cart" title="Remove">✕</a>
                         @else
                           <a onclick="updateCart({{ $pro->id }}, 'add', '', '')" class="t17-add-btn" title="Add to cart">+</a>
                         @endif
