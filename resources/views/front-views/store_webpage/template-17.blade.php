@@ -6,574 +6,703 @@
 
 @push('css_or_js')
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/css/lightgallery.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/css/lg-thumbnail.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    /* ── Reset / Base ── */
-    :root {
-        --ec-primary:   #81c408;
-        --ec-primary-d: #6aaa04;
-        --ec-accent:    #f59e0b;
-        --ec-dark:      #1a1a1a;
-        --ec-muted:     #6b7280;
-        --ec-border:    #e5e7eb;
-        --ec-bg:        #f9fafb;
-    }
+/* ─── SCOPE: prefix all rules so they don't bleed into layout ─── */
+.t17 *,
+.t17 *::before,
+.t17 *::after { box-sizing: border-box; }
 
-    /* ── Top Sticky Nav ── */
-    .ec-store-nav {
-        position: fixed; top: 0; left: 0; right: 0; z-index: 999;
-        background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,.1);
-        height: 64px; display: flex; align-items: center; padding: 0 24px;
-        gap: 20px;
-    }
-    .ec-store-nav .store-logo { height: 44px; width: 44px; object-fit: cover; border-radius: 8px; }
-    .ec-store-nav .store-name { font-weight: 700; font-size: 16px; color: var(--ec-dark); }
-    .ec-nav-links { display: flex; gap: 24px; list-style: none; margin: 0; padding: 0; }
-    .ec-nav-links a { font-size: 14px; color: var(--ec-muted); text-decoration: none; transition: color .2s; }
-    .ec-nav-links a:hover, .ec-nav-links a.active { color: var(--ec-primary); font-weight: 600; }
-    .ec-spacer { height: 64px; }
+.t17 {
+  --pr: #E8380D;
+  --pr-l: #FF5733;
+  --pr-bg: #FFF5F3;
+  --gr: #1BAC4B;
+  --gr-bg: #F0FBF4;
+  --yl: #FFB800;
+  --ink: #1A1A1A;
+  --mut: #666;
+  --bdr: #EBEBEB;
+  --bg: #F8F8F8;
+  --wh: #FFFFFF;
+  --sans: 'Poppins', sans-serif;
+  --disp: 'Nunito', sans-serif;
+  --rad: 16px;
+  --sh: 0 2px 12px rgba(0,0,0,.08);
+  --sh-md: 0 4px 24px rgba(0,0,0,.12);
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+}
 
-    /* ── Hero Banner ── */
-    .ec-hero { position: relative; overflow: hidden; max-height: 320px; }
-    .ec-hero-cover { width: 100%; height: 320px; object-fit: cover; display: block; }
-    .ec-hero-overlay {
-        position: absolute; inset: 0;
-        background: linear-gradient(to right, rgba(0,0,0,.55) 0%, rgba(0,0,0,.1) 60%, transparent 100%);
-        display: flex; align-items: flex-end; padding: 28px;
-    }
-    .ec-hero-info { color: #fff; }
-    .ec-hero-info .store-avatar {
-        width: 70px; height: 70px; border-radius: 12px; object-fit: cover;
-        border: 3px solid #fff; margin-bottom: 10px;
-    }
-    .ec-hero-info h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
-    .ec-hero-info .hero-meta { font-size: 13px; opacity: .85; display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
-    .ec-hero-info .hero-meta span { display: flex; align-items: center; gap: 4px; }
-    .ec-rating-pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        background: var(--ec-accent); color: #fff; border-radius: 20px;
-        padding: 3px 10px; font-weight: 700; font-size: 13px;
-    }
+/* TOP BAR */
+.t17 .t17-topbar {
+  background: var(--pr); color: #fff;
+  text-align: center; padding: 8px 16px;
+  font-size: .72rem; font-weight: 600; letter-spacing: .04em;
+}
+.t17 .t17-topbar span {
+  background: rgba(255,255,255,.2); border-radius: 99px;
+  padding: 2px 10px; margin: 0 4px;
+}
 
-    /* ── Layout: sidebar + main ── */
-    .ec-shop-wrap { display: flex; gap: 0; min-height: 60vh; }
+/* NAV */
+.t17 .t17-nav {
+  position: sticky; top: 0; z-index: 200;
+  background: var(--wh);
+  border-bottom: 1px solid var(--bdr);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 16px;
+  height: 64px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.t17 .t17-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--disp); font-size: 1.4rem; font-weight: 900;
+  color: var(--pr); text-decoration: none; white-space: nowrap;
+}
+.t17 .t17-logo img {
+  height: 40px; width: 40px; object-fit: cover; border-radius: 10px;
+}
+.t17 .t17-search-wrap { flex: 1; position: relative; }
+.t17 .t17-search-wrap input {
+  width: 100%;
+  border: 1.5px solid var(--bdr); border-radius: 12px;
+  padding: 10px 16px 10px 42px;
+  font-family: var(--sans); font-size: .88rem;
+  background: var(--bg); outline: none;
+  transition: border-color .2s, background .2s;
+  color: var(--ink);
+}
+.t17 .t17-search-wrap input:focus { border-color: var(--pr); background: var(--wh); }
+.t17 .t17-search-wrap input::placeholder { color: #aaa; }
+.t17 .t17-search-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  font-size: 1rem; color: #aaa; pointer-events: none;
+}
+.t17 .t17-nav-right { display: flex; align-items: center; gap: 8px; }
+.t17 .t17-cart-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 10px;
+  background: var(--pr); color: #fff;
+  font-size: .82rem; font-weight: 600;
+  text-decoration: none; white-space: nowrap;
+  transition: background .2s;
+}
+.t17 .t17-cart-btn:hover { background: var(--pr-l); color: #fff; }
+.t17 .t17-cart-count-outer {
+  background: #fff; color: var(--pr);
+  font-size: .65rem; font-weight: 800;
+  min-width: 18px; height: 18px; border-radius: 99px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
 
-    /* ── Category Sidebar ── */
-    .ec-cat-sidebar {
-        width: 200px; flex-shrink: 0;
-        position: sticky; top: 64px; align-self: flex-start;
-        max-height: calc(100vh - 64px); overflow-y: auto;
-        background: #fff; border-right: 1px solid var(--ec-border);
-        padding: 16px 0;
-    }
-    .ec-cat-sidebar::-webkit-scrollbar { width: 4px; }
-    .ec-cat-sidebar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-    .ec-cat-link {
-        display: block; padding: 9px 18px;
-        font-size: 14px; color: var(--ec-muted); text-decoration: none;
-        border-left: 3px solid transparent; transition: all .18s;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .ec-cat-link:hover { color: var(--ec-dark); background: var(--ec-bg); }
-    .ec-cat-link.active { color: var(--ec-primary); border-left-color: var(--ec-primary); background: #f0fbe6; font-weight: 600; }
+/* CATEGORY STRIP */
+.t17 .t17-cat-strip {
+  background: var(--wh);
+  border-bottom: 1px solid var(--bdr);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.t17 .t17-cat-strip::-webkit-scrollbar { display: none; }
+.t17 .t17-cat-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 16px;
+  font-size: .78rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  color: var(--mut);
+  border-bottom: 2.5px solid transparent;
+  transition: all .2s; flex-shrink: 0;
+  text-decoration: none;
+}
+.t17 .t17-cat-pill:hover { color: var(--ink); }
+.t17 .t17-cat-pill.active { color: var(--pr); border-bottom-color: var(--pr); }
 
-    /* ── Product Area ── */
-    .ec-product-area { flex: 1; min-width: 0; padding: 24px; background: var(--ec-bg); }
+/* LAYOUT */
+.t17 .t17-page { display: flex; max-width: 1320px; margin: 0 auto; }
 
-    /* ── Section Heading ── */
-    .ec-section-heading {
-        font-size: 16px; font-weight: 700; color: var(--ec-dark);
-        padding: 6px 0 10px; margin-bottom: 14px;
-        border-bottom: 2px solid var(--ec-primary); display: inline-block;
-    }
+/* SIDEBAR */
+.t17 .t17-sidebar {
+  width: 110px; flex-shrink: 0;
+  background: var(--wh);
+  border-right: 1px solid var(--bdr);
+  min-height: calc(100vh - 120px);
+  position: sticky; top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto; scrollbar-width: none;
+}
+.t17 .t17-sidebar::-webkit-scrollbar { display: none; }
+.t17 .t17-sitem {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 8px; gap: 6px;
+  cursor: pointer; text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: all .15s;
+}
+.t17 .t17-sitem:hover { background: var(--bg); }
+.t17 .t17-sitem.active { background: var(--pr-bg); border-left-color: var(--pr); }
+.t17 .t17-sicon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: #f5f5f5;
+  transition: transform .2s;
+}
+.t17 .t17-sicon img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+.t17 .t17-sitem:hover .t17-sicon { transform: scale(1.05); }
+.t17 .t17-slabel {
+  font-size: .62rem; font-weight: 700; text-align: center;
+  color: var(--ink); line-height: 1.3;
+}
+.t17 .t17-sitem.active .t17-slabel { color: var(--pr); }
 
-    /* ── Product Card ── */
-    .ec-card {
-        background: #fff; border-radius: 12px; overflow: hidden;
-        border: 1px solid var(--ec-border); position: relative;
-        transition: box-shadow .2s, transform .2s;
-        display: flex; flex-direction: column;
-    }
-    .ec-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
-    .ec-card-img-wrap { position: relative; height: 190px; overflow: hidden; }
-    .ec-card-img { width: 100%; height: 190px; object-fit: cover; transition: transform .3s; }
-    .ec-card:hover .ec-card-img { transform: scale(1.04); }
+/* MAIN */
+.t17 .t17-main { flex: 1; padding: 20px 20px 60px; min-width: 0; }
 
-    .ec-card-body { padding: 10px 12px 12px; flex: 1; display: flex; flex-direction: column; }
-    .ec-card-name {
-        font-size: 14px; font-weight: 600; color: var(--ec-dark);
-        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-        overflow: hidden; margin-bottom: 4px; min-height: 40px;
-    }
-    .ec-card-var-hint { font-size: 11px; color: var(--ec-muted); margin-bottom: 6px; }
-    .ec-card-price { font-size: 16px; font-weight: 700; color: var(--ec-dark); }
-    .ec-card-mrp   { font-size: 12px; text-decoration: line-through; color: #9ca3af; margin-left: 5px; }
+/* HERO BANNERS */
+.t17 .t17-hero {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 12px; margin-bottom: 24px;
+}
+.t17 .t17-banner-main {
+  border-radius: var(--rad); overflow: hidden;
+  position: relative; height: 200px;
+  cursor: pointer; display: block;
+}
+.t17 .t17-banner-main img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.t17 .t17-banner-fallback {
+  height: 200px; border-radius: var(--rad);
+  background: linear-gradient(120deg,#E8380D 0%,#FF7043 50%,#FF8C00 100%);
+  display: flex; align-items: center; padding: 28px 32px;
+  position: relative; overflow: hidden;
+}
+.t17 .t17-banner-fallback::after {
+  content: ''; position: absolute; right: -30px; top: -30px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: rgba(255,255,255,.08);
+}
+.t17 .t17-bfall-text { position: relative; z-index: 1; }
+.t17 .t17-bfall-text .bfall-title {
+  font-family: var(--disp); font-size: 1.8rem; font-weight: 900;
+  color: #fff; line-height: 1.15; margin-bottom: 6px;
+}
+.t17 .t17-bfall-text .bfall-sub { font-size: .8rem; color: rgba(255,255,255,.8); margin-bottom: 16px; }
+.t17 .t17-bfall-text .bfall-cta {
+  background: #fff; color: var(--pr);
+  font-size: .75rem; font-weight: 700;
+  padding: 8px 18px; border-radius: 99px;
+  border: none; cursor: pointer; transition: transform .2s;
+  text-decoration: none; display: inline-block;
+}
+.t17 .t17-bfall-text .bfall-cta:hover { transform: scale(1.03); }
 
-    /* Badges */
-    .ec-badge-discount {
-        position: absolute; top: 8px; left: 8px;
-        background: #e53e3e; color: #fff; font-size: 10px; font-weight: 700;
-        padding: 2px 7px; border-radius: 4px; z-index: 1;
-    }
-    .ec-badge-delivery {
-        position: absolute; bottom: 8px; left: 8px;
-        background: rgba(255,255,255,.9); color: var(--ec-dark);
-        font-size: 10px; padding: 2px 7px; border-radius: 4px;
-    }
-    .ec-wishlist-btn {
-        position: absolute; top: 8px; right: 8px; z-index: 2;
-        background: rgba(255,255,255,.9); border: none; border-radius: 50%;
-        width: 30px; height: 30px; cursor: pointer; display: flex;
-        align-items: center; justify-content: center; font-size: 14px;
-    }
+.t17 .t17-banner-side { display: flex; flex-direction: column; gap: 12px; }
+.t17 .t17-banner-sm {
+  border-radius: 14px; flex: 1;
+  position: relative; overflow: hidden;
+  cursor: pointer; display: block;
+  min-height: 94px;
+}
+.t17 .t17-banner-sm img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.t17 .t17-banner-sm-fb {
+  border-radius: 14px; flex: 1; padding: 20px;
+  cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end;
+  transition: transform .2s; min-height: 94px;
+}
+.t17 .t17-banner-sm-fb:hover { transform: translateY(-2px); }
+.t17 .t17-banner-sm-fb .sm-title { font-family: var(--disp); font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; }
+.t17 .t17-banner-sm-fb .sm-sub { font-size: .7rem; color: rgba(255,255,255,.75); margin-top: 2px; }
 
-    /* Add to Cart */
-    .ec-cart-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
-    .ec-btn-add {
-        font-size: 12px; padding: 5px 12px; border-radius: 6px;
-        background: var(--ec-primary); color: #fff; border: none; cursor: pointer;
-        transition: background .2s; white-space: nowrap;
-    }
-    .ec-btn-add:hover { background: var(--ec-primary-d); }
-    .ec-btn-remove {
-        font-size: 12px; padding: 5px 12px; border-radius: 6px;
-        background: #fff; color: #e53e3e; border: 1px solid #e53e3e; cursor: pointer;
-        transition: all .2s;
-    }
-    .ec-btn-remove:hover { background: #fef2f2; }
+/* PROMISE STRIP */
+.t17 .t17-promise { display: flex; gap: 12px; margin-bottom: 24px; }
+.t17 .t17-pcard {
+  flex: 1; background: var(--wh); border-radius: 14px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--sh);
+}
+.t17 .t17-pcard-icon { font-size: 1.5rem; flex-shrink: 0; }
+.t17 .t17-pcard-title { font-size: .8rem; font-weight: 700; }
+.t17 .t17-pcard-sub { font-size: .68rem; color: var(--mut); }
 
-    /* ── Banners carousel ── */
-    .ec-banners { margin: 16px 0; }
-    .ec-banners img { border-radius: 10px; width: 100%; object-fit: cover; max-height: 180px; }
+/* SECTION HEADER */
+.t17 .t17-sh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.t17 .t17-sh-title { font-family: var(--disp); font-size: 1.1rem; font-weight: 800; }
+.t17 .t17-sh-title span { color: var(--pr); }
+.t17 .t17-sh-link { font-size: .78rem; font-weight: 600; color: var(--pr); text-decoration: none; }
+.t17 .t17-sh-link:hover { text-decoration: underline; }
 
-    /* ── Gallery ── */
-    .ec-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-    .ec-gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; cursor: pointer; transition: opacity .2s; }
-    .ec-gallery-item img:hover { opacity: .85; }
+/* CATEGORY CARDS */
+.t17 .t17-cat-cards {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding-bottom: 4px; margin-bottom: 28px; scrollbar-width: none;
+}
+.t17 .t17-cat-cards::-webkit-scrollbar { display: none; }
+.t17 .t17-ccard {
+  flex-shrink: 0; width: 90px;
+  background: var(--wh); border-radius: 14px;
+  padding: 14px 8px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer; box-shadow: var(--sh);
+  transition: transform .2s, box-shadow .2s;
+  text-align: center; text-decoration: none;
+}
+.t17 .t17-ccard:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
+.t17 .t17-ccard-img {
+  width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: #f0f0f0;
+}
+.t17 .t17-ccard-img img { width: 100%; height: 100%; object-fit: cover; }
+.t17 .t17-ccard-name { font-size: .68rem; font-weight: 700; color: var(--ink); line-height: 1.3; }
 
-    /* ── Reviews ── */
-    .ec-review-card { background: #fff; border: 1px solid var(--ec-border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
-    .ec-reviewer-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .ec-stars { color: var(--ec-accent); font-size: 13px; }
+/* PRODUCT GRID */
+.t17 .t17-pgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 14px; margin-bottom: 32px;
+}
+.t17 .t17-pcard {
+  background: var(--wh); border-radius: var(--rad);
+  overflow: hidden; box-shadow: var(--sh);
+  transition: transform .2s, box-shadow .2s;
+  position: relative;
+}
+.t17 .t17-pcard:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
+.t17 .t17-pimg {
+  height: 145px; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+.t17 .t17-pimg img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform .3s;
+}
+.t17 .t17-pcard:hover .t17-pimg img { transform: scale(1.06); }
+.t17 .t17-pbadge {
+  position: absolute; top: 10px; left: 10px;
+  font-size: .62rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px;
+  text-transform: uppercase; letter-spacing: .05em;
+  background: var(--pr-bg); color: var(--pr);
+}
+.t17 .t17-pbody { padding: 11px 12px 13px; }
+.t17 .t17-pname { font-size: .84rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; color: var(--ink); }
+.t17 .t17-pweight { font-size: .66rem; color: var(--mut); margin-bottom: 3px; }
+.t17 .t17-pfooter { display: flex; align-items: center; justify-content: space-between; }
+.t17 .t17-pprice { display: flex; flex-direction: column; }
+.t17 .t17-pcurr { font-size: .95rem; font-weight: 800; color: var(--ink); }
+.t17 .t17-pold { font-size: .68rem; color: var(--mut); text-decoration: line-through; }
+.t17 .t17-add-btn {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--pr-bg); color: var(--pr);
+  border: 1.5px solid var(--pr);
+  font-size: 1.2rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; flex-shrink: 0;
+  text-decoration: none;
+}
+.t17 .t17-add-btn:hover { background: var(--pr); color: #fff; }
+.t17 .t17-add-btn.removing {
+  background: #fff0f0; color: #cc0000; border-color: #cc0000; font-size: .7rem;
+}
 
-    /* ── Contact boxes ── */
-    .ec-contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-top: 14px; }
-    .ec-contact-box { background: #fff; border: 1px solid var(--ec-border); border-radius: 10px; padding: 16px; text-align: center; }
-    .ec-contact-box .icon { font-size: 22px; color: var(--ec-primary); margin-bottom: 8px; }
-    .ec-contact-box .label { font-size: 11px; color: var(--ec-muted); margin-bottom: 4px; }
-    .ec-contact-box .value { font-size: 13px; font-weight: 600; color: var(--ec-dark); word-break: break-word; }
+/* OFFER BANNER */
+.t17 .t17-offer {
+  border-radius: var(--rad);
+  background: linear-gradient(120deg,#1BAC4B,#0D7A35);
+  padding: 24px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; position: relative; overflow: hidden;
+}
+.t17 .t17-offer::after {
+  content: ''; position: absolute; right: -40px; top: -40px;
+  width: 180px; height: 180px; border-radius: 50%;
+  background: rgba(255,255,255,.07);
+}
+.t17 .t17-offer-tag {
+  background: rgba(255,255,255,.2); color: #fff;
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; padding: 3px 10px; border-radius: 99px;
+  display: inline-block; margin-bottom: 8px;
+}
+.t17 .t17-offer-title {
+  font-family: var(--disp); font-size: 1.4rem; font-weight: 900;
+  color: #fff; line-height: 1.2;
+}
+.t17 .t17-offer-sub { font-size: .76rem; color: rgba(255,255,255,.75); margin-top: 4px; }
+.t17 .t17-offer-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 1; }
+.t17 .t17-offer-btn {
+  background: #fff; color: var(--gr); border: none;
+  padding: 10px 22px; border-radius: 99px;
+  font-size: .78rem; font-weight: 700;
+  cursor: pointer; transition: transform .2s;
+  text-decoration: none; display: inline-block;
+}
+.t17 .t17-offer-btn:hover { transform: scale(1.03); color: var(--gr); }
 
-    /* ── Announcement ── */
-    .ec-announce { background: #ecfdf5; border-left: 4px solid #10b981; padding: 10px 16px; border-radius: 6px; font-size: 14px; }
+/* SECTION SCROLL TARGET */
+.t17 .t17-section { scroll-margin-top: 120px; margin-bottom: 36px; }
 
-    /* ── Info sections (reviews / contact / about) ── */
-    .ec-section { padding: 32px 24px; background: #fff; border-top: 1px solid var(--ec-border); }
-    .ec-section-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
-
-    /* ── Map modal ── */
-    #ec-map { height: 300px; width: 100%; }
-
-    /* ── Mobile ── */
-    @media (max-width: 768px) {
-        .ec-cat-sidebar  { display: none; }
-        .ec-hero-cover   { height: 220px; }
-        .ec-store-nav .ec-nav-links { display: none; }
-        .ec-store-nav .store-name { font-size: 14px; }
-        .ec-product-area { padding: 14px; }
-    }
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .t17 .t17-sidebar { display: none; }
+  .t17 .t17-hero { grid-template-columns: 1fr; }
+  .t17 .t17-banner-side { flex-direction: row; }
+}
+@media (max-width: 700px) {
+  .t17 .t17-nav { padding: 0 14px; gap: 10px; }
+  .t17 .t17-main { padding: 14px 12px 80px; }
+  .t17 .t17-hero { grid-template-columns: 1fr; }
+  .t17 .t17-banner-fallback { height: 160px; padding: 20px; }
+  .t17 .t17-bfall-text .bfall-title { font-size: 1.3rem; }
+  .t17 .t17-banner-side { flex-direction: row; }
+  .t17 .t17-promise { flex-wrap: wrap; }
+  .t17 .t17-pcard { min-width: calc(50% - 6px); }
+  .t17 .t17-pgrid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .t17 .t17-offer { flex-direction: column; gap: 16px; }
+  .t17 .t17-offer-right { align-items: flex-start; }
+}
 </style>
-
-<script>
-    function loadScript(src, cb) {
-        if (document.querySelector('script[src="' + src + '"]')) return;
-        var s = document.createElement('script');
-        s.async = true; s.defer = true; s.src = src; s.onload = cb;
-        document.head.appendChild(s);
-    }
-    function initMap() {
-        var pos = { lat: {{ $store['latitude'] }}, lng: {{ $store['longitude'] }} };
-        var map = new google.maps.Map(document.getElementById('ec-map'), { zoom: 14, center: pos, mapId: 'b2c6179556df0b45' });
-        var marker = new google.maps.marker.AdvancedMarkerElement({ position: pos, map: map });
-        var img = document.createElement('img');
-        img.src = "{{ asset('storage/app/public/store/' . $store['logo']) }}";
-        img.style.cssText = 'width:45px;height:45px;border-radius:50%;border:3px solid white;';
-        marker.content.appendChild(img);
-    }
-    window.addEventListener('load', function () {
-        loadScript("https://maps.googleapis.com/maps/api/js?key={{ \App\Models\BusinessSetting::where('key','map_api_key')->first()->value }}&libraries=places,marker&callback=initMap&loading=async");
-    });
-</script>
 @endpush
 
 @section('content')
-
 @php
-    $storeName   = $data['store_config']?->webpage_name ?? $store['name'];
-    $storeRating = number_format($store->average_rating, 1);
-    $currSymbol  = \App\CentralLogics\Helpers::currency_symbol();
-    $phones      = $data['store_config']?->webpage_phones ? json_decode($data['store_config']->webpage_phones, true) : [];
-    $phone       = !empty($phones) ? implode(', ', $phones) : $store['phone'];
+  $storeName = $data['store_config']?->webpage_name ?? $store['name'];
+  $banners   = $data['banners'] ?? [];
+  $mainBanner = $banners[0] ?? null;
+  $sm1        = $banners[1] ?? null;
+  $sm2        = $banners[2] ?? null;
 @endphp
 
-<div class="ec-spacer"></div>
+<div class="t17">
 
-{{-- ── TOP NAV ── --}}
-<nav class="ec-store-nav">
-    <img src="{{ asset('storage/app/public/store/' . $store['logo']) }}" class="store-logo" alt="{{ $storeName }}">
-    <span class="store-name d-none d-md-inline">{{ $storeName }}</span>
-    <ul class="ec-nav-links ms-auto">
-        <li><a href="#ec-products" class="active">Products</a></li>
-        @if (count($store->galleries)) <li><a href="#ec-gallery">Gallery</a></li> @endif
-        @if (count($data['reviews'])) <li><a href="#ec-reviews">Reviews</a></li> @endif
-        <li><a href="#ec-contact">Contact</a></li>
-        @if ($data['store_config']?->about_us) <li><a href="#ec-about">About</a></li> @endif
-    </ul>
-    <a href="{{ route('cart') }}" class="btn btn-outline-primary btn-sm ms-3 d-none d-md-inline-flex align-items-center gap-1">
-        <i class="fa fa-shopping-cart"></i>
-        <span class="cart-count-outer"><span class="cart-count-inner">0</span></span>
+  {{-- TOP BAR --}}
+  @if($data['store_config']?->announcement ?? null)
+    <div class="t17-topbar">{{ $data['store_config']->announcement }}</div>
+  @else
+    <div class="t17-topbar">🎉 Welcome to <span>{{ $storeName }}</span> — Fast local delivery!</div>
+  @endif
+
+  {{-- NAV --}}
+  <nav class="t17-nav">
+    <a href="#" class="t17-logo">
+      <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($store['logo'], asset('storage/app/public/store/') . '/' . $store['logo'], asset('public/assets/admin/img/160x160/img1.jpg'), 'store/') }}"
+           alt="{{ $storeName }}">
+      {{ $storeName }}
     </a>
-</nav>
 
-{{-- ── HERO ── --}}
-<div class="ec-hero">
-    @if ($store['cover_photo'])
-        <img src="{{ asset('storage/app/public/store/cover/' . $store['cover_photo']) }}"
-             class="ec-hero-cover" alt="{{ $storeName }}">
-    @else
-        <div class="ec-hero-cover" style="background: linear-gradient(135deg, #81c408, #6aaa04);"></div>
-    @endif
-    <div class="ec-hero-overlay">
-        <div class="ec-hero-info">
-            <img src="{{ asset('storage/app/public/store/' . $store['logo']) }}" class="store-avatar" alt="{{ $storeName }}">
-            <h1>{{ $storeName }}</h1>
-            <div class="hero-meta">
-                @if ($store->rating_count)
-                    <span><span class="ec-rating-pill"><i class="fa fa-star"></i> {{ $storeRating }}</span> ({{ $store->rating_count }} reviews)</span>
-                @endif
-                @if ($store->delivery_time)
-                    <span><i class="fa fa-clock-o"></i> {{ $store->delivery_time }}</span>
-                @endif
-                @if ($store['address'])
-                    <span><i class="fa fa-map-marker"></i> {{ Str::limit($store['address'], 60) }}</span>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- ── ANNOUNCEMENT ── --}}
-@if ($store->announcement)
-<div class="container py-2">
-    <div class="ec-announce"><i class="fa fa-bullhorn me-2"></i>{{ $store->announcement_message }}</div>
-</div>
-@endif
-
-{{-- ── STORE BANNERS ── --}}
-@if (count($data['banners']))
-<div class="container ec-banners">
-    <div class="owl-carousel ec-store-banner-carousel">
-        @foreach ($data['banners'] as $banner)
-            <a href="{{ $banner->default_link ?? '#' }}" onclick="trackBannerClick({{ $banner->id }})">
-                <img src="{{ asset('storage/app/public/banner/' . $banner->image) }}" alt="banner">
-            </a>
-        @endforeach
-    </div>
-</div>
-@endif
-
-{{-- ── MAIN SHOP: SIDEBAR + PRODUCTS ── --}}
-<div id="ec-products">
-<div class="ec-shop-wrap">
-
-    {{-- Category Sidebar --}}
-    <div class="ec-cat-sidebar">
-        @foreach ($productdata as $key => $cat)
-            <a href="#cat-{{ $key }}" class="ec-cat-link {{ $key === 0 ? 'active' : '' }}" data-cat="{{ $key }}">
-                {{ $cat->name }} <span class="badge badge-pill badge-light text-muted" style="font-size:10px;">{{ count($cat->items) }}</span>
-            </a>
-        @endforeach
+    <div class="t17-search-wrap">
+      <span class="t17-search-icon">🔍</span>
+      <input type="text" placeholder="Search products…" id="t17SearchInput" autocomplete="off">
     </div>
 
-    {{-- Product Grid --}}
-    <div class="ec-product-area">
-        @forelse ($productdata as $key => $cat)
-            <div id="cat-{{ $key }}" class="ec-cat-section mb-5">
-                <span class="ec-section-heading">{{ $cat->name }}</span>
-                <div class="row g-3">
-                    @foreach ($cat->items as $pro)
-                        @php
-                            $variations  = json_decode($pro->variations) ?? [];
-                            $firstVr     = !empty($variations) ? $variations[0] : null;
-                            $sellPrice   = $firstVr ? $firstVr->price    : $pro->price;
-                            $mrpPrice    = $firstVr ? ($firstVr->mrpprice ?? $firstVr->price) : ($pro->mrp_price ?? $pro->price);
-                            $varIdx0     = !empty($variations) ? 0 : '';
-                            $inCart      = _itemExistInCart($pro->id, json_encode('[' . (!empty($variations) ? json_encode($variations[0]) : '') . ']'));
-                        @endphp
-                        <div class="col-6 col-sm-4 col-md-3 col-xl-2 pr_{{ $pro->id }}">
-                            <div class="ec-card">
-                                {{-- Image --}}
-                                <div class="ec-card-img-wrap">
-                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}">
-                                        <img class="ec-card-img"
-                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/' . $pro->image), asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
-                                             alt="{{ $pro->name }}"
-                                             loading="lazy">
-                                    </a>
-                                    {{-- Discount badge --}}
-                                    @if ($pro->discount > 0)
-                                        <span class="ec-badge-discount">
-                                            {{ floor($pro->discount) }}{{ $pro->discount_type == 'percent' ? '%' : $currSymbol }} OFF
-                                        </span>
-                                    @endif
-                                    {{-- Delivery time --}}
-                                    @if ($store->delivery_time)
-                                        <span class="ec-badge-delivery">
-                                            <i class="fa fa-clock-o"></i> {{ strtoupper($store->delivery_time) }}
-                                        </span>
-                                    @endif
-                                    {{-- Wishlist --}}
-                                    <button class="ec-wishlist-btn prHeart_{{ $pro->id }}"
-                                            onclick="wishlist({{ $pro->id }}, '{{ _itemExistInWishlist($pro->id) ? 'remove' : 'add' }}')"
-                                            title="Wishlist">
-                                        <i class="fa fa-heart heart_{{ $pro->id }} {{ _itemExistInWishlist($pro->id) ? 'text_red' : 'text_grey' }}"></i>
-                                    </button>
-                                </div>
-
-                                {{-- Body --}}
-                                <div class="ec-card-body">
-                                    <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" class="text-decoration-none">
-                                        <p class="ec-card-name" title="{{ ucfirst($pro->name) }}">{{ ucfirst($pro->name) }}</p>
-                                    </a>
-
-                                    {{-- Variation hint --}}
-                                    @if (!empty($variations))
-                                        <p class="ec-card-var-hint">
-                                            {{ $variations[0]->type }}
-                                            @if (count($variations) > 1)
-                                                &nbsp;<span class="badge badge-pill badge-light text-muted border" style="font-size:9px;">+{{ count($variations)-1 }} more</span>
-                                            @endif
-                                        </p>
-                                    @endif
-
-                                    {{-- Price row --}}
-                                    <div class="ec-cart-row">
-                                        <div>
-                                            <span class="ec-card-price">{{ _price($sellPrice) }}</span>
-                                            @if ($pro->discount > 0)
-                                                <span class="ec-card-mrp">{{ _price($mrpPrice) }}</span>
-                                            @endif
-                                        </div>
-                                        {{-- Add / Remove cart --}}
-                                        <div class="cart-section cartSec_{{ $pro->id }}">
-                                            @if ($inCart)
-                                                <button onclick="updateCart({{ $pro->id }}, 'remove', '{{ $varIdx0 }}', {{ $inCart }})"
-                                                        class="ec-btn-remove">
-                                                    <i class="fa fa-times"></i> Remove
-                                                </button>
-                                            @else
-                                                <button onclick="updateCart({{ $pro->id }}, 'add', '{{ $varIdx0 }}', '')"
-                                                        class="ec-btn-add">
-                                                    <i class="fa fa-plus"></i> Add
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @empty
-            <div class="text-center py-5">
-                <i class="fa fa-box-open fa-3x text-muted mb-3"></i>
-                <p class="text-muted">No products found.</p>
-            </div>
-        @endforelse
+    <div class="t17-nav-right">
+      <a href="{{ route('cart-list') }}" class="t17-cart-btn">
+        🛒 Cart
+        <span class="t17-cart-count-outer cart-count-outer">
+          <span class="cart-count-inner">{{ count(\App\Models\Cart::where('user_id', auth()->id() ?? session()->getId())->get()) }}</span>
+        </span>
+      </a>
     </div>
-</div>
-</div>
+  </nav>
 
-{{-- ── GALLERY ── --}}
-@if (count($store->galleries))
-<div class="ec-section" id="ec-gallery">
-    <div class="container">
-        <p class="ec-section-title">Gallery</p>
-        <div class="ec-gallery-grid" id="ec-gallery-grid">
-            @foreach ($data['galleries'] as $img)
-                <a class="ec-gallery-item ec-lg-item"
-                   href="{{ asset('storage/app/public/store/gallery/' . $img->image) }}">
-                    <img src="{{ asset('storage/app/public/store/gallery/' . $img->image) }}"
-                         alt="Gallery" loading="lazy">
-                </a>
-            @endforeach
-        </div>
-    </div>
-</div>
-@endif
+  {{-- CATEGORY PILLS STRIP --}}
+  <div class="t17-cat-strip" id="t17CatStrip">
+    <a href="#t17-all" class="t17-cat-pill active" data-cat="all">🏠 All</a>
+    @foreach($productdata as $key => $cat)
+      <a href="#t17-cat-{{ $key }}" class="t17-cat-pill" data-cat="{{ $key }}">{{ $cat->name }}</a>
+    @endforeach
+    @foreach($invItemdata as $key => $cat)
+      <a href="#t17-inv-{{ $key }}" class="t17-cat-pill" data-cat="inv{{ $key }}">{{ $cat->name }}</a>
+    @endforeach
+  </div>
 
-{{-- ── REVIEWS ── --}}
-@if (count($data['reviews']))
-<div class="ec-section" id="ec-reviews">
-    <div class="container">
-        <p class="ec-section-title">Customer Reviews</p>
-        @foreach ($data['reviews'] as $rev)
-            <div class="ec-review-card">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rev->profile_image, asset('storage/app/public/profile/' . $rev->profile_image), asset('public/assets/admin/img/160x160/img1.jpg'), 'profile/') }}"
-                         class="ec-reviewer-avatar" alt="{{ $rev->f_name }}">
-                    <div>
-                        <p class="fw-600 mb-0">{{ $rev->f_name . ' ' . $rev->l_name }}</p>
-                        <div class="ec-stars">
-                            @for ($s = 1; $s <= 5; $s++)
-                                <i class="fa fa-star{{ $rev->rating >= $s ? '' : '-o' }}"></i>
-                            @endfor
-                        </div>
-                    </div>
-                    <span class="ms-auto" style="font-size:12px; color:#9ca3af;">{{ _formatted_datetime($rev->created_at) }}</span>
-                </div>
-                <p class="mb-1 text-muted" style="font-size:14px;">{{ $rev->comment }}</p>
-                @if ($rev->reply)
-                    <div class="d-flex gap-2 mt-2 p-2 rounded" style="background:#f0fbe6;">
-                        <img src="{{ asset('storage/app/public/store/' . $store['logo']) }}"
-                             style="width:30px;height:30px;border-radius:50%;object-fit:cover;" alt="store">
-                        <p class="mb-0 text-dark" style="font-size:13px;">{{ $rev->reply }}</p>
-                    </div>
-                @endif
-            </div>
-        @endforeach
-        @if ($data['review_count'] > 3)
-            <a href="{{ route('store.reviews', [$store->slug]) }}" class="btn btn-outline-primary btn-sm">
-                View all {{ $data['review_count'] }} reviews <i class="fa fa-arrow-right ms-1"></i>
-            </a>
-        @endif
-    </div>
-</div>
-@endif
+  {{-- PAGE WRAP --}}
+  <div class="t17-page">
 
-{{-- ── CONTACT ── --}}
-<div class="ec-section" id="ec-contact">
-    <div class="container">
-        <p class="ec-section-title">Contact Us</p>
-        <div class="ec-contact-grid">
-            <div class="ec-contact-box">
-                <div class="icon"><i class="fa fa-map-marker"></i></div>
-                <div class="label">Address</div>
-                <div class="value">{{ $store['address'] }}</div>
-            </div>
-            <div class="ec-contact-box">
-                <div class="icon"><i class="fa fa-phone"></i></div>
-                <div class="label">Phone</div>
-                <div class="value"><a href="tel:{{ $phone }}" class="text-dark text-decoration-none">{{ $phone }}</a></div>
-            </div>
-            @if ($store['email'])
-            <div class="ec-contact-box">
-                <div class="icon"><i class="fa fa-envelope"></i></div>
-                <div class="label">Email</div>
-                <div class="value"><a href="mailto:{{ $store['email'] }}" class="text-dark text-decoration-none">{{ $store['email'] }}</a></div>
-            </div>
+    {{-- SIDEBAR --}}
+    <div class="t17-sidebar">
+      <a href="#t17-all" class="t17-sitem active" data-scat="all">
+        <div class="t17-sicon" style="background:#FFF0ED;">🏠</div>
+        <div class="t17-slabel">All</div>
+      </a>
+      @foreach($productdata as $key => $cat)
+        <a href="#t17-cat-{{ $key }}" class="t17-sitem" data-scat="{{ $key }}">
+          <div class="t17-sicon">
+            @if($cat->image ?? null)
+              <img src="{{ asset('storage/app/public/category/') . '/' . $cat->image }}"
+                   onerror="this.style.display='none';this.parentElement.innerHTML='🛍️';"
+                   alt="{{ $cat->name }}">
+            @else
+              🛍️
             @endif
-            <div class="ec-contact-box" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#ec-map-modal">
-                <div class="icon"><i class="fa fa-location-arrow"></i></div>
-                <div class="label">Location</div>
-                <div class="value" style="color: var(--ec-primary);">View on Map</div>
+          </div>
+          <div class="t17-slabel">{{ Str::limit($cat->name, 12) }}</div>
+        </a>
+      @endforeach
+    </div>
+
+    {{-- MAIN --}}
+    <div class="t17-main" id="t17-all">
+
+      {{-- HERO BANNERS --}}
+      <div class="t17-hero">
+        {{-- Main banner --}}
+        @if($mainBanner)
+          <a href="{{ $mainBanner->default_link ?? '#' }}" class="t17-banner-main" onclick="trackBannerClick({{ $mainBanner->id }})">
+            <img src="{{ asset('storage/app/public/banner/') . '/' . $mainBanner->image }}"
+                 alt="{{ $mainBanner->title ?? $storeName }}">
+          </a>
+        @else
+          <div class="t17-banner-fallback">
+            <div class="t17-bfall-text">
+              <div class="bfall-title">{{ $storeName }}</div>
+              <div class="bfall-sub">{{ $store['meta_description'] ? Str::limit($store['meta_description'], 70) : 'Shop fresh, shop local.' }}</div>
+              <a href="#t17-products" class="bfall-cta">Shop Now →</a>
             </div>
-        </div>
-    </div>
-</div>
+          </div>
+        @endif
 
-{{-- ── ABOUT ── --}}
-@if ($data['store_config']?->about_us)
-<div class="ec-section" id="ec-about">
-    <div class="container">
-        <p class="ec-section-title">About {{ $storeName }}</p>
-        <div class="text-muted lh-lg">{!! $data['store_config']->about_us !!}</div>
-    </div>
-</div>
-@endif
-
-{{-- ── Map Modal ── --}}
-<div class="modal fade" id="ec-map-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{{ $storeName }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        {{-- Side banners --}}
+        <div class="t17-banner-side">
+          @if($sm1)
+            <a href="{{ $sm1->default_link ?? '#' }}" class="t17-banner-sm" onclick="trackBannerClick({{ $sm1->id }})">
+              <img src="{{ asset('storage/app/public/banner/') . '/' . $sm1->image }}" alt="{{ $sm1->title ?? '' }}">
+            </a>
+          @else
+            <div class="t17-banner-sm-fb" style="background:linear-gradient(135deg,#1BAC4B,#0D8B39);">
+              <div class="sm-title">Free Delivery</div>
+              <div class="sm-sub">On qualifying orders</div>
             </div>
-            <div class="modal-body p-0"><div id="ec-map"></div></div>
+          @endif
+          @if($sm2)
+            <a href="{{ $sm2->default_link ?? '#' }}" class="t17-banner-sm" onclick="trackBannerClick({{ $sm2->id }})">
+              <img src="{{ asset('storage/app/public/banner/') . '/' . $sm2->image }}" alt="{{ $sm2->title ?? '' }}">
+            </a>
+          @else
+            <div class="t17-banner-sm-fb" style="background:linear-gradient(135deg,#FFB800,#E09800);">
+              <div class="sm-title">Fresh Daily</div>
+              <div class="sm-sub">Quality guaranteed</div>
+            </div>
+          @endif
         </div>
-    </div>
-</div>
+      </div>
 
-@endsection
+      {{-- DELIVERY PROMISE --}}
+      <div class="t17-promise">
+        <div class="t17-pcard"><div class="t17-pcard-icon">⚡</div><div><div class="t17-pcard-title">Fast Delivery</div><div class="t17-pcard-sub">Right to your door</div></div></div>
+        <div class="t17-pcard"><div class="t17-pcard-icon">✅</div><div><div class="t17-pcard-title">Quality Assured</div><div class="t17-pcard-sub">Or full refund</div></div></div>
+        <div class="t17-pcard"><div class="t17-pcard-icon">🔒</div><div><div class="t17-pcard-title">Safe Payments</div><div class="t17-pcard-sub">UPI, Card, COD</div></div></div>
+        <div class="t17-pcard"><div class="t17-pcard-icon">🌿</div><div><div class="t17-pcard-title">Local Sourced</div><div class="t17-pcard-sub">Support local vendors</div></div></div>
+      </div>
 
-@push('script_2')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/lightgallery.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.2/plugins/thumbnail/lg-thumbnail.umd.min.js"></script>
+      {{-- CATEGORY CARDS --}}
+      @if(count($productdata) > 0)
+        <div class="t17-sh">
+          <div class="t17-sh-title">Shop by <span>Category</span></div>
+        </div>
+        <div class="t17-cat-cards" id="t17-products">
+          @foreach($productdata as $key => $cat)
+            <a href="#t17-cat-{{ $key }}" class="t17-ccard">
+              <div class="t17-ccard-img">
+                @if($cat->image ?? null)
+                  <img src="{{ asset('storage/app/public/category/') . '/' . $cat->image }}"
+                       onerror="this.style.display='none';" alt="{{ $cat->name }}">
+                @else
+                  <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">🛍️</div>
+                @endif
+              </div>
+              <div class="t17-ccard-name">{{ Str::limit($cat->name, 14) }}</div>
+            </a>
+          @endforeach
+        </div>
+      @endif
+
+      {{-- PRODUCT SECTIONS BY CATEGORY --}}
+      @foreach($productdata as $key => $cat)
+        @if(count($cat->items) > 0)
+          <div class="t17-section" id="t17-cat-{{ $key }}">
+            <div class="t17-sh">
+              <div class="t17-sh-title">{{ $cat->name }}</div>
+            </div>
+            <div class="t17-pgrid">
+              @foreach($cat->items as $pro)
+                @php
+                  $variations = json_decode($pro->variations);
+                  $firstVr = !empty($variations) ? json_encode($variations[0]) : '';
+                  if ($firstVr && ($pro->item_type ?? '') != 'product') {
+                    $selling_price = json_decode($firstVr)->price;
+                    $mrp = json_decode($firstVr)->mrpprice ?? json_decode($firstVr)->price;
+                  } else {
+                    $selling_price = $pro->price;
+                    $mrp = $pro->mrp_price ?? $pro->price;
+                  }
+                  $hasDiscount = $mrp && $mrp > $selling_price;
+                  $inCart = _itemExistInCart($pro->id, json_encode('[' . $firstVr . ']'));
+                @endphp
+                <div class="t17-pcard">
+                  <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" style="text-decoration:none;color:inherit;">
+                    <div class="t17-pimg">
+                      @if($hasDiscount)
+                        <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
+                      @endif
+                      <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                           alt="{{ $pro->name }}" loading="lazy">
+                    </div>
+                    <div class="t17-pbody">
+                      @if($pro->unit_type ?? null)
+                        <div class="t17-pweight">{{ $pro->unit_type }}</div>
+                      @endif
+                      <div class="t17-pname">{{ Str::limit($pro->name, 36) }}</div>
+                    </div>
+                  </a>
+                  <div class="t17-pbody" style="padding-top:0;">
+                    <div class="t17-pfooter">
+                      <div class="t17-pprice">
+                        <span class="t17-pcurr">₹{{ number_format($selling_price, 0) }}</span>
+                        @if($hasDiscount)
+                          <span class="t17-pold">₹{{ number_format($mrp, 0) }}</span>
+                        @endif
+                      </div>
+                      <div class="cartSec_{{ $pro->id }}">
+                        @if($inCart)
+                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn removing" title="Remove">✕</a>
+                        @else
+                          <a onclick="updateCart({{ $pro->id }}, 'add', '{{ !empty($variations) ? 0 : '' }}', '')" class="t17-add-btn" title="Add to cart">+</a>
+                        @endif
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              @endforeach
+            </div>
+          </div>
+
+          {{-- Offer banner after first category --}}
+          @if($key === array_key_first((array)$productdata) && count($productdata) > 1)
+            <div class="t17-offer">
+              <div>
+                <div class="t17-offer-tag">🎉 Shop More Save More</div>
+                <div class="t17-offer-title">Best Deals<br>Every Day</div>
+                <div class="t17-offer-sub">Fresh products at unbeatable prices</div>
+              </div>
+              <div class="t17-offer-right">
+                <a href="#t17-products" class="t17-offer-btn">Explore All →</a>
+              </div>
+            </div>
+          @endif
+        @endif
+      @endforeach
+
+      {{-- INVENTORY ITEMS --}}
+      @foreach($invItemdata as $key => $cat)
+        @if(count($cat->items) > 0)
+          <div class="t17-section" id="t17-inv-{{ $key }}">
+            <div class="t17-sh">
+              <div class="t17-sh-title">{{ $cat->name }}</div>
+            </div>
+            <div class="t17-pgrid">
+              @foreach($cat->items as $pro)
+                @php
+                  $selling_price = $pro->price;
+                  $mrp = $pro->mrp_price ?? $pro->price;
+                  $hasDiscount = $mrp && $mrp > $selling_price;
+                  $inCart = _itemExistInCart($pro->id, '');
+                @endphp
+                <div class="t17-pcard">
+                  <a href="{{ route('product.details', [_selectedCity(), $pro->slug]) }}" style="text-decoration:none;color:inherit;">
+                    <div class="t17-pimg">
+                      @if($hasDiscount)
+                        <div class="t17-pbadge">{{ round((($mrp - $selling_price) / $mrp) * 100) }}% OFF</div>
+                      @endif
+                      <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($pro->image, asset('storage/app/public/product/') . '/' . $pro->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'product/') }}"
+                           alt="{{ $pro->name }}" loading="lazy">
+                    </div>
+                    <div class="t17-pbody">
+                      <div class="t17-pname">{{ Str::limit($pro->name, 36) }}</div>
+                    </div>
+                  </a>
+                  <div class="t17-pbody" style="padding-top:0;">
+                    <div class="t17-pfooter">
+                      <div class="t17-pprice">
+                        <span class="t17-pcurr">₹{{ number_format($selling_price, 0) }}</span>
+                        @if($hasDiscount)
+                          <span class="t17-pold">₹{{ number_format($mrp, 0) }}</span>
+                        @endif
+                      </div>
+                      <div class="cartSec_{{ $pro->id }}">
+                        @if($inCart)
+                          <a onclick="updateCart({{ $pro->id }}, 'remove', '', '{{ $inCart }}')" class="t17-add-btn removing" title="Remove">✕</a>
+                        @else
+                          <a onclick="updateCart({{ $pro->id }}, 'add', '', '')" class="t17-add-btn" title="Add to cart">+</a>
+                        @endif
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              @endforeach
+            </div>
+          </div>
+        @endif
+      @endforeach
+
+    </div>{{-- /main --}}
+  </div>{{-- /page --}}
+</div>{{-- /t17 --}}
+
+@push('css_or_js')
 <script>
-$(function () {
+// Pill / sidebar active state on scroll
+(function () {
+  const sections = document.querySelectorAll('.t17-section');
+  const pills    = document.querySelectorAll('#t17CatStrip .t17-cat-pill');
+  const sitems   = document.querySelectorAll('.t17-sitem');
 
-    // ── Banner carousel ──────────────────────────────────────────
-    $('.ec-store-banner-carousel').owlCarousel({
-        loop: true, margin: 10, nav: false, dots: true, autoplay: true, autoplayTimeout: 4000,
-        responsive: { 0: { items: 1 }, 768: { items: 2 }, 1200: { items: 3 } }
+  function setActive(key) {
+    pills.forEach(p => p.classList.toggle('active', p.dataset.cat === key));
+    sitems.forEach(s => s.classList.toggle('active', s.dataset.scat === key));
+  }
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id; // e.g. t17-cat-0
+        const key = id.replace('t17-cat-', '').replace('t17-inv-', 'inv');
+        setActive(key);
+      }
     });
+  }, { rootMargin: '-30% 0px -60% 0px' });
 
-    // ── Sidebar active highlight on scroll ───────────────────────
-    var sections = document.querySelectorAll('.ec-cat-section');
-    var navLinks  = document.querySelectorAll('.ec-cat-link');
+  sections.forEach(s => obs.observe(s));
 
-    window.addEventListener('scroll', function () {
-        var scrollY = window.scrollY + 100;
-        sections.forEach(function (sec) {
-            if (sec.offsetTop <= scrollY && sec.offsetTop + sec.offsetHeight > scrollY) {
-                navLinks.forEach(function (l) { l.classList.remove('active'); });
-                var match = document.querySelector('.ec-cat-link[href="#' + sec.id + '"]');
-                if (match) match.classList.add('active');
-            }
-        });
+  // Smooth scroll on pill click
+  document.querySelectorAll('.t17-cat-pill, .t17-sitem').forEach(el => {
+    el.addEventListener('click', function (e) {
+      const href = this.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      }
     });
+  });
 
-    // ── Smooth scroll for sidebar links ──────────────────────────
-    document.querySelectorAll('.ec-cat-link').forEach(function (link) {
-        link.addEventListener('click', function (e) {
-            e.preventDefault();
-            var target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
-            }
-        });
+  // Search filter
+  const input = document.getElementById('t17SearchInput');
+  if (input) {
+    input.addEventListener('input', function () {
+      const q = this.value.toLowerCase().trim();
+      document.querySelectorAll('.t17-pcard').forEach(card => {
+        const name = card.querySelector('.t17-pname')?.textContent?.toLowerCase() ?? '';
+        card.style.display = (!q || name.includes(q)) ? '' : 'none';
+      });
     });
-
-    // ── Nav link active on click ──────────────────────────────────
-    document.querySelectorAll('.ec-nav-links a').forEach(function (a) {
-        a.addEventListener('click', function () {
-            document.querySelectorAll('.ec-nav-links a').forEach(function (x) { x.classList.remove('active'); });
-            this.classList.add('active');
-        });
-    });
-
-    // ── LightGallery ─────────────────────────────────────────────
-    var galleryEl = document.getElementById('ec-gallery-grid');
-    if (galleryEl) {
-        lightGallery(galleryEl, {
-            selector: '.ec-lg-item',
-            plugins: [lgThumbnail],
-            speed: 300,
-            download: false
-        });
-    }
-
-    // ── Banner click tracking ─────────────────────────────────────
-    window.trackBannerClick = function (id) {
-        $.post("{{ route('track.banner.click') }}", { banner_id: id, _token: '{{ csrf_token() }}' });
-    };
-
-    // ── Cart count refresh ────────────────────────────────────────
-    $(document).on('cart:updated', function () {
-        $('.cart-count-outer').load(window.location.href + ' .cart-count-inner');
-    });
-});
+  }
+})();
 </script>
 @endpush
+
+@include('front-views.partials._store-review-form', ['store' => $store])
+@endsection
