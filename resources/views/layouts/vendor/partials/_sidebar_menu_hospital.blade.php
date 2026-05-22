@@ -213,7 +213,8 @@
                         </li>
                     @endif
 
-
+{{ 'has any permission ' . hasAnyPermission(['staff_doctor.list'])}}
+{{ 'has permission ' . hasPermission('staff_doctor','list')}}
 
                     {{-- Staff --}}
                     @if (hasAnyPermission([
