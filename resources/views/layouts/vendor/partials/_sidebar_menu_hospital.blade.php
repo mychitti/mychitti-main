@@ -223,7 +223,7 @@
                             'staff_nurse.list',
                             'staff_nurse.add',
                             'staff_nurse.export',
-                        ]))
+                        ])) 
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('doctor*') || Request::is('nurse*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
