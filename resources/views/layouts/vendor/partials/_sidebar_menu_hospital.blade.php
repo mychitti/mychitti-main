@@ -1,7 +1,7 @@
                 {{-- Hospital Management label --}}
                 <li class="nav-item">
                     <small class="nav-subtitle"
-                        title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
+                        title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }} sdfdg</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
                 </li>
  
