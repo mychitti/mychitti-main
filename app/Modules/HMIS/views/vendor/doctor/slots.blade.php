@@ -170,7 +170,7 @@
                                                 </a>
 
                                                 {{-- Delete --}}
-                                                <a href="{{ route('vendor.doctor.slot.delete', [$doctor->id, $slot->id]) }}"
+                                                <a href="#"
                                                     class="btn action-btn btn--danger btn-outline-danger form-alert"
                                                     data-id="slot-del-{{ $slot->id }}"
                                                     data-message="Delete this slot?">
