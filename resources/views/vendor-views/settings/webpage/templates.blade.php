@@ -129,22 +129,36 @@
 </section>
 
 <div class="modal fade" id="templatePreviewModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-preview-fullscreen">
+        <div class="modal-content" style="height:100vh;border-radius:0;border:0;">
 
-            <div class="modal-header py-2">
+            <div class="modal-header py-2" style="flex-shrink:0;">
                 <h6 class="modal-title">Template Preview</h6>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
+                <button type="button" class="btn btn-danger btn-sm" data-dismiss="modal"
+                    style="font-size:16px;line-height:1;padding:4px 12px;">
+                    &times; Close
                 </button>
             </div>
 
-            <div class="modal-body p-0">
-                <iframe id="templatePreviewFrame" src="" style="width:100%;height:80vh;border:0;"></iframe>
+            <div class="modal-body p-0" style="flex:1;overflow:hidden;">
+                <iframe id="templatePreviewFrame" src="" style="width:100%;height:100%;border:0;display:block;"></iframe>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.modal-preview-fullscreen {
+    max-width: 100vw;
+    width: 100vw;
+    margin: 0;
+    height: 100vh;
+}
+.modal-preview-fullscreen .modal-content {
+    display: flex;
+    flex-direction: column;
+}
+</style>
 
 @push('script')
 <script>
