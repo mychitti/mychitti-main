@@ -394,14 +394,25 @@ class FrontController extends Controller
         $zone_ids = json_decode($this->zone_id, true);
         $data['vendor_ads'] = \App\Models\Notification::whereNotNull('vendor_id')
             ->where('approval', 1)
+            ->where('status', 1)
             ->whereNotNull('image')
-            // ->where('updated_at', '>=', \Carbon\Carbon::today()->subDays(15))
+            ->where(function ($q) {
+                // no expiry set, or expiry date hasn't passed
+                $q->whereNull('days')
+                  ->orWhereRaw('approved_at IS NOT NULL AND DATE_ADD(approved_at, INTERVAL days DAY) >= NOW()');
+            })
+            ->where(function ($q) {
+                // not scheduled, already sent, or scheduled time has arrived
+                $q->where('is_scheduled', 0)
+                  ->orWhereNotNull('sent_at')
+                  ->orWhereRaw('scheduled_at <= NOW()');
+            })
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
                     ->orWhereNull('zone_id')
                     ->orWhere('zone_id', 0);
             })
-            ->inRandomOrder()
+            ->latest()
             ->limit(12)
             ->get();
         // $data['special_product'] = _getSpecialProduct($zone_id);
@@ -2284,7 +2295,13 @@ class FrontController extends Controller
         $zone_ids = json_decode($this->zone_id, true);
         return \App\Models\Notification::whereNotNull('vendor_id')
             ->where('approval', 1)
+            ->where('status', 1)
             ->whereNotNull('image')
+            ->where(function ($q) {
+                $q->whereNull('days')
+                  ->orWhereNull('approved_at')
+                  ->orWhereRaw('DATE_ADD(approved_at, INTERVAL days DAY) >= NOW()');
+            })
             ->where(function ($q) use ($zone_ids) {
                 $q->whereIn('zone_id', $zone_ids)
                     ->orWhereNull('zone_id')
@@ -2313,6 +2330,7 @@ class FrontController extends Controller
     {
         $ad = \App\Models\Notification::whereNotNull('vendor_id')
             ->where('approval', 1)
+            ->where('status', 1)
             ->findOrFail($id);
 
         // track view
@@ -2512,9 +2530,9 @@ class FrontController extends Controller
             ->where('store_reviews.status', 1)
             ->count();
         // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
-        // if ($request->has('template') && $request->template) {
-        //     return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
-        // }
+        if ($request->has('template') && $request->template && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com', 'staging.mychitti.net'])) {
+            return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        }
         // prx($store);
         $templateId = $data['store_config']?->template_id ?? 1;
         return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
