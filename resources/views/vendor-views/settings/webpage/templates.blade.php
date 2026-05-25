@@ -115,7 +115,10 @@
 
                             <button type="button" class="btn btn-sm btn-outline-secondary preview-template"
                                 data-toggle="modal" data-target="#templatePreviewModal"
-                                data-preview-url="{{ route('store.details', ['tirupati', $store->slug]) }}?template={{ $template->template_id }}">
+                                @php
+                                    $previewCity = $store->zone ? strtolower(str_replace(' ', '-', trim(explode(',', $store->zone->name)[0]))) : 'zone';
+                                @endphp
+                                data-preview-url="{{ route('store.details', [$previewCity, $store->slug]) }}?template={{ $template->template_id }}">
                                 Preview
                             </button>
 
@@ -133,7 +136,7 @@
         <div class="modal-content" style="height:100vh;border-radius:0;border:0;">
 
             <div class="modal-header py-2" style="flex-shrink:0;">
-                <h6 class="modal-title">Template Preview {{$request->getHost()}}</h6>
+                <h6 class="modal-title">Template Preview</h6>
                 <button type="button" class="btn btn-danger btn-sm" data-dismiss="modal"
                     style="font-size:16px;line-height:1;padding:4px 12px;">
                     &times; Close
