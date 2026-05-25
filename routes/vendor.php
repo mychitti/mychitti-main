@@ -613,6 +613,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
         Route::get('service/lead-subscription', '\App\Http\Controllers\Vendor\LeadSubscriptionController@index')->name('service.lead-subscription');
         Route::post('service/lead-subscription/buy', '\App\Http\Controllers\Vendor\LeadSubscriptionController@buy')->name('service.lead-subscription.buy');
+        Route::post('service/lead-subscription/gateway', '\App\Http\Controllers\Vendor\LeadSubscriptionController@initiate_gateway')->name('service.lead-subscription.gateway');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
             Route::get('assigned-leads/{id?}/{action?}', 'ServiceController@assigned_leads_list')->name('assigned_leads_list');

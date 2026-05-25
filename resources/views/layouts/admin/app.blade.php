@@ -19,6 +19,8 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <link rel="icon" type="image/x-icon" href="{{ asset('storage/business/' . $logo ?? '') }}">
     <!-- Font -->
     <link href="{{ asset('public/assets/admin/css/fonts.css') }}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <!-- CSS Implementing Plugins -->
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/vendor.min.css') }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/vendor/icon-set/style.css') }}">
@@ -885,13 +887,16 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                         let data = response.data;
                         new_order_type = data.type;
                         new_module_id = data.module_id;
+                        @if(\App\CentralLogics\Helpers::module_permission_check('service'))
                         if (data.new_enquiry > 0) {
                             playAudio();
                             $('#service-popup-modal').appendTo("body").modal('show');
                         } else {
                             $('#service-popup-modal').appendTo("body").modal('hide');
                         }
+                        @endif
 
+                        @if(\App\CentralLogics\Helpers::module_permission_check('document'))
                         if (data.new_document > 0) {
                             playAudio();
                             $('#document-popup-modal').appendTo("body").modal('show');
@@ -899,18 +904,25 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                         } else {
                             $('#document-popup-modal').appendTo("body").modal('hide');
                         }
+                        @endif
+
+                        @if(\App\CentralLogics\Helpers::module_permission_check('user'))
                         if (data.new_user > 0) {
                             playAudio();
                             $('#user-popup-modal').appendTo("body").modal('show');
                         } else {
                             $('#user-popup-modal').appendTo("body").modal('hide');
                         }
+                        @endif
+
+                        @if(\App\CentralLogics\Helpers::module_permission_check('order'))
                         if (data.new_order > 0) {
                             playAudio();
                             $('#popup-modal').appendTo("body").modal('show');
                         } else {
                             $('#popup-modal').appendTo("body").modal('hide');
                         }
+                        @endif
                     },
                 });
             }, 10000);

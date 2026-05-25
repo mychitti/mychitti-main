@@ -1132,6 +1132,33 @@
                 </li>
                 <!-- End AI Module -->
 
+                <!-- Sales & Marketing -->
+                @if(\App\CentralLogics\Helpers::module_permission_check('sales_crm'))
+                <li class="nav-item">
+                    <small class="nav-subtitle">{{ translate('Sales & Marketing') }}</small>
+                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                </li>
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/queries*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.query.index') }}" title="{{ translate('Sales Queries') }}">
+                        <i class="tio-city nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Sales Queries') }}</span>
+                    </a>
+                </li>
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/followups*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.followup.index') }}" title="{{ translate('Follow-ups') }}">
+                        <i class="tio-calendar nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Follow-ups') }}</span>
+                    </a>
+                </li>
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/tickets*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.ticket.index') }}" title="{{ translate('Support Tickets') }}">
+                        <i class="tio-help-outlined nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Support Tickets') }}</span>
+                    </a>
+                </li>
+                @endif
+                <!-- End Sales & Marketing -->
+
                 <!-- Employee-->
 
                 <li class="nav-item">

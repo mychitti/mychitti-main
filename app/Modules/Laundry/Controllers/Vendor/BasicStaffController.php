@@ -56,6 +56,7 @@ class BasicStaffController extends Controller
             'f_name'   => 'required|string|max:100',
             'phone'    => 'required|regex:/^[0-9\s\-\+\(\)]{7,20}$/|unique:vendor_employees,phone',
             'email'    => 'required|email|unique:vendor_employees,email',
+            'password' => 'required|string|min:6|confirmed',
             'image'    => 'nullable|image|max:2048',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
@@ -65,6 +66,7 @@ class BasicStaffController extends Controller
         $emp->l_name            = $request->l_name;
         $emp->phone             = $request->phone;
         $emp->email             = $request->email;
+        $emp->password          = bcrypt($request->password);
         $emp->vendor_id         = Helpers::get_vendor_id();
         $emp->store_id          = Helpers::get_store_id();
         $emp->employee_role_id  = $request->employee_role_id ?: null;
@@ -100,6 +102,7 @@ class BasicStaffController extends Controller
             'f_name'   => 'required|string|max:100',
             'phone'    => ['required', 'regex:/^[0-9\s\-\+\(\)]{7,20}$/', Rule::unique('vendor_employees', 'phone')->ignore($id)],
             'email'    => ['required', 'email', Rule::unique('vendor_employees', 'email')->ignore($id)],
+            'password' => 'nullable|string|min:6|confirmed',
             'image'    => 'nullable|image|max:2048',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
@@ -109,6 +112,9 @@ class BasicStaffController extends Controller
         $emp->phone            = $request->phone;
         $emp->email            = $request->email;
         $emp->employee_role_id = $request->employee_role_id ?: null;
+        if ($request->filled('password')) {
+            $emp->password = bcrypt($request->password);
+        }
 
         if ($request->hasFile('image')) {
             if ($emp->image) {

@@ -18,7 +18,7 @@
         </div>
 
         {{-- Free Trial Banner --}}
-        @if (!$hasAccess && !$trialExpired)
+        @if (!$hasAccess && !$trialActive && !$trialExpired)
             <div class="card mb-4" style=" background: linear-gradient(135deg, #f3f0ff, #eee4f6);">
                 <div class="card-body text-center py-5">
                     <img src="{{ asset('storage/uploaded/util/image (2).png') }}"
@@ -52,7 +52,7 @@
             </div>
         @endif
 
-        @if ($hasAccess)
+        @if ($hasAccess || $trialActive)
             {{-- Chart --}}
             <div class="card mb-3">
                 <div class="card-header border-0 d-flex justify-content-between align-items-center">
@@ -147,7 +147,7 @@
                                     href="{{ route('vendor.performance-analytics.index', ['tab' => 'shares']) }}">Shares</a>
                             </li>
                         </ul>
-                                @if ($hasAccess)
+                                @if ($hasAccess || $trialActive)
 
                         <form class="row align-items-end g-2 date-range-form mb-2">
                             <input type="hidden" name="tab" value="{{ $tab }}">
@@ -170,7 +170,7 @@
                     </div>
 
 
-        @if ($hasAccess)
+        @if ($hasAccess || $trialActive)
 
                     <div class="table-responsive">
                         @if ($tab == 'store_visits' || $tab == 'location_views' || $tab == 'phone_calls')

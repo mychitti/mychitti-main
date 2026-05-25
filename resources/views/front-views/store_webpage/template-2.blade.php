@@ -640,20 +640,20 @@
                                                                                         <button disabled
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                         <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                                                                     @elseif (auth('web')->user())
                                                                                         <button
                                                                                             onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                     @else
                                                                                         <button data-bs-toggle="modal"
                                                                                             data-bs-target="#loginModal"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                     @endif
                                                                                 @endif
 
@@ -817,20 +817,20 @@
                                                                                         <button disabled
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-muted action__btn" title="Currently unavailable for enquiries"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                         <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                                                                     @elseif (auth('web')->user())
                                                                                         <button
                                                                                             onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                     @else
                                                                                         <button data-bs-toggle="modal"
                                                                                             data-bs-target="#loginModal"
                                                                                             class="btn border border-secondary rounded p-1 px-2 text-primary action__btn"><i
                                                                                                 class="fas fa-user-cog"></i>
-                                                                                            Enquiry Now</button>
+                                                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}</button>
                                                                                     @endif
                                                                                 @endif
 

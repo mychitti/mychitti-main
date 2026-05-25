@@ -26,12 +26,24 @@ class OpdController extends Controller
         $formatted_to = $to = $range['end'];
 
         $store_id = Helpers::get_store_id();
-        $doctor   = $request->doctor;
         $search   = $request->search;
+
+        // "My OPD Appointments" scope: restrict to this doctor's visits
+        $myScope = $request->scope === 'my' && auth('vendor_employee')->check();
+        $myDoctorProfileId = null;
+        if ($myScope) {
+            $myProfile = DoctorProfile::where('emp_id', auth('vendor_employee')->id())
+                ->where('store_id', $store_id)
+                ->first();
+            $myDoctorProfileId = $myProfile?->id;
+        }
+
+        $doctor = $myScope ? null : $request->doctor;
 
         $visits = OpdVisit::where('store_id', $store_id)
             ->whereBetween('visit_date', [$formatted_from, $formatted_to])
-            ->when($doctor, fn($q) => $q->where('doctor_profile_id', $doctor))
+            ->when($myScope, fn($q) => $q->where('doctor_profile_id', $myDoctorProfileId))
+            ->when(!$myScope && $doctor, fn($q) => $q->where('doctor_profile_id', $doctor))
             ->when($search, function ($q) use ($search) {
                 $q->whereHas('patient', fn($p) => $p->where('name', 'like', "%$search%")
                     ->orWhere('patient_uid', 'like', "%$search%"));
@@ -40,11 +52,11 @@ class OpdController extends Controller
             ->orderBy('token_number')
             ->paginate(20);
 
-        $doctors = DoctorProfile::where('store_id', $store_id)
+        $doctors = $myScope ? collect() : DoctorProfile::where('store_id', $store_id)
             ->with('employee')
             ->get();
 
-        return view('hmis::vendor.opd.index', compact('preset', 'visits', 'doctors', 'from', 'to'));
+        return view('hmis::vendor.opd.index', compact('preset', 'visits', 'doctors', 'from', 'to', 'myScope'));
     }
 
     public function export(Request $request)

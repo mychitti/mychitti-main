@@ -8,13 +8,25 @@ use App\Models\Translation;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class CustomRoleController extends Controller
 {
     public function create()
     {
-        $rl=AdminRole::whereNotIn('id',[1])->latest()->paginate(config('default_pagination'));
-        return view('admin-views.custom-role.create',compact('rl'));
+        $rl = AdminRole::whereNotIn('id', [1])->latest()->paginate(config('default_pagination'));
+        $zones = DB::table('zones')
+            ->leftJoin('translations', function ($join) {
+                $join->on('translations.translationable_id', '=', 'zones.id')
+                     ->where('translations.translationable_type', 'App\Models\Zone')
+                     ->where('translations.key', 'name')
+                     ->where('translations.locale', app()->getLocale());
+            })
+            ->orderBy(DB::raw('COALESCE(translations.value, zones.name)'))
+            ->get(['zones.id', DB::raw('COALESCE(translations.value, zones.name) as name')]);
+        $language    = getWebConfig('language');
+        $defaultLang = str_replace('_', '-', app()->getLocale());
+        return view('admin-views.custom-role.create', compact('rl', 'zones', 'language', 'defaultLang'));
     }
 
     public function store(Request $request)
@@ -32,6 +44,7 @@ class CustomRoleController extends Controller
         $role = new AdminRole();
         $role->name = $request->name[array_search('default', $request->lang)];
         $role->modules = json_encode($request['modules']);
+        $role->crm_zones = $request->input('crm_zones', []);
         $role->status = 1;
         $role->save();
         $data = [];
@@ -72,8 +85,19 @@ class CustomRoleController extends Controller
         {
             return view('errors.404');
         }
-        $role=AdminRole::withoutGlobalScope('translate')->where(['id'=>$id])->first(['id','name','modules']);
-        return view('admin-views.custom-role.edit',compact('role'));
+        $role = AdminRole::withoutGlobalScope('translate')->where(['id' => $id])->first();
+        $zones = DB::table('zones')
+            ->leftJoin('translations', function ($join) {
+                $join->on('translations.translationable_id', '=', 'zones.id')
+                     ->where('translations.translationable_type', 'App\Models\Zone')
+                     ->where('translations.key', 'name')
+                     ->where('translations.locale', app()->getLocale());
+            })
+            ->orderBy(DB::raw('COALESCE(translations.value, zones.name)'))
+            ->get(['zones.id', DB::raw('COALESCE(translations.value, zones.name) as name')]);
+        $language    = getWebConfig('language');
+        $defaultLang = str_replace('_', '-', app()->getLocale());
+        return view('admin-views.custom-role.edit', compact('role', 'zones', 'language', 'defaultLang'));
     }
 
     public function update(Request $request,$id)
@@ -95,6 +119,7 @@ class CustomRoleController extends Controller
         $role = AdminRole::find($id);
         $role->name = $request->name[array_search('default', $request->lang)];
         $role->modules = json_encode($request['modules']);
+        $role->crm_zones = $request->input('crm_zones', []);
         $role->status = 1;
         $role->save();
 

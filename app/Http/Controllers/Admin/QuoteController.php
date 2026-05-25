@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\DataSetting;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
+use App\Modules\SalesCRM\Models\QueryActivity;
 
 
 class QuoteController extends Controller
@@ -314,7 +315,7 @@ class QuoteController extends Controller
         return back();
     }
 
-    public function add()
+    public function add(Request $request)
     {
         $store_id = 0;
         $customers = StoreCustomer::where('store_id', $store_id)->get();
@@ -327,7 +328,29 @@ class QuoteController extends Controller
                     ->orWhereRaw("FIND_IN_SET(?, store_ids)", [$storeId]);
             })
             ->get();
-        return view('admin-views.quote.add', compact('inventory_items',  'services', 'customers'));
+
+        $fromQuery = null;
+        $preselectedCustomer = null;
+        if ($request->from_query) {
+            $fromQuery = \App\Modules\SalesCRM\Models\SalesQuery::find($request->from_query);
+            if ($fromQuery) {
+                $preselectedCustomer = StoreCustomer::where('store_id', 0)
+                    ->where('phone', $fromQuery->phone)
+                    ->first();
+
+                if (!$preselectedCustomer) {
+                    $preselectedCustomer = StoreCustomer::create([
+                        'store_id'  => 0,
+                        'f_name'    => $fromQuery->contact_name,
+                        'phone'     => $fromQuery->phone,
+                        'email'     => $fromQuery->email,
+                        'user_type' => 'store_user',
+                    ]);
+                }
+            }
+        }
+
+        return view('admin-views.quote.add', compact('inventory_items', 'services', 'customers', 'fromQuery', 'preselectedCustomer'));
     }
     public function quotation_number_validation(Request $request)
     {
@@ -401,7 +424,7 @@ class QuoteController extends Controller
             $exists = Quotation::where('vendor_id', 0)->where("quotation_id", $request->quotation_id)->exists();
             if ($exists) {
                 Toastr::error('This quotation id already used');
-                return back();
+                // return back();
             }
         }
 
@@ -437,6 +460,10 @@ class QuoteController extends Controller
         $quote->services    = $service_data;
         $quote->created_by  =  auth('admin')->id();
         $quote->tax_type    = $request->tax_type;
+
+        if ($request->sales_query_id) {
+            $quote->sales_query_id = $request->sales_query_id;
+        }
 
         empty($id) ? $quote->save() : $quote->update();
 
@@ -497,18 +524,24 @@ class QuoteController extends Controller
             $quotation_det->vendor_id = 0;
             $quotation_det->task_id = $task_id ?? null;
             $quotation_det->quotation_id = $quote->id;
-            $quotation_det->bill_to = isset($task) ? $task->user_id : ($request->post('bill_to') ?? $request->customer);
-            $bill_to_type = $request->post('bill_to_type', 'user');
-            if ($bill_to_type === 'mychitti_client') {
-                $userTypeInfo = StoreCustomer::find($quotation_det->bill_to)->user_type ?? 'customer';
-                $user_type = $userTypeInfo === 'customer' ? 'store_user' : 'store_vendor';
-            } elseif ($bill_to_type === 'vendor') {
-                $user_type = 'store_vendor';
+            if ($request->crm_customer_id) {
+                $quotation_det->bill_to      = $request->crm_customer_id;
+                $quotation_det->bill_to_type = 'mychitti_client';
+                $quotation_det->user_type    = 'store_user';
             } else {
-                $user_type = 'user';
+                $quotation_det->bill_to = isset($task) ? $task->user_id : ($request->post('bill_to') ?? $request->customer);
+                $bill_to_type = $request->post('bill_to_type', 'user');
+                if ($bill_to_type === 'mychitti_client') {
+                    $userTypeInfo = StoreCustomer::find($quotation_det->bill_to)->user_type ?? 'customer';
+                    $user_type = $userTypeInfo === 'customer' ? 'store_user' : 'store_vendor';
+                } elseif ($bill_to_type === 'vendor') {
+                    $user_type = 'store_vendor';
+                } else {
+                    $user_type = 'user';
+                }
+                $quotation_det->user_type    = $user_type;
+                $quotation_det->bill_to_type = $bill_to_type;
             }
-            $quotation_det->user_type = $user_type;
-            $quotation_det->bill_to_type = $bill_to_type;
             $quotation_det->module_id = Config::get('module.current_module_id');
             $quotation_det->total_amount = $totalAmount;
             $quotation_det->tax_type = $request->tax_type;
@@ -516,7 +549,6 @@ class QuoteController extends Controller
             $quotation_det->payment_status = $request->payment_stts;
             $quotation_det->save();
         }
-            // prx($quotation_det);
         ;        // prx($request->all());
         // existing items
         foreach ($request->post('item_name', []) as $key => $name) {
@@ -553,6 +585,17 @@ class QuoteController extends Controller
         if ($task_id && $request->resp_type != 'redirect') {
             // return ['success' => true, 'file_name' => $data['pdf'],  'url'  => $data['url']];
         }
+
+        if ($request->sales_query_id && !$id) {
+            \App\Modules\SalesCRM\Models\QueryActivity::log(
+                $request->sales_query_id,
+                'note',
+                'Quotation #' . $quote->quotation_id . ' created.'
+            );
+            Toastr::success('Quotation #' . $quote->quotation_id . ' created and linked to query.');
+            return redirect()->route('admin.quotation.manage', $quote->id);
+        }
+
         try {
             return redirect($data['url']);
         } catch (\Throwable $th) {

@@ -55,20 +55,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-12">
-                                            <div class="form-group mb-0">
-                                                <label class="input-label"
-                                                    for="tergat">{{ translate('messages.send_to') }}</label>
-
-                                                <select name="tergat" class="form-control" id="tergat"
-                                                    data-placeholder="{{ translate('messages.select_tergat') }}" required>
-                                                    <option value="customer">{{ translate('messages.customer') }}</option>
-                                                    <option value="deliveryman">{{ translate('messages.deliveryman') }}
-                                                    </option>
-                                                    <!-- <option value="store">{{ translate('messages.store') }}</option> -->
-                                                </select>
-                                            </div>
-                                        </div>
+                                        <input type="hidden" name="tergat" value="customer">
                                         <div class="col-12">
                                             <div class="form-group mb-0">
                                                 <label class="input-label"

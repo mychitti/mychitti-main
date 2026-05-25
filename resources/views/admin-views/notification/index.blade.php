@@ -8,6 +8,9 @@
         #schedule_wrap {
             display: none;
         }
+        .dropdown-toggle:not(.dropdown-toggle-empty)::after{
+            display: none;
+        }
     </style>
 @endpush
 
@@ -398,7 +401,9 @@
                                     <th class="border-0">{{ translate('messages.image') }}</th>
                                     <th class="border-0">{{ translate('messages.zone') }}</th>
                                     <th class="border-0">{{ translate('messages.tergat') }}</th>
-                                    <th class="text-center border-0">{{ translate('messages.status') }}</th>
+                                    <th class="border-0">Expires</th>
+                                    <th class="text-center border-0">Approval</th>
+                                    <th class="text-center border-0">Publishing</th>
                                     <th class="text-center border-0">{{ translate('messages.action') }}</th>
                                 </tr>
                             </thead>
@@ -448,47 +453,86 @@
                                             {{ translate($notification->tergat) }}
                                         </td>
                                         <td>
+                                            @if ($notification->approval == 1 && $notification->approved_at && $notification->days)
+                                                @php $expiresAt = \Carbon\Carbon::parse($notification->approved_at)->addDays($notification->days); @endphp
+                                                @if ($expiresAt->isPast())
+                                                    <label class="badge badge-soft-danger">Expired {{ $expiresAt->diffForHumans() }}</label>
+                                                @else
+                                                    <label class="badge badge-soft-info">{{ $expiresAt->diffForHumans() }}</label>
+                                                @endif
+                                            @elseif ($notification->approval == 1)
+                                                <label class="badge badge-soft-secondary">No expiry</label>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
                                             @if ($notification->approval == 1)
                                                 <label class="badge badge-soft-success">Approved</label>
                                             @elseif($notification->approval == 2)
                                                 <label class="badge badge-soft-danger">Rejected</label>
+                                            @elseif($notification->is_scheduled && $notification->scheduled_at)
+                                                <label class="badge badge-soft-info d-block mb-1">Scheduled</label>
+                                                <small class="text-muted">{{ \Carbon\Carbon::parse($notification->scheduled_at)->format('d M Y, h:i A') }}</small>
                                             @else
                                                 <label class="badge badge-soft-warning">Pending</label>
                                             @endif
                                         </td>
-                                        <td>
-                                            <div class="btn--container justify-content-center">
-                                                <a class="btn action-btn btn-primary btn-outline-primary "
-                                                    href="{{ route('admin.notification.detail', [$notification['id']]) }}"
-                                                    title="{{ translate('messages.view_notification') }}"><i
-                                                        class="tio-visible-outlined"></i>
-                                                </a>
-                                                @if ($notification->status == 0)
-                                                    <a class="btn action-btn  btn-outline-success notif_approve_btn"
-                                                        type="button" data-toggle="modal"
-                                                        data-target="#approveNotificationModal"
-                                                        style="    width: fit-content !important;padding: 0 8px !important;"
-                                                        data-id="{{ $notification['id'] }}"
-                                                        title="{{ translate('messages.approve_notification') }}"><i
-                                                            class="tio-checkmark-square-outlined"></i> Approve
-                                                    </a>
-
-                                                    <a class="btn action-btn  btn-outline-danger form-alert"
-                                                        href="javascript:"
-                                                        style="    width: fit-content !important;padding: 0 8px !important;"
-                                                        data-id="notification_reject-{{ $notification['id'] }}"
-                                                        data-message="{{ translate('Want to reject this notification ?') }}"
-                                                        title="{{ translate('messages.reject_notification') }}"><i
-                                                            class="tio-clear-square-outlined"></i> Reject
-                                                    </a>
-
-                                                    <form
-                                                        action="{{ route('admin.notification.approval', [$notification['id'], 'reject']) }}"
-                                                        method="post"
-                                                        id="notification_reject-{{ $notification['id'] }}">
-                                                        @csrf
-                                                    </form>
+                                        <td class="text-center">
+                                            @if ($notification->approval == 1)
+                                                @if ($notification->is_scheduled && $notification->sent_at == null && \Carbon\Carbon::parse($notification->scheduled_at)->isFuture())
+                                                    <label class="badge badge-soft-info d-block mb-1">Scheduled</label>
+                                                    <small class="text-muted">{{ \Carbon\Carbon::parse($notification->scheduled_at)->format('d M Y, h:i A') }}</small>
+                                                @else
+                                                    <label class="badge badge-soft-success">Published</label>
                                                 @endif
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-white dropdown-toggle" type="button"
+                                                    data-toggle="dropdown" aria-expanded="false">
+                                                <i class="tio-menu-hamburger"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <a class="dropdown-item"
+                                                        href="{{ route('admin.notification.detail', [$notification['id']]) }}">
+                                                        <i class="tio-visible-outlined mr-2"></i> View
+                                                    </a>
+                                                    <a class="dropdown-item"
+                                                        href="{{ route('admin.notification.edit', [$notification['id']]) }}">
+                                                        <i class="tio-edit mr-2"></i> Edit
+                                                    </a>
+                                                    <a class="dropdown-item text-danger form-alert" href="javascript:"
+                                                        data-id="vad-delete-{{ $notification['id'] }}"
+                                                        data-message="Want to delete this ad?">
+                                                        <i class="tio-delete-outlined mr-2"></i> Delete
+                                                    </a>
+                                                    <form action="{{ route('admin.notification.delete', [$notification['id']]) }}"
+                                                        method="post" id="vad-delete-{{ $notification['id'] }}">
+                                                        @csrf @method('delete')
+                                                    </form>
+                                                    @if ($notification->approval == 0)
+                                                        <div class="dropdown-divider"></div>
+                                                        <a class="dropdown-item text-success notif_approve_btn"
+                                                            href="javascript:" data-toggle="modal"
+                                                            data-target="#approveNotificationModal"
+                                                            data-id="{{ $notification['id'] }}">
+                                                            <i class="tio-checkmark-square-outlined mr-2"></i> Approve
+                                                        </a>
+                                                        <a class="dropdown-item text-danger form-alert" href="javascript:"
+                                                            data-id="notification_reject-{{ $notification['id'] }}"
+                                                            data-message="Want to reject this notification?">
+                                                            <i class="tio-clear-square-outlined mr-2"></i> Reject
+                                                        </a>
+                                                        <form action="{{ route('admin.notification.approval', [$notification['id'], 'reject']) }}"
+                                                            method="post" id="notification_reject-{{ $notification['id'] }}">
+                                                            @csrf
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>

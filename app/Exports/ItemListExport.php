@@ -37,18 +37,17 @@ class ItemListExport implements  FromView, ShouldAutoSize, WithStyles,WithColumn
     public function columnWidths(): array
     {
         return [
-            'B' => 15,
-            // 'C' => 25,
-            'D' => 40,
-            'I' => 40,
+            'C' => 15,
+            'E' => 40,
             'J' => 40,
-            'O' => 40,
+            'K' => 40,
+            'P' => 40,
         ];
     }
 
     public function styles(Worksheet $sheet) {
-        $sheet->getStyle('A2:Q2')->getFont()->setBold(true);
-        $sheet->getStyle('A3:Q3')->getFill()->applyFromArray([
+        $sheet->getStyle('A2:R2')->getFont()->setBold(true);
+        $sheet->getStyle('A3:R3')->getFill()->applyFromArray([
             'fillType' => 'solid',
             'rotation' => 0,
             'color' => ['rgb' => '9F9F9F'],
@@ -68,7 +67,7 @@ class ItemListExport implements  FromView, ShouldAutoSize, WithStyles,WithColumn
         $sheet->getStyle('A1:C1')->applyFromArray($styleArray);
         return [
             // Define the style for cells with data
-            'A1:Q'.$this->data['data']->count() +3 => [
+            'A1:R'.$this->data['data']->count() +3 => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -89,7 +88,7 @@ class ItemListExport implements  FromView, ShouldAutoSize, WithStyles,WithColumn
             $drawing->setPath(is_file(storage_path('app/public/product/'.$item->image))?storage_path('app/public/product/'.$item->image):public_path('/assets/admin/img/160x160/img2.jpg'));
             $drawing->setHeight(25);
             $index+=4;
-            $drawing->setCoordinates("B$index");
+            $drawing->setCoordinates("C$index");
             $drawing->setWorksheet($workSheet);
         });
     }
@@ -98,7 +97,7 @@ class ItemListExport implements  FromView, ShouldAutoSize, WithStyles,WithColumn
     {
         return [
             AfterSheet::class => function(AfterSheet $event) {
-                $event->sheet->getStyle('A1:Q1') // Adjust the range as per your needs
+                $event->sheet->getStyle('A1:R1') // Adjust the range as per your needs
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
@@ -111,19 +110,19 @@ class ItemListExport implements  FromView, ShouldAutoSize, WithStyles,WithColumn
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
-                $event->sheet->getStyle('A3:Q'.$this->data['data']->count() +3)
+                $event->sheet->getStyle('A3:R'.$this->data['data']->count() +3)
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
-                $event->sheet->getStyle('D2:Q2')
+                $event->sheet->getStyle('D2:R2')
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
 
-                    $event->sheet->mergeCells('A1:Q1');
+                    $event->sheet->mergeCells('A1:R1');
                     $event->sheet->mergeCells('A2:C2');
-                    $event->sheet->mergeCells('D2:Q2');
+                    $event->sheet->mergeCells('D2:R2');
 
 
                     $event->sheet->getDefaultRowDimension()->setRowHeight(30);

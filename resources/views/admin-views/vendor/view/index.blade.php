@@ -5,6 +5,7 @@
 @push('css_or_js')
     <!-- Custom styles for this page -->
     <link href="{{ asset('public/assets/admin/css/croppie.css') }}" rel="stylesheet">
+    <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
 @endpush
 
 @section('content')
@@ -99,13 +100,84 @@
                 <img src="{{ asset('public/assets/admin/img/icons/bi-icon.png') }}" alt="" width="22"
                     height="22" class="mr-2" onerror="this.style.display='none'">
                 <h5 class="card-title m-0"><strong>Business Intelligence</strong></h5>
+                <div class="ml-auto">
+                    <form method="GET" action="{{ url()->current() }}" class="bi-date-range-form d-inline">
+                        <input type="hidden" name="bi_date_range" id="biDateRangeInput" value="{{ $biPreset }}">
+                        <input type="hidden" name="bi_custom_date_range" id="biCustomDateRangeInput" value="{{ request('bi_custom_date_range') }}">
+                        @php
+                            $biLabels = ['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','last_3_month'=>'Last 3 Months','last_30_days'=>'Last 30 Days','this_year'=>'This Year','last_year'=>'Last Year','quarter'=>'Quarter','custom'=>'Custom Range'];
+                        @endphp
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                            data-toggle="modal" data-target="#biDateRangeModal" style="font-size:12px;">
+                            <i class="tio-calendar-month"></i>
+                            {{ $biLabels[$biPreset] ?? ucwords(str_replace('_', ' ', $biPreset)) }}
+                        </button>
+                    </form>
+                </div>
             </div>
+
+            {{-- BI Date Range Modal --}}
+            <div class="modal fade" id="biDateRangeModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Select Date Range</h5>
+                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="section-title"><i class="fas fa-clock"></i> Quick</div>
+                            <div class="preset-grid">
+                                @foreach(['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','last_3_month'=>'Last 3 Months'] as $val=>$lbl)
+                                    <label class="checkbox-item">
+                                        <input type="radio" name="bi_preset_pick" value="{{ $val }}"
+                                            {{ $biPreset === $val ? 'checked' : '' }}
+                                            onchange="applyBiPreset('{{ $val }}')">
+                                        <div class="checkbox-label">{{ $lbl }}</div>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="section-title"><i class="fas fa-chart-line"></i> Extended</div>
+                            <div class="preset-grid">
+                                @foreach(['last_30_days'=>'Last 30 Days','this_year'=>'This Year','last_year'=>'Last Year','quarter'=>'Quarter'] as $val=>$lbl)
+                                    <label class="checkbox-item">
+                                        <input type="radio" name="bi_preset_pick" value="{{ $val }}"
+                                            {{ $biPreset === $val ? 'checked' : '' }}
+                                            onchange="applyBiPreset('{{ $val }}')">
+                                        <div class="checkbox-label">{{ $lbl }}</div>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <label class="custom-section">
+                                <input type="radio" name="bi_preset_pick" value="custom"
+                                    {{ $biPreset === 'custom' ? 'checked' : '' }}>
+                                <div class="custom-content">
+                                    <h6><i class="fas fa-calendar-plus me-1"></i>Custom Range</h6>
+                                    <input type="text" id="biDaterangePicker" class="form-control"
+                                        value="{{ request('bi_custom_date_range') }}" />
+                                </div>
+                            </label>
+                            <div class="action-buttons">
+                                <div class="btn-group">
+                                    <button type="button" class="close" data-dismiss="modal">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @php
+                $biLeadsUrl      = route('admin.service.lead-list', array_filter(['store_id' => $store->id, 'date_range' => $biPreset, 'custom_date_range' => request('bi_custom_date_range')]));
+                $biThisMonthUrl  = route('admin.service.lead-list', ['store_id' => $store->id, 'date_range' => 'this_month']);
+                $biConversionUrl = route('admin.service.lead-list', array_filter(['store_id' => $store->id, 'type' => 'Completed', 'date_range' => $biPreset, 'custom_date_range' => request('bi_custom_date_range')]));
+                $biMonetizationUrl = route('admin.store.view', [$store->id, 'monetization']);
+            @endphp
             <div class="card-body">
                 {{-- Stats Row --}}
                 <div class="row g-2 mb-4">
                     {{-- Total Leads --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ $biLeadsUrl }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:#4e73df;color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-group-senior" style="font-size:18px"></i>
@@ -116,10 +188,12 @@
                                 <div style="font-size:11px;opacity:.85">Total Leads</div>
                             </div>
                         </div>
+                        </a>
                     </div>
                     {{-- Leads This Month --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ $biThisMonthUrl }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:#1cc88a;color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-user-add" style="font-size:18px"></i>
@@ -130,10 +204,12 @@
                                 <div style="font-size:11px;opacity:.85">Leads this month</div>
                             </div>
                         </div>
+                        </a>
                     </div>
                     {{-- Conversion --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ $biConversionUrl }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:#36b9cc;color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-trending-up" style="font-size:18px"></i>
@@ -144,10 +220,12 @@
                                 <div style="font-size:11px;opacity:.85">Conversion</div>
                             </div>
                         </div>
+                        </a>
                     </div>
                     {{-- Wallet Balance --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ $biMonetizationUrl }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:#e74a3b;color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-wallet" style="font-size:18px"></i>
@@ -156,20 +234,17 @@
                             <div class="pl-2">
                                 <div style="font-size:18px;font-weight:700;line-height:1.1">
                                     {{ \App\CentralLogics\Helpers::format_currency($walletBalance) }}</div>
-                                <div style="font-size:11px;opacity:.85">
-                                    @if ($walletBalance < 200)
-                                        <a href="{{ route('admin.store.view', [$store->id, 'monetization']) }}"
-                                            class="text-decoration-underline" style="color:#e74a3b">Recharge Now</a>
-                                    @else
-                                        Wallet Balance
-                                    @endif
+                                <div style="font-size:11px;opacity:.85;color:{{ $walletBalance < 200 ? '#e74a3b' : 'inherit' }}">
+                                    {{ $walletBalance < 200 ? 'Recharge Now' : 'Wallet Balance' }}
                                 </div>
                             </div>
                         </div>
+                        </a>
                     </div>
                     {{-- Last Login --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ route('admin.store.view', $store->id) }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:#5a5c69;color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-time" style="font-size:18px"></i>
@@ -177,21 +252,20 @@
                             </div>
                             <div class="pl-2">
                                 <div style="font-size:14px;font-weight:700;line-height:1.1">
-                                    @if ($lastLoginDays === null)
-                                        Never
-                                    @elseif ($lastLoginDays === 0)
-                                        Today
-                                    @else
-                                        {{ $lastLoginDays }} days ago
+                                    @if ($lastLoginDays === null) Never
+                                    @elseif ($lastLoginDays === 0) Today
+                                    @else {{ $lastLoginDays }} days ago
                                     @endif
                                 </div>
                                 <div style="font-size:11px;opacity:.85">Last Login</div>
                             </div>
                         </div>
+                        </a>
                     </div>
                     {{-- Subscription --}}
                     <div class="col">
-                        <div class="d-flex align-items-center rounded" style="color:black;min-height:56px;background:#f0f2f3;">
+                        <a href="{{ $biMonetizationUrl }}" class="text-decoration-none" style="color:inherit;">
+                        <div class="d-flex align-items-center rounded bi-stat-card" style="color:black;min-height:56px;background:#f0f2f3;">
                             <div class="h-100 p-2 rounded-left" style="background:{{ $subscriptionExpired ? '#e74a3b' : '#1cc88a' }};color:#fff;display:flex;align-items:center;justify-content:center">
                                 <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">
                                     <i class="tio-refresh" style="font-size:18px"></i>
@@ -200,14 +274,11 @@
                             <div class="pl-2">
                                 <div style="font-size:14px;font-weight:700;line-height:1.1">
                                     Subscription<br>
-                                     <span style="font-size:12px;color:{{ $subscriptionExpired ? '#e74a3b' : '#1cc88a' }}">{{ $subscriptionExpired ? 'Expired' : 'Active' }}</span>
+                                    <span style="font-size:12px;color:{{ $subscriptionExpired ? '#e74a3b' : '#1cc88a' }}">{{ $subscriptionExpired ? 'Expired' : 'Active' }}</span>
                                 </div>
                             </div>
-                            @if ($subscriptionExpired)
-                                <a href="{{ route('admin.store.view', [$store->id, 'monetization']) }}"
-                                    class="btn btn-sm btn-light ml-auto" style="font-size:11px">Renew Now</a>
-                            @endif
                         </div>
+                        </a>
                     </div>
                 </div> 
 
@@ -529,6 +600,16 @@
                                 No categories found...
                             @endif
                         </div>
+                        @if (count($services))
+                            <hr class="my-2">
+                            <p class="text-muted mb-1" style="font-size:12px;font-weight:600;letter-spacing:.4px;">SERVICES</p>
+                            <div>
+                                @foreach ($services as $svc)
+                                    <span class="badge rounded-pill bg-transparent text-success border border-success m-1"
+                                        style="font-size:14px;">{{ $svc }}</span>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -828,4 +909,28 @@
             </div>
         </div>
     </div>
+
+    {{-- BI Date Range Filter JS --}}
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script>
+        function applyBiPreset(val) {
+            document.getElementById('biDateRangeInput').value = val;
+            document.getElementById('biCustomDateRangeInput').value = '';
+            document.querySelector('.bi-date-range-form').submit();
+        }
+
+        $(function () {
+            $('#biDaterangePicker').daterangepicker({
+                opens: 'left',
+                locale: { format: 'YYYY-MM-DD' }
+            }, function (start, end) {
+                document.getElementById('biDateRangeInput').value = 'custom';
+                document.getElementById('biCustomDateRangeInput').value = start.format('YYYY-MM-DD') + ' - ' + end.format('YYYY-MM-DD');
+                $('input[name="bi_preset_pick"][value="custom"]').prop('checked', true);
+                document.querySelector('.bi-date-range-form').submit();
+            });
+        });
+    </script>
 @endpush

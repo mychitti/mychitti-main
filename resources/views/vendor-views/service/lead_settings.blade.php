@@ -17,27 +17,60 @@
                     @csrf
 
                     @if ($store_data->module_id == 6)
-                        @php $hasDedicatedSub = \App\CentralLogics\Helpers::store_has_active_lead_subscription($store_data->id, 'dedicated'); @endphp
-                        <div class="p-3 bg-light rounded mb-4 col-6">
+                        @php
+                            $hasDedicatedSub = \App\CentralLogics\Helpers::store_has_active_lead_subscription($store_data->id, 'dedicated');
+                            $hasSharedSub    = \App\CentralLogics\Helpers::store_has_active_lead_subscription($store_data->id, 'shared');
+                        @endphp
+                        <div class="p-3 bg-light rounded mb-4" style="max-width:600px;">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
                                     <h5 class="mb-1">Dedicated Leads</h5>
-                                    <small class="text-muted">
-                                        When enabled, enquiries made from your store page will come only to you instead of being distributed to other vendors.
-                                        @if (!$hasDedicatedSub)
-                                            <br><span class="text-danger">Requires an active Dedicated Lead subscription.</span>
-                                        @endif
+                                    <small class="text-muted d-block mb-1">
+                                        When enabled, enquiries from your store page come only to you.
                                     </small>
+                                    @if ($hasDedicatedSub)
+                                        <span class="badge badge-success" style="font-size:11px;">Active Dedicated Subscription — no per-lead charge</span>
+                                        <br><a href="{{ route('vendor.service.lead-subscription') }}" class="text-primary" style="font-size:12px;">Manage Subscription →</a>
+                                    @elseif ($hasSharedSub)
+                                        <small class="text-muted">Your current plan covers shared leads. Enabling dedicated leads will charge per lead from your wallet.</small>
+                                        <br><a href="{{ route('vendor.service.lead-subscription') }}" class="text-primary" style="font-size:12px;">Upgrade to Dedicated Subscription →</a>
+                                    @else
+                                        <small class="text-muted">No active subscription — all lead charges (shared &amp; dedicated) will be deducted from your wallet on each accepted lead.</small>
+                                        <br><a href="{{ route('vendor.service.lead-subscription') }}" class="text-primary" style="font-size:12px;">Get a Leads Subscription →</a>
+                                    @endif
                                 </div>
-                                <label class="toggle-switch toggle-switch-sm {{ !$hasDedicatedSub ? 'disabled' : '' }}">
+                                <label class="toggle-switch toggle-switch-sm ml-3">
                                     <input type="checkbox" name="dedicated_leads" value="1"
                                         class="toggle-switch-input"
-                                        {{ $store_data->dedicated_leads && $hasDedicatedSub ? 'checked' : '' }}
-                                        {{ !$hasDedicatedSub ? 'disabled' : '' }}>
+                                        {{ $store_data->dedicated_leads ? 'checked' : '' }}>
                                     <span class="toggle-switch-label">
                                         <span class="toggle-switch-indicator"></span>
                                     </span>
                                 </label>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($store_data->module_id == 6)
+                        <div class="mt-4" style="max-width:650px;">
+                            <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>
+                            <div class="d-flex flex-column" style="gap:10px;">
+
+                                <div class="p-3 rounded border-left border-warning bg-white" style="border-left:4px solid #ffc107!important;">
+                                    <div class="font-weight-bold mb-1" style="font-size:13px;">🔓 No Subscription</div>
+                                    <div style="font-size:12px;color:#555;">Every accepted lead (shared or dedicated) is charged from your wallet based on your zone's lead charges. You need a minimum wallet balance to receive leads.</div>
+                                </div>
+
+                                <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #17a2b8!important;">
+                                    <div class="font-weight-bold mb-1" style="font-size:13px;">📦 Shared Leads Plan</div>
+                                    <div style="font-size:12px;color:#555;">Shared leads are covered — no wallet deduction when you accept a shared lead. However, if you enable Dedicated Leads, those are still charged per lead from your wallet.</div>
+                                </div>
+
+                                <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #28a745!important;">
+                                    <div class="font-weight-bold mb-1" style="font-size:13px;">⭐ Dedicated Leads Plan</div>
+                                    <div style="font-size:12px;color:#555;">All leads — shared and dedicated — are covered. No wallet deduction on accepted leads. Enquiries from your store page come exclusively to you.</div>
+                                </div>
+
                             </div>
                         </div>
                     @endif

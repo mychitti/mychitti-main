@@ -1,5 +1,5 @@
 ﻿@extends('layouts.vendor.app')
-@section('title', 'OPD Register')
+@section('title', $myScope ? 'My OPD Appointments' : 'OPD Register')
 
 @section('content')
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
@@ -8,11 +8,11 @@
         <div class="page-header d-flex justify-content-between align-items-center">
             <h1 class="page-header-title mb-0">
                 <span class="page-header-icon"><i class="tio-document-text" style="font-size:22px;"></i></span>
-                OPD Daily Register
+                {{ $myScope ? 'My OPD Appointments' : 'OPD Daily Register' }}
                 <small class="text-muted font-size-14 ml-2">{{ translate($preset) }}</small>
             </h1>
             <div class="d-flex gap-2">
-                @if (hasPermission('opd_register', 'export'))
+                @if (!$myScope && hasPermission('opd_register', 'export'))
                 <a href="{{ route('vendor.opd.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'doctor'=>request('doctor'),'search'=>request('search')])) }}"
                    class="btn btn-sm btn-outline-success"><i class="tio-download"></i> Export</a>
                 @endif
@@ -24,21 +24,22 @@
             </div>
         </div>
 
-        @if(hasPermission('opd_register', 'list'))
-        
+        @if($myScope || hasPermission('opd_register', 'list'))
 
         {{-- Filters --}}
-        <div class="card  mb-3 py-2">
-            <div class="d-flex flex-wrap gap-2 align-items-end ">
+        <div class="card mb-3 py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
 
-                <form method="GET" class=" date-range-form">
+                <form method="GET" class="date-range-form">
+                    @if($myScope)<input type="hidden" name="scope" value="my">@endif
                     @include('vendor-views/form_modals/date_range')
                     <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning" type="button"
                         data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
                 </form>
                 <form method="GET" class="">
-                    <div class="d-flex flex-wrap gap-2 align-items-end ">
-
+                    @if($myScope)<input type="hidden" name="scope" value="my">@endif
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        @if(!$myScope)
                         <div>
                             <select name="doctor" class="form-control form-control-sm" onchange="this.form.submit()"
                                 style="min-width:160px;">
@@ -51,14 +52,13 @@
                                 @endforeach
                             </select>
                         </div>
+                        @endif
                         <div class="d-flex gap-2">
                             <input type="text" name="search" class="form-control form-control-sm"
                                 style="min-width:180px;" placeholder="Search by Name or UID..." value="{{ request('search') }}">
                             <button type="submit" class="btn btn-sm btn--primary">Filter</button>
                         </div>
                     </div>
-                    {{-- 
-            <a href="{{ route('vendor.opd.index') }}" class="btn btn-sm btn-outline-secondary">Today</a> --}}
                 </form>
             </div>
         </div>
@@ -117,7 +117,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if (hasPermission('opd_register', 'view'))
+                                        @if ($myScope || hasPermission('opd_register', 'view'))
                                         <a href="{{ route('vendor.opd.show', $visit->id) }}"
                                             class="btn btn-xs btn--primary">
                                             <i class="tio-visible"></i> View

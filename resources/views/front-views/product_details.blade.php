@@ -659,7 +659,7 @@
                                                 class="fas fa-user-cog"></i>
                                             Enquiry Now</a> --}}
 
-                                    <a onclick="bookService({{ $item->id }}, this)"
+                                    <a onclick="bookService({{ $item->id }}, this, {{ $item->store_id }})"
                                         class="btn btn-primary border-3 border-primary rounded sticky_action_btn sticky_enq_btn text-light btn-lg"><i
                                             class="fas fa-user-cog"></i> &nbsp; Enquiry
                                         Now</a>
@@ -913,7 +913,7 @@
                                         </div>
                                     @else
                                         @if (auth('web')->user())
-                                            <button onclick="bookService({{ $pro->id }}, this)"
+                                            <button onclick="bookService({{ $pro->id }}, this, {{ $pro->store_id }})"
                                                 class="btn border border-secondary rounded p-1 px-2 text-primary"><i
                                                     class="fas fa-user-cog"></i>
                                                 Enquiry Now</button>

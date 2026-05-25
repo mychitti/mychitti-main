@@ -2016,8 +2016,19 @@ function _taskInvoiceExist($task_id)
 }
 function _getAdminNotifications()
 {
-    $notif['all'] = InAppNotification::where('user_type', 'admin')->orderBy('id', 'desc')->get();
-    $notif['unread_count'] = InAppNotification::where('user_type', 'admin')->where('is_read', 0)->count();
+    $admin = auth('admin')->user();
+
+    if ($admin && $admin->role_id != 1) {
+        // Sub-admin: show only their own admin_employee notifications
+        $query = InAppNotification::where('user_type', 'admin_employee')
+            ->where('reciever', $admin->id);
+    } else {
+        // Super admin: show all broadcast admin notifications
+        $query = InAppNotification::where('user_type', 'admin');
+    }
+
+    $notif['all']          = $query->orderBy('id', 'desc')->get();
+    $notif['unread_count'] = (clone $query)->where('is_read', 0)->count();
     return $notif;
 }
 function _generateOrderInvoicePdf($order)
@@ -2405,6 +2416,61 @@ function wallet_recharge_fail($data)
 {
     $store_id = $data->attribute_id;
     TmpWallet::where('store_id', $store_id)->delete();
+}
+
+function lead_subscription_success($data)
+{
+    $tmp = \App\Models\TmpLeadSubscription::find($data->attribute_id);
+    if (!$tmp) return;
+
+    $plan = \App\Models\LeadSubscriptionPlan::find($tmp->plan_id);
+    if (!$plan) {
+        $tmp->delete();
+        return;
+    }
+
+    $existing = \App\Models\LeadSubscription::where('store_id', $tmp->store_id)
+        ->where('type', $plan->type)
+        ->where('expires_at', '>=', now()->toDateString())
+        ->orderByDesc('expires_at')
+        ->first();
+
+    $startsAt  = $existing ? $existing->expires_at->addDay() : now();
+    $expiresAt = $startsAt->copy()->addDays($plan->duration_days - 1);
+
+    \App\Models\LeadSubscription::create([
+        'store_id'    => $tmp->store_id,
+        'plan_id'     => $plan->id,
+        'type'        => $plan->type,
+        'zone_id'     => $plan->zone_id,
+        'category_id' => $plan->category_id,
+        'starts_at'   => $startsAt->toDateString(),
+        'expires_at'  => $expiresAt->toDateString(),
+    ]);
+
+    $store = \App\Models\Store::withoutGlobalScopes()->find($tmp->store_id);
+    if ($store && $store->vendor) {
+        $wallet  = \App\Models\StoreWallet::where('vendor_id', $store->vendor->id)->first();
+        $balance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+
+        $transaction               = new \App\Models\AccountTransaction();
+        $transaction->current_balance = $balance;
+        $transaction->from_type    = 'store';
+        $transaction->amount       = $plan->price;
+        $transaction->from_id      = $tmp->store_id;
+        $transaction->method       = 'online';
+        $transaction->action       = 'debit';
+        $transaction->reason       = ucfirst($plan->type) . ' Lead Subscription — ' . $plan->name;
+        $transaction->created_by   = 'store';
+        $transaction->save();
+    }
+
+    $tmp->delete();
+}
+
+function lead_subscription_fail($data)
+{
+    \App\Models\TmpLeadSubscription::where('id', $data->attribute_id)->delete();
 }
 
 function store_data_formatting_limited($data, $multi_data = false)
@@ -3478,6 +3544,68 @@ if (!function_exists('hasMasterModulePermission')) {
         }
     }
 }
+if (!function_exists('isAddonActive')) {
+    /**
+     * Returns true if a module is NOT a premium addon, OR if it is a premium
+     * addon that appears in the active_addon_modules business_setting.
+     * Falls back to showing all addons when the setting is not configured.
+     */
+    function isAddonActive(string $key): bool
+    {
+        $addonModules = config('planwise.addon_modules', []);
+        if (!in_array($key, $addonModules)) {
+            return true; // Core module — always visible
+        }
+        $data = \App\Models\BusinessSetting::where('key', 'active_addon_modules')->first();
+        if (!$data) {
+            return true; // Not configured — show all (backward-compatible)
+        }
+        $active = json_decode($data->value, true);
+        if (empty($active)) {
+            return true;
+        }
+        return in_array($key, (array)$active);
+    }
+}
+
+if (!function_exists('vendorPlanHasModule')) {
+    function vendorPlanHasModule(string $key): bool
+    {
+        $businessType = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '');
+        if (in_array($key, config("planwise.free_by_business_type.$businessType", []))) {
+            return true;
+        }
+
+        $storeId = \App\CentralLogics\Helpers::get_store_id();
+        $subscriptions = \Illuminate\Support\Facades\DB::table('vendor_subscriptions')
+            ->where('vendor_id', $storeId)
+            ->where('plan_expiry', '>', now())
+            ->get();
+
+        if ($subscriptions->isEmpty()) {
+            return false; // No active subscription — hide premium modules
+        }
+
+        $allModules = [];
+        foreach ($subscriptions as $sub) {
+            $allModules = array_merge($allModules, json_decode($sub->permitted_modules, true) ?? []);
+        }
+        $allModules = array_unique($allModules);
+
+        if (in_array($key, $allModules)) {
+            return true;
+        }
+
+        foreach (config('planwise.equivalences', []) as $planKey => $equivalents) {
+            if (in_array($key, $equivalents) && in_array($planKey, $allModules)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 if (!function_exists('hasPermission')) {
 
     function hasPermission($feature, $action)

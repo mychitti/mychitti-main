@@ -30,6 +30,7 @@ class AdminRole extends Model
     protected $fillable = [
         'name',
         'modules',
+        'crm_zones',
         'status',
     ];
 
@@ -39,7 +40,8 @@ class AdminRole extends Model
      * @var array
      */
     protected $casts = [
-        'status' => 'boolean',
+        'status'    => 'boolean',
+        'crm_zones' => 'array',
     ];
 
     public function permissions()

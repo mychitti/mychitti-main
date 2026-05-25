@@ -450,20 +450,20 @@ calculateTotals($('.quote_edit_form'));
     data-secondary-qty="${item?.secondary_qty ?? 0}"
     data-primary-price="${item?.selling_price ?? 0}"
     data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
-                       <input type="hidden" name="invoice_item_id[]" value="` + (item && item.id ? item.id : '') + `">
-                       <input type="hidden" name="invoice_item_new[]" value="1" placeholder="Item Name" class="form-control">
-                      <td><input type="text" name="item_name_new[]" value="` + item_name + `" placeholder="Item Name" class="form-control"></td>
-                      <td style="width: 100px;"><input type="number" value="` + item_price + `" step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price"></td>
-                      <td style="width: 58px;"><input type="number"  name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty"></td>
+                       <input type="hidden" name="invoice_item_id[${dataId}]" value="` + (item && item.id ? item.id : '') + `">
+                       <input type="hidden" name="invoice_item_new[${dataId}]" value="1" placeholder="Item Name" class="form-control">
+                      <td><input type="text" name="item_name_new[${dataId}]" value="` + item_name + `" placeholder="Item Name" class="form-control"></td>
+                      <td style="width: 100px;"><input type="number" value="` + item_price + `" step="0.001" name="item_price_new[${dataId}]" placeholder="Price" class="form-control price"></td>
+                      <td style="width: 58px;"><input type="number"  name="item_qty_new[${dataId}]" value="1" placeholder="Qunatity" class="form-control qty"></td>
                        <td style="width:140px;">
-                            <select name="item_unit_new[]" class="form-control js-select2-custom unit">
+                            <select name="item_unit_new[${dataId}]" class="form-control js-select2-custom unit">
                                                                         ${buildUnitOptions(item)}
                             </select>
                         </td>
                       <td style="width: 58px;" class="tax_inp_data ` + className +
-             ` tax_field" ><input type="number" value="` + item_tax + `" name="item_tax_new[]" placeholder="Tax" class="form-control tax"></td>
+             ` tax_field" ><input type="number" value="` + item_tax + `" name="item_tax_new[${dataId}]" placeholder="Tax" class="form-control tax"></td>
                       <td style="width: 93px;" class="hsn_inp ` + className2 +
-             `"><input type="text" name="item_hsn_new[]" value="` + item_hsn + `" placeholder="HSN" class="form-control"></td>
+             `"><input type="text" name="item_hsn_new[${dataId}]" value="` + item_hsn + `" placeholder="HSN" class="form-control"></td>
                        <td style="width: 93px;" class="hidden_tax"><input type="text" readonly placeholder="Taxable" class="form-control item_taxable"></td>
                         <td style="width: 93px;" class=""><input type="text"  readonly placeholder="Total" class="form-control item_total"></td>
                        <td><button type="button"  onclick="deleteQuoteRow(` + dataId + `)" class="btn action-btn btn--danger btn-outline-danger"><i class="tio-delete-outlined"></i></button></td>

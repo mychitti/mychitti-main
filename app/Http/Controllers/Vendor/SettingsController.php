@@ -96,6 +96,10 @@ class SettingsController extends Controller
     }
     public function webpage_settings_update(Request $request)
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
         $storeId = Helpers::get_store_id();
 
         StoreConfig::updateOrInsert(['store_id' => $storeId], [
@@ -113,6 +117,10 @@ class SettingsController extends Controller
     }
     public function webpage_settings(Request $request, $tab = 'basic-info')
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
         $store_id = Helpers::get_store_id();
         $store = Store::where('id',  $store_id)->first();
         if ($tab == 'basic-info') {
@@ -170,6 +178,10 @@ class SettingsController extends Controller
 
     public function service_setup (Request $request, $tab = 'mychitti-services')
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
           $store_id = Helpers::get_store_id();
         $store = Store::where('id',  $store_id)->first();
         if ($tab == 'mychitti-services') {
@@ -358,6 +370,10 @@ class SettingsController extends Controller
     }
     public function profile_settings(Request $request)
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
         $allPlans = Plan::where('status', 1)
             ->where(function ($q) {
                 $q->whereNull('store_id')

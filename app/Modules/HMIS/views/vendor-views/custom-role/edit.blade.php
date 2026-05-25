@@ -83,20 +83,6 @@
                         </div>
                         <div class="check-item">
                             <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="library" class="form-check-input"
-                                   {{ in_array('library', (array) json_decode($role['modules'])) ? 'checked' : '' }} id="library">
-                                <label class="form-check-label input-label " for="library">Library</label>
-                            </div>
-                        </div>
-                        <div class="check-item">
-                            <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="subscriptions" class="form-check-input"
-                                  {{ in_array('subscriptions', (array) json_decode($role['modules'])) ? 'checked' : '' }}  id="subscriptions">
-                                <label class="form-check-label input-label " for="subscriptions">Subscriptions</label>
-                            </div>
-                        </div>
-                        <div class="check-item">
-                            <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="documents" class="form-check-input"
                                   {{ in_array('documents', (array) json_decode($role['modules'])) ? 'checked' : '' }}  id="documents">
                                 <label class="form-check-label input-label " for="documents">Documents</label>
@@ -110,6 +96,7 @@
                                    Availability</label>
                             </div>
                         </div>
+                        @if(vendorPlanHasModule('inventory_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="inventory_manage"
@@ -118,6 +105,8 @@
                                 <label class="form-check-label " for="inventory_manage">Inventory Manage</label>
                             </div>
                         </div>
+                        @endif
+                        @if(vendorPlanHasModule('task_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="task_manage"
@@ -128,6 +117,16 @@
                         </div>
                         <div class="check-item">
                             <div class="form-group form-check form--check">
+                                <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"
+                                    id="assigned_tasks"
+                                    {{ in_array('assigned_tasks', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
+                                <label class="form-check-label input-label " for="assigned_tasks">Assigned Tasks</label>
+                            </div>
+                        </div>
+                        @endif
+                        @if(vendorPlanHasModule('projects_manage'))
+                        <div class="check-item">
+                            <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="projects_manage"
                                     class="form-check-input granular_permission_check"
                                     {{ in_array('projects_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}
@@ -135,6 +134,15 @@
                                 <label class="form-check-label " for="projects_manage">Project Management</label>
                             </div>
                         </div>
+                        <div class="check-item">
+                            <div class="form-group form-check form--check">
+                                <input type="checkbox" name="modules[]" value="assigned_projects"
+                                    class="form-check-input" id="assigned_projects"
+                                    {{ in_array('assigned_projects', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
+                                <label class="form-check-label input-label " for="assigned_projects">Assigned Projects</label>
+                            </div>
+                        </div>
+                        @endif
 
                         @if ($module_id == 5)
                             <div class="check-item">
@@ -157,6 +165,7 @@
                                 </div>
                             </div>
                         @endif
+                        @if(vendorPlanHasModule('quotaiton_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="quotaiton_manage"
@@ -165,6 +174,7 @@
                                 <label class="form-check-label " for="quotaiton_manage">Quotation Managemnent</label>
                             </div>
                         </div>
+                        @endif
                         {{-- <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="store_setup" class="form-check-input"
@@ -185,15 +195,6 @@
                                 </div>
                             </div>
                         @endif
-                        <div class="check-item">
-                            <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="wallet" class="form-check-input"
-                                    id="wallet"
-                                    {{ in_array('wallet', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label "
-                                    for="wallet">{{ translate('messages.wallet') }}</label>
-                            </div>
-                        </div>
                         {{-- <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="bank_info" class="form-check-input"
@@ -241,6 +242,7 @@
                                     for="reviews">{{ translate('messages.reviews') }}</label>
                             </div>
                         </div>
+                        @if(vendorPlanHasModule('pos'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="pos"
@@ -249,6 +251,7 @@
                                 <label class="form-check-label " for="pos">POS</label>
                             </div>
                         </div>
+                        @endif
 
                         {{-- <div class="check-item">
                             <div class="form-group form-check form--check">
@@ -258,6 +261,7 @@
                                 <label class="form-check-label " for="chat">{{ translate('messages.chat') }}</label>
                             </div>
                         </div> --}}
+                        @if(vendorPlanHasModule('hr_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="hr_manage"
@@ -266,6 +270,8 @@
                                 <label class="form-check-label  " for="hr_manage">HR Management</label>
                             </div>
                         </div>
+                        @endif
+                        @if(vendorPlanHasModule('account_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="account_manage"
@@ -274,6 +280,8 @@
                                 <label class="form-check-label  " for="account_manage">Account Management</label>
                             </div>
                         </div>
+                        @endif
+                        @if(vendorPlanHasModule('billing'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="billing"
@@ -283,10 +291,11 @@
                                 <label class="form-check-label  " for="billing">Billing</label>
                             </div>
                         </div>
+                        @endif
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="hospital_manage"
-                                    class="form-check-input"
+                                    class="form-check-input granular_permission_check"
                                     {{ in_array('hospital_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}
                                     id="hospital_manage">
                                 <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
@@ -301,6 +310,7 @@
                                 <label class="form-check-label " for="staff_manage">Staff Management</label>
                             </div>
                         </div>
+                        @if(vendorPlanHasModule('client_manage'))
                         <div class="check-item">
                             <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="client_manage"
@@ -309,21 +319,13 @@
                                 <label class="form-check-label" for="client_manage">Client Management</label>
                             </div>
                         </div>
-                      
+                        @endif
                         <div class="check-item">
                             <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"
-                                    id="assigned_tasks"
-                                    {{ in_array('assigned_tasks', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="assigned_tasks">Assigned Tasks</label>
-                            </div>
-                        </div>
-                        <div class="check-item">
-                            <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="assigned_projects"
-                                    class="form-check-input" id="assigned_projects"
-                                    {{ in_array('assigned_projects', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="assigned_projects">Assigned Projects</label>
+                                <input type="checkbox" name="modules[]" value="my_business"
+                                    class="form-check-input granular_permission_check" id="my_business"
+                                    {{ in_array('my_business', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
+                                <label class="form-check-label input-label " for="my_business">My Business</label>
                             </div>
                         </div>
                         @foreach ($accessibleModules as $key => $value)

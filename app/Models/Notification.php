@@ -44,6 +44,7 @@ class Notification extends Model
         'scheduled_at',
         'link',
         'days',
+        'approved_at',
     ];
 
     /**

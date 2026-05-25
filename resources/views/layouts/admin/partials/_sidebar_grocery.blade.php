@@ -56,6 +56,7 @@
                     </li>
                 
                     @include('admin-views/partials/billing_nav')
+                    @if(\App\CentralLogics\Helpers::module_permission_check('pricing') )
                     
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('pricing*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -64,6 +65,7 @@
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Pricing</span>
                         </a>
                     </li>
+                    @endif
                     @include('admin-views/partials/account_nav')
                     @include('admin-views/partials/hr_nav')
                     @include('admin-views/partials/inventory_nav')
@@ -266,6 +268,7 @@
                             </ul>
                         </li>
                     @endif
+                    @if(\App\CentralLogics\Helpers::module_permission_check('marketing_campaign') )
   <!-- Marketing Campaigns -->
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('mc*') ? 'show active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.mc.index') }}" title="Marketing Campaigns">
@@ -273,6 +276,7 @@
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Marketing Campaigns</span>
                     </a>
                 </li>
+                @endif
                 <!-- End Marketing Campaigns -->
 
                 <!-- Marketing section -->
@@ -784,6 +788,8 @@
                         </a>
                     </li>
                     @endif
+                    @if(\App\CentralLogics\Helpers::module_permission_check('custom_domain') )
+
                        {{-- Custom Domain --}}
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('custom-domain*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.custom-domain.index') }}" title="Custom Domain">
@@ -791,6 +797,7 @@
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Custom Domain</span>
                         </a>
                     </li>
+                    @endif
                 {{-- STORE WALLET END =========================== --}}
 
                   

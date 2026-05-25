@@ -2643,6 +2643,17 @@ class Helpers
 
         if (empty($storeIds)) return [];
 
+        // No subscription: if any store in range has dedicated_leads=1, send only to them (wallet charged on accept)
+        if (!$dedicatedSubscribedStore) {
+            $walletDedicatedId = DB::table('stores')
+                ->whereIn('id', $storeIds)
+                ->where('dedicated_leads', 1)
+                ->value('id');
+            if ($walletDedicatedId) {
+                return [(int)$walletDedicatedId];
+            }
+        }
+
         // Step 3: Track usage
         $oldIds = _getIdsFrist($item_id);
         _trackStoreIds('get_store_range', implode(',', $storeIds), $item_id, '-', $user_id . '_user', $oldIds);

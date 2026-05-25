@@ -337,6 +337,20 @@ class DashboardController extends Controller
         if ($module_type == 'settings') {
             return redirect()->route('admin.business-settings.business-setup');
         }
+        if ($module_type == 'sales_marketing') {
+            $crmStats = [
+                'queries_new'          => \App\Modules\SalesCRM\Models\SalesQuery::where('status', 'new')->count(),
+                'queries_in_progress'  => \App\Modules\SalesCRM\Models\SalesQuery::where('status', 'in_progress')->count(),
+                'queries_total'        => \App\Modules\SalesCRM\Models\SalesQuery::count(),
+                'followups_today'      => \App\Modules\SalesCRM\Models\SalesFollowUp::whereDate('due_date', today())->where('status', 'pending')->count(),
+                'followups_overdue'    => \App\Modules\SalesCRM\Models\SalesFollowUp::where('due_date', '<', today())->where('status', 'pending')->count(),
+                'tickets_open'         => \App\Modules\SalesCRM\Models\SupportTicket::where('status', 'open')->count(),
+                'tickets_in_progress'  => \App\Modules\SalesCRM\Models\SupportTicket::where('status', 'in_progress')->count(),
+                'tickets_total'        => \App\Modules\SalesCRM\Models\SupportTicket::count(),
+            ];
+            return view('admin-views.dashboard-sales_marketing', compact('crmStats', 'params', 'module_type'));
+        }
+        $recentTimecards = collect();
         if ($module_type == 'grocery') {
               $recentTimecards = EmployeeTimeCard::where('emp_id', auth('admin')->id())
                             ->where('vendor_id', 0)
@@ -344,7 +358,7 @@ class DashboardController extends Controller
                             ->whereNotNull('out_time')
                             ->orderBy('id', 'desc')
                             ->take(2)
-                            ->get(); 
+                            ->get();
         }
 
         //   dd(session()->all());
@@ -353,6 +367,10 @@ class DashboardController extends Controller
 
     public function order(Request $request)
     {
+        if (Config::get('module.current_module_type') == 'sales_marketing') {
+            return response()->json(['view' => ''], 200);
+        }
+
         $params = session('dash_params');
         foreach ($params as $key => $value) {
             if ($key == 'statistics_type') {

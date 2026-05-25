@@ -1,5 +1,11 @@
-<form class="w-100 row quote_form" action="{{ route('admin.quotation.save-info') }}" method="post">
+<form class="w-100 row quote_form" action="{{ (isset($fromQuery) && $fromQuery) ? route('admin.quotation.save-info-crm') : route('admin.quotation.save-info') }}" method="post">
     @csrf
+    @if(isset($fromQuery) && $fromQuery)
+        <input type="hidden" name="sales_query_id" value="{{ $fromQuery->id }}">
+        @if(isset($preselectedCustomer) && $preselectedCustomer)
+            <input type="hidden" name="crm_customer_id" value="{{ $preselectedCustomer->id }}">
+        @endif
+    @endif
     <div class="col-md-12 p-1">
         <div class="card h-100">
             <div class="card-body row  align-items-start">
@@ -15,14 +21,27 @@
                     </div>
                 </div>
 
+                <div class="col-md-4 p-1">
+                    <label class="form-check-label d-flex">Subject</label>
+                    @php
+                        $prefillSubject = '';
+                        if (isset($fromQuery) && $fromQuery) {
+                            $prefillSubject = trim(($fromQuery->sub_module ? $fromQuery->sub_module . ' — ' : '') . $fromQuery->contact_name);
+                        }
+                    @endphp
+                    <input type="text" name="subject" class="form-control" placeholder="Quotation subject..."
+                        value="{{ old('subject', $prefillSubject) }}">
+                </div>
+
                 @if (isset($task) && $task->user_id)
                     <input type="hidden" name="customer_id" value="{{ $task->user_id }}">
                 @else
+                    @php $preSelectMychitti = isset($fromQuery) && $fromQuery && isset($preselectedCustomer) && $preselectedCustomer; @endphp
                     <div class="col-md-3 p-1">
                         <label class="form-check-label d-flex mb-1">Bill To Type</label>
                         <div class="d-flex flex-wrap mb-2">
                             <div class="custom-control custom-radio custom-control-inline">
-                                <input type="radio" value="user" checked id="quoteRadioUser" name="bill_to_type"
+                                <input type="radio" value="user" {{ $preSelectMychitti ? '' : 'checked' }} id="quoteRadioUser" name="bill_to_type"
                                     class="custom-control-input quote_bill_to_type">
                                 <label class="custom-control-label" for="quoteRadioUser">Customer</label>
                             </div>
@@ -32,7 +51,7 @@
                                 <label class="custom-control-label" for="quoteRadioVendor">Store</label>
                             </div>
                             <div class="custom-control custom-radio custom-control-inline">
-                                <input type="radio" value="mychitti_client" id="quoteRadioMychitti"
+                                <input type="radio" value="mychitti_client" {{ $preSelectMychitti ? 'checked' : '' }} id="quoteRadioMychitti"
                                     name="bill_to_type" class="custom-control-input quote_bill_to_type">
                                 <label class="custom-control-label" for="quoteRadioMychitti">Mychitti Client</label>
                             </div>
@@ -285,3 +304,27 @@
         bottom: 50px;
     }
 </style>
+
+@if(isset($fromQuery) && $fromQuery && $fromQuery->description)
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof addMoreRowQuote === 'function') {
+        addMoreRowQuote(null);
+        var $row = $('.item_row_quote').first();
+        if ($row.length) {
+            $row.find('input[name="item_name_new[]"]').val(@json($fromQuery->description));
+            $row.find('input[name="item_qty_new[]"]').val(1);
+        }
+    } else {
+        setTimeout(function () {
+            addMoreRowQuote(null);
+            var $row = $('.item_row_quote').first();
+            if ($row.length) {
+                $row.find('input[name="item_name_new[]"]').val(@json($fromQuery->description));
+                $row.find('input[name="item_qty_new[]"]').val(1);
+            }
+        }, 400);
+    }
+});
+</script>
+@endif

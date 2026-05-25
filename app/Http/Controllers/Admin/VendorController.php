@@ -52,6 +52,7 @@ use App\Exports\StoreWithdrawTransactionExport;
 use App\Exports\StoreWiseWithdrawTransactionExport;
 use App\Http\Controllers\Vendor\ProfileController;
 use App\Imports\StoreImport;
+use App\Models\VendorEmployee;
 use App\Mail\StoreWelcomeMail;
 use App\Models\AccountDetail;
 use App\Models\ActionLog;
@@ -1682,6 +1683,12 @@ class VendorController extends Controller
                 })
                 ->latest()->paginate(config('default_pagination'));
             return view('admin-views.vendor.view.disbursement', compact('store', 'disbursements'));
+        } else if ($tab == 'staff') {
+            $staff = VendorEmployee::where('store_id', $store->id)
+                ->with('role')
+                ->orderBy('f_name')
+                ->get();
+            return view('admin-views.vendor.view.staff', compact('store', 'staff'));
         } else if ($tab == 'monetization') {
             $vendor_id = $store->vendor_id;
 
@@ -1743,27 +1750,41 @@ class VendorController extends Controller
             }
         } 
 
+        $serviceIds = array_filter(array_merge(
+            $store->services_1 ? explode(',', $store->services_1) : [],
+            $store->services_2 ? explode(',', $store->services_2) : []
+        ));
+        $services = $serviceIds
+            ? Item::withoutGlobalScopes()->whereIn('id', $serviceIds)->pluck('name')->toArray()
+            : [];
+
         // --- Business Intelligence ---
         $vendorId = $store->vendor->id;
         $storeId  = $store->id;
 
-        // Total leads sent to this vendor (this year)
+        // BI date range filter
+        $biPreset = $request->bi_date_range ?? 'this_year';
+        $biRange  = Helpers::calculatePresetDates($biPreset, $request->bi_custom_date_range ?? null);
+        $biFrom   = $biRange['start'];
+        $biTo     = $biRange['end'];
+
+        // Total leads in selected period
         $totalLeads = DB::table('service_requests')
             ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
-            ->whereBetween('created_at', [now()->startOfYear(), now()])
+            ->whereBetween('created_at', [$biFrom, $biTo])
             ->count();
- 
-        // Leads this month
+
+        // Leads this month (always current month — secondary stat)
         $leadsThisMonth = DB::table('service_requests')
             ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
             ->whereBetween('created_at', [now()->startOfMonth(), now()])
             ->count();
 
-        // Conversion: completed leads / total leads (this year)
+        // Conversion in selected period
         $completedLeads = DB::table('accepted_service_requests')
             ->where('vendor_id', $storeId)
             ->where('current_status', 'Completed')
-            ->whereBetween('created_at', [now()->startOfYear(), now()])
+            ->whereBetween('created_at', [$biFrom, $biTo])
             ->count();
         $conversionRate = $totalLeads > 0 ? round(($completedLeads / $totalLeads) * 100) : 0;
 
@@ -1781,7 +1802,7 @@ class VendorController extends Controller
             ->first();
         $subscriptionExpired = !$activeSubscription;
 
-        // Lead trend - last 6 months
+        // Lead trend - last 6 months (rolling, not affected by BI filter)
         $leadTrend = collect();
         for ($i = 5; $i >= 0; $i--) {
             $month = now()->subMonths($i);
@@ -1798,7 +1819,7 @@ class VendorController extends Controller
         $leadTrendLabels = $leadTrend->pluck('label')->toJson();
         $leadTrendData   = $leadTrend->pluck('count')->toJson();
 
-        // Conversion change (this month vs last month)
+        // Conversion change (this month vs last month — always current)
         $lastMonthLeads = DB::table('accepted_service_requests')
             ->where('vendor_id', $storeId)
             ->whereMonth('created_at', now()->subMonth()->month)
@@ -1814,16 +1835,17 @@ class VendorController extends Controller
 
         $thisMonthCompleted = DB::table('accepted_service_requests')
             ->where('vendor_id', $storeId)
-            ->where('current_status', 'Completed') 
+            ->where('current_status', 'Completed')
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
         $thisMonthConversion = $leadsThisMonth > 0 ? round(($thisMonthCompleted / $leadsThisMonth) * 100) : 0;
         $conversionChange = $thisMonthConversion - $lastMonthConversion;
- 
-        // Revenue generated from service invoices
+
+        // Revenue in selected period
         $revenueGenerated = DB::table('service_invoices')
             ->where('vendor_id', $storeId)
+            ->whereBetween('created_at', [$biFrom, $biTo])
             ->sum('total_amount');
 
         // AI Insight
@@ -1848,11 +1870,11 @@ class VendorController extends Controller
         }
         $biInsightText = implode(' ', $biInsights);
 
-        // Leads missed (sent but expired, not accepted, not cancelled)
+        // Leads missed in selected period
         $leadExpMinutes = Helpers::get_lead_exp_minutes();
         $leadsMissed = DB::table('service_requests')
             ->whereRaw('FIND_IN_SET(?, sent_to)', [$storeId])
-            ->where('created_at', '>=', now()->startOfYear())
+            ->whereBetween('created_at', [$biFrom, $biTo])
             ->where('created_at', '<', now()->subMinutes($leadExpMinutes))
             ->where(function ($q) use ($storeId) {
                 $q->whereRaw('NOT FIND_IN_SET(?, accepted_by)', [$storeId])
@@ -1934,14 +1956,15 @@ class VendorController extends Controller
         ];
  
         return view('admin-views.vendor.view.index', compact(
-            'store', 'wallet', 'categories',
+            'store', 'wallet', 'categories', 'services',
             'completionPercent', 'completionDone', 'completionTotal',
             'completionRing', 'completionCircumf', 'completionOffset', 'completionItems',
             'totalLeads', 'leadsThisMonth', 'conversionRate', 'walletBalance',
             'lastLoginDays', 'subscriptionExpired', 'activeSubscription',
             'leadTrendLabels', 'leadTrendData', 'biInsightText',
             'conversionChange', 'revenueGenerated', 'leadsMissed',
-            'reactivationScore', 'reactivationLabel', 'reactivationIssues'
+            'reactivationScore', 'reactivationLabel', 'reactivationIssues',
+            'biPreset'
         ));
     } 
 

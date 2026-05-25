@@ -81,6 +81,6 @@ class CustomRoleRepository implements CustomRoleRepositoryInterface
 
     public function getFirstWithoutGlobalScopeWhere(array $params, array $relations = []): ?Model
     {
-        return $this->role->withoutGlobalScope('translate')->where($params)->first(['id','name','modules']);
+        return $this->role->withoutGlobalScope('translate')->where($params)->first(['id','name','modules','crm_zones']);
     }
 }

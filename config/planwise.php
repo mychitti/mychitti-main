@@ -7,6 +7,21 @@
  * or planwise:inventory_manage without requiring a separate subscription.
  */
 return [
+    /*
+     * Premium addon modules that require a purchase/licence.
+     * Core modules (banner, category, zone, etc.) are always available.
+     * active_addon_modules in business_settings controls which are enabled.
+     * If active_addon_modules is not set in DB, ALL addon modules are shown
+     * (backward-compatible default).
+     */
+    'addon_modules' => [
+        'billing', 'service_billing', 'quotaiton_manage',
+        'support_ticket', 'sales_crm', 'ai_agent',
+        'task_manage', 'projects_manage', 'hr_manage',
+        'account_manage', 'attendance', 'inventory_manage',
+        'leads_manage', 'client_manage', 'analytics', 'logs', 'pos',
+    ],
+
     'equivalences' => [
         'laundry' => [
             'hr_manage',

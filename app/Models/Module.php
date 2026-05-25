@@ -133,7 +133,7 @@ class Module extends Model
      */
     public function scopeNotParcel($query): mixed
     {
-        return $query->where('module_type', '!=' ,'parcel');
+        return $query->where('module_type', '!=', 'parcel');
     }
 
     /**

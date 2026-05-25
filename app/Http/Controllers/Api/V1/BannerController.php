@@ -200,7 +200,8 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
         $offer_banners = OfferBanner::where('approved', 1)
             ->where('status', 1)
-            ->where('end_date', '>=', date('Y-m-d'))
+            ->whereDate('start_date', '<=', date('Y-m-d'))
+            ->whereDate('end_date', '>=', date('Y-m-d'))
             ->whereHas('store', function ($query) use ($zone_ids) {
                 $query->whereIn('zone_id', $zone_ids);
             })

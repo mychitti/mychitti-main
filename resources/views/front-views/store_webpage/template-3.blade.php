@@ -1390,20 +1390,20 @@
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-enquiry" style="opacity:0.5;cursor:not-allowed;" title="Currently unavailable for enquiries">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-enquiry">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="btn-enquiry">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                         @endif
                                     </div>
@@ -1526,20 +1526,20 @@
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-enquiry" style="opacity:0.5;cursor:not-allowed;" title="Currently unavailable for enquiries">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-enquiry">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="btn-enquiry">
                                                 <i class="fas fa-user-cog"></i>
-                                                Enquiry Now
+                                                {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry Now' }}
                                             </button>
                                         @endif
                                     </div>

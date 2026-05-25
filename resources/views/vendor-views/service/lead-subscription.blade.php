@@ -50,7 +50,7 @@
 
     {{-- Available plans --}}
     <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0">Available Plans — Wallet Balance: {{ _price($walletBalance) }}</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0">Available Plans</h5></div>
         <div class="card-body">
             @if ($plans->isEmpty())
                 <p class="text-muted">No plans available at the moment.</p>
@@ -59,22 +59,19 @@
                     @foreach ($plans as $plan)
                     <div class="col-md-4 mb-3">
                         <div class="card h-100 border">
-                            <div class="card-body">
-                                <span class="badge badge-soft-{{ $plan->type === 'dedicated' ? 'primary' : 'success' }} mb-2">{{ ucfirst($plan->type) }}</span>
+                            <div class="card-body d-flex flex-column">
+                                <span class="badge badge-soft-{{ $plan->type === 'dedicated' ? 'primary' : 'success' }} mb-2 align-self-start">{{ ucfirst($plan->type) }}</span>
                                 <h5 class="mb-1">{{ $plan->name }}</h5>
                                 <p class="text-muted mb-1">{{ $plan->duration_days }} days</p>
                                 <h4 class="text-dark mb-3">{{ _price($plan->price) }}</h4>
-                                <form action="{{ route('vendor.service.lead-subscription.buy') }}" method="POST">
+
+                                <form action="{{ route('vendor.service.lead-subscription.gateway') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                                    <button type="submit" class="btn btn--primary btn-sm btn-block"
-                                        {{ $walletBalance < $plan->price ? 'disabled' : '' }}>
+                                    <button type="submit" class="btn btn--primary btn-sm btn-block">
                                         Buy
                                     </button>
                                 </form>
-                                @if ($walletBalance < $plan->price)
-                                    <small class="text-danger d-block mt-1">Insufficient wallet balance</small>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -85,3 +82,19 @@
     </div>
 </div>
 @endsection
+
+@push('script_2')
+    @if (request('flag') && request('flag') == 'success')
+        <script>
+            $(document).ready(function () {
+                toastr.success('Subscription activated successfully!', 'Success');
+
+                const url = new URL(window.location);
+                url.searchParams.delete('flag');
+                url.searchParams.delete('token');
+
+                window.history.replaceState({}, '', url);
+            });
+        </script>
+    @endif
+@endpush

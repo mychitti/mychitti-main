@@ -13,9 +13,10 @@ class CustomRoleService
     public function getAddData(Object $request): array
     {
         return [
-            'name' => $request->name[array_search('default', $request->lang)],
-            'modules' => json_encode($request['modules']),
-            'status' => 1,
+            'name'      => $request->name[array_search('default', $request->lang)],
+            'modules'   => json_encode($request['modules']),
+            'crm_zones' => $request->input('crm_zones', []),
+            'status'    => 1,
         ];
     }
 

@@ -534,13 +534,13 @@ class QuoteController extends Controller
         foreach ($request->post('item_name_new', []) as $key => $name) {
             $quotation_det_item = new QuotationDetailItem();
             $quotation_det_item->quotation_det_id = $quotation_det->id;
-            $quotation_det_item->name = $request->item_name_new[$key];
-            $quotation_det_item->item_id = $request->invoice_item_new[$key] ?? null;
-            $quotation_det_item->qty = $request->item_qty_new[$key];
-            $quotation_det_item->price = $request->item_price_new[$key];
-            $quotation_det_item->unit = $request->has('item_unit_new') ? $request->item_unit_new[$key] : null;
-            $quotation_det_item->tax = $request->item_tax_new[$key] ? $request->item_tax_new[$key] :  0;
-            $quotation_det_item->hsn = $request->item_hsn_new[$key];
+            $quotation_det_item->name = $name;
+            $quotation_det_item->item_id = $request->input("invoice_item_new.$key") ?? null;
+            $quotation_det_item->qty = $request->input("item_qty_new.$key") ?? 0;
+            $quotation_det_item->price = $request->input("item_price_new.$key") ?? 0;
+            $quotation_det_item->unit = $request->input("item_unit_new.$key");
+            $quotation_det_item->tax = $request->input("item_tax_new.$key") ?: 0;
+            $quotation_det_item->hsn = $request->input("item_hsn_new.$key");
             $quotation_det_item->save();
         }
 

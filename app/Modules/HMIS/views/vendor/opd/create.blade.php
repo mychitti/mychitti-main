@@ -97,10 +97,12 @@
                 <input type="hidden" name="booking_mode" id="bookingMode" value="{{ $isBooked ? 'booked' : 'walkin' }}">
                 <input type="hidden" name="service_request_id" id="srId" value="{{ $isBooked ? $prefillBooking['sr_id'] : '' }}">
 
-                {{-- Patient & Doctor block — hidden in "booked" mode --}}
-                <div id="walkinPatientBlock" {{ $isBooked ? 'style="display:none;"' : '' }}>
+                {{-- Patient & Doctor block — only rendered in walk-in mode --}}
+                @if(!$isBooked)
+                <div id="walkinPatientBlock">
                     @include('hmis::vendor.opd._form', ['visit' => null])
                 </div>
+                @endif
 
                 {{-- Chief Complaint, Vitals, Notes — always shown once regardless of mode --}}
                 @include('hmis::vendor.opd._form_vitals_only', ['visit' => null])
@@ -131,8 +133,9 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 
         const mode = this.dataset.mode;
         document.getElementById('bookingMode').value = mode;
-        document.getElementById('bookedSection').style.display      = mode === 'booked' ? '' : 'none';
-        document.getElementById('walkinPatientBlock').style.display = mode === 'walkin' ? '' : 'none';
+        document.getElementById('bookedSection').style.display = mode === 'booked' ? '' : 'none';
+        const wb = document.getElementById('walkinPatientBlock');
+        if (wb) wb.style.display = mode === 'walkin' ? '' : 'none';
 
         // Toggle required off on all walk-in fields when hidden
         const walkinRequired = ['patientSelect', 'doctor_profile_id', 'visit_date', 'visit_type'];
@@ -188,6 +191,8 @@ function lookupLead() {
 
             document.getElementById('srId').value = id;
             preview.style.display = '';
+            const walkinBlock = document.getElementById('walkinPatientBlock');
+            if (walkinBlock) walkinBlock.remove();
 
             // Show doctor selector if booking has no assigned doctor
             const bookedDoctorWrap = document.getElementById('bookedDoctorWrap');

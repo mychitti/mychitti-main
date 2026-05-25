@@ -57,6 +57,7 @@ class BasicStaffController extends Controller
             'f_name'   => 'required|string|max:100',
             'phone'    => 'required|regex:/^[0-9\s\-\+\(\)]{7,20}$/|unique:vendor_employees,phone',
             'email'    => 'required|email|unique:vendor_employees,email',
+            'password' => 'required|string|min:6|confirmed',
             'image'    => 'nullable|image|max:2048',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
@@ -66,6 +67,7 @@ class BasicStaffController extends Controller
         $emp->l_name            = $request->l_name;
         $emp->phone             = $request->phone;
         $emp->email             = $request->email;
+        $emp->password          = bcrypt($request->password);
         $emp->vendor_id         = Helpers::get_vendor_id();
         $emp->store_id          = Helpers::get_store_id();
         $emp->employee_role_id  = $request->employee_role_id ?: null;
@@ -101,6 +103,7 @@ class BasicStaffController extends Controller
             'f_name'   => 'required|string|max:100',
             'phone'    => ['required', 'regex:/^[0-9\s\-\+\(\)]{7,20}$/', Rule::unique('vendor_employees', 'phone')->ignore($id)],
             'email'    => ['required', 'email', Rule::unique('vendor_employees', 'email')->ignore($id)],
+            'password' => 'nullable|string|min:6|confirmed',
             'image'    => 'nullable|image|max:2048',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
@@ -110,17 +113,20 @@ class BasicStaffController extends Controller
         $emp->phone            = $request->phone;
         $emp->email            = $request->email;
         $emp->employee_role_id = $request->employee_role_id ?: null;
+        if ($request->filled('password')) {
+            $emp->password = bcrypt($request->password);
+        }
 
         if ($request->hasFile('image')) {
             if ($emp->image) {
-                Helpers::delete_image($emp->image, 'profile/');
+                Storage::disk('public')->delete('profile/' . $emp->image);
             }
             $emp->image = Helpers::upload('profile/', 'png', $request->file('image'));
         }
 
         if ($request->hasFile('id_proof')) {
             if ($emp->id_document) {
-                Helpers::delete_image($emp->id_document, 'employee/id-proof/');
+                Storage::disk('public')->delete('employee/id-proof/' . $emp->id_document);
             }
             $ext = $request->file('id_proof')->getClientOriginalExtension();
             $emp->id_document = Helpers::upload('employee/id-proof/', $ext, $request->file('id_proof'));
@@ -137,10 +143,10 @@ class BasicStaffController extends Controller
         $emp = VendorEmployee::where('store_id', Helpers::get_store_id())->findOrFail($id);
 
         if ($emp->image) {
-            Helpers::delete_image($emp->image, 'profile/');
+            Storage::disk('public')->delete('profile/' . $emp->image);
         }
         if ($emp->id_document) {
-            Helpers::delete_image($emp->id_document, 'employee/id-proof/');
+            Storage::disk('public')->delete('employee/id-proof/' . $emp->id_document);
         }
 
         $emp->delete();

@@ -72,6 +72,7 @@
                                     <label class="form-check-label qcont text-dark" for="addon">{{translate('messages.addon')}}</label>
                                 </div>
                             </div> --}}
+                            @if(isAddonActive('attendance'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="attendance" class="form-check-input granular_permission_check"
@@ -79,6 +80,7 @@
                                     <label class="form-check-label qcont text-dark" for="attendance">{{translate('messages.attendance')}}</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="attribute" class="form-check-input"
@@ -93,6 +95,7 @@
                                     <label class="form-check-label qcont text-dark" for="banner">{{translate('messages.banner')}}</label>
                                 </div>
                             </div>
+                            @if(isAddonActive('billing'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="billing" class="form-check-input granular_permission_check"
@@ -100,6 +103,7 @@
                                     <label class="form-check-label qcont text-dark" for="billing">{{translate('messages.billing')}}</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="blog" class="form-check-input"
@@ -135,6 +139,7 @@
                                     <label class="form-check-label qcont text-dark" for="customer_management">{{translate('messages.customer_management')}}</label>
                                 </div>
                             </div>
+                            @if(isAddonActive('client_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="client_manage" class="form-check-input granular_permission_check"
@@ -142,6 +147,7 @@
                                     <label class="form-check-label qcont text-dark" for="client_manage">{{translate('messages.mychitti_client_management')}}</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="deliveryman" class="form-check-input"
@@ -198,7 +204,7 @@
                                         <label class="form-check-label text-dark " for="order">Orders</label>
                                     </div>
                                 </div>
-                            @else
+                            @elseif(isAddonActive('leads_manage'))
                                 <div class="check-item">
                                     <div class="form-group form-check form--check">
                                         <input type="checkbox" name="modules[]" value="leads_manage"
@@ -208,6 +214,7 @@
                                 </div>
                             @endif
                             
+                            @if(isAddonActive('inventory_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="inventory_manage"
@@ -215,6 +222,8 @@
                                     <label class="form-check-label text-dark" for="inventory_manage">Inventory Manage</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('task_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="task_manage"
@@ -222,6 +231,8 @@
                                     <label class="form-check-label text-dark" for="task_manage">Task Management</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('projects_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="projects_manage"
@@ -229,13 +240,17 @@
                                     <label class="form-check-label text-dark" for="projects_manage">Project Management</label>
                                 </div>
                             </div>
-                                                <div class="check-item">
+                            @endif
+                            @if(isAddonActive('hr_manage'))
+                            <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="hr_manage"
                                         class="form-check-input granular_permission_check" id="hr_manage">
                                     <label class="form-check-label  text-dark" for="hr_manage">HR Management</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('account_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="account_manage"
@@ -243,6 +258,7 @@
                                     <label class="form-check-label  text-dark" for="account_manage">Account Management</label>
                                 </div>
                             </div>
+                            @endif
                             {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input"
@@ -250,6 +266,7 @@
                                     <label class="form-check-label input-label " for="staff_manage">Staff Management</label>
                                 </div>
                             </div> --}}
+                            @if(isAddonActive('client_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="client_manage"
@@ -257,6 +274,7 @@
                                     <label class="form-check-label  text-dark" for="client_manage">Client Management</label>
                                 </div>
                             </div>
+                            @endif
                             {{-- <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="salary" class="form-check-input granular_permission_check"
@@ -285,6 +303,7 @@
                                     <label class="form-check-label qcont text-dark" for="store_documents">{{translate('messages.store_documents')}}</label>
                                 </div>
                             </div> --}}
+                            @if(isAddonActive('billing'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="billing" class="form-check-input granular_permission_check"
@@ -292,6 +311,7 @@
                                     <label class="form-check-label qcont text-dark" for="billing"> Billing</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="google_ads" class="form-check-input"
@@ -299,6 +319,7 @@
                                     <label class="form-check-label qcont text-dark" for="google_ads">Google Ads</label>
                                 </div>
                             </div>
+                            @if(isAddonActive('quotaiton_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="quotaiton_manage" class="form-check-input granular_permission_check"
@@ -306,6 +327,8 @@
                                     <label class="form-check-label qcont text-dark" for="quotaiton_manage">Quotation Manage</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('projects_manage'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="projects_manage" class="form-check-input granular_permission_check"
@@ -313,6 +336,8 @@
                                     <label class="form-check-label qcont text-dark" for="projects_manage">Project Manage</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('support_ticket'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="support_ticket" class="form-check-input granular_permission_check"
@@ -320,6 +345,17 @@
                                     <label class="form-check-label qcont text-dark" for="support_ticket">Support Tickets</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('sales_crm'))
+                            <div class="check-item">
+                                <div class="form-group form-check form--check">
+                                    <input type="checkbox" name="modules[]" value="sales_crm" class="form-check-input granular_permission_check"
+                                           id="sales_crm">
+                                    <label class="form-check-label qcont text-dark" for="sales_crm">Sales &amp; Marketing CRM</label>
+                                </div>
+                            </div>
+                            @endif
+                            @if(isAddonActive('ai_agent'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="ai_agent" class="form-check-input granular_permission_check"
@@ -327,6 +363,8 @@
                                     <label class="form-check-label qcont text-dark" for="ai_agent">AI Agent</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('analytics'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="analytics" class="form-check-input granular_permission_check"
@@ -334,6 +372,8 @@
                                     <label class="form-check-label qcont text-dark" for="analytics">Analytics</label>
                                 </div>
                             </div>
+                            @endif
+                            @if(isAddonActive('logs'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="logs" class="form-check-input granular_permission_check"
@@ -341,6 +381,7 @@
                                     <label class="form-check-label qcont text-dark" for="logs">Logs</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="report" class="form-check-input"
@@ -384,6 +425,7 @@
                                     <label class="form-check-label qcont text-dark" for="parcel">{{translate('messages.parcel')}}</label>
                                 </div>
                             </div> --}}
+                            @if(isAddonActive('pos'))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="pos" class="form-check-input granular_permission_check"
@@ -391,6 +433,7 @@
                                     <label class="form-check-label qcont text-dark" for="pos">{{translate('messages.pos')}}</label>
                                 </div>
                             </div>
+                            @endif
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="subscription_plan" class="form-check-input"
@@ -405,6 +448,18 @@
                                     <label class="form-check-label qcont text-dark" for="unit">{{translate('messages.unit')}}</label>
                                 </div>
                             </div>
+                        </div>
+
+                        {{-- Sales CRM Zone Restriction --}}
+                        <div id="crm-zone-section" class="mt-3 p-3 border rounded bg-light" style="display:none">
+                            <label class="input-label mb-1">{{ translate('Sales CRM — Zone Access') }}</label>
+                            <p class="text-muted small mb-2">{{ translate('Select zones this role can access. Leave empty to allow all zones.') }}</p>
+                            <select name="crm_zones[]" id="crm_zones_select" class="js-select2-custom form-control" multiple
+                                    data-placeholder="{{ translate('All zones (no restriction)') }}">
+                                @foreach($zones as $zone)
+                                    <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         {{-- Granular Action-level Permissions --}}
@@ -691,6 +746,34 @@
 
             refreshHeaderStates();
         })();
+    </script>
+    <script>
+        $(document).ready(function () {
+            var $crmCb      = $('#sales_crm');
+            var $section    = $('#crm-zone-section');
+            var $zoneSelect = $('#crm_zones_select');
+
+            function toggleZoneSection() {
+                if ($crmCb.is(':checked')) {
+                    $section.show();
+                    // Re-trigger Select2 to render correctly after section is shown
+                    if ($zoneSelect.hasClass('select2-hidden-accessible')) {
+                        $zoneSelect.select2('destroy');
+                    }
+                    $zoneSelect.select2({
+                        placeholder: '{{ translate("All zones (no restriction)") }}',
+                        allowClear: true,
+                        width: '100%'
+                    });
+                } else {
+                    $section.hide();
+                    $zoneSelect.val(null).trigger('change');
+                }
+            }
+
+            $crmCb.on('change', toggleZoneSection);
+            toggleZoneSection();
+        });
     </script>
 @endpush
 

@@ -137,6 +137,40 @@
                             @endif
                         </div>
 
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label class="input-label">Password {!! isset($member) ? '' : '<span class="text-danger">*</span>' !!}</label>
+                                    <div class="input-group">
+                                        <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror"
+                                            placeholder="{{ isset($member) ? 'Leave blank to keep current' : 'Set login password' }}"
+                                            {{ isset($member) ? '' : 'required' }}>
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="#password">
+                                                <i class="tio-visible-outlined"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @error('password')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label class="input-label">Confirm Password {!! isset($member) ? '' : '<span class="text-danger">*</span>' !!}</label>
+                                    <div class="input-group">
+                                        <input type="password" name="password_confirmation" id="password_confirmation" class="form-control"
+                                            placeholder="Re-enter password"
+                                            {{ isset($member) ? '' : 'required' }}>
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="#password_confirmation">
+                                                <i class="tio-visible-outlined"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-end">
                             <a href="{{ route('vendor.basic-staff.index') }}" class="btn btn-outline-secondary mr-2">Cancel</a>
                             <button type="submit" class="btn btn--primary">
@@ -175,6 +209,19 @@
 
 @push('script_2')
 <script>
+    // Password toggle
+    $(document).on('click', '.toggle-password', function () {
+        var $input = $($(this).data('target'));
+        var $icon  = $(this).find('i');
+        if ($input.attr('type') === 'password') {
+            $input.attr('type', 'text');
+            $icon.removeClass('tio-visible-outlined').addClass('tio-visible-off-outlined');
+        } else {
+            $input.attr('type', 'password');
+            $icon.removeClass('tio-visible-off-outlined').addClass('tio-visible-outlined');
+        }
+    });
+
     // Show filename in custom-file-label
     $('.custom-file-input').on('change', function () {
         var name = $(this).val().split('\\').pop();

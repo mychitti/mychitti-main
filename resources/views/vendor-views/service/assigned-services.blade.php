@@ -238,33 +238,29 @@
                                         @elseif(str_contains($conf->current_status ?? '', 'Cancel'))
                                             <span class="status-pill pill-cancelled" style="padding:7px 14px;font-size:.8rem;">Cancelled</span>
                                         @else
-                                            @if (hasPermission('leads_manage', 'status_change'))
-                                                @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id' => $conf->service_id])[0] ?? null; @endphp
-                                                <select class="lc-status-select js-select2-custom"
-                                                    onchange="changeStatus(this.value, {{ $conf->service_id }})"
-                                                    title="Change Status">
-                                                    <option value="">Status...</option>
-                                                    @foreach ($default_statuses as $st)
-                                                        <option value="{{ $st->id }}" {{ $jobInfo && $jobInfo->status == $st->id ? 'selected' : '' }}>{{ $st->status }}</option>
-                                                    @endforeach
-                                                    @foreach ($statuses as $st)
-                                                        <option value="{{ $st->id }}" {{ $jobInfo && $jobInfo->status == $st->id ? 'selected' : '' }}>{{ $st->status }}</option>
-                                                    @endforeach
-                                                </select>
-                                            @endif
+                                            @php $jobInfo = _getWhere('vendor_emp_jobs', ['service_id' => $conf->service_id])[0] ?? null; @endphp
+                                            <select class="lc-status-select js-select2-custom"
+                                                onchange="changeStatus(this.value, {{ $conf->service_id }})"
+                                                title="Change Status">
+                                                <option value="">Status...</option>
+                                                @foreach ($default_statuses as $st)
+                                                    <option value="{{ $st->id }}" {{ $jobInfo && $jobInfo->status == $st->id ? 'selected' : '' }}>{{ $st->status }}</option>
+                                                @endforeach
+                                                @foreach ($statuses as $st)
+                                                    <option value="{{ $st->id }}" {{ $jobInfo && $jobInfo->status == $st->id ? 'selected' : '' }}>{{ $st->status }}</option>
+                                                @endforeach
+                                            </select>
                                         @endif
 
-                                        @if (hasPermission('leads_manage', 'edit'))
-                                            <a href="{{ route('vendor.service.lead-details', [$conf->service_id]) }}" class="btn-lp">
-                                                <i class="tio-visible-outlined"></i> View
-                                            </a>
-                                        @endif
-                                        @if (hasAnyModulePermission(['leads_gatepass']))
+                                        <a href="{{ route('vendor.service.lead-details', [$conf->service_id]) }}" class="btn-lp">
+                                            <i class="tio-visible-outlined"></i> View
+                                        </a>
+                                        @if (\App\CentralLogics\Helpers::employee_module_permission_check('leads_gatepass'))
                                             <a href="{{ route('vendor.service.gatepass-details', [$conf->service_id]) }}" class="btn-lp">
                                                 <i class="tio-document-outlined"></i> Gatepass
                                             </a>
                                         @endif
-                                        @if (hasAnyModulePermission(['leads_quotation']))
+                                        @if (\App\CentralLogics\Helpers::employee_module_permission_check('leads_quotation'))
                                             <a href="{{ route('vendor.service.quotations', [$conf->service_id]) }}" class="btn-lp">
                                                 <i class="tio-document-text-outlined"></i> Quotation
                                             </a>

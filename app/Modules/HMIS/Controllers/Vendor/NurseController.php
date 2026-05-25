@@ -4,6 +4,7 @@ namespace App\Modules\HMIS\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\DoctorProfile;
 use App\Models\EmployeeRole;
 use App\Models\NurseProfile;
 use App\Models\VendorEmployee;
@@ -55,10 +56,12 @@ class NurseController extends Controller
     {
         $store_id = Helpers::get_store_id();
 
-        $assigned_emp_ids = NurseProfile::where('store_id', $store_id)->pluck('emp_id');
+        $takenEmpIds = NurseProfile::where('store_id', $store_id)->pluck('emp_id')
+            ->merge(DoctorProfile::where('store_id', $store_id)->pluck('emp_id'))
+            ->unique();
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
-            ->whereNotIn('id', $assigned_emp_ids)
+            ->whereNotIn('id', $takenEmpIds)
             ->get();
 
         $wards = Ward::where('store_id', $store_id)->where('is_active', true)->orderBy('ward_name')->get();
@@ -151,12 +154,14 @@ class NurseController extends Controller
         $store_id = Helpers::get_store_id();
         $nurse    = NurseProfile::where('store_id', $store_id)->with('employee', 'ward')->findOrFail($id);
 
-        $assigned_emp_ids = NurseProfile::where('store_id', $store_id)->pluck('emp_id');
+        $takenEmpIds = NurseProfile::where('store_id', $store_id)->pluck('emp_id')
+            ->merge(DoctorProfile::where('store_id', $store_id)->pluck('emp_id'))
+            ->unique();
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
-            ->where(function ($q) use ($nurse, $assigned_emp_ids) {
+            ->where(function ($q) use ($nurse, $takenEmpIds) {
                 $q->where('id', $nurse->emp_id)
-                  ->orWhereNotIn('id', $assigned_emp_ids);
+                  ->orWhereNotIn('id', $takenEmpIds);
             })
             ->get();
 

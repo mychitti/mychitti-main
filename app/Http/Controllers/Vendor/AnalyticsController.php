@@ -214,12 +214,18 @@ class AnalyticsController extends Controller
             })->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
         ];
 
-        $trial        = VendorSubscription::where('vendor_id', $storeId)
-                            ->whereJsonContains('permitted_modules', 'performance_analytics')
-                            ->first();
+        $trial = VendorSubscription::where('vendor_id', $storeId)
+            ->where('plan_expiry', '>', now())
+            ->get()
+            ->first(fn($s) => in_array('performance_analytics', json_decode($s->permitted_modules, true) ?? []));
+
+        $trialExpired = !$trial && VendorSubscription::where('vendor_id', $storeId)
+            ->where('plan_expiry', '<=', now())
+            ->get()
+            ->contains(fn($s) => in_array('performance_analytics', json_decode($s->permitted_modules, true) ?? []));
+
         $hasAccess    = Helpers::permission_check('performance_analytics');
-        $trialActive  = $trial && Carbon::parse($trial->plan_expiry)->isFuture();
-        $trialExpired = $trial && !Carbon::parse($trial->plan_expiry)->isFuture();
+        $trialActive  = (bool) $trial;
 
         return view('vendor-views.analytics.index', compact(
             'tab', 'data', 'search', 'dateFrom', 'dateTo', 'preset', 'counts',

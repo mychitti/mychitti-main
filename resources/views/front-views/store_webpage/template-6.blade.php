@@ -645,19 +645,19 @@
                                                         <span class="badge bg-danger">Out of Stock</span>
                                                     @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                         <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                         <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                                     @elseif (auth('web')->user())
                                                         <button
                                                             onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
                                                             class="btn btn-sm btn-outline-primary w-100">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                     @else
                                                         <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                             class="btn btn-sm btn-outline-primary w-100">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                     @endif
                                                 </div>
@@ -702,19 +702,19 @@
                                                         <span class="badge bg-danger">Out of Stock</span>
                                                     @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                                         <button disabled class="btn btn-sm btn-outline-primary w-100" style="opacity:0.5;cursor:not-allowed;">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                         <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                                     @elseif (auth('web')->user())
                                                         <button
                                                             onclick="bookService({{ $pro->id }},this,{{ $store['id'] }})"
                                                             class="btn btn-sm btn-outline-primary w-100">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                     @else
                                                         <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                             class="btn btn-sm btn-outline-primary w-100">
-                                                            Enquiry
+                                                            {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquiry' }}
                                                         </button>
                                                     @endif
                                                 </div>

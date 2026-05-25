@@ -216,48 +216,54 @@
             </div>
         </div>
     </div>
-    <div class="modal fade" id="serviceReviewModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="serviceReviewModal" tabindex="-1" aria-labelledby="serviceReviewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Review</h5>
+                    <h5 class="modal-title" id="serviceReviewModalLabel">Submit Review</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="service_det"></div>
-                    <form action="{{ route('submit-service-review') }}" class="reviewformSubmit">
-                        <div class="star-rating">
-                            <input type="hidden" name="service_id" id="service_id_inp">
+                    <form id="serviceReviewForm" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <input type="hidden" name="store_id" id="rev_store_id">
+                        <input type="hidden" name="acceptance_id" id="rev_acceptance_id">
+                        <input type="hidden" name="service_name" id="rev_service_name">
+                        <input type="hidden" name="service_date" id="rev_service_date">
 
-                            <input type="radio" id="2star5" name="rating" value="5" />
-                            <label for="2star5" title="5 stars">★</label>
-
-                            <input type="radio" id="2star4" name="rating" value="4" />
-                            <label for="2star4" title="4 stars">★</label>
-
-                            <input type="radio" id="2star3" name="rating" value="3" />
-                            <label for="2star3" title="3 stars">★</label>
-
-                            <input type="radio" id="2star2" name="rating" value="2" />
-                            <label for="2star2" title="2 stars">★</label>
-
-                            <input type="radio" id="2star1" name="rating" value="1" />
-                            <label for="2star1" title="1 star">★</label>
-
-                            <p style="font-size: 18px;line-height: 33px">: *Rating </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Experience <span class="text-danger">*</span></label>
+                            <select name="experience" class="form-control" required>
+                                <option value="">Select experience</option>
+                                <option value="good">Good</option>
+                                <option value="bad">Bad</option>
+                            </select>
                         </div>
 
-                        <label for="revie" title="">Review*</label>
-                        <textarea name="review" class="form-control mb-2" id="revie"placeholder="Start typing..."></textarea>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rating <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-2" style="font-size:24px;">
+                                @for ($i = 1; $i <= 5; $i++)
+                                    <i class="far fa-star rev-star" data-val="{{ $i }}" style="cursor:pointer;color:#d1d5db;" id="revStar{{ $i }}"></i>
+                                @endfor
+                            </div>
+                            <input type="hidden" name="rating" id="rev_rating" required>
+                        </div>
 
-                        <label for="revie" title="">Image (optionl)</label>
-                        <input type="file" name="attachment[]" class="form-control mb-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Comment <span class="text-danger">*</span></label>
+                            <textarea name="comment" class="form-control" rows="3" required placeholder="Share your experience..."></textarea>
+                        </div>
 
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Attachments (Optional)</label>
+                            <input type="file" name="attachments[]" class="form-control" multiple accept="image/*">
+                        </div>
+
+                        <div id="revFormError" class="text-danger mb-2" style="display:none;"></div>
+                        <button type="submit" class="btn btn-primary w-100" id="revSubmitBtn">Submit Review</button>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
@@ -267,10 +273,57 @@
 @push('script_2')
     <script>
         $(document).on('click', '.service_review_btn', function() {
-            var service_id = $(this).data('id')
-            $('#service_det').html($('.service_info_' + service_id).html());
-            $('#service_id_inp').val(service_id);
-        })
+            var $btn = $(this);
+            $('#rev_acceptance_id').val($btn.data('id'));
+            $('#rev_store_id').val($btn.data('store_id'));
+            $('#rev_service_name').val($btn.data('service_name'));
+            $('#rev_service_date').val($btn.data('service_date'));
+            // reset form state
+            $('#serviceReviewForm')[0].reset();
+            $('#rev_acceptance_id').val($btn.data('id'));
+            $('#rev_store_id').val($btn.data('store_id'));
+            $('#rev_service_name').val($btn.data('service_name'));
+            $('#rev_service_date').val($btn.data('service_date'));
+            $('#rev_rating').val('');
+            $('.rev-star').css('color', '#d1d5db').removeClass('fas').addClass('far');
+            $('#revFormError').hide().text('');
+        });
+
+        // Star rating for review modal
+        $(document).on('click', '.rev-star', function() {
+            var val = $(this).data('val');
+            $('#rev_rating').val(val);
+            $('.rev-star').each(function() {
+                var s = parseInt($(this).data('val'));
+                $(this).css('color', s <= val ? '#fbbf24' : '#d1d5db')
+                       .toggleClass('fas', s <= val).toggleClass('far', s > val);
+            });
+        });
+
+        $('#serviceReviewForm').on('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            var $btn = $('#revSubmitBtn');
+            $btn.prop('disabled', true).text('Submitting...');
+            $('#revFormError').hide();
+            $.ajax({
+                url: '{{ route('submit-service-review') }}',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function() {
+                    $('#serviceReviewModal').modal('hide');
+                    location.reload();
+                },
+                error: function(xhr) {
+                    var resp = xhr.responseJSON;
+                    var msg = (resp && resp.errors && resp.errors[0]) ? resp.errors[0].message : 'Submission failed.';
+                    $('#revFormError').text(msg).show();
+                    $btn.prop('disabled', false).text('Submit Review');
+                }
+            });
+        });
         $(document).on("click", ".updateStatus", function(e) {
 
             e.preventDefault();

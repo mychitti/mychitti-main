@@ -8,13 +8,14 @@ use App\Enums\ViewPaths\Admin\CustomRole as CustomRoleViewPath;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\CustomRoleAddRequest;
 use App\Http\Requests\Admin\CustomRoleUpdateRequest;
+use App\Models\Zone;
 use App\Services\CustomRoleService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Brian2694\Toastr\Facades\Toastr; 
+use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
@@ -39,9 +40,18 @@ use Illuminate\View\View;
             searchValue: request()?->search,
             dataLimit: config('default_pagination')
         );
-        $language = getWebConfig('language');
+        $language    = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        return view(CustomRoleViewPath::ADD[VIEW], compact('roles','language','defaultLang'));
+        $zones       = DB::table('zones')
+                        ->leftJoin('translations', function ($join) {
+                            $join->on('translations.translationable_id', '=', 'zones.id')
+                                 ->where('translations.translationable_type', 'App\Models\Zone')
+                                 ->where('translations.key', 'name')
+                                 ->where('translations.locale', app()->getLocale());
+                        })
+                        ->orderBy(DB::raw('COALESCE(translations.value, zones.name)'))
+                        ->get(['zones.id', DB::raw('COALESCE(translations.value, zones.name) as name')]);
+        return view(CustomRoleViewPath::ADD[VIEW], compact('roles', 'language', 'defaultLang', 'zones'));
     }
 
     public function add(CustomRoleAddRequest $request): RedirectResponse
@@ -65,9 +75,10 @@ use Illuminate\View\View;
         }
         $role = $this->roleRepo->getFirstWithoutGlobalScopeWhere(params: ['id' => $id]);
         $assignedPermissions = $role->permissions()->pluck('feature_permissions.id')->all();
-        $language = getWebConfig('language');
+        $language    = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
-        return view(CustomRoleViewPath::UPDATE[VIEW], compact('role','language','defaultLang','assignedPermissions'));
+        $zones       = Zone::withoutGlobalScopes()->orderBy('name')->get();
+        return view(CustomRoleViewPath::UPDATE[VIEW], compact('role', 'language', 'defaultLang', 'assignedPermissions', 'zones'));
     }
 
     public function update(CustomRoleUpdateRequest $request, $id): RedirectResponse|View

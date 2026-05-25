@@ -42,35 +42,30 @@ class ServiceController extends Controller
         $type       = $request->type ?? 'all';
         $search     = $request->search ?? '';
         $zone_id    = $request->zone_id ?? '';
+        $store_id   = $request->store_id ?? '';
         $preset     = $request->date_range ?? 'this_year';
         $custom     = $request->custom_date_range ?? null;
         $range      = Helpers::calculatePresetDates($preset, $custom);
 
         $leads = DB::table('service_requests')
-            ->leftJoin('accepted_service_requests', 'service_requests.id', '=', 'accepted_service_requests.service_request_id')
-            ->leftJoin('stores', 'stores.id', '=', 'accepted_service_requests.vendor_id')
-            ->leftJoin('zones', 'zones.id', '=', 'stores.zone_id')
             ->leftJoin('items', 'items.id', '=', 'service_requests.item_id')
-            ->leftJoin('vendor_emp_jobs', 'vendor_emp_jobs.service_id', '=', 'accepted_service_requests.service_request_id')
-            ->leftJoin('service_statuses', 'service_statuses.id', '=', 'vendor_emp_jobs.status')
             ->select(
                 'service_requests.id',
                 'service_requests.id as service_id',
                 'service_requests.created_at as enquiry_date',
-                'accepted_service_requests.current_status',
-                'accepted_service_requests.id as accepted_id',
-                'service_statuses.status',
+                'service_requests.sent_to',
                 'items.name',
                 'items.image',
-                'stores.name as store_name',
-                'stores.logo',
-                'zones.name as zone_name',
-                'service_requests.sent_to',
                 DB::raw('(SELECT COUNT(*) FROM accepted_service_requests asr WHERE asr.service_request_id = service_requests.id) as accepted_count'),
                 DB::raw('(SELECT COUNT(*) FROM cancelled_service_requests csr WHERE csr.service_request_id = service_requests.id) as cancelled_count')
             )
             ->when($type && $type !== 'all', function ($q) use ($type) {
-                $q->where('accepted_service_requests.current_status', $type);
+                $q->whereExists(function ($sub) use ($type) {
+                    $sub->select(DB::raw(1))
+                        ->from('accepted_service_requests as asr')
+                        ->whereColumn('asr.service_request_id', 'service_requests.id')
+                        ->where('asr.current_status', $type);
+                });
             })
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
@@ -79,10 +74,18 @@ class ServiceController extends Controller
                 });
             })
             ->when($zone_id, function ($q) use ($zone_id) {
-                $q->where('stores.zone_id', $zone_id);
+                $q->whereExists(function ($sub) use ($zone_id) {
+                    $sub->select(DB::raw(1))
+                        ->from('accepted_service_requests as asr2')
+                        ->join('stores as s2', 's2.id', '=', 'asr2.vendor_id')
+                        ->whereColumn('asr2.service_request_id', 'service_requests.id')
+                        ->where('s2.zone_id', $zone_id);
+                });
+            })
+            ->when($store_id, function ($q) use ($store_id) {
+                $q->whereRaw('FIND_IN_SET(?, service_requests.sent_to)', [$store_id]);
             })
             ->whereBetween(DB::raw('DATE(service_requests.created_at)'), [$range['start'], $range['end']])
-            ->distinct('service_requests.id')
             ->orderBy('service_requests.id', 'desc')
             ->paginate(15)
             ->appends($request->query());
@@ -93,7 +96,7 @@ class ServiceController extends Controller
             ->select('zones.id', 'zones.name')
             ->get();
 
-        return view('admin-views.service.leads-list', compact('leads', 'type', 'search', 'zone_id', 'preset', 'zones'));
+        return view('admin-views.service.leads-list', compact('leads', 'type', 'search', 'zone_id', 'store_id', 'preset', 'zones'));
     }
      public function mark_paid2(Request $request)
     {

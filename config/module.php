@@ -2,7 +2,7 @@
 
 return [
     'module_type'=>[
-        'grocery', 'food', 'pharmacy', 'ecommerce','parcel'
+        'grocery', 'food', 'pharmacy', 'ecommerce', 'parcel', 'sales_marketing'
     ],
 
     'grocery'=>[
@@ -85,6 +85,26 @@ return [
         'description'=>'In this type, No opening and closing time for store, no available time for items and has stock for items.',
     ],
    
+    'sales_marketing'=>[
+        'order_status'                    => ['accepted' => false],
+        'order_place_to_schedule_interval'=> false,
+        'add_on'                          => false,
+        'stock'                           => false,
+        'veg_non_veg'                     => false,
+        'unit'                            => false,
+        'order_attachment'                => false,
+        'always_open'                     => true,
+        'all_zone_service'                => false,
+        'item_available_time'             => false,
+        'show_restaurant_text'            => false,
+        'is_parcel'                       => false,
+        'organic'                         => false,
+        'cutlery'                         => false,
+        'common_condition'                => false,
+        'basic'                           => false,
+        'description'                     => 'Admin-only module for sales queries, follow-ups, and support tickets.',
+    ],
+
     'parcel'=>[
         'order_status'=>['accepted'=>false],
         'order_place_to_schedule_interval'=>false,

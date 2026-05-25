@@ -98,6 +98,9 @@
                 <li class="nav-item">
                     <a class="nav-link {{request('tab')=='monetization' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'monetization'])}}" aria-disabled="true">Spends Monetization</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{request('tab')=='staff' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'staff'])}}" aria-disabled="true">Staff</a>
+                </li>
             </ul>
             <!-- End Nav -->
         </div>

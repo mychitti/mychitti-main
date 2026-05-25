@@ -36,7 +36,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('google-ads-update', 'DashboardController@google_ads_update')->name('google-ads.update');
         Route::get('google-ads-delete/{id}', 'DashboardController@google_ads_delete')->name('google-ads.delete');
     });
-    Route::group(['middleware' => ['admin', 'current-module']], function () {
+    Route::group(['middleware' => ['admin', 'current-module', 'sales-crm-only']], function () {
 
         Route::group(['prefix' => 'ai-chat', 'as' => 'ai-chat.'], function () {
             Route::get('/', 'AIChatController@index')->name('index')->middleware('permission:ai_chat,view');
@@ -99,6 +99,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // HMIS
         if (file_exists(app_path('Modules/HMIS/routes/admin.php'))) {
             require app_path('Modules/HMIS/routes/admin.php');
+        }
+
+        // Sales CRM
+        if (file_exists(app_path('Modules/SalesCRM/routes/admin.php'))) {
+            require app_path('Modules/SalesCRM/routes/admin.php');
         }
 
         // Impersonation
@@ -967,6 +972,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
         Route::post('documents/receivable-receipt/store/{action?}/{task_id?}', 'LibraryController@recievable_store')->name('documents.receivable-receipt.store-lead'); // for task receivable receipt save without module:documents check because it is used in task details page
         Route::post('documents/service-report/store/{action?}/{task_id?}', 'DocumentsController@service_report_store')->name('documents.service-report.store-lead'); // for task service report save without module:documents check because it is used in task details page
         Route::post('quotation/save-info/{id}', 'QuoteController@save_info')->name('quotation.save-info-task'); // for lead quotation save without permission check because it is used in lead details page and we have given access to view lead details for some roles who don't have permission to manage quotation
+        Route::post('quotation/save-info-crm', 'QuoteController@save_info')->name('quotation.save-info-crm'); // for Sales CRM — bypasses module/planwise/permission guards
         Route::post('billing/save-manual-invoice/{id}', 'ServiceController@save_manual_invoice')->name('billing.save-manual-invoice-lead'); // for task invoice save without permission check because it is used in task details page and we have given access to view task details for some roles who don't have permission to manage billing
         Route::group(['prefix' => 'task', 'as' => 'task.'], function () {
             Route::get('assigned-tasks', 'TaskController@assigned_tasks')->name('assigned_tasks');

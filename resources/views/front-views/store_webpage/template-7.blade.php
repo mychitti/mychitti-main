@@ -1703,18 +1703,18 @@
                                             <span class="badge bg-danger">Out of Stock</span>
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-corp btn-corp-primary" style="opacity:0.5;cursor:not-allowed;">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-corp btn-corp-primary">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="btn-corp btn-corp-primary">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                         @endif
                                     </div>
@@ -1825,18 +1825,18 @@
                                             <span class="badge bg-danger">Out of Stock</span>
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="btn-corp btn-corp-primary" style="opacity:0.5;cursor:not-allowed;">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="btn-corp btn-corp-primary">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="btn-corp btn-corp-primary">
-                                                <i class="fas fa-paper-plane"></i> Enquire Now
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire Now' }}
                                             </button>
                                         @endif
                                     </div>

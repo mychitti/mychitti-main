@@ -19,7 +19,6 @@ use App\Exports\PushNotificationExport;
 use App\Http\Controllers\Controller;
 use App\Traits\FileManagerTrait;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use App\Http\Controllers\Admin\ScheduledNotificationController;
 use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
@@ -96,14 +95,20 @@ class NotificationController extends Controller
             ? $this->upload('notification/', 'png', $request->file('image'))
             : null;
 
-        ScheduledNotificationController::storeVendorAd([
+        DB::table('notifications')->insert([
             'title'        => $request->notification_title,
             'description'  => $request->description,
             'image'        => $image,
-            'tergat'       => $request->tergat ?? 'customer',
-            'zone'         => $request->zone,
+            'zone_id'      => $request->zone,
             'vendor_id'    => $storeId,
+            'added_by'     => 'vendor',
+            'tergat'       => $request->tergat ?? 'customer',
+            'status'       => 0,
+            'approval'     => 0,
+            'is_scheduled' => 1,
             'scheduled_at' => $request->scheduled_at,
+            'created_at'   => now(),
+            'updated_at'   => now(),
         ]);
 
         return response()->json([

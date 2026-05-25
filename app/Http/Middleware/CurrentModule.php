@@ -55,6 +55,10 @@ class CurrentModule
             Config::set('module.current_module_id', null);
             Config::set('module.current_module_type', 'settings');
         }
+        if (Request::is('admin/sales-crm*')) {
+            Config::set('module.current_module_id', null);
+            Config::set('module.current_module_type', 'sales_marketing');
+        }
 
 
         // add more conditions for more modules here

@@ -8,6 +8,7 @@ use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\EmployeeRole;
 use App\Models\Item;
+use App\Models\NurseProfile;
 use App\Models\Store;
 use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
@@ -33,10 +34,12 @@ class DoctorController extends Controller
         if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'add')) abort(403);
         $store_id  = Helpers::get_store_id();
 
-        $assigned_emp_ids = DoctorProfile::where('store_id', $store_id)->pluck('emp_id');
+        $takenEmpIds = DoctorProfile::where('store_id', $store_id)->pluck('emp_id')
+            ->merge(NurseProfile::where('store_id', $store_id)->pluck('emp_id'))
+            ->unique();
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
-            ->whereNotIn('id', $assigned_emp_ids)
+            ->whereNotIn('id', $takenEmpIds)
             ->get();
 
         $store_services = $this->getStoreServices($store_id);
@@ -134,11 +137,14 @@ class DoctorController extends Controller
 
         $store_services = $this->getStoreServices($store_id);
 
+        $takenEmpIds = DoctorProfile::where('store_id', $store_id)->pluck('emp_id')
+            ->merge(NurseProfile::where('store_id', $store_id)->pluck('emp_id'))
+            ->unique();
         $employees = VendorEmployee::where('store_id', $store_id)
             ->where('status', 1)
-            ->where(function ($q) use ($doctor) {
+            ->where(function ($q) use ($doctor, $takenEmpIds) {
                 $q->where('id', $doctor->emp_id)
-                    ->orWhereNotIn('id', DoctorProfile::where('store_id', $doctor->store_id)->pluck('emp_id'));
+                    ->orWhereNotIn('id', $takenEmpIds);
             })
             ->get();
 
@@ -301,7 +307,8 @@ class DoctorController extends Controller
         ]);
 
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::findOrFail($id);
+        abort_if($doctor->store_id != $store_id, 403);
         $source   = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
 
         foreach ($request->days_of_week as $day) {
@@ -324,7 +331,8 @@ class DoctorController extends Controller
     public function slotToggle($id, $slot_id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::findOrFail($id);
+        abort_if($doctor->store_id != $store_id, 403);
         $slot     = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
         $slot->is_active = !$slot->is_active;
         $slot->save();
@@ -342,7 +350,8 @@ class DoctorController extends Controller
     public function slotDestroy($id, $slot_id)
     {
         $store_id = Helpers::get_store_id();
-        $doctor   = DoctorProfile::where('store_id', $store_id)->findOrFail($id);
+        $doctor   = DoctorProfile::findOrFail($id);
+        abort_if($doctor->store_id != $store_id, 403);
         $slot     = DoctorSlot::where('doctor_profile_id', $doctor->id)->findOrFail($slot_id);
         $slotDesc = "{$slot->slot_start}–{$slot->slot_end} (" . (DoctorSlot::DAYS[$slot->day_of_week] ?? "Day {$slot->day_of_week}") . ")";
         $slot->delete();

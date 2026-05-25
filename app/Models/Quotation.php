@@ -9,7 +9,7 @@ class Quotation extends Model
 { 
     use HasFactory;
     protected $fillable = [
-        'pdf',
+        'pdf', 'sales_query_id',
     ];
     public function quote_detail()
     {
@@ -22,5 +22,9 @@ class Quotation extends Model
     public function storeCustomer()
     {
         return $this->belongsTo(StoreCustomer::class, 'client_name');
+    }
+    public function salesQuery()
+    {
+        return $this->belongsTo(\App\Modules\SalesCRM\Models\SalesQuery::class, 'sales_query_id');
     }
 }

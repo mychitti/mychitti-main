@@ -23,6 +23,10 @@ class RestaurantController extends Controller
 
     public function edit()
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
         $store = Helpers::get_store_data();
         $shop = Store::withoutGlobalScope('translate')->findOrFail($store['id']);
           $store_documents = StoreDocument::where('store_id', $store->id)->where('status', 1)->get();

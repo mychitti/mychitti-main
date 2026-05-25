@@ -31,18 +31,12 @@
                 <label class="form-check-label input-label " for="notifications">Notifications</label>
             </div>
         </div>
-        <div class="check-item">
+        {{-- <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="library" class="form-check-input" id="library">
                 <label class="form-check-label input-label " for="library">Library</label>
             </div>
-        </div>
-        <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="subscriptions" class="form-check-input" id="subscriptions">
-                <label class="form-check-label input-label " for="subscriptions">Subscriptions</label>
-            </div>
-        </div>
+        </div> --}}
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="documents" class="form-check-input" id="documents">
@@ -56,6 +50,7 @@
             </div>
         </div>
 
+        @if(vendorPlanHasModule('inventory_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="inventory_manage"
@@ -63,6 +58,8 @@
                 <label class="form-check-label " for="inventory_manage">Inventory Manage</label>
             </div>
         </div>
+        @endif
+        @if(vendorPlanHasModule('task_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="task_manage"
@@ -72,11 +69,28 @@
         </div>
         <div class="check-item">
             <div class="form-group form-check form--check">
+                <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"
+                    id="assigned_tasks">
+                <label class="form-check-label input-label " for="assigned_tasks">Assigned Tasks</label>
+            </div>
+        </div>
+        @endif
+        @if(vendorPlanHasModule('projects_manage'))
+        <div class="check-item">
+            <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="projects_manage"
                     class="form-check-input granular_permission_check" id="projects_manage">
                 <label class="form-check-label " for="projects_manage">Project Management</label>
             </div>
         </div>
+        <div class="check-item">
+            <div class="form-group form-check form--check">
+                <input type="checkbox" name="modules[]" value="assigned_projects" class="form-check-input"
+                    id="assigned_projects">
+                <label class="form-check-label input-label " for="assigned_projects">Assigned Projects</label>
+            </div>
+        </div>
+        @endif
         @if ($module_id == 5)
             <div class="check-item">
                 <div class="form-group form-check form--check">
@@ -94,7 +108,7 @@
             </div>
         @endif
 
-
+        @if(vendorPlanHasModule('quotaiton_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="quotaiton_manage" class="form-check-input"
@@ -103,13 +117,7 @@
                     Management</label>
             </div>
         </div>
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="store_setup" class="form-check-input" id="store_setup">
-                <label class="form-check-label input-label "
-                    for="store_setup">{{ translate('messages.store_setup') }}</label>
-            </div>
-        </div> --}}
+        @endif
         @if (config('module.' . \App\CentralLogics\Helpers::get_store_data()->module->module_type)['add_on'])
             <div class="check-item">
                 <div class="form-group form-check form--check">
@@ -121,46 +129,12 @@
         @endif
         <div class="check-item">
             <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="wallet" class="form-check-input" id="wallet">
-                <label class="form-check-label input-label "
-                    for="wallet">{{ translate('messages.my_wallet') }}</label>
-            </div>
-        </div>
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="bank_info" class="form-check-input" id="bank_info">
-                <label class="form-check-label input-label "
-                    for="bank_info">{{ translate('messages.bank_info') }}</label>
-            </div>
-        </div> --}}
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="employee" class="form-check-input" id="employee">
-                <label class="form-check-label input-label "
-                    for="employee">{{ translate('messages.Employees') }}</label>
-            </div>
-        </div> --}}
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="my_shop" class="form-check-input" id="my_shop">
-                <label class="form-check-label input-label "
-                    for="my_shop">{{ translate('messages.my_shop') }}</label>
-            </div>
-        </div> --}}
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="campaign" class="form-check-input" id="campaign">
-                <label class="form-check-label input-label "
-                    for="campaign">{{ translate('messages.campaigns') }}</label>
-            </div>
-        </div> --}}
-        <div class="check-item">
-            <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="reviews" class="form-check-input" id="reviews">
                 <label class="form-check-label input-label "
                     for="reviews">{{ translate('messages.reviews') }}</label>
             </div>
         </div>
+        @if(vendorPlanHasModule('pos'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="pos"
@@ -168,22 +142,8 @@
                 <label class="form-check-label " for="pos">POS</label>
             </div>
         </div>
-
-
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="pos" class="form-check-input" id="pos">
-                <label class="form-check-label input-label  text-uppercase"
-                    for="pos">{{ translate('messages.pos') }}</label>
-            </div>
-        </div> --}}
-
-        {{-- <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="chat" class="form-check-input" id="chat">
-                <label class="form-check-label input-label " for="chat">{{ translate('messages.chat') }}</label>
-            </div>
-        </div> --}}
+        @endif
+        @if(vendorPlanHasModule('hr_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="hr_manage"
@@ -191,6 +151,8 @@
                 <label class="form-check-label input-label " for="hr_manage">HR Management</label>
             </div>
         </div>
+        @endif
+        @if(vendorPlanHasModule('account_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="account_manage"
@@ -198,6 +160,8 @@
                 <label class="form-check-label  " for="account_manage">Account Management</label>
             </div>
         </div>
+        @endif
+        @if(vendorPlanHasModule('billing'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="billing"
@@ -205,9 +169,10 @@
                 <label class="form-check-label  " for="billing">Billing</label>
             </div>
         </div>
+        @endif
         <div class="check-item">
             <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="hospital_manage" class="form-check-input"
+                <input type="checkbox" name="modules[]" value="hospital_manage" class="form-check-input granular_permission_check"
                     id="hospital_manage">
                 <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
             </div>
@@ -220,6 +185,7 @@
                 <label class="form-check-label input-label " for="staff_manage">Staff Management</label>
             </div>
         </div>
+        @if(vendorPlanHasModule('client_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="client_manage"
@@ -227,33 +193,15 @@
                 <label class="form-check-label input-label " for="client_manage">Client Management</label>
             </div>
         </div>
-        
+        @endif
         <div class="check-item">
             <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="assigned_tasks" class="form-check-input"
-                    id="assigned_tasks">
-                <label class="form-check-label input-label " for="assigned_tasks">Assigned Tasks</label>
+                <input type="checkbox" name="modules[]" value="my_business"
+                    class="form-check-input granular_permission_check" id="my_business">
+                <label class="form-check-label input-label " for="my_business">My Business</label>
             </div>
         </div>
-        <div class="check-item">
-            <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="assigned_projects" class="form-check-input"
-                    id="assigned_projects">
-                <label class="form-check-label input-label " for="assigned_projects">Assigned Projects</label>
-            </div>
-        </div>
-        {{-- @php $accessibleModules = _accessibleModules() @endphp
 
-        @foreach ($accessibleModules as $key => $value)
-            <div class="check-item">
-                <div class="form-group form-check form--check">
-                    <input type="checkbox" name="modules[]" value="{{ $key }}" class="form-check-input"
-                        id="check_{{ $key }}">
-                    <label class="form-check-label input-label "
-                        for="check_{{ $key }}">{{ $value }}</label>
-                </div>
-            </div>
-        @endforeach --}}
     </div>
 
     @php
@@ -294,8 +242,6 @@
 
         <h5 class="mt-4 master_module_heading" data-master-module="{{ $moduleName }}" style="display:none;">
             {{ ucfirst($moduleName) }}
-            {{-- <input type="checkbox" class="module-toggle ml-2" data-module="{{ $moduleName }}">
-            <small class="text-muted">(select all)</small> --}}
         </h5>
 
         <div class="table-responsive master_module_table" data-master-module="{{ $moduleName }}"
@@ -333,7 +279,6 @@
                                 <div class="d-flex align-items-center">
                                     <span
                                         class="mr-2">{{ $feature->display_name ?? ucfirst($feature->name) }}</span>
-                                    {{-- <span class="badge badge-light text-muted">{{ $feature->name }}</span> --}}
                                 </div>
                             </th>
 

@@ -95,6 +95,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         'ai.internal' => \App\Http\Middleware\AiInternalApiKeyMiddleware::class,
         'module.resolve' => \App\Http\Middleware\ResolveModuleControllers::class,
         'module.resolve.views' => \App\Http\Middleware\ResolveModuleViews::class,
+        'sales-crm-only' => \App\Http\Middleware\SalesCrmOnly::class,
     ];
 }
  

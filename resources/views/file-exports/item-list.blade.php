@@ -27,6 +27,7 @@
 
         <tr>
             <th>{{ translate('sl') }}</th>
+            <th>{{ translate('Item_ID') }}</th>
             <th>{{ translate('Image') }}</th>
             <th>{{ translate('Item_Name') }}</th>
             <th>{{ translate('Description') }}</th>
@@ -60,6 +61,7 @@
         @foreach($data['data'] as $key => $item)
             <tr>
         <td>{{ $loop->index+1}}</td>
+        <td>{{ $item->id }}</td>
         <td> &nbsp;</td>
         <td>{{ $item->name }}</td>
         <td>{{ $item->description }}</td>

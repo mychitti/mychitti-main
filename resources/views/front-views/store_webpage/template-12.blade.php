@@ -1346,18 +1346,18 @@
                                             <span class="badge bg-danger">Out of Stock</span>
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="t12-btn-card" style="opacity:0.5;cursor:not-allowed;">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="t12-btn-card">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="t12-btn-card">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                         @endif
                                     @endif
@@ -1466,18 +1466,18 @@
                                             <span class="badge bg-danger">Out of Stock</span>
                                         @elseif (($data['store_config']->lead_available ?? 1) == 0)
                                             <button disabled class="t12-btn-card" style="opacity:0.5;cursor:not-allowed;">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                             <small class="text-muted d-block" style="font-size:11px;">Not accepting enquiries currently</small>
                                         @elseif (auth('web')->user())
                                             <button onclick="bookService({{ $pro->id }}, this, {{ $store['id'] }})"
                                                 class="t12-btn-card">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                         @else
                                             <button data-bs-toggle="modal" data-bs-target="#loginModal"
                                                 class="t12-btn-card">
-                                                <i class="fas fa-paper-plane"></i> Enquire
+                                                <i class="fas fa-paper-plane"></i> {{ strtolower($store['business_type'] ?? '') === 'hospital' ? 'Book Now' : 'Enquire' }}
                                             </button>
                                         @endif
                                     @endif

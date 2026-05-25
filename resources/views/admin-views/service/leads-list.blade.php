@@ -11,7 +11,8 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Leads</h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i> Leads <span
+                    class="badge badge-soft-dark ml-2" id="itemCount">{{ $leads->total() }}</span></h1>
             <div class="page-header-select-wrapper">
             </div>
         </div>
@@ -22,9 +23,11 @@
             <div class="card col-12">
                 <!-- Header -->
                 <div class="card-header py-2">
-                    <h5 class="card-title">Leads</h5>
                     <form action="" method="GET" class="date-range-form">
                         @include('admin-views.form_modals.date_range')
+                        @if($store_id)
+                            <input type="hidden" name="store_id" value="{{ $store_id }}">
+                        @endif
                         <div class="d-flex flex-wrap align-items-end" style="gap:12px">
                             <!-- Search -->
                             <div class="form-group mb-0">

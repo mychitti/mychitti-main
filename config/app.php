@@ -189,6 +189,7 @@ return [
         App\Modules\POS\POSServiceProvider::class,
         App\Modules\HMIS\HMISServiceProvider::class,
         App\Modules\Ecommerce\EcommerceServiceProvider::class,
+        App\Modules\SalesCRM\SalesCRMServiceProvider::class,
     ],
 
     /*

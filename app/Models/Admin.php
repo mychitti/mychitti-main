@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -70,6 +71,25 @@ class Admin extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(AdminRole::class, 'role_id');
+    }
+
+    public function salesCrmZones(): BelongsToMany
+    {
+        return $this->belongsToMany(Zone::class, 'sales_crm_admin_zones', 'admin_id', 'zone_id');
+    }
+
+    public function crmZoneIds(): array
+    {
+        if (!$this->role) return [];
+        $zones = $this->role->crm_zones ?? [];
+        return array_map('intval', (array) $zones);
+    }
+
+    public function isSalesCrmOnly(): bool
+    {
+        if (!$this->role) return false;
+        $modules = json_decode($this->role->modules ?? '[]', true);
+        return is_array($modules) && count($modules) === 1 && in_array('sales_crm', $modules);
     }
 
     /**

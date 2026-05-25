@@ -128,7 +128,8 @@ class Store extends Model
         'emp_id_serial',
         'id_doc',
         'gst_doc',
-        'dedicated_leads', 
+        'dedicated_leads',
+        'dedicated_lead_mode',
     ];
 
     /**

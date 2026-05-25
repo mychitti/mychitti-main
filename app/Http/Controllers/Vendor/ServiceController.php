@@ -1518,6 +1518,10 @@ class ServiceController extends Controller
     }
     public function reviews(Request $request)
     {
+        if (!\App\CentralLogics\Helpers::employee_module_permission_check('my_business')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
         $reviews = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.id', Helpers::get_store_id())->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.id as rev_id', 'store_reviews.reply', 'store_reviews.status as review_status')->get();
         return view('vendor-views.service.reviews', compact('reviews'));
     }
@@ -1702,7 +1706,11 @@ class ServiceController extends Controller
 
         $empId = Helpers::get_loggedin_user()->id;
 
-        $serviceReq = AcceptedServiceRequest::where('service_request_id', $service_id)->first();
+        $serviceReq = AcceptedServiceRequest::find($acc_id);
+        if (!$serviceReq) {
+            Toastr::error('Record not found');
+            return back();
+        }
         if ($action == 'accept') {
 
             $empJob = new VendorEmpJob;
@@ -1715,12 +1723,9 @@ class ServiceController extends Controller
             $serviceReq->accepted_by_staff = 1;
         } else if ($action == 'reject') {
 
-            $serviceToUpdate = AcceptedServiceRequest::where('service_request_id', $service_id)->first();
-            $serviceToUpdate->assigned_status = 'Unassigned';
-            $serviceToUpdate->assigned_to = NULL;
-            $serviceToUpdate->assigned_at = NULL;
-            $serviceToUpdate->update();
-
+            $serviceReq->assigned_status = 'Unassigned';
+            $serviceReq->assigned_to = NULL;
+            $serviceReq->assigned_at = NULL;
             $serviceReq->accepted_by_staff = 0;
         }
         if ($serviceReq->update()) {

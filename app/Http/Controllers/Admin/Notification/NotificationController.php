@@ -145,10 +145,20 @@ class NotificationController extends BaseController
         }
 
         DB::table('notifications')->where('id', $id)->update([
-            'approval' => 1,
-            'status'   => 1,
-            'days'   => $days,
+            'approval'    => 1,
+            'status'      => 1,
+            'days'        => $days,
+            'approved_at' => now(),
         ]);
+
+        $isScheduledFuture = !empty($notification['is_scheduled'])
+            && !empty($notification['scheduled_at'])
+            && \Carbon\Carbon::parse($notification['scheduled_at'])->isFuture();
+
+        if ($isScheduledFuture) {
+            Toastr::success('Approved. Will be sent at ' . \Carbon\Carbon::parse($notification['scheduled_at'])->format('d M Y, h:i A') . '.');
+            return back();
+        }
 
         $notification['image'] = $notification['image'] ? url('/') . '/storage/app/public/notification/' . $notification['image'] : null;
         $zoneId = !empty($notification['zone_id']) ? (int) $notification['zone_id'] : null;

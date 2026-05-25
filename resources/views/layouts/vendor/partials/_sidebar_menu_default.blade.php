@@ -56,7 +56,7 @@
                    
                     {{-- hasMasterModulePermission('leads_manage') && --}}
                     @unless (isset($skipForPOS) && $skipForPOS)
-                        @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6 && (auth('vendor')->check() || hasAnyPermission(['leads_manage.dashboard', 'leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads_manage.report', 'leads_manage.settings'])))
+                        @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6 && (hasAnyPermission(['leads_manage.dashboard', 'leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads_manage.report', 'leads_manage.settings'])))
                             <li
                                 class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -1758,7 +1758,7 @@
 
 
                     {{-- =============================== MY BUSINESS =========================== --}}
-                    @if (selected_menu('my_business') && auth('vendor')->check())
+                    @if (selected_menu('my_business') && \App\CentralLogics\Helpers::employee_module_permission_check('my_business'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ (Request::is('business-settings*') || Request::is('withdraw-method*') || Request::is('wallet/wallet-payment-list') || Request::is('settings/general*')) && !Request::is('business-settings/settings') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -1771,6 +1771,7 @@
                             </a>
 
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
+                                @if (hasPermission('webpage_settings', 'view'))
                                 <li class="nav-item  {{ Request::is('settings/settings/webpage') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.settings.webpage') }}"
                                         title="Webpage Settings">
@@ -1778,6 +1779,8 @@
                                         <span class="text-truncate">Webpage Settings</span>
                                     </a>
                                 </li>
+                                @endif
+                                @if (hasPermission('store_settings', 'view'))
                                 <li class="nav-item {{ Request::is('store/edit') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.shop.edit') }}"
                                         title="Store Settings">
@@ -1785,6 +1788,8 @@
                                         <span class="text-truncate">Store Settings</span>
                                     </a>
                                 </li>
+                                @endif
+                                @if (hasPermission('service_setup', 'view'))
                                 <li class="nav-item {{ Request::is('settings/service-setup') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.settings.service-setup') }}"
                                         title="Service Setup">
@@ -1792,6 +1797,8 @@
                                         <span class="text-truncate">Service Setup</span>
                                     </a>
                                 </li>
+                                @endif
+                                @if (hasPermission('profile_settings', 'view'))
                                 <li class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
                                     <a class="nav-link " href="{{ route('vendor.settings.general.profile') }}"
                                         title="Profile Settings">
@@ -1799,6 +1806,8 @@
                                         <span class="text-truncate">Profile Settings</span>
                                     </a>
                                 </li>
+                                @endif
+                                @if (hasPermission('performance_analytics', 'view'))
                                 <li
                                     class="nav-item {{ Request::is('store-panel/performance-analytics*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.performance-analytics.index') }}"
@@ -1809,6 +1818,8 @@
                                         </span>
                                     </a>
                                 </li>
+                                @endif
+                                @if (hasPermission('reviews', 'view'))
                                 <li class="nav-item {{ Request::is('service/reviews*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.reviews') }}"
                                         title="Reviews">
@@ -1818,6 +1829,8 @@
                                         </span>
                                     </a>
                                 </li>
+                              
+                                @endif
                                 {{-- <li
                                     class="navbar-vertical-aside-has-menu  {{ Request::is('business-settings/terms-and-conditions') ? 'active' : '' }}">
                                     <a class="nav-link "

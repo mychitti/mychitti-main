@@ -225,6 +225,9 @@
                                     <button type="button"
                                         class="action-button action-primary w-100 service_review_btn"
                                         data-id="{{ $serRun->id }}"
+                                        data-store_id="{{ $serRun->store_id }}"
+                                        data-service_name="{{ $serRun->item_name }}"
+                                        data-service_date="{{ date('Y-m-d', strtotime($serRun->created_at)) }}"
                                         data-bs-toggle="modal" data-bs-target="#serviceReviewModal">
                                         <i class="fas fa-star"></i><span>Review</span>
                                     </button>
