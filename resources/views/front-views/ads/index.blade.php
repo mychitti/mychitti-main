@@ -85,5 +85,18 @@
             loadMoreAds();
         }
     });
+
+    $('#adsGrid').on('click', '.spotlight-ad-card', function() {
+        var adId = $(this).data('ad-id');
+        fetch('{{ route("track.ad.click") }}', {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            body: JSON.stringify({ ad_id: adId })
+        }).catch(function() {});
+    });
 </script>
 @endpush

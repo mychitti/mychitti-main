@@ -246,18 +246,29 @@
 
             // Fallback for visits registered before service_request_id column existed:
             // match by preferred doctor + preferred date + patient (via user_id)
+            $hStoreId = \App\CentralLogics\Helpers::get_store_id();
             if (!$hOpdVisit && $lead->preferred_doctor_id && $lead->preferred_date) {
-                $hStoreId = \App\CentralLogics\Helpers::get_store_id();
-                $hPatient = \App\Models\Patient::where('store_id', $hStoreId)
+                $hPatientFallback = \App\Models\Patient::where('store_id', $hStoreId)
                     ->where('user_id', $lead->uid)
                     ->first();
-                if ($hPatient) {
+                if ($hPatientFallback) {
                     $hOpdVisit = \App\Models\OpdVisit::where('store_id', $hStoreId)
                         ->where('doctor_profile_id', $lead->preferred_doctor_id)
-                        ->where('patient_id', $hPatient->id)
+                        ->where('patient_id', $hPatientFallback->id)
                         ->whereDate('visit_date', $lead->preferred_date)
                         ->first();
                 }
+            }
+
+            // Load full HMIS patient registration for accepted/confirmed appointments
+            $hPatientRecord = null;
+            $hPatientHistory = null;
+            if ($isAcceptedReq) {
+                $hPatientRecord = \App\Models\Patient::where('store_id', $hStoreId)
+                    ->where('user_id', $lead->uid)
+                    ->with('medicalHistory')
+                    ->first();
+                $hPatientHistory = $hPatientRecord?->medicalHistory;
             }
         @endphp
 
@@ -378,6 +389,30 @@
                         @if($hPatientPhone && $hPatientPhone !== '—')
                             <div><i class="tio-call text-muted"></i>&nbsp;{{ $hPatientPhone }}</div>
                         @endif
+                        @if($hPatientRecord)
+                            <div class="d-flex flex-wrap mt-1" style="gap:4px;">
+                                @if($hPatientRecord->blood_group)
+                                    <span class="badge badge-soft-danger" style="font-size:10px;">
+                                        <i class="tio-heart"></i> {{ $hPatientRecord->blood_group }}
+                                    </span>
+                                @endif
+                                @if($hPatientRecord->gender)
+                                    <span class="badge badge-soft-secondary" style="font-size:10px;">
+                                        {{ ucfirst($hPatientRecord->gender) }}
+                                    </span>
+                                @endif
+                                @if($hPatientRecord->dob)
+                                    <span class="badge badge-soft-secondary" style="font-size:10px;">
+                                        {{ \Carbon\Carbon::parse($hPatientRecord->dob)->age }}y
+                                    </span>
+                                @endif
+                            </div>
+                            @if($hPatientRecord->allergies)
+                                <div style="font-size:11px; color:#d97706; margin-top:3px;">
+                                    <i class="tio-warning"></i> {{ \Illuminate\Support\Str::limit($hPatientRecord->allergies, 45) }}
+                                </div>
+                            @endif
+                        @endif
                     @else
                         <div class="appt-card__patient-locked">
                             <i class="tio-lock-outlined"></i> Accept to view patient details
@@ -404,15 +439,23 @@
                         @php addStatus($statusCounts, 'completed'); @endphp
 
                     @elseif($lead->current_status === 'Confirmed' || $lead->assigned_status === 'Assigned' || $lead->assigned_status === 'Unassigned')
+                        @if($hPatientRecord)
+                            <a href="#" class="btn btn-sm btn-outline-info"
+                                onclick="event.stopPropagation(); $('#patientModal-{{ $lead->id }}').modal('show');">
+                                <i class="tio-user"></i> Patient
+                            </a>
+                        @endif
                         @if($hOpdVisit)
                             <a href="{{ route('vendor.opd.show', $hOpdVisit->id) }}"
-                                class="btn btn-sm btn--primary w-100" onclick="event.stopPropagation()">
-                                <i class="tio-document-text"></i> View OPD Visit
+                                class="btn btn-sm btn-outline-primary" style="flex:1;"
+                                onclick="event.stopPropagation()">
+                                <i class="tio-document-text"></i> OPD Visit
                             </a>
                         @else
                             <a href="{{ route('vendor.opd.create', [$lead->id]) }}"
-                                class="btn btn-sm btn-outline-secondary w-100" onclick="event.stopPropagation()">
-                                <i class="tio-add"></i> Register OPD Visit
+                                class="btn btn-sm btn-outline-secondary" style="flex:1;"
+                                onclick="event.stopPropagation()">
+                                <i class="tio-add"></i> Register OPD
                             </a>
                         @endif
                         @php addStatus($statusCounts, $lead->assigned_status === 'Unassigned' ? 'unassigned' : 'alotted'); @endphp
@@ -573,6 +616,257 @@
                     </div>
                     <div class="modal-footer border-top-0">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- Patient registration detail modal (shown when appointment is Confirmed) --}}
+        @if($hPatientRecord)
+        <div class="modal fade" id="patientModal-{{ $lead->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); border-bottom:1px solid #e5e7eb;">
+                        <div>
+                            <small class="text-muted d-block" style="font-size:11px;">Confirmed Appointment #{{ $lead->id }} &mdash; {{ $lead->item_name }}</small>
+                            <h5 class="modal-title font-weight-bold mb-0">
+                                {{ $hPatientRecord->name }}
+                                <span class="text-muted font-weight-normal" style="font-size:13px;">{{ $hPatientRecord->patient_uid }}</span>
+                            </h5>
+                        </div>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-4">
+
+                        {{-- Demographics --}}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h6 class="font-weight-bold mb-2" style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                                    <i class="tio-user mr-1"></i> Patient Details
+                                </h6>
+                                <table class="table table-sm table-borderless mb-0" style="font-size:13px;">
+                                    @if($hPatientRecord->dob)
+                                    <tr>
+                                        <th class="text-muted pl-0" width="40%">Age / DOB</th>
+                                        <td>{{ \Carbon\Carbon::parse($hPatientRecord->dob)->age }}y &mdash; {{ \Carbon\Carbon::parse($hPatientRecord->dob)->format('d M Y') }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->gender)
+                                    <tr>
+                                        <th class="text-muted pl-0">Gender</th>
+                                        <td>{{ ucfirst($hPatientRecord->gender) }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->blood_group)
+                                    <tr>
+                                        <th class="text-muted pl-0">Blood Group</th>
+                                        <td><span class="badge badge-soft-danger">{{ $hPatientRecord->blood_group }}</span></td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->phone)
+                                    <tr>
+                                        <th class="text-muted pl-0">Phone</th>
+                                        <td>{{ $hPatientRecord->phone }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->email)
+                                    <tr>
+                                        <th class="text-muted pl-0">Email</th>
+                                        <td>{{ $hPatientRecord->email }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->address)
+                                    <tr>
+                                        <th class="text-muted pl-0">Address</th>
+                                        <td>
+                                            {{ $hPatientRecord->address }}
+                                            @if($hPatientRecord->city), {{ $hPatientRecord->city }}@endif
+                                            @if($hPatientRecord->state) {{ $hPatientRecord->state }}@endif
+                                            @if($hPatientRecord->pincode) &mdash; {{ $hPatientRecord->pincode }}@endif
+                                        </td>
+                                    </tr>
+                                    @endif
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                @if($hPatientRecord->emergency_contact_name)
+                                <h6 class="font-weight-bold mb-2" style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                                    <i class="tio-call mr-1"></i> Emergency Contact
+                                </h6>
+                                <table class="table table-sm table-borderless mb-3" style="font-size:13px;">
+                                    <tr>
+                                        <th class="text-muted pl-0" width="40%">Name</th>
+                                        <td>{{ $hPatientRecord->emergency_contact_name }}</td>
+                                    </tr>
+                                    @if($hPatientRecord->emergency_contact_relation)
+                                    <tr>
+                                        <th class="text-muted pl-0">Relation</th>
+                                        <td>{{ $hPatientRecord->emergency_contact_relation }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($hPatientRecord->emergency_contact_phone)
+                                    <tr>
+                                        <th class="text-muted pl-0">Phone</th>
+                                        <td>{{ $hPatientRecord->emergency_contact_phone }}</td>
+                                    </tr>
+                                    @endif
+                                </table>
+                                @endif
+
+                                {{-- Appointment slot info --}}
+                                <h6 class="font-weight-bold mb-2" style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                                    <i class="tio-calendar mr-1"></i> Appointment
+                                </h6>
+                                <div style="font-size:13px;" class="p-2" style="background:#f8fafc; border-radius:6px;">
+                                    <div class="mb-1"><span class="text-muted">Doctor:</span> <strong>{{ $hDoctorName }}</strong></div>
+                                    @if($hDoctorSpec)<div class="mb-1"><span class="text-muted">Specialization:</span> {{ $hDoctorSpec }}</div>@endif
+                                    <div class="mb-1"><span class="text-muted">Date:</span> {{ $lead->preferred_date ? \Carbon\Carbon::parse($lead->preferred_date)->format('d M Y') : '—' }}</div>
+                                    @if($hSlotLabel)<div><span class="text-muted">Slot:</span> {{ $hSlotLabel }}</div>@endif
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Allergies (highlighted) --}}
+                        @if($hPatientRecord->allergies)
+                        <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:13px;">
+                            <i class="tio-warning mr-1"></i>
+                            <strong>Allergies:</strong> {{ $hPatientRecord->allergies }}
+                        </div>
+                        @endif
+
+                        {{-- Medical History --}}
+                        @if($hPatientHistory && ($hPatientHistory->chronic_conditions || $hPatientHistory->past_surgeries || $hPatientHistory->current_medications || $hPatientHistory->family_history || $hPatientHistory->smoking || $hPatientHistory->alcohol || $hPatientHistory->notes))
+                        <div class="mb-3">
+                            <h6 class="font-weight-bold mb-2" style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                                <i class="tio-heart-outlined mr-1"></i> Medical History
+                            </h6>
+                            <table class="table table-sm table-borderless mb-0" style="font-size:13px;">
+                                @if($hPatientHistory->chronic_conditions)
+                                <tr>
+                                    <th class="text-muted pl-0" width="30%">Chronic Conditions</th>
+                                    <td>{{ $hPatientHistory->chronic_conditions }}</td>
+                                </tr>
+                                @endif
+                                @if($hPatientHistory->past_surgeries)
+                                <tr>
+                                    <th class="text-muted pl-0">Past Surgeries</th>
+                                    <td>{{ $hPatientHistory->past_surgeries }}</td>
+                                </tr>
+                                @endif
+                                @if($hPatientHistory->current_medications)
+                                <tr>
+                                    <th class="text-muted pl-0">Current Medications</th>
+                                    <td>{{ $hPatientHistory->current_medications }}</td>
+                                </tr>
+                                @endif
+                                @if($hPatientHistory->family_history)
+                                <tr>
+                                    <th class="text-muted pl-0">Family History</th>
+                                    <td>{{ $hPatientHistory->family_history }}</td>
+                                </tr>
+                                @endif
+                                @if($hPatientHistory->smoking || $hPatientHistory->alcohol)
+                                <tr>
+                                    <th class="text-muted pl-0">Lifestyle</th>
+                                    <td>
+                                        @if($hPatientHistory->smoking)<span class="badge badge-soft-danger mr-1">Smoker</span>@endif
+                                        @if($hPatientHistory->alcohol)<span class="badge badge-soft-warning">Alcohol</span>@endif
+                                    </td>
+                                </tr>
+                                @endif
+                                @if($hPatientHistory->notes)
+                                <tr>
+                                    <th class="text-muted pl-0">Notes</th>
+                                    <td>{{ $hPatientHistory->notes }}</td>
+                                </tr>
+                                @endif
+                            </table>
+                        </div>
+                        @endif
+
+                        {{-- OPD Visit --}}
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="font-weight-bold mb-0" style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                                <i class="tio-document-text mr-1"></i> OPD Visit
+                            </h6>
+                            @if($hOpdVisit)
+                                <a href="{{ route('vendor.opd.show', $hOpdVisit->id) }}" class="btn btn-sm btn--primary">
+                                    <i class="tio-visible"></i> View Visit
+                                </a>
+                            @else
+                                <a href="{{ route('vendor.opd.create', [$lead->id]) }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="tio-add"></i> Register OPD Visit
+                                </a>
+                            @endif
+                        </div>
+                        @if($hOpdVisit)
+                        <div class="p-3" style="background:#f0fdf4; border-radius:8px; font-size:13px;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-1"><strong>Date:</strong> {{ \Carbon\Carbon::parse($hOpdVisit->visit_date)->format('d M Y') }}</div>
+                                    <div class="mb-1"><strong>Token:</strong> {{ $hOpdVisit->token_number }}</div>
+                                    <div class="mb-1"><strong>Type:</strong>
+                                        @php $typeMap = \App\Models\OpdVisit::VISIT_TYPES ?? []; @endphp
+                                        {{ $typeMap[$hOpdVisit->visit_type] ?? ucfirst($hOpdVisit->visit_type) }}
+                                    </div>
+                                    @if($hOpdVisit->chief_complaint)
+                                    <div><strong>Chief Complaint:</strong> {{ $hOpdVisit->chief_complaint }}</div>
+                                    @endif
+                                </div>
+                                <div class="col-6">
+                                    @if($hOpdVisit->bp_systolic)
+                                        <div><i class="tio-heart-outlined text-danger"></i> BP: {{ $hOpdVisit->bp_systolic }}/{{ $hOpdVisit->bp_diastolic }} mmHg</div>
+                                    @endif
+                                    @if($hOpdVisit->temperature)
+                                        <div><i class="tio-thermometer text-warning"></i> Temp: {{ $hOpdVisit->temperature }}°F</div>
+                                    @endif
+                                    @if($hOpdVisit->spo2)
+                                        <div><i class="tio-pulse text-info"></i> SpO2: {{ $hOpdVisit->spo2 }}%</div>
+                                    @endif
+                                    @if($hOpdVisit->pulse_rate)
+                                        <div><i class="tio-heart text-danger"></i> Pulse: {{ $hOpdVisit->pulse_rate }} bpm</div>
+                                    @endif
+                                    @if($hOpdVisit->weight)
+                                        <div><strong>Wt:</strong> {{ $hOpdVisit->weight }} kg</div>
+                                    @endif
+                                    @if($hOpdVisit->height)
+                                        <div><strong>Ht:</strong> {{ $hOpdVisit->height }} cm</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @else
+                        <div class="text-muted" style="font-size:13px;">No OPD visit registered yet for this appointment.</div>
+                        @endif
+
+                    </div>
+                    <div class="modal-footer" style="border-top:1px solid #e5e7eb;">
+                        <a href="{{ route('vendor.patient.show', $hPatientRecord->id) }}"
+                            class="btn btn-outline-primary btn-sm">
+                            <i class="tio-user"></i> Full Patient Profile
+                        </a>
+                        @if($hOpdVisit)
+                            @php $hModalRx = \App\Models\Prescription::where('service_request_id', $lead->id)->first(); @endphp
+                            @if($hModalRx)
+                                <a href="{{ route('vendor.prescription.show', $hModalRx->id) }}"
+                                    class="btn btn-outline-success btn-sm">
+                                    <i class="tio-print"></i> View Prescription
+                                </a>
+                                @if(!$hModalRx->is_finalized)
+                                    <a href="{{ route('vendor.prescription.edit', $hModalRx->id) }}"
+                                        class="btn btn-outline-warning btn-sm">
+                                        <i class="tio-edit"></i> Edit Prescription
+                                    </a>
+                                @endif
+                            @else
+                                <a href="{{ route('vendor.prescription.create', ['service_request_id' => $lead->id]) }}"
+                                    class="btn btn-success btn-sm">
+                                    <i class="tio-document-text"></i> Write Prescription
+                                </a>
+                            @endif
+                        @endif
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>

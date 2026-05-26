@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\SecureFile;
 use App\Models\ServiceRequest;
 use App\Models\StoreDocument;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
@@ -36,9 +37,13 @@ class SystemController extends Controller
         }
 
         $new_user_count = User::where('checked', 0)->count();
+        $new_ad_count = Notification::whereNotNull('vendor_id')
+            ->where('added_by', 'vendor')
+            ->where('approval', 0)
+            ->count();
         return response()->json([
             'success' => 1,
-            'data' => ['new_user' => $new_user_count, 'new_document' => $new_document_count, 'document_url' => $new_document_url ?? '', 'new_enquiry' => $new_enquiry_count, 'new_order' => $new_order_count > 0 ? $new_order_count : $new_parcel_order_count, 'type' => $new_order_count > 0 ? 'store_order' : 'parcel', 'module_id' => $new_order_count > 0 ? $new_order?->module_id : $new_parcel_order?->module_id]
+            'data' => ['new_user' => $new_user_count, 'new_document' => $new_document_count, 'document_url' => $new_document_url ?? '', 'new_enquiry' => $new_enquiry_count, 'new_order' => $new_order_count > 0 ? $new_order_count : $new_parcel_order_count, 'type' => $new_order_count > 0 ? 'store_order' : 'parcel', 'module_id' => $new_order_count > 0 ? $new_order?->module_id : $new_parcel_order?->module_id, 'new_ad' => $new_ad_count]
         ]);
     }
 

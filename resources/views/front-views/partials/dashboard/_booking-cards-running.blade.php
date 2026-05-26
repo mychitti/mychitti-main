@@ -79,7 +79,6 @@
                                         <div class="profile-info">
                                             <h6 class="profile-name">{{ $serRun->staff_name }}</h6>
                                             <p class="profile-designation">{{ $serRun->staff_role }}</p>
-                                            <p class="profile-contact"><i class="fas fa-phone me-1"></i>{{ $serRun->staff_contact }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -115,47 +114,52 @@
                 </div>
 
                 @if (isset($serRun->store_id))
-                    <div class="pricing-section mt-4">
-                        <div class="pricing-box">
-                            <span class="pricing-label">Visiting Charges</span>
-                            <span class="pricing-amount">{{ \App\CentralLogics\Helpers::currency_symbol() }}{{ number_format($serRun->quoted_price, 2) }}</span>
+                    @php $isHospitalStore = strtolower($serRun->store_business_type ?? '') === 'hospital'; @endphp
+                    @if (!$isHospitalStore)
+                        <div class="pricing-section mt-4">
+                            <div class="pricing-box">
+                                <span class="pricing-label">Visiting Charges</span>
+                                <span class="pricing-amount">{{ \App\CentralLogics\Helpers::currency_symbol() }}{{ number_format($serRun->quoted_price, 2) }}</span>
+                            </div>
                         </div>
-                    </div>
+                    @endif
                     <div class="cta-buttons-section mt-4">
                         <div class="d-flex gap-2 action_outer_{{ $serRun->id }}">
                             @include('front-views.partials.dashboard._service-actions-element', ['acceptedReq' => $serRun])
                         </div>
                     </div>
-                    <div class="actions-section mt-4">
-                        <div class="row g-3">
-                            <div class="col-sm-6 col-md-3">
-                                @if ($serRun->gatepass_exists)
-                                    <button class="action-button action-primary w-100 gatepass-modal-btn"
-                                        data-id="{{ $serRun->service_request_id }}"
-                                        data-bs-toggle="modal" data-bs-target="#gatepassModal">
-                                        <i class="fas fa-id-card"></i><span>Gatepass</span>
-                                    </button>
-                                @else
-                                    <button class="action-button action-disabled w-100" disabled>
-                                        <i class="fas fa-id-card"></i><span>Gatepass</span>
-                                    </button>
-                                @endif
-                            </div>
-                            <div class="col-sm-6 col-md-3">
-                                @if ($serRun->quotation_exists)
-                                    <button class="action-button action-primary w-100 quotation-modal-btn"
-                                        data-id="{{ $serRun->service_request_id }}"
-                                        data-bs-toggle="modal" data-bs-target="#quotationModal">
-                                        <i class="fas fa-file-invoice"></i><span>Quotation</span>
-                                    </button>
-                                @else
-                                    <button class="action-button action-disabled w-100" disabled>
-                                        <i class="fas fa-file-invoice"></i><span>Quotation</span>
-                                    </button>
-                                @endif
+                    @if (!$isHospitalStore)
+                        <div class="actions-section mt-4">
+                            <div class="row g-3">
+                                <div class="col-sm-6 col-md-3">
+                                    @if ($serRun->gatepass_exists)
+                                        <button class="action-button action-primary w-100 gatepass-modal-btn"
+                                            data-id="{{ $serRun->service_request_id }}"
+                                            data-bs-toggle="modal" data-bs-target="#gatepassModal">
+                                            <i class="fas fa-id-card"></i><span>Gatepass</span>
+                                        </button>
+                                    @else
+                                        <button class="action-button action-disabled w-100" disabled>
+                                            <i class="fas fa-id-card"></i><span>Gatepass</span>
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    @if ($serRun->quotation_exists)
+                                        <button class="action-button action-primary w-100 quotation-modal-btn"
+                                            data-id="{{ $serRun->service_request_id }}"
+                                            data-bs-toggle="modal" data-bs-target="#quotationModal">
+                                            <i class="fas fa-file-invoice"></i><span>Quotation</span>
+                                        </button>
+                                    @else
+                                        <button class="action-button action-disabled w-100" disabled>
+                                            <i class="fas fa-file-invoice"></i><span>Quotation</span>
+                                        </button>
+                                    @endif
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @endif
                 @endif
             </div>
         </div>

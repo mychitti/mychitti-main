@@ -239,6 +239,27 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         </div>
 
 
+        <div class="modal fade" id="ad-popup-modal">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="text-center">
+                                    <h2>
+                                        <i class="tio-megaphone-outlined"></i> A vendor has posted a new ad. Please review and approve.
+                                    </h2>
+                                    <hr>
+                                    <a href="{{ route('admin.notification.add-new') }}#ads"
+                                        class="btn btn-primary">{{ translate('messages.Ok, let me check') }}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="toggle-modal">
             <div class="modal-dialog status-warning-modal">
                 <div class="modal-content">
@@ -923,6 +944,13 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                             $('#popup-modal').appendTo("body").modal('hide');
                         }
                         @endif
+
+                        if (data.new_ad > 0) {
+                            playAudio();
+                            $('#ad-popup-modal').appendTo("body").modal('show');
+                        } else {
+                            $('#ad-popup-modal').appendTo("body").modal('hide');
+                        }
                     },
                 });
             }, 10000);

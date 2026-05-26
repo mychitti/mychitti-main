@@ -42,7 +42,7 @@
                 @endif
 
                 @if (selected_menu('leads_manage') &&
-                        \App\CentralLogics\Helpers::employee_module_permission_check('leads_manage') &&
+                        hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads_manage.report', 'leads_manage.settings', 'leads.list', 'leads.add', 'leads.export', 'leads.report', 'leads.settings']) &&
                         $store_data->module->id == 6)
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
@@ -67,7 +67,7 @@
                                 </li>
                             @endif
 
-                            @if (hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export']))
+                            @if (hasAnyPermission(['leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads.list', 'leads.add', 'leads.export']))
                                 <li
                                     class="nav-item  {{ Request::is('service/leads*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.leads_list') }}" title=" Leads">
@@ -78,7 +78,7 @@
                                     </a>
                                 </li>
                             @endif
-                            @if (hasAnyPermission(['leads_manage.report']))
+                            @if (hasAnyPermission(['leads_manage.report', 'leads.report']))
                                 <li class="nav-item {{ Request::is('service/report') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.service.report') }}" title="report">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -88,8 +88,8 @@
                                     </a>
                                 </li>
                             @endif
-                         
-                            @if (hasPermission('leads_manage', 'settings'))
+
+                            @if (hasPermission('leads_manage', 'settings') || hasPermission('leads', 'settings'))
                             <li class="nav-item {{ Request::is('service/lead-settings') ? 'active' : '' }}">
                                 <a class="nav-link" href="{{ route('vendor.service.lead-settings') }}"
                                     title="Lead Settings">
@@ -102,7 +102,7 @@
 
                         </ul>
                     </li>
-                @endif
+            @endif
 
                 {{-- Staff (free for doctors — outside hospital_manage plan gate) --}}
                 @if (hasAnyPermission([

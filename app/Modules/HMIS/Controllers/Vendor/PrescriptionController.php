@@ -154,7 +154,7 @@ class PrescriptionController extends Controller
             $patient         = $appointment->patient;
             $doctorProfileId = $appointment->doctor_profile_id;
         } elseif ($request->filled('service_request_id')) {
-            $serviceRequest = ServiceRequest::findOrFail($request->service_request_id);
+            $serviceRequest = ServiceRequest::with('item')->findOrFail($request->service_request_id);
             $patient = Patient::where('store_id', $storeId)
                 ->where('user_id', $serviceRequest->user_id)
                 ->first();

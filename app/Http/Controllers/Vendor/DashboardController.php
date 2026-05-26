@@ -10,6 +10,7 @@ use App\Http\Controllers\Vendor\POSController;
 use App\Http\Controllers\Vendor\AccountController;
 use App\Http\Controllers\Vendor\InventoryController;
 use App\Modules\HMIS\Controllers\Vendor\HospitalDashboardController;
+use App\Modules\Laundry\Controllers\Vendor\LaundryController as LaundryModuleController;
 use App\Models\AcceptedServiceRequest;
 use App\Models\AccountTransaction;
 use App\Models\Attendance;
@@ -88,7 +89,7 @@ class DashboardController extends Controller
             'leads_dashboard' => (new ServiceController)->leadsDashboard($request),
             'hr'              => (new HRController)->dashboard(),
             'hospital'        => $this->hospital_dashboard($request),
-            'laundry'         => redirect()->route('vendor.laundry.dashboard'),
+            'laundry'         => (new LaundryModuleController)->dashboard($request),
             'account'         => (new AccountController)->dashboard($request),
             'inventory'       => (new InventoryController)->dashboard($request),
             'pos'             => (new SalespointController)->dashboard($request),

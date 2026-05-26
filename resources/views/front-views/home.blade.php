@@ -591,7 +591,7 @@
         </div>
         <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px;">
             @foreach ($data['vendor_ads'] as $ad)
-            <a href="{{ route('front.ads.detail', $ad->id) }}" style="border-radius:10px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.1); min-width:0; text-decoration:none;">
+            <a href="{{ route('front.ads.detail', $ad->id) }}" data-ad-id="{{ $ad->id }}" class="spotlight-ad-card" style="border-radius:10px; overflow:hidden; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.1); min-width:0; text-decoration:none;">
                 <div style="aspect-ratio:4/5; overflow:hidden; background:#f0f0f0;">
                     <img loading="lazy"
                         src="{{ asset('storage/app/public/notification') . '/' . $ad->image }}"
@@ -611,6 +611,22 @@
     </div>
     @endif
     {{-- VENDOR ADS SECTION END --}}
+    <script>
+    document.querySelectorAll('.spotlight-ad-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            var adId = this.dataset.adId;
+            fetch('{{ route("track.ad.click") }}', {
+                method: 'POST',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ ad_id: adId })
+            }).catch(function() {});
+        });
+    });
+    </script>
 
     <div class="m-2 mt-4 ">
         @if (count($data['nearby_stores']))

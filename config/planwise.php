@@ -39,7 +39,13 @@ return [
      */
     'free_by_business_type' => [
         'laundry' => [
+            'laundry',
             'inventory_manage',
+        ],
+        'hospital' => [
+            'hospital',
+            'hospital_manage',
+            'leads_manage',
         ],
     ],
 ];

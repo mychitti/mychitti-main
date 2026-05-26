@@ -2,6 +2,9 @@
 
 use App\Modules\Laundry\Controllers\Vendor\LaundryController;
 
+// Dashboard
+Route::get('dashboard', [LaundryController::class, 'dashboard'])->name('dashboard');
+
 // Walk-in orders
 Route::get('orders',                   [LaundryController::class, 'orders'])->name('orders');
 Route::get('orders/create',            [LaundryController::class, 'order_create'])->name('orders.create');

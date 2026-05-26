@@ -1,5 +1,5 @@
 @foreach ($ads as $ad)
-<a href="{{ route('front.ads.detail', $ad->id) }}" class="ad-card">
+<a href="{{ route('front.ads.detail', $ad->id) }}" class="ad-card spotlight-ad-card" data-ad-id="{{ $ad->id }}">
     <div class="ad-card__img">
         <img loading="lazy"
             src="{{ asset('storage/app/public/notification') . '/' . $ad->image }}"

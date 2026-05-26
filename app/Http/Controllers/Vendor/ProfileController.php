@@ -55,7 +55,7 @@ class ProfileController extends Controller
 
     public function saveDefaultDashboard(Request $request)
     {
-        $allowed = ['main', 'leads_page','leads_dashboard', 'hr', 'hospital', 'account', 'inventory', 'pos'];
+        $allowed = ['main', 'leads_page', 'leads_dashboard', 'hr', 'hospital', 'laundry', 'account', 'inventory', 'pos'];
         $value   = in_array($request->default_dashboard, $allowed) ? $request->default_dashboard : null;
 
         StoreConfig::updateOrCreate(

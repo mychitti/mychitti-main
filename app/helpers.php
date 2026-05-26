@@ -3066,6 +3066,13 @@ if (!function_exists('_serviceHistory')) {
             $gatepassIds = GatePass::whereIn('accepted_service_id', $acceptedIds)->pluck('accepted_service_id')->flip();
             $quotationIds = InServiceQuotation::whereIn('service_id', $serviceIds)->pluck('service_id')->flip();
 
+            // Batch: store business types
+            $storeIds = collect($items)->pluck('store_id')->filter()->unique()->values()->toArray();
+            $storeBusinessTypeMap = DB::table('stores')
+                ->whereIn('id', $storeIds)
+                ->select('id', 'business_type')
+                ->get()->keyBy('id');
+
             // Batch: staff — split by type
             $vendorAssigned   = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
             $employeeAssigned = collect($items)->where('assigned_status', 'Assigned')->where('assigned_type', '!=', 'vendor')->pluck('assigned_to')->filter()->unique()->values()->toArray();
@@ -3096,6 +3103,7 @@ if (!function_exists('_serviceHistory')) {
 
                 $req->gatepass_exists  = isset($gatepassIds[$req->id]);
                 $req->quotation_exists = isset($quotationIds[$req->service_request_id]);
+                $req->store_business_type = $storeBusinessTypeMap->get($req->store_id)?->business_type ?? null;
 
                 if ($req->assigned_status == 'Assigned' && $req->assigned_to != null) {
                     if ($req->assigned_type == 'vendor') {
@@ -3164,6 +3172,7 @@ if (!function_exists('_serviceRunning')) {
                 'stores.logo as store_logo',
                 'stores.phone as store_phone',
                 'gate_passes.id as gatepass_id',
+                'stores.business_type as store_business_type',
             )
             ->orderBy('service_requests.created_at', 'desc');
 

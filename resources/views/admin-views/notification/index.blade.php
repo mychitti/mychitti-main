@@ -323,7 +323,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="card">
+                <div class="card" id="ads">
                     <div class="card-header py-2">
                         <div class="search--button-wrapper">
                             <h5 class="card-title">{{ translate('Vendor Ad list') }}<span

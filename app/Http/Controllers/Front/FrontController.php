@@ -2266,26 +2266,32 @@ class FrontController extends Controller
         }
 
         $ip = $request->ip();
-        $isUnique = !DB::table('analytics_logs')
-            ->where('screen_type', 'ad')
-            ->where('ref_id', $adId)
-            ->where('ip', $ip)
-            ->whereDate('created_at', now()->toDateString())
-            ->exists();
 
         DB::table('notifications')->where('id', $adId)->increment('total_clicks');
-        if ($isUnique) {
-            DB::table('notifications')->where('id', $adId)->increment('unique_clicks');
-        }
 
-        DB::table('analytics_logs')->insert([
-            'screen_type' => 'ad',
-            'sub_type'    => 'web',
-            'ref_id'      => $adId,
-            'user_id'     => auth()->check() ? auth()->id() : null,
-            'ip'          => $ip,
-            'created_at'  => now(),
-        ]);
+        try {
+            $isUnique = !DB::table('analytics_logs')
+                ->where('screen_type', 'ad')
+                ->where('ref_id', $adId)
+                ->where('ip', $ip)
+                ->whereDate('created_at', now()->toDateString())
+                ->exists();
+
+            if ($isUnique) {
+                DB::table('notifications')->where('id', $adId)->increment('unique_clicks');
+            }
+
+            DB::table('analytics_logs')->insert([
+                'screen_type' => 'ad',
+                'sub_type'    => 'web',
+                'ref_id'      => $adId,
+                'user_id'     => auth()->check() ? auth()->id() : null,
+                'ip'          => $ip,
+                'created_at'  => now(),
+            ]);
+        } catch (\Exception $e) {
+            // analytics_logs failure must not prevent the increment
+        }
 
         return response()->json(['message' => 'Ad click counted']);
     }
@@ -2333,27 +2339,30 @@ class FrontController extends Controller
             ->where('status', 1)
             ->findOrFail($id);
 
-        // track view
-        $ip = request()->ip();
-        $isUnique = !DB::table('analytics_logs')
-            ->where('screen_type', 'ad')
-            ->where('ref_id', $id)
-            ->where('ip', $ip)
-            ->whereDate('created_at', now()->toDateString())
-            ->exists();
+        try {
+            $ip = request()->ip();
+            $isUnique = !DB::table('analytics_logs')
+                ->where('screen_type', 'ad')
+                ->where('ref_id', $id)
+                ->where('ip', $ip)
+                ->whereDate('created_at', now()->toDateString())
+                ->exists();
 
-        DB::table('notifications')->where('id', $id)->increment('total_clicks');
-        if ($isUnique) {
-            DB::table('notifications')->where('id', $id)->increment('unique_clicks');
+            DB::table('notifications')->where('id', $id)->increment('total_clicks');
+            if ($isUnique) {
+                DB::table('notifications')->where('id', $id)->increment('unique_clicks');
+            }
+            DB::table('analytics_logs')->insert([
+                'screen_type' => 'ad',
+                'sub_type'    => 'web',
+                'ref_id'      => $id,
+                'user_id'     => auth()->check() ? auth()->id() : null,
+                'ip'          => $ip,
+                'created_at'  => now(),
+            ]);
+        } catch (\Exception $e) {
+            // analytics failure must not break the page
         }
-        DB::table('analytics_logs')->insert([
-            'screen_type' => 'ad',
-            'sub_type'    => 'web',
-            'ref_id'      => $id,
-            'user_id'     => auth()->check() ? auth()->id() : null,
-            'ip'          => $ip,
-            'created_at'  => now(),
-        ]);
 
         $store = $ad->vendor_id ? DB::table('stores')->where('id', $ad->vendor_id)->first() : null;
         return view('front-views.ads.detail', compact('ad', 'store'));

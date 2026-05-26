@@ -51,6 +51,8 @@ class NotificationController extends Controller
         } else {
             $image = null;
         }
+        $storeName = Helpers::get_store_data()->name ?? 'A vendor';
+
         DB::table('notifications')->insert([
             'title'       => $request->notification_title,
             'description' => $request->description,
@@ -65,11 +67,14 @@ class NotificationController extends Controller
             'updated_at'  => now(),
         ]);
 
-        // try {
-        //     $this->sendPushNotificationToTopic($notification, 'general', 'general');
-        // } catch (Exception $e) {
-        //     Toastr::warning(translate('messages.push_notification_failed'));
-        // } 
+        _inAppNotification(
+            'New Vendor Ad Posted',
+            ucfirst($storeName) . ' has posted a new ad "' . $request->notification_title . '". Please review and approve.',
+            null,
+            0,
+            route('admin.notification.add-new') . '#ads',
+            'admin'
+        );
 
         return response()->json([
             'success' => true,
@@ -95,6 +100,8 @@ class NotificationController extends Controller
             ? $this->upload('notification/', 'png', $request->file('image'))
             : null;
 
+        $storeName = Helpers::get_store_data()->name ?? 'A vendor';
+
         DB::table('notifications')->insert([
             'title'        => $request->notification_title,
             'description'  => $request->description,
@@ -110,6 +117,15 @@ class NotificationController extends Controller
             'created_at'   => now(),
             'updated_at'   => now(),
         ]);
+
+        _inAppNotification(
+            'New Vendor Ad Posted',
+            ucfirst($storeName) . ' has posted a new ad "' . $request->notification_title . '". Please review and approve.',
+            null,
+            0,
+            route('admin.notification.add-new') . '#ads',
+            'admin'
+        );
 
         return response()->json([
             'success' => true,

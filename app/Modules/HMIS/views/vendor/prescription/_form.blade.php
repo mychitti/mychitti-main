@@ -137,6 +137,13 @@
                         @php $p = $patient; @endphp
                         <input type="hidden" name="patient_id"        value="{{ $p?->id }}">
                         <input type="hidden" name="doctor_profile_id" value="{{ $doctorProfileId }}">
+                        @if($serviceRequest->item)
+                            <div class="mb-3 px-3 py-2 rounded" style="background:#eff6ff; border:1px solid #bfdbfe; font-size:13px;">
+                                <i class="tio-stethoscope mr-1" style="color:#2563eb;"></i>
+                                <strong>{{ $serviceRequest->item->name }}</strong>
+                                <span class="text-muted ml-1">#{{ $serviceRequest->id }}</span>
+                            </div>
+                        @endif
                         @if($p)
                         <div class="d-flex align-items-center gap-3">
                             <div class="rx-avatar">{{ strtoupper(substr($p->name ?? 'P', 0, 1)) }}</div>

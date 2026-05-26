@@ -14,7 +14,7 @@
         </h1>
         <div class="d-flex gap-2">
         @if (hasPermission('prescription', 'add'))
-         <a href="{{ route('vendor.prescription.create', ['patient_id' => $visit->patient_id, 'doctor_profile_id' => $visit->doctor_profile_id]) }}"
+         <a href="{{ route('vendor.prescription.create', array_filter(['service_request_id' => $visit->service_request_id, 'patient_id' => $visit->patient_id, 'doctor_profile_id' => $visit->doctor_profile_id])) }}"
            class="btn btn-sm btn-primary">
             <i class="tio-file-text"></i> Write Prescription
         </a>
