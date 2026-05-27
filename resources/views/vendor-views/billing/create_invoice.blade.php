@@ -121,7 +121,10 @@
                                 <input type="date" name="invoice_date" id="invoice_date" value="{{ date('Y-m-d') }}"
                                     onchange="fetchInvoiceIdForDate(this.value)">
                             </div>
-                            @if (\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_unpaid')
+                            @php
+                                $paid_unpaid_option = \App\CentralLogics\Helpers::get_store_data()->storeConfig?->paid_unpaid_options ?? 'paid_unpaid';
+                            @endphp
+                            @if($paid_unpaid_option !== 'paid_only')
                                 <div class="info-group">
                                     <label>Payment Status</label>
                                     <div class="btn-group btn-group-toggle m-0" data-toggle="buttons">
@@ -146,7 +149,7 @@
                                     </div>
 
                                 </div>
-                            @elseif(\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_only')
+                            @else
                                 <input type="hidden" name="payment_stts" value="Paid">
                             @endif
                             <div class="info-group payment_date_inp" style="display:none;">

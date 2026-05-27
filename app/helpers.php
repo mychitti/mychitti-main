@@ -5662,6 +5662,9 @@ if (!function_exists('_inAppNotification')) {
         }
 
         if ($det->save()) {
+            if ($user_typ === 'vendor' && $to) {
+                event(new \App\Events\VendorInAppNotification((int) $to, $title, $msg, $url));
+            }
             return 'sent';
         } else {
             return false;

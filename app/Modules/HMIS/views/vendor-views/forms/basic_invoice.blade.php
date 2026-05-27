@@ -92,7 +92,10 @@
                             <option value="including">Including GST</option>
                         </select>
                     </div>
-                    @if(\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_unpaid' )
+                    @php
+                        $paid_unpaid_option = \App\CentralLogics\Helpers::get_store_data()->storeConfig?->paid_unpaid_options ?? 'paid_unpaid';
+                    @endphp
+                    @if($paid_unpaid_option !== 'paid_only')
                     <div class="col-md-2 p-1">
 
                         <label class="d-block mb-1 small">Payment Status</label>
@@ -112,7 +115,7 @@
                             </div>
                         </div>
                     </div>
-                    @elseif(\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_only')
+                    @else
                     <input type="hidden" name="payment_stts" value="Paid">
                     @endif
 

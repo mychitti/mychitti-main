@@ -130,5 +130,6 @@ class AppServiceProvider extends ServiceProvider
             }
         } catch (\Exception $e) {
         }
+
     }
 }

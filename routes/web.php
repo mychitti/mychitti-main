@@ -584,6 +584,14 @@ if (!$is_published) {
 
 Route::get('module-test', function () {});
 
+Route::get('test-pusher', [App\Http\Controllers\TestController::class, 'index'])->name('test.index');
+Route::post('test-pusher/trigger', [App\Http\Controllers\TestController::class, 'trigger'])->name('test.trigger');
+
+Route::get('test-vendor-notif/{store_id}', function ($store_id) {
+    _inAppNotification('Test Notification', 'Real-time test at ' . now()->format('H:i:s'), '', $store_id, null, 'vendor');
+    return response()->json(['sent' => true, 'store_id' => $store_id]);
+});
+
 Route::get('list-your-business', 'VendorController@create')->name('new-store.create');
 Route::get('send_confirmation_sms', 'VendorController@send_confirmation_sms')->name('send_confirmation_sms');
 

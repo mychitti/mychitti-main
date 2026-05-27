@@ -2151,6 +2151,67 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         }, 180000); // every 3 minutes
     </script>
 
+    @if(\App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+    @php($__pusherStoreId = \App\CentralLogics\Helpers::get_store_id())
+    @if($__pusherStoreId)
+
+    <!-- In-app notification modal -->
+    <div class="modal fade" id="inAppNotifModal" tabindex="-1" role="dialog" aria-labelledby="inAppNotifModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width:400px">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center">
+                        <span class="mr-2" style="font-size:1.4rem;">🔔</span>
+                        <h5 class="modal-title font-weight-bold mb-0" id="inAppNotifModalLabel">New Notification</h5>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p id="inAppNotifMessage" class="mb-0 text-dark"></p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Dismiss</button>
+                    <a href="#" id="inAppNotifBtn" class="btn btn-primary btn-sm">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+    <script>
+    (function() {
+        var pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
+            cluster: '{{ env('PUSHER_APP_CLUSTER', 'ap2') }}',
+            forceTLS: true,
+        });
+
+        var channel = pusher.subscribe('vendor-notifications.{{ $__pusherStoreId }}');
+
+        channel.bind('new-notification', function(data) {
+            var $badge = $('.notif_count_badge');
+            var current = parseInt($badge.text()) || 0;
+            $badge.text(current + 1).show();
+
+            var audio = document.getElementById('myAudio');
+            if (audio) audio.play().catch(function(){});
+
+            var title   = data.title   || 'New Notification';
+            var message = data.message || '';
+            var url     = data.url     || '{{ route('vendor.notifications') }}';
+
+            $('#inAppNotifModalLabel').text(title);
+            $('#inAppNotifMessage').text(message);
+            $('#inAppNotifBtn').attr('href', url);
+
+            $('#inAppNotifModal').modal('show');
+        });
+    })();
+    </script>
+    @endif
+    @endif
+
 </body>
 
 </html>
