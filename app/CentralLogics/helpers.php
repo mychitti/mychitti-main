@@ -2435,11 +2435,11 @@ class Helpers
             $store = Store::find(self::get_store_id());
         }
 
-        $today              = now();
-        $fyStart            = Carbon::createFromDate($today->year, 4, 1);
+        $today   = now();
+        $fyStart = Carbon::createFromDate($today->year, 4, 1);
         if ($today->month < 4) $fyStart->subYear();
-        $fyEnd              = $fyStart->copy()->addYear()->subDay();
-        $year               = $fyStart->format('y') . '-' . $fyEnd->format('y');
+        $fyEnd   = $fyStart->copy()->addYear()->subDay();
+        $year    = $fyStart->format('y') . '-' . $fyEnd->format('y');
 
         if ($store->non_gst_fy !== $year) {
             $store->non_gst_sno = 1;
@@ -2447,7 +2447,21 @@ class Helpers
             $store->save();
         }
 
-        return (int) $store->non_gst_sno;
+        // Sync counter with actual DB max to handle desync caused by advanced billing
+        $maxUsed = (int) DB::table('manual_invoices')
+            ->where('vendor_id', $store->id)
+            ->where('financial_year', $year)
+            ->where('tax_type', 'non-gst')
+            ->max('invoice_serial');
+
+        $next = max((int) $store->non_gst_sno, $maxUsed + 1);
+
+        if ($next !== (int) $store->non_gst_sno) {
+            $store->non_gst_sno = $next;
+            $store->save();
+        }
+
+        return $next;
     }
 
     public static function generateInvoiceId($infix,   $update = true, $serial_num = null, $tax_type = 'gst', $store = null) // for stores only

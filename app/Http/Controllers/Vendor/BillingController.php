@@ -1278,6 +1278,12 @@ class BillingController extends Controller
       _saveDayBookEntry($total_amount, 'debit', Helpers::get_store_id(), "Sales Invoice", $invoice->id, $voucher?->id);
     }
 
+    if ($invoice->tax_type === 'non-gst') {
+      $currentStore = Helpers::get_store_data();
+      $currentStore->non_gst_sno = ((int) $currentStore->non_gst_sno) + 1;
+      $currentStore->save();
+    }
+
     $data = _createBillPdf($invoice, 'vendor');
     $invoice->update(['pdf' => $data['pdf']]);
     _auditLogs('Created Bill (Advanced) : ' . $invoice->invoice_id);

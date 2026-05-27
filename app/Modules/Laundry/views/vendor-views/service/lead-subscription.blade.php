@@ -50,7 +50,7 @@
 
     {{-- Available plans --}}
     <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0">Available Plans — Wallet Balance: {{ _price($walletBalance) }}</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0">Available Plans </h5></div>
         <div class="card-body">
             @if ($plans->isEmpty())
                 <p class="text-muted">No plans available at the moment.</p>
@@ -72,9 +72,7 @@
                                         Buy
                                     </button>
                                 </form>
-                                @if ($walletBalance < $plan->price)
-                                    <small class="text-danger d-block mt-1">Insufficient wallet balance</small>
-                                @endif
+                                
                             </div>
                         </div>
                     </div>

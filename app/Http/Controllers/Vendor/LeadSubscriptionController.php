@@ -25,8 +25,16 @@ class LeadSubscriptionController extends Controller
     {
         $storeId = Helpers::get_store_id();
         $vendorId = auth('vendor')->id();
+        $storeZoneId = \App\Models\Store::where('id', $storeId)->value('zone_id');
 
-        $plans = LeadSubscriptionPlan::where('status', 1)->orderBy('type')->orderBy('price')->get();
+        $plans = LeadSubscriptionPlan::where('status', 1)
+            ->where(function ($q) use ($storeZoneId) {
+                $q->whereNull('zone_id')
+                    ->orWhere('zone_id', $storeZoneId);
+            })
+            ->orderBy('type')
+            ->orderBy('price')
+            ->get();
         $subscriptions = LeadSubscription::where('store_id', $storeId)->orderByDesc('expires_at')->get();
         $wallet = StoreWallet::where('vendor_id', $vendorId)->first();
         $walletBalance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
