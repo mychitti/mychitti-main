@@ -92,9 +92,11 @@
                             <option value="including">Including GST</option>
                         </select>
                     </div>
-                    @if(\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_unpaid' )
+                    @php
+                        $paid_unpaid_option = \App\CentralLogics\Helpers::get_store_data()->storeConfig?->paid_unpaid_options ?? 'paid_unpaid';
+                    @endphp
+                    @if($paid_unpaid_option !== 'paid_only')
                     <div class="col-md-2 p-1">
-
                         <label class="d-block mb-1 small">Payment Status</label>
                         <div class="d-flex d-flex border rounded" style="padding: 11px;">
                             <div class="form-check mr-3 form-check-inline">
@@ -102,17 +104,14 @@
                                     id="payment_sttsRadio1" checked>
                                 <label class="form-check-label small" for="payment_sttsRadio1">Paid</label>
                             </div>
-                            @php
-                                $billingDisabled = '';
-                            @endphp
                             <div class="form-check form-check-inline">
-                                <input {!! $billingDisabled !!} class="form-check-input" value="Unpaid"
-                                    name="payment_stts" type="radio" id="payment_sttsRadio2">
+                                <input class="form-check-input" value="Unpaid" name="payment_stts" type="radio"
+                                    id="payment_sttsRadio2">
                                 <label class="form-check-label small" for="payment_sttsRadio2">Unpaid</label>
                             </div>
                         </div>
                     </div>
-                    @elseif(\App\CentralLogics\Helpers::get_store_data()->storeConfig->paid_unpaid_options === 'paid_only')
+                    @else
                     <input type="hidden" name="payment_stts" value="Paid">
                     @endif
 

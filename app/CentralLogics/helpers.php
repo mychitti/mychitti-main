@@ -4716,17 +4716,6 @@ class Helpers
                     'end'   => $now,
                 ];
 
-            case 'fy_24_25':
-                return [
-                    'start' => Carbon::create(2024, 4, 1)->startOfDay(),
-                    'end'   => Carbon::create(2025, 3, 31)->endOfDay(),
-                ];
-            case 'fy_25_26':
-                return [
-                    'start' => Carbon::create(2025, 4, 1)->startOfDay(),
-                    'end'   => Carbon::create(2026, 3, 31)->endOfDay(),
-                ];
-
             case 'custom':
                 if (!$customRange) {
                     throw new \InvalidArgumentException("Custom date range not provided.");
@@ -4751,6 +4740,15 @@ class Helpers
                 }
 
             default:
+                // Handle dynamic FY keys like fy_25_26, fy_26_27, etc.
+                if (preg_match('/^fy_(\d{2})_(\d{2})$/', $preset, $m)) {
+                    $startYear = 2000 + (int) $m[1];
+                    $endYear   = 2000 + (int) $m[2];
+                    return [
+                        'start' => Carbon::create($startYear, 4, 1)->startOfDay(),
+                        'end'   => Carbon::create($endYear, 3, 31)->endOfDay(),
+                    ];
+                }
                 throw new \InvalidArgumentException("Unknown preset: {$preset}");
         }
     }
