@@ -356,6 +356,21 @@ class PatientController extends Controller
         return response()->json(['ok' => true, 'documents' => $uploaded]);
     }
 
+    public function listDocuments($id)
+    {
+        $store_id = Helpers::get_store_id();
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
+
+        $docs = $patient->documents()->orderByDesc('created_at')->get()->map(fn($doc) => [
+            'id'            => $doc->id,
+            'document_type' => $doc->document_type,
+            'document_name' => $doc->document_name,
+            'url'           => asset('storage/' . $doc->file_path),
+        ]);
+
+        return response()->json(['ok' => true, 'documents' => $docs]);
+    }
+
     public function deleteDocument(Request $request, $id, $docId)
     {
         $store_id = Helpers::get_store_id();

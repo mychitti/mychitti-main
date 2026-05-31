@@ -206,7 +206,7 @@ class ServiceRequestController extends Controller
                     $msg = "Hello! , You have received a new " . ($isAppointment ? 'APPOINTMENT request' : 'ENQUIRY') . " from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
                     foreach ($storesChunk as $store) {
                         $store2 = DB::table('stores')->where('id', $store)->first();
-                        $url =  route('vendor.service.leads_list');
+                        $url = parse_url(route('vendor.service.leads_list'), PHP_URL_PATH);
                         if ($store2) {
                             _sendSMS($store2->phone, $msg);
                             _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
@@ -285,7 +285,7 @@ class ServiceRequestController extends Controller
             $msg = 'Customer has ' . ucfirst($request->action) . 'ed the quotaion';
             $assignment_id = $gatepass->acc_id;
             $to = $gatepass->emp_id;
-            $url = route('vendor.service.quotations', [$gatepass->service_id]);
+            $url = parse_url(route('vendor.service.quotations', [$gatepass->service_id]), PHP_URL_PATH);
 
             _inAppNotification($title, $msg, $assignment_id, $to, $url, 'vendor_employee');
             _sendMailToStaff($title, $msg, $to, $url);
@@ -525,7 +525,7 @@ class ServiceRequestController extends Controller
             $msg = 'Customer has ' . ucfirst($request->action) . 'ed the gatepass';
             $assignment_id = $gatepass->accepted_service_id;
             $to = $gatepass->emp_id;
-            $url = route('vendor.service.gatepass-details', [$gatepass->service_id]);
+            $url = parse_url(route('vendor.service.gatepass-details', [$gatepass->service_id]), PHP_URL_PATH);
 
             _inAppNotification($title, $msg, $assignment_id, $to, $url, 'vendor_employee');
             _sendMailToStaff($title, $msg, $to, $url);

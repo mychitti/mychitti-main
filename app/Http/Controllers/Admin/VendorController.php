@@ -1689,6 +1689,12 @@ class VendorController extends Controller
                 ->orderBy('f_name')
                 ->get();
             return view('admin-views.vendor.view.staff', compact('store', 'staff'));
+        } else if ($tab == 'file-history') {
+            $fileHistory = DB::table('vendor_file_history')
+                ->where('store_id', $store->id)
+                ->orderByDesc('created_at')
+                ->paginate(30);
+            return view('admin-views.vendor.view.file-history', compact('store', 'fileHistory'));
         } else if ($tab == 'monetization') {
             $vendor_id = $store->vendor_id;
 
@@ -2906,6 +2912,32 @@ class VendorController extends Controller
             info($ex->getMessage());
         }
         Toastr::success(translate('messages.application_status_updated_successfully'));
+        return back();
+    }
+
+    public function staffSuspend(Request $request, $id)
+    {
+        $employee = VendorEmployee::findOrFail($id);
+        if ($employee->status == 1) {
+            $request->validate(['suspension_reason' => 'required|string|max:500']);
+            $employee->status = 0;
+            $employee->suspension_reason = $request->suspension_reason;
+            $employee->save();
+            Toastr::success('Staff member suspended.');
+        } else {
+            $employee->status = 1;
+            $employee->suspension_reason = null;
+            $employee->save();
+            Toastr::success('Staff member activated.');
+        }
+        return back();
+    }
+
+    public function staffDocumentStatus(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:verified,rejected']);
+        VendorEmployee::where('id', $id)->update(['document_status' => $request->status]);
+        Toastr::success('Document ' . $request->status . ' successfully.');
         return back();
     }
 

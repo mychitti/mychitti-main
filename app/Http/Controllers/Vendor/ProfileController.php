@@ -728,7 +728,14 @@ class ProfileController extends Controller
         $seller->email = $request->email;
 
         if ($request->image) {
-            $seller->image = Helpers::update('vendor/', $seller->image, 'png', $request->file('image'));
+            $newImage = Helpers::upload('vendor/', 'png', $request->file('image'));
+            $actorType = auth('vendor')->check() ? 'vendor' : 'vendor_employee';
+            $actorId   = auth($actorType)->id();
+            $storeId   = auth('vendor')->check()
+                ? optional(auth('vendor')->user()->stores->first())->id
+                : auth('vendor_employee')->user()->store_id;
+            _logVendorFile($actorType, $actorId, $storeId, 'profile_image', 'vendor/' . $newImage);
+            $seller->image = $newImage;
         }
         $seller->save();
 

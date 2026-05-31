@@ -565,7 +565,6 @@ class InventoryController extends Controller
 
             $selling_price = $request->selling_price[$key];
 
-            $selling_price = $request->landing_price[$key];
             $taxable_amount = 0;
 
             // qty conversion 
@@ -602,6 +601,10 @@ class InventoryController extends Controller
             $inventory_item->stock = $old_stock + $request->quantity[$key];
             $inventory_item->selling_price = $selling_price;
             $inventory_item->save();
+
+            \App\Models\Item::withoutGlobalScopes()
+                ->where('inventory_item_id', $inventory_item->id)
+                ->update(['price' => $selling_price]);
         }
 
 

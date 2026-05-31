@@ -217,8 +217,8 @@ class VendorWalletController extends Controller
 
         $wallet = StoreWallet::where('vendor_id', $vendor_id)->firstOrFail();
 
-        if ($wallet->balance < $amount) {
-            Toastr::error('Insufficient balance. Available: ' . _price($wallet->balance));
+        if ($wallet->total_earning < $amount) {
+            Toastr::error('Insufficient balance. Available: ' . _price($wallet->total_earning));
             return back();
         }
 

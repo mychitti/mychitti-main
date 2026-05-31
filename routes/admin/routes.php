@@ -136,6 +136,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get(Notification::EXPORT[URI], [NotificationController::class, 'exportList'])->name('export');
             Route::post('approval/{id?}/{action?}', [NotificationController::class,'approval'])->name('approval');
             Route::get('detail/{id}', [NotificationController::class,'detail'])->name('detail');
+            Route::post('cancel-schedule/{id}', [NotificationController::class,'cancelSchedule'])->name('cancel-schedule');
         });
        
 

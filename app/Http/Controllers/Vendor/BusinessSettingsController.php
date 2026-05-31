@@ -311,6 +311,13 @@ class BusinessSettingsController extends Controller
             'status'    => 1,
         ]);
 
+        $actorType = auth('vendor')->check() ? 'vendor' : 'vendor_employee';
+        $actorId   = auth($actorType)->id();
+        _logVendorFile($actorType, $actorId, $storeId, $type === 'gst_doc' ? 'store_gst_doc' : 'store_id_doc', 'store/docs/' . $uploadedPath);
+        if ($backSidePath) {
+            _logVendorFile($actorType, $actorId, $storeId, $type === 'gst_doc' ? 'store_gst_doc_back' : 'store_id_doc_back', 'store/docs/' . $backSidePath);
+        }
+
         // ✅ ADMIN NOTIFICATION
         $msg = "New " . ($type == 'id_doc' ? 'ID Document' : 'GST Document') .
             " uploaded by " . $store->name . ". Please verify the document.";

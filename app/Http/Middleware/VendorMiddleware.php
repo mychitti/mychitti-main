@@ -24,13 +24,18 @@ class VendorMiddleware
             }
             return $next($request);
         } else if (Auth::guard('vendor_employee')->check()) {
-            if (Auth::guard('vendor_employee')->user()->is_logged_in == 0) {
+            $emp = Auth::guard('vendor_employee')->user();
+            if ($emp->is_logged_in == 0) {
                 return redirect('login');
             }
-            if (!auth('vendor_employee')->user()->store->status) {
+            if (!$emp->store->status) {
                 return redirect('login');
             }
-return $next($request);
+            if ($emp->status == 0) {
+                Auth::guard('vendor_employee')->logout();
+                return redirect('login')->withErrors([translate('messages.your_account_is_suspended')]);
+            }
+            return $next($request);
         }
         $userAgent = request()->header('User-Agent');
 

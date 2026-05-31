@@ -1332,6 +1332,8 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
                 Route::get('disbursement-export/{id}/{type}', 'VendorController@disbursement_export')->name('disbursement-export');
                 Route::get('view/{store}/{tab?}/{sub_tab?}', 'VendorController@view')->name('view');
+                Route::post('staff/{id}/document-status', 'VendorController@staffDocumentStatus')->name('staff.document-status');
+                Route::post('staff/{id}/suspend', 'VendorController@staffSuspend')->name('staff.suspend');
                 Route::get('activation-plan/{store}', 'VendorController@activationPlan')->name('activation-plan');
                 Route::get('pending-requests', 'VendorController@pending_requests')->name('pending-requests');
                 Route::get('deny-requests', 'VendorController@deny_requests')->name('deny-requests');

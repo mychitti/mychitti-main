@@ -73,12 +73,18 @@ class BasicStaffController extends Controller
         $emp->employee_role_id  = $request->employee_role_id ?: null;
         $emp->status            = 1;
 
+        $actorType = auth('vendor')->check() ? 'vendor' : 'vendor_employee';
+        $actorId   = auth($actorType)->id();
+        $storeId   = Helpers::get_store_id();
+
         if ($request->hasFile('image')) {
             $emp->image = Helpers::upload('profile/', 'png', $request->file('image'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'profile/' . $emp->image);
         }
 
         if ($request->hasFile('id_proof')) {
             $emp->id_document = Helpers::upload('employee/id-proof/', $request->file('id_proof')->getClientOriginalExtension(), $request->file('id_proof'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_id_document', 'employee/id-proof/' . $emp->id_document);
         }
 
         $emp->save();
@@ -117,19 +123,19 @@ class BasicStaffController extends Controller
             $emp->password = bcrypt($request->password);
         }
 
+        $actorType = auth('vendor')->check() ? 'vendor' : 'vendor_employee';
+        $actorId   = auth($actorType)->id();
+        $storeId   = Helpers::get_store_id();
+
         if ($request->hasFile('image')) {
-            if ($emp->image) {
-                Storage::disk('public')->delete('profile/' . $emp->image);
-            }
             $emp->image = Helpers::upload('profile/', 'png', $request->file('image'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'profile/' . $emp->image);
         }
 
         if ($request->hasFile('id_proof')) {
-            if ($emp->id_document) {
-                Storage::disk('public')->delete('employee/id-proof/' . $emp->id_document);
-            }
             $ext = $request->file('id_proof')->getClientOriginalExtension();
             $emp->id_document = Helpers::upload('employee/id-proof/', $ext, $request->file('id_proof'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_id_document', 'employee/id-proof/' . $emp->id_document);
         }
 
         $emp->save();

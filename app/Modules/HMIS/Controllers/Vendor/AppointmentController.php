@@ -379,9 +379,20 @@ class AppointmentController extends Controller
         $patientName  = $isOther ? $sr->patient_name : ($user ? (trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: $user->name) : 'Unknown');
         $patientPhone = $isOther ? $sr->patient_phone : $user?->phone;
 
+        $hmisPatient = null;
+        if ($sr->user_id && !$isOther) {
+            $hmisPatient = \App\Models\Patient::firstOrCreate(
+                ['store_id' => $store_id, 'user_id' => $sr->user_id],
+                ['name' => $patientName, 'phone' => $patientPhone, 'store_id' => $store_id, 'user_id' => $sr->user_id]
+            );
+        } elseif ($patientPhone) {
+            $hmisPatient = \App\Models\Patient::where('store_id', $store_id)->where('phone', $patientPhone)->first();
+        }
+
         return response()->json([
             'patient_name'       => $patientName,
             'patient_phone'      => $patientPhone,
+            'patient_id'         => $hmisPatient?->id,
             'doctor_name'        => $doctor ? 'Dr. ' . $doctor->employee?->f_name . ' ' . $doctor->employee?->l_name : null,
             'doctor_profile_id'  => $sr->preferred_doctor_id,
             'appointment_date'   => $sr->preferred_date,

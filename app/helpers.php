@@ -5626,6 +5626,20 @@ if (!function_exists('_noResultsInThisLocation')) {
         return $html;
     }
 }
+if (!function_exists('_logVendorFile')) {
+    function _logVendorFile(string $actorType, int $actorId, ?int $storeId, string $fileType, string $filePath): void
+    {
+        \Illuminate\Support\Facades\DB::table('vendor_file_history')->insert([
+            'actor_type' => $actorType,
+            'actor_id'   => $actorId,
+            'store_id'   => $storeId,
+            'file_type'  => $fileType,
+            'file_path'  => $filePath,
+            'created_at' => now(),
+        ]);
+    }
+}
+
 if (!function_exists('_inAppNotification')) {
     function _inAppNotification($title, $msg, $acceptnce_id = '', $to = null, $url = null, $user_typ = null)
     {

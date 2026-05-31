@@ -529,7 +529,7 @@ class InventoryController extends Controller
         foreach ($request->item_id as $key => $item_id) {
             $inventory_item = InventoryItem::find($item_id);
 
-            $selling_price = $request->landing_price[$key];
+            $selling_price = $request->selling_price[$key];
             $taxable_amount = 0;
 
             $kg_input = (int) $request->quantity[$key];
@@ -561,6 +561,10 @@ class InventoryController extends Controller
             $inventory_item->stock = $old_stock + $request->quantity[$key];
             $inventory_item->selling_price = $selling_price;
             $inventory_item->save();
+
+            \App\Models\Item::withoutGlobalScopes()
+                ->where('inventory_item_id', $inventory_item->id)
+                ->update(['price' => $selling_price]);
         }
 
         Toastr::success('Saved Successfully');

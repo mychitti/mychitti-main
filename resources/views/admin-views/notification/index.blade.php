@@ -288,6 +288,19 @@
                                                     title="{{ translate('messages.edit_notification') }}"><i
                                                         class="tio-edit"></i>
                                                 </a>
+                                                @if ($notification->is_scheduled && $notification->schedule_time && \Carbon\Carbon::parse($notification->schedule_time)->isFuture())
+                                                    <button type="button"
+                                                        class="btn action-btn btn--warning btn-outline-warning form-alert"
+                                                        data-id="cancel-schedule-{{ $notification->id }}"
+                                                        data-message="Stop publishing this scheduled notification?"
+                                                        title="Stop Publishing">
+                                                        <i class="tio-stop"></i>
+                                                    </button>
+                                                    <form action="{{ route('admin.notification.cancel-schedule', $notification->id) }}"
+                                                        method="post" id="cancel-schedule-{{ $notification->id }}">
+                                                        @csrf
+                                                    </form>
+                                                @endif
                                                 <a class="btn action-btn btn--danger btn-outline-danger form-alert"
                                                     href="javascript:" data-id="notification-{{ $notification['id'] }}"
                                                     data-message="{{ translate('Want to delete this notification ?') }}"
@@ -514,6 +527,18 @@
                                                         method="post" id="vad-delete-{{ $notification['id'] }}">
                                                         @csrf @method('delete')
                                                     </form>
+                                                    @if ($notification->is_scheduled && $notification->scheduled_at && \Carbon\Carbon::parse($notification->scheduled_at)->isFuture())
+                                                        <div class="dropdown-divider"></div>
+                                                        <a class="dropdown-item text-warning form-alert" href="javascript:"
+                                                            data-id="vad-cancel-schedule-{{ $notification['id'] }}"
+                                                            data-message="Stop publishing this scheduled notification?">
+                                                            <i class="tio-stop mr-2"></i> Stop Publishing
+                                                        </a>
+                                                        <form action="{{ route('admin.notification.cancel-schedule', $notification->id) }}"
+                                                            method="post" id="vad-cancel-schedule-{{ $notification['id'] }}">
+                                                            @csrf
+                                                        </form>
+                                                    @endif
                                                     @if ($notification->approval == 0)
                                                         <div class="dropdown-divider"></div>
                                                         <a class="dropdown-item text-success notif_approve_btn"

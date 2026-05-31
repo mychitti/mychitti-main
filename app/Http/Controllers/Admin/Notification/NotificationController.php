@@ -247,6 +247,26 @@ class NotificationController extends BaseController
         return back();
     }
 
+    public function cancelSchedule(int $id): RedirectResponse
+    {
+        $notification = ModelsNotification::findOrFail($id);
+
+        $scheduleTime = $notification->schedule_time ?? $notification->scheduled_at;
+
+        if (!$notification->is_scheduled || !$scheduleTime || \Carbon\Carbon::parse($scheduleTime)->isPast()) {
+            Toastr::warning('This notification cannot be cancelled (already sent or not scheduled).');
+            return back();
+        }
+
+        $notification->is_scheduled  = 0;
+        $notification->schedule_time = null;
+        $notification->scheduled_at  = null;
+        $notification->save();
+
+        Toastr::success('Scheduled notification cancelled successfully.');
+        return back();
+    }
+
     public function updateStatus(Request $request): RedirectResponse
     {
         $this->notificationRepo->update(id: $request['id'], data: ['status' => $request['status']]);

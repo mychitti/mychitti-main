@@ -140,11 +140,22 @@ class OpdController extends Controller
                         ? substr($slot->slot_start, 0, 5) . ' – ' . substr($slot->slot_end, 0, 5)
                         : $sr->preferred_time;
 
+                    $hmisPatient = null;
+                    if ($sr->user_id && !$isOther) {
+                        $hmisPatient = \App\Models\Patient::firstOrCreate(
+                            ['store_id' => $store_id, 'user_id' => $sr->user_id],
+                            ['name' => $patientName, 'phone' => $patientPhone, 'store_id' => $store_id, 'user_id' => $sr->user_id]
+                        );
+                    } elseif ($patientPhone) {
+                        $hmisPatient = \App\Models\Patient::where('store_id', $store_id)->where('phone', $patientPhone)->first();
+                    }
+
                     $prefillBooking = [
                         'sr_id'            => $sr->id,
                         'service_name'     => $sr->item?->name,
                         'patient_name'     => $patientName,
                         'patient_phone'    => $patientPhone,
+                        'patient_id'       => $hmisPatient?->id,
                         'doctor_name'      => $doctor
                             ? 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''))
                             : null,

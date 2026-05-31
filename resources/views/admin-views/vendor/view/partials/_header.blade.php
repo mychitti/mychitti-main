@@ -101,6 +101,9 @@
                 <li class="nav-item">
                     <a class="nav-link {{request('tab')=='staff' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'staff'])}}" aria-disabled="true">Staff</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{request('tab')=='file-history' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'file-history'])}}" aria-disabled="true">File History</a>
+                </li>
             </ul>
             <!-- End Nav -->
         </div>

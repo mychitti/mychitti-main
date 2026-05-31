@@ -252,9 +252,8 @@ class InventoryPurchaseController extends Controller
         // low stock items 
         $low_stock_items = PurchaseOrder::with("inventoryItem")->where('store_id', Helpers::get_store_id())->get();
 
-        // purchase orders 
+    // purchase orders 
         $purchase_orders = SupplyOrder::with(["order_items", 'invoice'])->where('store_id', Helpers::get_store_id())->whereBetween('created_at', [$formatted_from, $formatted_to])->get();
-
         return view('vendor-views.inventory.purchase.orders', compact('data', 'preset', 'purchase_orders', 'low_stock_items', 'vendors'));
     }
     public function purchase_gatepass(Request $request)

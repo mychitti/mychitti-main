@@ -69,9 +69,18 @@ class RestaurantController extends Controller
         $shop->gst_number = $request->gst;
         $shop->gst = json_encode(['status'=> $request->gst_status , 'code'=>$request->gst]) ;
     
-        $shop->logo = $request->has('image') ? Helpers::update('store/', $shop->logo, 'png', $request->file('image')) : $shop->logo;
+        $vendorId = auth('vendor')->id();
+        if ($request->has('image')) {
+            $newLogo = Helpers::upload('store/', 'png', $request->file('image'));
+            _logVendorFile('vendor', $vendorId, $shop->id, 'store_logo', 'store/' . $newLogo);
+            $shop->logo = $newLogo;
+        }
 
-        $shop->cover_photo = $request->has('photo') ? Helpers::update('store/cover/', $shop->cover_photo, 'png', $request->file('photo')) : $shop->cover_photo;
+        if ($request->has('photo')) {
+            $newCover = Helpers::upload('store/cover/', 'png', $request->file('photo'));
+            _logVendorFile('vendor', $vendorId, $shop->id, 'store_cover', 'store/cover/' . $newCover);
+            $shop->cover_photo = $newCover;
+        }
 
         $shop->save();
 

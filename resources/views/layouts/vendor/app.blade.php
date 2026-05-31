@@ -2200,6 +2200,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             var title   = data.title   || 'New Notification';
             var message = data.message || '';
             var url     = data.url     || '{{ route('vendor.notifications') }}';
+            if (url.startsWith('/')) url = window.location.origin + url;
 
             $('#inAppNotifModalLabel').text(title);
             $('#inAppNotifMessage').text(message);
