@@ -39,7 +39,7 @@ class BannerService
             'module_id' => Config::get('module.current_module_id'),
             'default_link' => $request->default_link,
             'platform' => $request->platform ?? $banner->platform,
-            'expiry_date' => $request->expiry_date ?: $banner->expiry_date,
+            'expiry_date' => $request->expiry_date ?: null,
             'publish_at' => $request->publish_at ?: null,
             'status' => ($request->publish_at && $request->publish_at > now()) ? 0 : $banner->status,
         ];
