@@ -21,6 +21,7 @@
             var trackUrl = '{{ route('track.store.contact') }}';
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var csrf = tokenEl ? tokenEl.getAttribute('content') : '';
+            var shareStoreId = '{{ $store['id'] ?? '' }}';
 
             function trackContact(storeId, action) {
                 if (!storeId) return;
@@ -66,6 +67,13 @@
                 if (callLink) {
                     trackContact(callLink.getAttribute('data-store-id'), 'call');
                     // do not preventDefault — let the tel: link proceed
+                    return;
+                }
+
+                // ShareThis share buttons (.st-btn) — count each share click
+                var shareBtn = e.target.closest('.st-btn');
+                if (shareBtn) {
+                    trackContact(shareStoreId, 'share');
                 }
             });
         })();

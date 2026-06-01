@@ -14,14 +14,14 @@ class AnalyticsController extends Controller
         $validator = Validator::make($request->all(), [
             'items'                => 'required|array|min:1',
             'items.*.ref_id'       => 'required|integer',
-            'items.*.screen_type'  => 'required|in:call,location,banner,store,ad,share',
+            'items.*.screen_type'  => 'required|in:call,location,banner,store,ad,share,copy',
             'items.*.sub_type'     => 'nullable|string|max:50',
         ], [
             'items.required'              => 'items array is required',
             'items.*.ref_id.required'     => 'ref_id is required for each item',
             'items.*.ref_id.integer'      => 'ref_id must be an integer',
             'items.*.screen_type.required'=> 'screen_type is required for each item',
-            'items.*.screen_type.in'      => 'screen_type must be one of: call, location, banner, store, ad',
+            'items.*.screen_type.in'      => 'screen_type must be one of: call, location, banner, store, ad, share, copy',
         ]);
 
         if ($validator->fails()) {
@@ -58,6 +58,27 @@ class AnalyticsController extends Controller
                     if (!$record) {
                         return response()->json(['message' => "{$shareConfig['label']} not found (index: {$index}, id: {$refId})"], 404);
                     }
+                }
+
+                DB::table('analytics_logs')->insert([
+                    'screen_type' => $screenType,
+                    'sub_type'    => $subType,
+                    'ref_id'      => $refId,
+                    'user_id'     => $userId,
+                    'ip'          => $ip,
+                    'created_at'  => now(),
+                ]);
+                continue;
+            }
+
+            // For non-share events, sub_type records the source platform.
+            $subType = $subType ?: 'app';
+
+            if ($screenType === 'copy') {
+                // Phone-number copy: log-only (no denormalized counter column).
+                $record = DB::table('stores')->where('id', $refId)->first();
+                if (!$record) {
+                    return response()->json(['message' => "Store not found (index: {$index}, id: {$refId})"], 404);
                 }
 
                 DB::table('analytics_logs')->insert([

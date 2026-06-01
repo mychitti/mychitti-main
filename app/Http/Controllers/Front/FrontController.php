@@ -2302,10 +2302,11 @@ class FrontController extends Controller
         $action  = $request->action;
 
         // screen_type = event ('call' reuses the existing phone-call analytics,
-        // 'copy' is a web-only event); sub_type = source platform ('web').
+        // 'copy' is a web-only event, 'share' = store share).
         $screenType = match ($action) {
             'call'  => 'call',
             'copy'  => 'copy',
+            'share' => 'share',
             default => null,
         };
         if (!$screenType) {
@@ -2317,12 +2318,15 @@ class FrontController extends Controller
             return response()->json(['message' => 'Store not found'], 404);
         }
 
+        // sub_type: for 'share' it holds the share target ('store'); otherwise the source platform ('web').
+        $subType = $action === 'share' ? 'store' : 'web';
+
         $ip = $request->ip();
 
         try {
             DB::table('analytics_logs')->insert([
                 'screen_type' => $screenType,
-                'sub_type'    => 'web',
+                'sub_type'    => $subType,
                 'ref_id'      => $storeId,
                 'user_id'     => auth()->check() ? auth()->id() : null,
                 'ip'          => $ip,

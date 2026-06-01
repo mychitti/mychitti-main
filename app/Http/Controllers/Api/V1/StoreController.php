@@ -707,6 +707,7 @@ class StoreController extends Controller
 
         DB::table('analytics_logs')->insert([
             'screen_type' => 'call',
+            'sub_type' => 'app',
             'ref_id' => $store_id,
             'user_id' => $user_id,
             'ip' => $ip,
