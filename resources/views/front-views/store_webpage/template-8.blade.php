@@ -1705,11 +1705,7 @@
                             }
                         @endphp
                         <p>
-                            @if (!empty($phones))
-                                {{ implode(', ', $phones) }}
-                            @else
-                                {{ $store['phone'] }}
-                            @endif
+                            @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                         </p>
                     </div>
                 </div>

@@ -859,7 +859,7 @@
 
                                 <div class="contact-box shadow-soft">
                                     <strong>Phone</strong>
-                                    <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                                    @include('front-views.store_webpage.partials.phone-actions')
                                 </div>
 
                                 <div class="contact-box shadow-soft">

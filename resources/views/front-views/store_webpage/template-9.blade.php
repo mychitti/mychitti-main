@@ -1349,11 +1349,7 @@
                         }
                     @endphp
                     <span>
-                        @if (!empty($phones))
-                            {{ implode(', ', $phones) }}
-                        @else
-                            {{ $store['phone'] }}
-                        @endif
+                        @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                     </span>
                 </div>
                 <div class="top-contact-item">
@@ -1479,11 +1475,7 @@
                                     $phones = [];
                                 }
                             @endphp
-                            @if (!empty($phones))
-                                {{ implode(', ', $phones) }}
-                            @else
-                                {{ $store['phone'] }}
-                            @endif
+                            @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                         </p>
                     </div>
                 </div>
@@ -1967,7 +1959,7 @@
                     </div>
                     <div class="contact-title-minimal">Phone Number</div>
                     <div class="contact-text-minimal">
-                        <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                        @include('front-views.store_webpage.partials.phone-actions')
                     </div>
                 </div>
 

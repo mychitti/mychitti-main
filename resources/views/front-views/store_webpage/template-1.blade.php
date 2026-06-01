@@ -372,11 +372,7 @@
                                     $phones = [];
                                 }
                             @endphp
-                            @if (!empty($phones))
-                                {{ implode(', ', $phones) }}
-                            @else
-                                {{ $store['phone'] }}
-                            @endif
+                            @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                         </p>
                         <p class="mb-0"><i class="fa fa-envelope"></i>
                             {{ $data['store_config']?->webpage_email ?? $store->email }}</p>

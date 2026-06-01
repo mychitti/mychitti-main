@@ -2296,6 +2296,45 @@ class FrontController extends Controller
         return response()->json(['message' => 'Ad click counted']);
     }
 
+    public function trackStoreContactClick(Request $request)
+    {
+        $storeId = $request->store_id;
+        $action  = $request->action;
+
+        // screen_type = event ('call' reuses the existing phone-call analytics,
+        // 'copy' is a web-only event); sub_type = source platform ('web').
+        $screenType = match ($action) {
+            'call'  => 'call',
+            'copy'  => 'copy',
+            default => null,
+        };
+        if (!$screenType) {
+            return response()->json(['message' => 'Invalid action'], 422);
+        }
+
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store) {
+            return response()->json(['message' => 'Store not found'], 404);
+        }
+
+        $ip = $request->ip();
+
+        try {
+            DB::table('analytics_logs')->insert([
+                'screen_type' => $screenType,
+                'sub_type'    => 'web',
+                'ref_id'      => $storeId,
+                'user_id'     => auth()->check() ? auth()->id() : null,
+                'ip'          => $ip,
+                'created_at'  => now(),
+            ]);
+        } catch (\Exception $e) {
+            // analytics failure must not break the click
+        }
+
+        return response()->json(['message' => 'ok']);
+    }
+
     private function adsBaseQuery()
     {
         $zone_ids = json_decode($this->zone_id, true);

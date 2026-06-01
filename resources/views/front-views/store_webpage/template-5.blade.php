@@ -1351,11 +1351,7 @@
                             }
                         @endphp
                         <span>
-                            @if (!empty($phones))
-                                {{ implode(', ', $phones) }}
-                            @else
-                                {{ $store['phone'] }}
-                            @endif
+                            @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                         </span>
                     </div>
                 </div>
@@ -1448,7 +1444,7 @@
                     <div class="contact-card-quick">
                         <div class="contact-label-quick">Phone</div>
                         <div class="contact-value-quick">
-                            <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                            @include('front-views.store_webpage.partials.phone-actions')
                         </div>
                     </div>
                     <div class="contact-card-quick">
@@ -1942,7 +1938,7 @@
                     </div>
                     <div class="contact-title-medical">Call Us</div>
                     <div class="contact-text-medical">
-                        <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                        @include('front-views.store_webpage.partials.phone-actions')
                     </div>
                 </div>
 

@@ -390,7 +390,7 @@
                         </div>
                         <div class="col">
                             <strong>📞 Phone</strong>
-                            <p>{{ $store['phone'] }}</p>
+                            <p>@include('front-views.store_webpage.partials.phone-actions')</p>
                         </div>
                         <div class="col">
                             <strong>✉️ Email</strong>
@@ -1013,7 +1013,7 @@
                                         </div>
                                         <div class="contact-title">Phone:</div>
                                         <div class="contact-text">
-                                            <a href="tel:{{ $store['phone'] }}">{{ $store['phone'] }}</a>
+                                            @include('front-views.store_webpage.partials.phone-actions')
                                         </div>
                                     </div>
                                     <!-- Email -->

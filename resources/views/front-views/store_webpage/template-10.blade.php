@@ -1274,11 +1274,7 @@
                                         }
                                     @endphp
                                     <p style="font-size: 15px; font-weight: 600; margin: 0;">
-                                        @if (!empty($phones))
-                                            {{ implode(', ', $phones) }}
-                                        @else
-                                            {{ $store['phone'] }}
-                                        @endif
+                                        @include('front-views.store_webpage.partials.phone-actions', ['phones' => $phones])
                                     </p>
                                 </div>
                             </li>
