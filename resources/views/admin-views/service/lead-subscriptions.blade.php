@@ -159,7 +159,7 @@
                 <div class="card-header"><h5 class="card-title mb-0">Grant Subscription to Vendor</h5></div>
                 <div class="card-body">
                     {{-- Selected plan preview --}}
-                    <div id="noPlanSelected" class="text-muted mb-3 small">
+                    <div id="noPlanSelected" class="text-danger mb-3 ">
                         <i class="tio-info-outined"></i> Click <strong>Grant to Vendor</strong> on a plan card above to start.
                     </div>
                     <div id="selectedPlanPreview" class="grant-plan-preview mb-3" style="display:none">

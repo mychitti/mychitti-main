@@ -781,13 +781,13 @@
                                         <i class="tio-briefcase-outlined me-1"></i>{{ ucwords($task->emp_role) }}
                                     </p>
                                     {{-- <p class="mb-0 small text-muted">
-                                                    <i class="tio-call-outlined me-1"></i>{{ $task->emp_phone }}
-                                                </p> --}}
+                                        <i class="tio-call-outlined me-1"></i>{{ $task->emp_phone }}
+                                    </p> --}}
                                 </div>
                             </div>
                         </div>
                     </div>
-                    @if ($task->employee_id == null && $task->offered_to == null)
+                    @if (!$task->status == 'Completed' && $task->employee_id == null && $task->offered_to == null)
                         <button class="btn btn-primary reassign_modal_btn" data-id="{{ $task->id }}"
                             data-toggle="modal" data-target="#assignmentModal">Reassign</button>
                         @include('admin-views.form_modals.assign_task_modal')

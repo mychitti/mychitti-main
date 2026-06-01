@@ -14,7 +14,7 @@
     </style>
 @endpush
 
-@section('content')
+@section('content') 
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">
@@ -240,18 +240,36 @@
                                             {{ strlen($notification['description']) > 25 ? '...' : '' }}
                                         </td>
                                         <td>
-                                            @if ($notification['image'] != null)
-                                                <img class="h--50px onerror-image"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                                        $notification['image'] ?? '',
-                                                        asset('storage/app/public/notification') . '/' . $notification['image'],
-                                                        asset('public/assets/admin/img/160x160/img2.jpg'),
-                                                        'notification/',
-                                                    ) }}"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
+                                            @php
+                                                $images = [];
+                                                if ($notification->images) {
+                                                    $images = is_array($notification->images) ? $notification->images : json_decode($notification->images, true);
+                                                } elseif ($notification->image) {
+                                                    $images = [$notification->image];
+                                                }
+                                            @endphp
+                                            @if(count($images) > 0)
+                                                <div class="d-flex align-items-center">
+                                                    @foreach(array_slice($images, 0, 3) as $imgKey => $img)
+                                                        <img class="onerror-image" 
+                                                             style="aspect-ratio: 5 / 6; width: 35px; border-radius: 4px; object-fit: cover; border: 1.5px solid #fff; margin-left: {{ $imgKey > 0 ? '-12px' : '0' }}; z-index: {{ 10 - $imgKey }}; box-shadow: 0 2px 4px rgba(0,0,0,0.15);"
+                                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                                 $img ?? '',
+                                                                 asset('storage/app/public/notification') . '/' . $img,
+                                                                 asset('public/assets/admin/img/160x160/img2.jpg'),
+                                                                 'notification/',
+                                                             ) }}"
+                                                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
+                                                    @endforeach
+                                                    @if(count($images) > 3)
+                                                        <span class="badge badge-soft-dark d-flex align-items-center justify-content-center ml-1" 
+                                                              style="font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 11; font-weight: bold;">
+                                                            +{{ count($images) - 3 }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             @else
-                                                <label
-                                                    class="badge badge-soft-warning">{{ translate('No Image') }}</label>
+                                                <label class="badge badge-soft-warning">{{ translate('No Image') }}</label>
                                             @endif
                                         </td>
                                         <td>
@@ -444,19 +462,36 @@
                                                 {{ strlen($notification['description']) > 25 ? '...' : '' }}</a>
                                         </td>
                                         <td>
-                                            @if ($notification['image'] != null)
-                                                <img class="onerror-image"
-                                                    style="aspect-ratio: 5 / 6;width: 49px;    border-radius: 3px; object-fit:cover;"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                                        $notification['image'] ?? '',
-                                                        asset('storage/app/public/notification') . '/' . $notification['image'],
-                                                        asset('public/assets/admin/img/900x400/1080x1350_img1.jpg'),
-                                                        'notification/',
-                                                    ) }}"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}">
+                                            @php
+                                                $images = [];
+                                                if ($notification->images) {
+                                                    $images = is_array($notification->images) ? $notification->images : json_decode($notification->images, true);
+                                                } elseif ($notification->image) {
+                                                    $images = [$notification->image];
+                                                }
+                                            @endphp
+                                            @if(count($images) > 0)
+                                                <div class="d-flex align-items-center">
+                                                    @foreach(array_slice($images, 0, 3) as $imgKey => $img)
+                                                        <img class="onerror-image" 
+                                                             style="aspect-ratio: 5 / 6; width: 35px; border-radius: 4px; object-fit: cover; border: 1.5px solid #fff; margin-left: {{ $imgKey > 0 ? '-12px' : '0' }}; z-index: {{ 10 - $imgKey }}; box-shadow: 0 2px 4px rgba(0,0,0,0.15);"
+                                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                                 $img ?? '',
+                                                                 asset('storage/app/public/notification') . '/' . $img,
+                                                                 asset('public/assets/admin/img/900x400/1080x1350_img1.jpg'),
+                                                                 'notification/',
+                                                             ) }}"
+                                                             data-onerror-image="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}">
+                                                    @endforeach
+                                                    @if(count($images) > 3)
+                                                        <span class="badge badge-soft-dark d-flex align-items-center justify-content-center ml-1" 
+                                                              style="font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 11; font-weight: bold;">
+                                                            +{{ count($images) - 3 }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             @else
-                                                <label
-                                                    class="badge badge-soft-warning">{{ translate('No Image') }}</label>
+                                                <label class="badge badge-soft-warning">{{ translate('No Image') }}</label>
                                             @endif
                                         </td>
                                         <td>

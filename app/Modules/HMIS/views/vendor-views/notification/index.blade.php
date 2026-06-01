@@ -6,6 +6,41 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <style>
     #vendor_schedule_wrap { display:none; }
+    .preview-thumb-wrap {
+        position: relative;
+        width: 80px;
+        height: 100px; 
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid #ddd;
+        background: #fff;
+    }
+    .preview-thumb-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .preview-thumb-remove {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+    .preview-thumb-remove:hover {
+        background: rgb(220, 53, 69);
+    }
 </style>
 @endpush
 
@@ -67,26 +102,23 @@
                                 </div>
                                 <div class="col-lg-6">
                                     <div class="h-100 d-flex flex-column">
-                                        <label class="d-block text-center mt-auto mb-0">
+                                        <label class="d-block text-center mt-auto mb-0 font-weight-bold">
                                             {{ translate('messages.image') }}
-                                            <small class="text-danger">* ( {{ translate('messages.ratio') }} 1080x1350
-                                                )</small>
+                                            <small class="text-danger">* (Ratio 1080x1350, you can select multiple)</small>
                                         </label>
-                                        <div class="text-center py-3 my-auto" style="width: 200px;margin: 0 auto;">
-                                            <img class="" id="viewer" style="width: 100%;" 
-                                                src="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}"
-                                                alt="image" />
+                                        <div id="image_previews_container" class="d-flex flex-wrap justify-content-center py-3 my-auto" style="min-height: 120px;">
+                                            <div class="text-center text-muted" id="placeholder_preview">
+                                                <img src="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}" style="width: 100px; opacity: 0.6; border-radius: 8px;">
+                                                <p class="small mt-1 mb-0">No images selected</p>
+                                            </div>
                                         </div>
                                         <div class="custom-file">
-                                            <input type="file" name="image" id="customFileEg1434"
+                                            <input type="file" name="images[]" id="adImagesInput"
                                                 class="custom-file-input"
                                                 accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*"
-                                                data-cropable="true"
-                                                data-aspect="0.8"
-                                                data-output-size="1080"
-                                                data-preview-target="#viewer">
+                                                multiple>
                                             <label class="custom-file-label"
-                                                for="customFileEg1434">{{ translate('messages.choose_file') }}</label>
+                                                for="adImagesInput">{{ translate('messages.choose_files') }}</label>
                                         </div>
                                     </div>
                                 </div>
@@ -157,6 +189,7 @@
                                     <th class="border-0">{{ translate('messages.zone') }}</th>
                                     <th class="border-0">{{ translate('messages.target') }}</th>
                                     <th class="border-0">{{ translate('messages.status') }}</th>
+                                    <th class="border-0">{{ translate('Schedule') }}</th>
                                     <th class="text-center border-0">{{ translate('messages.action') }}</th>
                                 </tr>
                             </thead>
@@ -177,18 +210,36 @@
                                             {{ strlen($notification['description']) > 25 ? '...' : '' }}
                                         </td>
                                         <td>
-                                            @if ($notification['image'] != null)
-                                                <img class=" onerror-image" style="aspect-ratio: 5 / 6;width: 49px;    border-radius: 3px; object-fit:cover;"
-                                                    src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
-                                                        $notification['image'] ?? '',
-                                                        asset('storage/app/public/notification') . '/' . $notification['image'],
-                                                        asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') ,
-                                                        'notification/',
-                                                    ) }}"
-                                                    data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}">
+                                            @php
+                                                $images = [];
+                                                if ($notification->images) {
+                                                    $images = is_array($notification->images) ? $notification->images : json_decode($notification->images, true);
+                                                } elseif ($notification->image) {
+                                                    $images = [$notification->image];
+                                                }
+                                            @endphp
+                                            @if(count($images) > 0)
+                                                <div class="d-flex align-items-center">
+                                                    @foreach(array_slice($images, 0, 3) as $imgKey => $img)
+                                                        <img class="onerror-image" 
+                                                             style="aspect-ratio: 5 / 6; width: 35px; border-radius: 4px; object-fit: cover; border: 1.5px solid #fff; margin-left: {{ $imgKey > 0 ? '-12px' : '0' }}; z-index: {{ 10 - $imgKey }}; box-shadow: 0 2px 4px rgba(0,0,0,0.15);"
+                                                             src="{{ \App\CentralLogics\Helpers::onerror_image_helper(
+                                                                 $img ?? '',
+                                                                 asset('storage/app/public/notification') . '/' . $img,
+                                                                 asset('public/assets/admin/img/900x400/1080x1350_img1.jpg'),
+                                                                 'notification/',
+                                                             ) }}"
+                                                             data-onerror-image="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}">
+                                                    @endforeach
+                                                    @if(count($images) > 3)
+                                                        <span class="badge badge-soft-dark d-flex align-items-center justify-content-center ml-1" 
+                                                              style="font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 11; font-weight: bold;">
+                                                            +{{ count($images) - 3 }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             @else
-                                                <label
-                                                    class="badge badge-soft-warning">{{ translate('No Image') }}</label>
+                                                <label class="badge badge-soft-warning">{{ translate('No Image') }}</label>
                                             @endif
                                         </td>
                                         <td>
@@ -204,6 +255,25 @@
                                                 <label class="badge badge-soft-danger">Rejected</label>
                                             @else
                                                 <label class="badge badge-soft-warning">Pending</label>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($notification->is_scheduled)
+                                                <span class="badge badge-soft-info" title="Scheduled At">{{ \Carbon\Carbon::parse($notification->scheduled_at)->format('Y-m-d H:i') }}</span>
+                                                <button type="button" class="btn btn-xs btn-outline-info ml-1 reschedule-btn" 
+                                                        data-id="{{ $notification->id }}" 
+                                                        data-date="{{ \Carbon\Carbon::parse($notification->scheduled_at)->format('Y-m-d\TH:i') }}"
+                                                        title="Reschedule ad">
+                                                    <i class="tio-time"></i>
+                                                </button>
+                                            @else
+                                                <span class="badge badge-soft-secondary">Instant</span>
+                                                <button type="button" class="btn btn-xs btn-outline-info ml-1 reschedule-btn" 
+                                                        data-id="{{ $notification->id }}" 
+                                                        data-date=""
+                                                        title="Schedule ad">
+                                                    <i class="tio-time"></i>
+                                                </button>
                                             @endif
                                         </td>
                                         <td>
@@ -253,12 +323,105 @@
 
 @include('vendor-views.partials.image-cropper-modal')
 
+<!-- Reschedule Modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1" role="dialog" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rescheduleModalLabel">Reschedule Ad</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="" method="post" id="rescheduleForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="input-label">Select Date &amp; Time <span class="text-danger">*</span></label>
+                        <input type="datetime-local" name="scheduled_at" id="reschedule_scheduled_at" class="form-control" required
+                            min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
+                        <small class="text-muted mt-2 d-block">Rescheduling will reset the status to pending until admin approves it again.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn--primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('script_2')
     <script src="{{ asset('public/assets/admin') }}/js/view-pages/notification.js"></script>
     <script>
         "use strict";
+
+        var selectedAdFiles = [];
+
+        $('#adImagesInput').on('change', function(e) {
+            var files = e.target.files;
+            
+            // Add new files to our array
+            for (var i = 0; i < files.length; i++) {
+                selectedAdFiles.push(files[i]);
+            }
+            
+            renderPreviews();
+        });
+
+        function renderPreviews() {
+            var container = $('#image_previews_container');
+            container.empty();
+            
+            if (selectedAdFiles.length === 0) {
+                container.append(`
+                    <div class="text-center text-muted" id="placeholder_preview">
+                        <img src="{{ asset('public/assets/admin/img/900x400/1080x1350_img1.jpg') }}" style="width: 100px; opacity: 0.6; border-radius: 8px;">
+                        <p class="small mt-1 mb-0">No images selected</p>
+                    </div>
+                `);
+                updateFileInput();
+                return;
+            }
+
+            selectedAdFiles.forEach(function(file, index) {
+                var reader = new FileReader();
+                var wrap = $('<div class="preview-thumb-wrap m-1"></div>');
+                var img = $('<img src="" alt="preview">');
+                var btn = $('<button type="button" class="preview-thumb-remove">&times;</button>');
+                
+                btn.on('click', function() {
+                    selectedAdFiles.splice(index, 1);
+                    renderPreviews();
+                });
+
+                wrap.append(img).append(btn);
+                container.append(wrap);
+
+                reader.onload = function(e) {
+                    img.attr('src', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            updateFileInput();
+        }
+
+        function updateFileInput() {
+            var dt = new DataTransfer();
+            selectedAdFiles.forEach(function(file) {
+                dt.items.add(file);
+            });
+            document.getElementById('adImagesInput').files = dt.files;
+            
+            var labelText = selectedAdFiles.length > 0 
+                ? selectedAdFiles.length + ' files selected' 
+                : '{{ translate('messages.choose_files') }}';
+            $('#adImagesInput').siblings('.custom-file-label').html(labelText);
+        }
 
         // Schedule toggle
         $('#vendor_schedule_toggle').on('change', function() {
@@ -326,7 +489,12 @@
                             } else {
                                 toastr.success(data.message || 'Submitted successfully!', { CloseButton: true, ProgressBar: true });
                                 $('#vendor_schedule_toggle').prop('checked', false).trigger('change');
+                                selectedAdFiles = [];
+                                renderPreviews();
                                 $('#notification')[0].reset();
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 1500);
                             }
                         },
                         error: function(xhr) {
@@ -344,9 +512,22 @@
 
         $('#reset_btn').click(function() {
             $('#zone').val('all').trigger('change');
-            $('#viewer').attr('src', '{{ asset('public/assets/admin/img/900x400/img1.jpg') }}');
-            $('#customFileEg1').val(null);
+            selectedAdFiles = [];
+            renderPreviews();
             $('#vendor_schedule_toggle').prop('checked', false).trigger('change');
+        });
+
+        // Reschedule modal trigger
+        $('.reschedule-btn').on('click', function() {
+            var id = $(this).data('id');
+            var date = $(this).data('date');
+            
+            var url = '{{ route('vendor.notification.reschedule', ['id' => ':id']) }}';
+            url = url.replace(':id', id);
+            
+            $('#rescheduleForm').attr('action', url);
+            $('#reschedule_scheduled_at').val(date);
+            $('#rescheduleModal').modal('show');
         });
     </script>
 @endpush

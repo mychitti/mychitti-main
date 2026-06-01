@@ -3,7 +3,43 @@
 @section('title',translate('messages.update_ad'))
 
 @push('css_or_js')
-
+<style>
+    .preview-thumb-wrap {
+        position: relative;
+        width: 80px;
+        height: 100px;
+        border-radius: 6px; 
+        overflow: hidden;
+        border: 1px solid #ddd; 
+        background: #fff;
+    }
+    .preview-thumb-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .preview-thumb-remove {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+    .preview-thumb-remove:hover {
+        background: rgb(220, 53, 69);
+    }
+</style>
 @endpush
 
 @section('content')
@@ -64,30 +100,64 @@
                         </div>
                         <div class="col-lg-6">
                             <div class="h-100 d-flex flex-column">
-                                <label class="d-block text-center mt-auto mb-0">
+                                <label class="d-block text-center mt-auto mb-0 font-weight-bold">
                                     {{translate('messages.image')}}
-                                    <small class="text-danger">* ( {{translate('messages.ratio')}} 1080x1350 )</small>
+                                    <small class="text-danger">* (Ratio 1080x1350, you can select multiple)</small>
                                 </label>
-                                <div class="text-center py-3 my-auto" style="width: 200px;margin: 0 auto;">
-                                    <img class="onerror-image" style="width: 100%;" id="viewer"
-                                    src="{{\App\CentralLogics\Helpers::onerror_image_helper($notification['image'], asset('storage/app/public/notification/').'/'.$notification['image'], asset('public/assets/admin/img/900x400/img1.jpg'), 'notification/') }}"
-                                    data-onerror-image="{{asset('public/assets/admin/img/900x400/1080x1350_img1.jpg')}}" alt="image"/>
+                                
+                                <!-- Existing Images Grid -->
+                                <div class="d-flex flex-wrap justify-content-center py-2" id="existing_images_wrap">
+                                    @php
+                                        $images = [];
+                                        if ($notification->images) {
+                                            $images = is_array($notification->images) ? $notification->images : json_decode($notification->images, true);
+                                        } elseif ($notification->image) {
+                                            $images = [$notification->image];
+                                        }
+                                    @endphp
+                                    @foreach($images as $img)
+                                        <div class="preview-thumb-wrap m-1" data-image="{{ $img }}">
+                                            <img src="{{ asset('storage/app/public/notification') . '/' . $img }}"
+                                                 onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'">
+                                            <button type="button" class="preview-thumb-remove remove-existing-img" data-image="{{ $img }}">&times;</button>
+                                        </div>
+                                    @endforeach
                                 </div>
+                                <div id="removed_images_container"></div>
+
+                                <!-- New Images Previews Grid -->
+                                <div id="new_image_previews_container" class="d-flex flex-wrap justify-content-center py-2" style="min-height: 50px;">
+                                </div>
+
                                 <div class="custom-file">
-                                    <input type="file" name="image" id="customFileEg1" class="custom-file-input"
+                                    <input type="file" name="images[]" id="adImagesInput" class="custom-file-input"
                                         accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|image/*"
-                                        data-cropable="true"
-                                        data-aspect="0.8"
-                                        data-output-size="1080"
-                                        data-preview-target="#viewer">
-                                    <label class="custom-file-label" for="customFileEg1">{{translate('messages.choose_file')}}</label>
+                                        multiple>
+                                    <label class="custom-file-label" for="adImagesInput">{{translate('messages.choose_files')}}</label>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="btn--container justify-content-end">
+                    <!-- Schedule toggle -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="custom-control custom-switch mr-3">
+                                    <input type="checkbox" class="custom-control-input" id="vendor_schedule_toggle" name="is_scheduled" value="1" {{ $notification->is_scheduled ? 'checked' : '' }}>
+                                    <label class="custom-control-label" for="vendor_schedule_toggle">Schedule for later</label>
+                                </div>
+                            </div>
+                            <div id="vendor_schedule_wrap" class="mb-3" style="{{ $notification->is_scheduled ? 'display:block;' : 'display:none;' }}">
+                                <label class="input-label">Schedule Date &amp; Time <span class="text-danger">*</span></label>
+                                <input type="datetime-local" id="vendor_scheduled_at" name="scheduled_at" class="form-control"
+                                    min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                                    value="{{ $notification->scheduled_at ? \Carbon\Carbon::parse($notification->scheduled_at)->format('Y-m-d\TH:i') : '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn--container justify-content-end mt-3">
                         <button type="reset" id="reset_btn" class="btn btn--reset">{{translate('messages.reset')}}</button>
-                        <button type="submit" class="btn btn--primary">{{translate('messages.send_again')}}</button>
+                        <button type="submit" class="btn btn--primary">{{translate('messages.update')}}</button>
                     </div>
                 </form>
             </div>
@@ -100,12 +170,78 @@
 @endsection
 
 @push('script_2')
-    <script src="{{asset('public/assets/admin')}}/js/view-pages/notification.js"></script>
     <script>
         "use strict";
-            $('#reset_btn').click(function(){
-                $('#zone').val("{{$notification->zone_id}}").trigger('change');
-                $('#viewer').attr('src', "{{asset('storage/app/public/notification')}}/{{$notification['image']}}");
-            })
-        </script>
+
+        // Remove existing image
+        $('.remove-existing-img').on('click', function() {
+            var imgName = $(this).data('image');
+            $('#removed_images_container').append('<input type="hidden" name="removed_images[]" value="' + imgName + '">');
+            $(this).parent('.preview-thumb-wrap').remove();
+        });
+
+        var selectedAdFiles = [];
+
+        $('#adImagesInput').on('change', function(e) {
+            var files = e.target.files;
+            for (var i = 0; i < files.length; i++) {
+                selectedAdFiles.push(files[i]);
+            }
+            renderPreviews();
+        });
+
+        function renderPreviews() {
+            var container = $('#new_image_previews_container');
+            container.empty();
+            
+            selectedAdFiles.forEach(function(file, index) {
+                var reader = new FileReader();
+                var wrap = $('<div class="preview-thumb-wrap m-1"></div>');
+                var img = $('<img src="" alt="preview">');
+                var btn = $('<button type="button" class="preview-thumb-remove">&times;</button>');
+                
+                btn.on('click', function() {
+                    selectedAdFiles.splice(index, 1);
+                    renderPreviews();
+                });
+
+                wrap.append(img).append(btn);
+                container.append(wrap);
+
+                reader.onload = function(e) {
+                    img.attr('src', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            updateFileInput();
+        }
+
+        function updateFileInput() {
+            var dt = new DataTransfer();
+            selectedAdFiles.forEach(function(file) {
+                dt.items.add(file);
+            });
+            document.getElementById('adImagesInput').files = dt.files;
+            
+            var labelText = selectedAdFiles.length > 0 
+                ? selectedAdFiles.length + ' files selected' 
+                : '{{ translate('messages.choose_files') }}';
+            $('#adImagesInput').siblings('.custom-file-label').html(labelText);
+        }
+
+        // Schedule toggle
+        $('#vendor_schedule_toggle').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#vendor_schedule_wrap').slideDown(200);
+            } else {
+                $('#vendor_schedule_wrap').slideUp(200);
+            }
+        });
+
+        $('#reset_btn').click(function(){
+            $('#zone').val("{{$notification->zone_id}}").trigger('change');
+            location.reload();
+        });
+    </script>
 @endpush

@@ -11,7 +11,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
-    // mc vendorhub routes 
+    // mc vendorhub routes  
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         Route::get('/', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
@@ -70,6 +70,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('schedule', 'NotificationController@storeScheduled')->name('schedule');
             Route::get('edit/{id}', 'NotificationController@edit')->name('edit');
             Route::post('update/{id}', 'NotificationController@update')->name('update');
+            Route::post('reschedule/{id}', 'NotificationController@reschedule')->name('reschedule');
             Route::delete('/delete{id}', 'NotificationController@delete')->name('delete');
             Route::get('status/{id}/{status}', 'NotificationController@updateStatus')->name('status');
             Route::get('export', 'NotificationController@exportList')->name('export');

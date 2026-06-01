@@ -138,7 +138,8 @@ class VendorController extends Controller
         $vendor->l_name = $request->l_name;
         $vendor->email = $request->email;
         $vendor->phone = $request->phone;
-        $vendor->image = Helpers::upload('vendor/', 'png', $request->file('logo'));
+        $vendorImage = Helpers::upload('vendor/', 'png', $request->file('logo'));
+        $vendor->image = $vendorImage;
         $vendor->secondary_phone = $request->secondary_phone;
         $vendor->password = bcrypt($request->password);
         $vendor->status = null;
@@ -153,8 +154,10 @@ class VendorController extends Controller
         $store->gst_number = $request->gst_num;
         $store->gst = $request->gst_num ? json_encode(['status' => $request->gst_status, 'code' => $request->gst_num]) : json_encode(['status' => 0, 'code' => '']); // gst number and on/off gst
         $store->email = $request->email;
-        $store->logo = Helpers::upload('store/', 'png', $request->file('logo'));
-        $store->cover_photo = Helpers::upload('store/cover/', 'png', $request->file('cover_photo'));
+        $storeLogo = Helpers::upload('store/', 'png', $request->file('logo'));
+        $store->logo = $storeLogo;
+        $storeCover = $request->hasFile('cover_photo') ? Helpers::upload('store/cover/', 'png', $request->file('cover_photo')) : null;
+        $store->cover_photo = $storeCover;
         $store->address = $request->address[array_search('default', $request->lang)];
         $store->latitude = $request->latitude;
         $store->longitude = $request->longitude;
@@ -195,19 +198,35 @@ class VendorController extends Controller
             $store->other_verification = $request->other_verification ?? '';
             $store->google_verification = $request->google_verification;
         }
+        $gstDoc = null;
+        $idDoc = null;
         if (!isset($request->confirmation) || $request->confirmation == '' || $request->module_id == '5') {
             $extension = $request->file('gst_doc')->getClientOriginalExtension();
-            $store->gst_doc = Helpers::upload('store/docs/', $extension, $request->file('gst_doc'));
+            $gstDoc = Helpers::upload('store/docs/', $extension, $request->file('gst_doc'));
+            $store->gst_doc = $gstDoc;
             $store->gst_number = $request->gst_number;
         }
 
         if ($request->has('id_number') && $request->id_number != '' && $request->hasFile('id_doc')) {
             $extension = $request->file('id_doc')->getClientOriginalExtension();
-            $store->id_doc = Helpers::upload('store/docs/', $extension, $request->file('id_doc'));
+            $idDoc = Helpers::upload('store/docs/', $extension, $request->file('id_doc'));
+            $store->id_doc = $idDoc;
             $store->id_number = $request->id_number;
         }
 
         $store->save();
+
+        _logVendorFile('vendor', $vendor->id, $store->id, 'profile_image', 'vendor/' . $vendorImage);
+        _logVendorFile('vendor', $vendor->id, $store->id, 'store_logo', 'store/' . $storeLogo);
+        if (!empty($storeCover)) {
+            _logVendorFile('vendor', $vendor->id, $store->id, 'store_cover', 'store/cover/' . $storeCover);
+        }
+        if (!empty($gstDoc)) {
+            _logVendorFile('vendor', $vendor->id, $store->id, 'store_gst_doc', 'store/docs/' . $gstDoc);
+        }
+        if (!empty($idDoc)) {
+            _logVendorFile('vendor', $vendor->id, $store->id, 'store_id_doc', 'store/docs/' . $idDoc);
+        }
         Helpers::_addWelcomeCouponsIfExist($store);
         Helpers::_assignFreeTrial($store);
         Helpers::_createDefaultLedgerAccounts();

@@ -785,7 +785,7 @@
                         </div>
                     </div>
 
-                    @if (hasPermission($task_type, 'reassign') && $task->employee_id == null && $task->offered_to == null)
+                    @if (!$task->status == 'Completed' && hasPermission($task_type, 'reassign') && $task->employee_id == null && $task->offered_to == null)
                         <button class="btn btn-primary reassign_modal_btn" data-id="{{ $task->id }}"
                             data-toggle="modal" data-target="#assignmentModal">Reassign</button>
                         @include('admin-views.form_modals.assign_task_modal')

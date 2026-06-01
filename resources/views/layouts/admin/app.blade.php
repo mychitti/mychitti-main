@@ -897,63 +897,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             let admin_zone_id = null;
             let admin_role_id = null;
 
-            @php($order_notification_type = \App\Models\BusinessSetting::where('key', 'order_notification_type')->first())
-            @php($order_notification_type = $order_notification_type ? $order_notification_type->value : 'firebase')
-
-            setInterval(function() {
-                $.get({
-                    url: '{{ route('admin.get-store-data') }}',
-                    dataType: 'json',
-                    success: function(response) {
-                        let data = response.data;
-                        new_order_type = data.type;
-                        new_module_id = data.module_id;
-                        @if(\App\CentralLogics\Helpers::module_permission_check('service'))
-                        if (data.new_enquiry > 0) {
-                            playAudio();
-                            $('#service-popup-modal').appendTo("body").modal('show');
-                        } else {
-                            $('#service-popup-modal').appendTo("body").modal('hide');
-                        }
-                        @endif
-
-                        @if(\App\CentralLogics\Helpers::module_permission_check('document'))
-                        if (data.new_document > 0) {
-                            playAudio();
-                            $('#document-popup-modal').appendTo("body").modal('show');
-                            $('.doc_popup_btn').attr('href', data.document_url);
-                        } else {
-                            $('#document-popup-modal').appendTo("body").modal('hide');
-                        }
-                        @endif
-
-                        @if(\App\CentralLogics\Helpers::module_permission_check('user'))
-                        if (data.new_user > 0) {
-                            playAudio();
-                            $('#user-popup-modal').appendTo("body").modal('show');
-                        } else {
-                            $('#user-popup-modal').appendTo("body").modal('hide');
-                        }
-                        @endif
-
-                        @if(\App\CentralLogics\Helpers::module_permission_check('order'))
-                        if (data.new_order > 0) {
-                            playAudio();
-                            $('#popup-modal').appendTo("body").modal('show');
-                        } else {
-                            $('#popup-modal').appendTo("body").modal('hide');
-                        }
-                        @endif
-
-                        if (data.new_ad > 0) {
-                            playAudio();
-                            $('#ad-popup-modal').appendTo("body").modal('show');
-                        } else {
-                            $('#ad-popup-modal').appendTo("body").modal('hide');
-                        }
-                    },
-                });
-            }, 10000);
+            {{-- Polling removed: admin notifications are now pushed in real-time via Pusher (see bottom of file) --}}
 
             $(document).on('click', '.check-order', function() {
                 if (new_order_type === 'parcel') {
@@ -1010,7 +954,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             //     const input = document.querySelector('input[type="tel"]');
             // const iti = window.intlTelInput(input, {
             //     utilsScript: "",
-            //     initialCountry: "{{ $countryCode }}",
+            //     initialCountry: "{{ $countryCode }}", 
             //     autoInsertDialCode: true,
             //     autoPlaceholder: 'polite',
             //     // formatOnDisplay: true,
@@ -1075,6 +1019,68 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             if (/MSIE \d|Trident.*rv:/.test(navigator.userAgent)) document.write(
                 '<script src="{{ asset('public/assets/admin') }}/vendor/babel-polyfill/polyfill.min.js"><\/script>');
         </script>
+
+    <!-- Admin In-app notification modal (Pusher) -->
+    <div class="modal fade" id="adminInAppNotifModal" tabindex="-1" role="dialog" aria-labelledby="adminInAppNotifModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width:400px">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center">
+                        <span class="mr-2" style="font-size:1.4rem;">🔔</span>
+                        <h5 class="modal-title font-weight-bold mb-0" id="adminInAppNotifModalLabel">New Notification</h5>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p id="adminInAppNotifMessage" class="mb-0 text-dark"></p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Dismiss</button>
+                    <a href="#" id="adminInAppNotifBtn" class="btn btn-primary btn-sm">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+    <script>
+    (function() {
+        var pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
+            cluster: '{{ env('PUSHER_APP_CLUSTER', 'ap2') }}',
+            forceTLS: true,
+        });
+
+        var channel = pusher.subscribe('admin-notifications');
+
+        channel.bind('new-notification', function(data) {
+            // Update notification badge in header
+            var $badge = $('.btn-status.btn-status-danger').first();
+            if ($badge.length) {
+                var current = parseInt($badge.text()) || 0;
+                $badge.text(current + 1).show();
+            }
+
+            // Play notification sound
+            var audio = document.getElementById('myAudio');
+            if (audio) audio.play().catch(function(){});
+
+            // Show notification modal
+            var title   = data.title   || 'New Notification';
+            var message = data.message || '';
+            var url     = data.url     || '{{ route('admin.dashboard') }}';
+            if (url.startsWith('/')) url = window.location.origin + url;
+
+            $('#adminInAppNotifModalLabel').text(title);
+            $('#adminInAppNotifMessage').text(message);
+            $('#adminInAppNotifBtn').attr('href', url);
+
+            $('#adminInAppNotifModal').modal('show');
+        });
+    })();
+    </script>
+
 </body>
 
 </html>

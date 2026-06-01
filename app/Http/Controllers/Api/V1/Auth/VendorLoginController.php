@@ -277,7 +277,8 @@ class VendorLoginController extends Controller
         $vendor->l_name = $request->l_name;
         $vendor->email = $request->email;
         $vendor->phone = $request->phone;
-        $vendor->image = Helpers::upload('vendor/', 'png', $request->file('logo'));
+        $vendorImage = Helpers::upload('vendor/', 'png', $request->file('logo'));
+        $vendor->image = $vendorImage;
         $vendor->secondary_phone = $request->secondary_phone;
         $vendor->password = bcrypt($request->password);
         $vendor->status = null;
@@ -291,8 +292,10 @@ class VendorLoginController extends Controller
         $store->gst_number = $request->gst_num;
         $store->email = $request->email; 
         $store->vendor_type = $request->vendor_type ?? 'regular';
-        $store->logo = Helpers::upload('store/', 'png', $request->file('logo'));
-        $store->cover_photo = Helpers::upload('store/cover/', 'png', $request->file('cover_photo'));
+        $storeLogo = Helpers::upload('store/', 'png', $request->file('logo'));
+        $store->logo = $storeLogo;
+        $storeCover = $request->hasFile('cover_photo') ? Helpers::upload('store/cover/', 'png', $request->file('cover_photo')) : null;
+        $store->cover_photo = $storeCover;
         $store->address = $data[1]['value'];
         $store->latitude = $request->latitude;
         $store->longitude = $request->longitude;
@@ -317,12 +320,24 @@ class VendorLoginController extends Controller
             $store->other_verification = $request->other_verification ?? '';
             $store->google_verification = $request->google_verification;
         }
+        $gstDoc = null;
         if (!isset($request->confirmation) || $request->confirmation == ''|| $request->module_id == '5') {
             $extension = $request->file('gst_doc')->getClientOriginalExtension();
-            $store->gst_doc = Helpers::upload('store/docs/', $extension, $request->file('gst_doc'));
+            $gstDoc = Helpers::upload('store/docs/', $extension, $request->file('gst_doc'));
+            $store->gst_doc = $gstDoc;
             $store->gst_number = $request->gst_number;
         }
         $store->save();
+
+        _logVendorFile('vendor', $vendor->id, $store->id, 'profile_image', 'vendor/' . $vendorImage);
+        _logVendorFile('vendor', $vendor->id, $store->id, 'store_logo', 'store/' . $storeLogo);
+        if (!empty($storeCover)) {
+            _logVendorFile('vendor', $vendor->id, $store->id, 'store_cover', 'store/cover/' . $storeCover);
+        }
+        if (!empty($gstDoc)) {
+            _logVendorFile('vendor', $vendor->id, $store->id, 'store_gst_doc', 'store/docs/' . $gstDoc);
+        }
+
         Helpers::_addWelcomeCouponsIfExist($store);
         $store->module->increment('stores_count');
 

@@ -9,12 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InventoryItem extends Model
 {
     protected $casts = [
-        'images' => 'array',
+        'images' => 'array',  
          'choice_options',
         'attributes',
     ];
-    use HasFactory;
-    protected $fillable = [
+    use HasFactory; 
+    protected $fillable = [ 
         'store_id',
         'item_type',
         'item_name',
@@ -80,5 +80,16 @@ class InventoryItem extends Model
     {
         return $this->belongsToMany(Branch::class, 'branch_inventory_item')
             ->withPivot('price');
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($inventoryItem) {
+            if ($inventoryItem->wasChanged('stock')) {
+                \App\Models\Item::withoutGlobalScopes()
+                    ->where('inventory_item_id', $inventoryItem->id)
+                    ->update(['stock' => $inventoryItem->stock]);
+            }
+        });
     }
 }

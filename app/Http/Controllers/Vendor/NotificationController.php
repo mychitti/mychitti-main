@@ -8,14 +8,14 @@ use App\Http\Requests\Admin\NotificationUpdateRequest;
 use App\Models\Notification;
 use App\Models\Zone;
 use App\CentralLogics\Helpers;
-use Brian2694\Toastr\Facades\Toastr;
+use Brian2694\Toastr\Facades\Toastr; 
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\RedirectResponse; 
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PushNotificationExport;
+use App\Exports\PushNotificationExport; 
 use App\Http\Controllers\Controller;
 use App\Traits\FileManagerTrait;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -44,25 +44,33 @@ class NotificationController extends Controller
     {
         $storeId = Helpers::get_store_id();
 
-        $image = null;
+        $images = [];
+        $firstImage = null;
 
-        if ($request->has('image')) {
-            $image = $this->upload('notification/', 'png', $request->file('image'));
-        } else {
-            $image = null;
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                $uploaded = $this->upload('notification/', $file->getClientOriginalExtension() ?? 'png', $file);
+                $images[] = $uploaded;
+            }
+            $firstImage = $images[0] ?? null;
+        } elseif ($request->hasFile('image')) {
+            $uploaded = $this->upload('notification/', $request->file('image')->getClientOriginalExtension() ?? 'png', $request->file('image'));
+            $firstImage = $uploaded;
+            $images[] = $uploaded;
         }
         $storeName = Helpers::get_store_data()->name ?? 'A vendor';
 
         DB::table('notifications')->insert([
             'title'       => $request->notification_title,
             'description' => $request->description,
-            'image'       => $image,
+            'image'       => $firstImage,
+            'images'      => !empty($images) ? json_encode($images) : null,
             'zone_id'     => $request->zone,
             'vendor_id'   => $storeId,
             'added_by'    => 'vendor',
-            'tergat'    => $request->tergat,
+            'tergat'      => $request->tergat ?? 'customer',
             'status'      => 0,
-            'approval'      => 0,
+            'approval'    => 0,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -91,31 +99,43 @@ class NotificationController extends Controller
             'scheduled_at'       => 'required|date|after:now',
             'zone'               => 'nullable',
             'tergat'             => 'nullable|string',
-            'image'              => 'nullable|image|max:2048',
         ]);
 
         $storeId = Helpers::get_store_id();
 
-        $image = $request->hasFile('image')
-            ? $this->upload('notification/', 'png', $request->file('image'))
-            : null;
+        $images = [];
+        $firstImage = null;
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                $uploaded = $this->upload('notification/', $file->getClientOriginalExtension() ?? 'png', $file);
+                $images[] = $uploaded;
+            }
+            $firstImage = $images[0] ?? null;
+        } elseif ($request->hasFile('image')) {
+            $uploaded = $this->upload('notification/', $request->file('image')->getClientOriginalExtension() ?? 'png', $request->file('image'));
+            $firstImage = $uploaded;
+            $images[] = $uploaded;
+        }
 
         $storeName = Helpers::get_store_data()->name ?? 'A vendor';
 
         DB::table('notifications')->insert([
-            'title'        => $request->notification_title,
-            'description'  => $request->description,
-            'image'        => $image,
-            'zone_id'      => $request->zone,
-            'vendor_id'    => $storeId,
-            'added_by'     => 'vendor',
-            'tergat'       => $request->tergat ?? 'customer',
-            'status'       => 0,
-            'approval'     => 0,
-            'is_scheduled' => 1,
-            'scheduled_at' => $request->scheduled_at,
-            'created_at'   => now(),
-            'updated_at'   => now(),
+            'title'         => $request->notification_title,
+            'description'   => $request->description,
+            'image'         => $firstImage,
+            'images'        => !empty($images) ? json_encode($images) : null,
+            'zone_id'       => $request->zone,
+            'vendor_id'     => $storeId,
+            'added_by'      => 'vendor',
+            'tergat'        => $request->tergat ?? 'customer',
+            'status'        => 0,
+            'approval'      => 0,
+            'is_scheduled'  => 1,
+            'scheduled_at'  => $request->scheduled_at,
+            'schedule_time' => $request->scheduled_at,
+            'created_at'    => now(),
+            'updated_at'    => now(),
         ]);
 
         _inAppNotification(
@@ -158,37 +178,71 @@ class NotificationController extends Controller
             ->firstOrFail();
 
         DB::transaction(function () use ($request, $notification, $storeId, $id) {
+            $images = [];
 
-            $image = $notification->image;
-
-            if ($request->has('image')) {
-                $image = $this->upload('notification/', 'png', $request->file('image'));
+            // Get existing images
+            if ($notification->images) {
+                $images = is_array($notification->images) ? $notification->images : json_decode($notification->images, true);
+            } elseif ($notification->image) {
+                $images = [$notification->image];
             }
+
+            // Remove selected images
+            if ($request->has('removed_images')) {
+                $removedImages = $request->input('removed_images');
+                if (is_array($removedImages)) {
+                    foreach ($removedImages as $removed) {
+                        if (($key = array_search($removed, $images)) !== false) {
+                            unset($images[$key]);
+                            // Delete from disk
+                            if (\Storage::disk('public')->exists('notification/' . $removed)) {
+                                \Storage::disk('public')->delete('notification/' . $removed);
+                            }
+                        }
+                    }
+                    $images = array_values($images); // Re-index array
+                }
+            }
+
+            // Add new images
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $file) {
+                    $uploaded = $this->upload('notification/', $file->getClientOriginalExtension() ?? 'png', $file);
+                    $images[] = $uploaded;
+                }
+            }
+
+            // Handle legacy single image upload if present
+            if ($request->hasFile('image')) {
+                $uploaded = $this->upload('notification/', $request->file('image')->getClientOriginalExtension() ?? 'png', $request->file('image'));
+                $images[] = $uploaded;
+            }
+
+            $firstImage = $images[0] ?? null;
+
+            // Handle scheduling inputs
+            $isScheduled = $request->boolean('is_scheduled', false);
+            $scheduledAt = $isScheduled ? $request->scheduled_at : null;
+            $scheduleTime = $isScheduled ? $request->scheduled_at : null;
 
             DB::table('notifications')
                 ->where('id', $id)
                 ->where('vendor_id', $storeId)
                 ->update([
-                    'title'       => $request->notification_title,
-                    'description' => $request->description,
-                    'zone_id'     => $request->zone,
-                    'tergat'      => $request->tergat,
-                    'image'       => $image,
-                    'status'      => 0,
-                    'approval'    => 0,
-                    'updated_at'  => now(),
+                    'title'         => $request->notification_title,
+                    'description'   => $request->description,
+                    'zone_id'       => $request->zone,
+                    'tergat'        => $request->tergat,
+                    'image'         => $firstImage,
+                    'images'        => !empty($images) ? json_encode($images) : null,
+                    'status'        => 0,
+                    'approval'      => 0,
+                    'is_scheduled'  => $isScheduled ? 1 : 0,
+                    'scheduled_at'  => $scheduledAt,
+                    'schedule_time' => $scheduleTime,
+                    'updated_at'    => now(),
                 ]);
         });
-
-        // $notification->image = $notification->image
-        //     ? url('/') . '/storage/app/public/notification/' . $notification->image
-        //     : null;
-
-        // try {
-        //     $this->sendPushNotificationToTopic($notification, 'general', 'general');
-        // } catch (Exception) {
-        //     Toastr::warning(translate('messages.push_notification_failed'));
-        // }
 
         Toastr::success(translate('messages.notification_updated_successfully'));
         return back();
@@ -201,6 +255,35 @@ class NotificationController extends Controller
             ->update(['status' => $request->status]);
 
         Toastr::success(translate('messages.notification_status_updated'));
+        return back();
+    }
+
+    /* ================= RESCHEDULE ================= */
+    public function reschedule(Request $request, int $id): RedirectResponse
+    {
+        $request->validate([
+            'scheduled_at' => 'required|date|after:now',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+
+        $notification = Notification::where('id', $id)
+            ->where('vendor_id', $storeId)
+            ->firstOrFail();
+
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('vendor_id', $storeId)
+            ->update([
+                'is_scheduled'  => 1,
+                'scheduled_at'  => $request->scheduled_at,
+                'schedule_time' => $request->scheduled_at,
+                'status'        => 0,
+                'approval'      => 0,
+                'updated_at'    => now(),
+            ]);
+
+        Toastr::success('Ad rescheduled successfully and sent for approval.');
         return back();
     }
 

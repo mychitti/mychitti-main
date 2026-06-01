@@ -31,6 +31,7 @@ class Notification extends Model
         'title',
         'description',
         'image',
+        'images',
         'status',
         'tergat',
         'zone_id',
@@ -52,6 +53,7 @@ class Notification extends Model
      */
     protected $casts = [
         'status' => 'integer',
+        'images' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

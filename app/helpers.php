@@ -13,7 +13,7 @@ use App\Models\Quotation;
 use App\Models\Leave;
 use App\Models\AdminWallet;
 use App\Models\EmployeeTimeCard;
-use App\Models\DeliveryMan;
+use App\Models\DeliveryMan; 
 use App\Models\WalletPayment;
 use App\Scopes\StoreScope;
 use App\CentralLogics\Helpers;
@@ -5679,6 +5679,9 @@ if (!function_exists('_inAppNotification')) {
             if ($user_typ === 'vendor' && $to) {
                 event(new \App\Events\VendorInAppNotification((int) $to, $title, $msg, $url));
             }
+            if ($user_typ === 'admin') {
+                event(new \App\Events\AdminInAppNotification($title, $msg, $url));
+            }
             return 'sent';
         } else {
             return false;
@@ -5868,20 +5871,29 @@ if (!function_exists('_getAccessToken')) {
 if (!function_exists('_subscribeTokenToTopics')) {
     /**
      * Subscribe an FCM device token to one or more topics server-side.
-     * Uses the FCM IID batch-add API with the legacy server key.
+     * Uses the FCM Instance ID batch-add API authorized with an OAuth2
+     * access token. Legacy server keys were disabled by Google in 2024,
+     * so the access token (same one used for FCM v1 sends) is required.
      */
     function _subscribeTokenToTopics(string $token, array $topics): void
     {
-        $key = \App\Models\BusinessSetting::where('key', 'push_notification_key')->value('value');
-        if (!$key || !$token) return;
+        if (!$token || empty($topics)) return;
+
+        try {
+            $accessToken = _getAccessToken();
+        } catch (\Throwable $e) {
+            \Log::error('FCM topic subscribe: failed to get access token: ' . $e->getMessage());
+            return;
+        }
+        if (!$accessToken) return;
 
         $client = new \GuzzleHttp\Client();
         foreach ($topics as $topic) {
             try {
                 $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
                     'headers' => [
-                        'Authorization' => 'key=' . $key,
-                        'Content-Type'  => 'application/json',
+                        'Authorization'     => 'Bearer ' . $accessToken,
+                        'Content-Type'      => 'application/json',
                         'access_token_auth' => 'true',
                     ],
                     'json' => [
