@@ -701,8 +701,7 @@ class CustomerController extends Controller
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $user = $request->user();
-        DB::table('users')->where('id', $user->id)->update([
+        DB::table('users')->where('id', $request->user()->id)->update([
             'cm_firebase_token' => $request['cm_firebase_token']
         ]);
 
