@@ -804,6 +804,17 @@
 @push('script_2')
     <script>
         function trackBannerClick(bannerId) {
+            // Use sendBeacon so the click is recorded even when the banner (e.g. a
+            // store banner) immediately navigates away — a plain $.post gets aborted.
+            try {
+                var fd = new FormData();
+                fd.append('banner_id', bannerId);
+                fd.append('_token', '{{ csrf_token() }}');
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon("{{ route('track.banner.click') }}", fd);
+                    return;
+                }
+            } catch (e) {}
             $.post("{{ route('track.banner.click') }}", {
                 banner_id: bannerId,
                 _token: '{{ csrf_token() }}'

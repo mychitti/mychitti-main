@@ -33,7 +33,7 @@ class AnalyticsController extends Controller
             $storeIds = DB::table('analytics_logs')->where('screen_type', 'location')->distinct()->pluck('ref_id');
             $filterOptions = DB::table('stores')->select('id', 'name')->whereIn('id', $storeIds)->orderBy('name')->get();
         } elseif ($tab == 'phone_unmasks') {
-            $storeIds = DB::table('analytics_logs')->where('screen_type', 'call')->distinct()->pluck('ref_id');
+            $storeIds = DB::table('analytics_logs')->whereIn('screen_type', ['call', 'copy'])->distinct()->pluck('ref_id');
             $filterOptions = DB::table('stores')->select('id', 'name')->whereIn('id', $storeIds)->orderBy('name')->get();
         } elseif ($tab == 'shares') {
             $filterOptions = [];
@@ -157,7 +157,7 @@ class AnalyticsController extends Controller
             $query = DB::table('analytics_logs as al')
                 ->leftJoin('users as u', 'al.user_id', '=', 'u.id')
                 ->leftJoin('stores as s', 'al.ref_id', '=', 's.id')
-                ->where('al.screen_type', 'call')
+                ->whereIn('al.screen_type', ['call', 'copy'])
                 ->select('al.*', 'u.f_name', 'u.l_name', 'u.phone as user_phone', 's.name as store_name', 's.phone as store_phone');
 
             if ($search) {

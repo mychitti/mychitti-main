@@ -5640,9 +5640,29 @@ if (!function_exists('_logVendorFile')) {
     }
 }
 
+if (!function_exists('_notificationPath')) {
+    /**
+     * Normalise an in-app notification URL to a domain-relative path so it
+     * always opens on the panel the recipient is logged into (vendor / staff
+     * have different domains). The notification is generated on whichever
+     * server handled the request (often the shop domain), so the absolute
+     * host must be stripped. Path + query + fragment are preserved.
+     */
+    function _notificationPath($url)
+    {
+        if (!$url || !preg_match('#^https?://#i', $url)) {
+            return $url; // already relative or empty
+        }
+        $p = parse_url($url);
+        return ($p['path'] ?? '/')
+            . (isset($p['query']) ? '?' . $p['query'] : '')
+            . (isset($p['fragment']) ? '#' . $p['fragment'] : '');
+    }
+}
 if (!function_exists('_inAppNotification')) {
     function _inAppNotification($title, $msg, $acceptnce_id = '', $to = null, $url = null, $user_typ = null)
     {
+        $url = _notificationPath($url);
         $det = new InAppNotification;
         $det->title = $title;
         $det->message = $msg;

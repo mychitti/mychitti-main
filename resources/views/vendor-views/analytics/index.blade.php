@@ -98,7 +98,7 @@
             <div class="col">
                 <div class="card card-body py-3 text-center" style="background-color:#40ff0042;">
                     <h3 class="mb-0">{{ $counts['phone_calls'] }}</h3>
-                    <small class="text-muted">Phone Calls</small>
+                    <small class="text-muted">Phone (Call/Copy)</small>
                 </div>
             </div>
             <div class="col">
@@ -139,8 +139,7 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ $tab == 'phone_calls' ? 'active' : '' }}"
-                                    href="{{ route('vendor.performance-analytics.index', ['tab' => 'phone_calls']) }}">Phone
-                                    Calls</a>
+                                    href="{{ route('vendor.performance-analytics.index', ['tab' => 'phone_calls']) }}">Phone (Call/Copy)</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ $tab == 'shares' ? 'active' : '' }}"

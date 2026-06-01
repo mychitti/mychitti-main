@@ -37,7 +37,7 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ $tab == 'phone_unmasks' ? 'active' : '' }}"
-                    href="{{ route('admin.analytics.index', ['tab' => 'phone_unmasks']) }}">Phone Unmasks</a>
+                    href="{{ route('admin.analytics.index', ['tab' => 'phone_unmasks']) }}">Phone (Call/Copy)</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ $tab == 'shares' ? 'active' : '' }}"
@@ -241,6 +241,7 @@
                             <thead class="thead-light">
                                 <tr>
                                     <th>#</th>
+                                    <th>Type</th>
                                     <th>Store</th>
                                     <th>Store Phone</th>
                                     <th>User</th>
@@ -252,6 +253,13 @@
                                 @forelse ($data['items'] as $key => $item)
                                     <tr>
                                         <td>{{ $key + $data['items']->firstItem() }}</td>
+                                        <td>
+                                            @if ($item->screen_type == 'copy')
+                                                <span class="badge badge-soft-warning">Copy</span>
+                                            @else
+                                                <span class="badge badge-soft-success">Call</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $item->store_name ?? 'Deleted Store' }}</td>
                                         <td>{{ $item->store_phone }}</td>
                                         <td>
@@ -268,7 +276,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center py-4">No data found</td>
+                                        <td colspan="7" class="text-center py-4">No data found</td>
                                     </tr>
                                 @endforelse
                             </tbody>

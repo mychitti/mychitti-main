@@ -130,7 +130,7 @@ class AnalyticsController extends Controller
         } elseif ($tab == 'phone_calls') {
             $query = DB::table('analytics_logs as al')
                 ->leftJoin('users as u', 'al.user_id', '=', 'u.id')
-                ->where('al.screen_type', 'call')
+                ->whereIn('al.screen_type', ['call', 'copy'])
                 ->where('al.ref_id', $storeId)
                 ->select('al.*', 'u.f_name', 'u.l_name', 'u.phone as user_phone');
 
@@ -207,7 +207,7 @@ class AnalyticsController extends Controller
             'banner_clicks' => DB::table('analytics_logs as al')->join('banners as b', 'al.ref_id', '=', 'b.id')->where('al.screen_type', 'banner')->where('b.type', 'store_wise')->where('b.data', $storeId)->whereDate('al.created_at', '>=', $dateFrom)->whereDate('al.created_at', '<=', $dateTo)->count(),
             'ad_clicks'     => DB::table('analytics_logs as al')->join('notifications as n', 'al.ref_id', '=', 'n.id')->where('al.screen_type', 'ad')->where('n.vendor_id', $vendorId)->whereDate('al.created_at', '>=', $dateFrom)->whereDate('al.created_at', '<=', $dateTo)->count(),
             'location_views'=> DB::table('analytics_logs')->where('screen_type', 'location')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
-            'phone_calls'   => DB::table('analytics_logs')->where('screen_type', 'call')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'phone_calls'   => DB::table('analytics_logs')->whereIn('screen_type', ['call', 'copy'])->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
             'shares'        => DB::table('analytics_logs')->where('screen_type', 'share')->where(function ($q) use ($storeId, $shareItemIds) {
                 $q->where(function ($q2) use ($storeId) { $q2->where('sub_type', 'store')->where('ref_id', $storeId); })
                   ->orWhere(function ($q2) use ($shareItemIds) { $q2->where('sub_type', 'service')->whereIn('ref_id', $shareItemIds); });

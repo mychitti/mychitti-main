@@ -30,7 +30,7 @@
                         <small>{{_formatted_datetime($notf->created_at)}}</small>
                         <p class="card-text"> {{$notf->message}}</p>
                         @if( $notf->url)
-                        <a style="float: right;" href="{{$notf->url}}" class="btn btn-sm btn-primary">View</a>
+                        <a style="float: right;" href="{{ _notificationPath($notf->url) }}" class="btn btn-sm btn-primary">View</a>
                         @endif
                     </div>
                     </div>
