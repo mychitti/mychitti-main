@@ -706,10 +706,6 @@ class CustomerController extends Controller
             'cm_firebase_token' => $request['cm_firebase_token']
         ]);
 
-        $topics = ['all_zone_customer'];
-        if ($user->zone_id) $topics[] = 'zone_' . $user->zone_id . '_customer';
-        _subscribeTokenToTopics($request['cm_firebase_token'], $topics);
-
         return response()->json(['message' => translate('messages.updated_successfully')], 200);
     }
 

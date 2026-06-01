@@ -5868,47 +5868,6 @@ if (!function_exists('_getAccessToken')) {
         return $result['access_token'];
     }
 }
-if (!function_exists('_subscribeTokenToTopics')) {
-    /**
-     * Subscribe an FCM device token to one or more topics server-side.
-     * Uses the FCM Instance ID batch-add API authorized with an OAuth2
-     * access token. Legacy server keys were disabled by Google in 2024,
-     * so the access token (same one used for FCM v1 sends) is required.
-     */
-    function _subscribeTokenToTopics(string $token, array $topics): void
-    {
-        if (!$token || empty($topics)) return;
-
-        try {
-            $accessToken = _getAccessToken();
-        } catch (\Throwable $e) {
-            \Log::error('FCM topic subscribe: failed to get access token: ' . $e->getMessage());
-            return;
-        }
-        if (!$accessToken) return;
-
-        $client = new \GuzzleHttp\Client();
-        foreach ($topics as $topic) {
-            try {
-                $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
-                    'headers' => [
-                        'Authorization'     => 'Bearer ' . $accessToken,
-                        'Content-Type'      => 'application/json',
-                        'access_token_auth' => 'true',
-                    ],
-                    'json' => [
-                        'to'                  => '/topics/' . $topic,
-                        'registration_tokens' => [$token],
-                    ],
-                    'http_errors' => false,
-                ]);
-            } catch (\Throwable $e) {
-                \Log::error("FCM topic subscribe failed [{$topic}]: " . $e->getMessage());
-            }
-        }
-    }
-}
-
 if (!function_exists('_convertNumberToWords')) {
     function _convertNumberToWords($number)
     {
