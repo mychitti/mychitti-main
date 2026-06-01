@@ -5868,6 +5868,68 @@ if (!function_exists('_getAccessToken')) {
         return $result['access_token'];
     }
 }
+if (!function_exists('_subscribeTokenToTopics')) {
+    /**
+     * Subscribe an FCM device token to one or more topics server-side.
+     * Uses the FCM Instance ID batch-add API authorized with an OAuth2
+     * access token (legacy server keys were disabled by Google in 2024).
+     */
+    function _subscribeTokenToTopics(string $token, array $topics): void
+    {
+        if (!$token || empty($topics)) return;
+
+        try {
+            $accessToken = _getAccessToken();
+        } catch (\Throwable $e) {
+            \Log::error('FCM topic subscribe: failed to get access token: ' . $e->getMessage());
+            return;
+        }
+        if (!$accessToken) return;
+
+        $client = new \GuzzleHttp\Client();
+        foreach ($topics as $topic) {
+            try {
+                $client->post('https://iid.googleapis.com/iid/v1:batchAdd', [
+                    'headers' => [
+                        'Authorization'     => 'Bearer ' . $accessToken,
+                        'Content-Type'      => 'application/json',
+                        'access_token_auth' => 'true',
+                    ],
+                    'json' => [
+                        'to'                  => '/topics/' . $topic,
+                        'registration_tokens' => [$token],
+                    ],
+                    'http_errors' => false,
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error("FCM topic subscribe failed [{$topic}]: " . $e->getMessage());
+            }
+        }
+    }
+}
+if (!function_exists('_subscribeCustomerTopics')) {
+    /**
+     * Subscribe a customer device to the all-zone topic plus its zone
+     * topic(s), derived from the device-location `zoneId` header
+     * (a JSON array like "[72]" or "[72,95]", or a plain numeric id).
+     */
+    function _subscribeCustomerTopics(?string $token, $zoneHeader): void
+    {
+        if (!$token) return;
+
+        $topics = ['all_zone_customer'];
+        $zones = json_decode((string) $zoneHeader, true);
+        if (is_array($zones)) {
+            foreach ($zones as $z) {
+                if ((int) $z > 0) $topics[] = 'zone_' . (int) $z . '_customer';
+            }
+        } elseif (is_numeric($zoneHeader) && (int) $zoneHeader > 0) {
+            $topics[] = 'zone_' . (int) $zoneHeader . '_customer';
+        }
+
+        _subscribeTokenToTopics($token, array_values(array_unique($topics)));
+    }
+}
 if (!function_exists('_convertNumberToWords')) {
     function _convertNumberToWords($number)
     {

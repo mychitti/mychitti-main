@@ -705,6 +705,8 @@ class CustomerController extends Controller
             'cm_firebase_token' => $request['cm_firebase_token']
         ]);
 
+        _subscribeCustomerTopics($request['cm_firebase_token'], $request->header('zoneId'));
+
         return response()->json(['message' => translate('messages.updated_successfully')], 200);
     }
 

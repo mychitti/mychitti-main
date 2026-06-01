@@ -400,6 +400,7 @@ class CustomerAuthController extends Controller
             if ($request->fcm_token) {
                 $user->cm_firebase_token = $request->fcm_token;
                 $user->update();
+                _subscribeCustomerTopics($request->fcm_token, $request->header('zoneId'));
             }
             
             // unset otp
@@ -530,6 +531,7 @@ class CustomerAuthController extends Controller
             if ($request->fcm_token) {
                 $user->cm_firebase_token = $request->fcm_token;
                 $user->update();
+                _subscribeCustomerTopics($request->fcm_token, $request->header('zoneId'));
             }
 
             return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);
