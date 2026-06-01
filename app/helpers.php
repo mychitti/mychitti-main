@@ -5650,13 +5650,38 @@ if (!function_exists('_notificationPath')) {
      */
     function _notificationPath($url)
     {
-        if (!$url || !preg_match('#^https?://#i', $url)) {
-            return $url; // already relative or empty
+        if (!$url) {
+            return $url;
         }
-        $p = parse_url($url);
-        return ($p['path'] ?? '/')
-            . (isset($p['query']) ? '?' . $p['query'] : '')
-            . (isset($p['fragment']) ? '#' . $p['fragment'] : '');
+
+        // Strip the absolute scheme + host if present (notifications are often
+        // generated on a different server/domain than the recipient's panel).
+        if (preg_match('#^https?://#i', $url)) {
+            $p = parse_url($url);
+            $url = ($p['path'] ?? '/')
+                . (isset($p['query']) ? '?' . $p['query'] : '')
+                . (isset($p['fragment']) ? '#' . $p['fragment'] : '');
+        }
+
+        // On production each panel has its own domain serving routes from the
+        // root, so the store-panel / admin routing prefixes must be dropped.
+        // On staging everything lives on one host under those prefixes, so keep them.
+        $host = '';
+        try {
+            $host = request()?->getHost() ?: '';
+        } catch (\Throwable $e) {
+            $host = '';
+        }
+        if ($host === '') {
+            $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+        }
+        $isStaging = stripos($host, 'staging') !== false;
+
+        if (!$isStaging) {
+            $url = preg_replace('#^/(store-panel|admin)(?=/|$)#i', '', $url);
+        }
+
+        return $url === '' ? '/' : $url;
     }
 }
 if (!function_exists('_inAppNotification')) {
