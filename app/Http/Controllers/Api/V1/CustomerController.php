@@ -763,6 +763,9 @@ class CustomerController extends Controller
         $customer = $request->user();
         $customer->zone_id = (int)$request->header('zoneId');
         $customer->save();
+
+        _subscribeCustomerTopics($customer->cm_firebase_token, $request->header('zoneId'));
+
         return response()->json([], 200);
     }
 

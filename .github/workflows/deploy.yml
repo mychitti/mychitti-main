@@ -56,6 +56,9 @@ jobs:
         php artisan cache:clear && \
         php artisan config:cache && \
 
+        echo 'Reloading PHP-FPM to clear OPcache...' && \
+        systemctl reload php-fpm && \
+
         echo 'Restarting queue workers...' && \
         php artisan queue:restart && \
 
