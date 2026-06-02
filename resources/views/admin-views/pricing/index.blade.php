@@ -81,6 +81,24 @@
                     <i class="tio-receipt mr-1"></i> Platform Fee
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'zone-wallet' ? 'active' : '' }}"
+                   href="{{ route('admin.pricing.index', ['tab' => 'zone-wallet']) }}">
+                    <i class="tio-poi-outlined mr-1"></i> Zone Wallet Minimums
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'lead-charges' ? 'active' : '' }}"
+                   href="{{ route('admin.pricing.index', ['tab' => 'lead-charges']) }}">
+                    <i class="tio-currency-dollar mr-1"></i> Lead Charges
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'lead-subscriptions' ? 'active' : '' }}"
+                   href="{{ route('admin.pricing.index', ['tab' => 'lead-subscriptions']) }}">
+                    <i class="tio-bookmarks mr-1"></i> Lead Subscriptions
+                </a>
+            </li>
         </ul>
     </div>
 
@@ -515,6 +533,193 @@
                                 <button type="submit" class="btn btn--primary">Save Platform Fee</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ===== TAB: ZONE WALLET MINIMUMS ===== --}}
+        @if($tab === 'zone-wallet')
+        <div class="row">
+            <div class="col-md-5 mb-3">
+                <div class="card h-100">
+                    <div class="card-header flex-column align-items-start">
+                        <h5 class="card-title mb-0"><i class="tio-poi-outlined mr-1"></i> Add Zone Wallet Minimum</h5>
+                        <p class="text-muted small mb-0">Minimum wallet balance a vendor needs (per zone, optionally per category) to receive leads. Vendors below this — and without an active lead subscription — are skipped during lead distribution. A value of <strong>0</strong> disables the requirement for that zone/category.</p>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('admin.service.zone-wallet-config-save') }}" method="post">
+                            @csrf
+                            <div class="form-group">
+                                <label class="form-label">Zone <span class="text-danger">*</span></label>
+                                <select name="zone_id" class="form-control js-select2-custom" required>
+                                    <option value="">Select Zone</option>
+                                    @foreach ($zones as $zone)
+                                        <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Category <small class="text-muted">(optional — leave empty for zone level)</small></label>
+                                <select name="category_id[]" class="form-control js-select2-custom" multiple>
+                                    @foreach ($categories as $cat)
+                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Balance <span class="text-danger">*</span></label>
+                                <input type="number" name="min_balance" class="form-control" placeholder="Ex: 100" min="0" step="0.01" required>
+                            </div>
+                            <button type="submit" class="btn btn--primary">Save</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Zone Wallet Configs</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>SL</th>
+                                    <th>Zone</th>
+                                    <th>Category</th>
+                                    <th>Min Balance</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($zoneWalletConfigs as $config)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td>{{ $config->zone?->name ?? 'N/A' }}</td>
+                                        <td>{{ $config->category?->name ?? 'All Categories' }}</td>
+                                        <td>
+                                            <form action="{{ route('admin.service.zone-wallet-config-update', $config->id) }}" method="post" class="d-flex align-items-center">
+                                                @csrf
+                                                <input type="number" name="min_balance" value="{{ $config->min_balance }}" class="form-control form-control-sm" style="width: 110px;" min="0" step="0.01" required>
+                                                <button type="submit" class="btn btn-sm btn--primary ml-2">Update</button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <a class="btn btn-sm btn--danger btn-outline-danger" href="{{ route('admin.service.zone-wallet-config-delete', $config->id) }}" title="Delete">
+                                                <i class="tio-delete-outlined"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">No zone configs added yet</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ===== TAB: LEAD CHARGES ===== --}}
+        @if($tab === 'lead-charges')
+            @include('admin-views.service.partials._lead_charge_form')
+            @include('admin-views.service.partials._lead_charges_list')
+        @endif
+
+        {{-- ===== TAB: LEAD SUBSCRIPTIONS ===== --}}
+        @if($tab === 'lead-subscriptions')
+        <div class="row">
+            <div class="col-md-5 mb-3">
+                <div class="card h-100">
+                    <div class="card-header flex-column align-items-start">
+                        <h5 class="card-title mb-0"><i class="tio-bookmarks mr-1"></i> Add Lead Subscription Plan</h5>
+                        <p class="text-muted small mb-0">A vendor with an active lead subscription receives leads without needing the minimum wallet balance. "Dedicated" plans route a zone/category's leads exclusively to the subscriber.</p>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('admin.service.lead-subscriptions.plan.store') }}" method="post">
+                            @csrf
+                            <div class="form-group">
+                                <label class="form-label">Plan Name <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" placeholder="Ex: Monthly Shared" maxlength="100" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 form-group">
+                                    <label class="form-label">Type <span class="text-danger">*</span></label>
+                                    <select name="type" class="form-control" required>
+                                        <option value="shared">Shared</option>
+                                        <option value="dedicated">Dedicated</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 form-group">
+                                    <label class="form-label">Price (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" name="price" class="form-control" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Duration (days) <span class="text-danger">*</span></label>
+                                <input type="number" name="duration_days" class="form-control" min="1" placeholder="Ex: 30" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 form-group">
+                                    <label class="form-label">Zone <small class="text-muted">(optional)</small></label>
+                                    <select name="zone_id" class="form-control js-select2-custom">
+                                        <option value="">Any</option>
+                                        @foreach ($zones as $zone)
+                                            <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 form-group">
+                                    <label class="form-label">Category <small class="text-muted">(optional)</small></label>
+                                    <select name="category_id" class="form-control js-select2-custom">
+                                        <option value="">Any</option>
+                                        @foreach ($categories as $cat)
+                                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn--primary">Save Plan</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7 mb-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Lead Subscription Plans</h5>
+                        <a href="{{ route('admin.service.lead-subscriptions.index') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="tio-open-in-new mr-1"></i> Grant / Manage
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        @forelse ($leadSubPlans as $plan)
+                            <form action="{{ route('admin.service.lead-subscriptions.plan.update', $plan->id) }}" method="post"
+                                  class="d-flex align-items-center flex-wrap border-bottom pb-2 mb-2" style="gap:8px;">
+                                @csrf
+                                <span class="badge badge-soft-{{ $plan->type === 'dedicated' ? 'warning' : 'info' }}">{{ ucfirst($plan->type) }}</span>
+                                <input type="text" name="name" value="{{ $plan->name }}" class="form-control form-control-sm" style="width:150px;" required>
+                                <input type="number" name="price" value="{{ $plan->price }}" class="form-control form-control-sm" style="width:90px;" min="0" step="0.01" required title="Price ₹">
+                                <input type="number" name="duration_days" value="{{ $plan->duration_days }}" class="form-control form-control-sm" style="width:70px;" min="1" required title="Days">
+                                <select name="status" class="form-control form-control-sm" style="width:95px;">
+                                    <option value="1" {{ $plan->status ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ !$plan->status ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn--primary">Save</button>
+                                <a href="{{ route('admin.service.lead-subscriptions.plan.destroy', $plan->id) }}"
+                                   class="btn btn-sm btn--danger btn-outline-danger" title="Delete"
+                                   onclick="return confirm('Delete this plan?')"><i class="tio-delete-outlined"></i></a>
+                            </form>
+                        @empty
+                            <p class="text-center text-muted py-3 mb-0">No lead subscription plans yet</p>
+                        @endforelse
                     </div>
                 </div>
             </div>

@@ -200,7 +200,7 @@
                     Item</button>
                 @if (_isSubscription() && Route::currentRouteName() === 'vendor.invoice.manual-bill')
                     <button type="button" class="btn btn-dark btn-sm" data-toggle="modal"
-                        data-target="#inventoryItemModal">+ Add From Inventory</button>
+                        data-target="#inventoryItemModal">+ Add From {{ _moduleLabel('inventory') }}</button>
                 @endif
                 <table class="table">
                     <thead class="" style=" background: #75b8b8; color: white;">

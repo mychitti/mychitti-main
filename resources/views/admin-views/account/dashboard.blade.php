@@ -113,8 +113,7 @@
             grid-template-columns: 1fr 300px;
             gap: 15px;
             margin-bottom: 15px;
-        }
---}} .chart-container {
+        }--}} .chart-container {
             background: #f8fafc;
             padding: 18px;
             border-radius: 15px;
@@ -439,7 +438,7 @@
         </div>
 
         <div class="row content-layout">
-            <div class="col-md-6 chart-container">
+            <div class="col-md-6 chart-container ">
                 <div class="chart-title-row">
                     <h2 class="chart-heading">Profit & Loss Report</h2>
                     <div class="chart-legend">
@@ -457,7 +456,7 @@
 
             </div>
             <div class="col-md-3">
-
+<h2 class="chart-heading"></h2>
             </div>
 
             <div class=" col-md-3 actions-panel">
@@ -652,7 +651,7 @@
             order_stats_update(type);
         })
 
-      
+
 
         function insert_param(key, value) {
             key = encodeURIComponent(key);
@@ -677,7 +676,6 @@
             // change url page with new params
             window.history.pushState('page2', 'Title', '{{ url()->current() }}?' + params);
         }
-
     </script>
     @include('vendor-views/js/date_range')
 @endpush

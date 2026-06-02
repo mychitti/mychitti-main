@@ -55,7 +55,7 @@
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="inventory_manage"
                     class="form-check-input granular_permission_check" id="inventory_manage">
-                <label class="form-check-label " for="inventory_manage">Inventory Manage</label>
+                <label class="form-check-label " for="inventory_manage">{{ _moduleLabel('inventory_manage') }}</label>
             </div>
         </div>
         @endif

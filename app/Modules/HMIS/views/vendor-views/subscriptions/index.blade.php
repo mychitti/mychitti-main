@@ -43,7 +43,7 @@
                             <div class="col-md-4 mb-3 ">
                                 <div class="pm-card  ">
                                     <div class="pm-left">
-                                        <h6 class="pm-title">{{ $sub->plan?->title ?? $sub->permitted_modules }}</h6>
+                                        <h6 class="pm-title">{{ _moduleDisplayName($sub->plan?->key, $sub->plan?->title ?? $sub->permitted_modules) }}</h6>
                                         <p class="pm-expiry">Expires on:
                                             <strong>{{ _formatted_datetime($sub->plan_expiry) }}</strong>
                                         </p>

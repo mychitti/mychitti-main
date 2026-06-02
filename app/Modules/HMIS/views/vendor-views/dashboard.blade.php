@@ -1256,7 +1256,7 @@
                                 <li class="nav-item" role="presentation">
                                     <button class="tab-btn nav-link" data-url="{{ route('vendor.dashboard.inventory-sales') }}"
                                         id="inventory-sales-tab" data-toggle="tab" data-target="#inventory-sales" type="button"
-                                        role="tab" aria-controls="inventory-sales" aria-selected="false">Inventory Sales</button>
+                                        role="tab" aria-controls="inventory-sales" aria-selected="false">{{ _moduleLabel('inventory') }} Sales</button>
                                 </li>
                             </ul>
 

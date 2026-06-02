@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Inventory Dashboard')
+@section('title', _moduleLabel('inventory') . ' Dashboard')
 
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/tags-input.min.css') }}" rel="stylesheet">
@@ -270,7 +270,7 @@
     <div class="p-2">
         {{-- @include('vendor-views/sub-module/partials/inventory') --}}
         <div class="page-header d-flex flex-wrap justify-content-between">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>Inventory Dashboard</h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ _moduleLabel('inventory') }} Dashboard</h1>
 
             <div class="d-flex gap-2 align-items-center flex-wrap">
                 @if(auth('vendor')->check())
@@ -306,7 +306,7 @@
                 <div class="card inventory-card shadow-sm border">
                     <div class="card-header bg-white fw-bold border-0"
                         style="border-radius: 15px 15px 0px 0px  !important;background: linear-gradient(135deg, #ffdfdf 0%, #ffecec 100%);">
-                        Inventory
+                        {{ _moduleLabel('inventory') }}
                         Snapshot</div>
                     <div class="card-body">
                         <div class="d-flex row col-12 g-0 justify-content-between stat-bar">
@@ -354,7 +354,7 @@
             <!-- Inventory Summary -->
             <div class="col-md-4 p-2">
                 <div class="card card-soft ">
-                    <div class="card-header bg-pastel-purple fw-bold">Inventory Summary</div>
+                    <div class="card-header bg-pastel-purple fw-bold">{{ _moduleLabel('inventory') }} Summary</div>
                     <div class="card-body">
                         <p>Products Quantity in Hand: <span class="fw-semibold">{{ $data['product_stock'] }}</span></p>
                         <p>Services Quantity in Hand: <span class="fw-semibold">{{ $data['service_stock'] }}</span></p>

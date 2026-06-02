@@ -798,6 +798,15 @@
                         </a>
                     </li>
                     @endif
+
+                    @if (\App\CentralLogics\Helpers::module_permission_check('report'))
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('transactions/report/income-sources') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.transactions.report.income-sources') }}" title="{{ translate('Income Analytics') }}">
+                            <i class="tio-money nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Income Analytics') }}</span>
+                        </a>
+                    </li>
+                    @endif
                 {{-- STORE WALLET END =========================== --}}
 
                   

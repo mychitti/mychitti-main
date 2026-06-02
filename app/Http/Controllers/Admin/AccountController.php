@@ -214,6 +214,201 @@ class AccountController extends Controller
 
         return view('admin-views.account.dashboard', compact('ledger_entries', 'preset', 'data'));
     }
+
+    public function revenue(Request $request)
+    {
+        $preset = $request->query('date_range', 'this_year');
+        $custom = $request->query('custom_date_range');
+        $from = null;
+        $to = null;
+
+        if ($preset !== 'all_time') {
+            try {
+                $range = Helpers::calculatePresetDates($preset, $custom);
+                $from = $range['start']->toDateString();
+                $to = $range['end']->toDateString();
+            } catch (\Exception $e) {
+                $preset = 'this_year';
+                try {
+                    $range = Helpers::calculatePresetDates($preset);
+                    $from = $range['start']->toDateString();
+                    $to = $range['end']->toDateString();
+                } catch (\Exception $ex) {
+                    $preset = 'all_time';
+                }
+            }
+        }
+
+        // Date range helper for query
+        $applyDateFilter = function ($query) use ($from, $to, $preset) {
+            if ($preset === 'all_time') {
+                return $query;
+            }
+            return $query->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        };
+
+        // 1. Admin Manual Invoices (Paid)
+        $invoicesQuery = ManualInvoice::where('generated_by', 'admin')
+            ->where('payment_status', 'Paid')
+            ->with(['invoiceItems', 'websiteVendor']);
+        $invoicesQuery = $applyDateFilter($invoicesQuery);
+        $invoices = $invoicesQuery->latest()->get();
+
+        $subscription_income = 0;
+        $module_income = 0;
+        $manual_lead_income = 0;
+
+        $manual_lead_invoices = [];
+        $general_invoices = [];
+
+        foreach ($invoices as $invoice) {
+            $invoice->invoice_type = 'Subscription Plan';
+            $has_lead = false;
+            $has_module = false;
+            foreach ($invoice->invoiceItems as $item) {
+                $name = strtolower($item->name);
+                if (str_contains($name, 'lead subscription')) {
+                    $manual_lead_income += $item->price;
+                    $has_lead = true;
+                } elseif (str_contains($name, 'module')) {
+                    $module_income += $item->price;
+                    $has_module = true;
+                } else {
+                    $subscription_income += $item->price;
+                }
+            }
+            if ($has_lead) {
+                $invoice->invoice_type = 'Lead Subscription';
+                $manual_lead_invoices[] = $invoice;
+            } elseif ($has_module) {
+                $invoice->invoice_type = 'Module Purchase';
+                $general_invoices[] = $invoice;
+            } else {
+                $general_invoices[] = $invoice;
+            }
+        }
+        $invoices = collect($general_invoices);
+
+        // 1.5. Vendor purchased Lead Subscriptions
+        $leadSubscriptionsQuery = \App\Models\LeadSubscription::with(['store', 'plan']);
+        $leadSubscriptionsQuery = $applyDateFilter($leadSubscriptionsQuery);
+        $lead_subscriptions = $leadSubscriptionsQuery->latest()->get();
+
+        $vendor_lead_income = $lead_subscriptions->sum(function ($sub) {
+            return $sub->plan ? $sub->plan->price : 0;
+        });
+
+        $lead_sub_income = $vendor_lead_income + $manual_lead_income;
+
+        // 2. Custom Domain Purchase Income
+        $domainPurchaseQuery = \App\Models\DomainPurchase::query();
+        $domainPurchaseQuery = $applyDateFilter($domainPurchaseQuery);
+        $domain_income = $domainPurchaseQuery->sum('total_amount');
+        $domains = $domainPurchaseQuery->with('store')->latest()->get();
+
+        // Overall total
+        $total_income = $subscription_income + $module_income + $lead_sub_income + $domain_income;
+
+        // Dynamic trend intervals based on date range filter
+        $intervals = [];
+        if ($preset === 'all_time') {
+            for ($i = 5; $i >= 0; $i--) {
+                $intervals[] = [
+                    'start' => now()->subMonths($i)->startOfMonth()->format('Y-m-d H:i:s'),
+                    'end' => now()->subMonths($i)->endOfMonth()->format('Y-m-d H:i:s'),
+                    'label' => now()->subMonths($i)->format('M Y'),
+                ];
+            }
+        } else {
+            $start = Carbon::parse($from)->startOfDay();
+            $end = Carbon::parse($to)->endOfDay();
+            $diffInDays = $start->diffInDays($end);
+
+            if ($diffInDays <= 31) {
+                // Daily breakdown
+                $temp = $start->copy();
+                while ($temp->lte($end)) {
+                    $intervals[] = [
+                        'start' => $temp->copy()->startOfDay()->format('Y-m-d H:i:s'),
+                        'end' => $temp->copy()->endOfDay()->format('Y-m-d H:i:s'),
+                        'label' => $temp->format('d M'),
+                    ];
+                    $temp->addDay();
+                }
+            } else {
+                // Monthly breakdown
+                $temp = $start->copy()->startOfMonth();
+                while ($temp->lte($end)) {
+                    $m_start = $temp->copy()->startOfMonth();
+                    if ($m_start->lt($start)) {
+                        $m_start = $start->copy();
+                    }
+                    $m_end = $temp->copy()->endOfMonth();
+                    if ($m_end->gt($end)) {
+                        $m_end = $end->copy();
+                    }
+                    
+                    $intervals[] = [
+                        'start' => $m_start->format('Y-m-d H:i:s'),
+                        'end' => $m_end->format('Y-m-d H:i:s'),
+                        'label' => $temp->format('M Y'),
+                    ];
+                    $temp->addMonth();
+                }
+            }
+        }
+
+        $chart_data = [];
+        foreach ($intervals as $interval) {
+            $m_invoices = ManualInvoice::where('generated_by', 'admin')
+                ->where('payment_status', 'Paid')
+                ->whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->with('invoiceItems')
+                ->get();
+            
+            $m_sub = 0;
+            $m_mod = 0;
+            $m_lead = 0;
+            foreach ($m_invoices as $inv) {
+                foreach ($inv->invoiceItems as $item) {
+                    $name = strtolower($item->name);
+                    if (str_contains($name, 'lead subscription')) {
+                        $m_lead += $item->price;
+                    } elseif (str_contains($name, 'module')) {
+                        $m_mod += $item->price;
+                    } else {
+                        $m_sub += $item->price;
+                    }
+                }
+            }
+
+            // Add vendor lead subscriptions for this interval
+            $vendor_m_lead = \App\Models\LeadSubscription::whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->with('plan')
+                ->get()
+                ->sum(function ($sub) {
+                    return $sub->plan ? $sub->plan->price : 0;
+                });
+            $m_lead += $vendor_m_lead;
+
+            $m_domain = \App\Models\DomainPurchase::whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->sum('total_amount');
+
+            $chart_data[] = [
+                'month' => $interval['label'],
+                'subscription' => round($m_sub, 2),
+                'module' => round($m_mod, 2),
+                'lead' => round($m_lead, 2),
+                'domain' => round($m_domain, 2),
+            ];
+        }
+
+        return view('admin-views.account.revenue', compact(
+            'preset', 'custom', 'from', 'to',
+            'subscription_income', 'module_income', 'lead_sub_income',
+            'domain_income', 'total_income', 'invoices', 'lead_subscriptions', 'domains', 'chart_data'
+        ));
+    }
     public function send_otp(Request $request)
     {
         $phone = BusinessSetting::where('key', 'phone')->first()?->value;
@@ -267,220 +462,7 @@ class AccountController extends Controller
             return back();
         }
     }
-    public function dashboard_old(Request $request)
-    {
-        $params = [
-            'statistics_type' => $request['statistics_type'] ?? 'overall'
-        ];
-        session()->put('dash_params', $params);
-
-        $data = self::dashboard_order_stats_data();
-        $earning = [];
-        $commission = [];
-        $from = Carbon::now()->startOfYear()->format('Y-m-d');
-        $to = Carbon::now()->endOfYear()->format('Y-m-d');
-
-        $from_day = date('Y-m-01');
-        $to_day = date('Y-m-31');
-
-        $PLStatistics['earning'] = 0;
-        $PLStatistics['commission'] = 0;
-
-
-        if (Config::get('module.current_module_id') == 6) {
-
-            $store_earnings = OrderTransaction::NotRefunded()->where(['vendor_id' => 0])->select(
-                DB::raw('IFNULL(sum(store_amount),0) as earning'),
-                DB::raw('IFNULL(sum(admin_commission + admin_expense - delivery_fee_comission),0) as commission'),
-                DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-            )->whereBetween('created_at', [$from, $to])->groupby('year', 'month')->get()->toArray();
-            for ($inc = 1; $inc <= 12; $inc++) {
-                $earning[$inc] = 0;
-                $commission[$inc] = 0;
-                foreach ($store_earnings as $match) {
-                    if ($match['month'] == $inc) {
-                        $earning[$inc] = $match['earning'];
-                        $commission[$inc] = $match['commission'];
-                    }
-                }
-            }
-
-
-            $statistics = OrderTransaction::NotRefunded()->where(['vendor_id' => 0])->select(
-                DB::raw('IFNULL(sum(store_amount),0) as earning'),
-                DB::raw('IFNULL(sum(admin_commission + admin_expense - delivery_fee_comission),0) as commission'),
-                DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-            )->whereBetween('created_at', [$from_day, $to_day])->groupby('year', 'month')->get()->toArray();
-
-            if (!empty($statistics)) {
-                // prx($statistics);
-                foreach ($statistics as $key => $value) {
-                    $PLStatistics['earning'] += $value['earning'];
-                    $PLStatistics['commission'] +=   $value['commission'];
-                }
-            }
-        } else {
-            $earning = [];
-            $commission = [];
-            $expenses = [];
-
-
-
-            // Fetch monthly earnings
-            $store_earnings = ServiceInvoice::where(['vendor_id' => 0, 'payment_status' => 'Paid'])
-                ->whereBetween('created_at', [$from_day, $to_day])
-                ->select(
-                    DB::raw('IFNULL(sum(total_amount),0) as earning'),
-                    DB::raw('YEAR(created_at) as year, MONTH(created_at) as month')
-                )
-                ->groupBy('year', 'month')
-                ->get()
-                ->toArray();
-
-            // Fetch monthly expenses
-            $store_expenses = DB::table('account_transactions')
-                ->where('from_id', 0)
-                ->where('action', 'debit')
-                ->whereBetween('created_at', [$from_day, $to_day])
-                ->select(
-                    DB::raw('IFNULL(sum(amount),0) as expense'),
-                    DB::raw('YEAR(created_at) as year, MONTH(created_at) as month')
-                )
-                ->groupBy('year', 'month')
-                ->get()
-                ->toArray();
-
-            for ($inc = 1; $inc <= 12; $inc++) {
-                $earning[$inc] = 0;
-                $commission[$inc] = 0;
-
-                // Assign earnings month-wise
-                foreach ($store_earnings as $match) {
-                    if ($match['month'] == $inc) {
-                        $earning[$inc] = $match['earning'];
-                    }
-                }
-
-                // Assign expenses month-wise
-                foreach ($store_expenses as $match) {
-                    if ($match->month == $inc) {
-                        $commission[$inc] = $match->expense;
-                    }
-                }
-            }
-
-            $data['serviceAmountPaid'] = ServiceInvoice::where('vendor_id', 0)->where('payment_status', 'Paid')->whereBetween('created_at', [$from_day, $to_day])->sum('total_amount');
-            $data['serviceAmountUnpaid']  = ServiceInvoice::where('vendor_id', 0)->where('payment_status', 'Unpaid')->whereBetween('created_at', [$from_day, $to_day])->sum('total_amount');
-            $data['manualAmountPaid'] = ManualInvoice::where('vendor_id', 0)->where('payment_status', 'Paid')->whereBetween('created_at', [$from_day, $to_day])->sum('total_amount');
-            $data['manualAmountUnpaid'] = ManualInvoice::where('vendor_id', 0)->where('payment_status', 'Unpaid')->whereBetween('created_at', [$from_day, $to_day])->sum('total_amount');
-            $data['paidInvoicesAmount'] = $data['serviceAmountPaid'] + $data['manualAmountPaid'];
-            $data['unpaidInvoicesAmount'] = $data['serviceAmountUnpaid'] + $data['manualAmountUnpaid'];
-
-
-            $statistics = ServiceInvoice::where(['vendor_id' => 0, 'payment_status' => 'Paid'])->whereBetween('created_at', [$from_day, $to_day])->select('invoice_id', 'total_amount', 'created_at')->get()->toArray();
-            //   prx( $statistics);
-            if (!empty($statistics)) {
-                foreach ($statistics as $key => $value) {
-                    $PLStatistics['earning'] += $value['total_amount'];
-                }
-            }
-        }
-
-        $accountQ = DB::table('account_transactions')->where('from_id', 0)->whereBetween('created_at', [$from_day . ' 00:00:00', $to_day . ' 23:59:59'])->where('from_type', 'store')->whereNot('amount', 0)->where('action', 'debit')->sum('amount');
-        $PLStatistics['commission']  = $accountQ;
-
-        $accountQ2 = DB::table('accounts')->where('store_id', 0)->whereBetween('created_at', [$from_day . ' 00:00:00', $to_day . ' 23:59:59'])->where('status', 'completed')->where('type', 'expense')->whereNot('amount', 0)->sum('amount');
-        $PLStatistics['commission']  += $accountQ2;
-
-        $invoices = DB::table('manual_invoices')->join('users', 'users.id', 'manual_invoices.bill_to')->where('vendor_id', 0)->select('users.f_name', 'users.l_name', 'manual_invoices.*')->whereBetween('manual_invoices.created_at',  [$from_day . ' 00:00:00', $to_day . ' 23:59:59'])->get();
-        $totalAmount = 0;
-        foreach ($invoices as $key => $value) {
-            $items = DB::table('invoice_items')->where('rand_invoice_id', $value->invoice_id)->get();
-            foreach ($items as $key2 => $value2) {
-                $totalAmount +=  _taxIncludedPrice($value2->price * $value2->qty, $value2->tax);
-            }
-        }
-
-        $PLStatistics['commission']  += $totalAmount;
-
-        if (Config::get('module.current_module_id') == 6) {
-            $top_sell = Item::orderBy("order_count", 'desc')
-                ->take(6)
-                ->get();
-            $most_rated_items = Item::orderBy('rating_count', 'desc')
-                ->take(6)
-                ->get();
-            $data['most_rated_items'] = $most_rated_items;
-        } else {
-            $top_sell = Item::withoutGlobalScopes()
-                ->join('stores', function ($join) {
-                    $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
-                })
-                ->leftJoin(
-                    DB::raw('(SELECT service_requests.item_id, COUNT(*) as service_request_count 
-                FROM service_requests 
-                INNER JOIN accepted_service_requests ON service_requests.id = accepted_service_requests.service_request_id 
-                WHERE accepted_service_requests.current_status = "Completed" and accepted_service_requests.vendor_id =  ' . 0 . '
-                GROUP BY service_requests.item_id) as request_counts'),
-                    'items.id',
-                    '=',
-                    'request_counts.item_id'
-                )
-                ->where('stores.active', 1)
-                ->where('stores.id', 0)
-                ->select('items.*', DB::raw('COALESCE(request_counts.service_request_count, 0) as order_count'))
-                ->distinct()
-                ->orderBy('order_count', 'desc')
-                ->take(6)
-                ->get();
-        }
-
-
-
-        $leadStatistics['new'] = DB::table('service_requests')
-            ->join('items', 'service_requests.item_id', '=', 'items.id')
-            ->join('categories', 'items.category_id', '=', 'categories.id')
-            ->join('users', 'service_requests.user_id', '=', 'users.id')
-            ->leftJoin('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->whereNull('accepted_service_requests.tieup')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [0])
-            ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
-            ->select('accepted_service_requests.tieup', 'service_requests.*', 'items.name as item_name', 'items.image as image', 'categories.name as category_name', 'users.f_name as f_name', 'users.id as uid')
-            ->count();
-
-        $leadStatistics['confirmed'] = DB::table('accepted_service_requests')
-            ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-            ->join('items', 'items.id', 'service_requests.item_id')
-            ->where('stores.id', 0)
-            ->where('accepted_service_requests.current_status', 'Confirmed')
-            ->select('service_requests.id as service_id', 'items.name as item_name', 'items.image as item_image',  'accepted_service_requests.*')
-            ->get()
-            ->count();
-
-        $leadStatistics['cancelled'] = DB::table('cancelled_service_requests')
-            ->join('service_requests', 'cancelled_service_requests.service_request_id', 'service_requests.id')
-            ->join('stores', 'stores.id', 'cancelled_service_requests.vendor_id')
-            ->join('items', 'items.id', 'service_requests.item_id')
-            ->where('stores.id', 0)
-            ->select('service_requests.id as service_id', 'items.name as item_name', 'items.image as item_image',  'cancelled_service_requests.*')
-            ->get()
-            ->count();
-
-        $leadStatistics['completed'] = DB::table('accepted_service_requests')
-            ->join('service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
-            ->join('stores', 'stores.id', 'accepted_service_requests.vendor_id')
-            ->join('items', 'items.id', 'service_requests.item_id')
-            ->where('stores.id', 0)
-            ->where('accepted_service_requests.current_status', 'Completed')
-            ->select('service_requests.id as service_id', 'items.name as item_name', 'items.image as item_image',  'accepted_service_requests.*')
-            ->get()
-            ->count();
-
-        $data['top_sell'] = $top_sell;
-
-        return view('admin-views.account.dashboard', compact('data', 'earning', 'commission', 'params', 'PLStatistics', 'leadStatistics'));
-    }
+  
     public function my_bills(Request $request)
     {
         $storephone = BusinessSetting::where('key', 'phone')->first()?->value;

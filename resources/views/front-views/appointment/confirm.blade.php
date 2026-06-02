@@ -123,7 +123,7 @@
         class="btn btn-outline-primary mr-2">
         Back to Store
     </a>
-    <a href="{{ route('front.appointment.book', [request()->city ?? 'city', $store->slug]) }}"
+    <a href="{{ route('front.store.doctors', [request()->city ?? 'city', $store->slug]) }}"
         class="btn btn-primary">
         Book Another
     </a>

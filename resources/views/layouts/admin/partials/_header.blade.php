@@ -139,9 +139,10 @@
                             <div class="dropdown-menu" style="max-height: 300px; overflow-y: auto;">
                             @php $notifications = _getAdminNotifications()['all']; @endphp
                             @foreach( $notifications as $key => $value)
+                               @php $notifUrl = _notificationPath($value->url); @endphp
                                <a class="dropdown-item"
-                                    href="{{ $value->url }}"
-                                    onclick="event.preventDefault(); markNotifReadAndRedirect({{ $value->id }}, '{{ $value->url }}')"
+                                    href="{{ $notifUrl }}"
+                                    onclick="event.preventDefault(); markNotifReadAndRedirect({{ $value->id }}, '{{ $notifUrl }}')"
                                     style="{{ !$value->is_read ? 'background-color:#ecffec;' : '' }}">
                                         <b>{{ $value->title }}</b>
                                         <p>{{ $value->message }}</p>

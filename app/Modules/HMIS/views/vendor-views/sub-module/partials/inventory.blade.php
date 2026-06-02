@@ -31,7 +31,7 @@
                         </ul>
                         <a href="{{ route('vendor.sub-module.list', ['inventory-management']) }}"
                             class="btn btn-primary btn-block" style="background-color: #61005a !important;">Enable
-                            Inventory Management</a>
+                            {{ _moduleLabel('inventory_manage') }}</a>
                     </div>
                 </div>
                 @endif

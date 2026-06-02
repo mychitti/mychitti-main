@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Inventory Management')
+@section('title', _moduleLabel('inventory_manage'))
 
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/tags-input.min.css') }}" rel="stylesheet">
@@ -35,7 +35,7 @@
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header d-flex flex-wrap justify-content-between align-items-start w-100">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>Inventory Management</h1>
+            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ _moduleLabel('inventory_manage') }}</h1>
             <div class="d-none d-md-block">
                 <ul class="nav nav-pills d-flex justify-content-center flex-nowrap" id="pills-tab" role="tablist">
                     @if (hasPermission('inventory_item', 'list'))

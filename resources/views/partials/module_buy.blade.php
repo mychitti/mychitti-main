@@ -105,7 +105,7 @@
                               <div class="pc-module-top">
                                   <input type="checkbox" class="pc-checkbox pc-module-check"
                                       data-module-id="{{ $module->id }}">
-                                  <div class="pc-module-name">{{ $module->name }}</div>
+                                  <div class="pc-module-name">{{ _moduleDisplayName($module->Key ?? null, $module->name) }}</div>
                                   <div class="pc-price-amount">
                                       @if ($isHospitalModule)
                                           @if ($bedTier)

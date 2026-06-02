@@ -26,7 +26,7 @@
                             <p class="appt-subtitle">Consult our doctors — pick a slot that works for you</p>
                         </div>
                     </div>
-                    {{-- <a href="{{ route('front.appointment.book', [request()->segment(1), $store->slug]) }}"
+                    {{-- <a href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}"
                         class="appt-btn-full">
                         View All Doctors & Book
                     </a> --}}
@@ -40,8 +40,14 @@
                             $initial = strtoupper(substr($d->employee?->f_name ?? 'D', 0, 1));
                         @endphp
                         <a class="appt-doctor-card"
-                            href="javascript:;">
-                            <div class="appt-doc-avatar">{{ $initial }}</div>
+                            href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}">
+                            @if ($d->employee?->image)
+                                <img class="appt-doc-avatar" src="{{ asset('storage/app/public/vendor/' . $d->employee->image) }}"
+                                    alt="{{ trim($name) }}"
+                                    onerror="this.onerror=null; this.outerHTML='<div class=&quot;appt-doc-avatar&quot;>{{ $initial }}</div>';">
+                            @else
+                                <div class="appt-doc-avatar">{{ $initial }}</div>
+                            @endif
                             <div class="appt-doc-info">
                                 <p class="appt-doc-name">{{ trim($name) }}</p>
                                 <p class="appt-doc-spec">{{ $d->specialization }}</p>
@@ -57,7 +63,7 @@
 
                     @if ($doctors->count() > 4)
                         <a class="appt-doctor-card appt-more-card"
-                            href="{{ route('front.appointment.book', [request()->segment(1), $store->slug]) }}">
+                            href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}">
                             <div class="appt-doc-avatar" style="background:#f3f4f6; color:#6b7280;">
                                 +{{ $doctors->count() - 4 }}
                             </div>
@@ -65,7 +71,7 @@
                                 <p class="appt-doc-name">More Doctors</p>
                                 <p class="appt-doc-spec">View all available</p>
                             </div>
-                            <span class="appt-book-badge">View →</span>
+                            <a class="btn btn-primary text-white">View</a>
                         </a>
                     @endif
                 </div>
@@ -176,6 +182,7 @@
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
+                object-fit: cover;
             }
 
             .appt-doc-info {

@@ -420,6 +420,8 @@
                             <button class="btn action-btn btn-outline-primary d-block d-sm-none" type="button"
                                 data-toggle="modal" data-target="#addTNCModal">
                                 + </button>
+                        @else
+                            Available in paid subscription.
                         @endif
                     </div>
                     @if (hasPermission('billing_tnc', 'list'))

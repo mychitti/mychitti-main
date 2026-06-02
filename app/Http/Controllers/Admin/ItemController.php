@@ -1384,7 +1384,7 @@ class ItemController extends Controller
 
     Toastr::success('Lead charges saved successfully');
 
-    return redirect()->route('admin.service.lead-charge-list');
+    return redirect()->route('admin.pricing.index', ['tab' => 'lead-charges']);
 }
 
     public function lead_charge_update(Request $request)

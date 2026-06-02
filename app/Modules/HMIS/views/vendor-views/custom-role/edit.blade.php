@@ -102,7 +102,7 @@
                                 <input type="checkbox" name="modules[]" value="inventory_manage"
                                     class="form-check-input granular_permission_check" id="inventory_manage"
                                     {{ in_array('inventory_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label " for="inventory_manage">Inventory Manage</label>
+                                <label class="form-check-label " for="inventory_manage">{{ _moduleLabel('inventory_manage') }}</label>
                             </div>
                         </div>
                         @endif

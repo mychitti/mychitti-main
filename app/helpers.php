@@ -5318,7 +5318,7 @@ if (!function_exists('_isHospital')) {
     function _isHospital()
     {
         $store = Helpers::get_store_data();
-        return strtolower($store->business_type) == 'hospital';
+        return $store ? strtolower($store->business_type ?? '') === 'hospital' : false;
     }
 }
 if (!function_exists('_currentFinancialYear')) {
@@ -5341,7 +5341,7 @@ if (!function_exists('_moduleLabel')) {
         ];
 
         $hospitalOverrides = [
-            'inventory_manage' => 'Pharmacy',
+            'inventory_manage' => 'Pharmacy Management',
             'inventory' => 'Pharmacy',
             'leads_manage' => 'Appointment Management',
         ];
@@ -5351,6 +5351,21 @@ if (!function_exists('_moduleLabel')) {
         }
 
         return $labels[$key] ?? $key;
+    }
+}
+if (!function_exists('_moduleDisplayName')) {
+    /**
+     * Display name for a purchasable module/plan. For keys that have a
+     * hospital-specific label (e.g. inventory_manage -> Pharmacy Management)
+     * the override is used; otherwise the stored DB name/title is shown.
+     */
+    function _moduleDisplayName(?string $key, ?string $fallback = null): string
+    {
+        $overridable = ['inventory_manage', 'inventory', 'leads_manage'];
+        if ($key && in_array($key, $overridable, true)) {
+            return _moduleLabel($key);
+        }
+        return $fallback ?? ($key ?? '');
     }
 }
 if (!function_exists('_sendSMS')) {

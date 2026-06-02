@@ -12,7 +12,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title" id="exampleModalLabel">Add New Inventory Item</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Add New {{ _moduleLabel('inventory') }} Item</h5>
                     <i class="tio-info-outlined"></i> Marked Fields Are Required
                 </div>
                 <button type="button" class="close inv_close_btn" data-dismiss="modal" aria-label="Close">

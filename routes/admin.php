@@ -321,6 +321,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
 
         //  ============================= ACCOUNT MANAGEMENT =================================
         Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['planwise:account_manage']], function () {
+            Route::get('revenue', 'AccountController@revenue')->name('revenue');
             Route::post('reset_accounts_module', 'AccountController@reset_accounts_module')->name('reset_accounts_module')->middleware('permission:settings_common,reset');
             Route::post('send_otp', 'AccountController@send_otp')->name('send_otp');
             Route::post('fetchEmployees', 'AccountController@fetchEmployees')->name('fetchEmployees');
@@ -1900,6 +1901,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['module:report']], function () {
                 Route::get('order', 'ReportController@order_index')->name('order');
                 Route::get('day-wise-report', 'ReportController@day_wise_report')->name('day-wise-report');
+                Route::get('income-sources', 'ReportController@income_sources')->name('income-sources');
                 Route::get('item-wise-report', 'ReportController@item_wise_report')->name('item-wise-report');
                 Route::get('item-wise-export', 'ReportController@item_wise_export')->name('item-wise-export');
                 Route::post('item-wise-report-search', 'ReportController@item_search')->name('item-wise-report-search');

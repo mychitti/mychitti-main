@@ -155,7 +155,7 @@
                         <button type="button" class="btn btn-dark btn-sm" onclick="addMoreRow()">+ Add
                             Item</button>
                         <button type="button" class="btn btn-dark btn-sm" data-toggle="modal"
-                            data-target="#inventoryItemModal">+ Add From Inventory</button>
+                            data-target="#inventoryItemModal">+ Add From {{ _moduleLabel('inventory') }}</button>
                         <table class="table">
                             <thead class="" style=" background: #75b8b8; color: white;">
                                 <tr>

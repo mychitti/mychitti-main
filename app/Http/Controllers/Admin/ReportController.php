@@ -3406,4 +3406,187 @@ class ReportController extends Controller
         return Excel::download(new DisbursementReportExport($data), 'DisbursementReport.xlsx');
 
     }
+
+    public function income_sources(Request $request)
+    {
+        $preset = $request->query('date_range', 'this_year');
+        $custom = $request->query('custom_date_range');
+        $from = null;
+        $to = null;
+
+        if ($preset !== 'all_time') {
+            try {
+                $range = Helpers::calculatePresetDates($preset, $custom);
+                $from = $range['start']->toDateString();
+                $to = $range['end']->toDateString();
+            } catch (\Exception $e) {
+                $preset = 'this_year';
+                try {
+                    $range = Helpers::calculatePresetDates($preset);
+                    $from = $range['start']->toDateString();
+                    $to = $range['end']->toDateString();
+                } catch (\Exception $ex) {
+                    $preset = 'all_time';
+                }
+            }
+        }
+
+        // Date range helper for query
+        $applyDateFilter = function ($query) use ($from, $to, $preset) {
+            if ($preset === 'all_time') {
+                return $query;
+            }
+            return $query->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        };
+
+        // 1. Admin Manual Invoices (Paid)
+        $invoicesQuery = \App\Models\ManualInvoice::where('generated_by', 'admin')
+            ->where('payment_status', 'Paid')
+            ->with(['invoiceItems', 'websiteVendor']);
+        $invoicesQuery = $applyDateFilter($invoicesQuery);
+        $invoices = $invoicesQuery->latest()->get();
+
+        $subscription_income = 0;
+        $manual_lead_income = 0;
+
+        $manual_lead_invoices = [];
+        $general_invoices = [];
+
+        foreach ($invoices as $invoice) {
+            $invoice->invoice_type = 'Subscription Plan';
+            $has_lead = false;
+            foreach ($invoice->invoiceItems as $item) {
+                $name = strtolower($item->name);
+                if (str_contains($name, 'lead subscription')) {
+                    $manual_lead_income += $item->price;
+                    $has_lead = true;
+                } else {
+                    $subscription_income += $item->price;
+                }
+            }
+            if ($has_lead) {
+                $invoice->invoice_type = 'Lead Subscription';
+                $manual_lead_invoices[] = $invoice;
+            } else {
+                $general_invoices[] = $invoice;
+            }
+        }
+        $invoices = collect($general_invoices);
+
+        // 1.5. Vendor purchased Lead Subscriptions
+        $leadSubscriptionsQuery = \App\Models\LeadSubscription::with(['store', 'plan']);
+        $leadSubscriptionsQuery = $applyDateFilter($leadSubscriptionsQuery);
+        $lead_subscriptions = $leadSubscriptionsQuery->latest()->get();
+
+        $vendor_lead_income = $lead_subscriptions->sum(function ($sub) {
+            return $sub->plan ? $sub->plan->price : 0;
+        });
+
+        $lead_sub_income = $vendor_lead_income + $manual_lead_income;
+
+        // 2. Custom Domain Purchase Income
+        $domainPurchaseQuery = \App\Models\DomainPurchase::query();
+        $domainPurchaseQuery = $applyDateFilter($domainPurchaseQuery);
+        $domain_income = $domainPurchaseQuery->sum('total_amount');
+        $domains = $domainPurchaseQuery->with('store')->latest()->get();
+
+        // Overall total
+        $total_income = $subscription_income + $lead_sub_income + $domain_income;
+
+        // Dynamic trend intervals based on date range filter
+        $intervals = [];
+        if ($preset === 'all_time') {
+            for ($i = 5; $i >= 0; $i--) {
+                $intervals[] = [
+                    'start' => now()->subMonths($i)->startOfMonth()->format('Y-m-d H:i:s'),
+                    'end' => now()->subMonths($i)->endOfMonth()->format('Y-m-d H:i:s'),
+                    'label' => now()->subMonths($i)->format('M Y'),
+                ];
+            }
+        } else {
+            $start = \Carbon\Carbon::parse($from)->startOfDay();
+            $end = \Carbon\Carbon::parse($to)->endOfDay();
+            $diffInDays = $start->diffInDays($end);
+
+            if ($diffInDays <= 31) {
+                // Daily breakdown
+                $temp = $start->copy();
+                while ($temp->lte($end)) {
+                    $intervals[] = [
+                        'start' => $temp->copy()->startOfDay()->format('Y-m-d H:i:s'),
+                        'end' => $temp->copy()->endOfDay()->format('Y-m-d H:i:s'),
+                        'label' => $temp->format('d M'),
+                    ];
+                    $temp->addDay();
+                }
+            } else {
+                // Monthly breakdown
+                $temp = $start->copy()->startOfMonth();
+                while ($temp->lte($end)) {
+                    $m_start = $temp->copy()->startOfMonth();
+                    if ($m_start->lt($start)) {
+                        $m_start = $start->copy();
+                    }
+                    $m_end = $temp->copy()->endOfMonth();
+                    if ($m_end->gt($end)) {
+                        $m_end = $end->copy();
+                    }
+                    
+                    $intervals[] = [
+                        'start' => $m_start->format('Y-m-d H:i:s'),
+                        'end' => $m_end->format('Y-m-d H:i:s'),
+                        'label' => $temp->format('M Y'),
+                    ];
+                    $temp->addMonth();
+                }
+            }
+        }
+
+        $chart_data = [];
+        foreach ($intervals as $interval) {
+            $m_invoices = \App\Models\ManualInvoice::where('generated_by', 'admin')
+                ->where('payment_status', 'Paid')
+                ->whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->with('invoiceItems')
+                ->get();
+            
+            $m_sub = 0;
+            $m_lead = 0;
+            foreach ($m_invoices as $inv) {
+                foreach ($inv->invoiceItems as $item) {
+                    $name = strtolower($item->name);
+                    if (str_contains($name, 'lead subscription')) {
+                        $m_lead += $item->price;
+                    } else {
+                        $m_sub += $item->price;
+                    }
+                }
+            }
+
+            // Add vendor lead subscriptions for this interval
+            $vendor_m_lead = \App\Models\LeadSubscription::whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->with('plan')
+                ->get()
+                ->sum(function ($sub) {
+                    return $sub->plan ? $sub->plan->price : 0;
+                });
+            $m_lead += $vendor_m_lead;
+
+            $m_domain = \App\Models\DomainPurchase::whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->sum('total_amount');
+
+            $chart_data[] = [
+                'month' => $interval['label'],
+                'subscription' => round($m_sub, 2),
+                'lead' => round($m_lead, 2),
+                'domain' => round($m_domain, 2),
+            ];
+        }
+
+        return view('admin-views.report.income-sources', compact(
+            'preset', 'custom', 'from', 'to',
+            'subscription_income', 'lead_sub_income',
+            'domain_income', 'total_income', 'invoices', 'lead_subscriptions', 'domains', 'chart_data'
+        ));
+    }
 }

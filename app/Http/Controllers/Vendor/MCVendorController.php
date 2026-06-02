@@ -89,7 +89,7 @@ class MCVendorController extends Controller
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
-        $vendor_modules = VendorModuleInstruction::all();
+        $vendor_modules = VendorModuleInstruction::where('status', 1)->get();
         $lines = DataSetting::whereIn('key', ['mc_first_line', 'mc_second_line', 'mc_third_line'])->get();
 
         $sub_modules = SubModule::all();
@@ -101,7 +101,7 @@ class MCVendorController extends Controller
         $plans = Plan::where('status', 1)->get();
         $features = DB::table('subscription_modules')->where('status', 1)->get();
 
-        $vendor_modules = VendorModuleInstruction::all();
+        $vendor_modules = VendorModuleInstruction::where('status', 1)->get();
         $lines = DataSetting::whereIn('key', ['mc_first_line', 'mc_second_line', 'mc_third_line'])->get();
 
         $sub_modules = SubModule::all();

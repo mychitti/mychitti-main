@@ -113,7 +113,7 @@
                             Item</button>
                         @if (_isSubscription())
                             <button type="button" class="btn text-primary p-1" data-toggle="modal"
-                                data-target="#inventoryItemModal">+ Add From Inventory</button>
+                                data-target="#inventoryItemModal">+ Add From {{ _moduleLabel('inventory') }}</button>
                         @endif
                     </div>
                     <table class="items-table">
@@ -141,7 +141,7 @@
                             <p>Search existing products to add to this list to get started 🚀</p>
 
                             <button type="button" class="btn btn-outline-primary" data-toggle="modal"
-                                data-target="#inventoryItemModal">+ Add From Inventory</button>
+                                data-target="#inventoryItemModal">+ Add From {{ _moduleLabel('inventory') }}</button>
                         @else
                             <p>Start adding products to this list to get started 🚀</p>
                             <button type="button" class="btn btn-outline-primary" onclick="addMoreRow()">+ Add

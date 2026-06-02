@@ -281,7 +281,7 @@
                 <div class="d-flex justify-content-between">
                     <img src="https://dummyimage.com/40x40/000/fff&text=PM" alt="Inventory logo" class="addon-logo">
                 </div>
-                <div class="addon-title">Inventory Management</div>
+                <div class="addon-title">{{ _moduleLabel('inventory_manage') }}</div>
                 <div class="addon-subtitle">Sales Tools</div>
                 <p class="addon-description">Manage your inventory with precision and ease..</p>
                 <div class="action-buttons">

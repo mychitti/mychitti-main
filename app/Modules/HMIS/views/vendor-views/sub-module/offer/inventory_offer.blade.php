@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Inventory Management')
+@section('title', _moduleLabel('inventory_manage'))
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">

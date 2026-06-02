@@ -28,7 +28,7 @@
 
 
         <div class="row">
-           
+
             <div class="col-md-6">
                 {{-- Serial Number Settings --}}
                 <div class="card mb-1">
@@ -87,7 +87,7 @@
                     </div>
                 </div>
             </div>
-             <div class="col-md-6">
+            <div class="col-md-6">
 
                 {{-- Invoice Template --}}
                 <div class="card mb-1">
@@ -151,7 +151,7 @@
                                     +
                                 </button>
                             </div>
-                            @else 
+                        @else
                             Available in paid subscription.
                         @endif
                     </div>
@@ -237,7 +237,7 @@
                                 data-toggle="modal" data-target="#addSignModal">
                                 + </button>
                             @include('vendor-views/business-settings/partials/_add_new_sign')
-                                @else 
+                        @else
                             Available in paid subscription.
                         @endif
                     </div>
@@ -382,18 +382,17 @@
                             </div>
                             <div class="col-sm-3 p-2 mb-3">
                                 <div class="form-group mb-0">
-                                    <label for="paid_unpaid_options">  Paid and Unpaid Options <span class="form-label-secondary" data-toggle="tooltip"
-                                        data-placement="right"
-                                        data-original-title="{{ translate('messages.if selected paid/unpaid then both options will show in bill generate form') }}"><img
-                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"></span></label>
-                                    <select name="paid_unpaid_options" id="paid_unpaid_options"
-                                        class="form-control">
+                                    <label for="paid_unpaid_options"> Paid and Unpaid Options <span
+                                            class="form-label-secondary" data-toggle="tooltip" data-placement="right"
+                                            data-original-title="{{ translate('messages.if selected paid/unpaid then both options will show in bill generate form') }}"><img
+                                                src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"></span></label>
+                                    <select name="paid_unpaid_options" id="paid_unpaid_options" class="form-control">
                                         <option value="paid_unpaid"
                                             {{ $store->storeConfig?->paid_unpaid_options === 'paid_unpaid' ? 'selected' : '' }}>
                                             Paid/Unpaid</option>
                                         <option value="paid_only"
                                             {{ $store->storeConfig?->paid_unpaid_options === 'paid_only' ? 'selected' : '' }}>
-                                            Paid Only</option>                                     
+                                            Paid Only</option>
                                     </select>
                                 </div>
                             </div>
@@ -420,6 +419,8 @@
                             <button class="btn action-btn btn-outline-primary d-block d-sm-none" type="button"
                                 data-toggle="modal" data-target="#addTNCModal">
                                 + </button>
+                        @else
+                            Available in paid subscription.
                         @endif
                     </div>
                     @if (hasPermission('billing_tnc', 'list'))

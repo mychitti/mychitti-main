@@ -299,7 +299,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
     Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');
-    Route::get('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'show'])->name('front.appointment.book');
+    Route::get('{city}/store/{slug}/doctors', [FrontAppointmentController::class, 'show'])->name('front.store.doctors');
     Route::post('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'book'])->name('front.appointment.store');
     Route::get('{city}/store/{slug}/appointment/{id}/confirm', [FrontAppointmentController::class, 'confirm'])->name('front.appointment.confirm');
     Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');

@@ -17,6 +17,13 @@
                            <span class="text-truncate">Dashboard</span>
                        </a>
                    </li>
+                   <li class="navbar-vertical-aside-has-menu {{ Request::is('account/revenue') ? 'active' : '' }}">
+                       <a class="nav-link " href="{{ route('admin.account.revenue') }}"
+                           title="{{ translate('Revenue') }}">
+                           <span class="tio-money nav-icon"></span>
+                           <span class="text-truncate">Revenue</span>
+                       </a>
+                   </li>
                @endif
 
 

@@ -95,7 +95,7 @@
                                                 @if ($m == 'bank_info')
                                                     {{ translate('messages.profile') }}
                                                 @else
-                                                    {{ translate(str_replace('_', ' ', $m)) }}
+                                                    {{ _moduleDisplayName($m, translate(str_replace('_', ' ', $m))) }}
                                                 @endif
 
 
