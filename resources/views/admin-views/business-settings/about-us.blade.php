@@ -2,9 +2,6 @@
 
 @section('title',translate('messages.about_us'))
 
-@push('css_or_js')
-@include('admin-views/partials/_ckeditor_form_submit')
-@endpush
 
 @section('content')
     <div class="content container-fluid">
@@ -33,7 +30,12 @@
 
                         <div class="form-group">
                             <label for="about_us">{{ translate('messages.about_us_description') }}</label>
-                            <textarea id="editor" class=" form-control" name="about_us[]">{!! $about_us?->getRawOriginal('value') ?? '' !!}</textarea>
+                            @include('admin-views.partials._rich_editor', [
+                                'name'      => 'about_us[]',
+                                'value'     => $about_us?->getRawOriginal('value') ?? '',
+                                'id'        => 'aboutus',
+                                'uploadUrl' => route('testing.upload-image'),
+                            ])
                         </div>
                         <input type="hidden" name="lang[]" value="default">
                     </div>

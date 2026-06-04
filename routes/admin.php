@@ -322,6 +322,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
         //  ============================= ACCOUNT MANAGEMENT =================================
         Route::group(['prefix' => 'account', 'as' => 'account.', 'middleware' => ['planwise:account_manage']], function () {
             Route::get('revenue', 'AccountController@revenue')->name('revenue');
+            Route::get('spending-vendors', 'AccountController@spending_vendors')->name('spending-vendors');
             Route::post('reset_accounts_module', 'AccountController@reset_accounts_module')->name('reset_accounts_module')->middleware('permission:settings_common,reset');
             Route::post('send_otp', 'AccountController@send_otp')->name('send_otp');
             Route::post('fetchEmployees', 'AccountController@fetchEmployees')->name('fetchEmployees');

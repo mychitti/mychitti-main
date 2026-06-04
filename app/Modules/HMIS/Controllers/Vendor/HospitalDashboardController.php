@@ -13,7 +13,6 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\Ward;
 use Illuminate\Http\Request;
-use App\Models\BusinessSetting;
 use Illuminate\Support\Facades\DB;
 
 class HospitalDashboardController extends Controller
@@ -149,9 +148,12 @@ class HospitalDashboardController extends Controller
     public function settings()
     {
         $store_id = Helpers::get_store_id();
-        $prefix   = Helpers::get_business_settings('patient_uid_prefix_' . $store_id) ?? 'P';
-        $padding  = (int)(Helpers::get_business_settings('patient_uid_padding_' . $store_id) ?? 5);
-        $serial   = (int)(Helpers::get_business_settings('patient_uid_serial_' . $store_id) ?? 1);
+        $config   = \App\Models\StoreConfig::where('store_id', $store_id)->first();
+        $prefix   = $config?->patient_uid_prefix ?? 'P';
+        $padding  = (int) ($config?->patient_uid_padding ?? 5);
+        $serial   = (int) ($config?->patient_uid_serial ?? 1);
+        $opd_consultation_count          = (int) ($config?->opd_consultation_count ?? 1);
+        $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
 
         $lastUid  = Patient::where('store_id', $store_id)->orderByDesc('id')->value('patient_uid');
         $autoNext = 1;
@@ -161,7 +163,7 @@ class HospitalDashboardController extends Controller
         $nextSerial  = max($autoNext, $serial);
         $previewMuid = strtoupper($prefix) . '-' . str_pad($nextSerial, $padding, '0', STR_PAD_LEFT);
 
-        return view('hmis::vendor.hospital.settings', compact('prefix', 'padding', 'serial', 'previewMuid'));
+        return view('hmis::vendor.hospital.settings', compact('prefix', 'padding', 'serial', 'previewMuid', 'opd_consultation_count', 'opd_consultation_validity_days'));
     }
 
     public function saveSettings(Request $request)
@@ -170,21 +172,34 @@ class HospitalDashboardController extends Controller
             'prefix'  => 'required|string|max:10|alpha_dash',
             'padding' => 'required|integer|min:1|max:10',
             'serial'  => 'required|integer|min:1',
+            'opd_consultation_count'         => 'required|integer|min:1|max:50',
+            'opd_consultation_validity_days' => 'required|integer|min:1|max:365',
         ]);
 
         $store_id = Helpers::get_store_id();
 
-        BusinessSetting::updateOrInsert(
-            ['key' => 'patient_uid_prefix_' . $store_id],
-            ['value' => strtoupper($request->prefix), 'updated_at' => now()]
-        );
-        BusinessSetting::updateOrInsert(
-            ['key' => 'patient_uid_padding_' . $store_id],
-            ['value' => $request->padding, 'updated_at' => now()]
-        );
-        BusinessSetting::updateOrInsert(
-            ['key' => 'patient_uid_serial_' . $store_id],
-            ['value' => $request->serial, 'updated_at' => now()]
+        $cfgTable = (new \App\Models\StoreConfig)->getTable();
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'patient_uid_prefix')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
+                ADD COLUMN `patient_uid_prefix` VARCHAR(10) NULL,
+                ADD COLUMN `patient_uid_padding` INT NULL,
+                ADD COLUMN `patient_uid_serial` INT NULL");
+        }
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'opd_consultation_count')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
+                ADD COLUMN `opd_consultation_count` INT NULL,
+                ADD COLUMN `opd_consultation_validity_days` INT NULL");
+        }
+
+        \App\Models\StoreConfig::updateOrInsert(
+            ['store_id' => $store_id],
+            [
+                'patient_uid_prefix'             => strtoupper($request->prefix),
+                'patient_uid_padding'            => (int) $request->padding,
+                'patient_uid_serial'             => (int) $request->serial,
+                'opd_consultation_count'         => (int) $request->opd_consultation_count,
+                'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
+            ]
         );
 
         \Brian2694\Toastr\Facades\Toastr::success('Hospital settings saved.');

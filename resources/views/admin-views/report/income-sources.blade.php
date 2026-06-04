@@ -52,6 +52,7 @@
         .kpi-module .icon-container { background: rgba(153, 102, 255, 0.1); color: #9966ff; }
         .kpi-lead .icon-container { background: rgba(255, 205, 86, 0.15); color: #ffcd56; }
         .kpi-domain .icon-container { background: rgba(201, 203, 207, 0.15); color: #8a94a6; }
+        .kpi-wallet .icon-container { background: rgba(6, 182, 212, 0.1); color: #06b6d4; }
 
         .income-kpi-card .kpi-label {
             font-size: 11px;
@@ -214,7 +215,7 @@
         <!-- KPI Cards Grid -->
         <div class="row g-3 mb-4">
             <!-- Total Income -->
-            <div class="col-md-6 col-lg-3">
+            <div class="col">
                 <div class="card income-kpi-card kpi-total">
                     <div class="card-body">
                         <div>
@@ -232,7 +233,7 @@
             </div>
 
             <!-- Subscription Plans -->
-            <div class="col-md-6 col-lg-3">
+            <div class="col">
                 <div class="card income-kpi-card kpi-subscription">
                     <div class="card-body">
                         <div>
@@ -250,7 +251,7 @@
             </div>
 
             <!-- Lead Subscriptions -->
-            <div class="col-md-6 col-lg-3">
+            <div class="col">
                 <div class="card income-kpi-card kpi-lead">
                     <div class="card-body">
                         <div>
@@ -268,7 +269,7 @@
             </div>
 
             <!-- Custom Domains -->
-            <div class="col-md-6 col-lg-3">
+            <div class="col">
                 <div class="card income-kpi-card kpi-domain">
                     <div class="card-body">
                         <div>
@@ -280,6 +281,24 @@
                         </div>
                         <div class="icon-container">
                             <i class="tio-globe"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Recharges -->
+            <div class="col">
+                <div class="card income-kpi-card kpi-wallet">
+                    <div class="card-body">
+                        <div>
+                            <div class="kpi-label">{{ translate('Wallet Recharges') }}</div>
+                            <div class="kpi-value-container">
+                                <span class="currency-symbol">{{ \App\CentralLogics\Helpers::currency_symbol() }}</span>
+                                <span class="kpi-value">{{ number_format($wallet_recharge_income, 2) }}</span>
+                            </div>
+                        </div>
+                        <div class="icon-container">
+                            <i class="tio-wallet"></i>
                         </div>
                     </div>
                 </div>
@@ -344,6 +363,7 @@
                                     ['label' => translate('Subscription Plans'), 'val' => $subscription_income, 'pct' => ($subscription_income / $total_calc) * 100, 'clr' => '#ff9f40'],
                                     ['label' => translate('Lead Plans'), 'val' => $lead_sub_income, 'pct' => ($lead_sub_income / $total_calc) * 100, 'clr' => '#ffcd56'],
                                     ['label' => translate('Custom Domains'), 'val' => $domain_income, 'pct' => ($domain_income / $total_calc) * 100, 'clr' => '#8a94a6'],
+                                    ['label' => translate('Wallet Recharges'), 'val' => $wallet_recharge_income, 'pct' => ($wallet_recharge_income / $total_calc) * 100, 'clr' => '#06b6d4'],
                                 ];
                             @endphp
 
@@ -387,6 +407,12 @@
                             {{ translate('Custom Domains') }} ({{ count($domains) }})
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="wallet-tab" data-toggle="tab" href="#wallet" role="tab" aria-controls="wallet" aria-selected="false">
+                            <i class="tio-wallet mr-1"></i>
+                            {{ translate('Wallet Recharges') }} ({{ count($wallet_recharges) }})
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -413,7 +439,11 @@
                                         <tr>
                                             <td>{{ $key + 1 }}</td>
                                             <td>
+                                            @if($invoice->pdf)
+                                              <a href="{{asset('storage/invoice') . '/' . $invoice->pdf}}"><span class="font-weight-bold">{{ $invoice->invoice_id }}</span></a>  
+                                            @else 
                                                 <span class="font-weight-bold text-dark">{{ $invoice->invoice_id }}</span>
+                                            @endif
                                             </td>
                                             <td>
                                                 @if ($invoice->websiteVendor)
@@ -583,6 +613,51 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Wallet Recharges Tab -->
+                    <div class="tab-pane fade" id="wallet" role="tabpanel" aria-labelledby="wallet-tab">
+                        <div class="table-responsive">
+                            <table class="table table-borderless table-thead-bordered table-align-middle card-table">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width: 60px;">{{ translate('sl') }}</th>
+                                        <th>{{ translate('Store Name') }}</th>
+                                        <th>{{ translate('Recharge Date') }}</th>
+                                        <th>{{ translate('Reason') }}</th>
+                                        <th class="text-right">{{ translate('Amount') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($wallet_recharges as $key => $recharge)
+                                        <tr>
+                                            <td>{{ $key + 1 }}</td>
+                                            <td>
+                                                @if ($recharge->store)
+                                                    <a href="{{ route('admin.store.view', $recharge->from_id) }}" class="font-weight-bold">
+                                                        {{ $recharge->store->name }}
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted">{{ translate('N/A') }}</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ \App\CentralLogics\Helpers::date_format($recharge->created_at) }}</td>
+                                            <td><span class="text-muted">{{ $recharge->reason }}</span></td>
+                                            <td class="text-right">
+                                                <span class="font-weight-bold text-dark">{{ \App\CentralLogics\Helpers::format_currency($recharge->amount) }}</span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-5">
+                                                <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" class="mb-3" style="width: 80px;" alt="public">
+                                                <h5 class="text-muted">{{ translate('no_data_found') }}</h5>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -618,6 +693,7 @@
             var subscriptionData = trendData.map(item => item.subscription);
             var leadData = trendData.map(item => item.lead);
             var domainData = trendData.map(item => item.domain);
+            var walletData = trendData.map(item => item.wallet);
 
             // Create Premium Gradients
             var subGradient = ctxTrend.createLinearGradient(0, 0, 0, 350);
@@ -631,6 +707,10 @@
             var domGradient = ctxTrend.createLinearGradient(0, 0, 0, 350);
             domGradient.addColorStop(0, '#a4b3c6');
             domGradient.addColorStop(1, '#8a94a6');
+
+            var walletGradient = ctxTrend.createLinearGradient(0, 0, 0, 350);
+            walletGradient.addColorStop(0, '#22d3ee');
+            walletGradient.addColorStop(1, '#06b6d4');
 
             var trendChart = new Chart(ctxTrend, {
                 type: 'bar',
@@ -662,6 +742,15 @@
                             hoverBackgroundColor: '#748094',
                             borderColor: '#8a94a6',
                             hoverBorderColor: '#748094',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '{{ translate('Wallet Recharges') }}',
+                            data: walletData,
+                            backgroundColor: walletGradient,
+                            hoverBackgroundColor: '#0891b2',
+                            borderColor: '#06b6d4',
+                            hoverBorderColor: '#0891b2',
                             borderWidth: 1
                         }
                     ]
@@ -738,15 +827,17 @@
                     labels: [
                         '{{ translate('Subscriptions') }}',
                         '{{ translate('Lead Plans') }}',
-                        '{{ translate('Custom Domains') }}'
+                        '{{ translate('Custom Domains') }}',
+                        '{{ translate('Wallet Recharges') }}'
                     ],
                     datasets: [{
                         data: [
                             {{ $subscription_income }},
                             {{ $lead_sub_income }},
-                            {{ $domain_income }}
+                            {{ $domain_income }},
+                            {{ $wallet_recharge_income }}
                         ],
-                        backgroundColor: ['#ff9f40', '#ffcd56', '#8a94a6'],
+                        backgroundColor: ['#ff9f40', '#ffcd56', '#8a94a6', '#06b6d4'],
                         hoverOffset: 4,
                         borderWidth: 2,
                         borderColor: '#ffffff'

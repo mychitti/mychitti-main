@@ -29,6 +29,9 @@
                 <i class="tio-receipt"></i> Generate Bill
             </a>
         @endif
+            <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}" target="_blank" class="btn btn-sm btn-outline-info">
+                <i class="tio-receipt-outlined"></i> OP Receipt
+            </a>
             <a href="{{ route('vendor.opd.index') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-arrow-backward"></i> Register
             </a>

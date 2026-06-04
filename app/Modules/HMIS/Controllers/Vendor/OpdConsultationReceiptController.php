@@ -1,0 +1,286 @@
+<?php
+
+namespace App\Modules\HMIS\Controllers\Vendor;
+
+use App\CentralLogics\Helpers;
+use App\Http\Controllers\Controller;
+use App\Models\OpdConsultationReceipt;
+use App\Models\OpdVisit;
+use App\Models\Store;
+use App\Models\StoreConfig;
+use Brian2694\Toastr\Facades\Toastr;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
+
+class OpdConsultationReceiptController extends Controller
+{
+    private function ensureSchema(): void
+    {
+        if (!Schema::hasTable('opd_consultation_receipts')) {
+            DB::statement("
+                CREATE TABLE IF NOT EXISTS opd_consultation_receipts (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    store_id BIGINT UNSIGNED NOT NULL,
+                    patient_id BIGINT UNSIGNED NOT NULL,
+                    doctor_profile_id BIGINT UNSIGNED NULL,
+                    opd_visit_id BIGINT UNSIGNED NULL,
+                    bill_no INT NULL,
+                    receipt_date DATE NULL,
+                    amount DECIMAL(12,2) DEFAULT 0,
+                    concession DECIMAL(12,2) DEFAULT 0,
+                    paid DECIMAL(12,2) DEFAULT 0,
+                    due DECIMAL(12,2) DEFAULT 0,
+                    payment_mode VARCHAR(30) NULL,
+                    allowed_consultations INT DEFAULT 1,
+                    validity_days INT DEFAULT 7,
+                    valid_until DATE NULL,
+                    consultations_used INT DEFAULT 1,
+                    billed_by VARCHAR(150) NULL,
+                    created_at TIMESTAMP NULL DEFAULT NULL,
+                    updated_at TIMESTAMP NULL DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    KEY idx_lookup (store_id, patient_id, doctor_profile_id, valid_until)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        }
+        if (!Schema::hasColumn('opd_visits', 'consultation_receipt_id')) {
+            DB::statement("ALTER TABLE `opd_visits`
+                ADD COLUMN `consultation_receipt_id` BIGINT UNSIGNED NULL,
+                ADD COLUMN `consultation_visit_no` INT NULL");
+        }
+    }
+
+    /**
+     * Show the consultation receipt for a visit:
+     *  - already linked  → print it
+     *  - active receipt for same patient+doctor → attach as a follow-up (no charge) → print it
+     *  - otherwise → show the fee-collection form
+     */
+    public function receipt($id)
+    {
+        $this->ensureSchema();
+        $store_id = Helpers::get_store_id();
+        $visit = OpdVisit::where('store_id', $store_id)
+            ->with(['patient', 'doctorProfile.employee'])
+            ->findOrFail($id);
+
+        if ($visit->consultation_receipt_id) {
+            $receipt = OpdConsultationReceipt::find($visit->consultation_receipt_id);
+            if ($receipt) {
+                return $this->render($visit, $receipt);
+            }
+        }
+
+        $active = OpdConsultationReceipt::where('store_id', $store_id)
+            ->where('patient_id', $visit->patient_id)
+            ->where('doctor_profile_id', $visit->doctor_profile_id)
+            ->whereColumn('consultations_used', '<', 'allowed_consultations')
+            ->whereDate('valid_until', '>=', now()->toDateString())
+            ->orderByDesc('id')
+            ->first();
+
+        if ($active) {
+            $active->increment('consultations_used');
+            $visit->consultation_receipt_id = $active->id;
+            $visit->consultation_visit_no   = $active->consultations_used;
+            $visit->save();
+            return $this->render($visit, $active->fresh());
+        }
+
+        // New paid consultation → collect fee
+        $config = StoreConfig::where('store_id', $store_id)->first();
+        $defaultFee = (float) ($visit->doctorProfile?->consultation_fee ?? 0);
+        $allowed = (int) ($config?->opd_consultation_count ?? 1);
+        $validityDays = (int) ($config?->opd_consultation_validity_days ?? 7);
+
+        return view('hmis::vendor.opd.consultation_receipt_form', compact('visit', 'defaultFee', 'allowed', 'validityDays'));
+    }
+
+    public function store(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $request->validate([
+            'amount'       => 'required|numeric|min:0',
+            'concession'   => 'nullable|numeric|min:0',
+            'payment_mode' => 'required|string|max:30',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $visit = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        if ($visit->consultation_receipt_id) {
+            return redirect()->route('vendor.opd.consultation-receipt', $visit->id);
+        }
+
+        $config       = StoreConfig::where('store_id', $store_id)->first();
+        $allowed      = (int) ($config?->opd_consultation_count ?? 1);
+        $validityDays = (int) ($config?->opd_consultation_validity_days ?? 7);
+
+        $amount     = (float) $request->amount;
+        $concession = (float) ($request->concession ?? 0);
+        $paid       = max(0, $amount - $concession);
+        $due        = 0;
+
+        $billNo = (int) (OpdConsultationReceipt::where('store_id', $store_id)->max('bill_no') ?? 0) + 1;
+
+        $receipt = OpdConsultationReceipt::create([
+            'store_id'              => $store_id,
+            'patient_id'            => $visit->patient_id,
+            'doctor_profile_id'     => $visit->doctor_profile_id,
+            'opd_visit_id'          => $visit->id,
+            'bill_no'               => $billNo,
+            'receipt_date'          => now()->toDateString(),
+            'amount'                => $amount,
+            'concession'            => $concession,
+            'paid'                  => $paid,
+            'due'                   => $due,
+            'payment_mode'          => $request->payment_mode,
+            'allowed_consultations' => $allowed,
+            'validity_days'         => $validityDays,
+            'valid_until'           => now()->addDays($validityDays)->toDateString(),
+            'consultations_used'    => 1,
+            'billed_by'             => $this->currentUserName(),
+        ]);
+
+        $visit->consultation_receipt_id = $receipt->id;
+        $visit->consultation_visit_no   = 1;
+        $visit->save();
+
+        // Post to the hospital's accounts (ledger + daybook) for the collected amount
+        if ($paid > 0) {
+            try {
+                $isCash        = in_array(strtolower($request->payment_mode), ['cash', 'wallet']);
+                $creditAccount = Helpers::ensureConsultationRevenueAccount();           // income
+                $debitAccount  = $isCash ? Helpers::ensureCashAccount() : Helpers::ensureBankAccount();
+                $patientName   = $visit->patient?->name ?? 'Patient';
+
+                $ledgerData = [
+                    'date'         => now(),
+                    'amount'       => $paid,
+                    'voucher_type' => 'Receipt',
+                    'invoice_id'   => 'opd-receipt-' . $receipt->id,
+                    'status'       => 'approved',
+                    'description'  => 'OP Consultation — ' . $patientName . ' (Bill #' . $receipt->bill_no . ')',
+                    'payment_mode' => $isCash ? 'cash' : 'bank',
+                ];
+                $voucher = _masterLedgerEntry($ledgerData, $creditAccount, $debitAccount, 'store', 'store', null);
+                _saveDayBookEntry($paid, 'credit', $store_id, 'OP Consultation — ' . $patientName, null, $voucher?->id, now(), null, $isCash ? 'cash' : 'bank');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('OPD consultation ledger post failed: ' . $e->getMessage());
+            }
+        }
+
+        Toastr::success('OP consultation receipt generated.');
+        return redirect()->route('vendor.opd.consultation-receipt', $visit->id);
+    }
+
+    public function pdf($id)
+    {
+        $this->ensureSchema();
+        $store_id = Helpers::get_store_id();
+        $visit = OpdVisit::where('store_id', $store_id)
+            ->with(['patient', 'doctorProfile.employee'])
+            ->findOrFail($id);
+
+        if (!$visit->consultation_receipt_id) {
+            return redirect()->route('vendor.opd.consultation-receipt', $visit->id);
+        }
+        $receipt = OpdConsultationReceipt::findOrFail($visit->consultation_receipt_id);
+
+        $html = View::make('hmis::vendor.opd.consultation_receipt', $this->receiptData($visit, $receipt, true))->render();
+
+        $mpdf = new \Mpdf\Mpdf([
+            'mode'          => 'utf-8',
+            'format'        => [150, 150],   // compact receipt page (mm), not a full A4
+            'margin_left'   => 6,
+            'margin_right'  => 6,
+            'margin_top'    => 6,
+            'margin_bottom' => 6,
+            'tempDir'       => storage_path('tmp'),
+        ]);
+        $mpdf->WriteHTML($html);
+        $mpdf->Output('op_consultation_receipt_' . $receipt->bill_no . '.pdf', 'I');
+    }
+
+    private function render(OpdVisit $visit, OpdConsultationReceipt $receipt)
+    {
+        return view('hmis::vendor.opd.consultation_receipt', $this->receiptData($visit, $receipt, false));
+    }
+
+    private function receiptData(OpdVisit $visit, OpdConsultationReceipt $receipt, bool $pdf): array
+    {
+        $store   = Store::withoutGlobalScopes()->find($visit->store_id);
+        $patient = $visit->patient;
+        $dp      = $visit->doctorProfile;
+
+        $doctorName = trim('Dr. ' . ($dp?->employee?->f_name ?? '') . ' ' . ($dp?->employee?->l_name ?? ''));
+        if ($dp?->qualification) {
+            $doctorName .= ', ' . $dp->qualification;
+        }
+
+        $age = '';
+        if ($patient?->dob) {
+            try { $age = \Carbon\Carbon::parse($patient->dob)->age . ' Years'; } catch (\Exception $e) {}
+        }
+
+        return [
+            'pdf'         => $pdf,
+            'store'       => $store,
+            'patient'     => $patient,
+            'visit'       => $visit,
+            'receipt'     => $receipt,
+            'doctorName'  => $doctorName,
+            'department'  => $dp?->department ?: ($dp?->specialization ?? ''),
+            'age'         => $age,
+            'visitNo'     => $visit->consultation_visit_no ?? 1,
+            'amountWords' => $this->amountToWords((int) round($receipt->paid)),
+        ];
+    }
+
+    private function amountToWords(int $n): string
+    {
+        if ($n === 0) return 'Zero Rupees Only';
+        try {
+            if (class_exists(\NumberFormatter::class)) {
+                $f = new \NumberFormatter('en_IN', \NumberFormatter::SPELLOUT);
+                return ucwords($f->format($n)) . ' Rupees Only';
+            }
+        } catch (\Throwable $e) {
+        }
+
+        $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+            'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        $two = function ($x) use ($ones, $tens) {
+            if ($x < 20) return $ones[$x];
+            return trim($tens[intdiv($x, 10)] . ' ' . $ones[$x % 10]);
+        };
+        $three = function ($x) use ($ones, $two) {
+            $h = intdiv($x, 100);
+            $r = $x % 100;
+            return trim(($h ? $ones[$h] . ' Hundred ' : '') . $two($r));
+        };
+        $out = '';
+        $crore = intdiv($n, 10000000); $n %= 10000000;
+        $lakh  = intdiv($n, 100000);   $n %= 100000;
+        $thou  = intdiv($n, 1000);     $n %= 1000;
+        $hund  = $n;
+        if ($crore) $out .= $three($crore) . ' Crore ';
+        if ($lakh)  $out .= $three($lakh) . ' Lakh ';
+        if ($thou)  $out .= $three($thou) . ' Thousand ';
+        if ($hund)  $out .= $three($hund) . ' ';
+        return trim($out) . ' Rupees Only';
+    }
+
+    private function currentUserName(): string
+    {
+        if (auth('vendor_employee')->check()) {
+            $u = auth('vendor_employee')->user();
+            return trim(($u->f_name ?? '') . ' ' . ($u->l_name ?? '')) ?: 'Staff';
+        }
+        $v = auth('vendor')->user();
+        return trim(($v->f_name ?? '') . ' ' . ($v->l_name ?? '')) ?: 'Admin';
+    }
+}

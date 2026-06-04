@@ -19,9 +19,9 @@
                    </li>
                    <li class="navbar-vertical-aside-has-menu {{ Request::is('account/revenue') ? 'active' : '' }}">
                        <a class="nav-link " href="{{ route('admin.account.revenue') }}"
-                           title="{{ translate('Revenue') }}">
+                           title="{{ translate('Finance & Profitability Hub') }}">
                            <span class="tio-money nav-icon"></span>
-                           <span class="text-truncate">Revenue</span>
+                           <span class="text-truncate">Finance &amp; Profitability Hub</span>
                        </a>
                    </li>
                @endif

@@ -60,6 +60,34 @@
                     </div>
                 </div>
 
+                {{-- OP Consultation Validity --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-receipt mr-1"></i> OP Consultation Validity</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="input-label">Consultations per paid OP <span class="text-danger">*</span></label>
+                            <input type="number" name="opd_consultation_count"
+                                   class="form-control @error('opd_consultation_count') is-invalid @enderror"
+                                   value="{{ old('opd_consultation_count', $opd_consultation_count) }}" min="1" max="50">
+                            <small class="text-muted">How many consultations one paid OP receipt covers (e.g. 2).</small>
+                            @error('opd_consultation_count')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="input-label">Validity (days) <span class="text-danger">*</span></label>
+                            <input type="number" name="opd_consultation_validity_days"
+                                   class="form-control @error('opd_consultation_validity_days') is-invalid @enderror"
+                                   value="{{ old('opd_consultation_validity_days', $opd_consultation_validity_days) }}" min="1" max="365">
+                            <small class="text-muted">Days a paid OP stays valid for follow-up visits (e.g. 7 = 1 week).</small>
+                            @error('opd_consultation_validity_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
             </form>
         </div>
     </div>

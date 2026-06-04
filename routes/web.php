@@ -160,6 +160,9 @@ Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallb
 
 Route::get('registration-successfull', [FrontController::class, 'registration_success'])->name('registration-successfull');
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
+Route::post('testing/save', [FrontController::class, 'testingSave'])->name('testing.save');
+Route::post('testing/upload-image', [FrontController::class, 'testingUploadImage'])->name('testing.upload-image');
+Route::get('testing/preview', [FrontController::class, 'testingPreview'])->name('testing.preview');
 Route::get('test-push', [FrontController::class, 'test_push_view'])->name('test-push');
 Route::post('test-push', [FrontController::class, 'test_push_send'])->name('test-push.send');
 Route::get('signup', [FrontUserController::class, 'signup'])->name('user-signup');

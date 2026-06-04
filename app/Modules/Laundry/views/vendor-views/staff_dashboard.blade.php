@@ -616,7 +616,9 @@
                 setInterval(staffDashUpdateDateTime, 1000);
                 @else
                 // set punch in time in punch in time display
-                $('#staffDashPunchTimeDisplay').text('Punched in at: ' + staffDashPunchInTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
+                if (staffDashPunchInTime) {
+                    $('#staffDashPunchTimeDisplay').text('Punched in at: ' + staffDashPunchInTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
+                }
             @endif
 
 

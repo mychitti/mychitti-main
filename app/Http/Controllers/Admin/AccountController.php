@@ -306,8 +306,195 @@ class AccountController extends Controller
         $domain_income = $domainPurchaseQuery->sum('total_amount');
         $domains = $domainPurchaseQuery->with('store')->latest()->get();
 
-        // Overall total
-        $total_income = $subscription_income + $module_income + $lead_sub_income + $domain_income;
+        // 3. Wallet Recharge Income — store wallet recharges (account_transactions)
+        $walletRechargeQuery = \App\Models\AccountTransaction::where('method', 'wallet')
+            ->where('action', 'credit')
+            ->where('reason', 'Wallet Recharge');
+        if ($preset !== 'all_time') {
+            $walletRechargeQuery->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        }
+        $wallet_recharge_income = (clone $walletRechargeQuery)->sum('amount');
+        $wallet_recharges = $walletRechargeQuery->with('store')->latest()->get();
+
+        // 3.5 Template purchase income (website templates bought by vendors)
+        $tplBase = \App\Models\TemplatePurchase::query();
+        if ($preset !== 'all_time') {
+            $tplBase->whereBetween('purchased_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        }
+        $template_income = (clone $tplBase)->sum('amount_paid');
+        $template_purchases = (clone $tplBase)->with('store')->latest()->get();
+
+        // Overall income total
+        $total_income = $subscription_income + $module_income + $lead_sub_income + $domain_income + $wallet_recharge_income + $template_income;
+
+        // 4. Platform Expenses — admin purchase invoices (admin is the bill recipient)
+        $expenseQuery = ManualInvoice::where('bill_to_type', 'admin')
+            ->where('bill_to', 0)
+            ->where('generated_by', 'admin');
+        $expenseQuery = $applyDateFilter($expenseQuery);
+        $total_expense = (clone $expenseQuery)->sum('total_amount');
+        $expense_invoices = (clone $expenseQuery)->latest()->get();
+
+        // Net profit (income − expenses)
+        $net_profit = $total_income - $total_expense;
+
+        // Gross Profit margin percentage
+        $profit_margin = $total_income > 0 ? ($net_profit / $total_income) * 100 : 0;
+
+        // Outstanding Receivables - Admin Manual Invoices (Unpaid/Pending)
+        $receivablesQuery = ManualInvoice::where('generated_by', 'admin')
+            ->whereIn('payment_status', ['Unpaid', 'Pending']);
+        $receivablesQuery = $applyDateFilter($receivablesQuery);
+        $total_receivables = $receivablesQuery->sum('total_amount');
+
+        // Tax Collections - cgst, sgst, igst, and final tax from paid manual invoices
+        $taxQuery = ManualInvoice::where('generated_by', 'admin')
+            ->where('payment_status', 'Paid');
+        $taxQuery = $applyDateFilter($taxQuery);
+        $total_cgst = $taxQuery->sum('cgst');
+        $total_sgst = $taxQuery->sum('sgst');
+        $total_igst = $taxQuery->sum('igst');
+        $total_tax = $taxQuery->sum('final_tax');
+
+        // Top spending vendors (across all paid sources within the range)
+        $spend = $this->vendorSpendTotals($from, $to, $preset);
+
+        // Average spend per vendor — computed before trimming to top 10.
+        $vendor_spend_total = array_sum($spend);
+        $vendor_count = count($spend);                                       // vendors who actually spent
+        $avg_vendor_spend = $vendor_count > 0 ? ($vendor_spend_total / $vendor_count) : 0;   // among spenders
+        $total_vendors = \App\Models\Store::withoutGlobalScopes()->count();  // all vendors on the platform
+        $avg_vendor_spend_all = $total_vendors > 0 ? ($vendor_spend_total / $total_vendors) : 0; // ARPV
+
+        // Generate plain-english financial insights based on data
+        $insights = [];
+
+        // 1. Profit Margin Insight
+        if ($profit_margin >= 90) {
+            $insights[] = [
+                'type' => 'success',
+                'icon' => 'tio-trending-up',
+                'title' => 'Highly Profitable Operations',
+                'text' => 'The platform is operating with an exceptional profit margin of ' . number_format($profit_margin, 1) . '%. Platform expenses are extremely low relative to incoming revenue.'
+            ];
+        } elseif ($profit_margin >= 50) {
+            $insights[] = [
+                'type' => 'info',
+                'icon' => 'tio-trending-up',
+                'title' => 'Healthy Profit Margin',
+                'text' => 'The platform operates at a healthy profit margin of ' . number_format($profit_margin, 1) . '%. Keep overhead costs optimized to sustain growth.'
+            ];
+        } else {
+            $insights[] = [
+                'type' => 'warning',
+                'icon' => 'tio-warning-outfield',
+                'title' => 'Compressed Profit Margins',
+                'text' => 'Your net profit margin is currently ' . number_format($profit_margin, 1) . '%. Review administrative and operational expenses to improve overall profitability.'
+            ];
+        }
+
+        // 2. Revenue Concentration Insight
+        $total_calc = $total_income > 0 ? $total_income : 1;
+        $sub_pct = ($subscription_income / $total_calc) * 100;
+        $module_pct = ($module_income / $total_calc) * 100;
+        $lead_pct = ($lead_sub_income / $total_calc) * 100;
+        $domain_pct = ($domain_income / $total_calc) * 100;
+        $wallet_pct = ($wallet_recharge_income / $total_calc) * 100;
+        $template_pct = ($template_income / $total_calc) * 100;
+
+        if ($sub_pct > 70) {
+            $insights[] = [
+                'type' => 'info',
+                'icon' => 'tio-crown-outlined',
+                'title' => 'SaaS Subscription Dominance',
+                'text' => 'SaaS subscription plans are the dominant revenue source, contributing ' . number_format($sub_pct, 1) . '% of total platform income. This indicates highly predictable recurring cash flow.'
+            ];
+        } elseif ($lead_pct > 50) {
+            $insights[] = [
+                'type' => 'info',
+                'icon' => 'tio-send',
+                'title' => 'Lead-Driven Revenue Model',
+                'text' => 'Service request lead purchases represent the primary income channel (' . number_format($lead_pct, 1) . '%). Consider packaging these into monthly plans to increase retention.'
+            ];
+        } else {
+            $insights[] = [
+                'type' => 'info',
+                'icon' => 'tio-dashboard-outlined',
+                'title' => 'Diversified Revenue Streams',
+                'text' => 'Your income is diversified across multiple channels. The highest contributors are SaaS subscriptions (' . number_format($sub_pct, 1) . '%) and lead subscriptions (' . number_format($lead_pct, 1) . '%).'
+            ];
+        }
+
+        // 3. Payer Conversion Potential
+        if ($total_vendors > 0 && $vendor_count > 0) {
+            $conversion_rate = ($vendor_count / $total_vendors) * 100;
+            $insights[] = [
+                'type' => 'info',
+                'icon' => 'tio-users-switch',
+                'title' => 'Vendor Monetization Gap',
+                'text' => 'Only ' . number_format($conversion_rate, 1) . '% of registered vendors (' . $vendor_count . ' out of ' . $total_vendors . ') are paying customers. Focus on converting inactive vendors to boost revenue.'
+            ];
+        }
+
+        // 4. Receivables Warning
+        if ($total_receivables > 0) {
+            $insights[] = [
+                'type' => 'warning',
+                'icon' => 'tio-receipt-outlined',
+                'title' => 'Outstanding Invoices Alert',
+                'text' => 'There is ' . Helpers::format_currency($total_receivables) . ' in outstanding/unpaid manual invoices. Following up on pending invoices in the billing section will improve platform liquidity.'
+            ];
+        }
+
+        $dateBetween = function ($q) use ($from, $to, $preset) {
+            if ($preset !== 'all_time') {
+                $q->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+            }
+            return $q;
+        };
+
+        // 5. Average lead value — platform earnings from service-request leads
+        //    (wallet charges deducted on accept / confirm / complete) ÷ accepted leads
+        $lead_reasons = ['Lead Charges', 'Dedicated Lead Charges', 'Lead Confirmation Charges', 'Lead Completion Charges'];
+        $leadChargeQ = \App\Models\AccountTransaction::where('action', 'debit')->whereIn('reason', $lead_reasons);
+        if ($preset !== 'all_time') {
+            $leadChargeQ->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        }
+        $lead_income = (clone $leadChargeQ)->sum('amount');
+
+        // Charged leads = accepted (still active) + cancelled-after-accept
+        // (cancelling moves the accepted row into cancelled_service_requests with no refund,
+        //  so its charge is still counted as income — include it in the denominator).
+        $acceptedLeadsQ = \App\Models\AcceptedServiceRequest::query();
+        $cancelledLeadsQ = DB::table('cancelled_service_requests');
+        if ($preset !== 'all_time') {
+            $acceptedLeadsQ->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+            $cancelledLeadsQ->whereBetween('created_at', [$from . " 00:00:00", $to . " 23:59:59"]);
+        }
+        $lead_count = $acceptedLeadsQ->count() + $cancelledLeadsQ->count();
+        $avg_lead_value = $lead_count > 0 ? ($lead_income / $lead_count) : 0;
+
+        // 6. Popular template (most-purchased website template) — reuses $tplBase from above
+        $top_template_row = (clone $tplBase)
+            ->select('template_id', DB::raw('COUNT(*) as cnt'), DB::raw('SUM(amount_paid) as revenue'))
+            ->groupBy('template_id')->orderByDesc('cnt')->first();
+        $popular_template = null;
+        if ($top_template_row) {
+            $tpl = DB::table('store_webpage_templates')->where('id', $top_template_row->template_id)->first();
+            $popular_template = [
+                'name'    => $tpl->name ?? ($tpl->title ?? ('Template #' . $top_template_row->template_id)),
+                'count'   => $top_template_row->cnt,
+                'revenue' => $top_template_row->revenue,
+            ];
+        }
+
+        arsort($spend);
+        $spend = array_slice($spend, 0, 10, true);
+        $storeNames = \App\Models\Store::withoutGlobalScopes()->whereIn('id', array_keys($spend))->pluck('name', 'id');
+        $top_vendors = [];
+        foreach ($spend as $sid => $amt) {
+            $top_vendors[] = ['id' => $sid, 'name' => $storeNames[$sid] ?? ('Store #' . $sid), 'amount' => $amt];
+        }
 
         // Dynamic trend intervals based on date range filter
         $intervals = [];
@@ -394,21 +581,121 @@ class AccountController extends Controller
             $m_domain = \App\Models\DomainPurchase::whereBetween('created_at', [$interval['start'], $interval['end']])
                 ->sum('total_amount');
 
+            $m_wallet = \App\Models\AccountTransaction::where('method', 'wallet')
+                ->where('action', 'credit')
+                ->where('reason', 'Wallet Recharge')
+                ->whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->sum('amount');
+
+            $m_template = \App\Models\TemplatePurchase::whereBetween('purchased_at', [$interval['start'], $interval['end']])
+                ->sum('amount_paid');
+
+            $m_expense = ManualInvoice::where('bill_to_type', 'admin')
+                ->where('bill_to', 0)
+                ->where('generated_by', 'admin')
+                ->whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->sum('total_amount');
+
             $chart_data[] = [
                 'month' => $interval['label'],
                 'subscription' => round($m_sub, 2),
                 'module' => round($m_mod, 2),
                 'lead' => round($m_lead, 2),
                 'domain' => round($m_domain, 2),
+                'wallet' => round($m_wallet, 2),
+                'template' => round($m_template, 2),
+                'expense' => round($m_expense, 2),
             ];
         }
 
         return view('admin-views.account.revenue', compact(
             'preset', 'custom', 'from', 'to',
             'subscription_income', 'module_income', 'lead_sub_income',
-            'domain_income', 'total_income', 'invoices', 'lead_subscriptions', 'domains', 'chart_data'
+            'domain_income', 'wallet_recharge_income', 'template_income', 'total_income',
+            'total_expense', 'expense_invoices', 'net_profit', 'profit_margin',
+            'total_receivables', 'total_cgst', 'total_sgst', 'total_igst', 'total_tax',
+            'avg_lead_value', 'lead_income', 'lead_count', 'popular_template',
+            'top_vendors', 'avg_vendor_spend', 'vendor_count', 'avg_vendor_spend_all', 'total_vendors',
+            'invoices', 'lead_subscriptions', 'domains', 'wallet_recharges', 'template_purchases',
+            'chart_data', 'insights'
         ));
     }
+
+    /**
+     * Aggregate spend per store across all paid sources, within an optional date range.
+     * Returns [store_id => total_amount] (unsorted).
+     */
+    private function vendorSpendTotals($from, $to, $preset)
+    {
+        $spend = [];
+        $add = function ($sid, $amt) use (&$spend) {
+            if (!$sid || $amt <= 0) return;
+            $spend[$sid] = ($spend[$sid] ?? 0) + $amt;
+        };
+        $between = function ($q, $col = 'created_at') use ($from, $to, $preset) {
+            if ($preset !== 'all_time') {
+                $q->whereBetween($col, [$from . " 00:00:00", $to . " 23:59:59"]);
+            }
+            return $q;
+        };
+
+        foreach ($between(\App\Models\VendorSubscription::with('plan'))->get() as $vs) {
+            $add($vs->vendor_id, $vs->plan ? (float) $vs->plan->price : 0);
+        }
+        foreach ($between(\App\Models\LeadSubscription::with('plan'))->get() as $ls) {
+            $add($ls->store_id, $ls->plan ? (float) $ls->plan->price : 0);
+        }
+        foreach ($between(\App\Models\DomainPurchase::query())->get() as $d) {
+            $add($d->store_id, (float) $d->total_amount);
+        }
+        foreach ($between(\App\Models\TemplatePurchase::query(), 'purchased_at')->get() as $tp) {
+            $add($tp->vendor_id, (float) $tp->amount_paid);
+        }
+        $wr = \App\Models\AccountTransaction::where('method', 'wallet')
+            ->where('action', 'credit')->where('reason', 'Wallet Recharge')->where('from_type', 'store');
+        foreach ($between($wr)->get() as $t) {
+            $add($t->from_id, (float) $t->amount);
+        }
+
+        return $spend;
+    }
+
+    public function spending_vendors(Request $request)
+    {
+        $preset = $request->query('date_range', 'this_year');
+        $custom = $request->query('custom_date_range');
+        $from = null;
+        $to = null;
+        if ($preset !== 'all_time') {
+            try {
+                $range = Helpers::calculatePresetDates($preset, $custom);
+                $from = $range['start']->toDateString();
+                $to = $range['end']->toDateString();
+            } catch (\Exception $e) {
+                $preset = 'all_time';
+            }
+        }
+
+        $search = trim($request->query('search', ''));
+
+        $spend = $this->vendorSpendTotals($from, $to, $preset);
+        arsort($spend);
+
+        $names = \App\Models\Store::withoutGlobalScopes()->whereIn('id', array_keys($spend))->pluck('name', 'id');
+        $vendors = [];
+        foreach ($spend as $sid => $amt) {
+            $name = $names[$sid] ?? ('Store #' . $sid);
+            if ($search !== '' && stripos($name, $search) === false && (string) $sid !== $search) {
+                continue;
+            }
+            $vendors[] = ['id' => $sid, 'name' => $name, 'amount' => $amt];
+        }
+
+        $total_spend = array_sum(array_column($vendors, 'amount'));
+
+        return view('admin-views.account.spending-vendors', compact('vendors', 'preset', 'custom', 'from', 'to', 'search', 'total_spend'));
+    }
+
     public function send_otp(Request $request)
     {
         $phone = BusinessSetting::where('key', 'phone')->first()?->value;

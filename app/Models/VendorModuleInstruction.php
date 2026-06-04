@@ -32,7 +32,6 @@ class VendorModuleInstruction extends Model
         });
     }
 
-
     private function generateSlug(string $name): string
     {
         $slug = Str::slug($name);

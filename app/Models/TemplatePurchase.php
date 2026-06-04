@@ -20,4 +20,9 @@ class TemplatePurchase extends Model
         'purchased_at' => 'datetime',
         'expires_at'   => 'datetime',
     ];
+
+    public function store()
+    {
+        return $this->belongsTo(Store::class, 'vendor_id');
+    }
 }

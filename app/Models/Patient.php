@@ -58,9 +58,10 @@ class Patient extends Model
      */
     public static function generateUid(int $storeId): string
     {
-        $prefix  = strtoupper(\App\CentralLogics\Helpers::get_business_settings('patient_uid_prefix_' . $storeId) ?? 'P');
-        $padding = (int)(\App\CentralLogics\Helpers::get_business_settings('patient_uid_padding_' . $storeId) ?? 5);
-        $minSerial = (int)(\App\CentralLogics\Helpers::get_business_settings('patient_uid_serial_' . $storeId) ?? 1);
+        $config    = \App\Models\StoreConfig::where('store_id', $storeId)->first();
+        $prefix    = strtoupper($config?->patient_uid_prefix ?? 'P');
+        $padding   = (int)($config?->patient_uid_padding ?? 5);
+        $minSerial = (int)($config?->patient_uid_serial ?? 1);
 
         $lastUid = static::where('store_id', $storeId)
             ->lockForUpdate()

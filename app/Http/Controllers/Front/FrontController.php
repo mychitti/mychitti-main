@@ -155,60 +155,126 @@ class FrontController extends Controller
     }
     public function testing(Request $request)
     {
-        hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
+        // hasAnyPermission(['billing.list', 'billing.export', 'billing.import']);
 
-        die;
-        $user_fcm = $request->fcm_token;
-        $data = [
-            'title' => translate('messages.test_notification'),
-            'description' => "Test Notification",
-            'order_id' => 3,
-            'image' => '',
-            'type' => 'order_status',
-        ];
-        Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
+        // die;
+        // $user_fcm = $request->fcm_token;
+        // $data = [
+        //     'title' => translate('messages.test_notification'),
+        //     'description' => "Test Notification",
+        //     'order_id' => 3,
+        //     'image' => '',
+        //     'type' => 'order_status',
+        // ];
+        // Helpers::send_push_notif_to_device($user_fcm, $data, null, true);
 
-        $bookings = ServiceRequest::where('user_id', 925)
-            ->with([
-                'item:id,name',
-                'accepted:service_request_id,vendor_id,assigned_to,assigned_type',
-                'accepted.store:id,name,phone',
-                'accepted.staff' => function (MorphTo $morphTo) {
-                    $morphTo->constrain([
-                        \App\Models\VendorEmployee::class => function ($q) {
-                            $q->select('id', 'f_name', 'l_name', 'phone', 'email', 'image');
-                        },
-                        \App\Models\Store::class => function ($q) {
-                            $q->select('id', 'name', 'phone', 'email', 'logo', 'address');
-                        },
-                    ]);
-                },
-            ])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get(['id', 'item_id', 'status', 'requirements', 'city', 'created_at', 'updated_at']);
-        $data = [
-            'success'  => true,
-            'bookings' => $bookings->map(fn($b) => [
-                'id'           => $b->id,
-                'service_name' => $b->item?->name ?? 'Unknown Service',
-                'status'       => $b->status ?? 'new',
-                'requirements' => $b->requirements,
-                'city'         => $b->city,
-                'date'         => $b->created_at?->format('d M Y'),
-                'assigned'     => $b->accepted !== null,
-                'staff'        => $b->accepted?->assigned_details['name'], // normalized: {id,type,name,phone,...}
-                'store'        => $b->accepted?->store?->name,
-            ]),
-        ];
-        prx($data);
+        // $bookings = ServiceRequest::where('user_id', 925)
+        //     ->with([
+        //         'item:id,name',
+        //         'accepted:service_request_id,vendor_id,assigned_to,assigned_type',
+        //         'accepted.store:id,name,phone',
+        //         'accepted.staff' => function (MorphTo $morphTo) {
+        //             $morphTo->constrain([
+        //                 \App\Models\VendorEmployee::class => function ($q) {
+        //                     $q->select('id', 'f_name', 'l_name', 'phone', 'email', 'image');
+        //                 },
+        //                 \App\Models\Store::class => function ($q) {
+        //                     $q->select('id', 'name', 'phone', 'email', 'logo', 'address');
+        //                 },
+        //             ]);
+        //         },
+        //     ])
+        //     ->orderBy('created_at', 'desc')
+        //     ->limit(10)
+        //     ->get(['id', 'item_id', 'status', 'requirements', 'city', 'created_at', 'updated_at']);
+        // $data = [
+        //     'success'  => true,
+        //     'bookings' => $bookings->map(fn($b) => [
+        //         'id'           => $b->id,
+        //         'service_name' => $b->item?->name ?? 'Unknown Service',
+        //         'status'       => $b->status ?? 'new',
+        //         'requirements' => $b->requirements,
+        //         'city'         => $b->city,
+        //         'date'         => $b->created_at?->format('d M Y'),
+        //         'assigned'     => $b->accepted !== null,
+        //         'staff'        => $b->accepted?->assigned_details['name'], // normalized: {id,type,name,phone,...}
+        //         'store'        => $b->accepted?->store?->name,
+        //     ]),
+        // ];
+        // prx($data);
         // $filePath = 'apis.json';
         // if (Storage::disk('secure')->exists($filePath)) {
         //     return Storage::disk('secure')->download($filePath);
         // }
         // $fcm_token = 'd53HZ75ERu-oO121i68zsX:APA91bEh0nmc-aiPbN5wrJQ2Vz-5gvNe3XN90JcDZOgsZ4pf6NKCfuCbRVi0epRcTdBSMvhfA_LZmkL0HFFvKsi0lU30V7xrmPBQVNpRbFxr9gMjpu91acw';
 
-        // return view('front-views.test_view');
+        $this->ensureEditorTable();
+        $doc = \App\Models\EditorDocument::where('doc_key', 'demo')->first();
+        $savedContent = $doc?->content;
+        $savedTitle   = $doc?->title;
+
+        return view('front-views.test_view', compact('savedContent', 'savedTitle'));
+    }
+
+    private function ensureEditorTable()
+    {
+        \Illuminate\Support\Facades\DB::statement("
+            CREATE TABLE IF NOT EXISTS editor_documents (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                doc_key VARCHAR(191) NOT NULL,
+                title VARCHAR(255) NULL,
+                content LONGTEXT NULL,
+                blocks LONGTEXT NULL,
+                created_at TIMESTAMP NULL DEFAULT NULL,
+                updated_at TIMESTAMP NULL DEFAULT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY editor_documents_doc_key_unique (doc_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+
+    public function testingSave(Request $request)
+    {
+        $this->ensureEditorTable();
+
+        $request->validate([
+            'title'   => 'nullable|string|max:255',
+            'content' => 'nullable|string',
+        ]);
+
+        \App\Models\EditorDocument::updateOrCreate(
+            ['doc_key' => 'demo'],
+            [
+                'title'   => $request->title,
+                'content' => $request->content,
+            ]
+        );
+
+        return response()->json(['status' => true, 'message' => 'Saved successfully']);
+    }
+
+    public function testingUploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+        ]);
+
+        $file = $request->file('image');
+        $ext  = $file->getClientOriginalExtension();
+        $name = \App\CentralLogics\Helpers::upload('editor-uploads/', $ext, $file);
+
+        return response()->json([
+            'status' => true,
+            'url'    => asset('storage/app/public/editor-uploads/' . $name),
+        ]);
+    }
+
+    public function testingPreview(Request $request)
+    {
+        $this->ensureEditorTable();
+        $doc = \App\Models\EditorDocument::where('doc_key', 'demo')->first();
+
+        return view('front-views.test_preview', compact('doc'));
     }
 
 

@@ -3490,8 +3490,16 @@ class ReportController extends Controller
         $domain_income = $domainPurchaseQuery->sum('total_amount');
         $domains = $domainPurchaseQuery->with('store')->latest()->get();
 
+        // 3. Wallet Recharge Income — store wallet recharges (account_transactions)
+        $walletRechargeQuery = \App\Models\AccountTransaction::where('method', 'wallet')
+            ->where('action', 'credit')
+            ->where('reason', 'Wallet Recharge');
+        $walletRechargeQuery = $applyDateFilter($walletRechargeQuery);
+        $wallet_recharge_income = (clone $walletRechargeQuery)->sum('amount');
+        $wallet_recharges = $walletRechargeQuery->with('store')->latest()->get();
+
         // Overall total
-        $total_income = $subscription_income + $lead_sub_income + $domain_income;
+        $total_income = $subscription_income + $lead_sub_income + $domain_income + $wallet_recharge_income;
 
         // Dynamic trend intervals based on date range filter
         $intervals = [];
@@ -3575,18 +3583,26 @@ class ReportController extends Controller
             $m_domain = \App\Models\DomainPurchase::whereBetween('created_at', [$interval['start'], $interval['end']])
                 ->sum('total_amount');
 
+            $m_wallet = \App\Models\AccountTransaction::where('method', 'wallet')
+                ->where('action', 'credit')
+                ->where('reason', 'Wallet Recharge')
+                ->whereBetween('created_at', [$interval['start'], $interval['end']])
+                ->sum('amount');
+
             $chart_data[] = [
                 'month' => $interval['label'],
                 'subscription' => round($m_sub, 2),
                 'lead' => round($m_lead, 2),
                 'domain' => round($m_domain, 2),
+                'wallet' => round($m_wallet, 2),
             ];
         }
 
         return view('admin-views.report.income-sources', compact(
             'preset', 'custom', 'from', 'to',
             'subscription_income', 'lead_sub_income',
-            'domain_income', 'total_income', 'invoices', 'lead_subscriptions', 'domains', 'chart_data'
+            'domain_income', 'wallet_recharge_income', 'total_income',
+            'invoices', 'lead_subscriptions', 'domains', 'wallet_recharges', 'chart_data'
         ));
     }
 }

@@ -72,6 +72,11 @@ class StoreConfig extends Model
         'printer_auto_print',
         'leads_guide_dismissed',
         'default_dashboard',
+        'patient_uid_prefix',
+        'patient_uid_padding',
+        'patient_uid_serial',
+        'opd_consultation_count',
+        'opd_consultation_validity_days',
     ];
 
     protected $table; 

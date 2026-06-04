@@ -957,6 +957,45 @@ class Helpers
 
         return $subscriptionRevenue;
     }
+    public static function ensureConsultationRevenueAccount()
+    {
+        $storeId = self::get_store_id();
+
+        $revenueLedgerType = LedgerAccountType::where('name', 'Revenue')->first();
+        $ledgerTypeId = $revenueLedgerType->id ?? 1;
+
+        $revenueGroup = StoreAccount::firstOrCreate(
+            [
+                'store_id' => $storeId,
+                'name' => 'Revenue',
+            ],
+            [
+                'ledger_account_type_id' => $ledgerTypeId,
+                'parent_id' => null,
+                'code' => _accountCode($ledgerTypeId, null),
+                'description' => 'All Revenue Accounts',
+                'entity_type' => 'store',
+                'level' => 1,
+            ]
+        );
+
+        $consultationRevenue = StoreAccount::firstOrCreate(
+            [
+                'store_id' => $storeId,
+                'name' => 'OP Consultation Revenue',
+                'parent_id' => $revenueGroup->id,
+            ],
+            [
+                'ledger_account_type_id' => $revenueGroup->ledger_account_type_id,
+                'code' => _accountCode($revenueGroup->ledger_account_type_id, $revenueGroup->id),
+                'description' => 'Revenue earned from OP consultations',
+                'entity_type' => 'store',
+                'level' => 2,
+            ]
+        );
+
+        return $consultationRevenue;
+    }
     public static function ensureEmployeeLedger($employee, $storeId = null)
     {
         $storeId = $storeId ?? Helpers::get_store_id();
