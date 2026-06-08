@@ -312,6 +312,14 @@ class StaffController extends Controller
         Toastr::success('Staff Status Changed Successfully');
         return back();
     }
+    public function department_status_change(Request $request)
+    {
+        Department::where('id', $request->post('d_id'))->update([
+            'status'     => $request->post('status'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        return back();
+    }
     public function delete_department(Request $request, $id)
     {
         DB::beginTransaction();

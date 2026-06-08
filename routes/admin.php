@@ -106,6 +106,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             require app_path('Modules/SalesCRM/routes/admin.php');
         }
 
+        // School
+        if (file_exists(app_path('Modules/School/routes/admin.php'))) {
+            require app_path('Modules/School/routes/admin.php');
+        }
+
         // Impersonation
         Route::post('impersonate/start', 'ImpersonateController@start')->name('impersonate.start');
         Route::post('impersonate/stop', 'ImpersonateController@stop')->name('impersonate.stop');
@@ -1992,10 +1997,10 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
         });
 
         Route::group(['prefix' => 'employee-department', 'as' => 'employee-department.'], function () {
-            Route::get('/', 'EmployeeController@departments')->name('all');
-            Route::post('save', 'EmployeeController@store_department')->name('save');
-            Route::get('d-delete/{id}', 'EmployeeController@delete_department')->name('delete');
-            Route::post('status-change', 'EmployeeController@department_status_change')->name('status-change');
+            Route::get('/', 'StaffController@departments')->name('all');
+            Route::post('save', 'StaffController@store_department')->name('save');
+            Route::get('d-delete/{id}', 'StaffController@delete_department')->name('delete');
+            Route::post('status-change', 'StaffController@department_status_change')->name('status-change');
         });
     });
 });
