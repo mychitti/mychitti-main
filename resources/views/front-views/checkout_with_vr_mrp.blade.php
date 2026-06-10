@@ -245,7 +245,7 @@
                                 </div>
                             </div>
                         </div>
-                        <a class="" href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"> + Add more items </a>
+                        <a class="" href="{{ route('store.details', [_storeCity($store) , $store->slug]) }}"> + Add more items </a>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>

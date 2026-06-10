@@ -695,7 +695,7 @@
                                         Providers <span class="location_name_show"></span> ({{ count($stores) }})</h2>
 
                                     @foreach ($stores as $store)
-                                        <a href="{{ route('store.details', [_selectedCity(), $store->slug]) }}"
+                                        <a href="{{ route('store.details', [_storeCity($store), $store->slug]) }}"
                                             class="d-flex gap-2 position-relative align-items-center justify-content-start my-2 p-2 shadow-sm rounded">
                                             <div class=" mx-2">
                                                 <img loading="lazy"
@@ -1150,7 +1150,7 @@
                     <th style="width: 98px !important;">Name</th>
                     @foreach ($data['top_stores'] as $store)
                         <th><a
-                                href="{{ route('store.details', [_selectedCity(), $store->slug]) }}">{{ $store->name }}</a>
+                                href="{{ route('store.details', [_storeCity($store), $store->slug]) }}">{{ $store->name }}</a>
                         </th>
                     @endforeach
                 </tr>

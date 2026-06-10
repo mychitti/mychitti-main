@@ -2486,17 +2486,20 @@ class FrontController extends Controller
             abort(404);
         }
 
-        // Redirect to canonical city URL if the city in the URL doesn't match the store's zone
+        // One canonical city per store (falls back to the platform default for zone-less stores).
+        $canonicalCity = 'tirupati';
         if ($check_module->zone_id) {
             $zone = DB::table('zones')->where('id', $check_module->zone_id)->value('name');
             if ($zone) {
-                $cityPart      = trim(explode(',', $zone)[0]);
-                $canonicalCity = strtolower(str_replace(' ', '-', $cityPart));
-                if ($city !== $canonicalCity) {
-                    return redirect()->to(url($canonicalCity . '/store/' . $slug), 301);
-                }
+                $canonicalCity = strtolower(str_replace(' ', '-', trim(explode(',', $zone)[0])));
             }
         }
+        // 301 any other city to the single canonical URL — kills duplicate / soft-404 pages.
+        if ($city !== $canonicalCity) {
+            return redirect()->to(url($canonicalCity . '/store/' . $slug), 301);
+        }
+        // True canonical for the store page (overrides the layout's self-referencing default).
+        view()->share('canonical', url($canonicalCity . '/store/' . $slug));
         $invItemdata = [];
         $longitude = $this->longitude;
         $latitude = $this->latitude;
@@ -2512,6 +2515,11 @@ class FrontController extends Controller
 
 
         if ($store) {
+            // Thin-content guard: keep genuinely empty store shells (no items, no campaigns,
+            // no specialised business type) out of the index so they aren't flagged soft-404.
+            view()->share('metaRobots',
+                ($store->items_count == 0 && $store->campaigns_count == 0 && empty($store->business_type)) ? 'noindex, follow' : null);
+
             // Increment store visit analytics
             $ip = $request->ip();
             $isUnique = !DB::table('analytics_logs')
@@ -2647,13 +2655,66 @@ class FrontController extends Controller
             ->where('stores.slug', $slug)
             ->where('store_reviews.status', 1)
             ->count();
-        // && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com'])
-        if ($request->has('template') && $request->template && in_array($request->getHost(), ['vendor.mcvendorhub.com', 'vendor-staff.mcvendorhub.com', 'staging.mychitti.net'])) {
-            return view('front-views.store_webpage.template-' . $request->template . '', compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        // Support preview template request (e.g. ?template=X)
+        $previewTpl = null;
+        if ($request->has('template') && $request->template) {
+            $previewTpl = $request->template;
         }
-        // prx($store);
-        $templateId = $data['store_config']?->template_id ?? 1;
-        return view('front-views.store_webpage.template-' . $templateId, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+ 
+        // School stores get a dedicated, admission-focused webpage.
+        if (strtolower($store['business_type'] ?? '') === 'school') {
+            $sid = $store['id'];
+            $data['school_classes'] = \Illuminate\Support\Facades\Schema::hasTable('school_classes')
+                ? \App\Models\SchoolClass::where('store_id', $sid)->where('status', 1)->orderBy('numeric_order')->orderBy('id')->get()
+                : collect();
+            $data['school_notices'] = \Illuminate\Support\Facades\Schema::hasTable('school_notices')
+                ? \App\Models\SchoolNotice::where('store_id', $sid)->where('is_published', 1)->whereNull('branch_id')
+                    ->where(function ($q) { $q->whereNull('expires_on')->orWhereDate('expires_on', '>=', now()->toDateString()); })
+                    ->orderByDesc('is_pinned')->orderByDesc('notice_date')->orderByDesc('id')->limit(6)->get()
+                : collect();
+
+            // Resolve school template ID
+            $tplId = $previewTpl;
+            if (!$tplId && $request->has('school_template') && $request->school_template) {
+                // Map legacy school_template = 1, 2 to 18, 19
+                $tplId = ($request->school_template == '2') ? 19 : 18;
+            }
+            if (!$tplId) {
+                $tplId = $data['store_config']?->template_id;
+            }
+            if (!$tplId && $data['store_config']?->school_template_id) {
+                // Map legacy school_template_id = 1, 2 to 18, 19
+                $tplId = ($data['store_config']->school_template_id == '2') ? 19 : 18;
+            }
+            if (!$tplId) {
+                $tplId = 18; // Default school template
+            }
+
+            // Look up view name in database
+            $templateObj = DB::table('store_webpage_templates')->where('id', $tplId)->first();
+            $viewName = $templateObj?->view_name;
+            if (!$viewName) {
+                // Fallbacks if database not seeded
+                $viewName = ($tplId == 19 || $tplId == 2) ? 'school-2' : 'school';
+            }
+
+            $schoolView = view()->exists('front-views.store_webpage.' . $viewName)
+                ? 'front-views.store_webpage.' . $viewName
+                : 'front-views.store_webpage.school';
+
+            return view($schoolView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module', 'city', 'slug'));
+        }
+
+        // Regular store webpage
+        $tplId = $previewTpl ?: ($data['store_config']?->template_id ?? 1);
+        $templateObj = DB::table('store_webpage_templates')->where('id', $tplId)->first();
+        $viewName = $templateObj?->view_name ?: 'template-' . $tplId;
+
+        $regularView = view()->exists('front-views.store_webpage.' . $viewName)
+            ? 'front-views.store_webpage.' . $viewName
+            : 'front-views.store_webpage.template-1';
+
+        return view($regularView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
     }
 
     public function store_removal_request(Request $request)

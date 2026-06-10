@@ -5130,6 +5130,24 @@ if (!function_exists('_selectedCity')) {
     }
 }
 
+if (!function_exists('_storeCity')) {
+    /**
+     * Canonical city slug for a store, derived from its zone (the same value the
+     * store page 301-redirects to). Falls back to the default city when the store
+     * object has no zone. Uses a request-cached zone map — one query, not per call.
+     */
+    function _storeCity($store = null)
+    {
+        static $zoneMap = null;
+        if ($zoneMap === null) {
+            $zoneMap = DB::table('zones')->pluck('name', 'id')
+                ->map(fn($n) => \Illuminate\Support\Str::slug(trim(explode(',', $n)[0])))->all();
+        }
+        $zid = is_object($store) ? ($store->zone_id ?? null) : null;
+        return ($zid && isset($zoneMap[$zid])) ? $zoneMap[$zid] : 'tirupati';
+    }
+}
+
 if (!function_exists('_navCats')) {
     function _navCats()
     {
@@ -5603,7 +5621,7 @@ if (!function_exists('_stock_alert_sms')) {
         // $msg =  "Dear User , Your OTP for Mobile verification is 3455 - Regards MY CHITTI APP.";
 
 
-        $num =  $phone;
+        $num =  $phone; 
         $ms = rawurlencode($msg); //This for encode your message content
         $url = 'https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=' . $apikey . '&senderid=' . $apisender .
             '&channel=2&DCS=0&flashsms=0&number=' . $num . '&text=' . $ms . '&route=1';
@@ -6116,3 +6134,215 @@ if (!function_exists('_createHospitalDefaultRoles')) {
         }
     }
 }
+
+if (!function_exists('school_active_branch_id')) {
+    /** Active school branch for the request: staff are locked to their branch; owner uses the session selection (null = all branches). */
+    function school_active_branch_id()
+    {
+        if (auth('vendor_employee')->check()) {
+            return auth('vendor_employee')->user()->branch_id ?: null;
+        }
+        $b = session('school_active_branch');
+        return $b ? (int) $b : null;
+    }
+}
+
+if (!function_exists('school_branches')) {
+    function school_branches()
+    {
+        try {
+            return \App\Models\Branch::where('store_id', \App\CentralLogics\Helpers::get_store_id())->orderBy('name')->get();
+        } catch (\Throwable $e) {
+            return collect();
+        }
+    }
+}
+
+if (!function_exists('school_active_branch')) {
+    function school_active_branch()
+    {
+        $id = school_active_branch_id();
+        return $id ? \App\Models\Branch::find($id) : null;
+    }
+}
+
+if (!function_exists('school_can_switch_branch')) {
+    /** Only the store owner may switch branches; branch staff are pinned to their own. */
+    function school_can_switch_branch()
+    {
+        return auth('vendor')->check();
+    }
+}
+
+if (!function_exists('school_serial_scope')) {
+    /** How school serial numbers run: 'store' (unique store-wide) or 'branch' (per-branch sequence). */
+    function school_serial_scope()
+    {
+        static $cache = [];
+        $storeId = \App\CentralLogics\Helpers::get_store_id();
+        if (!array_key_exists($storeId, $cache)) {
+            try {
+                $cache[$storeId] = \App\Models\StoreConfig::where('store_id', $storeId)->value('school_serial_scope') ?: 'store';
+            } catch (\Throwable $e) {
+                $cache[$storeId] = 'store';
+            }
+        }
+        return $cache[$storeId];
+    }
+}
+
+if (!function_exists('school_serial_base')) {
+    /** Base query for serial generation, scoped store-wide or per active branch per the store setting. */
+    function school_serial_base(string $modelClass, int $storeId)
+    {
+        $q = $modelClass::withoutGlobalScope('schoolBranch')->where('store_id', $storeId);
+        if (school_serial_scope() === 'branch') {
+            $bid = school_active_branch_id();
+            $bid ? $q->where('branch_id', $bid) : $q->whereNull('branch_id');
+        }
+        return $q;
+    }
+}
+
+if (!function_exists('school_student_tier')) {
+    /** The plan tier assigned to a school store (null = no tier assigned / unlimited). */
+    function school_student_tier($storeId = null)
+    {
+        $storeId = $storeId ?: \App\CentralLogics\Helpers::get_store_id();
+        try {
+            $tierId = \App\Models\VendorSubscription::where('vendor_id', $storeId)
+                ->whereNotNull('student_tier_id')->orderByDesc('id')->value('student_tier_id');
+            return $tierId ? \App\Models\SchoolStudentTier::find($tierId) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('school_student_limit_reached')) {
+    /** True only when an assigned tier exists and the store's active student count has hit its cap. */
+    function school_student_limit_reached($storeId = null): bool
+    {
+        $storeId = $storeId ?: \App\CentralLogics\Helpers::get_store_id();
+        $tier = school_student_tier($storeId);
+        if (!$tier || is_null($tier->max_students)) {
+            return false;
+        }
+        try {
+            $count = \App\Models\Student::withoutGlobalScope('schoolBranch')->where('store_id', $storeId)->where('status', 1)->count();
+        } catch (\Throwable $e) {
+            return false;
+        }
+        return $count >= (int) $tier->max_students;
+    }
+}
+
+if (!function_exists('school_next_serial')) {
+    /** Next running integer for a serial column (PREFIX-{n}), honouring the store's serial-scope setting. */
+    function school_next_serial(string $modelClass, int $storeId, string $column, ?\Closure $extra = null): int
+    {
+        $q = school_serial_base($modelClass, $storeId);
+        if ($extra) {
+            $extra($q);
+        }
+        $last = $q->orderByDesc('id')->value($column);
+        if ($last && preg_match('/(\d+)\s*$/', (string) $last, $m)) {
+            return (int) $m[1] + 1;
+        }
+        return 1;
+    }
+}
+
+if (!function_exists('_sendWhatsAppNotification')) {
+    function _sendWhatsAppNotification($phone, $message)
+    {
+        // Placeholder helper for WhatsApp notification. User will integrate actual gateway later.
+        \Illuminate\Support\Facades\Log::info("WhatsApp Notification to {$phone}: {$message}");
+        return true;
+    }
+}
+
+if (!function_exists('_sendSchoolNotificationBulk')) {
+    function _sendSchoolNotificationBulk($students, $actionKey, $messageText, $pushData = [])
+    {
+        if (empty($students)) {
+            return false;
+        }
+
+        $firstStudent = is_array($students) ? reset($students) : $students->first();
+        if (!$firstStudent) {
+            return false;
+        }
+        $storeId = $firstStudent->store_id;
+
+        $whatsappEnabled = \App\Models\SchoolNotificationPreference::isChannelEnabled($storeId, $actionKey, 'whatsapp');
+        $smsEnabled = \App\Models\SchoolNotificationPreference::isChannelEnabled($storeId, $actionKey, 'sms');
+        $pushEnabled = \App\Models\SchoolNotificationPreference::isChannelEnabled($storeId, $actionKey, 'push_notification');
+
+        if (!$whatsappEnabled && !$smsEnabled && !$pushEnabled) {
+            return true;
+        }
+
+        $phones = [];
+        $studentIds = [];
+        foreach ($students as $student) {
+            $phone = $student->guardian_phone ?: $student->phone;
+            if ($phone) {
+                $phones[] = $phone;
+            }
+            $studentIds[] = $student->id;
+        }
+        $phones = array_unique(array_filter($phones));
+
+        // 1. Dispatch WhatsApp
+        if ($whatsappEnabled && !empty($phones)) {
+            foreach ($phones as $phone) {
+                _sendWhatsAppNotification($phone, $messageText);
+            }
+        }
+
+        // 2. Dispatch SMS
+        if ($smsEnabled && !empty($phones)) {
+            foreach ($phones as $phone) {
+                _sendSMS($phone, $messageText);
+            }
+        }
+
+        // 3. Dispatch Push Notification
+        if ($pushEnabled && !empty($studentIds)) {
+            $userIds = \App\Models\StudentGuardianLink::whereIn('student_id', $studentIds)->pluck('user_id')->toArray();
+            $phoneUsers = \App\Models\User::whereIn('phone', $phones)->pluck('id')->toArray();
+            $allUserIds = array_unique(array_merge($userIds, $phoneUsers));
+
+            $tokens = \App\Models\User::whereIn('id', $allUserIds)
+                ->whereNotNull('cm_firebase_token')
+                ->where('cm_firebase_token', '!=', '')
+                ->pluck('cm_firebase_token')
+                ->toArray();
+
+            if (!empty($tokens)) {
+                $payload = [
+                    'title' => $pushData['title'] ?? 'School Notification',
+                    'description' => $pushData['description'] ?? $messageText,
+                    'image' => $pushData['image'] ?? '',
+                    'order_id' => '',
+                    'type' => 'school_notification',
+                ];
+                \App\Traits\NotificationTrait::sendPushNotificationToTokensBatch($tokens, $payload, 'school_notification');
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('_sendSchoolNotification')) {
+    function _sendSchoolNotification($student, $actionKey, $messageText, $pushData = [])
+    {
+        if (!$student) {
+            return false;
+        }
+        return _sendSchoolNotificationBulk(collect([$student]), $actionKey, $messageText, $pushData);
+    }
+}
+

@@ -197,7 +197,7 @@
     @endif
 
     @if($store)
-    <a href="{{ route('store.details', [_selectedCity(), $store->slug]) }}" class="ad-detail__store">
+    <a href="{{ route('store.details', [_storeCity($store), $store->slug]) }}" class="ad-detail__store">
         <img src="{{ asset('storage/app/public/store') . '/' . $store->logo }}"
              onerror="this.src='{{ asset('assets/admin/img/160x160/img1.jpg') }}'"
              alt="{{ $store->name }}"

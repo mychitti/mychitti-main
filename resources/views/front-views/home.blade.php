@@ -643,7 +643,7 @@
         <div class="row g-0">
 
             @foreach ($data['nearby_stores'] as $store)
-                <a href="{{ route('store.details', [_selectedCity() , $store->slug]) }}" class="col-lg-4 col-md-6 p-2 mt-0">
+                <a href="{{ route('store.details', [_storeCity($store) , $store->slug]) }}" class="col-lg-4 col-md-6 p-2 mt-0">
                     <div class="card-ui  p-2 rounded shadow d-flex flex-row align-items-start">
                         <div class="card-image me-3">
                             <img loading="lazy" loading="lazy"
@@ -734,7 +734,7 @@
                         @php $providers = _getServiceProviders($data['special_product']->id); @endphp
                         @foreach ($providers as $key => $value)
                             @if ($key < 5)
-                                <a href="{{ route('store.details', [_selectedCity() , $value->slug]) }}" style="margin: 0 -7px;"
+                                <a href="{{ route('store.details', [_storeCity($value) , $value->slug]) }}" style="margin: 0 -7px;"
                                     class="position-relative">
                                     <div class="bg-circle bg-purple"></div>
                                     <div class="profile-circle border border-3 shadow-sm">

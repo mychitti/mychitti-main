@@ -245,7 +245,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex"><a class="" href="{{ route('store.details', [_selectedCity() , $store->slug]) }}"> + Add more items </a>{{$store->vendor_type == 'composition' ? '(Composition Vendor)' : ''}} </div>
+                        <div class="d-flex"><a class="" href="{{ route('store.details', [_storeCity($store) , $store->slug]) }}"> + Add more items </a>{{$store->vendor_type == 'composition' ? '(Composition Vendor)' : ''}} </div>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>

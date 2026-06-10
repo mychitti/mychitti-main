@@ -21,7 +21,8 @@
 
     @stack('meta_tags')
 
-    <link rel="canonical" href="{{ url()->current() }}" />
+    @if(!empty($metaRobots))<meta name="robots" content="{{ $metaRobots }}" />@endif
+    <link rel="canonical" href="{{ $canonical ?? url()->current() }}" />
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -489,6 +490,7 @@
 
     @yield('content')
 
+    @include('front-views.partials._school_admission_cta')
     @include('front-views.partials._footer')
     <div id="toast" class="toast"></div>
 
