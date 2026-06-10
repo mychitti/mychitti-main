@@ -50,6 +50,9 @@ class SitemapController extends Controller
             }
         }
 
+        // Store IDs that actually have at least one gallery image
+        $galleryStoreIds = DB::table('store_galleries')->distinct()->pluck('store_id')->flip();
+
         // Store pages + gallery — one city per store based on zone
         foreach ($stores as $store) {
             $lastmod   = $store->updated_at ?? $today;
@@ -57,7 +60,10 @@ class SitemapController extends Controller
             if ($citySlug) {
                 $xml .= $this->urlTag($baseUrl . '/' . $citySlug . '/store/' . $store->slug, $lastmod, 'weekly', '0.7');
             }
-            $xml .= $this->urlTag($baseUrl . '/gallery/' . $store->slug, $lastmod, 'monthly', '0.5');
+            // Only list the gallery page when the store has images
+            if (isset($galleryStoreIds[$store->id])) {
+                $xml .= $this->urlTag($baseUrl . '/gallery/' . $store->slug, $lastmod, 'monthly', '0.5');
+            }
         }
 
         // Item pages — city from the store the item belongs to
