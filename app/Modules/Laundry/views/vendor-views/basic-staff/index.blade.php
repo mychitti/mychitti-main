@@ -62,9 +62,7 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td>
-                                <img src="{{ $s->image
-                                    ? asset('storage/vendor/' . $s->image)
-                                    : asset('public/assets/admin/img/160x160/img1.jpg') }}"
+                                <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($s->image, asset('storage/vendor/' . $s->image), asset('public/assets/admin/img/160x160/img1.jpg'), 'vendor/') }}"
                                     class="rounded-circle"
                                     style="width:44px;height:44px;object-fit:cover;"
                                     alt="">

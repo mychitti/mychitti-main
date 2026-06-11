@@ -58,7 +58,7 @@ class BasicStaffController extends Controller
             'phone'    => 'required|regex:/^[0-9\s\-\+\(\)]{7,20}$/|unique:vendor_employees,phone',
             'email'    => 'required|email|unique:vendor_employees,email',
             'password' => 'required|string|min:6|confirmed',
-            'image'    => 'nullable|image|max:2048',
+            'image'    => 'nullable|max:10240',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
@@ -78,8 +78,8 @@ class BasicStaffController extends Controller
         $storeId   = Helpers::get_store_id();
 
         if ($request->hasFile('image')) {
-            $emp->image = Helpers::upload('profile/', 'png', $request->file('image'));
-            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'profile/' . $emp->image);
+            $emp->image = Helpers::upload('vendor/', 'png', $request->file('image'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'vendor/' . $emp->image);
         }
 
         if ($request->hasFile('id_proof')) {
@@ -110,7 +110,7 @@ class BasicStaffController extends Controller
             'phone'    => ['required', 'regex:/^[0-9\s\-\+\(\)]{7,20}$/', Rule::unique('vendor_employees', 'phone')->ignore($id)],
             'email'    => ['required', 'email', Rule::unique('vendor_employees', 'email')->ignore($id)],
             'password' => 'nullable|string|min:6|confirmed',
-            'image'    => 'nullable|image|max:2048',
+            'image'    => 'nullable|max:10240',
             'id_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
@@ -128,8 +128,8 @@ class BasicStaffController extends Controller
         $storeId   = Helpers::get_store_id();
 
         if ($request->hasFile('image')) {
-            $emp->image = Helpers::upload('profile/', 'png', $request->file('image'));
-            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'profile/' . $emp->image);
+            $emp->image = Helpers::upload('vendor/', 'png', $request->file('image'));
+            _logVendorFile($actorType, $actorId, $storeId, 'staff_profile_image', 'vendor/' . $emp->image);
         }
 
         if ($request->hasFile('id_proof')) {

@@ -34,7 +34,7 @@
                                 {{-- Photo --}}
                                 <td class="text-center py-2">
                                     @if ($member->image)
-                                        <img src="{{ asset('storage/vendor/' . $member->image) }}"
+                                        <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($member->image, asset('storage/vendor/' . $member->image), asset('public/assets/admin/img/160x160/img1.jpg'), 'vendor/') }}"
                                             class="rounded-circle"
                                             style="width:42px;height:42px;object-fit:cover;"
                                             onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'">
