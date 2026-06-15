@@ -3553,6 +3553,43 @@ if (!function_exists('hasMasterModulePermission')) {
         }
     }
 }
+
+if (!function_exists('permission_action_label')) {
+    /**
+     * Human-readable label for a permission action key, used in the role
+     * permission grid so admins know what each permission actually controls.
+     * Falls back to a title-cased version of the key for anything unmapped.
+     */
+    function permission_action_label(string $action): string
+    {
+        $labels = [
+            // Generic
+            'list' => 'View / List', 'view' => 'View', 'add' => 'Create', 'edit' => 'Edit',
+            'delete' => 'Delete', 'export' => 'Export', 'import' => 'Import', 'print' => 'Print',
+            'pay' => 'Payment', 'share' => 'Share', 'download' => 'Download', 'settings' => 'Settings',
+            'dashboard' => 'Dashboard', 'status_change' => 'Status Change', 'slots' => 'Slots',
+            'discharge' => 'Discharge', 'generate_bill' => 'Generate Bill', 'dispense' => 'Dispense',
+            // Radiology
+            'viewer' => 'DICOM Viewer', 'report' => 'Write Report', 'view_report' => 'View / Print Reports',
+            'send' => 'Send Report', 'urgent' => 'Urgent Findings', 'notify' => 'Notify Doctor',
+            'schedule' => 'Schedule & Book Studies', 'book' => 'Place / Order Booking',
+            'equipment' => 'Equipment', 'billing' => 'Billing', 'invoice' => 'Generate Invoice',
+            // Lab
+            'result' => 'Result Entry', 'critical' => 'Critical Values', 'order' => 'Order Test',
+            'reagents' => 'Reagents', 'history' => 'History', 'catalog' => 'Test Catalog',
+            // Nursing Station
+            'vitals' => 'Record Vitals', 'mar' => 'Medication (MAR)', 'fluid' => 'Fluid Balance',
+            'note' => 'Nursing Notes', 'task' => 'Tasks', 'handover' => 'Shift Handover',
+            // Pre-Op
+            'case' => 'Surgical Details', 'checklist' => 'Checklists', 'med' => 'Pre-Op Medicines',
+            'consent' => 'Consent', 'clearance' => 'Clearances', 'anaesthesia' => 'Anaesthesia Eval',
+            'blood' => 'Blood Bank',
+        ];
+
+        return $labels[$action] ?? ucfirst(str_replace('_', ' ', $action));
+    }
+}
+
 if (!function_exists('isAddonActive')) {
     /**
      * Returns true if a module is NOT a premium addon, OR if it is a premium
@@ -5541,11 +5578,11 @@ if (!function_exists('_store_otp')) {
                 'updated_at'    => now(),
             ]
         );
-    }
+    } 
 }
 
 if (!function_exists('_verify_otp')) {
-    function _verify_otp($phone, $otp)
+    function _verify_otp($phone, $otp, $delete = true)
     {
         $row = DB::table('phone_otp')->where('phone', $phone)->first();
 
@@ -5584,7 +5621,9 @@ if (!function_exists('_verify_otp')) {
         }
 
         // Correct — clear row
-        DB::table('phone_otp')->where('phone', $phone)->delete();
+        if ($delete) {
+            DB::table('phone_otp')->where('phone', $phone)->delete();
+        }
         return true;
     }
 }

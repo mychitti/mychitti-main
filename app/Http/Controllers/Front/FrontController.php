@@ -552,14 +552,14 @@ class FrontController extends Controller
         $phone = $request->phone;
         $otp   = implode('', $request->otp);
 
-        if (_verify_otp($phone, $otp)) {
+        if (_verify_otp($phone, $otp, false)) {
             return response()->json(['status' => true, 'message' => 'Verified successfully.', 'action' => 'verified', 'otp' => $otp]);
         }
         return response()->json(['status' => false, 'message' => 'Incorrect or expired OTP.', 'action' => '', 'otp' => '']);
     }
     public function fetch_subcategory(Request $request)
     {
-        $allcategories = [];
+        $allcategories = []; 
         array_push($allcategories, $request->cat_id);
 
         // Fetch child category IDs
@@ -1108,7 +1108,7 @@ class FrontController extends Controller
         $phone = $request->phone;
         $otp   = implode('', $request->otp);
 
-        if (_verify_otp($phone, $otp)) {
+        if (_verify_otp($phone, $otp, false)) {
             return response()->json(['status' => true, 'message' => 'Verified successfully.', 'action' => 'verified', 'otp' => $otp]);
         }
         return response()->json(['status' => false, 'message' => 'Incorrect or expired OTP.', 'action' => '', 'otp' => '']);

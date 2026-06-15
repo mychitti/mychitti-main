@@ -40,6 +40,8 @@ class VendorController extends Controller
         $custome_recaptcha->build();
         Session::put('six_captcha', $custome_recaptcha->getPhrase());
 
+        StoreType::firstOrCreate(['name' => 'School', 'module_id' => 6]);
+
         $shop_stores_type = StoreType::where('module_id', 6)->get();
         $service_stores_type =  StoreType::where('module_id', 6)->get();
 
@@ -116,11 +118,13 @@ class VendorController extends Controller
             'phone' =>  $request->phone,
             'otp' => $request->otp
         ])->exists();
-
+ 
         if (!$verify_mobile) {
             Toastr::error('Mobile not verified');
             return response()->json(['status' => false, 'message' => 'Mobile not verified']);
         }
+
+        DB::table('phone_otp')->where('phone', $request->phone)->delete();
 
         if ($request->zone_id) {
             $zone = Zone::query()

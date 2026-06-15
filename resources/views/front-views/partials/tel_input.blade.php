@@ -192,8 +192,8 @@ const inputs23 = document.querySelectorAll('input[type="tel"]');
                 // Extract only numbers from pasted text
                 let numbers = pastedText.replace(/\D/g, '');
 
-                // Remove country code if pasted with it
-                if (numbers.startsWith('91')) {
+                // Remove country code if pasted with it and length is greater than 10
+                if (numbers.length > 10 && numbers.startsWith('91')) {
                     numbers = numbers.substring(2);
                 }
 
