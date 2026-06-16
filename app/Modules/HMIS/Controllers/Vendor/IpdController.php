@@ -183,8 +183,9 @@ class IpdController extends Controller
     {
         if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'view')) abort(403);
         $store_id  = Helpers::get_store_id();
+        IpdAdmission::ensureNurseAssignTable();
         $admission = IpdAdmission::where('store_id', $store_id)
-            ->with(['patient', 'ward', 'bed', 'doctorProfile.employee', 'admittedBy', 'dischargedBy'])
+            ->with(['patient', 'ward', 'bed', 'doctorProfile.employee', 'admittedBy', 'dischargedBy', 'assignedNurses.employee'])
             ->findOrFail($id);
 
         $nursingNotes = \App\Models\NursingNote::where('ipd_admission_id', $id)
@@ -201,7 +202,43 @@ class IpdController extends Controller
             ->orderByDesc('signed_at')
             ->get();
 
-        return view('hmis::vendor.ipd.show', compact('admission', 'nursingNotes', 'dietCharts', 'consents'));
+        // Nurses available to assign to this admission.
+        $nurses = \App\Models\NurseProfile::where('store_id', $store_id)
+            ->with('employee')
+            ->get();
+
+        return view('hmis::vendor.ipd.show', compact('admission', 'nursingNotes', 'dietCharts', 'consents', 'nurses'));
+    }
+
+    public function assignNurses(Request $request, $id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'view')) abort(403);
+        $store_id  = Helpers::get_store_id();
+        IpdAdmission::ensureNurseAssignTable();
+        $admission = IpdAdmission::where('store_id', $store_id)->findOrFail($id);
+
+        $nurseIds = array_filter((array) $request->input('nurse_profile_ids', []));
+        // Keep the pivot's store_id in sync for each attached row.
+        $sync = [];
+        foreach ($nurseIds as $nid) {
+            $sync[$nid] = ['store_id' => $store_id];
+        }
+        $admission->assignedNurses()->sync($sync);
+
+        Toastr::success('Assigned nurses updated.');
+        return back();
+    }
+
+    public function removeNurse($id, $nurseId)
+    {
+        if (!auth('vendor')->check() && !hasPermission('ipd_admission', 'view')) abort(403);
+        $store_id  = Helpers::get_store_id();
+        IpdAdmission::ensureNurseAssignTable();
+        $admission = IpdAdmission::where('store_id', $store_id)->findOrFail($id);
+        $admission->assignedNurses()->detach($nurseId);
+
+        Toastr::success('Nurse unassigned.');
+        return back();
     }
 
     public function dischargeForm($id)

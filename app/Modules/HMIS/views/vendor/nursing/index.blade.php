@@ -152,6 +152,13 @@
         <div class="tn-right">
             <div class="tn-ward">🛏 {{ $summary['occupied'] }} Occupied</div>
             <div class="tn-shift">🌅 {{ $shift }} Shift</div>
+            @isset($duty)
+                @if($duty['has'])
+                    <div class="tn-sep"></div>
+                    <div class="tn-shift" title="Today's duty">🟢 In {{ $duty['in_time'] ? $duty['in_time']->format('h:i A') : '—' }}
+                        · 🔴 Out {{ $duty['out_time'] ? $duty['out_time']->format('h:i A') : '—' }}@if($duty['extra_label']) · ⏱ Extra {{ $duty['extra_label'] }}@endif</div>
+                @endif
+            @endisset
             <div class="tn-sep"></div>
             <div class="tn-avatar">{{ strtoupper(substr($nurseName ?: 'N', 0, 2)) }}</div>
             <div class="tn-name">{{ $nurseName ?: 'Nurse' }}</div>

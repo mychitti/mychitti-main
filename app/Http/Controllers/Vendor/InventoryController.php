@@ -20,11 +20,13 @@ use App\Models\InvItemVariationDetail;
 use App\Models\Item;
 use App\Models\ItemEntry;
 use App\Models\StorageUnit;
+use App\Models\StoreConfig;
 use App\Models\StoreTnc;
 use App\Models\TempInvItemImage;
 use App\Models\VendorTermsCondition;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator as FacadesValidator;
 use Illuminate\Support\Facades\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -161,14 +163,31 @@ class InventoryController extends Controller
                 ]
             );
 
+        // Pharmacy: "medicines given to whoever brings the prescription" toggle.
+        $this->ensurePharmacyDispenseColumn();
+        StoreConfig::updateOrCreate(
+            ['store_id' => $storeId],
+            ['pharmacy_dispense_to_bearer' => $request->boolean('pharmacy_dispense_to_bearer') ? 1 : 0]
+        );
+
         Toastr::success('Saved Successfully');
         return back();
     }
     public function settings(Request $request)
     {
-        $tnc = VendorTermsCondition::where('vendor_id', Helpers::get_store_id())->where('type', 'purchase_order')->first();
         $store_id = Helpers::get_store_id();
-        return view('vendor-views.inventory.settings', compact('tnc'));
+        $tnc = VendorTermsCondition::where('vendor_id', $store_id)->where('type', 'purchase_order')->first();
+        $this->ensurePharmacyDispenseColumn();
+        $pharmacyDispenseToBearer = (int) (StoreConfig::where('store_id', $store_id)->value('pharmacy_dispense_to_bearer') ?? 0);
+        return view('vendor-views.inventory.settings', compact('tnc', 'pharmacyDispenseToBearer'));
+    }
+
+    // Guarded column so the pharmacy dispensing rule can be stored on store_configs (no migration files).
+    private function ensurePharmacyDispenseColumn(): void
+    {
+        if (!Schema::hasColumn('store_configs', 'pharmacy_dispense_to_bearer')) {
+            DB::statement('ALTER TABLE `store_configs` ADD COLUMN `pharmacy_dispense_to_bearer` TINYINT(1) NOT NULL DEFAULT 0');
+        }
     }
     public function items_import(Request $request)
     {

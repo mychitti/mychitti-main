@@ -563,11 +563,17 @@ class RadiologyController extends Controller
         $storeId = $this->storeId();
         $study = $this->study($id);
 
+        $request->validate([
+            'transaction_id' => 'required_if:payment_mode,Online,Card,UPI|nullable|string|max:100',
+        ]);
+
         $subtotal = (float) $study->price + (float) ($request->reading_fee ?: 0);
         $insurance = (float) ($request->insurance_covered ?: 0);
         $discount = (float) ($request->discount ?: 0);
         $payable = max(0, $subtotal - $insurance - $discount);
         $taxType = 'non-gst';
+        $mode = strtolower($request->payment_mode ?: 'cash');
+        $isOnline = in_array($mode, ['online', 'card', 'upi']);
 
         DB::beginTransaction();
         try {
@@ -578,6 +584,9 @@ class RadiologyController extends Controller
                 'user_type' => 'hospital_patient', 'vendor_id' => $storeId, 'total_amount' => $payable,
                 'payment_status' => 'Paid', 'payment_method' => $request->payment_mode ?: 'Cash',
                 'payment_date' => now()->toDateString(), 'invoice_date' => now()->toDateString(), 'tax_type' => $taxType,
+                'cash_amount' => $isOnline ? 0 : $payable, 'online_amount' => $isOnline ? $payable : 0,
+                'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
+                'meta' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
             ]);
             InvoiceItem::create([
                 'rand_invoice_id' => $invoiceId, 'manual_invoice_id' => $manual->id,

@@ -388,6 +388,12 @@
                                                 class="btn btn-hmis-action-receipt" title="OP Consultation Receipt">
                                                 <i class="tio-receipt"></i> Receipt
                                             </a>
+                                            @if (hasPermission('opd_register', 'generate_bill'))
+                                                <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}"
+                                                    class="btn btn-hmis-action-receipt" title="Generate Bill">
+                                                    <i class="tio-receipt-outlined"></i> Bill
+                                                </a>
+                                            @endif
                                         </div>
                                         @endif
                                     </td>

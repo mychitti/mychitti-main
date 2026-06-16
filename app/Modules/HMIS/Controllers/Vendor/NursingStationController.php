@@ -315,9 +315,12 @@ class NursingStationController extends Controller
 
         [, $nurseName] = $this->actor();
 
+        // Logged-in nurse's punch in/out + extra duty for today.
+        $duty = \App\Models\Attendance::dutySummary(auth('vendor_employee')->user(), $storeId);
+
         return view('hmis::vendor.nursing.index', compact(
             'admissions', 'current', 'vital', 'vitalsTrend', 'marRows', 'fluids', 'fbIn', 'fbOut', 'fbNet',
-            'notes', 'tasks', 'patientTasks', 'handover', 'nurseNames', 'summary', 'emptyBeds', 'nurseName'
+            'notes', 'tasks', 'patientTasks', 'handover', 'nurseNames', 'summary', 'emptyBeds', 'nurseName', 'duty'
         ))->with('marTimes', self::MAR_TIMES)->with('shift', $this->shiftNow());
     }
 

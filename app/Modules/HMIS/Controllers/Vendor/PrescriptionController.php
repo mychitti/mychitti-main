@@ -372,7 +372,14 @@ class PrescriptionController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('hmis::vendor.prescription.dispense_form', compact('rx', 'pharmacyInvoices'));
+        // Banned/blocked medicines on this prescription (warn-but-allow) + the dispensing rule toggle.
+        // Banned status is a flag on the inventory item.
+        $bannedItems = $rx->items->filter(fn($i) => (int) ($i->inventoryItem->is_banned ?? 0) === 1);
+        $dispenseToBearer = \Illuminate\Support\Facades\Schema::hasColumn('store_configs', 'pharmacy_dispense_to_bearer')
+            ? (int) (\App\Models\StoreConfig::where('store_id', $storeId)->value('pharmacy_dispense_to_bearer') ?? 0)
+            : 0;
+
+        return view('hmis::vendor.prescription.dispense_form', compact('rx', 'pharmacyInvoices', 'bannedItems', 'dispenseToBearer'));
     }
 
     public function dispenseProcess(Request $request, $id)
@@ -512,17 +519,19 @@ class PrescriptionController extends Controller
             return response()->json([]);
         }
 
+        $hasBanned = \Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'is_banned');
         $items = InventoryItem::where('store_id', $this->storeId())
             ->where('item_type', 'product')
             ->where('item_name', 'like', "%{$q}%")
-            ->select('id', 'item_name', 'unit', 'selling_price')
+            ->select('id', 'item_name', 'unit', 'selling_price', ...($hasBanned ? ['is_banned'] : []))
             ->limit(15)
             ->get();
 
         return response()->json($items->map(fn($i) => [
-            'id'    => $i->id,
-            'name'  => $i->item_name,
-            'price' => $i->selling_price,
+            'id'     => $i->id,
+            'name'   => $i->item_name,
+            'price'  => $i->selling_price,
+            'banned' => $hasBanned ? ((int) ($i->is_banned ?? 0) === 1) : false,
         ]));
     }
 

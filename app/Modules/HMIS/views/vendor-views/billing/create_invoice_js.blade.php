@@ -18,9 +18,14 @@
          console.log(val)
          if (val == 'Cash and Online') {
              $(".partial_payment").show()
-         } else { 
+         } else {
              $(".partial_payment").hide()
          }
+         // Transaction ID required for any online component (Online or Both).
+         var needsTxn = (val == 'Online' || val == 'Cash and Online');
+         $(".txn_field").toggle(needsTxn);
+         $(".txn_id_input").prop('required', needsTxn);
+         if (!needsTxn) $(".txn_id_input").val('');
      })
      ckeditorInstance = typeof ckeditorInstance !== 'undefined' ? ckeditorInstance : null;
 

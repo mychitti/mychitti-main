@@ -119,7 +119,7 @@
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between py-2">
                     <h6 class="mb-0">
-                        <i class="tio-file mr-1"></i> Documents
+                        <i class="tio-file mr-1"></i> Documents & Prescriptions
                         @if($patient->documents->count())
                             <span class="badge badge-soft-info ml-1">{{ $patient->documents->count() }}</span>
                         @endif
@@ -202,7 +202,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#tab-rx">
-                        Prescriptions
+                       Documents & Prescriptions
                         <span class="badge badge-soft-success ml-1">{{ $prescriptions->count() }}</span>
                     </a>
                 </li>

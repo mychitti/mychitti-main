@@ -741,6 +741,10 @@ class ServiceController extends Controller
             $invoice->cash_amount = $request->cash_amount;
             $invoice->online_amount = $request->online_amount;
         }
+        // Capture the transaction reference for any online payment component.
+        if (in_array($request->payment_mode, ['Online', 'Cash and Online']) && $request->filled('transaction_id')) {
+            $invoice->meta = ['transaction_id' => $request->transaction_id];
+        }
         $invoice->invoice_date = $request->invoice_date;
         $invoice->payment_status =  $request->payment_stts;
         $invoice->payment_date =  $request->payment_date;

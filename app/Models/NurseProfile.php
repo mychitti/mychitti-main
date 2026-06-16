@@ -27,4 +27,11 @@ class NurseProfile extends Model
     {
         return $this->belongsTo(Ward::class);
     }
+
+    // IPD admissions this nurse is assigned to (pivot: ipd_admission_nurses).
+    public function admissions()
+    {
+        return $this->belongsToMany(IpdAdmission::class, 'ipd_admission_nurses', 'nurse_profile_id', 'ipd_admission_id')
+            ->withTimestamps();
+    }
 }

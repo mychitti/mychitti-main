@@ -353,7 +353,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                         @endif
                     @endforeach
                     <a href="{{ route('vendor.menu_preference') }}"><i class="tio-edit"></i></a>
-                @else
+                @elseif(!_isHospital())
                     <a class="btn btn--primary" href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
                 @endif
             </div>

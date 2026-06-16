@@ -153,7 +153,7 @@
 
                     <hr>
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">Documents</h5>
+                        <h5 class="mb-0">Prescriptions &amp; Documents</h5>
                         <button type="button" class="btn btn-sm btn-soft-primary" onclick="addDocRow()">
                             <i class="tio-add"></i> Add Document
                         </button>

@@ -19,6 +19,7 @@ Route::group(['prefix' => 'doctor', 'as' => 'doctor.'], function () {
 });
 
 Route::group(['prefix' => 'my-doctor-profile', 'as' => 'my-doctor-profile.'], function () {
+    Route::get('patients',                           [MyDoctorProfileController::class, 'patients'])->name('patients');
     Route::get('edit',                               [MyDoctorProfileController::class, 'edit'])->name('edit');
     Route::post('update',                            [MyDoctorProfileController::class, 'update'])->name('update');
     Route::post('slot/store',                        [MyDoctorProfileController::class, 'slotStore'])->name('slot.store');

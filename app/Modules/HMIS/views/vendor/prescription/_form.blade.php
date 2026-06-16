@@ -293,6 +293,42 @@
 let medIdx = {{ isset($rx) ? max(0, $rx->items->count() - 1) : 0 }};
 const pharmacySearchUrl = "{{ route('vendor.prescription.search-medicines') }}";
 
+@php
+    $rxBannedNames = \Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'is_banned')
+        ? \App\Models\InventoryItem::where('store_id', \App\CentralLogics\Helpers::get_store_id())
+            ->where('item_type', 'product')->where('is_banned', 1)
+            ->pluck('item_name')->map(fn($n) => mb_strtolower(trim($n)))->values()
+        : collect();
+@endphp
+const RX_BANNED = @json($rxBannedNames);
+
+// Warn (but allow) when a banned/blocked medicine is entered on the prescription.
+function rxBannedCheck(input) {
+    if (!input) return;
+    const row = input.closest('.med-row'); if (!row) return;
+    const banned = RX_BANNED.includes((input.value || '').trim().toLowerCase());
+    let warn = row.querySelector('.rx-banned-warn');
+    if (banned) {
+        if (!warn) {
+            warn = document.createElement('div');
+            warn.className = 'rx-banned-warn text-danger small mt-1';
+            warn.innerHTML = '<i class="tio-warning"></i> This medicine is <strong>banned/blocked</strong>. You can still prescribe, but please confirm it is justified.';
+            input.insertAdjacentElement('afterend', warn);
+        }
+        warn.style.display = ''; input.style.borderColor = '#dc2626';
+    } else if (warn) {
+        warn.style.display = 'none'; input.style.borderColor = '';
+    }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    const medTable = document.getElementById('medTable');
+    if (!medTable) return;
+    medTable.addEventListener('input', function (e) {
+        if (e.target.matches('input[name$="[medicine_name]"]')) rxBannedCheck(e.target);
+    });
+    medTable.querySelectorAll('input[name$="[medicine_name]"]').forEach(rxBannedCheck);
+});
+
 function addMedRow(prefill) {
     medIdx++;
     const tpl = document.getElementById('medRowTpl').innerHTML
@@ -307,6 +343,7 @@ function addMedRow(prefill) {
         if (invInput && prefill.id) invInput.value = prefill.id;
     }
     document.getElementById('medTable').appendChild(row);
+    rxBannedCheck(row.querySelector('input[name$="[medicine_name]"]'));
     if (prefill) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -335,7 +372,7 @@ function pharmacyFetch(q) {
                 <li onclick="pharmacySelect(${JSON.stringify(it).replace(/"/g, '&quot;')})"
                     style="padding:7px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f3f4f6;"
                     onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                    <strong>${it.name}</strong>
+                    <strong>${it.name}</strong> ${it.banned ? '<span style="color:#b91c1c;font-weight:700;font-size:10px;">⛔ BANNED</span>' : ''}
                     ${it.price > 0 ? `<span style="float:right;color:#059669;font-size:12px;">₹${parseFloat(it.price).toFixed(0)}</span>` : ''}
                 </li>`).join('');
             ul.style.display = 'block';
@@ -349,6 +386,7 @@ function pharmacySelect(item) {
         firstNameInput.value = item.name;
         const invInput = firstNameInput.closest('.med-row').querySelector('.med-inv-id');
         if (invInput) invInput.value = item.id;
+        rxBannedCheck(firstNameInput);
     } else {
         addMedRow(item);
     }

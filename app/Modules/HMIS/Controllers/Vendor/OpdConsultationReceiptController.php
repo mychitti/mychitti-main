@@ -55,6 +55,9 @@ class OpdConsultationReceiptController extends Controller
         if (Schema::hasTable('opd_consultation_receipts') && !Schema::hasColumn('opd_consultation_receipts', 'invoice_id')) {
             DB::statement("ALTER TABLE `opd_consultation_receipts` ADD COLUMN `invoice_id` VARCHAR(60) NULL");
         }
+        if (Schema::hasTable('opd_consultation_receipts') && !Schema::hasColumn('opd_consultation_receipts', 'transaction_id')) {
+            DB::statement("ALTER TABLE `opd_consultation_receipts` ADD COLUMN `transaction_id` VARCHAR(100) NULL");
+        }
     }
 
     /**
@@ -107,9 +110,10 @@ class OpdConsultationReceiptController extends Controller
     {
         $this->ensureSchema();
         $request->validate([
-            'amount'       => 'required|numeric|min:0',
-            'concession'   => 'nullable|numeric|min:0',
-            'payment_mode' => 'required|string|max:30',
+            'amount'         => 'required|numeric|min:0',
+            'concession'     => 'nullable|numeric|min:0',
+            'payment_mode'   => 'required|string|max:30',
+            'transaction_id' => 'required_if:payment_mode,Card,UPI,Online,Wallet|nullable|string|max:100',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -142,6 +146,7 @@ class OpdConsultationReceiptController extends Controller
             'paid'                  => $paid,
             'due'                   => $due,
             'payment_mode'          => $request->payment_mode,
+            'transaction_id'        => $request->transaction_id,
             'allowed_consultations' => $allowed,
             'validity_days'         => $validityDays,
             'valid_until'           => now()->addDays($validityDays)->toDateString(),
@@ -172,6 +177,8 @@ class OpdConsultationReceiptController extends Controller
                 'payment_date'   => $paid > 0 ? now()->toDateString() : null,
                 'invoice_date'   => now()->toDateString(),
                 'tax_type'       => $taxType,
+                'reference_number' => $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
+                'meta'           => $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
             ]);
             InvoiceItem::create([
                 'rand_invoice_id'   => $invoiceId,

@@ -18,6 +18,7 @@ class OpdConsultationReceipt extends Model
         'paid',
         'due',
         'payment_mode',
+        'transaction_id',
         'allowed_consultations',
         'validity_days',
         'valid_until',

@@ -33,6 +33,14 @@
                                 </div>
                                 <div class="fg" style="max-width:200px"><label class="fl">Discount</label><input class="fi" type="number" step="0.01" name="discount" id="bDiscount" value="0" oninput="bRecalc()"></div>
                             </div>
+                            <div class="frow2" style="padding:0 16px">
+                                <div class="fg"><label class="fl">Payment Mode</label>
+                                    <select class="fs" name="payment_mode" id="bPayMode" onchange="bSyncTxn()">
+                                        @foreach (['Cash','Online','Card','UPI'] as $m)<option value="{{ $m }}">{{ $m }}</option>@endforeach
+                                    </select>
+                                </div>
+                                <div class="fg" id="bTxnWrap" style="display:none"><label class="fl">Transaction ID *</label><input class="fi" name="transaction_id" id="bTxnId" placeholder="UPI / card / online ref"></div>
+                            </div>
                             <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#F9FAFB;font-weight:700;font-size:13px"><span>Subtotal</span><span class="num" id="bSub" data-base="{{ $study->price }}">{{ $fmt($study->price) }}</span></div>
                             <div style="display:flex;justify-content:space-between;padding:14px 16px;background:var(--navy);color:#fff;font-weight:700;font-size:16px"><span>💳 Patient Payable</span><span class="num" id="bPayable">{{ $fmt($study->price) }}</span></div>
                             @if($canAdd)<div style="padding:14px 16px;text-align:right"><button class="btn btn-green">✓ Finalize Invoice</button></div>@endif
@@ -76,5 +84,12 @@ function bRecalc(){
   document.getElementById('bSub').textContent=sym+' '+sub.toFixed(2);
   document.getElementById('bPayable').textContent=sym+' '+Math.max(0,sub-ins-dis).toFixed(2);
 }
+function bSyncTxn(){
+  var sel=document.getElementById('bPayMode'); if(!sel) return;
+  var online=(sel.value||'').toLowerCase()!=='cash';
+  var wrap=document.getElementById('bTxnWrap'), txn=document.getElementById('bTxnId');
+  wrap.style.display=online?'':'none'; txn.required=online; if(!online) txn.value='';
+}
+document.addEventListener('DOMContentLoaded', bSyncTxn);
 </script>
 @endpush

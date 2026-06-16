@@ -238,6 +238,7 @@
             border-bottom: 1px solid #e2e8f0;
             padding: 0 24px;
             display: flex;
+            flex-wrap: wrap;
             gap: 6px;
             overflow: visible !important;
         }

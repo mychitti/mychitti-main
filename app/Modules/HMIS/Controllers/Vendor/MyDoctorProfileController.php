@@ -6,6 +6,7 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
+use App\Models\IpdAdmission;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,30 @@ class MyDoctorProfileController extends Controller
             ->where('store_id', $store_id)
             ->with('services', 'slots')
             ->first();
+    }
+
+    // The doctor's own admitted (IPD) patients, with nursing notes + diet charts.
+    public function patients()
+    {
+        $doctor = $this->getMyProfile();
+        if (!$doctor) {
+            Toastr::warning('No doctor profile is linked to your account.');
+            return redirect()->route('vendor.dashboard');
+        }
+
+        IpdAdmission::ensureNurseAssignTable();
+        $admissions = IpdAdmission::where('store_id', Helpers::get_store_id())
+            ->where('doctor_profile_id', $doctor->id)
+            ->with(['patient', 'ward', 'bed', 'assignedNurses.employee', 'nursingNotes.recorder', 'dietCharts.recorder'])
+            ->orderByRaw("status = 'active' desc")
+            ->orderByDesc('admission_date')
+            ->get();
+
+        return view('hmis::vendor.hospital.my_patients', [
+            'admissions' => $admissions,
+            'heading'    => 'My Admitted Patients',
+            'role'       => 'doctor',
+        ]);
     }
 
     public function edit()

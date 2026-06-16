@@ -109,7 +109,7 @@
                         @endforeach
                         <a href="{{ route('vendor.menu_preference') }}"><i
                                 class="tio-edit"></i></a>
-                    @else
+                    @elseif(!_isHospital())
                         <a class="btn btn--primary"
                             href="{{ route('vendor.menu_preference') }}">Add Quick Actions</a>
                     @endif
@@ -238,8 +238,8 @@
                                                  alt="Owner image">
                                         </div>
                                         <div class="media-body">
-                                            <span class="card-title h5">{{\App\CentralLogics\Helpers::get_loggedin_user()->f_name}}</span>
-                                            <span class="card-text">{{\App\CentralLogics\Helpers::get_loggedin_user()->email}}</span>
+                                            <span class=" h5">{{\App\CentralLogics\Helpers::get_loggedin_user()->f_name}}</span>
+                                            <span class="">{{\App\CentralLogics\Helpers::get_loggedin_user()->email}}</span>
                                         </div>
                                     </a>
                                 @else
@@ -250,8 +250,8 @@
                                                  alt="Owner image">
                                         </div>
                                         <div class="media-body">
-                                            <span class="card-title h5">{{\App\CentralLogics\Helpers::get_loggedin_user()->f_name}}</span>
-                                            <span class="card-text">{{\App\CentralLogics\Helpers::get_loggedin_user()->email}}</span>
+                                            <span class=" h5 ">{{\App\CentralLogics\Helpers::get_loggedin_user()->f_name}}</span>
+                                            <span class="">{{\App\CentralLogics\Helpers::get_loggedin_user()->email}}</span>
                                         </div>
                                     </div>
                                 </div>

@@ -919,11 +919,17 @@ class LabController extends Controller
         $storeId = $this->storeId();
         $order = LabOrder::where('store_id', $storeId)->with('items')->findOrFail($id);
 
+        $request->validate([
+            'transaction_id' => 'required_if:payment_mode,Online,Card,UPI|nullable|string|max:100',
+        ]);
+
         $subtotal = $order->items->sum('price');
         $insurance = (float) ($request->insurance_covered ?: 0);
         $discount = (float) ($request->discount ?: 0);
         $payable = max(0, $subtotal - $insurance - $discount);
         $taxType = 'non-gst';
+        $mode = strtolower($request->payment_mode ?: 'cash');
+        $isOnline = in_array($mode, ['online', 'card', 'upi']);
 
         DB::beginTransaction();
         try {
@@ -944,6 +950,10 @@ class LabController extends Controller
                 'payment_date'   => now()->toDateString(),
                 'invoice_date'   => now()->toDateString(),
                 'tax_type'       => $taxType,
+                'cash_amount'    => $isOnline ? 0 : $payable,
+                'online_amount'  => $isOnline ? $payable : 0,
+                'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
+                'meta'           => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
             ]);
 
             foreach ($order->items as $it) {

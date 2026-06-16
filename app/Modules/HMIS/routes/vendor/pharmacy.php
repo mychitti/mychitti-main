@@ -11,11 +11,10 @@ Route::group(['prefix' => 'pharmacy', 'as' => 'pharmacy.'], function () {
     Route::post('medicines/{id}/add-stock',  [BasicPharmacyController::class, 'addStock'])->name('medicines.add-stock')->middleware('permission:pharmacy,edit');
     Route::get('medicines/{id}/delete',      [BasicPharmacyController::class, 'deleteMedicine'])->name('medicines.delete')->middleware('permission:pharmacy,delete');
 
-    // Banned / Blocked items
+    // Banned / Blocked items (flag on the inventory item)
     Route::get('banned-items',               [BasicPharmacyController::class, 'bannedItems'])->name('banned-items')->middleware('permission:pharmacy,list');
-    Route::post('banned-items/save',         [BasicPharmacyController::class, 'saveBannedItem'])->name('banned-items.save')->middleware('permission:pharmacy,add');
-    Route::get('banned-items/{id}/toggle',   [BasicPharmacyController::class, 'toggleBannedItem'])->name('banned-items.toggle')->middleware('permission:pharmacy,edit');
-    Route::get('banned-items/{id}/delete',   [BasicPharmacyController::class, 'deleteBannedItem'])->name('banned-items.delete')->middleware('permission:pharmacy,delete');
+    Route::post('banned-items/save',         [BasicPharmacyController::class, 'saveBannedItem'])->name('banned-items.save')->middleware('permission:pharmacy,edit');
+    Route::get('banned-items/{id}/delete',   [BasicPharmacyController::class, 'deleteBannedItem'])->name('banned-items.delete')->middleware('permission:pharmacy,edit');
 
     // Walk-in Sale
     Route::get('walkin',        [BasicPharmacyController::class, 'walkin'])->name('walkin')->middleware('permission:pharmacy,dispense');

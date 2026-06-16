@@ -724,6 +724,12 @@
                                                             placeholder="Ex : 1200" id="">
                                                     </td>
                                                 </tr>
+                                                <tr class="txn_field" style="display:none;">
+                                                    <td colspan="3">
+                                                        <label class="mb-1" style="font-size:12px;font-weight:600;">Transaction ID <span class="text-danger">*</span></label>
+                                                        <input name="transaction_id" class="form-control txn_id_input" placeholder="UPI / card / online reference">
+                                                    </td>
+                                                </tr>
 
                                             </tbody>
                                         </table>

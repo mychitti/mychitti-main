@@ -789,14 +789,23 @@
                         <tr><td class="lbl">Total Visits</td><td class="val">{{ $pastVisits->count() + 1 }} visits</td></tr>
                         @if (hasPermission('opd_register', 'view'))
                             <tr>
-                                <td class="lbl">OP Receipt</td> 
+                                <td class="lbl">OP Receipt</td>
                                 <td class="val">
                                     <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}" target="_blank" class="btn btn-sm btn-info " >
                                         <i class="tio-receipt"></i> OP Receipt
                                     </a>
-                                </td> 
+                                </td>
                             </tr>
-
+                        @endif
+                        @if (hasPermission('opd_register', 'generate_bill'))
+                            <tr>
+                                <td class="lbl">Bill</td>
+                                <td class="val">
+                                    <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}" class="btn btn-sm btn--primary">
+                                        <i class="tio-receipt-outlined"></i> Generate Bill
+                                    </a>
+                                </td>
+                            </tr>
                         @endif
                     </table> 
                 </div>
@@ -1854,6 +1863,44 @@
     let medIdx = document.querySelectorAll('#medTable .med-row').length - 1;
     if (medIdx < 0) medIdx = 0;
 
+    @php
+        $rxBannedNames = \Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'is_banned')
+            ? \App\Models\InventoryItem::where('store_id', \App\CentralLogics\Helpers::get_store_id())
+                ->where('item_type', 'product')->where('is_banned', 1)
+                ->pluck('item_name')->map(fn($n) => mb_strtolower(trim($n)))->values()
+            : collect();
+    @endphp
+    const RX_BANNED = @json($rxBannedNames);
+
+    // Show a warning under any prescription medicine that is banned/blocked (warn but allow).
+    function rxBannedCheck(input) {
+        if (!input) return;
+        const row = input.closest('.med-row'); if (!row) return;
+        const banned = RX_BANNED.includes((input.value || '').trim().toLowerCase());
+        let warn = row.querySelector('.rx-banned-warn');
+        if (banned) {
+            if (!warn) {
+                warn = document.createElement('div');
+                warn.className = 'rx-banned-warn text-danger small mt-1';
+                warn.innerHTML = '<i class="tio-warning"></i> This medicine is <strong>banned/blocked</strong>. You can still prescribe, but please confirm it is justified.';
+                input.insertAdjacentElement('afterend', warn);
+            }
+            warn.style.display = '';
+            input.style.borderColor = '#dc2626';
+        } else if (warn) {
+            warn.style.display = 'none';
+            input.style.borderColor = '';
+        }
+    }
+    (function () {
+        const medTable = document.getElementById('medTable');
+        if (!medTable) return;
+        medTable.addEventListener('input', function (e) {
+            if (e.target.matches('input[name$="[medicine_name]"]')) rxBannedCheck(e.target);
+        });
+        medTable.querySelectorAll('input[name$="[medicine_name]"]').forEach(rxBannedCheck);
+    })();
+
     function addCustomMedRow(prefill) {
         medIdx++;
         const row = document.createElement('div');
@@ -1875,6 +1922,7 @@
             <input type="text" name="medicines[${medIdx}][instructions]" class="form-control form-control-sm mt-1" placeholder="Instructions (Optional)">
         `;
         document.getElementById('medTable').appendChild(row);
+        rxBannedCheck(row.querySelector('input[name$="[medicine_name]"]'));
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -1910,7 +1958,7 @@
                     <li onclick="pharmacySelect(${JSON.stringify(it).replace(/"/g, '&quot;')})"
                         style="padding:7px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid #f3f4f6;"
                         onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                        <strong>${it.name}</strong>
+                        <strong>${it.name}</strong> ${it.banned ? '<span style="color:#b91c1c;font-weight:700;font-size:10px;">⛔ BANNED</span>' : ''}
                     </li>`).join('');
                 ul.style.display = 'block';
             })
@@ -1924,8 +1972,10 @@
         });
 
         if (firstEmpty) {
-            firstEmpty.querySelector('input[name$="[medicine_name]"]').value = item.name;
+            const nameInp = firstEmpty.querySelector('input[name$="[medicine_name]"]');
+            nameInp.value = item.name;
             firstEmpty.querySelector('.med-inv-id').value = item.id;
+            rxBannedCheck(nameInp);
         } else {
             addCustomMedRow(item);
         }

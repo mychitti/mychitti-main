@@ -35,6 +35,29 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Pharmacy dispensing rule --}}
+                <div class="col-md-12 mt-4">
+                    <div class="card">
+                        <div class="card-header"><h4 class="card-header-title"><i class="tio-medicine mr-1"></i> Pharmacy</h4></div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <label class="mb-0 font-weight-bold">Medicines given to whoever brings the prescription</label>
+                                    <div class="text-muted" style="font-size:12px;">
+                                        When enabled, the pharmacy may dispense/sell against a prescription to any person presenting it
+                                        (not restricted to the patient). This is shown as guidance on the dispense &amp; walk-in screens.
+                                    </div>
+                                </div>
+                                <label class="toggle-switch ml-3 mb-0" for="pharmacy_dispense_to_bearer">
+                                    <input type="checkbox" class="toggle-switch-input" id="pharmacy_dispense_to_bearer"
+                                        name="pharmacy_dispense_to_bearer" value="1" {{ !empty($pharmacyDispenseToBearer) ? 'checked' : '' }}>
+                                    <span class="toggle-switch-label"><span class="toggle-switch-indicator"></span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="d-flex justify-content-end w-100">
                     <button class="btn btn-primary my-2">Update</button>
                 </div>

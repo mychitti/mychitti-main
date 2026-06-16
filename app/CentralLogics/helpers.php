@@ -638,6 +638,29 @@ class Helpers
 
         return $salaryLedger;
     }
+    // Recoverable salary advances paid to staff — a current asset, grouped under "Staff Advances".
+    public static function ensureStaffAdvanceAccount($storeId = null)
+    {
+        $storeId = $storeId ?? self::get_store_id();
+
+        $account = StoreAccount::where('store_id', $storeId)->where('name', 'Staff Advances')->first();
+        if (!$account) {
+            $assetTypeId = LedgerAccountType::where('name', 'Assets')->first()->id
+                ?? (LedgerAccountType::where('name', 'Asset')->first()->id ?? 1);
+            $account = StoreAccount::create([
+                'store_id' => $storeId,
+                'ledger_account_type_id' => $assetTypeId,
+                'parent_id' => null,
+                'code' => _accountCode($assetTypeId, null),
+                'name' => 'Staff Advances',
+                'description' => 'Salary advances paid to staff (recoverable from future salary)',
+                'level' => 1,
+                'entity_type' => 'store',
+            ]);
+        }
+
+        return $account;
+    }
     public static function ensureDepartmentLedger($department, $storeId = null)
     {
         $storeId = $storeId ?? Helpers::get_store_id();

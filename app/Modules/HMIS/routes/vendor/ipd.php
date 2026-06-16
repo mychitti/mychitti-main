@@ -17,4 +17,8 @@ Route::group(['prefix' => 'ipd', 'as' => 'ipd.'], function () {
     Route::delete('{id}/nursing-note/{noteId}',      [PatientNotesController::class, 'nursingNoteDestroy'])->name('nursing-note.destroy');
     Route::post('{id}/diet',                         [PatientNotesController::class, 'dietStore'])->name('diet.store');
     Route::delete('{id}/diet/{dietId}',              [PatientNotesController::class, 'dietDestroy'])->name('diet.destroy');
+
+    // Assign / unassign nurses to an admission (multiple, re-assignable)
+    Route::post('{id}/nurses',                       [IpdController::class, 'assignNurses'])->name('nurses.assign')->middleware('permission:ipd_admission,view');
+    Route::get('{id}/nurses/{nurseId}/remove',       [IpdController::class, 'removeNurse'])->name('nurses.remove')->middleware('permission:ipd_admission,view');
 });

@@ -1,6 +1,12 @@
 <?php
 
 use App\Modules\HMIS\Controllers\Vendor\NurseController;
+use App\Modules\HMIS\Controllers\Vendor\MyNurseProfileController;
+
+// Nurse self-service — the logged-in nurse's own assigned patients.
+Route::group(['prefix' => 'my-nurse-profile', 'as' => 'my-nurse-profile.'], function () {
+    Route::get('patients', [MyNurseProfileController::class, 'patients'])->name('patients');
+});
 
 Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
     Route::get('list',       [NurseController::class, 'index'])->name('list');

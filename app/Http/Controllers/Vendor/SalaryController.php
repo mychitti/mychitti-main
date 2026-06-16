@@ -19,6 +19,7 @@ use App\Models\StoreTask;
 use App\Models\Vendor;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SalaryController extends Controller
@@ -755,6 +756,11 @@ class SalaryController extends Controller
         }
         $advance->save();
 
+        // Owner-created advances are approved immediately — record them in accounts.
+        if ($advance->status === 'approved') {
+            $this->postAdvanceToAccounts($advance);
+        }
+
         Toastr::success('Saved successfully');
         return back();
     }
@@ -773,6 +779,9 @@ class SalaryController extends Controller
             'repayment_start_date' => $request->repayment_start_date,
         ]);
 
+        // Record the approved advance in the accounts module.
+        $this->postAdvanceToAccounts($advance->fresh());
+
         Toastr::success('Advance Payment Approved');
         return back();
     }
@@ -784,5 +793,48 @@ class SalaryController extends Controller
 
         Toastr::success('Advance Payment Rejected');
         return back();
+    }
+
+    // Post an approved staff advance to the accounts module (ledger + daybook):
+    // Debit "Staff Advances" (recoverable asset), Credit Cash. Idempotent via account_posted flag.
+    private function postAdvanceToAccounts(AdvanceRequest $advance): void
+    {
+        try {
+            $amount = (float) ($advance->approved_amount ?: $advance->requested_amount);
+            if ($amount <= 0) {
+                return;
+            }
+
+            if (!Schema::hasColumn('advance_requests', 'account_posted')) {
+                DB::statement('ALTER TABLE `advance_requests` ADD COLUMN `account_posted` TINYINT(1) NOT NULL DEFAULT 0');
+            }
+            if ($advance->account_posted) {
+                return; // already posted — avoid duplicate entries
+            }
+
+            $storeId = $advance->store_id ?: Helpers::get_store_id();
+            $emp     = $advance->employee;
+            $empName = $emp ? trim(($emp->f_name ?? '') . ' ' . ($emp->l_name ?? '')) : 'Staff';
+
+            $debit  = Helpers::ensureStaffAdvanceAccount($storeId); // recoverable asset ↑
+            $credit = Helpers::ensureCashAccount();                 // cash ↓
+
+            $ledgerData = [
+                'date'         => now(),
+                'amount'       => $amount,
+                'voucher_type' => 'Payment',
+                'invoice_id'   => 'ADV-' . $advance->id,
+                'status'       => 'approved',
+                'description'  => 'Salary Advance — ' . $empName,
+                'payment_mode' => 'cash',
+            ];
+            $voucher = _masterLedgerEntry($ledgerData, $credit, $debit, 'store', 'store', null);
+            _saveDayBookEntry($amount, 'debit', $storeId, 'Salary Advance — ' . $empName, 'ADV-' . $advance->id, $voucher?->id, now(), null, 'cash');
+
+            $advance->account_posted = 1;
+            $advance->save();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Staff advance ledger post failed: ' . $e->getMessage());
+        }
     }
 }

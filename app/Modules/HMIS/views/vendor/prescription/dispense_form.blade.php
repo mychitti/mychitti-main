@@ -47,6 +47,24 @@
         </div>
     </div>
 
+    {{-- Banned / blocked medicines on this prescription (warn but allow) --}}
+    @if(!empty($bannedItems) && $bannedItems->count())
+        <div class="alert" style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c;">
+            <i class="tio-warning mr-1"></i>
+            <strong>Banned/blocked medicine on this prescription:</strong>
+            {{ $bannedItems->map(fn($i) => $i->medicine_name ?: ($i->inventoryItem->item_name ?? '—'))->implode(', ') }}.
+            You can still dispense, but please confirm it is clinically justified.
+        </div>
+    @endif
+
+    {{-- Pharmacy dispensing rule guidance --}}
+    @if(!empty($dispenseToBearer))
+        <div class="alert" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;">
+            <i class="tio-info-outined mr-1"></i>
+            Store rule: medicines may be dispensed to <strong>whoever brings the prescription</strong> (not restricted to the patient).
+        </div>
+    @endif
+
     @php $allDone = $rx->items->every(fn($i) => $i->dispensed); @endphp
 
     @if($allDone)

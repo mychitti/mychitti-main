@@ -54,13 +54,19 @@
                                    class="form-control" value="{{ old('concession', 0) }}" oninput="recalc()">
                         </div>
 
-                        <div class="form-group mb-0">
+                        <div class="form-group {{ in_array(old('payment_mode'), ['Card','UPI','Online','Wallet']) ? '' : 'mb-0' }}">
                             <label class="input-label">Mode of Payment <span class="text-danger">*</span></label>
-                            <select name="payment_mode" class="form-control">
+                            <select name="payment_mode" id="opdPayMode" class="form-control" onchange="opdSyncTxn()">
                                 @foreach (['Cash', 'Card', 'UPI', 'Online', 'Wallet'] as $m)
                                     <option value="{{ $m }}" {{ old('payment_mode') === $m ? 'selected' : '' }}>{{ $m }}</option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        <div class="form-group mb-0" id="opdTxnWrap" style="display:none;">
+                            <label class="input-label">Transaction ID <span class="text-danger">*</span></label>
+                            <input type="text" name="transaction_id" id="opdTxnId" class="form-control"
+                                   value="{{ old('transaction_id') }}" placeholder="UPI / card / online reference">
                         </div>
                     </div>
                     <div class="card-footer d-flex align-items-center justify-content-between">
@@ -88,5 +94,17 @@
         document.getElementById('payable').textContent =
             '{{ \App\CentralLogics\Helpers::currency_symbol() }}' + pay.toFixed(2);
     }
+
+    // Require a transaction ID for any non-cash payment mode.
+    function opdSyncTxn() {
+        const mode = (document.getElementById('opdPayMode').value || '').toLowerCase();
+        const online = mode !== 'cash';
+        const wrap = document.getElementById('opdTxnWrap');
+        const txn = document.getElementById('opdTxnId');
+        wrap.style.display = online ? '' : 'none';
+        txn.required = online;
+        if (!online) txn.value = '';
+    }
+    document.addEventListener('DOMContentLoaded', opdSyncTxn);
 </script>
 @endpush

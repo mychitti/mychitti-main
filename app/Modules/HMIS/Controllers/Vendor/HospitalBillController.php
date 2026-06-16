@@ -160,10 +160,12 @@ class HospitalBillController extends Controller
             'payment_status' => 'required|in:Paid,Unpaid',
             'tax_type'       => 'nullable|in:gst,non-gst',
             'gst_percent'    => 'nullable|numeric|min:0|max:100',
+            'transaction_id' => 'required_if:payment_method,UPI,Card,Net Banking|nullable|string|max:100',
         ]);
 
         $taxType    = $request->input('tax_type', 'non-gst');
         $gstPercent = $taxType === 'gst' ? (float) $request->input('gst_percent', 0) : 0;
+        $isOnline   = in_array(strtolower($request->payment_method ?? 'cash'), ['upi', 'card', 'net banking', 'online']);
 
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($request->patient_id);
@@ -197,6 +199,8 @@ class HospitalBillController extends Controller
                 'payment_date'   => $request->payment_status === 'Paid' ? now()->toDateString() : null,
                 'invoice_date'   => now()->toDateString(),
                 'tax_type'       => $taxType,
+                'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
+                'meta'           => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
             ]);
 
             $invIds = $request->input('inv_id', []);

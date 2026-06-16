@@ -15,7 +15,9 @@ class AdvanceRequest extends Model
         'status',
         'reason',
         'repayment_start_date',
-        'installments'
+        'installments',
+        'required_on',
+        'account_posted',
     ];
 
     public function employee()

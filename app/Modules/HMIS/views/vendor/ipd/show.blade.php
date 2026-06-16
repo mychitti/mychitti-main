@@ -177,6 +177,48 @@
                     </div>
                 </div>
 
+                {{-- ── Assigned Nurses (multiple, re-assignable) ──────────────────── --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-user-add mr-2"></i>Assigned Nurses</h6>
+                    </div>
+                    <div class="card-body">
+                        @if ($admission->assignedNurses->count())
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                @foreach ($admission->assignedNurses as $nurse)
+                                    <span class="badge badge-soft-primary d-inline-flex align-items-center" style="font-size:12px; padding:6px 10px;">
+                                        <i class="tio-user mr-1"></i>
+                                        {{ trim(($nurse->employee->f_name ?? '') . ' ' . ($nurse->employee->l_name ?? '')) ?: 'Nurse #' . $nurse->id }}
+                                        @if ($admission->status !== 'discharged')
+                                            <a href="{{ route('vendor.ipd.nurses.remove', [$admission->id, $nurse->id]) }}"
+                                               class="text-danger ml-2" title="Unassign"
+                                               onclick="return confirm('Unassign this nurse?')"><i class="tio-clear"></i></a>
+                                        @endif
+                                    </span>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-muted small mb-3">No nurses assigned yet.</p>
+                        @endif
+
+                        @if ($admission->status !== 'discharged')
+                            <form action="{{ route('vendor.ipd.nurses.assign', $admission->id) }}" method="POST">
+                                @csrf
+                                <label class="input-label" style="font-size:12px;">Assign / Update Nurses</label>
+                                <select name="nurse_profile_ids[]" class="form-control js-select2-custom" multiple data-hs-select2-options='{"placeholder": "Select nurses...", "allowClear": true}'>
+                                    @foreach ($nurses as $n)
+                                        <option value="{{ $n->id }}" {{ $admission->assignedNurses->contains('id', $n->id) ? 'selected' : '' }}>
+                                            {{ trim(($n->employee->f_name ?? '') . ' ' . ($n->employee->l_name ?? '')) ?: 'Nurse #' . $n->id }}{{ $n->shift ? ' · ' . (\App\Models\NurseProfile::SHIFTS[$n->shift] ?? $n->shift) : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="text-muted small mt-1">Select one or more nurses. Re-submitting updates the full assignment.</div>
+                                <button type="submit" class="btn btn-sm btn--primary mt-2"><i class="tio-save mr-1"></i> Save Nurses</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+
                 @if ($admission->discharge_summary)
                     <div class="card mb-3">
                         <div class="card-header py-2">

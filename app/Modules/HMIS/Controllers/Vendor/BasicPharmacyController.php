@@ -7,7 +7,6 @@ use App\CentralLogics\Helpers;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
-use App\Models\PharmacyBannedItem;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +29,16 @@ class BasicPharmacyController extends Controller
         }
         if (!Schema::hasColumn('inventory_items', 'expiry_date')) {
             DB::statement('ALTER TABLE `inventory_items` ADD COLUMN `expiry_date` DATE NULL');
+        }
+        // Banned/blocked flag lives on the inventory item itself (per-item, exact match).
+        if (!Schema::hasColumn('inventory_items', 'is_banned')) {
+            DB::statement('ALTER TABLE `inventory_items` ADD COLUMN `is_banned` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        if (!Schema::hasColumn('inventory_items', 'banned_reason')) {
+            DB::statement('ALTER TABLE `inventory_items` ADD COLUMN `banned_reason` VARCHAR(500) NULL');
+        }
+        if (!Schema::hasColumn('inventory_items', 'banned_source')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `banned_source` VARCHAR(20) NULL");
         }
     }
  
@@ -73,7 +82,6 @@ class BasicPharmacyController extends Controller
     {
         $this->ensurePharmacyColumns();
         $this->ensurePharmacyPermission();
-        $this->ensureBannedTable();
         $storeId = $this->storeId();
 
         $search = trim($request->get('search', ''));
@@ -93,93 +101,109 @@ class BasicPharmacyController extends Controller
             'stock_val' => $items->sum(fn($i) => (float) $i->stock * (float) ($i->selling_price ?? 0)),
         ];
 
-        $bannedNames = PharmacyBannedItem::activeNames($storeId);
-
-        return view('hmis::vendor.pharmacy.medicines', compact('items', 'stats', 'search', 'bannedNames'));
+        return view('hmis::vendor.pharmacy.medicines', compact('items', 'stats', 'search'));
     }
 
     // ── Banned / Blocked Items ──────────────────────────────────────────────
-    // Store-maintained list of medicines that should NOT be sold/dispensed (govt-banned or
-    // store-blocked). Surfaced as warnings (warn-but-allow) wherever a medicine is entered.
-    private function ensureBannedTable(): void
-    {
-        if (!Schema::hasTable('pharmacy_banned_items')) {
-            DB::statement("CREATE TABLE IF NOT EXISTS `pharmacy_banned_items` (
-                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                `store_id` BIGINT UNSIGNED NOT NULL,
-                `name` VARCHAR(200) NOT NULL,
-                `reason` VARCHAR(500) NULL,
-                `source` VARCHAR(20) NOT NULL DEFAULT 'store',
-                `status` TINYINT(1) NOT NULL DEFAULT 1,
-                `created_at` TIMESTAMP NULL,
-                `updated_at` TIMESTAMP NULL,
-                PRIMARY KEY (`id`),
-                KEY `pbi_store_idx` (`store_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        }
-    }
-
+    // A medicine is banned/blocked by flagging the inventory item itself (is_banned).
+    // Surfaced as warnings (warn-but-allow) wherever the medicine is entered.
     public function bannedItems(Request $request)
     {
+        $this->ensurePharmacyColumns();
         $this->ensurePharmacyPermission();
-        $this->ensureBannedTable();
         $storeId = $this->storeId();
 
         $search = trim($request->get('search', ''));
-        $banned = PharmacyBannedItem::where('store_id', $storeId)
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('name')
+
+        // Currently banned medicines.
+        $banned = InventoryItem::where('store_id', $storeId)
+            ->where('item_type', 'product')
+            ->where('is_banned', 1)
+            ->when($search, fn($q) => $q->where('item_name', 'like', "%{$search}%"))
+            ->orderBy('item_name')
             ->get();
 
-        // Items currently in stock that match a banned name — flagged so the pharmacist notices.
-        $bannedNames = $banned->where('status', 1)->pluck('name')->map(fn($n) => mb_strtolower(trim($n)));
-        $stockedBanned = InventoryItem::where('store_id', $storeId)
+        // Items available to ban (not yet banned) — for the picker.
+        $available = InventoryItem::where('store_id', $storeId)
             ->where('item_type', 'product')
-            ->get()
-            ->filter(fn($i) => $bannedNames->contains(mb_strtolower(trim($i->item_name))));
+            ->where(fn($q) => $q->whereNull('is_banned')->orWhere('is_banned', 0))
+            ->orderBy('item_name')
+            ->get(['id', 'item_name', 'brand', 'sku_id']);
 
-        return view('hmis::vendor.pharmacy.banned_items', compact('banned', 'search', 'stockedBanned'));
+        return view('hmis::vendor.pharmacy.banned_items', compact('banned', 'available', 'search'));
     }
 
     public function saveBannedItem(Request $request)
     {
-        $this->ensureBannedTable();
+        $this->ensurePharmacyColumns();
         $request->validate([
-            'name'   => 'required|string|max:200',
-            'reason' => 'nullable|string|max:500',
-            'source' => 'nullable|in:govt,store',
+            'item_id'   => 'nullable|integer',
+            'item_name' => 'required_without:item_id|nullable|string|max:200',
+            'brand'     => 'nullable|string|max:200',
+            'sku_id'    => 'nullable|string|max:100',
+            'unit'      => 'nullable|string|max:50',
+            'reason'    => 'nullable|string|max:500',
+            'source'    => 'nullable|in:govt,store',
         ]);
 
-        PharmacyBannedItem::create([
-            'store_id' => $this->storeId(),
-            'name'     => trim($request->name),
-            'reason'   => $request->reason,
-            'source'   => $request->source ?: 'store',
-            'status'   => 1,
-        ]);
+        $storeId = $this->storeId();
 
-        Toastr::success('Item added to the banned/blocked list.');
-        return back();
-    }
+        // Path 1: an existing medicine was selected from the pharmacy.
+        if ($request->filled('item_id')) {
+            $item = InventoryItem::where('store_id', $storeId)->findOrFail($request->item_id);
+            $item->is_banned     = 1;
+            $item->banned_reason = $request->reason;
+            $item->banned_source = $request->source ?: 'store';
+            $item->save();
 
-    public function toggleBannedItem($id)
-    {
-        $this->ensureBannedTable();
-        $item = PharmacyBannedItem::where('store_id', $this->storeId())->findOrFail($id);
-        $item->status = $item->status ? 0 : 1;
+            Toastr::success($item->item_name . ' marked as banned/blocked.');
+            return back();
+        }
+
+        // Path 2: a name was typed. Flag a matching medicine if it exists, else create it as banned.
+        $item = InventoryItem::where('store_id', $storeId)
+            ->where('item_type', 'product')
+            ->whereRaw('LOWER(item_name) = ?', [mb_strtolower(trim($request->item_name))])
+            ->first();
+
+        if (!$item) {
+            $item = new InventoryItem();
+            $item->store_id          = $storeId;
+            $item->item_type         = 'product';
+            $item->item_name         = trim($request->item_name);
+            $item->brand             = $request->brand;
+            $item->sku_id            = $request->sku_id;
+            $item->unit              = _saveUnitIfNotExist($request->unit ?: 'Unit');
+            $item->category_id       = Helpers::_saveCategoryIfNotExists('Medicine');
+            $item->module_id         = Helpers::get_store_data()->module_id ?? null;
+            $item->mrp               = 0;
+            $item->selling_price     = 0;
+            $item->stock             = 0;
+            $item->reorder_level     = 0;
+            $item->gst_rate          = 0;
+            $item->gst_status        = 'excluding';
+            $item->show_on_store_page = 0;
+        }
+
+        $item->is_banned     = 1;
+        $item->banned_reason = $request->reason;
+        $item->banned_source = $request->source ?: 'store';
         $item->save();
 
-        Toastr::success('Banned item ' . ($item->status ? 'activated' : 'paused') . '.');
+        Toastr::success($item->item_name . ' added as a banned/blocked item.');
         return back();
     }
 
     public function deleteBannedItem($id)
     {
-        $this->ensureBannedTable();
-        $item = PharmacyBannedItem::where('store_id', $this->storeId())->findOrFail($id);
-        $item->delete();
+        $this->ensurePharmacyColumns();
+        $item = InventoryItem::where('store_id', $this->storeId())->findOrFail($id);
+        $item->is_banned     = 0;
+        $item->banned_reason = null;
+        $item->banned_source = null;
+        $item->save();
 
-        Toastr::success('Removed from the banned/blocked list.');
+        Toastr::success($item->item_name . ' removed from the banned list.');
         return back();
     }
 
@@ -188,17 +212,18 @@ class BasicPharmacyController extends Controller
     {
         $this->ensurePharmacyColumns();
         $this->ensurePharmacyPermission();
-        $this->ensureBannedTable();
         $storeId = $this->storeId();
 
         $items = InventoryItem::where('store_id', $storeId)
             ->where('item_type', 'product')
             ->orderBy('item_name')
-            ->get(['id', 'item_name', 'brand', 'sku_id', 'selling_price', 'mrp', 'stock']);
+            ->get(['id', 'item_name', 'brand', 'sku_id', 'selling_price', 'mrp', 'stock', 'is_banned']);
 
-        $bannedNames = PharmacyBannedItem::activeNames($storeId);
+        $dispenseToBearer = Schema::hasColumn('store_configs', 'pharmacy_dispense_to_bearer')
+            ? (int) (\App\Models\StoreConfig::where('store_id', $storeId)->value('pharmacy_dispense_to_bearer') ?? 0)
+            : 0;
 
-        return view('hmis::vendor.pharmacy.walkin', compact('items', 'bannedNames'));
+        return view('hmis::vendor.pharmacy.walkin', compact('items', 'dispenseToBearer'));
     }
 
     public function walkinStore(Request $request)
@@ -212,7 +237,7 @@ class BasicPharmacyController extends Controller
             'items.*.qty'       => 'required|numeric|min:0.01',
             'items.*.price'     => 'required|numeric|min:0',
             'payment_mode'      => 'required|string|max:30',
-            'transaction_id'    => 'required_if:payment_mode,online,card,upi|nullable|string|max:100',
+            'transaction_id'    => 'required_if:payment_mode,Online,Card,UPI|nullable|string|max:100',
             'customer_name'     => 'nullable|string|max:150',
             'customer_phone'    => 'nullable|string|max:20',
             'rx_doctor'         => 'nullable|string|max:150',

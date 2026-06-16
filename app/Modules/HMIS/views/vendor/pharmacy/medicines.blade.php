@@ -54,8 +54,8 @@
                                     <tr>
                                         <td>
                                             <div class="font-weight-bold">{{ $item->item_name }}
-                                                @if (($bannedNames ?? collect())->contains(mb_strtolower(trim($item->item_name))))
-                                                    <span class="pill" style="background:#fee2e2;color:#b91c1c;" title="On the banned/blocked list">⛔ Banned</span>
+                                                @if (!empty($item->is_banned))
+                                                    <span class="pill" style="background:#fee2e2;color:#b91c1c;" title="{{ $item->banned_reason ?: 'Banned / blocked item' }}">⛔ Banned</span>
                                                 @endif
                                             </div>
                                             <div class="text-muted" style="font-size:11px;">{{ $item->brand }}{{ $item->sku_id ? ' · ' . $item->sku_id : '' }}</div>
@@ -81,6 +81,16 @@
                                                     data-selling="{{ $item->selling_price }}" data-reorder="{{ $reorder }}" data-expiry="{{ $item->expiry_date }}">
                                                     <i class="tio-edit"></i>
                                                 </button>
+                                                @if (!empty($item->is_banned))
+                                                    <a class="btn btn-xs btn-outline-secondary" href="{{ route('vendor.pharmacy.banned-items.delete', $item->id) }}"
+                                                        onclick="return confirm('Un-ban {{ $item->item_name }}?')" title="Remove from banned list">Un-ban</a>
+                                                @else
+                                                    <form action="{{ route('vendor.pharmacy.banned-items.save') }}" method="post" class="d-inline" onsubmit="return confirm('Mark {{ $item->item_name }} as banned/blocked?')">
+                                                        @csrf
+                                                        <input type="hidden" name="item_id" value="{{ $item->id }}">
+                                                        <button class="btn btn-xs btn-outline-danger" title="Mark as banned">⛔ Ban</button>
+                                                    </form>
+                                                @endif
                                             @endif
                                             @if (hasPermission('pharmacy', 'delete'))
                                                 <a class="btn btn-xs btn-outline-danger" href="{{ route('vendor.pharmacy.medicines.delete', $item->id) }}"
@@ -130,11 +140,7 @@
                     @csrf
                     <div class="modal-body">
                         <div class="form-group"><label>Medicine Name <span class="text-danger">*</span></label>
-                            <input type="text" name="item_name" id="add_item_name" class="form-control" autocomplete="off" required>
-                            <div id="add_banned_warn" class="text-danger small mt-1" style="display:none;">
-                                <i class="tio-warning"></i> This medicine is on your <strong>banned/blocked list</strong>. You can still add it, but it will be flagged during sale &amp; dispensing.
-                            </div>
-                        </div>
+                            <input type="text" name="item_name" class="form-control" required></div>
                         <div class="form-row">
                             <div class="form-group col-6"><label>Brand</label><input type="text" name="brand" class="form-control"></div>
                             <div class="form-group col-6"><label>SKU / Code</label><input type="text" name="sku_id" class="form-control"></div>
@@ -228,16 +234,5 @@
             document.getElementById('s_name').textContent = this.dataset.name || '';
             $('#addStockModal').modal('show');
         }));
-
-        // Warn (but allow) when a banned/blocked medicine name is entered.
-        const BANNED_NAMES = @json(($bannedNames ?? collect())->values());
-        const addNameInput = document.getElementById('add_item_name');
-        const addBannedWarn = document.getElementById('add_banned_warn');
-        if (addNameInput) {
-            addNameInput.addEventListener('input', function () {
-                const v = (this.value || '').trim().toLowerCase();
-                addBannedWarn.style.display = (v && BANNED_NAMES.includes(v)) ? '' : 'none';
-            });
-        }
     </script>
 @endpush

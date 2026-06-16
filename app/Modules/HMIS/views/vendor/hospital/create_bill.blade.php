@@ -139,13 +139,17 @@
                         </div>
                         <div class="form-group mb-0">
                             <label class="input-label" style="font-size:12px;">Method</label>
-                            <select name="payment_method" class="form-control form-control-sm">
+                            <select name="payment_method" id="hbPayMethod" class="form-control form-control-sm" onchange="hbSyncTxn()">
                                 <option value="Cash">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="Card">Card</option>
                                 <option value="Net Banking">Net Banking</option>
                                 <option value="Cheque">Cheque</option>
                             </select>
+                        </div>
+                        <div class="form-group mb-0 mt-2" id="hbTxnWrap" style="display:none;">
+                            <label class="input-label" style="font-size:12px;">Transaction ID <span class="text-danger">*</span></label>
+                            <input type="text" name="transaction_id" id="hbTxnId" class="form-control form-control-sm" placeholder="UPI / card / online reference">
                         </div>
                     </div>
                 </div>
@@ -295,6 +299,18 @@
 @push('script_2')
 <script>
 const INV_SEARCH_URL = "{{ route('vendor.hospital-bill.inventory-search') }}";
+
+// Require a transaction ID for non-cash payment methods.
+function hbSyncTxn() {
+    const sel = document.getElementById('hbPayMethod'); if (!sel) return;
+    const online = (sel.value || '').toLowerCase() !== 'cash';
+    const wrap = document.getElementById('hbTxnWrap');
+    const txn = document.getElementById('hbTxnId');
+    wrap.style.display = online ? '' : 'none';
+    txn.required = online;
+    if (!online) txn.value = '';
+}
+document.addEventListener('DOMContentLoaded', hbSyncTxn);
 
 function toggleHospGst(val) {
     const wrap = document.getElementById('gstPercentWrap');
