@@ -23,6 +23,7 @@ class OpdConsultationReceipt extends Model
         'valid_until',
         'consultations_used',
         'billed_by',
+        'invoice_id',
     ];
 
     protected $casts = [

@@ -185,7 +185,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // addons 
         Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('report', 'AttendanceController@report')->name('report');
-            Route::get('export', 'AttendanceController@export')->name('export')->middleware('permission:attendance_report,export');
+            Route::get('export', 'AttendanceController@export')->name('export')->middleware('permission:attendance_report,export,attendance_manage,export');
             Route::get('list', 'AttendanceController@index')->name('all')->middleware('permission:attendance_manage,list');
             Route::post('save', 'AttendanceController@save_att')->name('save')->middleware('permission:attendance_manage,edit');
             Route::get('manage/{id}', 'AttendanceController@manage')->name('manage')->middleware('permission:attendance_manage,view');
@@ -197,10 +197,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
         Route::group(['prefix' => 'leave', 'as' => 'leave.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('list', 'LeaveController@index')->name('all');
-            Route::get('add', 'LeaveController@add')->name('add-new')->middleware('permission:leave_manage,add');
-            Route::get('status/{id}/{status}', 'LeaveController@status')->name('status')->middleware('permission:leave_manage,status_change');
-            Route::post('save-info', 'LeaveController@save_info')->name('save-info')->middleware('permission:leave_manage,add');
-            Route::post('save', 'LeaveController@save_leave')->name('save')->middleware('permission:leave_manage,add');
+            Route::get('add', 'LeaveController@add')->name('add-new')->middleware('permission:leave_manage,add,attendance_manage,add');
+            Route::get('status/{id}/{status}', 'LeaveController@status')->name('status')->middleware('permission:leave_manage,status_change,attendance_manage,status_change');
+            Route::post('save-info', 'LeaveController@save_info')->name('save-info')->middleware('permission:leave_manage,add,attendance_manage,add');
+            Route::post('save', 'LeaveController@save_leave')->name('save')->middleware('permission:leave_manage,add,attendance_manage,add');
             Route::get('manage/{id}', 'LeaveController@manage')->name('manage');
         });
         Route::group(['prefix' => 'salary', 'as' => 'salary.', 'middleware' => ['planwise:hr_manage']], function () {
@@ -1027,8 +1027,13 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     // laundry ============================== 
     require app_path('Modules/Laundry/routes/vendor.php');
  
-    // pos ============================== 
+    // pos ==============================
     require app_path('Modules/POS/routes/vendor.php');
+
+    // school ==============================
+    if (file_exists(app_path('Modules/School/routes/vendor.php'))) {
+        require app_path('Modules/School/routes/vendor.php');
+    }
 });
 // DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES 
 

@@ -8,10 +8,12 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header', ['heroSubtitle' => 'Attendance report for the selected date range.'])
+
         <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Reports <span class="badge badge-soft-dark ml-2"
-                    id="itemCount">{{ count($staff) }}</span></h1>
+        <div class="page-header border bg-white px-3 pt-3" style="border-radius:0 0 12px 12px; border-top:none;">
+            <h5 class="mb-0 mr-3 align-self-center"><i class="tio-filter-list mr-1"></i>
+                {{ count($staff) }} staff</h5>
             @if (hasPermission('attendance_report', 'list'))
                 <form action="" class="row">
                     <div class="col-md-3">

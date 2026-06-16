@@ -13,9 +13,13 @@
 
 @section('content')
     <div class="content container-fluid">
-
+        @if (\App\CentralLogics\Helpers::permission_check('hr_manage'))
+            @include('vendor-views.partials._hr_header')
+        @else
+            @include('vendor-views.partials._basic_staff_nav')
+        @endif
         <!-- Page Heading -->
-        <div class="page-header">
+        <div class="page-header mt-3">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <img src="{{ asset('public/assets/admin/img/edit.png') }}" class="w--26" alt="">
@@ -102,7 +106,7 @@
                                 <input type="checkbox" name="modules[]" value="inventory_manage"
                                     class="form-check-input granular_permission_check" id="inventory_manage"
                                     {{ in_array('inventory_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
-                                <label class="form-check-label " for="inventory_manage">{{ _moduleLabel('inventory_manage') }}</label>
+                                <label class="form-check-label " for="inventory_manage">Inventory Manage</label>
                             </div>
                         </div>
                         @endif
@@ -304,7 +308,7 @@
 
                         <div class="check-item">
                             <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input"
+                                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input granular_permission_check"
                                     id="staff_manage"
                                     {{ in_array('staff_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
                                 <label class="form-check-label " for="staff_manage">Staff Management</label>
@@ -328,7 +332,21 @@
                                 <label class="form-check-label input-label " for="my_business">My Business</label>
                             </div>
                         </div>
+                        @php
+                            // Modules already rendered as fixed checkboxes above. Skip them here so we
+                            // never emit two checkboxes with the same name="modules[]" value (which would
+                            // make unchecking one have no effect because the duplicate still submits it).
+                            $hardcodedModules = [
+                                'item', 'menu_preference', 'notifications', 'documents', 'store_availability',
+                                'inventory_manage', 'task_manage', 'assigned_tasks', 'projects_manage',
+                                'assigned_projects', 'orders', 'leads_manage', 'quotaiton_manage', 'store_setup',
+                                'addon', 'bank_info', 'employee', 'my_shop', 'campaign', 'chat', 'pos', 'reviews',
+                                'hr_manage', 'account_manage', 'billing', 'hospital_manage', 'staff_manage',
+                                'client_manage', 'my_business',
+                            ];
+                        @endphp
                         @foreach ($accessibleModules as $key => $value)
+                            @continue(in_array($key, $hardcodedModules))
                             <div class="check-item">
                                 <div class="form-group form-check form--check">
                                     <input type="checkbox" name="modules[]" value="{{ $key }}"
@@ -402,7 +420,7 @@
                                                         data-module="{{ $moduleName }}">
                                                     <label class="form-check-label ml-1"
                                                         for="col_{{ $moduleName }}_{{ $action }}">
-                                                        {{ ucfirst($action) }}
+                                                        {{ permission_action_label($action) }}
                                                     </label>
                                                 </div>
                                             </th>

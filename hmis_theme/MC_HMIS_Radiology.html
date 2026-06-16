@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC HMIS – Radiology</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0A2463;--blue:#1565C0;--blue2:#1976D2;--ltblue:#E3F2FD;--ltblue2:#EFF6FF;
+  --green:#1B5E20;--ltgreen:#E8F5E9;--greenA:#2E7D32;
+  --red:#B71C1C;--ltred:#FFEBEE;--redA:#C62828;--redB:#E53E3E;
+  --amber:#B45309;--ltamber:#FFF8E1;--amberA:#F57C00;
+  --purple:#4527A0;--ltpurple:#EDE7F6;--purpleA:#6D28D9;
+  --teal:#004D40;--ltteal:#E0F2F1;--tealA:#00897B;
+  --dark:#0D1B2A;--dark2:#1A2B3C;--dark3:#243447;
+  --text:#0D1117;--muted:#4B5563;--light:#9CA3AF;
+  --border:#E5E7EB;--bg:#F3F4F6;--white:#FFFFFF;
+  --ff:'DM Sans',sans-serif;--ffm:'DM Mono',monospace;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);font-size:13px;min-height:100vh}
+
+/* NAV */
+.topnav{background:var(--navy);height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.tn-brand{font-size:16px;font-weight:800;color:#fff}.tn-brand em{color:#69F0AE;font-style:normal}
+.tn-l{display:flex;align-items:center;gap:14px}
+.tn-div{width:1px;height:22px;background:rgba(255,255,255,.18)}
+.tn-page{font-size:13px;color:rgba(255,255,255,.72);font-weight:500}
+.live-pill{background:rgba(105,240,174,.12);border:1px solid rgba(105,240,174,.25);border-radius:100px;padding:3px 11px;font-size:11px;color:#69F0AE;font-weight:600;display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#69F0AE;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tn-r{display:flex;align-items:center;gap:10px}
+.tn-back{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 13px;color:rgba(255,255,255,.85);font-size:12px;font-weight:500;cursor:pointer;text-decoration:none}
+.tn-av{width:32px;height:32px;border-radius:9px;background:#1565C0;border:2px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+.tn-name{font-size:12px;color:rgba(255,255,255,.82);font-weight:500}
+
+/* KPI */
+.kpi-strip{background:var(--white);border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(7,1fr)}
+.kpi-item{padding:11px 14px;text-align:center;border-right:1px solid var(--border);cursor:default}
+.kpi-item:last-child{border-right:none}
+.kpi-val{font-size:21px;font-weight:800;line-height:1;font-family:var(--ffm)}
+.kpi-lbl{font-size:10px;color:var(--light);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+.kpi-sub{font-size:10px;font-weight:600;margin-top:2px}
+
+/* TABS */
+.tabs{background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;display:flex;overflow-x:auto;position:sticky;top:54px;z-index:200}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:11px 15px;font-size:12px;font-weight:600;color:var(--light);cursor:pointer;border-bottom:2.5px solid transparent;display:flex;align-items:center;gap:6px;white-space:nowrap;user-select:none;transition:color .15s}
+.tab:hover{color:var(--blue)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tbadge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:100px;background:var(--redB);color:#fff}
+.tbadge.a{background:var(--amberA)}.tbadge.b{background:var(--blue)}.tbadge.g{background:var(--greenA)}.tbadge.p{background:var(--purpleA)}
+
+/* TAB CONTENT */
+.tab-content{display:none;padding:16px 20px;animation:fadeIn .2s ease}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* LAYOUT */
+.layout-2col{display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start}
+.layout-3col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* CARDS */
+.card{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow)}
+.card:last-child{margin-bottom:0}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border)}
+.card-hd h3{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.hd-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.card-actions{display:flex;gap:7px;align-items:center}
+
+/* BUTTONS */
+.btn{padding:7px 15px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff);transition:all .15s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--navy)}
+.btn-green{background:var(--greenA);color:#fff}
+.btn-amber{background:var(--amberA);color:#fff}
+.btn-red{background:var(--redA);color:#fff}
+.btn-teal{background:var(--tealA);color:#fff}
+.btn-purple{background:var(--purpleA);color:#fff}
+.btn-dark{background:var(--dark);color:#fff}
+.btn-outline{background:none;border:1.5px solid var(--border);color:var(--muted)}.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-ghost{background:var(--ltblue2);color:var(--blue);border:none}
+.btn-sm{padding:5px 11px;font-size:11px;border-radius:7px}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:6px}
+
+/* FORMS */
+.fl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+.fi{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);outline:none;background:var(--white);width:100%;font-family:var(--ff);transition:border-color .15s}
+.fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,101,192,.08)}
+.fs{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);outline:none;background:var(--white);width:100%;cursor:pointer;font-family:var(--ff)}
+.fg{display:flex;flex-direction:column;gap:4px}
+.frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.frow4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+
+/* PILLS */
+.pill{font-size:10px;font-weight:700;padding:2px 9px;border-radius:100px;white-space:nowrap}
+.pill-blue{background:var(--ltblue);color:var(--blue)}
+.pill-green{background:var(--ltgreen);color:var(--greenA)}
+.pill-red{background:var(--ltred);color:var(--redA)}
+.pill-amber{background:var(--ltamber);color:var(--amber)}
+.pill-purple{background:var(--ltpurple);color:var(--purple)}
+.pill-navy{background:var(--navy);color:#fff}
+.pill-teal{background:var(--ltteal);color:var(--teal)}
+.pill-dark{background:var(--dark);color:#fff}
+
+/* SEARCH */
+.search-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:#FAFAFA}
+.search-wrap{position:relative;flex:1}
+.search-wrap::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px}
+.si{width:100%;padding:7px 10px 7px 32px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;outline:none;font-family:var(--ff);background:var(--white)}
+.si:focus{border-color:var(--blue)}
+.fsel{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;outline:none;background:var(--white);cursor:pointer;font-family:var(--ff)}
+
+/* TABLE */
+.tbl-hd{padding:8px 16px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.6px;background:#F9FAFB;border-bottom:1px solid var(--border);display:grid;gap:8px}
+.tbl-row{padding:11px 16px;border-bottom:1px solid #F3F4F6;transition:background .12s;display:grid;gap:8px}
+.tbl-row:last-child{border-bottom:none}
+.tbl-row:hover{background:#F9FAFB}
+.tbl-row.urgent{background:#FFF5F5;border-left:3px solid var(--redB)}
+.tbl-row.active{background:linear-gradient(90deg,#EFF6FF,#FAFAFA);border-left:3px solid var(--blue)}
+.tbl-row.done{opacity:.65}
+.num{font-family:var(--ffm);font-weight:700}
+
+/* STAT ROWS */
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:7px 16px;border-bottom:1px solid #F3F4F6}
+.stat-row:last-child{border-bottom:none}
+.stat-l{font-size:11px;color:var(--light)}
+.stat-v{font-size:12px;font-weight:700;color:var(--text)}
+.stat-v.g{color:var(--greenA)}.stat-v.r{color:var(--redA)}.stat-v.a{color:var(--amber)}.stat-v.b{color:var(--blue)}
+
+/* ALERT ROWS */
+.alert-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid #F3F4F6}
+.alert-row:last-child{border-bottom:none}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.alert-title{font-size:12px;font-weight:700;color:var(--text)}
+.alert-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* DICOM VIEWER (dark theme) */
+.dicom-viewer{background:var(--dark);border-radius:12px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.dicom-toolbar{background:var(--dark2);padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.08)}
+.dicom-tool-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 10px;font-size:11px;color:rgba(255,255,255,.8);cursor:pointer;font-family:var(--ff);font-weight:500;transition:all .15s}
+.dicom-tool-btn:hover,.dicom-tool-btn.active{background:rgba(21,101,192,.5);border-color:var(--blue);color:#fff}
+.dicom-body{display:grid;grid-template-columns:80px 1fr 220px;min-height:460px}
+.dicom-thumbs{background:var(--dark3);padding:8px;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.dicom-thumb{width:64px;height:64px;border-radius:6px;background:rgba(255,255,255,.06);border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,.4);transition:all .15s}
+.dicom-thumb.active{border-color:var(--blue);background:rgba(21,101,192,.2);color:rgba(255,255,255,.7)}
+.dicom-thumb:hover{border-color:rgba(255,255,255,.2)}
+.dicom-canvas{display:flex;align-items:center;justify-content:center;position:relative;background:var(--dark);cursor:crosshair;min-height:460px}
+.dicom-img-placeholder{position:relative;width:100%;height:460px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.xray-gradient{position:absolute;inset:0;background:radial-gradient(ellipse at center,#3a3a3a 0%,#1a1a1a 40%,#0d0d0d 100%)}
+.xray-ribs{position:absolute;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.xray-overlay{position:absolute;top:10px;left:12px;color:rgba(255,255,255,.5);font-size:10px;font-family:var(--ffm);line-height:1.8}
+.xray-overlay-r{position:absolute;top:10px;right:12px;color:rgba(255,255,255,.5);font-size:10px;font-family:var(--ffm);text-align:right;line-height:1.8}
+.xray-measure{position:absolute;bottom:10px;left:12px;color:rgba(0,255,0,.7);font-size:10px;font-family:var(--ffm)}
+.dicom-sidebar{background:var(--dark2);border-left:1px solid rgba(255,255,255,.06);padding:12px;overflow-y:auto}
+.dicom-info-group{margin-bottom:14px}
+.dicom-info-title{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.dicom-info-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px}
+.dicom-info-row .di-label{color:rgba(255,255,255,.4)}
+.dicom-info-row .di-val{color:rgba(255,255,255,.85);font-family:var(--ffm);font-size:10px}
+.window-slider{margin-bottom:8px}
+.window-slider label{font-size:10px;color:rgba(255,255,255,.4);display:flex;justify-content:space-between;margin-bottom:3px}
+.window-slider input[type=range]{width:100%;accent-color:var(--blue)}
+.annotation-list{display:flex;flex-direction:column;gap:4px}
+.annotation-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:6px 8px}
+.annotation-label{font-size:10px;color:rgba(0,255,0,.8);font-family:var(--ffm)}
+.annotation-val{font-size:10px;color:rgba(255,255,255,.6)}
+
+/* REPORT FORM */
+.finding-section{background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px}
+.finding-section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.finding-section-title::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--blue);flex-shrink:0}
+.finding-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:100px;cursor:pointer;margin:2px;border:1.5px solid transparent;transition:all .15s}
+.finding-tag:hover{transform:scale(1.03)}
+.finding-tag.normal{background:var(--ltgreen);color:var(--greenA);border-color:var(--greenA)}
+.finding-tag.abnormal{background:var(--ltred);color:var(--redA);border-color:var(--redA)}
+.finding-tag.suggest{background:var(--ltamber);color:var(--amber);border-color:var(--amberA)}
+.finding-tag.selected{box-shadow:0 0 0 2px var(--blue);transform:scale(1.05)}
+
+/* EQUIPMENT */
+.equip-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.equip-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.equip-name{font-size:13px;font-weight:700;color:var(--text)}
+.equip-model{font-size:10px;color:var(--light);margin-top:1px}
+.equip-status-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.equip-stat{font-size:11px;color:var(--muted)}
+.equip-online{width:8px;height:8px;border-radius:50%;background:var(--greenA);flex-shrink:0;animation:blink 2s infinite}
+.equip-offline{width:8px;height:8px;border-radius:50%;background:var(--redA);flex-shrink:0}
+.equip-maint{width:8px;height:8px;border-radius:50%;background:var(--amberA);flex-shrink:0}
+
+/* SCHEDULE */
+.slot-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:12px 16px}
+.slot{padding:8px 6px;border-radius:8px;text-align:center;cursor:pointer;border:1.5px solid transparent;transition:all .15s;font-size:11px;font-weight:600}
+.slot.booked{background:var(--ltblue);color:var(--blue);border-color:var(--blue)}
+.slot.available{background:var(--ltgreen);color:var(--greenA);border-color:var(--greenA)}
+.slot.blocked{background:var(--ltred);color:var(--redA);border-color:var(--redA)}
+.slot.maint{background:var(--ltamber);color:var(--amber);border-color:var(--amberA)}
+.slot.selected{box-shadow:0 0 0 3px var(--blue);transform:scale(1.05)}
+.slot:hover:not(.booked):not(.blocked):not(.maint){opacity:.8}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex;animation:fadeIn .2s}
+.modal{background:var(--white);border-radius:16px;padding:24px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .2s}
+.modal-wide{max-width:760px}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.15);animation:slideInRight .3s ease;max-width:340px}
+.toast.success{background:var(--greenA)}.toast.error{background:var(--redA)}.toast.warning{background:var(--amberA)}
+@keyframes slideInRight{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="topnav">
+  <div class="tn-l">
+    <div class="tn-brand">MC <em>HMIS</em></div>
+    <div class="tn-div"></div>
+    <div class="tn-page">Radiology Department</div>
+    <div class="live-pill"><div class="live-dot"></div>Live</div>
+  </div>
+  <div class="tn-r">
+    <a class="tn-back" href="#">← Dashboard</a>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="tn-av">RD</div>
+      <div class="tn-name">Radiologist · Dr. K. Venkatesan</div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi-item"><div class="kpi-val" style="color:var(--blue)" id="kpi-pending">9</div><div class="kpi-lbl">Pending Scans</div><div class="kpi-sub" style="color:var(--blue)">Today</div></div>
+  <div class="kpi-item"><div class="kpi-val" style="color:var(--amberA)" id="kpi-progress">3</div><div class="kpi-lbl">In Progress</div><div class="kpi-sub" style="color:var(--amberA)">Scanning now</div></div>
+  <div class="kpi-item"><div class="kpi-val" style="color:var(--greenA)" id="kpi-done">14</div><div class="kpi-lbl">Reports Ready</div><div class="kpi-sub" style="color:var(--greenA)">Sent to doctors</div></div>
+  <div class="kpi-item"><div class="kpi-val" style="color:var(--redA)">2</div><div class="kpi-lbl">Urgent Findings</div><div class="kpi-sub" style="color:var(--redA)">Alert required</div></div>
+  <div class="kpi-item"><div class="kpi-val">26</div><div class="kpi-lbl">Total Today</div><div class="kpi-sub" style="color:var(--muted)">All modalities</div></div>
+  <div class="kpi-item"><div class="kpi-val">4</div><div class="kpi-lbl">Equipment Online</div><div class="kpi-sub" style="color:var(--greenA)">1 in maintenance</div></div>
+  <div class="kpi-item"><div class="kpi-val">₹18.2K</div><div class="kpi-lbl">Revenue</div><div class="kpi-sub" style="color:var(--greenA)">Today</div></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('worklist')">📋 Study Worklist <span class="tbadge" id="badge-wl">9</span></div>
+  <div class="tab" onclick="switchTab('viewer')">🖥 DICOM Viewer</div>
+  <div class="tab" onclick="switchTab('report')">📝 Report Writing</div>
+  <div class="tab" onclick="switchTab('reports')">📄 Reports <span class="tbadge g">14</span></div>
+  <div class="tab" onclick="switchTab('urgent')">🚨 Urgent Findings <span class="tbadge">2</span></div>
+  <div class="tab" onclick="switchTab('schedule')">📅 Appointment Schedule</div>
+  <div class="tab" onclick="switchTab('equipment')">⚙ Equipment</div>
+  <div class="tab" onclick="switchTab('billing')">💰 Billing</div>
+</div>
+
+<!-- ══════════ TAB 1: WORKLIST ══════════ -->
+<div class="tab-content active" id="tab-worklist">
+  <div class="layout-2col">
+    <div>
+      <div class="card">
+        <div class="card-hd">
+          <h3><div class="hd-icon" style="background:var(--ltblue)">📋</div> Radiology Study Worklist</h3>
+          <div class="card-actions">
+            <select class="fsel" onchange="filterModality(this.value)">
+              <option value="">All Modalities</option>
+              <option>X-Ray</option><option>CT Scan</option><option>MRI</option><option>Ultrasound</option><option>ECG</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="switchTab('schedule')">+ Book Study</button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <div class="search-wrap"><input class="si" id="wl-search" placeholder="Search patient, study ID, modality..." oninput="searchWL(this.value)"></div>
+          <select class="fsel" id="wl-status" onchange="filterWL()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Completed</option></select>
+          <select class="fsel" id="wl-priority" onchange="filterWL()"><option value="">All Priority</option><option>Urgent</option><option>Routine</option></select>
+        </div>
+
+        <div class="tbl-hd" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px">
+          <div>Study ID</div><div>Patient</div><div>Modality</div><div>Study</div><div>Priority</div><div>Status</div><div>Action</div>
+        </div>
+        <div id="wl-body">
+
+          <div class="tbl-row urgent" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Pending" data-priority="Urgent" data-mod="CT Scan">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0041</div>
+            <div><div style="font-weight:700;font-size:13px">Gopal T.</div><div style="font-size:10px;color:var(--light)">P-00018 · ICU</div></div>
+            <div><span class="pill pill-purple">CT Scan</span></div>
+            <div style="font-size:11px">Head CT (Non-Contrast)</div>
+            <div><span class="pill pill-red">🚨 Urgent</span></div>
+            <div><span class="pill pill-amber">Pending</span></div>
+            <div><button class="btn btn-red btn-xs" onclick="startScan('RAD-0041',this)">Start</button></div>
+          </div>
+
+          <div class="tbl-row urgent" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Pending" data-priority="Urgent" data-mod="X-Ray">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0042</div>
+            <div><div style="font-weight:700;font-size:13px">Meena Reddy</div><div style="font-size:10px;color:var(--light)">P-00044 · IPD</div></div>
+            <div><span class="pill pill-blue">X-Ray</span></div>
+            <div style="font-size:11px">Chest PA View</div>
+            <div><span class="pill pill-red">🚨 Urgent</span></div>
+            <div><span class="pill pill-amber">Pending</span></div>
+            <div><button class="btn btn-red btn-xs" onclick="startScan('RAD-0042',this)">Start</button></div>
+          </div>
+
+          <div class="tbl-row active" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="In Progress" data-priority="Routine" data-mod="X-Ray">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0039</div>
+            <div><div style="font-weight:700;font-size:13px">Ramaiah Kumar</div><div style="font-size:10px;color:var(--light)">P-00031 · OPD</div></div>
+            <div><span class="pill pill-blue">X-Ray</span></div>
+            <div style="font-size:11px">Chest PA View</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-navy">● Scanning</span></div>
+            <div><button class="btn btn-green btn-xs" onclick="switchTab('viewer');toast('DICOM viewer opened for RAD-0039','success')">View</button></div>
+          </div>
+
+          <div class="tbl-row active" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="In Progress" data-priority="Routine" data-mod="Ultrasound">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0040</div>
+            <div><div style="font-weight:700;font-size:13px">Dhanamma</div><div style="font-size:10px;color:var(--light)">P-00032 · OPD</div></div>
+            <div><span class="pill pill-teal">Ultrasound</span></div>
+            <div style="font-size:11px">Abdomen USG</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-navy">● Scanning</span></div>
+            <div><button class="btn btn-green btn-xs" onclick="switchTab('report');toast('Report writing opened for RAD-0040','success')">Report</button></div>
+          </div>
+
+          <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Pending" data-priority="Routine" data-mod="MRI">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0043</div>
+            <div><div style="font-weight:700;font-size:13px">Priya K.</div><div style="font-size:10px;color:var(--light)">P-00051 · IPD</div></div>
+            <div><span class="pill pill-purple">MRI</span></div>
+            <div style="font-size:11px">Brain MRI w/o contrast</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-amber">Pending</span></div>
+            <div><button class="btn btn-primary btn-xs" onclick="startScan('RAD-0043',this)">Start</button></div>
+          </div>
+
+          <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Pending" data-priority="Routine" data-mod="X-Ray">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0044</div>
+            <div><div style="font-weight:700;font-size:13px">Venkat S.</div><div style="font-size:10px;color:var(--light)">P-00009 · OPD</div></div>
+            <div><span class="pill pill-blue">X-Ray</span></div>
+            <div style="font-size:11px">Left Knee AP & Lateral</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-amber">Pending</span></div>
+            <div><button class="btn btn-primary btn-xs" onclick="startScan('RAD-0044',this)">Start</button></div>
+          </div>
+
+          <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Pending" data-priority="Routine" data-mod="Ultrasound">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0045</div>
+            <div><div style="font-weight:700;font-size:13px">Anitha M.</div><div style="font-size:10px;color:var(--light)">P-00022 · OPD</div></div>
+            <div><span class="pill pill-teal">Ultrasound</span></div>
+            <div style="font-size:11px">Pelvis USG</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-amber">Pending</span></div>
+            <div><button class="btn btn-primary btn-xs" onclick="startScan('RAD-0045',this)">Start</button></div>
+          </div>
+
+          <div class="tbl-row done" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Completed" data-priority="Routine" data-mod="X-Ray">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0037</div>
+            <div><div style="font-weight:700;font-size:13px">Varshika</div><div style="font-size:10px;color:var(--light)">P-00005 · OPD</div></div>
+            <div><span class="pill pill-blue">X-Ray</span></div>
+            <div style="font-size:11px">Chest PA View</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-green">✓ Done</span></div>
+            <div><button class="btn btn-outline btn-xs" onclick="openModal('reportview')">Report</button></div>
+          </div>
+
+          <div class="tbl-row done" style="grid-template-columns:100px 1fr 110px 110px 90px 80px 90px" data-status="Completed" data-priority="Routine" data-mod="CT Scan">
+            <div class="num" style="font-size:11px;color:var(--blue)">RAD-0036</div>
+            <div><div style="font-weight:700;font-size:13px">Ramaiah Kumar</div><div style="font-size:10px;color:var(--light)">P-00031 · OPD</div></div>
+            <div><span class="pill pill-purple">CT Scan</span></div>
+            <div style="font-size:11px">CT Abdomen (Contrast)</div>
+            <div><span class="pill pill-teal">Routine</span></div>
+            <div><span class="pill pill-green">✓ Done</span></div>
+            <div><button class="btn btn-outline btn-xs" onclick="openModal('reportview')">Report</button></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div>
+      <div class="card" style="border-color:#FECDD3">
+        <div class="card-hd" style="background:#FFF5F5"><h3><div class="hd-icon" style="background:var(--ltred)">🚨</div> Urgent Findings</h3><span class="pill pill-red">2 Alerts</span></div>
+        <div class="alert-row" style="background:#FFF5F5"><div class="alert-dot" style="background:var(--redB)"></div><div style="flex:1"><div class="alert-title">RAD-0036 — Possible pulmonary embolism</div><div class="alert-sub">Ramaiah Kumar · CT Chest · Dr. Prasad</div></div><button class="btn btn-red btn-xs" onclick="toast('Dr. Prasad notified urgently','success')">Notify</button></div>
+        <div class="alert-row"><div class="alert-dot" style="background:var(--redB)"></div><div style="flex:1"><div class="alert-title">RAD-0037 — Bilateral pleural effusion</div><div class="alert-sub">Varshika · Chest X-Ray · Dr. Suresh</div></div><button class="btn btn-red btn-xs" onclick="toast('Dr. Suresh notified urgently','success')">Notify</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">📊</div> Today's Stats</h3></div>
+        <div class="stat-row"><span class="stat-l">Total Studies</span><span class="stat-v num">26</span></div>
+        <div class="stat-row"><span class="stat-l">X-Ray</span><span class="stat-v num">12</span></div>
+        <div class="stat-row"><span class="stat-l">Ultrasound</span><span class="stat-v num">7</span></div>
+        <div class="stat-row"><span class="stat-l">CT Scan</span><span class="stat-v num">5</span></div>
+        <div class="stat-row"><span class="stat-l">MRI</span><span class="stat-v num">2</span></div>
+        <div class="stat-row"><span class="stat-l">Avg TAT (X-Ray)</span><span class="stat-v num">22 min</span></div>
+        <div class="stat-row"><span class="stat-l">Avg TAT (CT)</span><span class="stat-v num">55 min</span></div>
+        <div class="stat-row"><span class="stat-l">Reports Verified</span><span class="stat-v g num">14</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">⚙</div> Equipment Status</h3></div>
+        <div class="alert-row"><div class="equip-online"></div><div><div class="alert-title">X-Ray (DR System)</div><div class="alert-sub">Siemens Ysio Max · Online</div></div><span class="pill pill-green">Online</span></div>
+        <div class="alert-row"><div class="equip-online"></div><div><div class="alert-title">CT Scanner (64-Slice)</div><div class="alert-sub">GE Revolution EVO · Online</div></div><span class="pill pill-green">Online</span></div>
+        <div class="alert-row"><div class="equip-maint"></div><div><div class="alert-title">MRI (1.5T)</div><div class="alert-sub">Philips Ingenia · Maintenance</div></div><span class="pill pill-amber">Maint.</span></div>
+        <div class="alert-row"><div class="equip-online"></div><div><div class="alert-title">Ultrasound</div><div class="alert-sub">GE LOGIQ E10 · Online</div></div><span class="pill pill-green">Online</span></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">
+          <button class="btn btn-outline btn-sm" style="width:100%" onclick="switchTab('equipment')">View Equipment Details →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 2: DICOM VIEWER ══════════ -->
+<div class="tab-content" id="tab-viewer">
+  <div class="dicom-viewer">
+    <div class="dicom-toolbar">
+      <span style="font-size:11px;color:rgba(255,255,255,.5);margin-right:6px;font-family:var(--ffm)">RAD-0039 · Ramaiah Kumar · Chest PA</span>
+      <div style="flex:1"></div>
+      <button class="dicom-tool-btn active" onclick="activeTool(this)">🔍 Zoom</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">🪟 Window/Level</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">📏 Measure</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">📐 Angle</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">✏ Annotate</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">🔄 Rotate</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">🔁 Flip H</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">↔ Flip V</button>
+      <button class="dicom-tool-btn" onclick="activeTool(this)">🔲 Invert</button>
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.12);margin:0 4px"></div>
+      <button class="dicom-tool-btn" onclick="toast('Study exported as DICOM','success')">📤 Export</button>
+      <button class="dicom-tool-btn" onclick="switchTab('report');toast('Switched to report writing','success')">📝 Report</button>
+    </div>
+
+    <div class="dicom-body">
+      <!-- Thumbnails -->
+      <div class="dicom-thumbs">
+        <div class="dicom-thumb active" onclick="selectThumb(this,'Chest PA')">PA<br>View</div>
+        <div class="dicom-thumb" onclick="selectThumb(this,'Chest Lateral')">Lat<br>View</div>
+        <div class="dicom-thumb" onclick="selectThumb(this,'Zoomed')">Zoom<br>Right</div>
+        <div class="dicom-thumb" onclick="selectThumb(this,'Zoomed Left')">Zoom<br>Left</div>
+      </div>
+
+      <!-- Main Image Area -->
+      <div class="dicom-canvas" id="dicom-main">
+        <div class="dicom-img-placeholder">
+          <div class="xray-gradient"></div>
+          <!-- Simulated X-Ray anatomy -->
+          <svg width="100%" height="100%" viewBox="0 0 500 460" style="position:absolute;inset:0;opacity:.7">
+            <!-- Spine -->
+            <ellipse cx="250" cy="230" rx="18" ry="200" fill="rgba(200,200,200,0.4)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+            <!-- Ribs left -->
+            <path d="M232 120 Q170 130 130 160" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M232 145 Q162 158 118 195" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M232 170 Q158 185 112 228" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M232 195 Q158 212 116 258" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M232 220 Q162 240 122 284" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M232 248 Q168 268 132 310" stroke="rgba(200,200,200,0.45)" stroke-width="2.5" fill="none"/>
+            <!-- Ribs right -->
+            <path d="M268 120 Q330 130 370 160" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M268 145 Q338 158 382 195" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M268 170 Q342 185 388 228" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M268 195 Q342 212 384 258" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M268 220 Q338 240 378 284" stroke="rgba(200,200,200,0.5)" stroke-width="3" fill="none"/>
+            <path d="M268 248 Q332 268 368 310" stroke="rgba(200,200,200,0.45)" stroke-width="2.5" fill="none"/>
+            <!-- Heart shadow -->
+            <ellipse cx="225" cy="270" rx="62" ry="80" fill="rgba(160,160,160,0.3)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            <!-- Lungs -->
+            <ellipse cx="165" cy="220" rx="68" ry="100" fill="rgba(60,60,60,0.6)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <ellipse cx="320" cy="220" rx="62" ry="100" fill="rgba(60,60,60,0.6)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            <!-- Trachea -->
+            <rect x="244" y="50" width="12" height="80" rx="6" fill="rgba(180,180,180,0.35)"/>
+            <!-- Clavicles -->
+            <path d="M150 85 Q200 75 232 90" stroke="rgba(220,220,220,0.6)" stroke-width="4" fill="none"/>
+            <path d="M350 85 Q300 75 268 90" stroke="rgba(220,220,220,0.6)" stroke-width="4" fill="none"/>
+            <!-- Finding annotation -->
+            <circle cx="310" cy="310" r="22" fill="none" stroke="rgba(255,80,80,0.8)" stroke-width="2" stroke-dasharray="4"/>
+            <text x="340" y="305" fill="rgba(255,80,80,0.9)" font-size="10" font-family="monospace">Opacity</text>
+            <!-- Measurement line -->
+            <line x1="140" y1="200" x2="200" y2="200" stroke="rgba(0,255,0,0.7)" stroke-width="1.5"/>
+            <text x="143" y="195" fill="rgba(0,255,0,0.8)" font-size="9" font-family="monospace">4.2 cm</text>
+          </svg>
+          <!-- Overlay info -->
+          <div class="xray-overlay">
+            RAD-0039<br>
+            Ramaiah Kumar<br>
+            28-Apr-2026<br>
+            Chest PA View<br>
+            kVp: 120 | mAs: 4.5
+          </div>
+          <div class="xray-overlay-r">
+            W: 1800 L: -600<br>
+            Zoom: 1.0x<br>
+            Siemens DR<br>
+            Radiologist: Dr. K.V.
+          </div>
+          <div class="xray-measure">
+            📏 Measurement: 4.2 cm &nbsp;|&nbsp; 📐 Angle: 32°
+          </div>
+          <div style="position:absolute;bottom:30px;right:12px;color:rgba(255,255,255,.3);font-size:28px;font-family:var(--ffm)">R</div>
+          <div style="position:absolute;bottom:30px;left:12px;color:rgba(255,255,255,.3);font-size:28px;font-family:var(--ffm)">L</div>
+        </div>
+      </div>
+
+      <!-- DICOM Sidebar -->
+      <div class="dicom-sidebar">
+        <div class="dicom-info-group">
+          <div class="dicom-info-title">Patient Info</div>
+          <div class="dicom-info-row"><span class="di-label">Name</span><span class="di-val">Ramaiah Kumar</span></div>
+          <div class="dicom-info-row"><span class="di-label">ID</span><span class="di-val">P-00031</span></div>
+          <div class="dicom-info-row"><span class="di-label">Age/Sex</span><span class="di-val">45Y / M</span></div>
+          <div class="dicom-info-row"><span class="di-label">Study</span><span class="di-val">Chest PA</span></div>
+          <div class="dicom-info-row"><span class="di-label">Date</span><span class="di-val">28-Apr-2026</span></div>
+          <div class="dicom-info-row"><span class="di-label">Ref. Dr.</span><span class="di-val">Dr. D. Prasad</span></div>
+        </div>
+        <div class="dicom-info-group">
+          <div class="dicom-info-title">Image Properties</div>
+          <div class="dicom-info-row"><span class="di-label">Modality</span><span class="di-val">DX (X-Ray)</span></div>
+          <div class="dicom-info-row"><span class="di-label">kVp</span><span class="di-val">120</span></div>
+          <div class="dicom-info-row"><span class="di-label">mAs</span><span class="di-val">4.5</span></div>
+          <div class="dicom-info-row"><span class="di-label">Matrix</span><span class="di-val">2560×3072</span></div>
+          <div class="dicom-info-row"><span class="di-label">Pixel Spacing</span><span class="di-val">0.143 mm</span></div>
+          <div class="dicom-info-row"><span class="di-label">Images</span><span class="di-val">4 / 4</span></div>
+        </div>
+        <div class="dicom-info-group">
+          <div class="dicom-info-title">Window Settings</div>
+          <div class="window-slider">
+            <label><span>Window Width</span><span id="ww-val" style="color:rgba(255,255,255,.7)">1800</span></label>
+            <input type="range" min="100" max="4000" value="1800" oninput="document.getElementById('ww-val').textContent=this.value">
+          </div>
+          <div class="window-slider">
+            <label><span>Window Level</span><span id="wl-val" style="color:rgba(255,255,255,.7)">-600</span></label>
+            <input type="range" min="-1000" max="1000" value="-600" oninput="document.getElementById('wl-val').textContent=this.value">
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+            <button class="dicom-tool-btn" style="font-size:9px;padding:3px 7px" onclick="toast('Lung window applied','success')">Lung</button>
+            <button class="dicom-tool-btn" style="font-size:9px;padding:3px 7px" onclick="toast('Bone window applied','success')">Bone</button>
+            <button class="dicom-tool-btn" style="font-size:9px;padding:3px 7px" onclick="toast('Mediastinum window applied','success')">Mediastinum</button>
+            <button class="dicom-tool-btn" style="font-size:9px;padding:3px 7px" onclick="toast('Default window restored','success')">Default</button>
+          </div>
+        </div>
+        <div class="dicom-info-group">
+          <div class="dicom-info-title">Annotations</div>
+          <div class="annotation-list">
+            <div class="annotation-item"><div class="annotation-label">📏 Measurement 1</div><div class="annotation-val">4.2 cm opacity RLL</div></div>
+            <div class="annotation-item"><div class="annotation-label">📐 Angle 1</div><div class="annotation-val">32° costophrenic</div></div>
+            <div class="annotation-item" style="border-color:rgba(255,80,80,.3)"><div class="annotation-label" style="color:rgba(255,80,80,.8)">⚠ Finding</div><div class="annotation-val">RLL opacity — follow up CT</div></div>
+          </div>
+          <button class="dicom-tool-btn" style="width:100%;margin-top:8px;font-size:10px" onclick="toast('Annotation saved to study','success')">+ Add Annotation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-outline btn-sm" onclick="toast('Study shared via DICOM network','success')">📤 Send to PACS</button>
+    <button class="btn btn-primary btn-sm" onclick="switchTab('report');toast('Proceeding to report writing','success')">📝 Write Report →</button>
+  </div>
+</div>
+
+<!-- ══════════ TAB 3: REPORT WRITING ══════════ -->
+<div class="tab-content" id="tab-report">
+  <div class="layout-2col">
+    <div>
+      <div class="card">
+        <div class="card-hd">
+          <h3><div class="hd-icon" style="background:var(--ltteal)">📝</div> Radiology Report — RAD-0039</h3>
+          <div class="card-actions">
+            <select class="fsel" onchange="toast('Loaded: '+this.value,'success')">
+              <option>RAD-0039 — Ramaiah Kumar (Chest PA)</option>
+              <option>RAD-0040 — Dhanamma (Abdomen USG)</option>
+              <option>RAD-0041 — Gopal T. (Head CT)</option>
+            </select>
+          </div>
+        </div>
+        <!-- Patient info strip -->
+        <div style="padding:10px 16px;background:#F9FAFB;border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">
+          <div><span style="font-size:10px;color:var(--light);display:block;text-transform:uppercase;letter-spacing:.5px">Patient</span><span style="font-size:12px;font-weight:700">Ramaiah Kumar · P-00031 · 45Y/M</span></div>
+          <div><span style="font-size:10px;color:var(--light);display:block;text-transform:uppercase;letter-spacing:.5px">Study</span><span style="font-size:12px;font-weight:700">Chest X-Ray — PA View</span></div>
+          <div><span style="font-size:10px;color:var(--light);display:block;text-transform:uppercase;letter-spacing:.5px">Ref. Doctor</span><span style="font-size:12px;font-weight:700">Dr. D. Prasad</span></div>
+          <div><span style="font-size:10px;color:var(--light);display:block;text-transform:uppercase;letter-spacing:.5px">Date</span><span style="font-size:12px;font-weight:700">28 Apr 2026 · 11:30 AM</span></div>
+        </div>
+
+        <div style="padding:14px">
+          <!-- Clinical History -->
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Clinical History / Indication</label>
+            <input class="fi" value="Hypertension, Type 2 DM. Chest pain and shortness of breath. Rule out pneumonia / cardiomegaly.">
+          </div>
+
+          <!-- Quick Findings Tags -->
+          <div class="finding-section">
+            <div class="finding-section-title">Quick Findings — Select All That Apply</div>
+            <div style="margin-bottom:8px">
+              <div style="font-size:11px;color:var(--light);margin-bottom:5px;font-weight:600">Lungs & Airways</div>
+              <span class="finding-tag normal" onclick="toggleFinding(this)">✓ Clear Lungs</span>
+              <span class="finding-tag abnormal selected" onclick="toggleFinding(this)">Opacity RLL</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Consolidation</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Pleural Effusion</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Pneumothorax</span>
+              <span class="finding-tag suggest" onclick="toggleFinding(this)">Atelectasis</span>
+              <span class="finding-tag normal" onclick="toggleFinding(this)">Normal Hila</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Hilar Fullness</span>
+            </div>
+            <div style="margin-bottom:8px">
+              <div style="font-size:11px;color:var(--light);margin-bottom:5px;font-weight:600">Heart & Mediastinum</div>
+              <span class="finding-tag abnormal selected" onclick="toggleFinding(this)">Cardiomegaly</span>
+              <span class="finding-tag normal" onclick="toggleFinding(this)">Normal CTR</span>
+              <span class="finding-tag normal" onclick="toggleFinding(this)">Normal Mediastinum</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Widened Mediastinum</span>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--light);margin-bottom:5px;font-weight:600">Bones & Soft Tissue</div>
+              <span class="finding-tag normal selected" onclick="toggleFinding(this)">Normal Bones</span>
+              <span class="finding-tag abnormal" onclick="toggleFinding(this)">Fracture</span>
+              <span class="finding-tag suggest" onclick="toggleFinding(this)">Osteopenia</span>
+            </div>
+          </div>
+
+          <!-- Findings (free text) -->
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Findings</label>
+            <textarea class="fi" rows="5" style="resize:none">1. There is a subtle opacity in the right lower lobe (RLL) measuring approximately 4.2 cm, suspicious for early consolidation or atelectasis. Correlation with CT chest recommended.
+2. Cardiomegaly noted — cardiothoracic ratio approximately 0.57 (upper limit of normal 0.50). Consistent with hypertensive heart disease.
+3. Bilateral lung fields otherwise clear. No pleural effusion. No pneumothorax.
+4. Trachea is central. Hila are normal. Mediastinal contour is normal.
+5. Bony thorax: no fractures or destructive lesions. Soft tissues unremarkable.</textarea>
+          </div>
+
+          <!-- Impression -->
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Impression / Conclusion</label>
+            <textarea class="fi" rows="3" style="resize:none">1. Cardiomegaly — likely hypertensive in etiology. Clinical correlation advised.
+2. RLL opacity — possible early consolidation / atelectasis. CT chest recommended to further characterize.
+3. No acute pleural or pneumothorax changes.</textarea>
+          </div>
+
+          <!-- Recommendations -->
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Recommendations</label>
+            <textarea class="fi" rows="2" style="resize:none">CT Chest (HRCT) recommended for better characterization of RLL opacity. Echocardiography advised for cardiac evaluation in view of cardiomegaly.</textarea>
+          </div>
+
+          <div class="frow3">
+            <div class="fg"><label class="fl">Reporting Radiologist</label><input class="fi" value="Dr. K. Venkatesan, MD (Radiology)"></div>
+            <div class="fg"><label class="fl">Report Date & Time</label><input class="fi" value="28 Apr 2026 · 11:45 AM" readonly style="background:#F9FAFB"></div>
+            <div class="fg"><label class="fl">Critical Finding?</label><select class="fs"><option>No</option><option>Yes — Notify Doctor Immediately</option></select></div>
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+            <button class="btn btn-outline" onclick="toast('Report draft saved','success')">Save Draft</button>
+            <button class="btn btn-amber" onclick="toast('Sent for senior radiologist review','success')">👁 Send for Review</button>
+            <button class="btn btn-green" onclick="finalizeReport()">✓ Finalize & Send to Doctor</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Templates & History -->
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">📋</div> Report Templates</h3></div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('Normal Chest X-Ray template loaded','success')">📄 Normal Chest X-Ray</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('Pneumonia template loaded','success')">📄 Chest — Pneumonia</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('Pleural effusion template loaded','success')">📄 Chest — Pleural Effusion</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('Cardiomegaly template loaded','success')">📄 Cardiomegaly</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('CT Head Normal template loaded','success')">📄 CT Head — Normal</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('CT Head — Stroke template loaded','success')">📄 CT Head — Stroke</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('USG Abdomen template loaded','success')">📄 USG Abdomen — Normal</button>
+          <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start" onclick="toast('Fatty liver template loaded','success')">📄 USG — Fatty Liver</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">🕐</div> Prior Studies — Same Patient</h3></div>
+        <div class="alert-row"><div><div class="alert-title">RAD-0036 — CT Abdomen</div><div class="alert-sub">28 Jan 2026 · Mild hepatomegaly</div></div><button class="btn btn-outline btn-xs" onclick="openModal('reportview')">View</button></div>
+        <div class="alert-row"><div><div class="alert-title">RAD-0031 — Chest PA</div><div class="alert-sub">05 Nov 2025 · Normal</div></div><button class="btn btn-outline btn-xs" onclick="openModal('reportview')">View</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 4: REPORTS ══════════ -->
+<div class="tab-content" id="tab-reports">
+  <div class="card">
+    <div class="card-hd">
+      <h3><div class="hd-icon" style="background:var(--ltgreen)">📄</div> Completed Radiology Reports</h3>
+      <div class="card-actions">
+        <input class="fi" type="date" value="2026-04-28" style="width:140px">
+        <button class="btn btn-outline btn-sm" onclick="toast('Reports exported as PDF','success')">📊 Export All</button>
+      </div>
+    </div>
+    <div class="search-bar"><div class="search-wrap"><input class="si" placeholder="Search patient, study, modality..."></div><select class="fsel"><option>All Modalities</option><option>X-Ray</option><option>CT Scan</option><option>MRI</option><option>Ultrasound</option></select><select class="fsel"><option>All Status</option><option>Sent</option><option>Verified</option><option>Draft</option></select></div>
+    <div class="tbl-hd" style="grid-template-columns:100px 1fr 110px 140px 100px 100px 120px">
+      <div>Study ID</div><div>Patient</div><div>Modality</div><div>Study Name</div><div>Date</div><div>Status</div><div>Actions</div>
+    </div>
+    <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 140px 100px 100px 120px"><div class="num" style="font-size:11px;color:var(--blue)">RAD-0039</div><div><div style="font-weight:700">Ramaiah Kumar</div><div style="font-size:10px;color:var(--light)">P-00031</div></div><div><span class="pill pill-blue">X-Ray</span></div><div style="font-size:11px">Chest PA View</div><div style="font-size:11px;color:var(--muted)">28 Apr 2026</div><div><span class="pill pill-teal">Verified</span></div><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openModal('reportview')">View</button><button class="btn btn-primary btn-xs" onclick="toast('Report resent to Dr. Prasad','success')">Send</button><button class="btn btn-outline btn-xs" onclick="toast('Printed','success')">🖨</button></div></div>
+    <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 140px 100px 100px 120px"><div class="num" style="font-size:11px;color:var(--blue)">RAD-0037</div><div><div style="font-weight:700">Varshika</div><div style="font-size:10px;color:var(--light)">P-00005</div></div><div><span class="pill pill-blue">X-Ray</span></div><div style="font-size:11px">Chest PA View</div><div style="font-size:11px;color:var(--muted)">28 Apr 2026</div><div><span class="pill pill-green">Sent</span></div><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openModal('reportview')">View</button><button class="btn btn-outline btn-xs" onclick="toast('Printed','success')">🖨</button></div></div>
+    <div class="tbl-row" style="grid-template-columns:100px 1fr 110px 140px 100px 100px 120px"><div class="num" style="font-size:11px;color:var(--blue)">RAD-0036</div><div><div style="font-weight:700">Ramaiah Kumar</div><div style="font-size:10px;color:var(--light)">P-00031</div></div><div><span class="pill pill-purple">CT Scan</span></div><div style="font-size:11px">CT Abdomen Contrast</div><div style="font-size:11px;color:var(--muted)">28 Jan 2026</div><div><span class="pill pill-green">Sent</span></div><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openModal('reportview')">View</button><button class="btn btn-outline btn-xs" onclick="toast('Printed','success')">🖨</button></div></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 5: URGENT FINDINGS ══════════ -->
+<div class="tab-content" id="tab-urgent">
+  <div class="layout-2col">
+    <div>
+      <div class="card" style="border-color:var(--redB)">
+        <div class="card-hd" style="background:#FFF5F5"><h3><div class="hd-icon" style="background:var(--ltred)">🚨</div> Urgent / Critical Radiology Findings</h3><span class="pill pill-red">2 Unresolved</span></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--ltred);border:1.5px solid #FECDD3;border-radius:10px;padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:14px;font-weight:700;color:var(--redA)">🚨 Possible Pulmonary Embolism — CT Chest</div><div style="font-size:12px;color:var(--muted);margin-top:3px">Ramaiah Kumar · P-00031 · Study RAD-0036 · 28 Apr 2026</div></div>
+              <span class="pill pill-red" id="urgpill-1">Not Notified</span>
+            </div>
+            <div style="font-size:12px;background:var(--white);border-radius:7px;padding:9px 11px;margin-bottom:10px;line-height:1.6">Filling defect identified in right pulmonary artery on CT Pulmonary Angiography. Appearances consistent with acute pulmonary embolism. Urgent clinical correlation and anticoagulation initiation recommended.</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-red btn-sm" onclick="notifyUrgent('urgpill-1','Dr. D. Prasad')">📞 Notify Dr. Prasad</button>
+              <button class="btn btn-outline btn-sm" onclick="toast('Flagged in patient record','success')">📋 Flag in Record</button>
+              <button class="btn btn-amber btn-sm" onclick="openModal('reportview')">📄 View Report</button>
+            </div>
+          </div>
+          <div style="background:var(--ltred);border:1.5px solid #FECDD3;border-radius:10px;padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:14px;font-weight:700;color:var(--redA)">🚨 Bilateral Pleural Effusion — Chest X-Ray</div><div style="font-size:12px;color:var(--muted);margin-top:3px">Varshika · P-00005 · Study RAD-0037 · 28 Apr 2026</div></div>
+              <span class="pill pill-red" id="urgpill-2">Not Notified</span>
+            </div>
+            <div style="font-size:12px;background:var(--white);border-radius:7px;padding:9px 11px;margin-bottom:10px;line-height:1.6">Bilateral pleural effusions noted, right greater than left. Associated basal atelectasis. Possible cardiac failure or inflammatory aetiology. Urgent cardiology review and thoracentesis consideration recommended.</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-red btn-sm" onclick="notifyUrgent('urgpill-2','Dr. Suresh')">📞 Notify Dr. Suresh</button>
+              <button class="btn btn-outline btn-sm" onclick="toast('Flagged in patient record','success')">📋 Flag</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">✓</div> Resolved Urgent Findings</h3></div>
+        <div class="alert-row"><div class="alert-dot" style="background:var(--greenA)"></div><div><div class="alert-title">RAD-0034 — Acute appendicitis (USG)</div><div class="alert-sub">Dr. Rao notified · Surgery arranged · 26 Apr</div></div><span class="pill pill-green">Resolved</span></div>
+        <div class="alert-row"><div class="alert-dot" style="background:var(--greenA)"></div><div><div class="alert-title">RAD-0029 — Intracranial bleed (CT)</div><div class="alert-sub">Dr. Neurosurgery notified · 22 Apr</div></div><span class="pill pill-green">Resolved</span></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">ℹ</div> Urgent Finding Protocol</h3></div>
+        <div style="padding:12px 14px;font-size:12px;line-height:1.8;color:var(--muted)">
+          <div style="margin-bottom:6px">📞 <strong>Step 1:</strong> Call referring doctor immediately</div>
+          <div style="margin-bottom:6px">📋 <strong>Step 2:</strong> Document notification in HMIS</div>
+          <div style="margin-bottom:6px">📄 <strong>Step 3:</strong> Issue preliminary report</div>
+          <div style="margin-bottom:6px">✅ <strong>Step 4:</strong> Follow up within 1 hour</div>
+          <div>📊 <strong>Step 5:</strong> Final report within 24 hours</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 6: SCHEDULE ══════════ -->
+<div class="tab-content" id="tab-schedule">
+  <div class="layout-2col">
+    <div>
+      <div class="card">
+        <div class="card-hd">
+          <h3><div class="hd-icon" style="background:var(--ltblue)">📅</div> Appointment Schedule — 28 Apr 2026</h3>
+          <div class="card-actions">
+            <input class="fi" type="date" value="2026-04-28" style="width:140px">
+            <button class="btn btn-primary btn-sm" onclick="openModal('bookslot')">+ Book Slot</button>
+          </div>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;overflow-x:auto">
+          <button class="btn btn-outline btn-sm" style="border-color:var(--blue);color:var(--blue);background:var(--ltblue)">X-Ray Room 1</button>
+          <button class="btn btn-outline btn-sm" onclick="toast('Switched to CT Schedule','success')">CT Suite</button>
+          <button class="btn btn-outline btn-sm" onclick="toast('Switched to MRI Schedule','success')">MRI Suite</button>
+          <button class="btn btn-outline btn-sm" onclick="toast('Switched to USG Schedule','success')">Ultrasound</button>
+        </div>
+        <div style="padding:10px 16px;background:#F9FAFB;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(6,1fr);gap:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--light);text-align:center">TIME</div>
+          <div style="font-size:10px;font-weight:700;color:var(--light);text-align:center">STATUS</div>
+          <div style="font-size:10px;font-weight:700;color:var(--light);grid-column:span 2">PATIENT</div>
+          <div style="font-size:10px;font-weight:700;color:var(--light)">STUDY</div>
+          <div style="font-size:10px;font-weight:700;color:var(--light)">ACTION</div>
+        </div>
+        <div id="schedule-rows">
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center">
+            <div class="num" style="font-size:12px;font-weight:700">08:00</div>
+            <div><span class="pill pill-green" style="font-size:9px">Done</span></div>
+            <div style="grid-column:span 2"><div style="font-weight:600;font-size:12px">Anitha M.</div><div style="font-size:10px;color:var(--light)">P-00022</div></div>
+            <div style="font-size:11px">Chest PA</div>
+            <div><button class="btn btn-outline btn-xs" onclick="openModal('reportview')">Report</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center;background:var(--ltblue2)">
+            <div class="num" style="font-size:12px;font-weight:700">09:00</div>
+            <div><span class="pill pill-navy" style="font-size:9px">● Now</span></div>
+            <div style="grid-column:span 2"><div style="font-weight:600;font-size:12px">Ramaiah Kumar</div><div style="font-size:10px;color:var(--light)">P-00031</div></div>
+            <div style="font-size:11px">Chest PA</div>
+            <div><button class="btn btn-primary btn-xs" onclick="switchTab('viewer')">View</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center">
+            <div class="num" style="font-size:12px;font-weight:700">10:00</div>
+            <div><span class="pill pill-amber" style="font-size:9px">Waiting</span></div>
+            <div style="grid-column:span 2"><div style="font-weight:600;font-size:12px">Venkat S.</div><div style="font-size:10px;color:var(--light)">P-00009</div></div>
+            <div style="font-size:11px">Knee X-Ray</div>
+            <div><button class="btn btn-primary btn-xs" onclick="toast('Started: Venkat S. Knee X-Ray','success')">Start</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center">
+            <div class="num" style="font-size:12px;font-weight:700">11:00</div>
+            <div><span class="pill pill-green" style="font-size:9px">Available</span></div>
+            <div style="grid-column:span 2;font-size:11px;color:var(--light)">— Open Slot —</div>
+            <div></div>
+            <div><button class="btn btn-ghost btn-xs" onclick="openModal('bookslot')">Book</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center">
+            <div class="num" style="font-size:12px;font-weight:700">12:00</div>
+            <div><span class="pill pill-green" style="font-size:9px">Available</span></div>
+            <div style="grid-column:span 2;font-size:11px;color:var(--light)">— Open Slot —</div>
+            <div></div>
+            <div><button class="btn btn-ghost btn-xs" onclick="openModal('bookslot')">Book</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;border-bottom:1px solid #F3F4F6;align-items:center;background:#FFFBEB">
+            <div class="num" style="font-size:12px;font-weight:700">14:00</div>
+            <div><span class="pill pill-red" style="font-size:9px">🚨 Urgent</span></div>
+            <div style="grid-column:span 2"><div style="font-weight:600;font-size:12px">Gopal T. (ICU)</div><div style="font-size:10px;color:var(--light)">P-00018</div></div>
+            <div style="font-size:11px">CT Head</div>
+            <div><button class="btn btn-red btn-xs" onclick="startScan('RAD-0041',null)">Priority</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:10px 16px;align-items:center">
+            <div class="num" style="font-size:12px;font-weight:700">15:00</div>
+            <div><span class="pill pill-green" style="font-size:9px">Available</span></div>
+            <div style="grid-column:span 2;font-size:11px;color:var(--light)">— Open Slot —</div>
+            <div></div>
+            <div><button class="btn btn-ghost btn-xs" onclick="openModal('bookslot')">Book</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">📊</div> Slot Overview</h3></div>
+        <div style="padding:12px 16px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+            <div style="text-align:center;padding:10px 6px;background:var(--ltgreen);border-radius:8px"><div class="num" style="color:var(--greenA);font-size:18px">5</div><div style="font-size:10px;color:var(--greenA)">Available</div></div>
+            <div style="text-align:center;padding:10px 6px;background:var(--ltblue);border-radius:8px"><div class="num" style="color:var(--blue);font-size:18px">6</div><div style="font-size:10px;color:var(--blue)">Booked</div></div>
+            <div style="text-align:center;padding:10px 6px;background:var(--ltred);border-radius:8px"><div class="num" style="color:var(--redA);font-size:18px">1</div><div style="font-size:10px;color:var(--redA)">Urgent</div></div>
+            <div style="text-align:center;padding:10px 6px;background:var(--ltamber);border-radius:8px"><div class="num" style="color:var(--amber);font-size:18px">0</div><div style="font-size:10px;color:var(--amber)">Blocked</div></div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%" onclick="openModal('bookslot')">+ Book New Appointment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 7: EQUIPMENT ══════════ -->
+<div class="tab-content" id="tab-equipment">
+  <div class="layout-3col">
+    <div>
+      <div class="equip-card">
+        <div class="equip-icon" style="background:var(--ltblue)">☢</div>
+        <div style="flex:1">
+          <div class="equip-name">Digital X-Ray (DR System)</div>
+          <div class="equip-model">Siemens Ysio Max · Room 1</div>
+          <div class="equip-status-row"><div class="equip-online"></div><span class="equip-stat">Online & Operational</span><span class="pill pill-green">Active</span></div>
+          <div style="font-size:11px;color:var(--light);margin-top:6px">Last calibrated: Today 7:00 AM<br>Studies today: 12 · Total: 2,841</div>
+          <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-outline btn-xs" onclick="toast('Calibration log opened','success')">📋 Log</button><button class="btn btn-amber btn-xs" onclick="toast('Maintenance scheduled','success')">🔧 Schedule Maint.</button></div>
+        </div>
+      </div>
+      <div class="equip-card">
+        <div class="equip-icon" style="background:var(--ltpurple)">🔬</div>
+        <div style="flex:1">
+          <div class="equip-name">CT Scanner (64-Slice)</div>
+          <div class="equip-model">GE Revolution EVO · CT Suite</div>
+          <div class="equip-status-row"><div class="equip-online"></div><span class="equip-stat">Online & Operational</span><span class="pill pill-green">Active</span></div>
+          <div style="font-size:11px;color:var(--light);margin-top:6px">Last PM: 15 Apr 2026<br>Studies today: 5 · Total: 8,204</div>
+          <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-outline btn-xs" onclick="toast('CT log opened','success')">📋 Log</button><button class="btn btn-amber btn-xs" onclick="toast('Maintenance scheduled','success')">🔧 Schedule</button></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="equip-card" style="border-color:var(--amberA)">
+        <div class="equip-icon" style="background:var(--ltamber)">🧲</div>
+        <div style="flex:1">
+          <div class="equip-name">MRI Scanner (1.5T)</div>
+          <div class="equip-model">Philips Ingenia 1.5T · MRI Suite</div>
+          <div class="equip-status-row"><div class="equip-maint"></div><span class="equip-stat" style="color:var(--amber)">Under Maintenance</span><span class="pill pill-amber">Offline</span></div>
+          <div style="font-size:11px;color:var(--amberA);margin-top:6px;font-weight:600">⚠ Scheduled maintenance — ETA 2 hours<br>Next available: ~3:00 PM today</div>
+          <div style="font-size:11px;color:var(--light);margin-top:4px">Studies today: 0 · Total: 5,112</div>
+          <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-amber btn-xs" onclick="toast('Maintenance engineer contacted','success')">📞 Engineer</button><button class="btn btn-outline btn-xs" onclick="toast('Downtime logged','success')">📋 Log Downtime</button></div>
+        </div>
+      </div>
+      <div class="equip-card">
+        <div class="equip-icon" style="background:var(--ltteal)">🔊</div>
+        <div style="flex:1">
+          <div class="equip-name">Ultrasound System</div>
+          <div class="equip-model">GE LOGIQ E10 · USG Room</div>
+          <div class="equip-status-row"><div class="equip-online"></div><span class="equip-stat">Online & Operational</span><span class="pill pill-green">Active</span></div>
+          <div style="font-size:11px;color:var(--light);margin-top:6px">Last service: 10 Apr 2026<br>Studies today: 7 · Total: 4,221</div>
+          <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-outline btn-xs" onclick="toast('USG log opened','success')">📋 Log</button><button class="btn btn-amber btn-xs" onclick="toast('Maintenance scheduled','success')">🔧 Schedule</button></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">📊</div> Equipment Utilisation</h3></div>
+        <div class="stat-row"><span class="stat-l">X-Ray Uptime (Month)</span><span class="stat-v g num">98.4%</span></div>
+        <div class="stat-row"><span class="stat-l">CT Uptime (Month)</span><span class="stat-v g num">96.1%</span></div>
+        <div class="stat-row"><span class="stat-l">MRI Uptime (Month)</span><span class="stat-v a num">88.2%</span></div>
+        <div class="stat-row"><span class="stat-l">USG Uptime (Month)</span><span class="stat-v g num">99.0%</span></div>
+        <div class="stat-row"><span class="stat-l">Next Preventive Maint.</span><span class="stat-v num">05 May 2026</span></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltred)">📦</div> Consumables</h3></div>
+        <div class="stat-row"><span class="stat-l">X-Ray Film / Plates</span><span class="stat-v g num">Sufficient</span></div>
+        <div class="stat-row"><span class="stat-l">CT Contrast (Iopromide)</span><span class="stat-v a num">Low (8 doses)</span></div>
+        <div class="stat-row"><span class="stat-l">USG Gel</span><span class="stat-v g num">Sufficient</span></div>
+        <div class="stat-row"><span class="stat-l">Radiation Badges</span><span class="stat-v g num">All current</span></div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border)"><button class="btn btn-amber btn-sm" style="width:100%" onclick="toast('Consumables order raised for CT Contrast','success')">📤 Reorder CT Contrast</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 8: BILLING ══════════ -->
+<div class="tab-content" id="tab-billing">
+  <div class="layout-2col">
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">💰</div> Radiology Billing</h3><button class="btn btn-outline btn-sm" onclick="openModal('billinv')">🧾 Preview Invoice</button></div>
+        <div style="padding:14px">
+          <div class="frow3">
+            <div class="fg"><label class="fl">Patient</label><select class="fs"><option>Ramaiah Kumar (P-00031)</option><option>Dhanamma (P-00032)</option><option>Walk-in</option></select></div>
+            <div class="fg"><label class="fl">Study ID</label><input class="fi" value="RAD-0039"></div>
+            <div class="fg"><label class="fl">Insurance</label><select class="fs"><option>Star Health (Full cover — IPD)</option><option>ECHS</option><option>PMJAY</option><option>Self Pay</option></select></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 80px 90px 100px;gap:8px;padding:8px 16px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;background:#F9FAFB;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+          <div>Study / Procedure</div><div style="text-align:center">Qty</div><div style="text-align:right">Rate</div><div style="text-align:right">Amount</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 80px 90px 100px;gap:8px;padding:9px 16px;border-bottom:1px solid #F3F4F6;font-size:12px"><div style="font-weight:500">Chest X-Ray PA View (Digital)</div><div style="text-align:center;color:var(--muted)">1</div><div style="text-align:right;color:var(--muted)">₹ 400</div><div class="num" style="text-align:right;font-weight:700">₹ 400</div></div>
+        <div style="display:grid;grid-template-columns:1fr 80px 90px 100px;gap:8px;padding:9px 16px;border-bottom:1px solid #F3F4F6;font-size:12px"><div style="font-weight:500">Radiologist Reading Fee</div><div style="text-align:center;color:var(--muted)">1</div><div style="text-align:right;color:var(--muted)">₹ 200</div><div class="num" style="text-align:right;font-weight:700">₹ 200</div></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#F9FAFB;font-weight:700;font-size:13px"><span>Subtotal</span><span class="num">₹ 600</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 16px;color:var(--greenA);font-weight:700;font-size:13px;background:#F0FDF4"><span>🛡 Star Health (Radiology covered — IPD)</span><span class="num">− ₹ 600</span></div>
+        <div style="display:flex;justify-content:space-between;padding:14px 16px;background:var(--navy);color:#fff;font-weight:700;font-size:16px;border-radius:0 0 12px 12px"><span>💳 Patient Payable</span><span class="num">₹ 0.00</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">📊</div> Today's Revenue</h3></div>
+        <div class="stat-row"><span class="stat-l">Total Billed</span><span class="stat-v num">₹ 18,200</span></div>
+        <div class="stat-row"><span class="stat-l">Insurance Covered</span><span class="stat-v b num">₹ 12,400</span></div>
+        <div class="stat-row"><span class="stat-l">Self Pay</span><span class="stat-v g num">₹ 5,800</span></div>
+        <div class="stat-row"><span class="stat-l">X-Ray Revenue</span><span class="stat-v num">₹ 4,800</span></div>
+        <div class="stat-row"><span class="stat-l">CT Revenue</span><span class="stat-v num">₹ 8,500</span></div>
+        <div class="stat-row"><span class="stat-l">USG Revenue</span><span class="stat-v num">₹ 3,500</span></div>
+        <div class="stat-row"><span class="stat-l">MRI Revenue</span><span class="stat-v num">₹ 0 (offline)</span></div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border)"><button class="btn btn-primary btn-sm" style="width:100%" onclick="toast('Billing report exported','success')">📊 Export Report</button></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltamber)">🧾</div> Recent Invoices</h3></div>
+        <div class="alert-row"><div><div class="alert-title">Ramaiah Kumar — Chest X-Ray</div><div class="alert-sub">RAD-0039 · Insurance · 09:00 AM</div></div><span class="num" style="color:var(--greenA);font-weight:700">₹ 0 (Ins.)</span></div>
+        <div class="alert-row"><div><div class="alert-title">Varshika — Chest X-Ray</div><div class="alert-sub">RAD-0037 · Self Pay · 08:30 AM</div></div><span class="num" style="color:var(--greenA);font-weight:700">₹ 600</span></div>
+        <div class="alert-row"><div><div class="alert-title">Ramaiah Kumar — CT Abdomen</div><div class="alert-sub">RAD-0036 · Self Pay · 08:00 AM</div></div><span class="num" style="color:var(--greenA);font-weight:700">₹ 3,200</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-reportview">
+  <div class="modal modal-wide">
+    <div class="modal-title">Radiology Report — RAD-0039</div>
+    <div class="modal-sub">Ramaiah Kumar · Chest PA View · Dr. D. Prasad</div>
+    <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:10px;padding:20px;font-size:12px;line-height:1.75">
+      <div style="text-align:center;margin-bottom:14px"><div style="font-size:15px;font-weight:800;font-family:var(--ff)">MC HMIS — Radiology Report</div><div style="font-size:11px;color:var(--muted)">My Chitti Technologies · Tirupati, AP</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;font-size:11px">
+        <div><span style="color:var(--light)">Patient:</span> <strong>Ramaiah Kumar</strong></div>
+        <div><span style="color:var(--light)">Study ID:</span> <strong>RAD-0039</strong></div>
+        <div><span style="color:var(--light)">Age/Sex:</span> <strong>45 Years / Male</strong></div>
+        <div><span style="color:var(--light)">Ref. Doctor:</span> <strong>Dr. D. Prasad</strong></div>
+        <div><span style="color:var(--light)">Study:</span> <strong>Chest X-Ray PA View</strong></div>
+        <div><span style="color:var(--light)">Date:</span> <strong>28 Apr 2026</strong></div>
+      </div>
+      <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
+      <div style="margin-bottom:8px"><div style="font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-size:11px">Clinical History</div><div>Hypertension, T2DM. Chest pain, SOB. Rule out pneumonia / cardiomegaly.</div></div>
+      <div style="margin-bottom:8px"><div style="font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-size:11px">Findings</div>
+        <div>1. RLL opacity ~4.2 cm — possible early consolidation / atelectasis. CT recommended.<br>2. Cardiomegaly — CTR ~0.57. Hypertensive etiology likely.<br>3. No pleural effusion. No pneumothorax. Hila normal. Mediastinum normal.<br>4. Bony thorax intact.</div>
+      </div>
+      <div style="margin-bottom:8px"><div style="font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-size:11px">Impression</div>
+        <div>1. Cardiomegaly — likely hypertensive.<br>2. RLL opacity — CT Chest HRCT recommended.<br>3. No acute pleural or pneumothorax changes.</div>
+      </div>
+      <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
+      <div style="text-align:right;font-size:11px;color:var(--muted)">Reported by: Dr. K. Venkatesan, MD (Radiology)<br>MC HMIS Radiology · 28 Apr 2026 · 11:45 AM</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('reportview')">Close</button>
+      <button class="btn btn-primary" onclick="closeModal('reportview');toast('Report sent to Dr. D. Prasad','success')">📤 Send to Doctor</button>
+      <button class="btn btn-teal" onclick="closeModal('reportview');toast('Report printed','success')">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-bookslot">
+  <div class="modal">
+    <div class="modal-title">Book Radiology Appointment</div>
+    <div class="modal-sub">Schedule a new scan or study</div>
+    <div class="frow2"><div class="fg"><label class="fl">Patient</label><select class="fs"><option>Select Patient...</option><option>Ramaiah Kumar (P-00031)</option><option>Dhanamma (P-00032)</option><option>Walk-in Patient</option></select></div><div class="fg"><label class="fl">Referring Doctor</label><select class="fs"><option>Dr. D. Prasad</option><option>Dr. Rao</option><option>Dr. Ramani</option></select></div></div>
+    <div class="frow2"><div class="fg"><label class="fl">Modality</label><select class="fs"><option>X-Ray</option><option>CT Scan</option><option>MRI</option><option>Ultrasound</option></select></div><div class="fg"><label class="fl">Study Name</label><input class="fi" placeholder="e.g. Chest PA View"></div></div>
+    <div class="frow3"><div class="fg"><label class="fl">Date</label><input class="fi" type="date" value="2026-04-28"></div><div class="fg"><label class="fl">Time Slot</label><select class="fs"><option>11:00 AM</option><option>12:00 PM</option><option>03:00 PM</option></select></div><div class="fg"><label class="fl">Priority</label><select class="fs"><option>Routine</option><option>Urgent</option></select></div></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Clinical Indication</label><input class="fi" placeholder="Reason / clinical history..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('bookslot')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('bookslot');toast('Appointment booked & patient notified','success')">✓ Book Appointment</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-billinv">
+  <div class="modal">
+    <div class="modal-title">Radiology Invoice Preview</div>
+    <div class="modal-sub">Ramaiah Kumar · RAD-0039</div>
+    <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--ffm);font-size:11px">
+      <div style="text-align:center;margin-bottom:8px;font-family:var(--ff)"><div style="font-size:13px;font-weight:700">MC HMIS Radiology Invoice</div><div style="font-size:10px;color:var(--muted)">INV-RAD-2026-04-0039</div></div>
+      <hr style="border:none;border-top:1px dashed var(--border);margin:8px 0">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--light)">Chest X-Ray PA</span><span>₹ 400</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--light)">Radiologist Fee</span><span>₹ 200</span></div>
+      <hr style="border:none;border-top:1px dashed var(--border);margin:8px 0">
+      <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>₹ 600</span></div>
+      <div style="display:flex;justify-content:space-between;color:var(--blue)"><span>Star Health</span><span>− ₹ 600</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:12px;margin-top:6px"><span>Patient Pays</span><span>₹ 0.00</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('billinv')">Close</button>
+      <button class="btn btn-green" onclick="closeModal('billinv');toast('Invoice finalized','success')">✓ Finalize</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const map={worklist:0,viewer:1,report:2,reports:3,urgent:4,schedule:5,equipment:6,billing:7};
+  const tabs=document.querySelectorAll('.tab');
+  if(tabs[map[name]])tabs[map[name]].classList.add('active');
+  window.scrollTo({top:160,behavior:'smooth'});
+}
+
+let pendingCount=9;
+function startScan(id,btn){
+  if(btn){
+    const row=btn.closest('.tbl-row');
+    if(row){
+      row.classList.remove('urgent');
+      row.classList.add('active');
+      const st=row.querySelector('.pill-amber,.pill-red');
+      if(st){st.className='pill pill-navy';st.textContent='● Scanning';}
+      btn.className='btn btn-green btn-xs';
+      btn.textContent='View';
+      btn.onclick=()=>{switchTab('viewer');toast('DICOM viewer opened for '+id,'success');};
+    }
+    pendingCount=Math.max(0,pendingCount-1);
+    document.getElementById('badge-wl').textContent=pendingCount;
+    document.getElementById('kpi-pending').textContent=pendingCount;
+  }
+  toast(id+' scan started','success');
+}
+
+function filterModality(val){
+  document.querySelectorAll('#wl-body .tbl-row').forEach(row=>{
+    const modEl=row.querySelector('.pill');
+    const mod=modEl?modEl.textContent.trim():'';
+    row.style.display=(!val||mod.includes(val))?'':'none';
+  });
+}
+
+function filterWL(){
+  const status=document.getElementById('wl-status').value;
+  const priority=document.getElementById('wl-priority').value;
+  document.querySelectorAll('#wl-body .tbl-row').forEach(row=>{
+    const rs=row.dataset.status||'';
+    const rp=row.dataset.priority||'';
+    row.style.display=(!status||rs===status)&&(!priority||rp===priority)?'':'none';
+  });
+}
+
+function searchWL(val){
+  document.querySelectorAll('#wl-body .tbl-row').forEach(row=>{
+    row.style.display=row.textContent.toLowerCase().includes(val.toLowerCase())?'':'none';
+  });
+}
+
+function activeTool(btn){
+  document.querySelectorAll('.dicom-tool-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  toast('Tool activated: '+btn.textContent.trim(),'success');
+}
+
+function selectThumb(thumb,label){
+  document.querySelectorAll('.dicom-thumb').forEach(t=>t.classList.remove('active'));
+  thumb.classList.add('active');
+  toast('Loaded: '+label,'success');
+}
+
+function toggleFinding(tag){
+  tag.classList.toggle('selected');
+}
+
+function finalizeReport(){
+  toast('Report RAD-0039 finalized & sent to Dr. D. Prasad','success');
+  setTimeout(()=>switchTab('reports'),800);
+}
+
+function notifyUrgent(pillId,doctor){
+  const pill=document.getElementById(pillId);
+  if(pill){pill.className='pill pill-green';pill.textContent='✓ Notified';}
+  toast(doctor+' notified — urgent finding acknowledged','success');
+}
+
+function openModal(id){document.getElementById('modal-'+id)?.classList.add('open');}
+function closeModal(id){document.getElementById('modal-'+id)?.classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
+
+function toast(msg,type=''){
+  const wrap=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  const icons={success:'✅',error:'❌',warning:'⚠️','':`💬`};
+  t.innerHTML=`<span>${icons[type]||'💬'}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(100px)';t.style.transition='.3s';setTimeout(()=>t.remove(),300);},3500);
+}
+</script>
+</body>
+</html>

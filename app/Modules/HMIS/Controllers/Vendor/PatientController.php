@@ -250,20 +250,19 @@ class PatientController extends Controller
 
         DB::beginTransaction();
         try {
-            $patient->name        = $request->name;
-            $patient->dob         = $request->dob;
-            $patient->gender      = $request->gender;
-            $patient->blood_group = $request->blood_group;
-            $patient->phone       = $request->phone;
-            $patient->email       = $request->email;
-            $patient->address     = $request->address;
-            $patient->city        = $request->city;
-            $patient->state       = $request->state;
-            $patient->pincode     = $request->pincode;
-            $patient->emergency_contact_name     = $request->emergency_contact_name;
-            $patient->emergency_contact_phone    = $request->emergency_contact_phone;
-            $patient->emergency_contact_relation = $request->emergency_contact_relation;
-            $patient->allergies  = $request->allergies;
+            // Only overwrite fields that were actually submitted. The sidebar inline
+            // editors (allergies / chronic conditions) post just one field at a time, so
+            // assigning every column unconditionally would wipe everything not included.
+            $patientFields = [
+                'name', 'dob', 'gender', 'blood_group', 'phone', 'email', 'address',
+                'city', 'state', 'pincode', 'emergency_contact_name',
+                'emergency_contact_phone', 'emergency_contact_relation', 'allergies',
+            ];
+            foreach ($patientFields as $f) {
+                if ($request->has($f)) {
+                    $patient->{$f} = $request->input($f);
+                }
+            }
 
             if ($request->hasFile('photo')) {
                 $patient->photo = Helpers::upload('patient/', 'jpg', $request->file('photo'));
@@ -271,16 +270,32 @@ class PatientController extends Controller
 
             $patient->save();
 
+            // request key => medical_history column
+            $historyMap = [
+                'chronic_conditions' => 'chronic_conditions',
+                'past_surgeries'     => 'past_surgeries',
+                'medications'        => 'current_medications',
+                'family_history'     => 'family_history',
+                'medical_notes'      => 'notes',
+            ];
             $history = $patient->medicalHistory ?? new PatientMedicalHistory(['patient_id' => $patient->id]);
-            $history->chronic_conditions  = $request->chronic_conditions;
-            $history->past_surgeries      = $request->past_surgeries;
-            $history->current_medications = $request->medications;
-            $history->family_history      = $request->family_history;
-            $history->smoking             = $request->has('smoking') ? 1 : 0;
-            $history->alcohol             = $request->has('alcohol') ? 1 : 0;
-            $history->notes               = $request->medical_notes;
-            $history->updated_by          = auth('vendor_employee')->id() ?? auth('vendor')->id();
-            $history->save();
+            $historyTouched = false;
+            foreach ($historyMap as $reqKey => $col) {
+                if ($request->has($reqKey)) {
+                    $history->{$col} = $request->input($reqKey);
+                    $historyTouched = true;
+                }
+            }
+            // Checkboxes are absent when unchecked, so only flip them on the full edit form.
+            if ($request->has('_full_patient_update')) {
+                $history->smoking = $request->has('smoking') ? 1 : 0;
+                $history->alcohol = $request->has('alcohol') ? 1 : 0;
+                $historyTouched = true;
+            }
+            if ($historyTouched) {
+                $history->updated_by = auth('vendor_employee')->id() ?? auth('vendor')->id();
+                $history->save();
+            }
 
             $docFiles = $request->file('docs', []);
             if (!empty($docFiles)) {
@@ -326,7 +341,7 @@ class PatientController extends Controller
         $request->validate([
             'files'         => 'required|array|min:1',
             'files.*'       => 'required|file|max:10240',
-            'document_type' => 'required|in:id_proof,report,prescription,other',
+            'document_type' => 'required|in:id_proof,report,prescription,other,arogyasri,insurance,aadhaar,pan,ration_card,abha,govt_other',
             'document_name' => 'nullable|string|max:100',
         ]);
 

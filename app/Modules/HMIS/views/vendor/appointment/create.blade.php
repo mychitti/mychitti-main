@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Book Appointment')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <h1 class="page-header-title mb-0">
@@ -12,7 +13,7 @@
             <a href="{{ route('vendor.appointment.list') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="tio-arrow-backward"></i> Back
             </a>
-        </div>
+        </div> 
     </div>
 
     <div class="row justify-content-center">

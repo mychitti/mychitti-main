@@ -443,6 +443,16 @@
                          <input type="number" name="base_salary" placeholder="Ex: 42000"
                              value="{{ old('base_salary') }}" class="form-control" id="base_salary">
                      </div>
+                     <div class="col-md-3">
+                         <label class="input-label text-capitalize" for="cl_allowance">Monthly CL Allowance</label>
+                         <input type="number" min="0" name="cl_allowance" placeholder="Leave blank = store default"
+                             value="{{ old('cl_allowance') }}" class="form-control" id="cl_allowance">
+                     </div>
+                     <div class="col-md-3">
+                         <label class="input-label text-capitalize" for="sl_allowance">Monthly SL Allowance</label>
+                         <input type="number" min="0" name="sl_allowance" placeholder="Leave blank = store default"
+                             value="{{ old('sl_allowance') }}" class="form-control" id="sl_allowance">
+                     </div>
                      <div class="form-group mb-0 col-md-3">
                          <label class="input-label text-capitalize " for="main_department">Deparetment </label>
                          <select name="main_department" id="inputState"

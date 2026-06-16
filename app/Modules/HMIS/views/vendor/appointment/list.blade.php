@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Appointments')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <h1 class="page-header-title mb-2">
@@ -12,7 +13,7 @@
             </h1>
             <a href="{{ route('vendor.appointment.create') }}" class="btn btn--primary mb-2">
                 <i class="tio-add-circle"></i> Book Appointment
-            </a>
+            </a> 
         </div>
     </div>
 

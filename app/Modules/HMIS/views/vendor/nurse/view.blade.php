@@ -1,20 +1,23 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Nurse Profile')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-user-outlined" style="font-size:22px;"></i></span>
             Nurse Profile
         </h1>
         <div class="d-flex gap-2">
-            <a href="{{ route('vendor.nurse.edit', $nurse->id) }}" class="btn btn-sm btn--warning">
-                <i class="tio-edit"></i> Edit
-            </a>
+            @if (hasPermission('staff_nurse', 'edit'))
+                <a href="{{ route('vendor.nurse.edit', $nurse->id) }}" class="btn btn-sm btn--warning">
+                    <i class="tio-edit"></i> Edit
+                </a>
+            @endif
             <a href="{{ route('vendor.nurse.list') }}" class="btn btn-sm btn-soft-secondary">
                 <i class="tio-arrow-backward"></i> Back
-            </a>
+            </a> 
         </div>
     </div>
 

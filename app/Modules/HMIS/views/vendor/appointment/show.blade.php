@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Appointment Detail')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <h1 class="page-header-title mb-0">
@@ -14,7 +15,7 @@
             </a>
         </div>
     </div>
-
+ 
     {{-- Top row: Appointment info + Patient/Actions --}}
     <div class="row">
         {{-- Left: Appointment Info --}}

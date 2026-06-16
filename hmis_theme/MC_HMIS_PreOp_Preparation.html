@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC HMIS — Pre-Op Patient Preparation</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07101A;--bg2:#0D1B2A;--bg3:#112236;--bg4:#162B44;
+  --border:#1E3350;--border2:#2A4568;
+  --text:#EBF0F8;--muted:#6B8BAD;--light:#A0B8D0;
+  --blue:#3B9EFF;--blue2:#1A5FA8;--ltblue:#0A1F3D;
+  --green:#2ECC71;--ltgreen:#0A2E1A;--greenA:#27AE60;
+  --red:#E74C3C;--ltred:#2E0A0A;--redA:#C0392B;
+  --amber:#F39C12;--ltamber:#2E1A00;--amberA:#D68910;
+  --purple:#9B59B6;--ltpurple:#1E0A2E;
+  --teal:#1ABC9C;--ltteal:#0A2E26;
+  --cyan:#00BCD4;--ltcyan:#00272E;
+  --gold:#F1C40F;--ltgold:#2E2600;
+  --font:'Outfit',sans-serif;--mono:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh}
+
+/* ── TOPNAV ── */
+.topnav{background:var(--bg2);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;padding:0 18px;gap:12px;position:sticky;top:0;z-index:200}
+.tn-brand{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px}.tn-brand span{color:var(--teal)}
+.tn-sep{width:1px;height:22px;background:var(--border)}
+.tn-page{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+.tn-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.tn-badge{border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;border:1px solid}
+.tn-badge.surg{background:var(--ltpurple);border-color:var(--purple);color:var(--purple)}
+.tn-badge.ot{background:var(--ltcyan);border-color:var(--cyan);color:var(--cyan)}
+.tn-badge.stat{background:var(--ltamber);border-color:var(--amberA);color:var(--amber)}
+.tn-avatar{width:32px;height:32px;border-radius:8px;background:var(--bg4);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--teal)}
+.tn-name{font-size:12px;color:var(--light);font-weight:500}
+.tn-clock{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* ── PROGRESS HEADER ── */
+.progress-bar-wrap{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 18px}
+.progress-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.progress-steps{display:flex;align-items:center;gap:0;overflow-x:auto}
+.progress-steps::-webkit-scrollbar{display:none}
+.pstep{display:flex;align-items:center;flex-shrink:0}
+.pstep-circle{width:30px;height:30px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--bg3);color:var(--muted);transition:.3s;cursor:pointer;position:relative}
+.pstep-circle.done{background:var(--ltgreen);border-color:var(--greenA);color:var(--green)}
+.pstep-circle.active{background:var(--ltblue);border-color:var(--blue);color:var(--blue);box-shadow:0 0 0 4px rgba(59,158,255,.15)}
+.pstep-circle.warn{background:var(--ltamber);border-color:var(--amberA);color:var(--amber)}
+.pstep-label{font-size:9px;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap;max-width:70px}
+.pstep-label.done{color:var(--green)}.pstep-label.active{color:var(--blue)}.pstep-label.warn{color:var(--amber)}
+.pstep-inner{display:flex;flex-direction:column;align-items:center}
+.pstep-line{flex:1;height:2px;background:var(--border);min-width:20px;margin:0 4px;margin-bottom:14px;transition:.3s}
+.pstep-line.done{background:var(--greenA)}
+.pct-label{font-size:12px;font-weight:700;color:var(--teal)}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 170px)}
+.left-panel{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:14px}
+.right-col{overflow-y:auto;padding:16px;background:var(--bg)}
+
+/* ── PATIENT CARD ── */
+.pt-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px}
+.pt-av{width:48px;height:48px;border-radius:12px;background:var(--ltpurple);border:2px solid var(--purple);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--purple)}
+.pt-name{font-size:15px;font-weight:700;color:var(--text);margin-top:8px}
+.pt-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.tag-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px}
+.tag.rd{background:var(--ltred);color:var(--red);border:1px solid var(--redA)}
+.tag.am{background:var(--ltamber);color:var(--amber);border:1px solid var(--amberA)}
+.tag.bl{background:var(--ltblue);color:var(--blue);border:1px solid var(--blue2)}
+.tag.gr{background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)}
+.tag.pu{background:var(--ltpurple);color:var(--purple);border:1px solid var(--purple)}
+.tag.cy{background:var(--ltcyan);color:var(--cyan);border:1px solid var(--cyan)}
+.tag.go{background:var(--ltgold);color:var(--gold);border:1px solid var(--gold)}
+
+/* ── OT INFO ── */
+.ot-info{background:linear-gradient(135deg,var(--ltpurple),var(--ltcyan));border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px}
+.ot-info-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.ot-detail-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.ot-detail-row:last-child{border-bottom:none}
+.ot-dl{font-size:11px;color:var(--muted)}.ot-dv{font-size:11px;font-weight:600;color:var(--text);text-align:right}
+.ot-dv.cy{color:var(--cyan)}.ot-dv.am{color:var(--amber)}.ot-dv.gr{color:var(--green)}
+
+/* ── CHECKLIST SIDEBAR ── */
+.checklist-section{margin-bottom:14px}
+.cs-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.cs-pct{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--bg4);color:var(--teal)}
+.cs-item{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:7px;border:1px solid var(--border);margin-bottom:4px;background:var(--bg3);cursor:pointer;transition:.15s}
+.cs-item:hover{border-color:var(--border2)}
+.cs-item.done{background:var(--ltgreen);border-color:var(--greenA)}
+.cs-item.fail{background:var(--ltred);border-color:var(--redA)}
+.cs-item.warn{background:var(--ltamber);border-color:var(--amberA)}
+.cs-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:1px;transition:.15s}
+.cs-chk.done{background:var(--greenA);border-color:var(--greenA);color:#fff}
+.cs-chk.fail{background:var(--redA);border-color:var(--redA);color:#fff}
+.cs-chk.warn{background:var(--amberA);border-color:var(--amberA);color:#fff}
+.cs-text{font-size:11px;color:var(--light);flex:1;line-height:1.4}
+.cs-item.done .cs-text{color:var(--green)}
+.cs-item.fail .cs-text{color:var(--red)}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.card:last-child{margin-bottom:0}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--border)}
+.card-hd h3{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.hd-icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.card-action{font-size:11px;font-weight:700;cursor:pointer;padding:5px 12px;border-radius:7px;border:none;transition:.15s}
+.ca-teal{background:var(--ltteal);color:var(--teal)}.ca-blue{background:var(--ltblue);color:var(--blue)}.ca-red{background:var(--ltred);color:var(--red)}.ca-green{background:var(--ltgreen);color:var(--green)}
+.card-body{padding:13px 15px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.finput{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;width:100%;transition:.15s}
+.finput:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,188,156,.1)}
+.fselect{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;width:100%;cursor:pointer}
+.ftextarea{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;width:100%;resize:none;transition:.15s;line-height:1.6}
+.ftextarea:focus{border-color:var(--teal)}
+
+/* ── RESULT CARDS ── */
+.result-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.result-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.result-card.normal{border-color:var(--greenA);background:var(--ltgreen)}
+.result-card.abnormal{border-color:var(--redA);background:var(--ltred)}
+.result-card.borderline{border-color:var(--amberA);background:var(--ltamber)}
+.result-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.result-val{font-family:var(--mono);font-size:16px;font-weight:500;line-height:1;color:var(--text)}
+.result-card.abnormal .result-val{color:var(--red)}
+.result-card.borderline .result-val{color:var(--amber)}
+.result-card.normal .result-val{color:var(--green)}
+.result-ref{font-size:9px;color:var(--muted);margin-top:3px}
+.result-status{font-size:9px;font-weight:700;margin-top:4px}
+.result-card.normal .result-status{color:var(--green)}
+.result-card.abnormal .result-status{color:var(--red)}
+.result-card.borderline .result-status{color:var(--amber)}
+
+/* ── MED TABLE ── */
+.med-table-hd{display:grid;grid-template-columns:1.8fr 0.8fr 1fr 1fr 80px;gap:8px;padding:5px 10px;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.med-table-row{display:grid;grid-template-columns:1.8fr 0.8fr 1fr 1fr 80px;gap:8px;align-items:center;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:4px;border:1px solid var(--border);font-size:12px}
+.med-table-row.given{border-color:var(--greenA);background:var(--ltgreen)}
+.med-table-row.held{border-color:var(--amberA);background:var(--ltamber)}
+.med-table-row.stop{border-color:var(--redA);background:var(--ltred);opacity:.7}
+.med-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px}
+.med-badge.given{background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)}
+.med-badge.held{background:var(--ltamber);color:var(--amber);border:1px solid var(--amberA)}
+.med-badge.stop{background:var(--ltred);color:var(--red);border:1px solid var(--redA)}
+.med-badge.due{background:var(--ltblue);color:var(--blue);border:1px solid var(--blue2)}
+
+/* ── CONSENT TABLE ── */
+.consent-row{display:flex;align-items:center;gap:12px;padding:10px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;margin-bottom:5px;transition:.15s}
+.consent-row.signed{border-color:var(--greenA);background:var(--ltgreen)}
+.consent-row.pending{border-color:var(--amberA)}
+.consent-row.missing{border-color:var(--redA);background:var(--ltred)}
+.consent-icon{font-size:18px;flex-shrink:0}
+.consent-info{flex:1}
+.consent-name{font-size:12px;font-weight:600;color:var(--text)}
+.consent-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.consent-status{font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;white-space:nowrap}
+.consent-status.signed{background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)}
+.consent-status.pending{background:var(--ltamber);color:var(--amber);border:1px solid var(--amberA)}
+.consent-status.missing{background:var(--ltred);color:var(--red);border:1px solid var(--redA)}
+.consent-btn{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;transition:.15s}
+
+/* ── REPORT ITEMS ── */
+.report-row{display:flex;align-items:center;gap:12px;padding:10px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;margin-bottom:5px;cursor:pointer;transition:.15s}
+.report-row:hover{border-color:var(--border2);background:var(--bg4)}
+.report-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.report-name{font-size:12px;font-weight:600;color:var(--text)}
+.report-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.rbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;margin-left:auto;white-space:nowrap}
+.rbadge.ok{background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)}
+.rbadge.warn{background:var(--ltamber);color:var(--amber);border:1px solid var(--amberA)}
+.rbadge.miss{background:var(--ltred);color:var(--red);border:1px solid var(--redA)}
+.rbadge.pend{background:var(--ltblue);color:var(--blue);border:1px solid var(--blue2)}
+
+/* ── ANAESTHESIA ── */
+.asa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.asa-card{border-radius:10px;border:2px solid var(--border);padding:10px;text-align:center;cursor:pointer;transition:.2s}
+.asa-card:hover{border-color:var(--border2)}
+.asa-card.selected{border-color:var(--teal);background:var(--ltteal)}
+.asa-num{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text)}
+.asa-label{font-size:9px;color:var(--muted);margin-top:3px;line-height:1.4}
+.asa-card.selected .asa-num{color:var(--teal)}.asa-card.selected .asa-label{color:var(--teal)}
+
+/* ── TABS ── */
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18px;display:flex;overflow-x:auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:11px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:.15s}
+.tab:hover{color:var(--light)}.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tbadge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:var(--redA);color:#fff}
+.tbadge.am{background:var(--amberA)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── BUTTONS ── */
+.btn{padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;transition:.15s;font-family:var(--font)}
+.btn:hover{filter:brightness(1.15)}.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.btn-teal{background:var(--teal);color:#041A14}
+.btn-green{background:var(--greenA);color:#fff}
+.btn-red{background:var(--redA);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--muted)}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal)}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{background:var(--bg2);border-top:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;bottom:0;z-index:90;flex-wrap:wrap;gap:8px}
+
+/* ── CLEARANCE PANEL ── */
+.clearance-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.clr-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.clr-card.cleared{border-color:var(--greenA);background:var(--ltgreen)}
+.clr-card.pending{border-color:var(--amberA)}
+.clr-card.blocked{border-color:var(--redA);background:var(--ltred)}
+.clr-title{font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px}
+.clr-card.cleared .clr-title{color:var(--green)}
+.clr-card.blocked .clr-title{color:var(--red)}
+.clr-by{font-size:10px;color:var(--muted)}
+.clr-status{font-size:10px;font-weight:700;margin-top:6px}
+.clr-card.cleared .clr-status{color:var(--green)}
+.clr-card.pending .clr-status{color:var(--amber)}
+.clr-card.blocked .clr-status{color:var(--red)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:70px;right:18px;background:var(--bg3);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12px;font-weight:600;z-index:9999;display:none;align-items:center;gap:8px;border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:340px}
+.toast.show{display:flex;animation:slideUp .2s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.toast.ok{border-color:var(--greenA)}.toast.warn{border-color:var(--amberA)}.toast.err{border-color:var(--redA)}.toast.info{border-color:var(--blue)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--border2);border-radius:16px;padding:26px;max-width:460px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:slideUp .2s ease}
+.modal h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+.modal p{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.modal-icon{font-size:32px;margin-bottom:10px}
+
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .left-panel{display:none}
+  .result-grid{grid-template-columns:1fr 1fr}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .asa-grid{grid-template-columns:repeat(3,1fr)}
+  .clearance-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="tn-brand">MC <span>HMIS</span></div>
+  <div class="tn-sep"></div>
+  <div class="tn-page">Pre-Op Patient Preparation</div>
+  <div class="tn-right">
+    <div class="tn-badge surg">🔪 Surgery: Laparoscopic Cholecystectomy</div>
+    <div class="tn-badge ot">🏥 OT-2 · 13:00</div>
+    <div class="tn-badge stat">⏳ T-2:26 hrs</div>
+    <div class="tn-sep"></div>
+    <div class="tn-avatar">DP</div>
+    <div class="tn-name">Dr. D. Prasad</div>
+    <div class="tn-clock" id="clock">10:34</div>
+  </div>
+</div>
+
+<!-- PROGRESS STEPS -->
+<div class="progress-bar-wrap">
+  <div class="progress-title">
+    <span>Pre-Op Preparation Progress</span>
+    <span class="pct-label" id="pctLabel">6 / 10 complete</span>
+  </div>
+  <div class="progress-steps">
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle done" onclick="switchTab(0,document.querySelectorAll('.tab')[0])">✓</div>
+        <div class="pstep-label done">Admission</div>
+      </div>
+    </div>
+    <div class="pstep-line done"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle done" onclick="switchTab(1,document.querySelectorAll('.tab')[1])">✓</div>
+        <div class="pstep-label done">Investigations</div>
+      </div>
+    </div>
+    <div class="pstep-line done"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle done" onclick="switchTab(2,document.querySelectorAll('.tab')[2])">✓</div>
+        <div class="pstep-label done">Reports</div>
+      </div>
+    </div>
+    <div class="pstep-line done"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle active" onclick="switchTab(3,document.querySelectorAll('.tab')[3])">4</div>
+        <div class="pstep-label active">Medicines</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle done" onclick="switchTab(4,document.querySelectorAll('.tab')[4])">✓</div>
+        <div class="pstep-label done">Consent</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle warn" onclick="switchTab(5,document.querySelectorAll('.tab')[5])">!</div>
+        <div class="pstep-label warn">Anaesthesia</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle done" onclick="switchTab(6,document.querySelectorAll('.tab')[6])">✓</div>
+        <div class="pstep-label done">Blood Bank</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle" onclick="switchTab(7,document.querySelectorAll('.tab')[7])">8</div>
+        <div class="pstep-label">Pre-Op Prep</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle" onclick="switchTab(8,document.querySelectorAll('.tab')[8])">9</div>
+        <div class="pstep-label">Clearances</div>
+      </div>
+    </div>
+    <div class="pstep-line"></div>
+    <div class="pstep">
+      <div class="pstep-inner">
+        <div class="pstep-circle" onclick="switchTab(9,document.querySelectorAll('.tab')[9])">10</div>
+        <div class="pstep-label">OT Handover</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0,this)">📋 Admission</div>
+  <div class="tab" onclick="switchTab(1,this)">🧪 Investigations</div>
+  <div class="tab" onclick="switchTab(2,this)">📁 Reports</div>
+  <div class="tab" onclick="switchTab(3,this)">💊 Medicines <span class="tbadge am">!</span></div>
+  <div class="tab" onclick="switchTab(4,this)">✍ Consent</div>
+  <div class="tab" onclick="switchTab(5,this)">😷 Anaesthesia <span class="tbadge">!</span></div>
+  <div class="tab" onclick="switchTab(6,this)">🩸 Blood Bank</div>
+  <div class="tab" onclick="switchTab(7,this)">🛁 Pre-Op Prep</div>
+  <div class="tab" onclick="switchTab(8,this)">✅ Clearances</div>
+  <div class="tab" onclick="switchTab(9,this)">🚪 OT Handover</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <div class="pt-card">
+      <div class="pt-av">L</div>
+      <div class="pt-name">Lakshmi Devi</div>
+      <div class="pt-meta">38F · IP-00042 · B3-02 · Blood: O+</div>
+      <div class="tag-row">
+        <span class="tag rd">⚠ Penicillin Allergy</span>
+        <span class="tag am">Mild HTN</span>
+        <span class="tag bl">BMI 26</span>
+        <span class="tag cy">Day 1 IPD</span>
+      </div>
+    </div>
+
+    <div class="ot-info">
+      <div class="ot-info-title">Scheduled Procedure</div>
+      <div class="ot-detail-row"><span class="ot-dl">Procedure</span><span class="ot-dv cy">Lap. Cholecystectomy</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">Surgeon</span><span class="ot-dv">Dr. K. Raju (Gen. Surg)</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">Anaesthetist</span><span class="ot-dv">Dr. P. Sharma</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">OT</span><span class="ot-dv cy">OT-2 · 13:00 hrs</div>
+      <div class="ot-detail-row"><span class="ot-dl">Est. Duration</span><span class="ot-dv">60–90 min</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">Anaesthesia</span><span class="ot-dv am">GA — Pending eval</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">NBM Since</span><span class="ot-dv gr">07:00 AM ✓</span></div>
+      <div class="ot-detail-row"><span class="ot-dl">Status</span><span class="ot-dv am">In Preparation</span></div>
+    </div>
+
+    <div class="checklist-section">
+      <div class="cs-title">Quick Checklist <span class="cs-pct" id="clPct">60%</span></div>
+
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Admission & consent for admission done</div></div>
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">All investigations ordered & collected</div></div>
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Lab reports received & reviewed</div></div>
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">X-Ray & ECG done & cleared</div></div>
+      <div class="cs-item warn" onclick="toggleCS(this)"><div class="cs-chk warn">!</div><div class="cs-text">Pre-op medicines ordered (2 pending)</div></div>
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Surgical consent signed by patient</div></div>
+      <div class="cs-item fail" onclick="toggleCS(this)"><div class="cs-chk fail">✗</div><div class="cs-text">Anaesthesia evaluation pending</div></div>
+      <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Blood group & cross-match done</div></div>
+      <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Skin prep, shaving, IV access done</div></div>
+      <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Surgeon & anaesthetist clearance obtained</div></div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COL -->
+  <div class="right-col">
+
+    <!-- TAB 0: ADMISSION -->
+    <div class="tab-panel active" id="tab-0">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltcyan)">📋</div> Patient Admission Details</h3><button class="card-action ca-teal">Edit</button></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">Patient Name</label><input class="finput" value="Lakshmi Devi" readonly></div>
+            <div class="form-group"><label class="form-label">IP Number</label><input class="finput" value="IP-00042 · B3-02" readonly></div>
+            <div class="form-group"><label class="form-label">Age / Gender</label><input class="finput" value="38 Years · Female" readonly></div>
+            <div class="form-group"><label class="form-label">Blood Group</label><input class="finput" value="O Positive (O+)" readonly></div>
+            <div class="form-group"><label class="form-label">Admitting Doctor</label><input class="finput" value="Dr. K. Raju — General Surgery" readonly></div>
+            <div class="form-group"><label class="form-label">Admission Date</label><input class="finput" value="22 May 2026 · 08:30 AM" readonly></div>
+            <div class="form-group"><label class="form-label">Diagnosis</label><input class="finput" value="Acute Cholecystitis — ICD K81.0" readonly></div>
+            <div class="form-group"><label class="form-label">Referred By</label><input class="finput" value="Dr. S. Naidu (Medicine)" readonly></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px"><label class="form-label">Known Allergies</label><input class="finput" value="Penicillin (anaphylaxis) — FLAG ALL ANTIBIOTICS" style="border-color:var(--redA);color:var(--red)" readonly></div>
+          <div class="form-group"><label class="form-label">Co-morbidities</label><input class="finput" value="Mild Hypertension (controlled on Amlodipine 5mg)" readonly></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">🔪</div> Surgical Details</h3><button class="card-action ca-blue">Modify</button></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">Procedure</label><input class="finput" value="Laparoscopic Cholecystectomy"></div>
+            <div class="form-group"><label class="form-label">ICD Procedure Code</label><input class="finput" value="0FB44ZZ — Lap Excision Gallbladder"></div>
+            <div class="form-group"><label class="form-label">Surgeon</label><input class="finput" value="Dr. K. Raju — MS General Surgery"></div>
+            <div class="form-group"><label class="form-label">1st Assistant</label><input class="finput" value="Dr. R. Suresh — Resident Surgery"></div>
+            <div class="form-group"><label class="form-label">Anaesthetist</label><input class="finput" value="Dr. P. Sharma — MD Anaesthesia"></div>
+            <div class="form-group"><label class="form-label">OT & Scheduled Time</label><input class="finput" value="OT-2 · 22 May 2026 · 13:00 hrs"></div>
+            <div class="form-group"><label class="form-label">Est. Duration</label><input class="finput" value="60–90 minutes"></div>
+            <div class="form-group"><label class="form-label">Anaesthesia Type</label><select class="fselect"><option>General Anaesthesia (GA)</option><option>Spinal / Regional</option><option>Local + Sedation</option></select></div>
+          </div>
+          <div class="form-group"><label class="form-label">Special Instructions for OT</label><textarea class="ftextarea" rows="2">Allergy to Penicillin — use Cefazolin 1g IV alternative. Mild hypertension — monitor BP continuously intra-op. Patient anxious — pre-med Midazolam as per anaesthetist order.</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: INVESTIGATIONS -->
+    <div class="tab-panel" id="tab-1">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltteal)">🧪</div> Pre-Op Investigations Ordered</h3><button class="card-action ca-teal" onclick="showToast('ok','📤 Sent to lab')">Send to Lab</button></div>
+        <div class="card-body">
+          <div style="background:var(--ltblue);border:1px solid var(--blue2);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--blue);font-weight:600">
+            💡 Standard pre-op panel auto-generated based on age, gender, procedure, and co-morbidities.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="report-row"><div class="report-icon" style="background:var(--ltteal)">🩸</div><div class="report-info"><div class="report-name">Complete Blood Count (CBC)</div><div class="report-meta">Haematology · Mandatory for all surgery</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltteal)">🧬</div><div class="report-info"><div class="report-name">Blood Group & Cross-Match</div><div class="report-meta">Blood Bank · 2 units reserved</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltblue)">⚗️</div><div class="report-info"><div class="report-name">Renal Function Test (RFT)</div><div class="report-meta">Biochemistry · Creatinine, BUN, Electrolytes</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltblue)">🔬</div><div class="report-info"><div class="report-name">Liver Function Test (LFT)</div><div class="report-meta">Biochemistry · Bilirubin, ALT, AST, ALP</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltblue)">📊</div><div class="report-info"><div class="report-name">Blood Sugar (Fasting)</div><div class="report-meta">Biochemistry · Pre-op glucose check</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltpurple)">🩺</div><div class="report-info"><div class="report-name">Coagulation Profile (PT/INR/APTT)</div><div class="report-meta">Haematology · Bleeding risk assessment</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltpurple)">❤️</div><div class="report-info"><div class="report-name">ECG (12-Lead)</div><div class="report-meta">Cardiology · Baseline cardiac status</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltamber)">🫁</div><div class="report-info"><div class="report-name">Chest X-Ray PA</div><div class="report-meta">Radiology · Lung fields, cardiomegaly</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltteal)">🧫</div><div class="report-info"><div class="report-name">Urine Routine & Microscopy</div><div class="report-meta">Microbiology · Rule out UTI</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltred)">🦠</div><div class="report-info"><div class="report-name">HIV / HBsAg / HCV Screening</div><div class="report-meta">Serology · Mandatory OT screening</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltblue)">📻</div><div class="report-info"><div class="report-name">USG Abdomen</div><div class="report-meta">Radiology · Confirm gallstones, CBD</div></div><span class="rbadge ok">✓ Done</span></div>
+            <div class="report-row"><div class="report-icon" style="background:var(--ltamber)">🧪</div><div class="report-info"><div class="report-name">Thyroid Profile (T3/T4/TSH)</div><div class="report-meta">Biochemistry · Mild HTN workup</div></div><span class="rbadge pend">Pending</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: REPORTS -->
+    <div class="tab-panel" id="tab-2">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">📁</div> Lab Results — Pre-Op Summary</h3><button class="card-action ca-blue" onclick="showToast('ok','📋 Report summary printed')">Print Summary</button></div>
+        <div class="card-body">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Blood Parameters</div>
+          <div class="result-grid">
+            <div class="result-card normal"><div class="result-name">Haemoglobin</div><div class="result-val">12.4 g/dL</div><div class="result-ref">Ref: 12–16 g/dL</div><div class="result-status">✓ Normal</div></div>
+            <div class="result-card normal"><div class="result-name">WBC Count</div><div class="result-val">9,800/µL</div><div class="result-ref">Ref: 4,000–11,000</div><div class="result-status">✓ Normal</div></div>
+            <div class="result-card normal"><div class="result-name">Platelets</div><div class="result-val">2.4 L/µL</div><div class="result-ref">Ref: 1.5–4.0 L</div><div class="result-status">✓ Normal</div></div>
+            <div class="result-card normal"><div class="result-name">PT / INR</div><div class="result-val">1.1</div><div class="result-ref">Ref: 0.8–1.2</div><div class="result-status">✓ Cleared for surgery</div></div>
+            <div class="result-card borderline"><div class="result-name">Blood Sugar F</div><div class="result-val">108 mg/dL</div><div class="result-ref">Ref: 70–100 mg/dL</div><div class="result-status">⚠ Borderline</div></div>
+            <div class="result-card normal"><div class="result-name">Creatinine</div><div class="result-val">0.9 mg/dL</div><div class="result-ref">Ref: 0.6–1.2</div><div class="result-status">✓ Normal</div></div>
+            <div class="result-card abnormal"><div class="result-name">Bilirubin (Total)</div><div class="result-val">2.8 mg/dL</div><div class="result-ref">Ref: 0.3–1.2 mg/dL</div><div class="result-status">✗ High — Jaundice</div></div>
+            <div class="result-card borderline"><div class="result-name">ALT (SGPT)</div><div class="result-val">68 U/L</div><div class="result-ref">Ref: 7–56 U/L</div><div class="result-status">⚠ Mildly elevated</div></div>
+            <div class="result-card normal"><div class="result-name">Sodium</div><div class="result-val">138 mEq/L</div><div class="result-ref">Ref: 136–145</div><div class="result-status">✓ Normal</div></div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;margin-top:4px">Imaging & Other</div>
+          <div class="report-row"><div class="report-icon" style="background:var(--ltpurple)">❤️</div><div><div class="report-name">ECG — Sinus Rhythm, Normal Axis, No ST changes</div><div class="report-meta">22 May 2026 · Cardiology cleared for GA</div></div><span class="rbadge ok">Cleared</span></div>
+          <div class="report-row" style="margin-top:5px"><div class="report-icon" style="background:var(--ltamber)">🫁</div><div><div class="report-name">Chest X-Ray — Clear lung fields, Normal heart size</div><div class="report-meta">22 May 2026 · Radiology cleared</div></div><span class="rbadge ok">Cleared</span></div>
+          <div class="report-row" style="margin-top:5px"><div class="report-icon" style="background:var(--ltblue)">📻</div><div><div class="report-name">USG Abdomen — Multiple gallstones (largest 1.8cm), CBD 6mm</div><div class="report-meta">21 May 2026 · Surgical team reviewed</div></div><span class="rbadge ok">Reviewed</span></div>
+          <div style="background:var(--ltred);border:1px solid var(--redA);border-radius:8px;padding:10px 12px;margin-top:10px">
+            <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px">⚠ Abnormal Results — Surgeon Notified</div>
+            <div style="font-size:11px;color:var(--light)">Bilirubin 2.8 mg/dL (high) — consistent with obstructive jaundice from gallstones. CBD 6mm on USG. Surgeon Dr. K. Raju reviewed — proceed with surgery as planned. Post-op LFT monitoring advised.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MEDICINES -->
+    <div class="tab-panel" id="tab-3">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">💊</div> Pre-Op Medicine Orders</h3><button class="card-action ca-green" onclick="showToast('ok','💊 Sent to pharmacy')">Send to Pharmacy</button></div>
+        <div class="card-body">
+          <div style="background:var(--ltred);border:1px solid var(--redA);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--red);font-weight:600">
+            🚨 ALLERGY: Penicillin — Amoxicillin, Ampicillin, Piperacillin ALL CONTRAINDICATED. Use Cefazolin as alternative (cross-reaction rare, surgeon confirmed).
+          </div>
+          <div class="med-table-hd"><div>Medicine</div><div>Dose</div><div>Route / Time</div><div>Purpose</div><div>Status</div></div>
+
+          <div class="med-table-row given">
+            <div><div style="font-weight:600">Tab. Amlodipine 5mg</div><div style="font-size:10px;color:var(--muted)">Continue morning dose</div></div>
+            <div style="font-family:var(--mono);font-size:11px">5mg</div>
+            <div>PO · 07:00 AM<div style="font-size:10px;color:var(--muted)">With sip of water</div></div>
+            <div style="font-size:11px;color:var(--muted)">Antihypertensive — continue</div>
+            <div><span class="med-badge given">✓ Given</span></div>
+          </div>
+
+          <div class="med-table-row given">
+            <div><div style="font-weight:600">Inj. Cefazolin 1g IV</div><div style="font-size:10px;color:var(--muted)">Prophylactic antibiotic</div></div>
+            <div style="font-family:var(--mono);font-size:11px">1g</div>
+            <div>IV · 30 min pre-op<div style="font-size:10px;color:var(--muted)">12:30 hrs</div></div>
+            <div style="font-size:11px;color:var(--muted)">Surgical site prophylaxis</div>
+            <div><span class="med-badge given">✓ Given</span></div>
+          </div>
+
+          <div class="med-table-row held" id="med-glyco">
+            <div><div style="font-weight:600">Inj. Glycopyrrolate 0.2mg</div><div style="font-size:10px;color:var(--muted)">Pre-med — anaesthetist order</div></div>
+            <div style="font-family:var(--mono);font-size:11px">0.2mg</div>
+            <div>IM · 1 hr pre-op<div style="font-size:10px;color:var(--muted)">12:00 hrs</div></div>
+            <div style="font-size:11px;color:var(--muted)">Reduce secretions</div>
+            <div><span class="med-badge held">⏳ Pending</span></div>
+          </div>
+
+          <div class="med-table-row held" id="med-midaz">
+            <div><div style="font-weight:600">Inj. Midazolam 1mg IV</div><div style="font-size:10px;color:var(--muted)">Pre-med — anxiolytic</div></div>
+            <div style="font-family:var(--mono);font-size:11px">1mg</div>
+            <div>IV · 30 min pre-op<div style="font-size:10px;color:var(--muted)">12:30 hrs</div></div>
+            <div style="font-size:11px;color:var(--muted)">Anxiolysis / amnesia</div>
+            <div><span class="med-badge held">⏳ Pending</span></div>
+          </div>
+
+          <div class="med-table-row stop">
+            <div><div style="font-weight:600">Tab. Aspirin 75mg</div><div style="font-size:10px;color:var(--red)">⚠ Held 7 days pre-op</div></div>
+            <div style="font-family:var(--mono);font-size:11px">75mg</div>
+            <div>PO — HELD<div style="font-size:10px;color:var(--red)">Since 15 May</div></div>
+            <div style="font-size:11px;color:var(--muted)">Antiplatelet — bleeding risk</div>
+            <div><span class="med-badge stop">⛔ Held</span></div>
+          </div>
+
+          <div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:8px;border:1px dashed var(--border2)">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Add Pre-Op Medicine Order</div>
+            <div class="form-grid-3">
+              <div class="form-group"><label class="form-label">Medicine Name</label><input class="finput" id="newMedName" placeholder="Drug name + strength"></div>
+              <div class="form-group"><label class="form-label">Dose & Route</label><input class="finput" id="newMedDose" placeholder="e.g. 1g IV"></div>
+              <div class="form-group"><label class="form-label">Time</label><input class="finput" id="newMedTime" type="time"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+              <button class="btn btn-teal" onclick="addMedOrder()">+ Add Medicine</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: CONSENT -->
+    <div class="tab-panel" id="tab-4">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">✍</div> Consent Forms & Legal Documents</h3><button class="card-action ca-teal" onclick="showToast('ok','📋 Consent template opened')">+ New Consent</button></div>
+        <div class="card-body">
+          <div class="consent-row signed">
+            <div class="consent-icon">📄</div>
+            <div class="consent-info">
+              <div class="consent-name">Surgical Consent — Laparoscopic Cholecystectomy</div>
+              <div class="consent-meta">Signed by patient · 22 May 2026 · 09:15 AM · Witness: Sr. Ramani</div>
+            </div>
+            <span class="consent-status signed">✓ Signed</span>
+            <button class="consent-btn" style="background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)" onclick="showToast('ok','📄 Consent opened')">View</button>
+          </div>
+
+          <div class="consent-row signed">
+            <div class="consent-icon">😷</div>
+            <div class="consent-info">
+              <div class="consent-name">Anaesthesia Consent — General Anaesthesia</div>
+              <div class="consent-meta">Signed by patient · 22 May 2026 · 09:20 AM · Dr. P. Sharma</div>
+            </div>
+            <span class="consent-status signed">✓ Signed</span>
+            <button class="consent-btn" style="background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)" onclick="showToast('ok','📄 Consent opened')">View</button>
+          </div>
+
+          <div class="consent-row signed">
+            <div class="consent-icon">🩸</div>
+            <div class="consent-info">
+              <div class="consent-name">Blood Transfusion Consent</div>
+              <div class="consent-meta">Signed by patient · 22 May 2026 · 09:22 AM · 2 units O+ reserved</div>
+            </div>
+            <span class="consent-status signed">✓ Signed</span>
+            <button class="consent-btn" style="background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)" onclick="showToast('ok','📄 Consent opened')">View</button>
+          </div>
+
+          <div class="consent-row signed">
+            <div class="consent-icon">📊</div>
+            <div class="consent-info">
+              <div class="consent-name">High Risk Consent (Bilirubin elevated)</div>
+              <div class="consent-meta">Signed by patient & guardian · 22 May 2026 · 10:05 AM</div>
+            </div>
+            <span class="consent-status signed">✓ Signed</span>
+            <button class="consent-btn" style="background:var(--ltgreen);color:var(--green);border:1px solid var(--greenA)" onclick="showToast('ok','📄 Consent opened')">View</button>
+          </div>
+
+          <div class="consent-row pending">
+            <div class="consent-icon">📷</div>
+            <div class="consent-info">
+              <div class="consent-name">Intra-op Photography / Video Consent</div>
+              <div class="consent-meta">Optional · For teaching / documentation purposes</div>
+            </div>
+            <span class="consent-status pending">Pending</span>
+            <button class="consent-btn" style="background:var(--ltamber);color:var(--amber);border:1px solid var(--amberA)" onclick="markConsentDone(this)">Get Sign</button>
+          </div>
+
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;border:1px solid var(--border);margin-top:10px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Patient Informed Of — Pre-op Discussion</div>
+            <div style="font-size:12px;color:var(--light);line-height:1.8">
+              ✅ Nature of procedure and diagnosis explained in Telugu<br>
+              ✅ Risks: bleeding, infection, bile duct injury, conversion to open<br>
+              ✅ Benefits: symptom relief, prevention of complications<br>
+              ✅ Alternatives: conservative management explained<br>
+              ✅ Post-op recovery: 1–2 day hospital stay, 2-week rest<br>
+              ✅ Questions answered by Dr. K. Raju · 09:00 AM
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ANAESTHESIA -->
+    <div class="tab-panel" id="tab-5">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltcyan)">😷</div> Anaesthesia Pre-Op Evaluation</h3><span style="font-size:11px;background:var(--ltamber);color:var(--amber);padding:4px 10px;border-radius:6px;font-weight:700;border:1px solid var(--amberA)">⚠ Pending — Dr. P. Sharma</span></div>
+        <div class="card-body">
+          <div style="background:var(--ltamber);border:1px solid var(--amberA);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--amber);font-weight:600">
+            ⚠ Anaesthesia evaluation not yet completed. Dr. P. Sharma must review and sign before OT clearance is given. OT at 13:00.
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">ASA Physical Status Classification</div>
+          <div class="asa-grid">
+            <div class="asa-card" onclick="selectASA(this,1)"><div class="asa-num">I</div><div class="asa-label">Healthy patient, no systemic disease</div></div>
+            <div class="asa-card selected" onclick="selectASA(this,2)"><div class="asa-num">II</div><div class="asa-label">Mild systemic disease, no limitation</div></div>
+            <div class="asa-card" onclick="selectASA(this,3)"><div class="asa-num">III</div><div class="asa-label">Severe systemic disease, functional limitation</div></div>
+            <div class="asa-card" onclick="selectASA(this,4)"><div class="asa-num">IV</div><div class="asa-label">Severe disease, constant threat to life</div></div>
+            <div class="asa-card" onclick="selectASA(this,5)"><div class="asa-num">V</div><div class="asa-label">Moribund, not expected to survive</div></div>
+          </div>
+          <div style="background:var(--ltteal);border:1px solid var(--teal);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--teal);font-weight:600;margin-bottom:12px">
+            Selected: ASA Class II — Mild HTN, controlled. Fit for GA. Moderate risk.
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">Planned Anaesthesia</label><select class="fselect"><option>General Anaesthesia (GA)</option><option>Spinal Anaesthesia</option><option>Epidural</option><option>Local + Sedation</option></select></div>
+            <div class="form-group"><label class="form-label">Intubation Plan</label><select class="fselect"><option>RSI — Rapid Sequence Induction</option><option>Standard Induction</option><option>Awake Fibreoptic</option></select></div>
+            <div class="form-group"><label class="form-label">Airway Assessment</label><select class="fselect"><option>Mallampati Class I — Easy</option><option>Mallampati Class II</option><option>Mallampati Class III — Difficult</option></select></div>
+            <div class="form-group"><label class="form-label">NBM Status</label><select class="fselect"><option selected>NBM since 07:00 — 6 hrs solids ✓</option><option>NBM since 10:00</option></select></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px"><label class="form-label">Anaesthesia Notes</label><textarea class="ftextarea" rows="3" placeholder="Drug plan, special considerations, risks noted…">Patient Lakshmi Devi, 38F, ASA II (mild HTN on Amlodipine). Plan: GA with RSI. Penicillin allergy noted — Cefazolin 1g pre-op confirmed as per surgeon. NBM since 07:00. Continue Amlodipine morning. Pre-med: Glycopyrrolate 0.2mg IM + Midazolam 1mg IV 30min pre-op. Monitor BP continuously. Have vasopressors ready.</textarea></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-outline">Request Dr. Sharma Review</button>
+            <button class="btn btn-teal" onclick="showToast('ok','✓ Anaesthesia evaluation saved — clearance given')">✓ Save & Give Clearance</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: BLOOD BANK -->
+    <div class="tab-panel" id="tab-6">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltred)">🩸</div> Blood Bank — Pre-Op Preparation</h3><button class="card-action ca-teal">Request More Units</button></div>
+        <div class="card-body">
+          <div style="background:var(--ltgreen);border:1px solid var(--greenA);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:var(--green);font-weight:600">
+            ✓ Blood reserved and cross-matched. Ready for OT.
+          </div>
+          <div class="form-grid">
+            <div style="background:var(--bg3);border:1px solid var(--greenA);border-radius:10px;padding:14px">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Patient Blood Group</div>
+              <div style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--teal)">O+</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">Confirmed by cross-match</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--greenA);border-radius:10px;padding:14px">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Units Reserved</div>
+              <div style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--green)">2 PRBC</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">Unit IDs: BU-4421, BU-4422</div>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:4px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Reserved Units Detail</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+              <div>Unit ID</div><div>Type</div><div>Group</div><div>Expiry</div><div>Status</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+              <div style="font-family:var(--mono)">BU-4421</div><div>PRBC</div><div style="color:var(--teal);font-weight:600">O+</div><div>28 May 2026</div><div><span style="background:var(--ltgreen);color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">Reserved</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:7px 0;font-size:12px">
+              <div style="font-family:var(--mono)">BU-4422</div><div>PRBC</div><div style="color:var(--teal);font-weight:600">O+</div><div>30 May 2026</div><div><span style="background:var(--ltgreen);color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">Reserved</span></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 13px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Blood Bank Note</div>
+            <div style="font-size:12px;color:var(--light)">Cross-match completed — compatible. Units held for Lakshmi Devi IP-00042 until 14:00 hrs on 22 May 2026. Units will be released to OT on request. Contact Blood Bank ext 204 for urgent release.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 7: PRE-OP PREP -->
+    <div class="tab-panel" id="tab-7">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">🛁</div> Physical Pre-Op Preparation</h3><button class="card-action ca-teal" onclick="showToast('ok','✓ Prep checklist saved')">Save Checklist</button></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px">
+              <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Patient Prep Checklist</div>
+              <div id="prepChecks">
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">NBM — nil by mouth since 07:00 AM confirmed</div></div>
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">IV cannula — 18G right forearm secured</div></div>
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Pre-op bath / body wash done</div></div>
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Abdomen shaving / skin preparation done</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">OT gown changed — jewellery removed</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Nail polish / makeup removed</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Dentures / contact lenses / hearing aids removed</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Foley catheter inserted (if ordered)</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Nasogastric tube if ordered</div></div>
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Patient identity band checked — name, DOB, IP</div></div>
+                <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Allergy band (RED) applied to wrist</div></div>
+                <div class="cs-item done" onclick="toggleCS(this)"><div class="cs-chk done">✓</div><div class="cs-text">Patient anxious — psychological support given</div></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:10px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Pre-Op Vitals (12:00)</div>
+                <div class="result-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="result-card borderline"><div class="result-name">BP</div><div class="result-val">134/86</div><div class="result-ref">Target &lt;140/90</div><div class="result-status">⚠ Borderline</div></div>
+                  <div class="result-card normal"><div class="result-name">HR</div><div class="result-val">78/min</div><div class="result-ref">Normal sinus</div><div class="result-status">✓ OK</div></div>
+                  <div class="result-card normal"><div class="result-name">SpO₂</div><div class="result-val">99%</div><div class="result-ref">Room air</div><div class="result-status">✓ OK</div></div>
+                  <div class="result-card normal"><div class="result-name">Temp</div><div class="result-val">98.4°F</div><div class="result-ref">Afebrile</div><div class="result-status">✓ OK</div></div>
+                </div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Documents Sent to OT</div>
+                <div style="font-size:12px;color:var(--light);line-height:2">
+                  📋 Case Summary Sheet<br>
+                  📄 All Signed Consent Forms<br>
+                  📊 Lab Reports (latest)<br>
+                  📻 USG & Imaging reports<br>
+                  ❤️ ECG Printout<br>
+                  🩸 Blood Bank Reservation Slip<br>
+                  💊 Pre-op Medicine MAR<br>
+                  ⚠️ Allergy Alert Card
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 8: CLEARANCES -->
+    <div class="tab-panel" id="tab-8">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">✅</div> Pre-Op Clearances</h3><button class="card-action ca-green" onclick="showClearModal()">Final OT Clearance</button></div>
+        <div class="card-body">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">All clearances must be obtained before the patient is shifted to OT. One blocked clearance can delay or cancel the procedure.</div>
+          <div class="clearance-grid">
+            <div class="clr-card cleared"><div class="clr-title">✓ Surgical Clearance</div><div class="clr-by">Dr. K. Raju · Gen. Surgery</div><div class="clr-status">Cleared · 09:30 AM</div></div>
+            <div class="clr-card pending"><div class="clr-title">⏳ Anaesthesia Clearance</div><div class="clr-by">Dr. P. Sharma · Pending evaluation</div><div class="clr-status">Awaiting sign-off</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ Physician Clearance</div><div class="clr-by">Dr. D. Prasad · Medicine</div><div class="clr-status">Cleared · 10:00 AM</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ Cardiologist Clearance</div><div class="clr-by">ECG — Sinus rhythm, fit for GA</div><div class="clr-status">Auto-cleared · ECG normal</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ Blood Bank</div><div class="clr-by">2 units O+ reserved & cross-matched</div><div class="clr-status">Ready for OT</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ Consent Clearance</div><div class="clr-by">Surgical + Anaesthesia + Blood consent</div><div class="clr-status">All signed · 09:22 AM</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ Lab Reports</div><div class="clr-by">Abnormal bilirubin — surgeon aware</div><div class="clr-status">Cleared to proceed</div></div>
+            <div class="clr-card pending"><div class="clr-title">⏳ Nursing Prep</div><div class="clr-by">Sr. Ramani · Ward 3</div><div class="clr-status">5 of 12 prep items pending</div></div>
+            <div class="clr-card cleared"><div class="clr-title">✓ OT Slot Confirmed</div><div class="clr-by">OT-2 · 13:00 · OT Coordinator</div><div class="clr-status">Booked · 22 May 2026</div></div>
+          </div>
+          <div style="background:var(--ltamber);border:1px solid var(--amberA);border-radius:8px;padding:10px 12px;margin-top:4px">
+            <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ 2 Clearances Pending — OT Cannot Proceed Without:</div>
+            <div style="font-size:11px;color:var(--light);line-height:1.8">1. Anaesthesia evaluation by Dr. P. Sharma<br>2. Complete nursing pre-op preparation</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 9: OT HANDOVER -->
+    <div class="tab-panel" id="tab-9">
+      <div class="card">
+        <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">🚪</div> OT Handover — Ward to Operation Theatre</h3><button class="card-action ca-purple" onclick="showToast('ok','✓ Patient shifted to OT — logged')">Shift to OT</button></div>
+        <div class="card-body">
+          <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:2px">From</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Ward 3 · B3-02</div>
+              <div style="font-size:11px;color:var(--muted)">Sr. Ramani · Nursing</div>
+            </div>
+            <div style="font-size:24px;color:var(--muted)">→</div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:2px">To</div>
+              <div style="font-size:13px;font-weight:700;color:var(--purple)">OT-2 · Pre-Op Room</div>
+              <div style="font-size:11px;color:var(--muted)">OT Nurse / Anaesthetist</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--muted)">Shift Time</div>
+              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--cyan)">12:30 hrs</div>
+            </div>
+          </div>
+
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">OT Handover Checklist (WHO Surgical Safety)</div>
+          <div id="otChecks">
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Patient identity confirmed — name, DOB, IP number, wristband verified</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Surgical site marked — right upper abdomen (surgeon confirmed)</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Allergy status communicated — PENICILLIN — RED band on wrist</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">All consent forms confirmed signed and in the file</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">NBM status confirmed — no food or fluids since 07:00</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">IV access confirmed patent — 18G right forearm</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Pre-op medicines given — Cefazolin ✓, Glycopyrrolate ✓, Midazolam given at 12:30</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Lab reports, imaging, ECG file handed to OT nurse</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Blood bank slip (2 units O+ reserved) in file</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Valuables given to family — jewellery, phone, glasses removed</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Patient counselled — procedure, team introduced</div></div>
+            <div class="cs-item" onclick="toggleCS(this)"><div class="cs-chk"></div><div class="cs-text">Receiving OT nurse / anaesthetist name confirmed handover</div></div>
+          </div>
+
+          <div class="form-grid" style="margin-top:12px">
+            <div class="form-group"><label class="form-label">Shifted by (Ward Nurse)</label><input class="finput" value="Sr. Ramani · Ward 3"></div>
+            <div class="form-group"><label class="form-label">Received by (OT Team)</label><input class="finput" placeholder="OT nurse / anaesthetist name…"></div>
+          </div>
+          <div class="form-group" style="margin-top:6px"><label class="form-label">Handover Notes</label><textarea class="ftextarea" rows="3" placeholder="Any special instructions, patient concerns, last-minute updates…">Patient anxious — reassured. Family waiting in waiting area. Last BP 134/86 at 12:00. Amlodipine given. All pre-op done. Anaesthesia evaluation pending — Dr. Sharma to review in OT pre-op room.</textarea></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button class="btn btn-outline">Save Draft</button>
+            <button class="btn btn-purple" onclick="showToast('ok','✓ OT Handover completed — Lakshmi Devi shifted to OT-2 at 12:30')">✓ Complete Handover & Shift to OT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end right-col -->
+</div><!-- end layout -->
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div style="font-size:12px;color:var(--muted)">
+    <strong style="color:var(--text)">Lakshmi Devi · IP-00042</strong> · Lap. Cholecystectomy · OT-2 · 13:00
+    <span style="margin-left:10px;font-family:var(--mono);color:var(--amber);font-weight:700" id="countdown">⏳ T-2:26 to OT</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-outline" onclick="switchTab(8,document.querySelectorAll('.tab')[8])">✅ Clearances</button>
+    <button class="btn btn-outline" onclick="switchTab(9,document.querySelectorAll('.tab')[9])">🚪 OT Handover</button>
+    <button class="btn btn-teal" onclick="showToast('info','📋 Full pre-op summary printed')">🖨 Print Pre-Op Summary</button>
+  </div>
+</div>
+
+<!-- MODAL: Final clearance -->
+<div class="modal-overlay" id="clearModal">
+  <div class="modal">
+    <div class="modal-icon" style="text-align:center">🏁</div>
+    <h3 style="text-align:center">Confirm Final OT Clearance?</h3>
+    <p>2 clearances are still pending. Are you sure you want to proceed?<br><br>⚠ Anaesthesia evaluation not complete<br>⚠ Nursing prep 5 items pending</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="giveOTClear()">Override & Clear for OT</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// Clock
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});},1000);
+
+// Countdown
+function updateCountdown(){
+  const now=new Date();const ot=new Date();ot.setHours(13,0,0,0);
+  const diff=ot-now;if(diff<0){document.getElementById('countdown').textContent='🔴 OT TIME';return;}
+  const h=Math.floor(diff/3600000);const m=Math.floor((diff%3600000)/60000);
+  document.getElementById('countdown').textContent='⏳ T-'+h+':'+String(m).padStart(2,'0')+' to OT';
+}
+setInterval(updateCountdown,30000);updateCountdown();
+
+// Tabs
+function switchTab(idx,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+idx).classList.add('active');
+  if(el)el.classList.add('active');
+}
+
+// Checklist toggle
+function toggleCS(el){
+  const chk=el.querySelector('.cs-chk');
+  if(el.classList.contains('done')){el.classList.remove('done');chk.classList.remove('done');chk.textContent='';}
+  else if(el.classList.contains('fail')){el.classList.remove('fail');chk.classList.remove('fail');chk.textContent='';}
+  else{el.classList.add('done');chk.classList.add('done');chk.textContent='✓';}
+  updateProgress();
+}
+function updateProgress(){
+  const items=document.querySelectorAll('.left-panel .cs-item');
+  const done=[...items].filter(i=>i.classList.contains('done')).length;
+  document.getElementById('clPct').textContent=Math.round(done/items.length*100)+'%';
+}
+
+// ASA
+function selectASA(el,n){
+  document.querySelectorAll('.asa-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  showToast('info','ASA Class '+['I','II','III','IV','V'][n-1]+' selected');
+}
+
+// Add medicine
+function addMedOrder(){
+  const name=document.getElementById('newMedName').value.trim();
+  const dose=document.getElementById('newMedDose').value.trim();
+  const time=document.getElementById('newMedTime').value;
+  if(!name){showToast('warn','Enter medicine name');return;}
+  const container=document.querySelector('#tab-3 .card-body .med-table-hd').parentElement;
+  const newRow=document.createElement('div');
+  newRow.className='med-table-row held';
+  newRow.innerHTML=`<div><div style="font-weight:600">${name}</div></div><div style="font-family:var(--mono);font-size:11px">${dose}</div><div>${time||'—'}</div><div style="font-size:11px;color:var(--muted)">Pre-op order</div><div><span class="med-badge due">Due</span></div>`;
+  container.insertBefore(newRow,document.querySelector('#tab-3 .card-body > div:last-child'));
+  document.getElementById('newMedName').value='';document.getElementById('newMedDose').value='';document.getElementById('newMedTime').value='';
+  showToast('ok','✓ Medicine order added: '+name);
+}
+
+// Consent
+function markConsentDone(btn){
+  const row=btn.closest('.consent-row');
+  row.classList.remove('pending');row.classList.add('signed');
+  row.querySelector('.consent-status').className='consent-status signed';
+  row.querySelector('.consent-status').textContent='✓ Signed';
+  btn.textContent='View';btn.style.background='var(--ltgreen)';btn.style.color='var(--green)';btn.style.borderColor='var(--greenA)';
+  showToast('ok','✓ Consent signed and recorded');
+}
+
+// Modal
+function showClearModal(){document.getElementById('clearModal').classList.add('show');}
+function closeModal(){document.getElementById('clearModal').classList.remove('show');}
+function giveOTClear(){closeModal();showToast('ok','✓ OT clearance given — override logged. Surgeon and anaesthetist notified.');}
+document.getElementById('clearModal').addEventListener('click',e=>{if(e.target===document.getElementById('clearModal'))closeModal();});
+
+// Toast
+let tt;function showToast(type,msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3500);}
+</script>
+</body>
+</html>

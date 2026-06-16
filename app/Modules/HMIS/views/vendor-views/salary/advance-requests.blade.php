@@ -21,7 +21,10 @@
 
 @section('content')
     <div class="content container-fluid">
-        <div class="page-header">
+        @if (auth('vendor')->check())
+            @include('vendor-views.partials._hr_header')
+        @endif
+        <div class="page-header mt-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center">
                 <h1 class="page-header-title mb-2">
                     <span class="page-header-icon">

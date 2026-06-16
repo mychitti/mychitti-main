@@ -14,11 +14,18 @@
     </style>
 @endpush
 
-@section('content')
+@section('content') 
     <div class="content container-fluid">
+        @include('hmis::vendor-views.partials._pharmacy_header')
+        <div class="pharmacy-page-content">
         <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>Purchase Settings</h1>
+        <div class="page-header"> 
+            <h1 class="page-header-title">
+                <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                    <i class="tio-chevron-left"></i>
+                </a>
+                Purchase Settings
+            </h1>
         </div>
         <!-- End Page Header -->
 
@@ -41,6 +48,7 @@
             </form>
         </div>
     </div>
+</div>
 @endsection
 
 @push('script_2')

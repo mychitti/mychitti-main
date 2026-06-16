@@ -13,8 +13,13 @@
 
 @section('content')
     <div class="content container-fluid">
+        @if (\App\CentralLogics\Helpers::permission_check('hr_manage'))
+            @include('vendor-views.partials._hr_header')
+        @else
+            @include('vendor-views.partials._basic_staff_nav')
+        @endif
         <!-- Page Heading -->
-        <div class="page-header">
+        <div class="page-header mt-3">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
@@ -95,7 +100,7 @@
                                                 @if ($m == 'bank_info')
                                                     {{ translate('messages.profile') }}
                                                 @else
-                                                    {{ _moduleDisplayName($m, translate(str_replace('_', ' ', $m))) }}
+                                                    {{ translate(str_replace('_', ' ', $m)) }}
                                                 @endif
 
 

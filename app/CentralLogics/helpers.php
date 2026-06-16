@@ -996,6 +996,38 @@ class Helpers
 
         return $consultationRevenue;
     }
+    public static function ensureSchoolFeeRevenueAccount()
+    {
+        $storeId = self::get_store_id();
+
+        $revenueLedgerType = LedgerAccountType::where('name', 'Revenue')->first();
+        $ledgerTypeId = $revenueLedgerType->id ?? 1;
+
+        $revenueGroup = StoreAccount::firstOrCreate(
+            ['store_id' => $storeId, 'name' => 'Revenue'],
+            [
+                'ledger_account_type_id' => $ledgerTypeId,
+                'parent_id' => null,
+                'code' => _accountCode($ledgerTypeId, null),
+                'description' => 'All Revenue Accounts',
+                'entity_type' => 'store',
+                'level' => 1,
+            ]
+        );
+
+        $feeRevenue = StoreAccount::firstOrCreate(
+            ['store_id' => $storeId, 'name' => 'School Fee Income', 'parent_id' => $revenueGroup->id],
+            [
+                'ledger_account_type_id' => $revenueGroup->ledger_account_type_id,
+                'code' => _accountCode($revenueGroup->ledger_account_type_id, $revenueGroup->id),
+                'description' => 'Revenue earned from school fees',
+                'entity_type' => 'store',
+                'level' => 2,
+            ]
+        );
+
+        return $feeRevenue;
+    }
     public static function ensureEmployeeLedger($employee, $storeId = null)
     {
         $storeId = $storeId ?? Helpers::get_store_id();

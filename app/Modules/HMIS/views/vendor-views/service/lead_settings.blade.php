@@ -1,15 +1,16 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 
 @section('title', 'Lead Settings')
 
 @section('content')
     <div class="content container-fluid">
+        @include('hmis::vendor.hospital._hospital_submenu_header')
         <div class="page-header d-flex align-items-center justify-content-between">
             <h1 class="page-header-title">Lead Settings</h1>
             <button type="button" class="btn btn-outline-dark btn-sm" data-toggle="modal" data-target="#leadsGuideModal">
                 ðŸ“‹ How it Works
             </button>
-        </div>
+        </div> 
 
         <div class="card">
             <div class="card-body">

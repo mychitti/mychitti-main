@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Doctor Slots')
 
 @push('css_or_js')
@@ -33,11 +33,12 @@
         border-radius: 0 6px 6px 0;
         border-left: 1px solid #c5d5f8;
     }
-</style>
+</style> 
 @endpush
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <div>

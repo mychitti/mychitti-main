@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Consent Form Templates')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-document-text" style="font-size:22px;"></i></span>
@@ -12,7 +13,7 @@
         <a href="{{ route('vendor.consent.template.create') }}" class="btn btn-sm btn--primary">
             <i class="tio-add"></i> New Template
         </a>
-        @endif
+        @endif 
     </div>
 
     @if(session('success'))

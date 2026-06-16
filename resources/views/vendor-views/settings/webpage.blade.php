@@ -317,7 +317,11 @@
              @include('vendor-views.settings.webpage.about_us')
         
          @elseif($tab == 'webpage-templates')
-             @include('vendor-views.settings.webpage.templates')
+             @if(strtolower($store->business_type ?? '') === 'school')
+                 @include('vendor-views.settings.webpage.school_templates')
+             @else
+                 @include('vendor-views.settings.webpage.templates')
+             @endif
          @elseif($tab == 'domain-setup')
              @include('vendor-views.settings.webpage.domain_setup')
          @elseif($tab == 'third-party')
@@ -338,7 +342,9 @@
      @elseif($tab == 'gallery')
          @include('vendor-views.settings.webpage_js.gallery_js')
      @elseif($tab == 'webpage-templates')
-         @include('vendor-views.settings.webpage_js.templates_js')
+         @if(strtolower($store->business_type ?? '') !== 'school')
+             @include('vendor-views.settings.webpage_js.templates_js')
+         @endif
     
      @elseif($tab == 'privacy-policy')
          @include('vendor-views.settings.webpage_js.privacy_policy_js')

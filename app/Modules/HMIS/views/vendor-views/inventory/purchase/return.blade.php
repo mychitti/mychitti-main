@@ -3,19 +3,26 @@
 @push('css_or_js')
     <link href="{{ asset('public/assets/admin/css/inventory_purchase.css') }}" rel="stylesheet">
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
-@endpush
+@endpush 
 
 @section('content')
 
     <div class="content container-fluid p-1">
-        <div class="page-header">
-            <div class="d-flex flex-wrap px-3 w-100">
-                <div class="d-flex w-100 flex-wrap justify-content-between  align-items-center">
-
+        @include('hmis::vendor-views.partials._pharmacy_header')
+        <div class="pharmacy-page-content">
+            <div class="page-header">
+                <div class="d-flex flex-wrap px-3 w-100">
+                    <div class="d-flex w-100 flex-wrap justify-content-between align-items-center">
+                        <h1 class="page-header-title d-flex align-items-center gap-2 mb-0">
+                            <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                                <i class="tio-chevron-left"></i>
+                            </a>
+                            Return Purchase
+                        </h1>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- Page Heading -->
+            <!-- Page Heading -->
         @if (hasPermission('inventory_purchase_return', 'add'))
             <div class=" p-2">
                 <div class="pox-wrap p-0">
@@ -361,9 +368,9 @@
                 </div>
             </div>
 
-        </div>
-
+        </div> 
     </div>
+</div>
 
 @endsection
 @push('script_2')

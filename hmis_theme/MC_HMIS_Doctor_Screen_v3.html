@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC HMIS v3 – Doctor Consultation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
+:root{
+  --navy:#0D47A1;--blue:#1565C0;--ltblue:#E3F2FD;
+  --green:#1B5E20;--ltgreen:#E8F5E9;--greenA:#43A047;
+  --red:#B71C1C;--ltred:#FFEBEE;--redA:#E53E3E;
+  --amber:#E65100;--ltamber:#FFF3E0;--amberA:#F59E0B;
+  --purple:#4527A0;--ltpurple:#EDE7F6;
+  --teal:#006064;--ltteal:#E0F2F1;
+  --text:#0D1117;--muted:#546E7A;--light:#90A4AE;
+  --border:#E2E8F0;--bg:#F1F5F9;--white:#FFFFFF;
+}
+body{background:var(--bg);color:var(--text);font-size:13px}
+body.mode-emergency .topnav{background:#B71C1C}
+body.mode-emergency .mode-badge{color:#FFCDD2}
+body.mode-moderate .topnav{background:#E65100}
+body.mode-moderate .mode-badge{color:#FFE0B2}
+.topnav{background:var(--navy);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:200;transition:background .4s}
+.tn-brand{font-size:15px;font-weight:700;color:#fff}.tn-brand span{color:#69F0AE}
+.tn-left{display:flex;align-items:center;gap:12px;flex:1;overflow:hidden}
+.tn-divider{width:1px;height:22px;background:rgba(255,255,255,.2);flex-shrink:0}
+.tn-page{font-size:12px;color:rgba(255,255,255,.75);font-weight:500;white-space:nowrap}
+.tn-enc{font-size:11px;color:rgba(255,255,255,.5);font-family:monospace;white-space:nowrap}
+.tn-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tn-back{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:5px 11px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;white-space:nowrap}
+.tn-avatar{width:30px;height:30px;border-radius:8px;background:#1565C0;border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.tn-docname{font-size:12px;color:rgba(255,255,255,.85);font-weight:500;white-space:nowrap}
+.tn-doc{display:flex;align-items:center;gap:8px}
+.tn-token{background:rgba(105,240,174,.15);border:1px solid rgba(105,240,174,.35);border-radius:6px;padding:4px 10px;font-size:11px;color:#69F0AE;font-weight:700;white-space:nowrap}
+.mode-badge{border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.1);color:#fff;white-space:nowrap}
+.session-timer{font-family:monospace;color:#F87171;font-weight:700;font-size:12px}
+.autosave-bar{background:#1E3A5F;border-bottom:1px solid #1565C0;padding:5px 16px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.7)}
+.autosave-status{display:flex;align-items:center;gap:6px}
+.autosave-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80;flex-shrink:0;transition:.3s}
+.autosave-dot.saving{background:#FBBF24;animation:pulse .6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.draft-recover-btn{background:#FBBF24;color:#1E1B00;font-size:11px;font-weight:700;border:none;border-radius:5px;padding:3px 10px;cursor:pointer}
+.pt-banner{background:var(--white);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.pt-left{display:flex;align-items:center;gap:12px}
+.pt-avatar{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#1565C0,#0D47A1);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:#fff;flex-shrink:0}
+.pt-name{font-size:16px;font-weight:700;color:var(--text)}
+.pt-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.pt-tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px;background:var(--ltblue);color:var(--blue)}
+.pt-tag.red{background:var(--ltred);color:var(--red)}
+.pt-tag.amber{background:var(--ltamber);color:var(--amber)}
+.pt-dot{width:4px;height:4px;border-radius:50%;background:var(--border)}
+.pt-info{font-size:12px;color:var(--muted)}
+.abha-pill{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px;font-size:11px;color:#15803D;font-weight:600;cursor:pointer}
+.pt-vitals{display:flex;gap:0;background:#F8FAFC;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.vital{text-align:center;padding:8px 12px;border-right:1px solid var(--border);cursor:pointer;transition:.15s}
+.vital:last-child{border-right:none}
+.vital:hover{background:#EEF2F7}
+.vital-val{font-size:14px;font-weight:700;color:var(--text)}
+.vital-val.red{color:var(--redA)}
+.vital-lbl{font-size:9px;color:var(--light);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.tabs{background:var(--white);border-bottom:1px solid var(--border);padding:0 16px;display:flex;overflow-x:auto;position:sticky;top:52px;z-index:90}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:11px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:color .15s}
+.tab:hover{color:var(--blue)}.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:100px;background:var(--redA);color:#fff}
+.tab-badge.blue{background:var(--blue)}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:12px;padding:14px 16px;align-items:start}
+.left-panel{}
+.card{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
+.card:last-child{margin-bottom:0}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.card-hd h3{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+.card-hd-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.card-action{font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;background:var(--ltblue);padding:4px 10px;border-radius:6px;border:none;white-space:nowrap}
+.card-body{padding:12px 14px}
+.detail-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F8FAFC}
+.detail-row:last-child{border-bottom:none}
+.dl{font-size:11px;color:var(--light);font-weight:500}.dv{font-size:11px;color:var(--text);font-weight:600;text-align:right}
+.dv.green{color:var(--greenA)}.dv.red{color:var(--redA)}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px}
+.atag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px}
+.atag.red{background:var(--ltred);color:var(--red)}.atag.amber{background:var(--ltamber);color:var(--amber)}.atag.blue{background:var(--ltblue);color:var(--blue)}.atag.green{background:var(--ltgreen);color:var(--green)}
+.visit-item{padding:8px 14px;border-bottom:1px solid #F8FAFC;display:flex;align-items:flex-start;gap:10px}
+.visit-item:last-child{border-bottom:none}
+.vdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.vdate{font-size:10px;color:var(--light)}.vdiag{font-size:12px;font-weight:600;color:var(--text)}.vdoc{font-size:10px;color:var(--muted)}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+.finput{padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text);outline:none;background:var(--white);width:100%;transition:.15s}
+.finput:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+.fselect{padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text);outline:none;background:var(--white);width:100%;cursor:pointer}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.icd-wrap{position:relative}
+.icd-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--blue);border-radius:8px;z-index:300;max-height:160px;overflow-y:auto;box-shadow:0 8px 24px rgba(13,71,161,.15);display:none}
+.icd-list.show{display:block}
+.icd-item{padding:7px 11px;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.icd-item:hover{background:var(--ltblue)}
+.icd-code{font-family:monospace;font-size:11px;font-weight:700;color:var(--blue);background:var(--ltblue);padding:1px 6px;border-radius:4px}
+.icd-selected{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.icd-tag{display:flex;align-items:center;gap:4px;background:var(--ltblue);border:1px solid #BFDBFE;color:var(--blue);font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px}
+.icd-rm{cursor:pointer;color:var(--redA);font-weight:700;font-size:13px}
+.rx-med-header{display:grid;grid-template-columns:2.2fr 0.8fr 1.1fr 0.8fr 26px;gap:6px;padding:0 10px 5px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.5px}
+.rx-med-row{display:grid;grid-template-columns:2.2fr 0.8fr 1.1fr 0.8fr 26px;gap:6px;align-items:start;padding:7px 10px;background:#F8FAFC;border-radius:8px;margin-bottom:5px;border:1px solid var(--border);transition:.2s}
+.rx-med-row.warn-allergy{background:#FFF1F2;border-color:#FECDD3;animation:shake .3s ease}
+.rx-med-row.warn-interaction{background:#FFFBEB;border-color:#FDE68A}
+.rx-med-row.warn-duplicate{background:#F3E8FF;border-color:#DDD6FE}
+.rx-med-row.warn-renal{background:#FFF7ED;border-color:#FED7AA}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.rxi{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;width:100%;outline:none;background:#fff;transition:.15s}
+.rxi:focus{border-color:var(--blue)}
+.rx-remove{color:var(--redA);cursor:pointer;font-size:16px;text-align:center;font-weight:700;padding:4px;border-radius:4px;transition:.15s;margin-top:2px}
+.rx-remove:hover{background:var(--ltred)}
+.rx-warning-row{margin:-3px 0 5px;padding:5px 10px;border-radius:0 0 7px 7px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+.rx-warning-row.allergy{background:#FFF1F2;color:var(--red);border:1px solid #FECDD3;border-top:none}
+.rx-warning-row.interaction{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;border-top:none}
+.rx-warning-row.duplicate{background:#F3E8FF;color:var(--purple);border:1px solid #DDD6FE;border-top:none}
+.rx-warning-row.renal{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;border-top:none}
+.rx-warning-row.pregnancy{background:#FDF4FF;color:#7E22CE;border:1px solid #E9D5FF;border-top:none}
+.preg-toggle{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:8px}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--blue);border-radius:8px;z-index:300;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(13,71,161,.15);display:none}
+.autocomplete-list.show{display:block}
+.autocomplete-item{padding:7px 11px;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.autocomplete-item:hover,.autocomplete-item.selected{background:var(--ltblue)}
+.autocomplete-cat{font-size:10px;color:var(--light)}
+.safety-banner{display:none;align-items:center;gap:8px;border-radius:7px;padding:8px 11px;margin-bottom:8px;font-size:12px;font-weight:600}
+.safety-banner.show{display:flex;animation:fadeIn .2s ease}
+.safety-banner.allergy{background:#FFF1F2;border:1px solid #FECDD3;color:var(--red)}
+.safety-banner.interaction{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E}
+.safety-banner.duplicate{background:#F3E8FF;border:1px solid #DDD6FE;color:var(--purple)}
+.safety-banner.pregnancy{background:#FDF4FF;border:1px solid #E9D5FF;color:#7E22CE}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.btn{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;transition:.15s}
+.btn:hover{filter:brightness(.92)}.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-green{background:#2E7D32;color:#fff}
+.btn-outline{background:none;border:1.5px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-voice{background:linear-gradient(135deg,#4527A0,#6A1B9A);color:#fff;display:flex;align-items:center;gap:6px}
+.btn-voice.recording{background:linear-gradient(135deg,#C62828,#B71C1C);animation:pulse 1s infinite}
+.rx-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.rx-status-label{font-size:11px;color:var(--muted)}
+.voice-bar{display:none;background:linear-gradient(135deg,#4527A0,#6A1B9A);border-radius:8px;padding:10px 14px;margin-bottom:10px;color:#fff;font-size:12px;align-items:center;gap:10px}
+.voice-bar.show{display:flex}
+.voice-waves{display:flex;align-items:center;gap:3px}
+.voice-wave{width:3px;border-radius:2px;background:#fff;animation:wave .8s ease-in-out infinite}
+.voice-wave:nth-child(2){animation-delay:.1s}.voice-wave:nth-child(3){animation-delay:.2s}.voice-wave:nth-child(4){animation-delay:.3s}.voice-wave:nth-child(5){animation-delay:.4s}
+@keyframes wave{0%,100%{height:4px}50%{height:16px}}
+.test-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.test-item{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--white);transition:.15s}
+.test-item:hover,.test-item.sel{border-color:var(--blue);background:var(--ltblue)}
+.tchk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.test-item.sel .tchk{background:var(--blue);border-color:var(--blue);color:#fff}
+.tname{font-size:11px;font-weight:600;color:var(--text)}.tcat{font-size:10px;color:var(--light)}
+.ordered-hd{display:grid;grid-template-columns:1fr 90px 90px 28px;gap:6px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.5px}
+.ordered-row{display:grid;grid-template-columns:1fr 90px 90px 28px;gap:6px;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:7px;margin-bottom:5px;border:1px solid var(--border)}
+.ord-name{font-size:12px;font-weight:600;color:var(--text)}.ord-lab-name{font-size:10px;color:var(--light)}.ord-date{font-size:11px;color:var(--muted)}
+.ost{font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;text-align:center}
+.ost.done{background:var(--ltgreen);color:var(--green)}.ost.prog{background:var(--ltblue);color:var(--blue)}.ost.pend{background:var(--ltamber);color:var(--amber)}
+.report-item{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px solid #F8FAFC;cursor:pointer;transition:.1s}
+.report-item:last-child{border-bottom:none}.report-item:hover{background:#F8FAFC}
+.ricon{width:34px;height:34px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.rname{font-size:12px;font-weight:600;color:var(--text)}.rdate{font-size:10px;color:var(--light);margin-top:1px}
+.rtype{font-size:10px;font-weight:600;padding:2px 7px;border-radius:100px}
+.rtype.lab{background:var(--ltpurple);color:var(--purple)}.rtype.xray{background:var(--ltteal);color:var(--teal)}.rtype.ecg{background:var(--ltred);color:var(--red)}
+.rbadge{margin-left:auto;font-size:10px;color:var(--blue);font-weight:600;background:var(--ltblue);padding:3px 8px;border-radius:5px}
+.rbadge.new{background:var(--ltgreen);color:var(--green)}
+.timeline{padding:14px 16px;display:flex;flex-direction:column}
+.tl-item{display:flex;gap:14px;position:relative;padding-bottom:16px}
+.tl-item:last-child{padding-bottom:0}
+.tl-icon-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.tl-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:2px solid var(--border)}
+.tl-icon.done{background:var(--ltgreen);border-color:#A7F3D0}
+.tl-icon.active{background:var(--ltblue);border-color:#93C5FD;animation:tlpulse 2s infinite}
+.tl-icon.pending{background:#F8FAFC;border-color:var(--border)}
+@keyframes tlpulse{0%,100%{box-shadow:0 0 0 0 rgba(21,101,192,.3)}50%{box-shadow:0 0 0 6px rgba(21,101,192,0)}}
+.tl-line{width:2px;background:var(--border);flex:1;margin:4px 0;min-height:16px}
+.tl-line.done{background:#A7F3D0}
+.tl-content{flex:1;padding-top:4px}
+.tl-title{font-size:13px;font-weight:700;color:var(--text)}
+.tl-title.pending{color:var(--light)}
+.tl-time{font-size:11px;color:var(--muted);margin-top:2px}
+.tl-meta{font-size:11px;color:var(--muted);margin-top:3px;background:#F8FAFC;border-radius:5px;padding:4px 8px;display:inline-block}
+.tl-meta.red{background:var(--ltred);color:var(--red)}
+.nabh-badge{display:inline-flex;align-items:center;gap:4px;background:#EDE7F6;color:#4527A0;font-size:10px;font-weight:700;padding:3px 9px;border-radius:100px}
+.ai-disclaimer-top{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#92400E;display:flex;gap:8px;line-height:1.5}
+.ai-header{background:linear-gradient(135deg,#0D47A1,#1565C0);padding:14px 16px}
+.ai-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:4px 10px;font-size:11px;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:5px;margin-bottom:8px}
+.ai-title{font-size:14px;font-weight:700;color:#fff}.ai-sub{font-size:10px;color:rgba(255,255,255,.7);margin-top:3px}
+.ai-body{padding:14px 16px}
+.ai-sec-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-sec-title::before{content:'';width:3px;height:13px;border-radius:2px;background:var(--blue);flex-shrink:0}
+.ai-sec{margin-bottom:16px}
+.ai-risk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.risk-item{background:#F8FAFC;border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.risk-lbl{font-size:10px;color:var(--light);margin-bottom:3px}
+.risk-val{font-size:13px;font-weight:700}
+.risk-confidence{font-size:10px;color:var(--muted);margin-top:2px}
+.risk-bar{height:4px;background:var(--border);border-radius:2px;margin-top:6px}
+.risk-fill{height:100%;border-radius:2px}
+.finding{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;margin-bottom:5px;font-size:12px;line-height:1.5}
+.finding.alert{background:var(--ltred);border-left:3px solid var(--redA)}
+.finding.warn{background:#FFFBEB;border-left:3px solid #F59E0B}
+.finding.ok{background:var(--ltgreen);border-left:3px solid var(--greenA)}
+.finding.info{background:var(--ltblue);border-left:3px solid var(--blue)}
+.fi{font-size:14px;flex-shrink:0;margin-top:1px}.ft{color:var(--text);flex:1}
+.confidence{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px}
+.confidence.high{background:var(--ltgreen);color:var(--green)}.confidence.moderate{background:var(--ltamber);color:var(--amber)}
+.why-btn{font-size:10px;color:var(--blue);cursor:pointer;margin-left:6px;background:var(--ltblue);padding:1px 6px;border-radius:4px;border:none;font-weight:600}
+.evidence{font-size:10px;color:var(--muted);margin-top:5px;background:#F8FAFC;border-radius:5px;padding:5px 8px;display:none}
+.evidence.show{display:block}
+.ai-suggest{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 13px;margin-top:6px}
+.ai-suggest-title{font-size:11px;font-weight:700;color:#15803D;margin-bottom:7px}
+.ai-suggest-item{font-size:11px;color:#166534;padding:5px 0;display:flex;gap:7px;line-height:1.45;align-items:flex-start;border-bottom:1px solid #D1FAE5}
+.ai-suggest-item:last-child{border-bottom:none;padding-bottom:0}
+.ai-suggest-text{flex:1}
+.ai-add-btn{font-size:10px;font-weight:700;background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.ai-add-btn:hover{background:#0D47A1}.ai-add-btn.added{background:var(--greenA)}.ai-add-btn.test-btn{background:#5B21B6}
+.ai-feedback{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--muted)}
+.fb-btn{border:1px solid var(--border);background:#fff;border-radius:5px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600}
+.fb-btn.liked{background:var(--ltgreen);border-color:#A7F3D0;color:var(--green)}
+.fb-btn.disliked{background:var(--ltred);border-color:#FECDD3;color:var(--red)}
+.rx-card{padding:11px 13px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px}
+.rx-card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.rx-date-lbl{font-size:10px;color:var(--light)}.rx-docn{font-size:12px;font-weight:600;color:var(--blue)}
+.rxstatus{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px}
+.rxstatus.dispensed{background:var(--ltgreen);color:var(--green)}.rxstatus.pending{background:var(--ltamber);color:var(--amber)}
+.rx-med-list{display:flex;flex-direction:column;gap:4px}
+.rx-mitem{display:flex;align-items:center;gap:7px;font-size:11px}
+.rx-mdot{width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.rx-mname{font-weight:600;color:var(--text)}.rx-mdose{color:var(--muted)}
+.rx-notes{margin-top:7px;padding:6px 9px;background:#F8FAFC;border-radius:6px;font-size:10px;color:var(--muted);font-style:italic}
+.right-col{display:flex;flex-direction:column;gap:12px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.complete-bar{background:var(--white);border-top:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;bottom:0;z-index:90;flex-wrap:wrap;gap:8px}
+.complete-bar-info{font-size:12px;color:var(--muted)}
+.complete-bar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;bottom:24px;right:24px;background:#1E293B;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;display:none;align-items:center;gap:9px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:360px}
+.toast.show{display:flex;animation:slideUp .25s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.toast.success{border-left:4px solid #4ADE80}.toast.warning{border-left:4px solid #FBBF24}.toast.error{border-left:4px solid #F87171}.toast.info{border-left:4px solid #60A5FA}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:fadeIn .2s ease}
+.modal h2{font-size:16px;font-weight:700;text-align:center;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--muted);line-height:1.6;text-align:center;margin-bottom:14px}
+.modal-actions{display:flex;gap:10px;justify-content:center}
+.modal-icon{font-size:36px;text-align:center;margin-bottom:10px}
+.mode-selector{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.mode-opt{padding:12px;border-radius:10px;border:2px solid var(--border);cursor:pointer;text-align:center;font-size:12px;font-weight:700;transition:.2s}
+.mode-opt.emergency{color:#B71C1C;background:var(--ltred)}.mode-opt.moderate{color:#E65100;background:var(--ltamber)}.mode-opt.routine{color:var(--blue);background:var(--ltblue)}
+.mode-opt.active-mode{box-shadow:0 0 0 3px currentColor}
+.mode-desc{font-size:10px;font-weight:400;display:block;margin-top:3px;opacity:.8}
+.sec-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F8FAFC;font-size:12px}
+.sec-row:last-child{border-bottom:none}
+.sec-label{color:var(--muted);display:flex;align-items:center;gap:6px}.sec-val{font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.sec-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px}
+.sec-badge.active{background:var(--ltgreen);color:var(--green)}.sec-badge.warning{background:var(--ltamber);color:var(--amber)}
+.hash-display{font-family:monospace;font-size:10px;background:#F8FAFC;padding:3px 8px;border-radius:5px;color:var(--muted)}
+.audit-item{padding:7px 14px;border-bottom:1px solid #F8FAFC;display:flex;align-items:flex-start;gap:10px;font-size:11px}
+.audit-item:last-child{border-bottom:none}
+.audit-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:3px;background:var(--blue)}
+.audit-time{color:var(--light);font-family:monospace;flex-shrink:0;width:70px}
+.audit-action{color:var(--text);font-weight:600}.audit-user{color:var(--muted)}
+.enc-badge{display:inline-block;background:#F8FAFC;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;font-family:monospace;color:var(--text);margin:0 0 12px;text-align:center;width:100%}
+.guidelines-table div{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.guidelines-table div:last-child{border-bottom:none}
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr;padding:10px 12px}
+  .left-panel{display:none}.left-panel.mobile-open{display:block}
+  .pt-vitals{flex-wrap:wrap}.vital{min-width:60px}
+  .tn-enc{display:none}.form-row{grid-template-columns:1fr}
+  .rx-med-header,.rx-med-row{grid-template-columns:1fr 0.7fr 0.9fr 0.7fr 24px}
+  .ai-risk{grid-template-columns:1fr}.mode-selector{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="mode-routine">
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="tn-left">
+    <div class="tn-brand">MC <span>HMIS</span></div>
+    <div class="tn-divider"></div>
+    <div class="tn-page">Doctor Consultation</div>
+    <div class="tn-divider"></div>
+    <div class="tn-enc">ENC-20260522-0031</div>
+  </div>
+  <div class="tn-right">
+    <div class="mode-badge" onclick="switchTab(7,document.querySelectorAll('.tab')[7])">🔵 Routine</div>
+    <div class="tn-token">🎫 Token 14 / 32</div>
+    <a class="tn-back" href="#">← OPD Queue</a>
+    <div class="tn-doc">
+      <div class="tn-avatar">DP</div>
+      <div class="tn-docname">Dr. D. Prasad</div>
+    </div>
+    <span class="session-timer" id="sessionTimer">⏱ 28:00</span>
+  </div>
+</div>
+
+<!-- AUTO-SAVE BAR -->
+<div class="autosave-bar">
+  <div class="autosave-status">
+    <div class="autosave-dot" id="autosaveDot"></div>
+    <span id="autosaveLabel">Auto-saved · 10:34:12 AM</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="color:rgba(255,255,255,.4);font-size:10px">ENC-20260522-0031 · Dr. D. Prasad · Ramaiah Kumar</span>
+    <button class="draft-recover-btn" id="recoverBtn" style="display:none" onclick="recoverDraft()">⚡ Recover Draft</button>
+  </div>
+</div>
+
+<!-- PATIENT BANNER -->
+<div class="pt-banner">
+  <div class="pt-left">
+    <div class="pt-avatar">R</div>
+    <div>
+      <div class="pt-name">Ramaiah Kumar</div>
+      <div class="pt-meta">
+        <span class="pt-tag">P-00031</span>
+        <div class="pt-dot"></div>
+        <span class="pt-info">Male · 45 yrs · B+</span>
+        <div class="pt-dot"></div>
+        <span class="pt-tag amber">⚠ 3 Allergies</span>
+        <span class="pt-tag red">Hypertension</span>
+        <span class="pt-tag red">T2DM</span>
+        <span class="pt-tag" style="background:#E0F2F1;color:#006064">Dyslipidemia</span>
+        <div class="pt-dot"></div>
+        <span class="abha-pill">✦ ABHA: 12-3456-7890-1234</span>
+      </div>
+    </div>
+  </div>
+  <div class="pt-vitals">
+    <div class="vital" onclick="promptVital('bp','138/88')" title="Click to update">
+      <div class="vital-val red" id="v-bp">138/88</div><div class="vital-lbl">BP mmHg</div>
+    </div>
+    <div class="vital" onclick="promptVital('hr','88')">
+      <div class="vital-val" id="v-hr">88</div><div class="vital-lbl">Pulse /min</div>
+    </div>
+    <div class="vital" onclick="promptVital('temp','98.6')">
+      <div class="vital-val" id="v-temp">98.6</div><div class="vital-lbl">Temp °F</div>
+    </div>
+    <div class="vital" onclick="promptVital('spo2','98')">
+      <div class="vital-val" id="v-spo2">98</div><div class="vital-lbl">SpO₂ %</div>
+    </div>
+    <div class="vital" onclick="promptVital('wt','72')">
+      <div class="vital-val" id="v-wt">72</div><div class="vital-lbl">Wt kg</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0,this)">📋 Details</div>
+  <div class="tab" onclick="switchTab(1,this)">💊 Prescription</div>
+  <div class="tab" onclick="switchTab(2,this)">📄 Past Rx</div>
+  <div class="tab" onclick="switchTab(3,this)">🧪 Tests</div>
+  <div class="tab" onclick="switchTab(4,this)">📁 Reports <span class="tab-badge">3</span></div>
+  <div class="tab" onclick="switchTab(5,this)">🤖 Sara AI <span class="tab-badge blue">New</span></div>
+  <div class="tab" onclick="switchTab(6,this)">🕐 Timeline</div>
+  <div class="tab" onclick="switchTab(7,this)">🔴 Mode</div>
+  <div class="tab" onclick="switchTab(8,this)">🔐 Security</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <!-- LEFT PANEL -->
+  <div class="left-panel" id="leftPanel">
+    <div class="card">
+      <div class="card-hd"><h3><div class="card-hd-icon" style="background:#E3F2FD">👤</div> Patient Info</h3><button class="card-action">Edit</button></div>
+      <div class="card-body" style="padding:6px 14px">
+        <div class="detail-row"><span class="dl">Patient ID</span><span class="dv">P-00031</span></div>
+        <div class="detail-row"><span class="dl">Age / Gender</span><span class="dv">45 Yrs · Male</span></div>
+        <div class="detail-row"><span class="dl">Blood Group</span><span class="dv green">B+ Positive</span></div>
+        <div class="detail-row"><span class="dl">Mobile</span><span class="dv">+91 98765 43210</span></div>
+        <div class="detail-row"><span class="dl">Referred By</span><span class="dv">Dr. S. Rao (Ortho)</span></div>
+        <div class="detail-row"><span class="dl">Visit Type</span><span class="dv green">OPD – Walk-in</span></div>
+        <div class="detail-row"><span class="dl">Last Visit</span><span class="dv">14 Apr 2026</span></div>
+        <div class="detail-row"><span class="dl">Total Visits</span><span class="dv">8 visits</span></div>
+        <div class="detail-row"><span class="dl">ABHA</span><span class="dv" style="font-family:monospace;font-size:10px;color:#15803D">12-3456-7890-1234</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3><div class="card-hd-icon" style="background:#FFEBEE">⚠️</div> Allergies</h3><button class="card-action">+ Add</button></div>
+      <div class="tag-list">
+        <span class="atag red">🚫 Penicillin</span>
+        <span class="atag red">🚫 Aspirin</span>
+        <span class="atag amber">⚠ Sulfonamides</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3><div class="card-hd-icon" style="background:#FFF3E0">🫀</div> Chronic Conditions</h3></div>
+      <div class="tag-list">
+        <span class="atag red">T2DM</span>
+        <span class="atag amber">Hypertension</span>
+        <span class="atag blue">Dyslipidemia</span>
+        <span class="atag amber">CKD Stage 2</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <h3><div class="card-hd-icon" style="background:#E8F5E9">🗣</div> Complaint & Notes</h3>
+        <button class="btn btn-voice" id="voiceBtn" onclick="toggleVoice()" style="padding:4px 10px;font-size:11px">🎤 Dictate</button>
+      </div>
+      <div class="card-body">
+        <div class="voice-bar" id="voiceBar">
+          <div class="voice-waves">
+            <div class="voice-wave" style="height:8px"></div><div class="voice-wave" style="height:14px"></div>
+            <div class="voice-wave" style="height:6px"></div><div class="voice-wave" style="height:18px"></div>
+            <div class="voice-wave" style="height:10px"></div>
+          </div>
+          <span>🎙 Listening… EN / TE / HI</span>
+          <button onclick="stopVoice()" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer">Stop</button>
+        </div>
+        <label class="form-label">Presenting Complaint</label>
+        <textarea class="finput" id="complaintText" rows="3" style="resize:none;margin-bottom:8px" oninput="draftChanged()">Persistent headache x 3 days, dizziness, mild blurring of vision. No fever. Similar episodes past 2 months.</textarea>
+        <label class="form-label">Diagnosis / Assessment</label>
+        <textarea class="finput" id="diagnosisText" rows="2" style="resize:none" oninput="draftChanged()">Hypertensive urgency – BP poorly controlled. Rule out secondary causes.</textarea>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3><div class="card-hd-icon" style="background:#EDE7F6">🕐</div> Visit History</h3><button class="card-action">All Visits</button></div>
+      <div class="visit-item"><div class="vdot" style="background:#DC2626"></div><div><div class="vdate">14 Apr 2026</div><div class="vdiag">Hypertensive Urgency</div><div class="vdoc">Dr. D. Prasad</div></div></div>
+      <div class="visit-item"><div class="vdot" style="background:#D97706"></div><div><div class="vdate">02 Mar 2026</div><div class="vdiag">Uncontrolled DM – HbA1c 8.9%</div><div class="vdoc">Dr. D. Prasad</div></div></div>
+      <div class="visit-item"><div class="vdot" style="background:#1565C0"></div><div><div class="vdate">18 Jan 2026</div><div class="vdiag">Routine Follow-up</div><div class="vdoc">Dr. D. Prasad</div></div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT COL -->
+  <div class="right-col">
+
+    <!-- TAB 0: AI OVERVIEW -->
+    <div class="tab-panel active" id="tab-0">
+      <div class="card" style="border-color:#BFDBFE">
+        <div class="ai-header">
+          <div class="ai-badge">✦ Sara AI · Clinical Intelligence v3</div>
+          <div class="ai-title">AI-Generated Patient Report</div>
+          <div class="ai-sub">ADA 2026 · JNC-8 · ACC/AHA 2023 · KDIGO 2024 · 22 May 2026, 10:32 AM</div>
+        </div>
+        <div class="ai-body">
+          <div class="ai-disclaimer-top">⚠️ <span><strong>AI Disclaimer:</strong> Sara AI is suggestive only and based on published clinical guidelines. Final medical decisions remain solely with the treating physician. Review all suggestions before acting.</span></div>
+          <div class="ai-sec">
+            <div class="ai-sec-title">Risk Snapshot</div>
+            <div class="ai-risk">
+              <div class="risk-item"><div class="risk-lbl">Cardiovascular Risk</div><div class="risk-val" style="color:#DC2626">High — 68%</div><div class="risk-confidence">Confidence: 91% · Framingham + SCORE2</div><div class="risk-bar"><div class="risk-fill" style="width:68%;background:#DC2626"></div></div></div>
+              <div class="risk-item"><div class="risk-lbl">Diabetic Nephropathy</div><div class="risk-val" style="color:#D97706">Moderate — 42%</div><div class="risk-confidence">Confidence: 78% · KDIGO 2024</div><div class="risk-bar"><div class="risk-fill" style="width:42%;background:#D97706"></div></div></div>
+              <div class="risk-item"><div class="risk-lbl">BP Control</div><div class="risk-val" style="color:#DC2626">Poor — 138/88</div><div class="risk-confidence">Confidence: 96% · JNC-8</div><div class="risk-bar"><div class="risk-fill" style="width:78%;background:#DC2626"></div></div></div>
+              <div class="risk-item"><div class="risk-lbl">Glycaemic Control</div><div class="risk-val" style="color:#D97706">HbA1c 8.9%</div><div class="risk-confidence">Confidence: 99% · ADA 2026</div><div class="risk-bar"><div class="risk-fill" style="width:60%;background:#D97706"></div></div></div>
+            </div>
+          </div>
+          <div class="ai-sec">
+            <div class="ai-sec-title">Key Clinical Findings</div>
+            <div class="finding alert"><div class="fi">🚨</div><div class="ft"><strong>BP 138/88 mmHg – Hypertensive Urgency.</strong><span class="confidence high">94%</span> Consider Telmisartan 40mg.<button class="why-btn" onclick="toggleEvidence(this)">Why?</button><div class="evidence">📚 JNC-8: BP target &lt;130/80 for DM+HTN. ARB addition shown to reduce CV events by 28% (ONTARGET 2008). Current Amlodipine 5mg is sub-therapeutic.</div></div></div>
+            <div class="finding warn"><div class="fi">⚠️</div><div class="ft"><strong>HbA1c 8.9% – Needs uptitration.</strong><span class="confidence moderate">87%</span> Consider SGLT2 inhibitor.<button class="why-btn" onclick="toggleEvidence(this)">Why?</button><div class="evidence">📚 ADA 2026: HbA1c target &lt;7%. SGLT2 inhibitors preferred in CKD for renoprotection (CREDENCE trial). Metformin safe if eGFR &gt;45.</div></div></div>
+            <div class="finding warn"><div class="fi">⚠️</div><div class="ft"><strong>Urine Microalbumin 45 mg/L – Early nephropathy.</strong><span class="confidence high">92%</span> Start ACE/ARB.<button class="why-btn" onclick="toggleEvidence(this)">Why?</button><div class="evidence">📚 KDIGO 2024: ACE inhibitor or ARB first-line for diabetic nephropathy. Reduces progression by 40%.</div></div></div>
+            <div class="finding info"><div class="fi">📊</div><div class="ft"><strong>LDL 142 mg/dL – Above target.</strong><span class="confidence high">95%</span> Escalate statin to 40mg.<button class="why-btn" onclick="toggleEvidence(this)">Why?</button><div class="evidence">📚 ACC/AHA 2023: High-intensity statin for diabetics with LDL &gt;100. Atorvastatin 40–80mg recommended.</div></div></div>
+            <div class="finding ok"><div class="fi">✅</div><div class="ft"><strong>ECG – Sinus tachycardia, no ischemic changes.</strong><span class="confidence high">98%</span> No immediate cardiac intervention needed.</div></div>
+          </div>
+          <div class="ai-sec">
+            <div class="ai-sec-title">AI Recommendations</div>
+            <div class="ai-suggest">
+              <div class="ai-suggest-title">💡 Suggested Actions — click to add</div>
+              <div class="ai-suggest-item"><span>→</span><span class="ai-suggest-text">Add Telmisartan 40mg OD — BP + renoprotection (JNC-8 + KDIGO 2024)</span><button class="ai-add-btn" onclick="addToRx('Telmisartan 40mg Tab','1 Tab','Once Daily','30 Days',this)">+ Add to Rx</button></div>
+              <div class="ai-suggest-item"><span>→</span><span class="ai-suggest-text">Add Sitagliptin 100mg OD — safe in CKD (ADA 2026)</span><button class="ai-add-btn" onclick="addToRx('Sitagliptin 100mg Tab','1 Tab','Once Daily','30 Days',this)">+ Add to Rx</button></div>
+              <div class="ai-suggest-item"><span>→</span><span class="ai-suggest-text">Escalate Atorvastatin → 40mg OD (ACC/AHA 2023)</span><button class="ai-add-btn" onclick="addToRx('Atorvastatin 40mg Tab','1 Tab','Once Daily (Night)','30 Days',this)">+ Add to Rx</button></div>
+              <div class="ai-suggest-item"><span>→</span><span class="ai-suggest-text">Order RFT + Serum Creatinine — CKD monitoring</span><button class="ai-add-btn test-btn" onclick="addTestFromAI(['Renal Function Test','Serum Creatinine'],this)">+ Add to Tests</button></div>
+              <div class="ai-suggest-item"><span>→</span><span class="ai-suggest-text">Order 2D Echo — rule out LVH</span><button class="ai-add-btn test-btn" onclick="addTestFromAI(['2D Echo'],this)">+ Add to Tests</button></div>
+            </div>
+          </div>
+          <div class="ai-feedback">
+            <span>Rate Sara AI:</span>
+            <button class="fb-btn" id="fbLike" onclick="aiFeedback('like')">👍 Helpful</button>
+            <button class="fb-btn" id="fbDislike" onclick="aiFeedback('dislike')">👎 Inaccurate</button>
+            <button class="fb-btn" onclick="showToast('info','📝 Detailed feedback form opening…')">📋 Comment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: PRESCRIPTION -->
+    <div class="tab-panel" id="tab-1">
+      <div class="card">
+        <div class="card-hd">
+          <h3><div class="card-hd-icon" style="background:#E8F5E9">💊</div> New Prescription <span style="font-size:10px;font-weight:400;color:var(--light);font-family:monospace;margin-left:4px">ENC-20260522-0031</span></h3>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-outline" id="btnPrint" style="font-size:11px;padding:5px 10px" disabled onclick="printRx()">🖨 Print Rx</button>
+            <button class="btn btn-outline" id="btnPharmacy" style="font-size:11px;padding:5px 10px" disabled onclick="sendToPharmacy()">💊 Pharmacy</button>
+          </div>
+        </div>
+        <div style="padding:12px 14px">
+          <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap">
+            <label class="preg-toggle"><input type="checkbox" id="pregCheck" onchange="recheckAllSafety()"> 🤰 Pregnancy / Lactation Mode</label>
+            <label class="preg-toggle"><input type="checkbox" id="renalCheck" checked onchange="recheckAllSafety()"> 🫘 Renal Impairment (CKD Stage 2)</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Diagnosis (ICD-10)</label>
+              <div class="icd-wrap">
+                <input class="finput" id="icdInput" placeholder="Search diagnosis or ICD code…" oninput="icdSearch(this)" onfocus="icdSearch(this)" onblur="setTimeout(hideIcd,150)" autocomplete="off">
+                <div class="autocomplete-list" id="icdList"></div>
+              </div>
+              <div class="icd-selected" id="icdSelected">
+                <div class="icd-tag">I10 – Hypertension <span class="icd-rm" onclick="removeIcd(this)">×</span></div>
+                <div class="icd-tag">E11 – T2DM <span class="icd-rm" onclick="removeIcd(this)">×</span></div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Follow-up Date</label><input class="finput" type="date" value="2026-06-04" onchange="draftChanged()"></div>
+          </div>
+          <div class="safety-banner allergy" id="bannerAllergy">🚨 <span id="bannerAllergyText"></span></div>
+          <div class="safety-banner interaction" id="bannerInteraction">⚡ <span id="bannerInteractionText"></span></div>
+          <div class="safety-banner duplicate" id="bannerDuplicate">🔁 <span id="bannerDuplicateText"></span></div>
+          <div class="safety-banner pregnancy" id="bannerPregnancy">🤰 <span id="bannerPregnancyText"></span></div>
+          <div class="rx-med-header"><div>Medicine Name</div><div>Dosage</div><div>Frequency</div><div>Duration</div><div></div></div>
+          <div id="rxRows">
+            <div class="rx-med-row"><input class="rxi med-input" value="Amlodipine 5mg Tab" oninput="checkSafety(this)"><input class="rxi" value="1 Tab"><select class="rxi"><option>Once Daily</option><option>Twice Daily</option><option>Thrice Daily</option><option>Once Daily (Night)</option><option>SOS</option></select><input class="rxi" value="30 Days"><div class="rx-remove" onclick="removeRxRow(this)">✕</div></div>
+            <div class="rx-med-row"><input class="rxi med-input" value="Metformin 500mg Tab" oninput="checkSafety(this)"><input class="rxi" value="1 Tab"><select class="rxi"><option>Twice Daily</option><option>Once Daily</option></select><input class="rxi" value="30 Days"><div class="rx-remove" onclick="removeRxRow(this)">✕</div></div>
+            <div class="rx-med-row"><input class="rxi med-input" value="Atorvastatin 10mg Tab" oninput="checkSafety(this)"><input class="rxi" value="1 Tab"><select class="rxi"><option>Once Daily (Night)</option><option>Once Daily</option></select><input class="rxi" value="30 Days"><div class="rx-remove" onclick="removeRxRow(this)">✕</div></div>
+          </div>
+          <div class="rx-med-row" style="background:#FFF8F0;border-color:#FED7AA;margin-top:4px">
+            <div class="autocomplete-wrap">
+              <input class="rxi med-input" id="newMedInput" placeholder="🔍 Search & add medicine…" oninput="handleMedSearch(this)" onfocus="handleMedSearch(this)" onblur="setTimeout(hideAutocomplete,150)" onkeydown="autocompleteKeydown(event)" autocomplete="off">
+              <div class="autocomplete-list" id="autocompleteList"></div>
+            </div>
+            <input class="rxi" id="newMedDose" placeholder="Dose">
+            <select class="rxi" id="newMedFreq"><option value="">Frequency</option><option>Once Daily</option><option>Twice Daily</option><option>Thrice Daily</option><option>Once Daily (Night)</option><option>SOS</option></select>
+            <input class="rxi" id="newMedDur" placeholder="Duration">
+            <div class="rx-remove" style="color:var(--blue);font-size:20px;font-weight:700" onclick="addMedRow()">+</div>
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label">Special Instructions / Advice</label>
+            <textarea class="finput" id="adviceText" rows="2" style="resize:none" oninput="draftChanged()">Take medicines after food. Monitor BP daily. Reduce salt intake. Walk 30 min daily.</textarea>
+          </div>
+          <div class="rx-footer">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-outline" onclick="saveDraft()">💾 Save Draft</button>
+              <span class="rx-status-label" id="rxStatusLabel"></span>
+            </div>
+            <button class="btn btn-primary" id="btnFinalise" onclick="finaliseRx()">✓ Finalise Prescription</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: PAST RX -->
+    <div class="tab-panel" id="tab-2">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#FFF3E0">📄</div> Past Prescriptions</h3><button class="card-action">Export All</button></div>
+        <div class="card-body">
+          <div class="rx-card"><div class="rx-card-hd"><div><div class="rx-date-lbl">02 Mar 2026</div><div class="rx-docn">Dr. D. Prasad</div></div><span class="rxstatus dispensed">✓ Dispensed</span></div><div class="rx-med-list"><div class="rx-mitem"><div class="rx-mdot"></div><span class="rx-mname">Metformin 500mg</span><span class="rx-mdose"> — Twice Daily · 30D</span></div><div class="rx-mitem"><div class="rx-mdot"></div><span class="rx-mname">Amlodipine 5mg</span><span class="rx-mdose"> — Once Daily · 30D</span></div></div><div class="rx-notes">Follow-up 4 weeks. BP daily monitoring. Low-salt diet.</div></div>
+          <div class="rx-card"><div class="rx-card-hd"><div><div class="rx-date-lbl">18 Jan 2026</div><div class="rx-docn">Dr. D. Prasad</div></div><span class="rxstatus dispensed">✓ Dispensed</span></div><div class="rx-med-list"><div class="rx-mitem"><div class="rx-mdot"></div><span class="rx-mname">Metformin 500mg</span><span class="rx-mdose"> — Twice Daily · 30D</span></div><div class="rx-mitem"><div class="rx-mdot"></div><span class="rx-mname">Amlodipine 5mg</span><span class="rx-mdose"> — Once Daily · 30D</span></div></div><div class="rx-notes">HbA1c target &lt;7%. Repeat Lipid Profile 3 months.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TESTS -->
+    <div class="tab-panel" id="tab-3">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#E0F2F1">🧪</div> Tests & Investigations</h3><button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="sendToLab()">📤 Send to Lab</button></div>
+        <div style="padding:12px 14px">
+          <label class="form-label" style="margin-bottom:8px">Select Tests to Order</label>
+          <div class="test-grid" id="testGrid">
+            <div class="test-item sel" data-test="HbA1c" onclick="toggleTest(this)"><div class="tchk">✓</div><div><div class="tname">HbA1c</div><div class="tcat">Biochemistry</div></div></div>
+            <div class="test-item sel" data-test="Lipid Profile" onclick="toggleTest(this)"><div class="tchk">✓</div><div><div class="tname">Lipid Profile</div><div class="tcat">Biochemistry</div></div></div>
+            <div class="test-item sel" data-test="Renal Function Test" onclick="toggleTest(this)"><div class="tchk">✓</div><div><div class="tname">Renal Function Test</div><div class="tcat">Biochemistry</div></div></div>
+            <div class="test-item" data-test="CBC" onclick="toggleTest(this)"><div class="tchk"></div><div><div class="tname">CBC</div><div class="tcat">Haematology</div></div></div>
+            <div class="test-item sel" data-test="ECG" onclick="toggleTest(this)"><div class="tchk">✓</div><div><div class="tname">ECG (12-lead)</div><div class="tcat">Cardiology</div></div></div>
+            <div class="test-item" data-test="Chest X-Ray" onclick="toggleTest(this)"><div class="tchk"></div><div><div class="tname">Chest X-Ray PA</div><div class="tcat">Radiology</div></div></div>
+            <div class="test-item" data-test="Urine Routine" onclick="toggleTest(this)"><div class="tchk"></div><div><div class="tname">Urine Routine</div><div class="tcat">Microbiology</div></div></div>
+            <div class="test-item" data-test="Serum Creatinine" onclick="toggleTest(this)"><div class="tchk"></div><div><div class="tname">Serum Creatinine</div><div class="tcat">Biochemistry</div></div></div>
+          </div>
+          <div class="form-group"><label class="form-label">Clinical Notes for Lab</label><input class="finput" value="H/o Hypertension + T2DM. CKD Stage 2. Fasting sample required."></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding:10px 14px">
+          <div style="font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Previously Ordered</div>
+          <div class="ordered-hd"><div>Test</div><div>Ordered</div><div>Status</div><div></div></div>
+          <div class="ordered-row"><div><div class="ord-name">Fasting Blood Sugar</div><div class="ord-lab-name">MC Lab</div></div><div class="ord-date">02 Mar 2026</div><div><span class="ost done">Done</span></div><div>📄</div></div>
+          <div class="ordered-row"><div><div class="ord-name">Urine Microalbumin</div><div class="ord-lab-name">MC Lab</div></div><div class="ord-date">02 Mar 2026</div><div><span class="ost done">Done</span></div><div>📄</div></div>
+          <div class="ordered-row"><div><div class="ord-name">2D Echo</div><div class="ord-lab-name">Cardio Dept</div></div><div class="ord-date">14 Apr 2026</div><div><span class="ost prog">In Progress</span></div><div>⏳</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: REPORTS -->
+    <div class="tab-panel" id="tab-4">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#EDE7F6">📁</div> Patient Reports</h3><button class="card-action">+ Upload</button></div>
+        <div class="report-item"><div class="ricon" style="background:#EDE7F6">🧬</div><div style="flex:1"><div class="rname">HbA1c Report – 8.9%</div><div class="rdate">02 Mar 2026 · MC Lab</div></div><span class="rtype lab">Lab</span><span class="rbadge new">View</span></div>
+        <div class="report-item"><div class="ricon" style="background:#FFEBEE">❤️</div><div style="flex:1"><div class="rname">ECG – Sinus Tachycardia</div><div class="rdate">14 Apr 2026 · Cardio OPD</div></div><span class="rtype ecg">ECG</span><span class="rbadge new">New</span></div>
+        <div class="report-item"><div class="ricon" style="background:#FFF3E0">🫁</div><div style="flex:1"><div class="rname">Chest X-Ray – PA View</div><div class="rdate">18 Jan 2026 · Radiology</div></div><span class="rtype xray">X-Ray</span><span class="rbadge">View</span></div>
+        <div class="report-item"><div class="ricon" style="background:#F3E8FF">🔬</div><div style="flex:1"><div class="rname">Lipid Profile – LDL 142</div><div class="rdate">18 Jan 2026 · MC Lab</div></div><span class="rtype lab">Lab</span><span class="rbadge">View</span></div>
+      </div>
+    </div>
+
+    <!-- TAB 5: SARA AI FULL -->
+    <div class="tab-panel" id="tab-5">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#DBEAFE">🤖</div> Sara AI – Guidelines & Evidence</h3><button class="card-action">Regenerate</button></div>
+        <div class="card-body">
+          <div class="guidelines-table">
+            <div><span>ADA Standards of Medical Care in Diabetes</span><span style="font-weight:700;color:var(--blue)">2026</span></div>
+            <div><span>JNC-8 Hypertension Guidelines</span><span style="font-weight:700;color:var(--blue)">2014</span></div>
+            <div><span>ACC/AHA Cholesterol Guidelines</span><span style="font-weight:700;color:var(--blue)">2023</span></div>
+            <div><span>KDIGO CKD Guidelines</span><span style="font-weight:700;color:var(--blue)">2024</span></div>
+            <div><span>ESC/ESH Hypertension Guidelines</span><span style="font-weight:700;color:var(--blue)">2023</span></div>
+          </div>
+          <div class="ai-feedback" style="margin-top:14px">
+            <span>Rate Sara AI:</span>
+            <button class="fb-btn" onclick="aiFeedback('like')">👍 Helpful</button>
+            <button class="fb-btn" onclick="aiFeedback('dislike')">👎 Inaccurate</button>
+            <button class="fb-btn" onclick="showToast('info','📝 Detailed feedback form…')">📋 Comment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: TIMELINE -->
+    <div class="tab-panel" id="tab-6">
+      <div class="card">
+        <div class="card-hd">
+          <h3><div class="card-hd-icon" style="background:#E0F2F1">🕐</div> Consultation Timeline</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="nabh-badge">✦ NABH Compliant</span>
+            <button class="card-action" onclick="showToast('success','📋 Audit log exported')">Export Log</button>
+          </div>
+        </div>
+        <div class="timeline" id="timeline">
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon done">✅</div><div class="tl-line done"></div></div><div class="tl-content"><div class="tl-title">Patient Registered</div><div class="tl-time">10:12 AM · Reception Desk</div><div class="tl-meta">Token 14 issued · P-00031 verified · Walk-in OPD</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon done">✅</div><div class="tl-line done"></div></div><div class="tl-content"><div class="tl-title">Vitals Recorded</div><div class="tl-time">10:18 AM · Nursing Station</div><div class="tl-meta red">BP: 138/88 · HR: 88 · Temp: 98.6°F · SpO₂: 98% · Wt: 72kg</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon done">✅</div><div class="tl-line done"></div></div><div class="tl-content"><div class="tl-title">Doctor Joined Consultation</div><div class="tl-time">10:31 AM · Dr. D. Prasad</div><div class="tl-meta">ENC-20260522-0031 opened · Sara AI report generated</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon active">⚡</div><div class="tl-line"></div></div><div class="tl-content"><div class="tl-title">Prescription In Progress</div><div class="tl-time">10:34 AM · Dr. D. Prasad</div><div class="tl-meta">3 medicines · Auto-draft saved · Safety checks active</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon pending">💊</div><div class="tl-line"></div></div><div class="tl-content"><div class="tl-title pending">Prescription Finalised</div><div class="tl-time" style="color:var(--light)">Pending</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon pending">🧪</div><div class="tl-line"></div></div><div class="tl-content"><div class="tl-title pending">Lab Orders Sent</div><div class="tl-time" style="color:var(--light)">Pending</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon pending">💉</div><div class="tl-line"></div></div><div class="tl-content"><div class="tl-title pending">Pharmacy Dispensed</div><div class="tl-time" style="color:var(--light)">Pending</div></div></div>
+          <div class="tl-item"><div class="tl-icon-wrap"><div class="tl-icon pending">🏁</div></div><div class="tl-content"><div class="tl-title pending">Consultation Complete</div><div class="tl-time" style="color:var(--light)">Pending</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 7: SEVERITY MODE -->
+    <div class="tab-panel" id="tab-7">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#FFEBEE">🔴</div> Consultation Severity Mode</h3></div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Set the severity for this consultation. Changes the top bar colour for quick visual identification across the OPD.</p>
+          <div class="mode-selector">
+            <div class="mode-opt emergency" id="modeEmergency" onclick="setMode('emergency')">🚨 Emergency<span class="mode-desc">Red · Critical / Urgent</span></div>
+            <div class="mode-opt moderate" id="modeModerate" onclick="setMode('moderate')">⚠️ Moderate<span class="mode-desc">Amber · Needs attention</span></div>
+            <div class="mode-opt routine active-mode" id="modeRoutine" onclick="setMode('routine')">🔵 Routine<span class="mode-desc">Blue · Regular OPD</span></div>
+          </div>
+          <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Current Mode</div>
+            <div id="currentModeDisplay" style="font-size:14px;font-weight:700;color:var(--blue)">🔵 Routine — Regular OPD Consultation</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 8: SECURITY -->
+    <div class="tab-panel" id="tab-8">
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#E8F5E9">🔐</div> Security & Compliance</h3></div>
+        <div class="card-body">
+          <div class="sec-row"><span class="sec-label">🔐 Session Status</span><span class="sec-val"><span class="sec-badge active">Active</span> <span id="sessionDisplay" style="font-family:monospace;font-size:12px;color:var(--blue)">28:00 remaining</span></span></div>
+          <div class="sec-row"><span class="sec-label">🏥 Logged In As</span><span class="sec-val">Dr. D. Prasad · Doctor Role</span></div>
+          <div class="sec-row"><span class="sec-label">🔒 Encryption</span><span class="sec-val"><span class="sec-badge active">AES-256</span> HTTPS</span></div>
+          <div class="sec-row"><span class="sec-label">✍ Digital Signature</span><span class="sec-val"><span class="sec-badge active">SHA-256</span></span></div>
+          <div class="sec-row"><span class="sec-label">📜 Rx Hash</span><span class="sec-val"><div class="hash-display" id="rxHashDisplay">Not finalised yet</div></span></div>
+          <div class="sec-row"><span class="sec-label">🛡 Role Permissions</span><span class="sec-val">Prescribe · Diagnose · Order Tests</span></div>
+          <div class="sec-row"><span class="sec-label">📱 2FA Status</span><span class="sec-val"><span class="sec-badge active">Verified · 10:31 AM</span></span></div>
+          <div class="sec-row"><span class="sec-label">☁ Last Backup</span><span class="sec-val" id="backupTime">10:34:12 AM · Auto</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3><div class="card-hd-icon" style="background:#E3F2FD">📋</div> Audit Log — This Session</h3></div>
+        <div id="auditLog">
+          <div class="audit-item"><div class="audit-dot"></div><div class="audit-time">10:31 AM</div><div><div class="audit-action">Session started</div><div class="audit-user">Dr. D. Prasad · 2FA verified</div></div></div>
+          <div class="audit-item"><div class="audit-dot"></div><div class="audit-time">10:31 AM</div><div><div class="audit-action">Patient record opened</div><div class="audit-user">P-00031 · Ramaiah Kumar</div></div></div>
+          <div class="audit-item"><div class="audit-dot"></div><div class="audit-time">10:32 AM</div><div><div class="audit-action">Sara AI report generated</div><div class="audit-user">ENC-20260522-0031</div></div></div>
+          <div class="audit-item"><div class="audit-dot" style="background:#43A047"></div><div class="audit-time">10:34 AM</div><div><div class="audit-action">Auto-draft saved</div><div class="audit-user">3 medicines · Rx in progress</div></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end right-col -->
+</div><!-- end layout -->
+
+<!-- COMPLETE BAR -->
+<div class="complete-bar">
+  <div class="complete-bar-info">
+    <strong>Ramaiah Kumar</strong> · Token 14 · ENC-20260522-0031
+    <span id="autosaveLabelBar" style="margin-left:10px;font-size:11px;color:#43A047;font-weight:600"></span>
+  </div>
+  <div class="complete-bar-right">
+    <button class="btn btn-outline" style="font-size:12px" onclick="switchTab(6,document.querySelectorAll('.tab')[6])">🕐 Timeline</button>
+    <button class="btn btn-green" onclick="showCompleteModal()">✓ Complete Consultation</button>
+  </div>
+</div>
+
+<!-- COMPLETE MODAL -->
+<div class="modal-overlay" id="completeModal">
+  <div class="modal">
+    <div class="modal-icon">🏁</div>
+    <h2>Complete Consultation?</h2>
+    <div class="enc-badge">ENC-20260522-0031</div>
+    <p id="modalWarning" style="color:var(--amber);font-size:12px;font-weight:600;margin-bottom:6px"></p>
+    <p>This will close the encounter and move to the next patient.<br><strong>Next: Token 15 · Lakshmi Devi</strong></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="confirmComplete()">✓ Complete & Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+<script>
+const MEDICINES=[{name:'Amlodipine 5mg Tab',cat:'CCB'},{name:'Amlodipine 10mg Tab',cat:'CCB'},{name:'Metformin 500mg Tab',cat:'Biguanide'},{name:'Metformin 1000mg Tab',cat:'Biguanide'},{name:'Atorvastatin 10mg Tab',cat:'Statin'},{name:'Atorvastatin 40mg Tab',cat:'Statin'},{name:'Telmisartan 40mg Tab',cat:'ARB'},{name:'Sitagliptin 100mg Tab',cat:'DPP-4'},{name:'Paracetamol 500mg Tab',cat:'Analgesic'},{name:'Amoxicillin 500mg Cap',cat:'Antibiotic'},{name:'Aspirin 75mg Tab',cat:'Antiplatelet'},{name:'Pantoprazole 40mg Tab',cat:'PPI'},{name:'Cetirizine 10mg Tab',cat:'Antihistamine'},{name:'Ramipril 5mg Tab',cat:'ACE-I'},{name:'Losartan 50mg Tab',cat:'ARB'},{name:'Furosemide 40mg Tab',cat:'Diuretic'},{name:'Warfarin 2mg Tab',cat:'Anticoag'},{name:'Penicillin V 500mg Tab',cat:'Antibiotic'}];
+const ICD_CODES=[{code:'I10',desc:'Essential Hypertension'},{code:'E11',desc:'Type 2 Diabetes Mellitus'},{code:'E78.5',desc:'Hyperlipidaemia'},{code:'N18.2',desc:'CKD Stage 2'},{code:'I50',desc:'Heart Failure'},{code:'J06',desc:'Upper Respiratory Infection'},{code:'K21',desc:'GERD'},{code:'R51',desc:'Headache'},{code:'I63',desc:'Cerebral Infarction'}];
+const ALLERGIES=['penicillin','aspirin','sulfonamide'];
+const INTERACTIONS={'warfarin':['aspirin'],'ramipril':['telmisartan','losartan'],'telmisartan':['ramipril','losartan']};
+const PREGNANCY_WARN=['atorvastatin','ramipril','telmisartan','losartan','warfarin'];
+const RENAL_WARN=['metformin','spironolactone','furosemide','sitagliptin'];
+let rxFinalised=false,draftDirty=false,sessionSeconds=1680,voiceActive=false,acIdx=-1,toastTimer;
+
+function switchTab(idx,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+idx).classList.add('active');
+  if(el)el.classList.add('active');
+}
+
+// AUTO-SAVE
+function draftChanged(){draftDirty=true;}
+function autoSave(){
+  if(!draftDirty)return;
+  const dot=document.getElementById('autosaveDot');
+  const lbl=document.getElementById('autosaveLabel');
+  dot.classList.add('saving');lbl.textContent='Saving…';
+  setTimeout(()=>{
+    const ts=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const draft={complaint:document.getElementById('complaintText')?.value,diagnosis:document.getElementById('diagnosisText')?.value,advice:document.getElementById('adviceText')?.value,ts};
+    try{localStorage.setItem('mc_hmis_ENC-0031',JSON.stringify(draft));}catch(e){}
+    dot.classList.remove('saving');
+    lbl.textContent='Auto-saved · '+ts;
+    document.getElementById('autosaveLabelBar').textContent='✓ Saved '+ts;
+    document.getElementById('backupTime').textContent=ts+' · Auto';
+    addAuditEntry('Draft auto-saved','Rx in progress');
+    draftDirty=false;
+  },600);
+}
+
+function recoverDraft(){
+  try{
+    const raw=localStorage.getItem('mc_hmis_ENC-0031');
+    if(!raw){showToast('warning','No saved draft found');return;}
+    const d=JSON.parse(raw);
+    if(d.complaint)document.getElementById('complaintText').value=d.complaint;
+    if(d.diagnosis)document.getElementById('diagnosisText').value=d.diagnosis;
+    if(d.advice)document.getElementById('adviceText').value=d.advice;
+    document.getElementById('recoverBtn').style.display='none';
+    document.getElementById('autosaveLabel').textContent='Draft recovered from '+d.ts;
+    showToast('success','⚡ Draft recovered from '+d.ts);
+    addAuditEntry('Draft recovered','From '+d.ts);
+  }catch(e){showToast('error','Recovery failed');}
+}
+
+window.addEventListener('load',()=>{
+  try{const s=localStorage.getItem('mc_hmis_ENC-0031');if(s){document.getElementById('recoverBtn').style.display='inline-block';document.getElementById('autosaveLabel').textContent='Unsaved draft found — click Recover';}}catch(e){}
+  setInterval(autoSave,10000);
+  startSessionTimer();
+  document.querySelectorAll('#rxRows .med-input').forEach(i=>checkSafety(i));
+});
+
+// SESSION
+function startSessionTimer(){
+  const si=setInterval(()=>{
+    sessionSeconds--;
+    const m=String(Math.floor(sessionSeconds/60)).padStart(2,'0');
+    const s=String(sessionSeconds%60).padStart(2,'0');
+    document.getElementById('sessionTimer').textContent='⏱ '+m+':'+s;
+    document.getElementById('sessionDisplay').textContent=m+':'+s+' remaining';
+    if(sessionSeconds===120)showToast('warning','⏱ Session expires in 2 minutes');
+    if(sessionSeconds<=0){clearInterval(si);showToast('error','🔒 Session expired');}
+  },1000);
+}
+
+// SAFETY
+function checkSafety(input){
+  draftChanged();
+  const allMeds=[...document.querySelectorAll('#rxRows .med-input')].map(i=>i.value.toLowerCase());
+  const val=input.value.toLowerCase().trim();
+  const row=input.closest('.rx-med-row');
+  let nxt=row.nextSibling;
+  while(nxt&&nxt.classList&&nxt.classList.contains('rx-warning-row')){const tmp=nxt.nextSibling;nxt.remove();nxt=tmp;}
+  row.classList.remove('warn-allergy','warn-interaction','warn-duplicate','warn-renal');
+  if(!val)return;
+  const allergyHit=ALLERGIES.find(a=>val.includes(a));
+  if(allergyHit){row.classList.add('warn-allergy');addWarningRow(row,'allergy','🚨 ALLERGY: Patient is allergic to '+allergyHit.toUpperCase()+'. Remove or confirm override.');showBanner('bannerAllergy','bannerAllergyText','Allergy: '+allergyHit.toUpperCase());return;}
+  const base=val.split(' ')[0];
+  const dupes=allMeds.filter(m=>m.includes(base)&&base.length>3).length;
+  if(dupes>1){row.classList.add('warn-duplicate');addWarningRow(row,'duplicate','🔁 DUPLICATE: '+base+' appears more than once.');showBanner('bannerDuplicate','bannerDuplicateText','Duplicate: '+input.value);}
+  for(const[drug,conflicts]of Object.entries(INTERACTIONS)){
+    if(val.includes(drug)){const conflict=conflicts.find(c=>allMeds.some(m=>m.includes(c)));if(conflict){row.classList.add('warn-interaction');addWarningRow(row,'interaction','⚡ INTERACTION: '+drug+' + '+conflict+' — monitor closely.');showBanner('bannerInteraction','bannerInteractionText','Interaction: '+drug+' + '+conflict);}}
+  }
+  const pregOn=document.getElementById('pregCheck')?.checked;
+  if(pregOn){const ph=PREGNANCY_WARN.find(p=>val.includes(p));if(ph){addWarningRow(row,'pregnancy','🤰 PREGNANCY/LACTATION: '+ph+' is contraindicated or requires specialist review.');showBanner('bannerPregnancy','bannerPregnancyText','Pregnancy caution: '+input.value);}}
+  const renalOn=document.getElementById('renalCheck')?.checked;
+  if(renalOn){const rh=RENAL_WARN.find(r=>val.includes(r));if(rh){row.classList.add('warn-renal');addWarningRow(row,'renal','🫘 RENAL DOSE: '+rh+' requires dose adjustment in CKD. Check eGFR.');}}
+}
+function addWarningRow(row,type,text){const w=document.createElement('div');w.className='rx-warning-row '+type;w.innerHTML='<span>'+text+'</span>';row.parentNode.insertBefore(w,row.nextSibling);}
+function showBanner(id,tid,msg){const b=document.getElementById(id);const t=document.getElementById(tid);if(b&&t){t.textContent=msg;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),5000);}}
+function recheckAllSafety(){document.querySelectorAll('#rxRows .rx-warning-row').forEach(r=>r.remove());document.querySelectorAll('#rxRows .med-input').forEach(i=>checkSafety(i));}
+
+// AUTOCOMPLETE
+function handleMedSearch(input){
+  const q=input.value.toLowerCase().trim();const list=document.getElementById('autocompleteList');acIdx=-1;
+  if(!q){list.classList.remove('show');return;}
+  const matches=MEDICINES.filter(m=>m.name.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){list.classList.remove('show');return;}
+  list.innerHTML=matches.map(m=>`<div class="autocomplete-item" data-name="${m.name}" onclick="selectMed('${m.name}')"><span>${m.name}</span><span class="autocomplete-cat">${m.cat}</span></div>`).join('');
+  list.classList.add('show');
+}
+function selectMed(name){document.getElementById('newMedInput').value=name;hideAutocomplete();document.getElementById('newMedDose').focus();}
+function hideAutocomplete(){document.getElementById('autocompleteList').classList.remove('show');}
+function autocompleteKeydown(e){
+  const items=document.querySelectorAll('#autocompleteList .autocomplete-item');
+  if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,items.length-1);items.forEach((it,i)=>it.classList.toggle('selected',i===acIdx));e.preventDefault();}
+  else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);items.forEach((it,i)=>it.classList.toggle('selected',i===acIdx));e.preventDefault();}
+  else if(e.key==='Enter'&&acIdx>=0){selectMed(items[acIdx].dataset.name);e.preventDefault();}
+}
+function addMedRow(){
+  const name=document.getElementById('newMedInput').value.trim();
+  const dose=document.getElementById('newMedDose').value.trim();
+  const freq=document.getElementById('newMedFreq').value;
+  const dur=document.getElementById('newMedDur').value.trim();
+  if(!name){showToast('warning','Enter a medicine name');return;}
+  const rows=document.getElementById('rxRows');
+  const row=document.createElement('div');row.className='rx-med-row';
+  const freqOpts=['Once Daily','Twice Daily','Thrice Daily','Once Daily (Night)','SOS'];
+  const sel=freqOpts.map(o=>`<option${o===freq?' selected':''}>${o}</option>`).join('');
+  row.innerHTML=`<input class="rxi med-input" value="${name}" oninput="checkSafety(this)"><input class="rxi" value="${dose}"><select class="rxi">${sel}</select><input class="rxi" value="${dur}"><div class="rx-remove" onclick="removeRxRow(this)">✕</div>`;
+  rows.appendChild(row);
+  document.getElementById('newMedInput').value='';document.getElementById('newMedDose').value='';document.getElementById('newMedFreq').value='';document.getElementById('newMedDur').value='';
+  checkSafety(row.querySelector('.med-input'));draftChanged();showToast('success','✓ Added: '+name);
+}
+function removeRxRow(btn){
+  const row=btn.closest('.rx-med-row');
+  let nxt=row.nextSibling;
+  while(nxt&&nxt.classList&&nxt.classList.contains('rx-warning-row')){const tmp=nxt.nextSibling;nxt.remove();nxt=tmp;}
+  row.remove();draftChanged();
+}
+
+// ICD-10
+function icdSearch(input){
+  const q=input.value.toLowerCase();const list=document.getElementById('icdList');
+  if(!q){list.classList.remove('show');return;}
+  const matches=ICD_CODES.filter(c=>c.desc.toLowerCase().includes(q)||c.code.toLowerCase().includes(q)).slice(0,7);
+  if(!matches.length){list.classList.remove('show');return;}
+  list.innerHTML=matches.map(c=>`<div class="icd-item" onclick="selectIcd('${c.code}','${c.desc}')"><span>${c.desc}</span><span class="icd-code">${c.code}</span></div>`).join('');
+  list.classList.add('show');
+}
+function selectIcd(code,desc){
+  const sel=document.getElementById('icdSelected');
+  if([...sel.querySelectorAll('.icd-tag')].some(t=>t.dataset.code===code)){hideIcd();return;}
+  const tag=document.createElement('div');tag.className='icd-tag';tag.dataset.code=code;
+  tag.innerHTML=`${code} – ${desc} <span class="icd-rm" onclick="removeIcd(this)">×</span>`;
+  sel.appendChild(tag);document.getElementById('icdInput').value='';hideIcd();draftChanged();showToast('success','ICD '+code+' added');
+}
+function removeIcd(btn){btn.closest('.icd-tag').remove();}
+function hideIcd(){document.getElementById('icdList').classList.remove('show');}
+
+// AI
+function addToRx(name,dose,freq,dur,btn){
+  switchTab(1,document.querySelectorAll('.tab')[1]);
+  const rows=document.getElementById('rxRows');
+  const row=document.createElement('div');row.className='rx-med-row';
+  const freqOpts=['Once Daily','Twice Daily','Thrice Daily','Once Daily (Night)','SOS'];
+  const sel=freqOpts.map(o=>`<option${o===freq?' selected':''}>${o}</option>`).join('');
+  row.innerHTML=`<input class="rxi med-input" value="${name}" oninput="checkSafety(this)"><input class="rxi" value="${dose}"><select class="rxi">${sel}</select><input class="rxi" value="${dur}"><div class="rx-remove" onclick="removeRxRow(this)">✕</div>`;
+  rows.appendChild(row);btn.textContent='✓ Added';btn.classList.add('added');btn.disabled=true;
+  checkSafety(row.querySelector('.med-input'));draftChanged();showToast('success','✓ Added to Rx: '+name);addAuditEntry('AI suggestion accepted',name);
+}
+function addTestFromAI(tests,btn){
+  const grid=document.getElementById('testGrid');
+  tests.forEach(t=>{let found=[...grid.querySelectorAll('.test-item')].find(el=>el.dataset.test===t);if(!found){const el=document.createElement('div');el.className='test-item sel';el.dataset.test=t;el.setAttribute('onclick','toggleTest(this)');el.innerHTML=`<div class="tchk">✓</div><div><div class="tname">${t}</div><div class="tcat">AI Suggested</div></div>`;grid.appendChild(el);}else{found.classList.add('sel');found.querySelector('.tchk').textContent='✓';}});
+  btn.textContent='✓ Added';btn.classList.add('added');btn.disabled=true;switchTab(3,document.querySelectorAll('.tab')[3]);showToast('success','✓ Tests added: '+tests.join(', '));
+}
+function toggleEvidence(btn){const ev=btn.parentElement.querySelector('.evidence');ev.classList.toggle('show');btn.textContent=ev.classList.contains('show')?'Hide':'Why?';}
+function aiFeedback(type){document.getElementById('fbLike').classList.toggle('liked',type==='like');document.getElementById('fbDislike').classList.toggle('disliked',type==='dislike');showToast('success',type==='like'?'👍 Thank you!':'👎 Feedback noted');}
+
+// TESTS
+function toggleTest(el){el.classList.toggle('sel');el.querySelector('.tchk').textContent=el.classList.contains('sel')?'✓':'';}
+function sendToLab(){
+  const sel=[...document.querySelectorAll('.test-item.sel')].map(el=>el.dataset.test||el.querySelector('.tname').textContent);
+  if(!sel.length){showToast('warning','Select at least one test');return;}
+  updateTimeline(5,'Lab Orders Sent',new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · Dr. D. Prasad',sel.join(', '));
+  showToast('success','📤 Sent to lab: '+sel.join(', '));addAuditEntry('Lab orders sent',sel.join(', '));
+}
+
+// VITALS
+function promptVital(key,current){
+  const val=prompt('Update '+key.toUpperCase()+' (current: '+current+')',current);
+  if(val!==null&&val.trim()){document.getElementById('v-'+key).textContent=val.trim();addAuditEntry('Vital updated: '+key.toUpperCase(),val.trim());updateTimeline(1,'Vitals Updated',new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · Updated',key.toUpperCase()+': '+val.trim());showToast('success','✓ '+key.toUpperCase()+' updated to '+val.trim());draftChanged();}
+}
+
+// PHARMACY
+function sendToPharmacy(){
+  const meds=[...document.querySelectorAll('#rxRows .rx-med-row')].map(r=>r.querySelector('.med-input')?.value).filter(Boolean);
+  updateTimeline(6,'Sent to Pharmacy',new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · Dispensing Queue','Awaiting pharmacist confirmation');
+  showToast('success','💊 Pharmacy notified · '+meds.length+' medicines');addAuditEntry('Pharmacy order sent',meds.join(', '));
+}
+
+// FINALISE
+function finaliseRx(){
+  const rows=document.querySelectorAll('#rxRows .rx-med-row');
+  if(!rows.length){showToast('warning','Add at least one medicine');return;}
+  if(document.querySelectorAll('#rxRows .warn-allergy').length){showToast('error','🚨 Resolve allergy warnings first');return;}
+  rxFinalised=true;
+  rows.forEach(r=>r.querySelectorAll('.rxi').forEach(i=>i.disabled=true));
+  document.querySelectorAll('#rxRows .rx-remove').forEach(i=>i.style.display='none');
+  const fb=document.getElementById('btnFinalise');fb.textContent='✓ Finalised';fb.disabled=true;fb.style.background='#2E7D32';
+  document.getElementById('btnPrint').disabled=false;document.getElementById('btnPharmacy').disabled=false;
+  document.getElementById('rxStatusLabel').textContent='✓ Prescription finalised';document.getElementById('rxStatusLabel').style.color='#2E7D32';document.getElementById('rxStatusLabel').style.fontWeight='700';
+  const hash='MC-'+Math.random().toString(36).substr(2,8).toUpperCase()+'-'+Date.now().toString(36).toUpperCase();
+  document.getElementById('rxHashDisplay').textContent=hash;
+  updateTimeline(4,'Prescription Finalised',new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · Dr. D. Prasad','Hash: '+hash);
+  addAuditEntry('Prescription finalised','Hash: '+hash);
+  showToast('success','✓ Finalised — Print & Pharmacy enabled');
+  try{localStorage.removeItem('mc_hmis_ENC-0031');}catch(e){}
+}
+function saveDraft(){draftDirty=true;autoSave();}
+function printRx(){showToast('success','🖨 Opening print preview…');addAuditEntry('Prescription printed','Dr. D. Prasad');}
+
+// TIMELINE
+function updateTimeline(idx,title,time,meta){
+  const items=document.querySelectorAll('.tl-item');if(!items[idx])return;
+  items[idx].querySelector('.tl-icon').className='tl-icon done';items[idx].querySelector('.tl-icon').textContent='✅';
+  const line=items[idx].querySelector('.tl-line');if(line)line.classList.add('done');
+  const t=items[idx].querySelector('.tl-title');t.className='tl-title';t.textContent=title;
+  items[idx].querySelector('.tl-time').textContent=time;items[idx].querySelector('.tl-time').style.color='';
+  const content=items[idx].querySelector('.tl-content');
+  let me=content.querySelector('.tl-meta');if(!me){me=document.createElement('div');me.className='tl-meta';content.appendChild(me);}me.textContent=meta;
+}
+
+// MODE
+function setMode(mode){
+  document.body.className='mode-'+mode;
+  const labels={emergency:{label:'🚨 Emergency — Critical / Urgent',badge:'🚨 Emergency',color:'#B71C1C'},moderate:{label:'⚠️ Moderate — Needs Attention',badge:'⚠️ Moderate',color:'#E65100'},routine:{label:'🔵 Routine — Regular OPD',badge:'🔵 Routine',color:'var(--blue)'}};
+  document.getElementById('currentModeDisplay').textContent=labels[mode].label;document.getElementById('currentModeDisplay').style.color=labels[mode].color;
+  document.querySelector('.mode-badge').textContent=labels[mode].badge;
+  ['modeEmergency','modeModerate','modeRoutine'].forEach(id=>document.getElementById(id)?.classList.remove('active-mode'));
+  document.getElementById('mode'+mode.charAt(0).toUpperCase()+mode.slice(1))?.classList.add('active-mode');
+  showToast('info','Mode: '+labels[mode].label);addAuditEntry('Mode changed',labels[mode].label);
+}
+
+// VOICE
+function toggleVoice(){
+  voiceActive=!voiceActive;
+  document.getElementById('voiceBar').classList.toggle('show',voiceActive);
+  document.getElementById('voiceBtn').classList.toggle('recording',voiceActive);
+  document.getElementById('voiceBtn').textContent=voiceActive?'🛑 Stop':'🎤 Dictate';
+  if(voiceActive)showToast('info','🎤 Dictating… speak in EN/TE/HI');
+}
+function stopVoice(){
+  voiceActive=false;document.getElementById('voiceBar').classList.remove('show');document.getElementById('voiceBtn').classList.remove('recording');document.getElementById('voiceBtn').textContent='🎤 Dictate';
+  const el=document.getElementById('complaintText');el.value+=' [Voice: Patient reports dizziness worsening on standing.]';draftChanged();showToast('success','✓ Voice note added');
+}
+
+// COMPLETE
+function showCompleteModal(){document.getElementById('modalWarning').textContent=!rxFinalised?'⚠ Prescription has not been finalised yet.':'';document.getElementById('completeModal').classList.add('show');}
+function closeModal(){document.getElementById('completeModal').classList.remove('show');}
+function confirmComplete(){
+  closeModal();updateTimeline(7,'Consultation Complete',new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' · Dr. D. Prasad','ENC closed');
+  addAuditEntry('Consultation completed','ENC-20260522-0031');
+  try{localStorage.removeItem('mc_hmis_ENC-0031');}catch(e){}
+  showToast('success','✓ Complete · Loading Token 15…');setTimeout(()=>showToast('success','→ Next: Token 15 · Lakshmi Devi'),2200);
+}
+
+// AUDIT
+function addAuditEntry(action,detail){
+  const log=document.getElementById('auditLog');
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const item=document.createElement('div');item.className='audit-item';
+  item.innerHTML=`<div class="audit-dot" style="background:#43A047"></div><div class="audit-time">${time}</div><div><div class="audit-action">${action}</div><div class="audit-user">${detail}</div></div>`;
+  log.appendChild(item);
+}
+
+// TOAST
+function showToast(type,msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+document.getElementById('completeModal').addEventListener('click',e=>{if(e.target===document.getElementById('completeModal'))closeModal();});
+</script>
+</body>
+</html>

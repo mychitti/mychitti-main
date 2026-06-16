@@ -61,11 +61,8 @@
 
                 $('#selectedBedTierId').val(tierId);
 
-                // Update header price and duration-card data attributes for hospital module
-                $('.pc-module-item').each(function () {
-                    var name = $(this).find('.pc-module-name').text().toLowerCase();
-                    if (name.indexOf('hospital') === -1) return;
-
+                // Update header price and duration-card data attributes for the module this tier belongs to
+                $(this).closest('.pc-module-item').each(function () {
                     $(this).find('.pc-price-amount').text(
                         custom ? 'Custom Pricing'
                                : '₹' + Math.round(monthly).toLocaleString('en-IN') + '/month'

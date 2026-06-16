@@ -1,15 +1,16 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Add Ward')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
             Add Ward
         </h1>
     </div>
-
+ 
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
             <div class="card">

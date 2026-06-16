@@ -36,9 +36,12 @@
         }
     </style>
 </head>
-
+ 
 <body>
-    <h2>Scan Barcode</h2>
+    <h2 class="d-flex align-items-center justify-content-center mt-3">
+        <a href="javascript:history.back()" style="text-decoration: none; color: inherit; margin-right: 15px;" title="Back">&#10094;</a>
+        Scan Barcode
+    </h2>
     <div id="reader"></div>
     <!-- Button trigger modal -->
     <button type="button" class="modal_btn" style="visibility: hidden;" data-bs-toggle="modal"

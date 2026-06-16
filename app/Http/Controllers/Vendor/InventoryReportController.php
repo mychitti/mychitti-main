@@ -782,11 +782,11 @@ class InventoryReportController extends Controller
 
         $query = ItemEntry::with('item')
             ->where('item_entries.store_id', $store_id)
-            ->whereNotNull('batch_number')
+            ->whereNotNull('item_entries.batch_number')
             ->join('inventory_items', 'inventory_items.id', '=', 'item_entries.item_id')
             ->select('item_entries.*', 'inventory_items.item_name', 'inventory_items.sku_id');
 
-        if ($filter === 'expired') {
+        if ($filter === 'expired') { 
             $query->whereNotNull('expiry_date')->whereDate('expiry_date', '<', now());
         } elseif ($filter === 'expiring_soon') {
             $query->whereNotNull('expiry_date')

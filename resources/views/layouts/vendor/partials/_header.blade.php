@@ -1,3 +1,41 @@
+@if (strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') == 'hospital')
+    <style>
+        #header {
+            background-color: #0b2545 !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+        #header .page-header-title,
+        #header .quick_action, 
+        #header .quick_action2,
+        #header .card-title, 
+        #header .card-text,
+        #header .navbar-nav-wrap-content-left i,
+        #header .navbar-nav-wrap-content-right i, 
+        #header .navbar-nav-wrap-content-right .tio-notifications {
+            color: #ffffff !important;
+        }
+        #header .navbar-nav-wrap-content-left button i {
+            color: #ffffff !important;
+        }
+        #header .badge-soft-primary {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+        #header .badge-soft-primary:hover {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+        }
+        #header .btn--primary {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: #ffffff !important;
+        }
+        #header .btn--primary:hover {
+            background-color: rgba(255, 255, 255, 0.25) !important;
+        }
+    </style>
+@endif
+
 <style>
 .quick_action{
     font-size: 14px; color: black;padding: 9px;

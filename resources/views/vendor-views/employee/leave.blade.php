@@ -160,8 +160,10 @@
                             <option value="" selected disabled>-- select --</option>
                             <option value="CL">Casual Leave</option>
                             <option value="SL">Sick Leave</option>
-                            <option value="HDF">Half Day (first half)</option>
-                            <option value="HDS">Half Day (second half)</option>
+                            <option value="HCL">Half Day Casual Leave</option>
+                            <option value="HSL">Half Day Sick Leave</option>
+                            <option value="HDF">Half Day LOP (first half)</option>
+                            <option value="HDS">Half Day LOP (second half)</option>
                             <option value="HL">Holiday</option>
                         </select>
                         <label>Reason</label>
@@ -209,10 +211,14 @@
                                              {{ 'Casual Leave' }}
                                             @elseif($lead['leave_type'] == 'SL')
                                                 {{ 'Sick Leave' }}
+                                            @elseif($lead['leave_type'] == 'HCL')
+                                                {{ 'Half Day Casual Leave' }}
+                                            @elseif($lead['leave_type'] == 'HSL')
+                                                {{ 'Half Day Sick Leave' }}
                                             @elseif($lead['leave_type'] == 'HDF')
-                                                {{ 'Half Day (first half)' }}
+                                                {{ 'Half Day LOP (first half)' }}
                                             @elseif($lead['leave_type'] == 'HDS')
-                                                {{ 'Half Day (second half)' }}
+                                                {{ 'Half Day LOP (second half)' }}
                                             @elseif($lead['leave_type'] == 'HL')
                                                 {{ 'Holiday' }}
                                             @endif
@@ -295,14 +301,18 @@
                             emp_id: emp_id,
                             leaveType: leaveType,
                             reason: reaon
-                        },
-                        success: function(data) {
-                            console.log(data)
-                            //   var datat = JSON.parse(data)
-                            //   console.log(data['status']);
-                            //   if(data.status){
-                            window.location.reload();
-                            //   }
+                        }, 
+                        success: function(res) { 
+                            var data = typeof res === 'object' ? res : JSON.parse(res);
+                            if (data.status) {
+                                window.location.reload();
+                            } else {
+                                if (typeof toastr !== 'undefined') {
+                                    toastr.error(data.msg || data.message || 'Something went wrong');
+                                } else {
+                                    alert(data.msg || data.message || 'Something went wrong');
+                                }
+                            } 
                         },
                     });
                 }

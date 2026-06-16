@@ -1,15 +1,16 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Add Doctor')
 
 @section('content')
 <div class="content container-fluid"> 
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header">
         <h1 class="page-header-title">
             <span class="page-header-icon"><i class="tio-user-add" style="font-size:22px;"></i></span>
             Add Doctor Profile
         </h1>
     </div>
-
+ 
     <form action="{{ route('vendor.doctor.store') }}" method="POST">
         @csrf
 

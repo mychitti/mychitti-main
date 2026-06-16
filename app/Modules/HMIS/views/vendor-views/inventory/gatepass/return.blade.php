@@ -60,13 +60,15 @@
          .items-section {
              margin: 25px 0;
          }
-     </style>
+     </style> 
  @endpush
 
  @section('content')
 
-     <div class="content container-fluid p-3">
-         <div class="page-header">
+      <div class="content container-fluid p-3">
+          @include('hmis::vendor-views.partials._pharmacy_header')
+          <div class="pharmacy-page-content">
+              <div class="page-header">
              <div class="d-flex flex-wrap px-3 w-100">
                  <div class="d-flex w-100 flex-wrap justify-content-between  align-orders-center">
                      <h1 class="page-header-title mb-2 d-flex gap-2 flex-wrap">
@@ -81,7 +83,7 @@
                          </div>
                      </h1>
 
-                 </div>
+                 </div> 
              </div>
          </div>
 

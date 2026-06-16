@@ -4,57 +4,47 @@
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
 @endpush
 
-@section('content')
+@section('content') 
 
-    <div class="content container-fluid p-1">
-        <div class="page-header">
-            <div class="d-flex flex-wrap px-3 w-100">
-                <div class="d-flex w-100 flex-wrap justify-content-between  align-items-center">
-                    <h1 class="page-header-title mb-2">
-                        <span class="page-header-icon">
-                            <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
-                        </span>
-                        <span>
-                            Sale Orders
-                            <span class="badge badge-soft-dark ml-2" id="itemCount">{{ count($sale_order_items) }}</span>
-                        </span>
-                    </h1>
-                    <div class="d-flex gap-2 flex-wrap">
+    <div class="content container-fluid">
+        @include('hmis::vendor-views.partials._pharmacy_header')
+        <div class="pharmacy-page-content">
+ 
+        @if (hasPermission('inventory_sale_order', 'list'))
+            <div class="card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-3 p-3">
+                    <h3 class="mb-0">Sale Orders List</h3>
+                    <div class="d-flex gap-2 flex-wrap align-items-center ml-auto">
                         <form action="" class="d-flex date-range-form">
                             <input type="hidden" name="tab" value="entry">
-                            <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-warning"
+                            <button style="width:fit-content; white-space:nowrap" class="btn btn-outline-secondary btn-sm"
                                 type="button" data-toggle="modal"
                                 data-target="#dateRangeModal">{{ translate($preset) }}</button>
                             {{-- date range modal --}}
                             @include('vendor-views/form_modals/date_range')
                         </form>
-                        <button type="button" class="btn btn--primary mb-0" data-toggle="modal"
+                        
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal"
                             data-target="#calendarModal">
                             Calendar
                         </button>
 
-                        <form action="" class="h-100">
+                        <form action="" class="h-100 mb-0">
                             <!-- Search -->
                             <div class="input-group input--group" style="flex-wrap: nowrap !important; ">
-                                <input type="search" style="min-width:220px;height: 100%;     padding: 11px 10px;"
-                                    name="search" value="{{ request()?->search ?? null }}" class="form-control "
+                                <input type="search" style="min-width:200px; height: 35px; padding: 6px 10px;"
+                                    name="search" value="{{ request()?->search ?? null }}" class="form-control form-control-sm"
                                     placeholder="{{ translate('messages.search by item or invoice id') }}">
-                                <button type="submit" class="btn btn--secondary "><i class="tio-search"></i></button>
+                                <button type="submit" class="btn btn-secondary btn-sm"><i class="tio-search"></i></button>
                             </div>
                             <!-- End Search -->
                         </form>
                         @if (hasPermission('inventory_sale_order', 'export'))
                             <a href="{{ route('vendor.inventory.sale.order-export') }}"
-                                class="btn btn-outline-primary btn_sm">Export Sale Orders</a>
+                                class="btn btn-primary btn-sm">Export Sale Orders</a>
                         @endif
                     </div>
                 </div>
-            </div>
-        </div>
-        <!-- Page Heading -->
-
-        @if (hasPermission('inventory_sale_order', 'list'))
-            <div class="card">
 
                 <div class="table-responsive datatable-custom" id="table-div">
                     <table id="datatable"
@@ -189,6 +179,7 @@
 
             </div>
         @endif
+        </div>
     </div>
     @include('vendor-views.form_modals.pos_calendar')
 

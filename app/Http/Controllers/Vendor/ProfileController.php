@@ -177,8 +177,11 @@ class ProfileController extends Controller
 
             $months = (int) $item['months'];
             if ($module->Key == 'hospital_manage') {
-                 $bedTierPrice = HospitalBedTier::where('id', $request->bed_tier_id)->first()?->price_monthly ?? $module->price_per_month; 
+                 $bedTierPrice = HospitalBedTier::where('id', $request->bed_tier_id)->first()?->price_monthly ?? $module->price_per_month;
                 $basePrice = $bedTierPrice * $months;
+            } elseif ($module->Key == 'school_manage') {
+                $studentTierPrice = \App\Models\SchoolStudentTier::where('id', $request->student_tier_id)->first()?->price_monthly ?? $module->price_per_month;
+                $basePrice = $studentTierPrice * $months;
             } else {
                 $basePrice = $module->price_per_month * $months;
             }
@@ -194,7 +197,7 @@ class ProfileController extends Controller
 
             $grandTotal += $finalPrice;
 
-            $finalData[] = [
+            $rowData = [
                 'vendor_id' => Helpers::get_store_id(),
                 'module_id' => $module->id,
                 'duration_count' => $months,
@@ -204,6 +207,10 @@ class ProfileController extends Controller
                 'bed_tier_id' => $request->bed_tier_id,
                 'created_at' => now()
             ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('temp_module_purchases', 'student_tier_id')) {
+                $rowData['student_tier_id'] = $request->student_tier_id;
+            }
+            $finalData[] = $rowData;
         }
 
         // ✅ Save all subscriptions safely
@@ -384,6 +391,9 @@ class ProfileController extends Controller
             $subscription->plan_expiry = $expDate;
             $subscription->purchased_at = $tempPurchase->purchased_at;
             $subscription->bed_tier_id = $tempPurchase->bed_tier_id;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('vendor_subscriptions', 'student_tier_id')) {
+                $subscription->student_tier_id = $tempPurchase->student_tier_id ?? null;
+            }
             $subscription->created_at = date('Y-m-d H:i:s');
 
             $subscription->save();

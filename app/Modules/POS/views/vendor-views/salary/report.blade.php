@@ -8,13 +8,7 @@
 
 @section('content')
     <div class="content container-fluid">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Report <span class="badge badge-soft-dark ml-2"
-                    id="itemCount">{{ count($salary) }} </span></h1>
-
-        </div>
-        <!-- End Page Header -->
+        @include('vendor-views.partials._hr_header', ['heroSubtitle' => 'Salary report for ' . _monthNYear($month . '-01') . '.'])
 
         <!-- Card -->
         <div class="card">

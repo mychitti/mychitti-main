@@ -5,9 +5,11 @@
  @endpush
 
  @section('content')
-
+ 
      <div class="content container-fluid p-3">
-         <div class="page-header">
+         @include('hmis::vendor-views.partials._pharmacy_header')
+         <div class="pharmacy-page-content">
+             <div class="page-header">
              <div class="d-flex flex-wrap px-3 w-100">
                  <div class="d-flex w-100 flex-wrap justify-content-between  align-orders-center">
                      <h1 class="page-header-title mb-2 d-flex gap-2">
@@ -15,6 +17,9 @@
                              <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
                          </span>
                          <div class="d-flex align-items-start">
+                             <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                                 <i class="tio-chevron-left"></i>
+                             </a>
                              <div class="d-flex flex-column">
                                  <span>Stock Report</span>
                                  <span style="font-size: 15px; font-weight: normal;">({{ translate($preset) }})</span>
@@ -229,6 +234,7 @@
              @endif
          </div>
      </div>
+ </div>
 
  @endsection
  @push('script_2')
@@ -243,7 +249,7 @@
                  $(".check_select").prop('checked', false)
                  $('.delete_selected_btn').hide()
              }
-         })
+         }) 
          $(".check_select").on('change', function() {
              if ($('.check_select:checked').length > 0) {
                  $('.delete_selected_btn').show();

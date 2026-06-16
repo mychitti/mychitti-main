@@ -72,13 +72,15 @@
                     @include(
                         strtolower($store_data->business_type ?? '') === 'hospital'
                             ? 'layouts.vendor.partials._sidebar_menu_hospital'
-                            : (strtolower($store_data->business_type ?? '') === 'laundry'
-                                ? 'layouts.vendor.partials._sidebar_menu_laundry'
-                                : (strtolower($store_data->business_type ?? '') === 'pos'
-                                    ? 'layouts.vendor.partials._sidebar_menu_pos'
-                                    : (strtolower($store_data->business_type ?? '') === 'ecommerce'
-                                        ? 'layouts.vendor.partials._sidebar_menu_ecommerce'
-                                        : 'layouts.vendor.partials._sidebar_menu_default'))),
+                            : (strtolower($store_data->business_type ?? '') === 'school'
+                                ? 'layouts.vendor.partials._sidebar_menu_school'
+                                : (strtolower($store_data->business_type ?? '') === 'laundry'
+                                    ? 'layouts.vendor.partials._sidebar_menu_laundry'
+                                    : (strtolower($store_data->business_type ?? '') === 'pos'
+                                        ? 'layouts.vendor.partials._sidebar_menu_pos'
+                                        : (strtolower($store_data->business_type ?? '') === 'ecommerce'
+                                            ? 'layouts.vendor.partials._sidebar_menu_ecommerce'
+                                            : 'layouts.vendor.partials._sidebar_menu_default')))),
                         ['store_data' => $store_data]
                     )
                 </ul>

@@ -1,15 +1,11 @@
 @extends('layouts.vendor.app')
 @section('title', 'Batch & Expiry Tracking')
 
-@section('content')
-<div class="content container-fluid p-3">
-
-    <div class="page-header">
-        <h1 class="page-header-title">
-            <i class="tio-date-range"></i> Batch &amp; Expiry Tracking
-        </h1>
-    </div>
-
+@section('content') 
+<div class="content container-fluid">
+    @include('hmis::vendor-views.partials._pharmacy_header')
+    <div class="pharmacy-page-content">
+ 
     {{-- Summary Cards --}}
     <div class="row g-2 mb-3">
         <div class="col-md-4">
@@ -33,9 +29,10 @@
     </div>
 
     <div class="card">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
-            <form action="" class="d-flex gap-2 flex-wrap align-items-center">
-                <select name="filter" onchange="this.form.submit()" class="form-control" style="min-width:180px;">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+            <h3 class="mb-0">Batch & Expiry Records</h3>
+            <form action="" class="d-flex gap-2 flex-wrap align-items-center ml-auto">
+                <select name="filter" onchange="this.form.submit()" class="form-control form-control-sm" style="min-width:180px; height: 35px;">
                     <option value="all"          {{ $filter === 'all'          ? 'selected' : '' }}>All Batches</option>
                     <option value="expired"      {{ $filter === 'expired'      ? 'selected' : '' }}>Expired</option>
                     <option value="expiring_soon"{{ $filter === 'expiring_soon'? 'selected' : '' }}>Expiring Soon (90 days)</option>
@@ -115,5 +112,6 @@
         </div>
     </div>
 
+    </div>
 </div>
 @endsection

@@ -348,8 +348,15 @@
 
                     @if (isset($sub_modules) && count($sub_modules) > 0)
                         @foreach ($sub_modules as $module)
-                            @php $isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false; @endphp
-                            <div class="pc-module-item" data-module-id="{{ $module->id }}" data-is-hospital="{{ $isHospital ? 1 : 0 }}">
+                            @php
+                                $isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false;
+                                $isSchool = isset($studentTiers) && $studentTiers->count()
+                                    && ((($module->Key ?? '') === 'school_manage') || stripos($module->name, 'school') !== false);
+                                $isTiered = $isHospital || $isSchool;
+                                $tierList = $isSchool ? $studentTiers : $bedTiers;
+                                $tierLabel = $isSchool ? 'Select School Plan:' : 'Select Hospital Tier:';
+                            @endphp
+                            <div class="pc-module-item" data-module-id="{{ $module->id }}" data-is-hospital="{{ $isTiered ? 1 : 0 }}">
                                 <div class="pc-module-top">
                                     <input type="checkbox" class="pc-checkbox pc-module-check"
                                         data-module-id="{{ $module->id }}">
@@ -357,7 +364,7 @@
                                     <div class="pc-price-amount">₹{{ number_format($module->price_per_month) }}/month</div>
                                 </div>
                                 <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
-                                    <div class="pc-duration-grid height_0" @if($isHospital) style="display:none" @endif>
+                                    <div class="pc-duration-grid height_0" @if($isTiered) style="display:none" @endif>
                                         @foreach ($plan_durations as $duration)
                                             @php
                                                 $dur_discount = _moduleDiscount($module->id, $duration->id);
@@ -382,21 +389,22 @@
                                         @endforeach
                                     </div>
 
-                                    @if($isHospital)
+                                    @if($isTiered)
                                     <div class="pc-bed-tier-wrap">
-                                        <label class="pc-label"><b>Select Hospital Tier:</b></label>
+                                        <label class="pc-label"><b>{{ $tierLabel }}</b></label>
                                         <div class="pc-bed-tier-grid">
-                                            @foreach($bedTiers as $tier)
+                                            @foreach($tierList as $tier)
+                                            @php $tierRange = $isSchool ? $tier->student_range : $tier->bed_range; @endphp
                                             <div class="pc-bed-tier-card"
                                                 data-tier-id="{{ $tier->id }}"
                                                 data-tier-name="{{ $tier->tier_name }}"
-                                                data-bed-range="{{ $tier->bed_range }}"
+                                                data-bed-range="{{ $tierRange }}"
                                                 data-monthly="{{ $tier->price_monthly }}"
                                                 data-yearly="{{ $tier->price_yearly }}"
                                                 data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
                                                 onclick="selectBedTier(this, {{ $module->id }})">
                                                 <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
-                                                <div class="pc-bed-tier-range">{{ $tier->bed_range }}</div>
+                                                <div class="pc-bed-tier-range">{{ $tierRange }}</div>
                                                 @if($tier->is_custom)
                                                     <div class="pc-bed-tier-contact">Contact Us</div>
                                                 @else
@@ -491,7 +499,7 @@
                 };
                 if (tierBar) {
                     tierBar.style.display = 'block';
-                    tierBar.innerHTML = '🏥 ' + el.dataset.tierName + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
+                    tierBar.innerHTML = ''+el.dataset.tierName + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
                 }
             } else {
                 const monthly = parseFloat(el.dataset.monthly) || 0;
@@ -504,7 +512,7 @@
                 if (tierBar) {
                     const price = _globalMonths === 12 ? yearly : monthly * _globalMonths;
                     tierBar.style.display = 'block';
-                    tierBar.textContent = '🏥 ' + el.dataset.tierName
+                    tierBar.textContent = ''+el.dataset.tierName
                         + ' (' + el.dataset.bedRange + ') — ₹'
                         + price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
                 }
@@ -536,10 +544,10 @@
                     const tierBar = document.getElementById('tierBar_' + moduleId);
                     if (!tierBar) return;
                     if (tier.isCustom) {
-                        tierBar.innerHTML = '🏥 ' + tier.name + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
+                        tierBar.innerHTML = ''+tier.name + ' — <span style="color:#ffe082;">Contact us for pricing</span>';
                     } else {
                         const price = globalMonths === 12 ? tier.yearly : tier.monthly * globalMonths;
-                        tierBar.textContent = '🏥 ' + tier.name
+                        tierBar.textContent = ''+tier.name
                             + ' (' + tier.bedRange + ') — ₹'
                             + price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
                     }
@@ -603,13 +611,13 @@
                         if (tier.isCustom) {
                             hasCustomTier = true;
                             breakdownHTML += `<div class="pc-breakdown-item pc-tier-item">
-                                🏥 ${data.name}: ${tier.name} (${tier.bedRange}) — <span style="color:#e65100;">Contact us for pricing</span>
+                                ${data.name}: ${tier.name} (${tier.bedRange}) — <span style="color:#e65100;">Contact us for pricing</span>
                             </div>`;
                         } else {
                             const bedPrice = globalMonths === 12 ? tier.yearly : tier.monthly * globalMonths;
                             totalBase += bedPrice;
                             breakdownHTML += `<div class="pc-breakdown-item pc-tier-item">
-                                🏥 ${data.name}: ${tier.name} (${tier.bedRange}) —
+                                ${data.name}: ${tier.name} (${tier.bedRange}) —
                                 ₹${bedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>`;
                         }

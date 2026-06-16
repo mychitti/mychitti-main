@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Bed Dashboard')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-grid-squares" style="font-size:22px;"></i></span>
@@ -17,7 +18,7 @@
             </a>
         </div>
     </div>
-
+ 
     {{-- Legend --}}
     <div class="d-flex gap-3 mb-3 flex-wrap">
         <span><span class="badge badge-success">■</span> Available</span>

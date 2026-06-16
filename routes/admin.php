@@ -170,6 +170,13 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('delete/{id}', 'RequirementController@delete')->name('delete');
         });
 
+        Route::group(['prefix' => 'school-tiers', 'as' => 'school-tiers.'], function () {
+            Route::get('/', 'SchoolTierController@index')->name('index');
+            Route::post('save', 'SchoolTierController@store')->name('save');
+            Route::get('toggle/{id}', 'SchoolTierController@toggle')->name('toggle');
+            Route::get('delete/{id}', 'SchoolTierController@delete')->name('delete');
+        });
+
         Route::group(['prefix' => 'services-billing', 'as' => 'modules-billing.', 'middleware' => ['module:service_billing']], function () {
             Route::get('/', 'SubmoduleController@index')->name('index');
             Route::post('update-info', 'SubmoduleController@update_info')->name('update-info');

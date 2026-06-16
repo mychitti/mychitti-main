@@ -202,11 +202,16 @@
      </style>
  @endpush
 
- @section('content')
+ @section('content') 
      <div class="content container-fluid">
-         <div class="page-header">
+         @include('hmis::vendor-views.partials._pharmacy_header')
+         <div class="pharmacy-page-content">
+         <div class="page-header"> 
              <div class="d-flex flex-wrap justify-content-between align-items-center">
                  <h1 class="page-header-title mb-2">
+                     <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                         <i class="tio-chevron-left"></i>
+                     </a>
                      <span class="page-header-icon">
                      </span>
                      <span>
@@ -559,10 +564,11 @@
                  </div>
              </div>
          </div>
-
      </div>
+ </div>
  @endsection
-
+ 
  @push('script_2')
      @include('vendor-views/js/date_range')
  @endpush
+ 

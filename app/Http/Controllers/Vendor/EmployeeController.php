@@ -9,6 +9,7 @@ use App\CentralLogics\Helpers;
 use App\Models\VendorEmployee;
 use App\Models\Department;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
 use Maatwebsite\Excel\Facades\Excel;
@@ -149,8 +150,20 @@ class EmployeeController extends Controller
         return back();
     }
 
+    /** Per-staff leave allowance columns (override the store default). No migration files (project rule). */
+    private function ensureAllowanceColumns(): void
+    {
+        if (!Schema::hasColumn('vendor_employees', 'cl_allowance')) {
+            DB::statement("ALTER TABLE `vendor_employees` ADD COLUMN `cl_allowance` INT NULL");
+        }
+        if (!Schema::hasColumn('vendor_employees', 'sl_allowance')) {
+            DB::statement("ALTER TABLE `vendor_employees` ADD COLUMN `sl_allowance` INT NULL");
+        }
+    }
+
     public function store(Request $request)
     {
+        $this->ensureAllowanceColumns();
         // prx($request->all());
         $request->validate([
             'f_name' => 'required',
@@ -305,6 +318,8 @@ class EmployeeController extends Controller
             // 'current_salary' => $request->current_salary, //old salary
             'base_salary' => $request->salary_type == 'Task-Wise' ? null : $request->base_salary,
             'salary_type' => $request->salary_type,
+            'cl_allowance' => $request->filled('cl_allowance') ? (int) $request->cl_allowance : null,
+            'sl_allowance' => $request->filled('sl_allowance') ? (int) $request->sl_allowance : null,
             'main_department' => $request->main_department,
             'offer_letter' => $offer_letter ?? null, // file
             'tentative_joining_date' => $request->tentative_joining_date,
@@ -640,6 +655,7 @@ class EmployeeController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->ensureAllowanceColumns();
         // prx($request->all());
         $request->validate([
             'f_name' => 'required',
@@ -813,6 +829,8 @@ class EmployeeController extends Controller
         $e->additional_information = $request->additional_information;
         $e->base_salary = $request->salary_type == 'Task-Wise' ? null : $request->base_salary;
         $e->salary_type = $request->salary_type;
+        $e->cl_allowance = $request->filled('cl_allowance') ? (int) $request->cl_allowance : null;
+        $e->sl_allowance = $request->filled('sl_allowance') ? (int) $request->sl_allowance : null;
         $e->main_department = $request->main_department;
         $e->offer_letter = $offer_letter ?? $e->offer_letter;
         $e->tentative_joining_date = $request->tentative_joining_date;

@@ -182,8 +182,11 @@
     </script>
 @endpush
 
-@section('content')
+@section('content') 
     <div class="content container-fluid">
+        @if (_isHospital())
+            @include('hmis::vendor.hospital._hospital_submenu_header')
+        @endif
         <!-- Page Header -->
         <div class="page-header d-flex flex-wrap justify-content-between">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> New Lead </h1>

@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Edit Doctor')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-edit" style="font-size:22px;"></i></span>
@@ -13,7 +14,7 @@
             <span class="badge badge-info ml-1">{{ $doctor->slots->count() }}</span>
         </a>
     </div>
-
+ 
     <form action="{{ route('vendor.doctor.update', $doctor->id) }}" method="POST">
         @csrf
         <div class="card mb-3">

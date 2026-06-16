@@ -109,12 +109,16 @@ class VendorEmployeeController extends Controller
         $labelArr = [];
         $daArr = [];
 
-        //leaves balance
-        $clLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'CL', 'status' => 'approved'])->get()->toArray();
-        $slLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->get()->toArray();
+        //leaves balance — counts derive from Attendance (single source of truth)
         $store_config = StoreConfig::where('store_id', $v_id)->first();
-        $monthlyClleaveBalance = ($store_config ? $store_config->cl_for_employees : 0) - count($clLeavesTaken);
-        $monthlySlleaveBalance = ($store_config ? $store_config->sl_for_employees : 0) - count($slLeavesTaken);
+        // Per-staff allowance overrides the store default when set on the employee.
+        $emp = \App\Models\VendorEmployee::find($id);
+        $clAllowed = $emp->cl_allowance ?? ($store_config->cl_for_employees ?? 0);
+        $slAllowed = $emp->sl_allowance ?? ($store_config->sl_for_employees ?? 0);
+        $leaveCounts = _attendanceMonthCounts($v_id, $id, $filter_year, $filter_month);
+        // Half-day casual/sick (HCL/HSL) draw 0.5 from the matching allowance.
+        $monthlyClleaveBalance = $clAllowed - ($leaveCounts['CL'] + 0.5 * $leaveCounts['HCL']);
+        $monthlySlleaveBalance = $slAllowed - ($leaveCounts['SL'] + 0.5 * $leaveCounts['HSL']);
 
         foreach ($attendance as $att) {
             // print_r($att);
@@ -132,7 +136,10 @@ class VendorEmployeeController extends Controller
             if ($att['label'] == 'CL') {
                 $day_data['cl']++;
             }
-            if ($att['label'] == 'HD') {
+            if ($att['label'] == 'HCL') {
+                $day_data['cl'] = ($day_data['cl'] ?? 0) + 0.5;
+            }
+            if (in_array($att['label'], ['HD', 'HDF', 'HDS', 'HCL', 'HSL'])) {
                 $day_data['halfday']++;
             }
             if ($att['label'] == 'HL') {
@@ -222,22 +229,24 @@ class VendorEmployeeController extends Controller
     public function leave_approve(Request $request, $id)
     {
         $obj = Leave::find($id);
-        $att = Attendance::where('employee_id', $obj->emp_id)->where('employee_type', 'vendor_employee')->where('vendor_id', $obj->vendor_id)->where('date', date('Y-m-d'))->first();
-        if (!$att) {
-            $att = new Attendance;
-            $att->employee_id = $request->emp_id;
-            $att->vendor_id = $obj->vendor_id;
-            $att->employee_type = 'vendor_employee';
-            $att->date = date('Y-m-d');
-            $att->day = date('d');
-            $att->month = date('m');
-            $att->year = date('Y');
-            $att->created_at = date('Y-m-d H:i:s');
-            $att->label = 'P';
-        } else {
-            $att->label = $obj->leave_type;
-        }
-        $att->save();
+        // Stamp the leave's OWN date with its leave type (canonical half-day code), upserting
+        // so the day isn't duplicated and isn't wrongly marked Present.
+        $date = $obj->leave_date ?: sprintf('%04d-%02d-%02d', $obj->year, $obj->month, $obj->day);
+        $label = $obj->leave_type === 'HD' ? 'HDS' : $obj->leave_type;
+        Attendance::updateOrCreate(
+            [
+                'employee_id'   => $obj->emp_id,
+                'employee_type' => 'vendor_employee',
+                'vendor_id'     => $obj->vendor_id,
+                'date'          => $date,
+            ],
+            [
+                'label' => $label,
+                'day'   => $obj->day,
+                'month' => $obj->month,
+                'year'  => $obj->year,
+            ]
+        );
 
         $obj->status = 'approved';
         $obj->update();

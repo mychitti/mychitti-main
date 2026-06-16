@@ -131,6 +131,8 @@
                     class=" text-center nav-link  {{ Request::is('dashboard/coupons') ? 'active' : '' }}">Coupons</a>
                 <a href="{{ route('dashboard', ['favourites']) }}"
                     class=" text-center nav-link  {{ Request::is('dashboard/favourites') ? 'active' : '' }}">Favourites</a>
+                <a href="{{ route('school.portal.index') }}"
+                    class=" text-center nav-link  {{ Request::is('my-school*') ? 'active' : '' }}">My School</a>
                 <button class="nav-link" type="button" data-bs-toggle="modal"
                     data-bs-target="#exampleModalLogout">Logout</button>
 

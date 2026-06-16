@@ -9,16 +9,38 @@ use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\OpdVisit;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Schema;
 
 class OpdController extends Controller
 {
+    // The opd_register feature was originally seeded without an "edit" action, so the
+    // role grid had no permission row to save against. Self-heal any missing actions here.
+    private function ensureOpdPermissions(): void
+    {
+        if (!Schema::hasTable('features') || !Schema::hasTable('feature_permissions')) {
+            return;
+        }
+        $featureId = DB::table('features')->where('name', 'opd_register')->value('id');
+        if (!$featureId) {
+            return;
+        }
+        foreach (['edit'] as $action) {
+            if (!DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', $action)->exists()) {
+                DB::table('feature_permissions')->insert(['feature_id' => $featureId, 'action' => $action, 'free' => 0]);
+            }
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->ensureOpdPermissions();
         $preset = request('date_range') ?? 'today';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
@@ -49,6 +71,7 @@ class OpdController extends Controller
                     ->orWhere('patient_uid', 'like', "%$search%"));
             })
             ->with(['patient', 'doctorProfile.employee'])
+            ->orderByRaw('consultation_receipt_id IS NOT NULL') // fresh appointments first, completed (receipt generated) last
             ->orderBy('token_number')
             ->paginate(20);
 
@@ -324,7 +347,40 @@ class OpdController extends Controller
             ->with(['patient.documents', 'patient.medicalHistory', 'doctorProfile.employee', 'recorder'])
             ->findOrFail($id);
 
-        return view('hmis::vendor.opd.show', compact('visit'));
+        $pastVisits = OpdVisit::where('store_id', $store_id)
+            ->where('patient_id', $visit->patient_id)
+            ->where('id', '!=', $visit->id)
+            ->with('doctorProfile.employee')
+            ->orderByDesc('visit_date')
+            ->get();
+
+        // Prescription written for this visit, if any (linked via appointment / service request,
+        // else the latest one this doctor wrote for this patient on the visit date).
+        $currentPrescription = Prescription::where('store_id', $store_id)
+            ->where('patient_id', $visit->patient_id)
+            ->where(function ($q) use ($visit) {
+                if ($visit->appointment_id) {
+                    $q->where('appointment_id', $visit->appointment_id);
+                } elseif ($visit->service_request_id) {
+                    $q->where('service_request_id', $visit->service_request_id);
+                } else {
+                    $q->where('doctor_profile_id', $visit->doctor_profile_id)
+                        ->whereDate('created_at', $visit->visit_date ?? today());
+                }
+            })
+            ->with(['store', 'doctorProfile.employee', 'patient', 'items'])
+            ->latest()
+            ->first();
+
+        // Prior prescriptions for this patient (excludes the current visit's prescription).
+        $pastPrescriptions = Prescription::where('store_id', $store_id)
+            ->where('patient_id', $visit->patient_id)
+            ->when($currentPrescription, fn($q) => $q->where('id', '!=', $currentPrescription->id))
+            ->with(['doctorProfile.employee', 'items'])
+            ->latest()
+            ->get();
+
+        return view('hmis::vendor.opd.show', compact('visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions'));
     }
 
     public function quickUpdate(Request $request, $id)
@@ -337,8 +393,14 @@ class OpdController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
-        $visit->chief_complaint = $request->chief_complaint;
-        $visit->notes           = $request->notes;
+        // The show page saves chief complaint and consultation notes independently, sending
+        // only the changed field. Update only what was submitted so the other isn't wiped.
+        if ($request->has('chief_complaint')) {
+            $visit->chief_complaint = $request->chief_complaint;
+        }
+        if ($request->has('notes')) {
+            $visit->notes = $request->notes;
+        }
         $visit->save();
 
         return response()->json(['ok' => true]);

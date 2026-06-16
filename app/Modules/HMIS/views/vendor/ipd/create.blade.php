@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Admit Patient — IPD')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
@@ -11,7 +12,7 @@
         <a href="{{ route('vendor.ipd.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="tio-arrow-backward"></i> Back
         </a>
-    </div>
+    </div> 
 
     <div class="row justify-content-center">
         <div class="col-lg-8">

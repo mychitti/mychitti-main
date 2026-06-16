@@ -136,7 +136,7 @@ class CustomRoleController extends Controller
         foreach ($submodules as $submodule) {
             $status = _isSubmoduleEnabled($submodule->id);
 
-            if ($status['enabled']) {
+            if ($status['enabled'] || Helpers::permission_check($submodule->Key)) {
                 $accessibleModules[$submodule->Key] = $submodule->name;
             }
         }

@@ -50,8 +50,10 @@
  @endpush
 
  @section('content')
-
+ 
      <div class="content container-fluid p-3">
+         @include('hmis::vendor-views.partials._pharmacy_header')
+         <div class="pharmacy-page-content">
          <div class="page-header">
              <div class="d-flex flex-wrap px-3 w-100">
                  <div class="d-flex w-100 flex-wrap justify-content-between  align-orders-center">
@@ -60,6 +62,9 @@
                              <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
                          </span>
                          <div class="d-flex align-items-start">
+                             <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                                 <i class="tio-chevron-left"></i>
+                             </a>
                              <div class="d-flex flex-column">
                                  <span>Profit and Loss Summary</span>
                                  <span style="font-size: 15px; font-weight: normal;">({{ translate($preset) }})</span>
@@ -249,10 +254,11 @@
                  @endif
              </div>
              @endif
-         </div>
-     </div>
+          </div>
+      </div>
+  </div>
 
- @endsection
- @push('script_2')
-     @include('vendor-views/js/date_range')
+  @endsection
+  @push('script_2')
+     @include('vendor-views/js/date_range') 
  @endpush

@@ -190,6 +190,7 @@ return [
         App\Modules\HMIS\HMISServiceProvider::class,
         App\Modules\Ecommerce\EcommerceServiceProvider::class,
         App\Modules\SalesCRM\SalesCRMServiceProvider::class,
+        App\Modules\School\SchoolServiceProvider::class,
     ],
 
     /*

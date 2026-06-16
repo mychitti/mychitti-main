@@ -1,196 +1,119 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Attendance Manage')
+@section('title', 'Attendance')
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        .al-hero {
+            background: linear-gradient(100deg, #1d4ed8 0%, #2563eb 45%, #4f46e5 100%);
+            border-radius: 14px; color: #fff; padding: 22px 26px;
+            box-shadow: 0 8px 24px rgba(37, 99, 235, .22); margin-bottom: 18px;
+        }
+        .al-hero h1 { color: #fff; font-weight: 700; font-size: 22px; margin: 0; }
+        .al-hero .al-sub { color: rgba(255, 255, 255, .82); font-size: 13px; margin-top: 3px; }
+        .al-chip {
+            background: rgba(255, 255, 255, .15); border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: 10px; padding: 8px 14px; text-align: center; min-width: 88px;
+        }
+        .al-chip .n { font-size: 20px; font-weight: 700; line-height: 1; }
+        .al-chip .l { font-size: 11px; opacity: .85; text-transform: uppercase; letter-spacing: .4px; }
+        .al-card { border: 1px solid #eef0f4; border-top: none; border-radius: 0 0 12px 12px; }
+        .al-empty { text-align: center; padding: 44px 16px; color: #9aa1ab; }
+        .al-empty img { width: 92px; opacity: .8; margin-bottom: 10px; }
+    </style>
 @endpush
 
 @section('content')
-    {{-- @include('vendor-views/sub-module/partials/attendance') --}}
-
     <div class="content container-fluid">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Attendance <span class="badge badge-soft-dark ml-2"
-                    id="itemCount">{{ count($staff) }}</span></h1>
-            <div class="page-header-select-wrapper">
 
-            </div>
-        </div>
-        <!-- End Page Header -->
+        @include('vendor-views.partials._hr_header')
 
-
-
-        <!-- Card -->
-        <div class="card">
-            <!-- Header -->
-            <div class="card-header py-2">
-                <div class="search--button-wrapper">
-                    <h5 class="card-title">Staff List</h5>
+        <div class="card al-card mb-0">
+            <div class="card-body p-0">
+                <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                    <h5 class="card-title mb-0">Staff List <span class="badge badge-soft-dark ml-1">{{ $staff->count() }}</span></h5>
+                    <div class="input-group input-group-sm" style="max-width:260px;">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white"><i class="tio-search"></i></span>
+                        </div>
+                        <input type="text" class="form-control al-search" data-target="#staffTable" placeholder="Search staff...">
+                    </div>
                 </div>
-            </div>
-            <!-- End Header -->
-
-            <!-- Table -->
-            <div class="table-responsive datatable-custom">
-                <table id="columnSearchDatatable"
-                    class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
-                    data-hs-datatables-options='{
-                        "order": [],
-                        "orderCellsTop": true,
-                        "paging":false
-
-                    }'>
-                    <thead class="thead-light">
-                        <tr>
-                            <th class="border-0">{{ translate('sl') }}</th>
-                            <th class="border-0">Info</th>
-                            <th class="border-0">Department</th>
-                            <th class="border-0">Role</th>
-                            <th class="text-uppercase border-0">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="set-rows">
-                        @foreach ($staff as $lead)
+                <div class="table-responsive">
+                    <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table mb-0" id="staffTable">
+                        <thead class="thead-light">
                             <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td>
-                                    <div>
-                                        <a href="{{ route('vendor.employee.view', [$lead->id]) }}" class="table-rest-info"
-                                            alt="view store">
-
+                                <th>{{ translate('sl') }}</th>
+                                <th>Info</th>
+                                <th>Department</th>
+                                <th>Role</th>
+                                <th class="text-uppercase text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($staff as $lead)
+                                @php
+                                    $depNm = _getWhere('departments', ['id' => $lead->department_id]);
+                                    $roleNm = _getWhere('employee_roles', ['id' => $lead->employee_role_id]);
+                                    $pending = _pendingLeavesCount($lead->id);
+                                @endphp
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>
+                                        <a href="{{ route('vendor.employee.view', [$lead->id]) }}" class="table-rest-info">
                                             <div class="info">
-                                                <div class="text--title">
-                                                    {{ $lead->f_name . ' ' . $lead->l_name }}
-                                                </div>
-                                                <div class="font-light">
-                                                    {{ $lead->phone }}
-                                                </div>
-                                                <div class="font-light">
-                                                    {{ $lead->email }}
-                                                </div>
+                                                <div class="text--title">{{ $lead->f_name . ' ' . $lead->l_name }}</div>
+                                                <div class="font-light">{{ $lead->phone }}</div>
+                                                <div class="font-light">{{ $lead->email }}</div>
                                             </div>
                                         </a>
+                                    </td>
+                                    <td><span class="font-size-sm text-body">{{ $depNm[0]->title ?? '—' }}</span></td>
+                                    <td><span class="font-size-sm text-body">{{ $roleNm[0]->name ?? '—' }}</span></td>
+                                    <td class="text-right">
+                                        <div class="d-inline-flex" style="gap:6px;">
+                                            @if (hasPermission('attendance_manage', 'view'))
+                                                <a class="btn btn-sm btn--primary" href="{{ route('vendor.attendance.manage', [$lead->id]) }}">
+                                                    <i class="tio-event mr-1"></i> Manage Attendance
+                                                </a>
+                                            @endif
+                                            @if (hasAnyModulePermission(['leave_manage', 'attendance_manage']))
+                                                <a class="btn btn-sm btn-outline-primary position-relative" href="{{ route('vendor.leave.manage', [$lead->id]) }}">
+                                                    <i class="tio-calendar-note mr-1"></i> Leave
+                                                    @if ($pending)
+                                                        <span class="badge badge-danger" style="position:absolute; top:-7px; right:-7px; border-radius:50%; padding:3px 6px;">{{ $pending }}</span>
+                                                    @endif
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5">
+                                    <div class="al-empty">
+                                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="">
+                                        <h5>{{ translate('no_data_found') }}</h5>
                                     </div>
-                                </td>
-                                <td>
-                                    <span class="d-block font-size-sm text-body">
-                                        @php
-                                            // print_r( _getWhere('departments', ['id'=> $lead->department_id])[0]);
-                                            $depNm = _getWhere('departments', ['id' => $lead->department_id]);
-                                            if (isset($depNm[0])) {
-                                                echo $depNm[0]->title;
-                                        } @endphp
-                                    </span>
-
-                                </td>
-                                <td>
-                                    <div>
-                                        @php
-                                            // print_r( _getWhere('departments', ['id'=> $lead->department_id])[0]);
-                                            $roleNm = _getWhere('employee_roles', ['id' => $lead->employee_role_id]);
-                                            if (isset($roleNm[0])) {
-                                                echo $roleNm[0]->name;
-                                        } @endphp
-                                    </div>
-                                </td>
-
-
-
-                                <td>
-                                    @if (hasPermission('attendance_manage', 'view'))
-                                        <span class="d-block font-size-sm text-body">
-                                            <a style="min-width:50px;" class="btn  btn--primary btn-outline-primary"
-                                                href="{{ route('vendor.attendance.manage', [$lead['id']]) }}"title="{{ translate('messages.edit') }} Staff">Manage
-                                                Attendance
-                                            </a>
-                                        </span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @if (count($staff))
-                    <hr>
-                @else
-                    <div class="page-area">
-                    </div>
-                    <div class="empty--data">
-                        <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                        <h5>
-                            {{ translate('no_data_found') }}
-                        </h5>
-                    </div>
-                @endif
+                                </td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <!-- End Table -->
         </div>
-        <!-- End Card -->
     </div>
-
 @endsection
 
 @push('script_2')
     <script>
-        function status_change_alert(url, message, e) {
-            e.preventDefault();
-            Swal.fire({
-                title: 'Are you sure?',
-                text: message,
-                type: 'warning',
-                showCancelButton: true,
-                cancelButtonColor: 'default',
-                confirmButtonColor: '#FC6A57',
-                cancelButtonText: 'No',
-                confirmButtonText: 'Yes',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.value) {
-                    location.href = url;
-                }
-            })
-        }
-        $(document).on('ready', function() {
-            // INITIALIZATION OF DATATABLES
-            // =======================================================
-            var datatable = $.HSCore.components.HSDatatables.init($('#columnSearchDatatable'));
-
-            $('#column1_search').on('keyup', function() {
-                datatable
-                    .columns(1)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column2_search').on('keyup', function() {
-                datatable
-                    .columns(2)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column3_search').on('keyup', function() {
-                datatable
-                    .columns(3)
-                    .search(this.value)
-                    .draw();
-            });
-
-            $('#column4_search').on('keyup', function() {
-                datatable
-                    .columns(4)
-                    .search(this.value)
-                    .draw();
-            });
-
-
-            // INITIALIZATION OF SELECT2
-            // =======================================================
-            $('.js-select2-custom').each(function() {
-                var select2 = $.HSCore.components.HSSelect2.init($(this));
+        document.querySelectorAll('.al-search').forEach(box => {
+            box.addEventListener('keyup', function () {
+                const q = this.value.toLowerCase();
+                document.querySelectorAll(this.dataset.target + ' tbody tr').forEach(row => {
+                    if (row.querySelector('.al-empty')) return;
+                    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+                });
             });
         });
     </script>

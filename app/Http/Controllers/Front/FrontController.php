@@ -310,7 +310,7 @@ class FrontController extends Controller
             ['name' => 'basic_staff_manage', 'display_name' => 'Staff Management', 'master_module' => null, 'actions' => ['list', 'add', 'edit', 'delete', 'role_manage']],
             ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
             ['name' => 'patient', 'display_name' => 'Patient', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'delete', 'export']],
-            ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'generate_bill']],
+            ['name' => 'opd_register', 'display_name' => 'OPD Register', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'view', 'export', 'generate_bill']],
             ['name' => 'prescription', 'display_name' => 'Prescription', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'edit', 'print', 'export']],
             ['name' => 'pharmacy_dispense_queue', 'display_name' => 'Pharmacy Dispense Queue', 'master_module' => 'hospital_manage', 'actions' => ['list', 'dispense', 'export']],
             ['name' => 'ipd_admission', 'display_name' => 'IPD Admission', 'master_module' => 'hospital_manage', 'actions' => ['list', 'add', 'view', 'export', 'discharge', 'generate_bill', 'consent']],

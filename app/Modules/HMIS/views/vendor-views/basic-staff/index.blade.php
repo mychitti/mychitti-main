@@ -2,7 +2,74 @@
 @section('title', 'Staff Management')
 
 @section('content')
-<div class="content container-fluid">
+<div class="content container-fluid staff-mgmt-page">
+    {{-- Stats header (pharmacy metrics-row style) --}}
+    @php
+        $statActive   = $staff->where('status', 1)->count();
+        $statInactive = $staff->where('status', 0)->count();
+        $statRoles    = $staff->whereNotNull('employee_role_id')->where('employee_role_id', '!=', '')->count();
+        $statIdProof  = $staff->whereNotNull('id_document')->where('id_document', '!=', '')->count();
+        $statFree     = max(0, 10 - $count);
+    @endphp
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap');
+        /* Full-bleed header exactly like the pharmacy metrics row */
+        .staff-mgmt-page.content.container-fluid { padding: 0 !important; }
+        .staff-metrics-row {
+            display: grid; grid-template-columns: repeat(6, 1fr);
+            background: #ffffff; border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px; gap: 10px;
+        }
+        .staff-metrics-row .metric-card {
+            padding: 8px 12px; border-right: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .staff-metrics-row .metric-card:last-child { border-right: none; }
+        .staff-metrics-row .metric-card .value {
+            font-size: 20px; font-weight: 800; color: #0f172a;
+            font-family: 'Outfit', sans-serif; line-height: 1.2;
+            display: flex; align-items: baseline; gap: 2px;
+        }
+        .staff-metrics-row .metric-card .subtext {
+            font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 500;
+        }
+        /* Make the shared tabs nav a flat full-width bar flush under the stats row */
+        .staff-mgmt-page .bsnav {
+            border: none !important; border-bottom: 1px solid #e2e8f0 !important;
+            border-radius: 0 !important; padding: 0 24px !important; background: #fff;
+        }
+        .staff-page-body { padding: 20px 24px; }
+    </style>
+    <div class="staff-metrics-row">
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;">{{ $count }}</div>
+            <div class="subtext">TOTAL STAFF<br><span style="color:#3b82f6;font-weight:700;">{{ $statActive }} active</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#10b981;">{{ $statActive }}</div>
+            <div class="subtext">ACTIVE<br><span style="color:#16a34a;font-weight:700;">on board</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#ef4444;">{{ $statInactive }}</div>
+            <div class="subtext">INACTIVE<br><span style="color:#dc2626;font-weight:700;">disabled</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#8b5cf6;">{{ $statRoles }}</div>
+            <div class="subtext">WITH ROLE<br><span style="color:#7c3aed;font-weight:700;">{{ max(0, $count - $statRoles) }} unassigned</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#ea580c;">{{ $statIdProof }}</div>
+            <div class="subtext">ID VERIFIED<br><span style="color:#ea580c;font-weight:700;">proof uploaded</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ $statFree }}</div>
+            <div class="subtext">FREE SLOTS<br><span style="font-weight:700;">{{ $count }}/10 used</span></div>
+        </div>
+    </div>
+
+    @include('vendor-views.partials._basic_staff_nav')
+
+    <div class="staff-page-body">
     <div class="page-header">
         <h1 class="page-header-title">
             <span class="page-header-icon">
@@ -124,5 +191,6 @@
             </table>
         </div>
     </div>
+    </div>{{-- /.staff-page-body --}}
 </div>
 @endsection

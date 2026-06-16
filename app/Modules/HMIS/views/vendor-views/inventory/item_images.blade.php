@@ -28,11 +28,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery/css/lg-video.css">
     <!-- LightGallery JS -->
 
-    <div class="content container-fluid p-1">
+    <div class="content container-fluid p-1"> 
         <div class="page-header">
             <div class="d-flex flex-wrap px-3 w-100">
                 <div class="d-flex w-100 flex-wrap justify-content-between  align-items-center">
                     <h1 class="page-header-title mb-2">
+                        <a href="javascript:history.back()" class="mr-2" style="color: inherit;" title="Back">
+                            <i class="tio-chevron-left"></i>
+                        </a>
                         <span class="page-header-icon">
                             <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">
                         </span>

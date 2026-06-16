@@ -177,10 +177,19 @@
                 <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
             </div>
         </div>
+        @if(vendorPlanHasModule('school_manage'))
+        <div class="check-item">
+            <div class="form-group form-check form--check">
+                <input type="checkbox" name="modules[]" value="school_manage" class="form-check-input granular_permission_check"
+                    id="school_manage">
+                <label class="form-check-label input-label " for="school_manage">School Management</label>
+            </div>
+        </div>
+        @endif
 
         <div class="check-item">
             <div class="form-group form-check form--check">
-                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input"
+                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input granular_permission_check"
                     id="staff_manage">
                 <label class="form-check-label input-label " for="staff_manage">Staff Management</label>
             </div>

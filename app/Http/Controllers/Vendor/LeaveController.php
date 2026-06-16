@@ -56,12 +56,15 @@ class LeaveController extends Controller
         $labelArr = [];
         $daArr = [];
 
-        //leaves balance
-        $clLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'CL', 'status' => 'approved'])->get()->toArray();
-        $slLeavesTaken = Leave::where(['vendor_id' => $v_id, 'emp_id' => $id, 'employee_type' => 'vendor_employee', 'month' => $filter_month, 'year' => $filter_year, 'leave_type' => 'SL', 'status' => 'approved'])->get()->toArray();
+        //leaves balance — counts derive from Attendance (single source of truth)
         $store_config = StoreConfig::where('store_id', $v_id)->first();
-        $monthlyClleaveBalance = ($store_config ? $store_config->cl_for_employees : 0) - count($clLeavesTaken);
-        $monthlySlleaveBalance = ($store_config ? $store_config->sl_for_employees : 0) - count($slLeavesTaken);
+        // Per-staff allowance overrides the store default when set on the employee.
+        $clAllowed = $staff->cl_allowance ?? ($store_config->cl_for_employees ?? 0);
+        $slAllowed = $staff->sl_allowance ?? ($store_config->sl_for_employees ?? 0);
+        $leaveCounts = _attendanceMonthCounts($v_id, $id, $filter_year, $filter_month);
+        // Half-day casual/sick (HCL/HSL) draw 0.5 from the matching allowance.
+        $monthlyClleaveBalance = $clAllowed - ($leaveCounts['CL'] + 0.5 * $leaveCounts['HCL']);
+        $monthlySlleaveBalance = $slAllowed - ($leaveCounts['SL'] + 0.5 * $leaveCounts['HSL']);
 
 
         foreach ($attendance as $att) {
@@ -80,7 +83,16 @@ class LeaveController extends Controller
             if ($att['label'] == 'CL') {
                 $day_data['cl']++;
             }
-            if ($att['label'] == 'HD') {
+            if ($att['label'] == 'HCL') {
+                $day_data['cl'] = ($day_data['cl'] ?? 0) + 0.5;
+            }
+            if ($att['label'] == 'SL') {
+                $day_data['sl'] = ($day_data['sl'] ?? 0) + 1;
+            }
+            if ($att['label'] == 'HSL') {
+                $day_data['sl'] = ($day_data['sl'] ?? 0) + 0.5;
+            }
+            if (in_array($att['label'], ['HD', 'HDF', 'HDS', 'HCL', 'HSL'])) {
                 $day_data['halfday']++;
             }
             if ($att['label'] == 'HL') {
@@ -134,7 +146,35 @@ class LeaveController extends Controller
     {
 
         $v_id = \App\CentralLogics\Helpers::get_store_id();
-        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year')])->where('vendor_id', 0)->exists();
+        $leave = Leave::where(['emp_id' => $request->post('emp_id'), 'day' => $request->post('day'), 'month' => $request->post('month'), 'year' => $request->post('year'), 'employee_type' => 'vendor_employee'])->where('vendor_id', $v_id)->exists();
+
+        // Enforce per-staff monthly CL/SL allowance (staff value overrides store default).
+        // Full CL/SL cost 1 day; half-day casual/sick (HCL/HSL) cost 0.5 against the same allowance.
+        $leaveType = $request->post('leaveType');
+        $allowanceMap = [
+            'CL'  => ['pool' => 'cl', 'cost' => 1.0],
+            'SL'  => ['pool' => 'sl', 'cost' => 1.0],
+            'HCL' => ['pool' => 'cl', 'cost' => 0.5],
+            'HSL' => ['pool' => 'sl', 'cost' => 0.5],
+        ];
+        if (!$leave && isset($allowanceMap[$leaveType])) {
+            $emp = VendorEmployee::find($request->post('emp_id'));
+            $store_config = StoreConfig::where('store_id', $v_id)->first();
+            $pool = $allowanceMap[$leaveType]['pool'];
+            $cost = $allowanceMap[$leaveType]['cost'];
+            $allowed = $pool === 'cl'
+                ? ($emp->cl_allowance ?? ($store_config->cl_for_employees ?? 0))
+                : ($emp->sl_allowance ?? ($store_config->sl_for_employees ?? 0));
+            $counts = _attendanceMonthCounts($v_id, $request->post('emp_id'), $request->post('year'), $request->post('month'));
+            $taken = $pool === 'cl'
+                ? ($counts['CL'] + 0.5 * $counts['HCL'])
+                : ($counts['SL'] + 0.5 * $counts['HSL']);
+            if ($taken + $cost > $allowed) {
+                echo json_encode(['status' => false, 'msg' => strtoupper($pool) . ' balance exhausted for this month (allowed: ' . $allowed . ', used: ' . $taken . '). Mark it as a different type or increase the allowance.']);
+                return;
+            }
+        }
+
         if (!$leave) {
 
             $leave_date = sprintf('%04d-%02d-%02d', $request->post('year'), $request->post('month'), $request->post('day'));
@@ -153,22 +193,23 @@ class LeaveController extends Controller
             $leave->created_at = date('Y-m-d H:i:s');
             $leave->save();
 
-            // attendance 
-            if ($request->post('leaveType') == 'HDS' || $request->post('leaveType') == 'HDF') {
-                $leaveType = 'HD';
-            } else {
-                $leaveType = $request->post('leaveType');
-            }
-            $att = new Attendance;
-            $att->vendor_id = $v_id;
-            $att->employee_id = $request->post('emp_id');
-            $att->date = $leave_date;
-            $att->label = $leaveType;
-            $att->day =  $request->post('day');
-            $att->month = $request->post('month');
-            $att->year = $request->post('year');
-            $att->created_at = date('Y-m-d H:i:s');
-            $att->save();
+            // Attendance = canonical record. Keep the concrete half-day code (no generic 'HD'),
+            // tag employee_type so counts see it, and upsert so a day never gets duplicate rows.
+            $label = $request->post('leaveType') === 'HD' ? 'HDS' : $request->post('leaveType');
+            Attendance::updateOrCreate(
+                [
+                    'vendor_id'     => $v_id,
+                    'employee_id'   => $request->post('emp_id'),
+                    'employee_type' => 'vendor_employee',
+                    'date'          => $leave_date,
+                ],
+                [
+                    'label' => $label,
+                    'day'   => $request->post('day'),
+                    'month' => $request->post('month'),
+                    'year'  => $request->post('year'),
+                ]
+            );
             Toastr::success('Leave saved successfully');
         } else {
             Toastr::warning('Leave already exists for this date');

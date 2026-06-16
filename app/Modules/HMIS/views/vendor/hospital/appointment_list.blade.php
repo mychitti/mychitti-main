@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 
 @section('title', $type . ' Appointments')
 
@@ -128,8 +128,9 @@
     </style>
 @endpush
 
-@section('content') 
+@section('content')  
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
 
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">

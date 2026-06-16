@@ -5,17 +5,11 @@
     <link href="{{ asset('public/assets/admin/css/date_range.css') }}" rel="stylesheet">
 @endpush
 
-@section('content')
-
-    <div class="content container-fluid p-1">
-        <div class="page-header">
-            <div class="d-flex flex-wrap px-3 w-100">
-                <div class="d-flex w-100 flex-wrap justify-content-between  align-items-center">
-
-                </div>
-            </div>
-        </div>
-        <!-- Page Heading -->
+@section('content') 
+ 
+    <div class="content container-fluid">
+        @include('hmis::vendor-views.partials._pharmacy_header')
+        <div class="pharmacy-page-content">
         @if (hasPermission('inventory_purchase_order', 'add'))
             <div class="">
                 <div class="pox-wrap p-0">
@@ -356,6 +350,7 @@
             </div>
 
         @endif
+        </div>
     </div>
 
 @endsection

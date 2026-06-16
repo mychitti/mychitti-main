@@ -1,15 +1,16 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'New Consent Form')
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-document-text" style="font-size:22px;"></i></span>
             New Consent Form
             @if($admission)
                 <small class="text-muted font-size-14 ml-2">— {{ $admission->admission_number }}</small>
-            @endif
+            @endif 
         </h1>
         <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
             <i class="tio-arrow-backward"></i> Back

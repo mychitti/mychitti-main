@@ -1,8 +1,9 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Beds — ' . $ward->ward_name)
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
@@ -13,7 +14,7 @@
             <i class="tio-arrow-backward"></i> Wards
         </a>
     </div>
-
+ 
     {{-- Ward summary --}}
     <div class="card mb-3" style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); border:1px solid #bfdbfe;">
         <div class="card-body py-2">

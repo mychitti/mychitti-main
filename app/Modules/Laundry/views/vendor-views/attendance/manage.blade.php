@@ -86,19 +86,7 @@
 
     <!--echo $sundays_in_month;-->
     <div class="content container-fluid">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i> Attendance Manage
-                @if(isset($staff))
-                    <span class="badge badge-soft-primary ml-2" style="font-size:14px; font-weight:500;">
-                        {{ $staff->f_name }} {{ $staff->l_name }}
-                    </span>
-                @endif
-            </h1>
-            <div class="page-header-select-wrapper">
-
-            </div>
-        </div>
+        @include('vendor-views.partials._hr_header', ['heroSubtitle' => 'Manage Attendance · ' . (isset($staff) ? trim($staff->f_name . ' ' . $staff->l_name) : '')])
         <!-- End Page Header -->
 
 
@@ -241,6 +229,12 @@
                                                     <option value="A"
                                                         {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'A' ? 'selected' : '' }}>
                                                         A</option>
+                                                    <option value="HCL"
+                                                        {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'HCL' ? 'selected' : '' }}>
+                                                        HCL</option>
+                                                    <option value="HSL"
+                                                        {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'HSL' ? 'selected' : '' }}>
+                                                        HSL</option>
                                                     <option value="HDF"
                                                         {{ in_array($t, $daArr) && $labelArr[array_search($t, $daArr)] == 'HDF' ? 'selected' : '' }}>
                                                         HDF</option>

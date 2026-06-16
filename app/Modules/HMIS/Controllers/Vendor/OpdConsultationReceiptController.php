@@ -4,6 +4,8 @@ namespace App\Modules\HMIS\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\InvoiceItem;
+use App\Models\ManualInvoice;
 use App\Models\OpdConsultationReceipt;
 use App\Models\OpdVisit;
 use App\Models\Store;
@@ -49,6 +51,9 @@ class OpdConsultationReceiptController extends Controller
             DB::statement("ALTER TABLE `opd_visits`
                 ADD COLUMN `consultation_receipt_id` BIGINT UNSIGNED NULL,
                 ADD COLUMN `consultation_visit_no` INT NULL");
+        }
+        if (Schema::hasTable('opd_consultation_receipts') && !Schema::hasColumn('opd_consultation_receipts', 'invoice_id')) {
+            DB::statement("ALTER TABLE `opd_consultation_receipts` ADD COLUMN `invoice_id` VARCHAR(60) NULL");
         }
     }
 
@@ -148,6 +153,40 @@ class OpdConsultationReceiptController extends Controller
         $visit->consultation_visit_no   = 1;
         $visit->save();
 
+        // Record the bill in the canonical manual_invoices ledger with the store's running invoice id.
+        $invoiceId = 'opd-receipt-' . $receipt->id; // fallback
+        try {
+            $taxType   = 'non-gst';
+            $invoiceId = Helpers::generateInvoiceId('H', true, null, $taxType);
+            $manual    = ManualInvoice::create([
+                'invoice_id'     => $invoiceId,
+                'invoice_serial' => (int) substr($invoiceId, strrpos($invoiceId, '_') + 1),
+                'financial_year' => _currentFinancialYear(),
+                'bill_to'        => $visit->patient_id,
+                'bill_to_type'   => 'patient',
+                'user_type'      => 'hospital_patient',
+                'vendor_id'      => $store_id,
+                'total_amount'   => $paid,
+                'payment_status' => $paid > 0 ? 'Paid' : 'Unpaid',
+                'payment_method' => $request->payment_mode ?: 'Cash',
+                'payment_date'   => $paid > 0 ? now()->toDateString() : null,
+                'invoice_date'   => now()->toDateString(),
+                'tax_type'       => $taxType,
+            ]);
+            InvoiceItem::create([
+                'rand_invoice_id'   => $invoiceId,
+                'manual_invoice_id' => $manual->id,
+                'name'              => 'OP Consultation' . ($visit->doctorProfile?->employee ? ' — Dr. ' . trim(($visit->doctorProfile->employee->f_name ?? '') . ' ' . ($visit->doctorProfile->employee->l_name ?? '')) : ''),
+                'qty'               => 1,
+                'price'             => $amount,
+                'tax'               => 0,
+                'gst_status'        => 'excluding',
+            ]);
+            $receipt->update(['invoice_id' => $invoiceId]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('OPD consultation manual invoice failed: ' . $e->getMessage());
+        }
+
         // Post to the hospital's accounts (ledger + daybook) for the collected amount
         if ($paid > 0) {
             try {
@@ -160,7 +199,7 @@ class OpdConsultationReceiptController extends Controller
                     'date'         => now(),
                     'amount'       => $paid,
                     'voucher_type' => 'Receipt',
-                    'invoice_id'   => 'opd-receipt-' . $receipt->id,
+                    'invoice_id'   => $invoiceId,
                     'status'       => 'approved',
                     'description'  => 'OP Consultation — ' . $patientName . ' (Bill #' . $receipt->bill_no . ')',
                     'payment_mode' => $isCash ? 'cash' : 'bank',

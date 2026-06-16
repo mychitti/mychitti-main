@@ -102,6 +102,13 @@
                                     <span class="text-truncate">Free Trial History</span>
                                 </a>
                             </li>
+                            <li class="nav-item {{ Request::is('school-tiers*') ? 'active' : '' }}">
+                                <a class="nav-link " href="{{ route('admin.school-tiers.index') }}"
+                                    title="School Plan Tiers">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">School Plan Tiers</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('google-ads') ? 'show active' : '' }}">

@@ -50,8 +50,10 @@
  @endpush
 
  @section('content')
-
+ 
      <div class="content container-fluid p-3">
+         @include('hmis::vendor-views.partials._pharmacy_header')
+         <div class="pharmacy-page-content">
          <div class="page-header">
              <div class="d-flex flex-wrap px-3 w-100">
                  <div class="d-flex w-100 flex-wrap justify-content-between  align-orders-center">
@@ -221,11 +223,12 @@
                      @endif
                  </div>
              @endif
+         </div> 
          </div>
      </div>
 
  @endsection
- @push('script_2')
+ @push('script_2') 
      <script>
          $("#check_all").on('change', function() {
              if ($(this).prop('checked') == true) {

@@ -13,8 +13,9 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <!-- Page Heading -->
-        <div class="page-header">
+        <div class="page-header mt-3">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <img src="{{ asset('public/assets/admin/img/role.png') }}" class="w--26" alt="">

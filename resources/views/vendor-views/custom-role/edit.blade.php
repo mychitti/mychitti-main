@@ -13,9 +13,9 @@
 
 @section('content')
     <div class="content container-fluid">
-
+        @include('vendor-views.partials._hr_header')
         <!-- Page Heading -->
-        <div class="page-header">
+        <div class="page-header mt-3">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <img src="{{ asset('public/assets/admin/img/edit.png') }}" class="w--26" alt="">
@@ -304,7 +304,7 @@
 
                         <div class="check-item">
                             <div class="form-group form-check form--check">
-                                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input"
+                                <input type="checkbox" name="modules[]" value="staff_manage" class="form-check-input granular_permission_check"
                                     id="staff_manage"
                                     {{ in_array('staff_manage', (array) json_decode($role['modules'])) ? 'checked' : '' }}>
                                 <label class="form-check-label " for="staff_manage">Staff Management</label>
@@ -402,7 +402,7 @@
                                                         data-module="{{ $moduleName }}">
                                                     <label class="form-check-label ml-1"
                                                         for="col_{{ $moduleName }}_{{ $action }}">
-                                                        {{ ucfirst($action) }}
+                                                        {{ permission_action_label($action) }}
                                                     </label>
                                                 </div>
                                             </th>

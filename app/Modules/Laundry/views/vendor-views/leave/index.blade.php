@@ -11,15 +11,14 @@
     {{-- @include('vendor-views/sub-module/partials/leave') --}}
 
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <!-- Page Header -->
-        <div class="page-header d-flex align-items-center justify-content-between w-100">
+        <div class="page-header d-flex align-items-center justify-content-between w-100 mt-3">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Leaves <span class="badge badge-soft-dark ml-2"
                     id="itemCount">{{ count($leaves) }}</span></h1>
             <div class="">
                 @if (hasPermission('leave_manage', 'settings'))
-                    <button type="button" class="btn btn_sm btn--primary" data-toggle="modal" data-target="#leaveModal">Edit
-                        Leave
-                        Allowance</button>
+                
                     <div class="modal fade" id="leaveModal" tabindex="-1" aria-labelledby="exampleModalLabel"
                         aria-hidden="true">
                         <div class="modal-dialog">
@@ -109,10 +108,14 @@
                                                                 {{ 'Casual Leave' }}
                                                             @elseif($leave['leave_type'] == 'SL')
                                                                 {{ 'Sick Leave' }}
+                                                            @elseif($leave['leave_type'] == 'HCL')
+                                                                {{ 'Half Day Casual Leave' }}
+                                                            @elseif($leave['leave_type'] == 'HSL')
+                                                                {{ 'Half Day Sick Leave' }}
                                                             @elseif($leave['leave_type'] == 'HDF')
-                                                                {{ 'Half Day (first half)' }}
+                                                                {{ 'Half Day LOP (first half)' }}
                                                             @elseif($leave['leave_type'] == 'HDS')
-                                                                {{ 'Half Day (second half)' }}
+                                                                {{ 'Half Day LOP (second half)' }}
                                                             @elseif($leave['leave_type'] == 'HL')
                                                                 {{ 'Holiday' }}
                                                             @endif

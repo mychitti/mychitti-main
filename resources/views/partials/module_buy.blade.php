@@ -100,6 +100,12 @@
                               $isHospitalModule =
                                   str_contains(strtolower($module->name), 'hospital') &&
                                   (Route::is('admin.plan.module-store') || (isset($store) && $store->module_id == 6));
+                              $isSchoolModule =
+                                  (($module->Key ?? '') === 'school_manage') &&
+                                  (Route::is('admin.plan.module-store') || strtolower($storeBusinessType ?? '') === 'school');
+                              $tieredModule = $isHospitalModule || $isSchoolModule;
+                              // hospital pre-selects the store's active tier; school lets the user pick.
+                              $activeTier = $isHospitalModule ? ($bedTier ?? null) : null;
                           @endphp
                           <div class="pc-module-item" data-module-id="{{ $module->id }}">
                               <div class="pc-module-top">
@@ -107,9 +113,9 @@
                                       data-module-id="{{ $module->id }}">
                                   <div class="pc-module-name">{{ _moduleDisplayName($module->Key ?? null, $module->name) }}</div>
                                   <div class="pc-price-amount">
-                                      @if ($isHospitalModule)
-                                          @if ($bedTier)
-                                              ₹{{ number_format($bedTier->price_monthly) }}/month
+                                      @if ($tieredModule)
+                                          @if ($activeTier)
+                                              ₹{{ number_format($activeTier->price_monthly) }}/month
                                           @else
                                               Select a tier
                                           @endif
@@ -119,23 +125,30 @@
                                   </div>
                               </div>
 
-                              @if ($isHospitalModule)
-                                  @php $allBedTiers = \App\Models\HospitalBedTier::where('is_active', true)->orderBy('min_beds')->get(); @endphp
-                                  @if ($allBedTiers->isNotEmpty())
+                              @if ($tieredModule)
+                                  @php
+                                      $tierList = $isSchoolModule
+                                          ? \App\Models\SchoolStudentTier::where('is_active', true)->orderBy('min_students')->get()
+                                          : \App\Models\HospitalBedTier::where('is_active', true)->orderBy('min_beds')->get();
+                                      $tierInputName = $isSchoolModule ? 'student_tier_id' : 'bed_tier_id';
+                                      $tierLabel = $isSchoolModule ? 'Select School Plan:' : 'Select Hospital Tier:';
+                                      $tierRange = fn($t) => $isSchoolModule ? $t->student_range : $t->bed_range;
+                                  @endphp
+                                  @if ($tierList->isNotEmpty())
                                       <div class="mb-2 px-1">
-                                          <label class="pc-label mb-1"><b>Select Hospital Tier:</b></label>
+                                          <label class="pc-label mb-1"><b>{{ $tierLabel }}</b></label>
                                           <div class="d-flex flex-wrap" style="gap:8px;" id="bedTierSelector">
-                                              @foreach ($allBedTiers as $tier)
-                                                  <div class="bed-tier-option {{ $bedTier && $bedTier->id == $tier->id ? 'selected' : '' }}"
+                                              @foreach ($tierList as $tier)
+                                                  <div class="bed-tier-option {{ $activeTier && $activeTier->id == $tier->id ? 'selected' : '' }}"
                                                       data-tier-id="{{ $tier->id }}"
                                                       data-price-monthly="{{ $tier->price_monthly }}"
                                                       data-price-yearly="{{ $tier->price_yearly }}"
                                                       data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
-                                                      style="border: 2px solid {{ $bedTier && $bedTier->id == $tier->id ? '#00868f' : '#dee2e6' }};
+                                                      style="border: 2px solid {{ $activeTier && $activeTier->id == $tier->id ? '#00868f' : '#dee2e6' }};
                                                      border-radius: 8px; padding: 8px 14px; cursor: pointer; background: #fff; min-width: 140px;">
                                                       <div style="font-weight:600; color:#333; font-size:13px;">
                                                           {{ $tier->tier_name }}</div>
-                                                      <div style="font-size:11px; color:#666;">{{ $tier->bed_range }}
+                                                      <div style="font-size:11px; color:#666;">{{ $tierRange($tier) }}
                                                       </div>
                                                       <div
                                                           style="font-size:13px; font-weight:700; color:#00868f; margin-top:2px;">
@@ -148,16 +161,16 @@
                                                   </div>
                                               @endforeach
                                           </div>
-                                          <input type="hidden" id="selectedBedTierId" name="bed_tier_id"
-                                              value="{{ $bedTier?->id }}">
+                                          <input type="hidden" id="selectedBedTierId" name="{{ $tierInputName }}"
+                                              value="{{ $activeTier?->id }}">
                                       </div>
                                       <div class="alert alert-info py-2 px-3 mb-2 pc-tier-info-banner"
                                           style="font-size:13px;">
-                                          @if ($bedTier)
-                                              <strong>Selected Tier:</strong> {{ $bedTier->tier_name }}
-                                              ({{ $bedTier->bed_range }})
+                                          @if ($activeTier)
+                                              <strong>Selected Tier:</strong> {{ $activeTier->tier_name }}
+                                              ({{ $tierRange($activeTier) }})
                                               &mdash;
-                                              ₹{{ number_format($bedTier->price_monthly) }}/month
+                                              ₹{{ number_format($activeTier->price_monthly) }}/month
                                           @else
                                               Please select a tier above to see pricing.
                                           @endif
@@ -175,8 +188,8 @@
                                                   'label' => $duration->label,
                                                   'discount' => _moduleDiscount($module->id, $duration->id),
                                               ];
-                                              if ($isHospitalModule) {
-                                                  $basePrice = $bedTier ? $bedTier->price_monthly * $dur->months : 0;
+                                              if ($tieredModule) {
+                                                  $basePrice = $activeTier ? $activeTier->price_monthly * $dur->months : 0;
                                                   $discountAmount = 0;
                                                   $finalPrice = $basePrice;
                                               } else {
@@ -187,14 +200,14 @@
                                           @endphp
                                           <div class="pc-duration-card" data-module-id="{{ $module->id }}"
                                               data-months="{{ $dur->months }}" data-base-price="{{ $basePrice }}"
-                                              data-discount="{{ $isHospitalModule ? 0 : $dur->discount }}"
+                                              data-discount="{{ $tieredModule ? 0 : $dur->discount }}"
                                               data-discount-amount="{{ $discountAmount }}"
                                               data-final-price="{{ $finalPrice }}">
                                               <div class="pc-duration-title">{{ $dur->label }}</div>
-                                              @if (!$isHospitalModule && $dur->discount > 0)
+                                              @if (!$tieredModule && $dur->discount > 0)
                                                   <div class="p5 mrp-cut">₹{{ number_format($basePrice, 2) }}</div>
                                               @endif
-                                              @if (!$isHospitalModule)
+                                              @if (!$tieredModule)
                                                   <div class="pc-duration-cost">₹{{ number_format($finalPrice, 2) }}
                                                   </div>
                                                   <div class="pc-duration-save">

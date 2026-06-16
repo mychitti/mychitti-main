@@ -26,6 +26,8 @@ use App\Http\Controllers\Front\UserController as FrontUserController;
 use App\Http\Controllers\Front\WishlistController;
 use App\Http\Controllers\Front\AIChatController as FrontAIChatController;
 use App\Http\Controllers\Front\AppointmentController as FrontAppointmentController;
+use App\Http\Controllers\Front\SchoolAdmissionController as FrontSchoolAdmissionController;
+use App\Http\Controllers\Front\SchoolPortalController;
 use App\Http\Controllers\PaymentGateway;
 use App\Http\Controllers\Front\SitemapController;
 use App\Http\Controllers\LocationController;
@@ -305,6 +307,8 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('{city}/store/{slug}/doctors', [FrontAppointmentController::class, 'show'])->name('front.store.doctors');
     Route::post('{city}/store/{slug}/appointment', [FrontAppointmentController::class, 'book'])->name('front.appointment.store');
     Route::get('{city}/store/{slug}/appointment/{id}/confirm', [FrontAppointmentController::class, 'confirm'])->name('front.appointment.confirm');
+    Route::get('{city}/store/{slug}/admission', [FrontSchoolAdmissionController::class, 'form'])->name('front.school.admission');
+    Route::post('{city}/store/{slug}/admission', [FrontSchoolAdmissionController::class, 'submit'])->name('front.school.admission.store');
     Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');
     Route::get('appointment/doctors', [FrontAppointmentController::class, 'doctors'])->name('front.appointment.doctors');
     Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
@@ -327,6 +331,14 @@ Route::group(['middleware' => ['frontuser']], function () {
 Route::group(['middleware' => ['registereduser']], function () {
     Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
     Route::get('dashboard-bookings', [FrontUserController::class, 'load_bookings'])->name('dashboard.bookings');
+
+    // School Parent/Student portal
+    Route::get('my-school', [SchoolPortalController::class, 'index'])->name('school.portal.index');
+    Route::post('my-school/link', [SchoolPortalController::class, 'link'])->name('school.portal.link');
+    Route::get('my-school/{id}/unlink', [SchoolPortalController::class, 'unlink'])->name('school.portal.unlink');
+    Route::post('my-school/{id}/leave', [SchoolPortalController::class, 'leaveStore'])->name('school.portal.leave');
+    Route::get('my-school/{id}/id-card', [SchoolPortalController::class, 'idCard'])->name('school.portal.id-card');
+    Route::get('my-school/{id}', [SchoolPortalController::class, 'show'])->name('school.portal.show');
 });
 
 Route::get('lang/{locale}', 'HomeController@lang')->name('lang');

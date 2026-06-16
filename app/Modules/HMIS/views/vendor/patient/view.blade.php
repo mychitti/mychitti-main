@@ -133,8 +133,8 @@
                 <div class="card-body p-0">
                     @if($patient->documents->count())
                     @php
-                        $typeLabels = ['id_proof'=>'ID Proof','report'=>'Report','prescription'=>'Prescription','other'=>'Other'];
-                        $typeBg     = ['id_proof'=>'#fef3c7','report'=>'#dbeafe','prescription'=>'#d1fae5','other'=>'#f3f4f6'];
+                        $typeLabels = ['id_proof'=>'ID Proof','report'=>'Report','prescription'=>'Prescription','other'=>'Other','arogyasri'=>'Arogya Sri','insurance'=>'Insurance','aadhaar'=>'Aadhaar Card','pan'=>'PAN Card','ration_card'=>'Ration Card','abha'=>'ABHA / Health ID','govt_other'=>'Other Govt'];
+                        $typeBg     = ['id_proof'=>'#fef3c7','report'=>'#dbeafe','prescription'=>'#d1fae5','other'=>'#f3f4f6','arogyasri'=>'#fce7f3','insurance'=>'#e0e7ff','aadhaar'=>'#fef9c3','pan'=>'#ccfbf1','ration_card'=>'#ffedd5','abha'=>'#dcfce7','govt_other'=>'#f3f4f6'];
                     @endphp
                     <ul class="list-group list-group-flush mb-0" id="docListInline">
                         @foreach($patient->documents as $doc)
@@ -446,95 +446,82 @@
         <button onclick="closeDocsModal()" style="background:none;border:none;font-size:18px;line-height:1;cursor:pointer;color:#6b7280;">&times;</button>
     </div>
 
-    <div style="padding:6px 16px; border-bottom:1px solid #f3f4f6;">
-        @if(hasPermission('patient_documents', 'add'))
-        <button onclick="toggleUploadForm()" id="uploadToggleBtn"
-                style="background:none; border:none; padding:0; font-size:12px; color:red; cursor:pointer;">
-            <i class="tio-add-circle mr-1"></i> Upload documents
-        </button>
-        @endif
-    </div>
+    @php
+        // type => [label, badge background, category(medical|govt)]
+        $docTypeMeta = [
+            'report'       => ['Report', '#dbeafe', 'medical'],
+            'id_proof'     => ['ID Proof', '#fef3c7', 'medical'],
+            'prescription' => ['Prescription', '#d1fae5', 'medical'],
+            'other'        => ['Other', '#f3f4f6', 'medical'],
+            'arogyasri'    => ['Arogya Sri', '#fce7f3', 'govt'],
+            'insurance'    => ['Insurance', '#e0e7ff', 'govt'],
+            'aadhaar'      => ['Aadhaar Card', '#fef9c3', 'govt'],
+            'pan'          => ['PAN Card', '#ccfbf1', 'govt'],
+            'ration_card'  => ['Ration Card', '#ffedd5', 'govt'],
+            'abha'         => ['ABHA / Health ID', '#dcfce7', 'govt'],
+            'govt_other'   => ['Other Govt', '#f3f4f6', 'govt'],
+        ];
+        $catOf       = fn($type) => $docTypeMeta[$type][2] ?? 'medical';
+        $medicalDocs = $patient->documents->filter(fn($d) => $catOf($d->document_type) === 'medical');
+        $govtDocs    = $patient->documents->filter(fn($d) => $catOf($d->document_type) === 'govt');
+    @endphp
 
-    @if(hasPermission('patient_documents', 'add'))
-    <div id="docUploadForm" style="display:none; padding:10px 16px; border-bottom:1px solid #f0f0f0; background:#fafafa;">
-        <div class="d-flex gap-2 align-items-end flex-wrap">
-            <div style="flex:1; min-width:110px;">
-                <label style="font-size:11px; color:#6b7280; margin-bottom:3px; display:block;">Type</label>
-                <select id="docTypeSelect" class="form-control form-control-sm">
-                    <option value="report">Report</option>
-                    <option value="id_proof">ID Proof</option>
-                    <option value="prescription">Prescription</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
-            <div style="flex:1; min-width:110px;">
-                <label style="font-size:11px; color:#6b7280; margin-bottom:3px; display:block;">Name <span style="opacity:.5;">(e.g. X-ray)</span></label>
-                <input type="text" id="docNameInput" class="form-control form-control-sm" placeholder="Optional">
-            </div>
-            <div style="flex:2; min-width:150px;">
-                <label style="font-size:11px; color:#6b7280; margin-bottom:3px; display:block;">Files</label>
-                <input type="file" id="docFileInput" class="form-control form-control-sm" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx">
-            </div>
-            <button class="btn btn-sm btn--primary" onclick="uploadDocs()" id="docUploadBtn" style="white-space:nowrap;">
-                <i class="tio-upload mr-1"></i> Upload
-            </button>
-        </div>
-        <div id="docUploadErr" class="text-danger small mt-1" style="display:none;"></div>
-        <div id="docUploadProgress" style="display:none; margin-top:6px;">
-            <div class="progress" style="height:4px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
-            </div>
-        </div>
-    </div>
-    @endif
+    {{-- Tabs --}}
+    <ul class="nav nav-tabs nav-tabs-line px-3 pt-2" id="docCatTabs" style="font-size:13px;">
+        <li class="nav-item">
+            <a class="nav-link active" data-toggle="tab" href="#docTab-medical">
+                <i class="tio-file mr-1"></i> Medical
+                <span class="badge badge-soft-secondary ml-1" id="medDocCount">{{ $medicalDocs->count() }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#docTab-govt">
+                <i class="tio-shield-outlined mr-1"></i> Government
+                <span class="badge badge-soft-secondary ml-1" id="govtDocCount">{{ $govtDocs->count() }}</span>
+            </a>
+        </li>
+    </ul>
 
-    @if(hasPermission('patient_documents', 'list'))
-    <div style="padding:12px 16px; max-height:50vh; overflow-y:auto;">
-        <ul class="list-group list-group-flush mb-0" id="docList">
-            @forelse($patient->documents as $doc)
-            @php
-                $typeLabels = ['id_proof'=>'ID Proof','report'=>'Report','prescription'=>'Prescription','other'=>'Other'];
-                $typeBg     = ['id_proof'=>'#fef3c7','report'=>'#dbeafe','prescription'=>'#d1fae5','other'=>'#f3f4f6'];
-            @endphp
-            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 doc-item" data-id="{{ $doc->id }}">
-                <span style="font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px;">
-                    <i class="tio-file mr-1 text-muted"></i>
-                    <span class="badge" style="font-size:11px; background:{{ $typeBg[$doc->document_type] ?? '#f3f4f6' }}; color:#374151; font-weight:600;">
-                        {{ $typeLabels[$doc->document_type] ?? $doc->document_type }}
-                    </span>
-                    @if($doc->document_name)
-                        <span class="text-muted ml-1" style="font-size:12px;">({{ $doc->document_name }})</span>
-                    @endif
-                </span>
-                <div class="d-flex gap-1" style="flex-shrink:0;">
-                    @if(hasPermission('patient_documents', 'view'))
-                    <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-xs btn-soft-primary">
-                        <i class="tio-visible"></i>
-                    </a>
-                    @endif
-                    @if(hasPermission('patient_documents', 'delete'))
-                    <button class="btn btn-xs btn-soft-danger" onclick="deleteDoc({{ $doc->id }}, this)" title="Delete">
-                        <i class="tio-delete"></i>
-                    </button>
-                    @endif
-                </div>
-            </li>
-            @empty
-            <li class="list-group-item text-center text-muted py-4 px-0" id="docEmptyState">
-                <i class="tio-file" style="font-size:28px;opacity:.35;display:block;margin-bottom:6px;"></i>
-                No documents yet.
-            </li>
-            @endforelse
-        </ul>
+    <div class="tab-content">
+        {{-- Medical documents --}}
+        <div class="tab-pane fade show active" id="docTab-medical">
+            @include('hmis::vendor.patient._docs_pane', [
+                'cat' => 'med', 'list_id' => 'docList', 'docs' => $medicalDocs,
+                'types' => ['report','id_proof','prescription','other'],
+                'placeholder' => 'e.g. X-ray', 'meta' => $docTypeMeta,
+            ])
+        </div>
+        {{-- Government documents --}}
+        <div class="tab-pane fade" id="docTab-govt">
+            @include('hmis::vendor.patient._docs_pane', [
+                'cat' => 'govt', 'list_id' => 'govtDocList', 'docs' => $govtDocs,
+                'types' => ['arogyasri','insurance','aadhaar','pan','ration_card','abha','govt_other'],
+                'placeholder' => 'e.g. policy no.', 'meta' => $docTypeMeta,
+            ])
+        </div>
     </div>
-    @endif
 </div>
 
 @push('script_2')
 <script>
 const docUploadUrl     = "{{ route('vendor.patient.upload-documents', $patient->id) }}";
-const docDeleteBaseUrl = "{{ url('vendor/patient/' . $patient->id . '/document') }}";
+const docDeleteUrlTpl  = "{{ route('vendor.patient.delete-document', ['id' => $patient->id, 'docId' => '__DOC__']) }}";
 const csrfToken        = "{{ csrf_token() }}";
+
+// type => [label, badge color, category]
+const DOC_TYPE_META = {
+    report:       ['Report', '#dbeafe', 'med'],
+    id_proof:     ['ID Proof', '#fef3c7', 'med'],
+    prescription: ['Prescription', '#d1fae5', 'med'],
+    other:        ['Other', '#f3f4f6', 'med'],
+    arogyasri:    ['Arogya Sri', '#fce7f3', 'govt'],
+    insurance:    ['Insurance', '#e0e7ff', 'govt'],
+    aadhaar:      ['Aadhaar Card', '#fef9c3', 'govt'],
+    pan:          ['PAN Card', '#ccfbf1', 'govt'],
+    ration_card:  ['Ration Card', '#ffedd5', 'govt'],
+    abha:         ['ABHA / Health ID', '#dcfce7', 'govt'],
+    govt_other:   ['Other Govt', '#f3f4f6', 'govt'],
+};
 
 (function() {
     const panel  = document.getElementById('docsModalDialog');
@@ -560,9 +547,10 @@ function openDocsPanel() {
 }
 function closeDocsModal() { document.getElementById('docsModalDialog').style.display = 'none'; }
 
-function toggleUploadForm() {
-    const form = document.getElementById('docUploadForm');
-    const btn  = document.getElementById('uploadToggleBtn');
+function toggleUploadForm(cat) {
+    const form = document.getElementById(cat + 'UploadForm');
+    const btn  = document.getElementById(cat + 'ToggleBtn');
+    if (!form || !btn) return;
     const open = form.style.display === 'none';
     form.style.display = open ? '' : 'none';
     btn.innerHTML = open ? '<i class="tio-close mr-1"></i> Cancel' : '<i class="tio-add-circle mr-1"></i> Upload documents';
@@ -579,13 +567,37 @@ function updateDocBadge(total) {
     } else if (badge) { badge.remove(); }
 }
 
-function uploadDocs() {
-    const input    = document.getElementById('docFileInput');
-    const type     = document.getElementById('docTypeSelect').value;
-    const name     = document.getElementById('docNameInput').value.trim();
-    const btn      = document.getElementById('docUploadBtn');
-    const errEl    = document.getElementById('docUploadErr');
-    const progress = document.getElementById('docUploadProgress');
+// Recompute per-tab counts, the header badge, and restore empty-state placeholders.
+function refreshDocCounts() {
+    let total = 0;
+    [['med', 'docList', 'medDocCount'], ['govt', 'govtDocList', 'govtDocCount']].forEach(([cat, listId, countId]) => {
+        const list = document.getElementById(listId);
+        if (!list) return;
+        const n = list.querySelectorAll('.doc-item').length;
+        total += n;
+        const countEl = document.getElementById(countId);
+        if (countEl) countEl.textContent = n;
+        const empty = list.querySelector('.doc-empty-state');
+        if (n === 0 && !empty) {
+            list.insertAdjacentHTML('beforeend',
+                `<li class="list-group-item text-center text-muted py-4 px-0 doc-empty-state">
+                    <i class="tio-file" style="font-size:28px;opacity:.35;display:block;margin-bottom:6px;"></i>
+                    No documents yet.
+                </li>`);
+        } else if (n > 0 && empty) {
+            empty.remove();
+        }
+    });
+    updateDocBadge(total);
+}
+
+function uploadDocs(cat) {
+    const input    = document.getElementById(cat + 'FileInput');
+    const type     = document.getElementById(cat + 'TypeSelect').value;
+    const name     = document.getElementById(cat + 'NameInput').value.trim();
+    const btn      = document.getElementById(cat + 'UploadBtn');
+    const errEl    = document.getElementById(cat + 'UploadErr');
+    const progress = document.getElementById(cat + 'UploadProgress');
 
     errEl.style.display = 'none';
     if (!input.files.length) { errEl.textContent = 'Please select at least one file.'; errEl.style.display = ''; return; }
@@ -605,16 +617,13 @@ function uploadDocs() {
     .then(r => r.json())
     .then(data => {
         if (!data.ok) throw new Error(data.message || 'Upload failed');
-        const list  = document.getElementById('docList');
-        const empty = document.getElementById('docEmptyState');
-        if (empty) empty.remove();
-
-        const typeLabels = { id_proof:'ID Proof', report:'Report', prescription:'Prescription', other:'Other' };
-        const typeColors = { id_proof:'#fef3c7', report:'#dbeafe', prescription:'#d1fae5', other:'#f3f4f6' };
 
         data.documents.forEach(doc => {
-            const label    = typeLabels[doc.document_type] || doc.document_type;
-            const color    = typeColors[doc.document_type] || '#f3f4f6';
+            const meta     = DOC_TYPE_META[doc.document_type] || [doc.document_type, '#f3f4f6', 'med'];
+            const list     = document.getElementById(meta[2] === 'govt' ? 'govtDocList' : 'docList');
+            if (!list) return;
+            const empty    = list.querySelector('.doc-empty-state');
+            if (empty) empty.remove();
             const namePart = doc.document_name ? `<span class="text-muted ml-1" style="font-size:12px;">(${doc.document_name})</span>` : '';
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-2 doc-item';
@@ -622,7 +631,7 @@ function uploadDocs() {
             li.innerHTML = `
                 <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">
                     <i class="tio-file mr-1 text-muted"></i>
-                    <span class="badge" style="font-size:11px;background:${color};color:#374151;font-weight:600;">${label}</span>
+                    <span class="badge" style="font-size:11px;background:${meta[1]};color:#374151;font-weight:600;">${meta[0]}</span>
                     ${namePart}
                 </span>
                 <div class="d-flex gap-1" style="flex-shrink:0;">
@@ -632,9 +641,9 @@ function uploadDocs() {
             list.appendChild(li);
         });
 
-        updateDocBadge(document.querySelectorAll('#docList .doc-item').length);
-        input.value = ''; document.getElementById('docNameInput').value = '';
-        toggleUploadForm();
+        refreshDocCounts();
+        input.value = ''; document.getElementById(cat + 'NameInput').value = '';
+        toggleUploadForm(cat);
     })
     .catch(err => { errEl.textContent = err.message; errEl.style.display = ''; })
     .finally(() => { btn.disabled = false; progress.style.display = 'none'; });
@@ -643,7 +652,7 @@ function uploadDocs() {
 function deleteDoc(docId, btn) {
     if (!confirm('Delete this document?')) return;
     btn.disabled = true;
-    fetch(`${docDeleteBaseUrl}/${docId}`, {
+    fetch(docDeleteUrlTpl.replace('__DOC__', docId), {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -651,15 +660,7 @@ function deleteDoc(docId, btn) {
     .then(data => {
         if (!data.ok) throw new Error();
         btn.closest('.doc-item').remove();
-        const total = document.querySelectorAll('#docList .doc-item').length;
-        updateDocBadge(total);
-        if (total === 0) {
-            document.getElementById('docList').innerHTML =
-                `<li class="list-group-item text-center text-muted py-4 px-0" id="docEmptyState">
-                    <i class="tio-file" style="font-size:28px;opacity:.35;display:block;margin-bottom:6px;"></i>
-                    No documents yet.
-                </li>`;
-        }
+        refreshDocCounts();
     })
     .catch(() => { btn.disabled = false; alert('Failed to delete document.'); });
 }

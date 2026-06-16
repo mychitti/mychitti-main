@@ -30,57 +30,11 @@
         }
     </style>
 @endpush
-
+ 
 @section('content')
     <div class="content container-fluid">
-        <!-- Page Header -->
-        <div class="page-header d-flex flex-wrap justify-content-between align-items-start w-100">
-            <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ _moduleLabel('inventory_manage') }}</h1>
-            <div class="d-none d-md-block">
-                <ul class="nav nav-pills d-flex justify-content-center flex-nowrap" id="pills-tab" role="tablist">
-                    @if (hasPermission('inventory_item', 'list'))
-                        <li class="nav-item mx-0" role="presentation">
-                            <a href="?tab=items"
-                                class="nav-link btn  {{ !request('tab') || request('tab') == 'items' ? ' active' : '' }} btn-left"
-                                id="pills-item-add-tab">Item List</a>
-                        </li>
-                    @endif
-                    @if (hasPermission('inventory_item_entry', 'list'))
-                        <li class="nav-item mx-0" role="presentation">
-                            <a href="?tab=entry"
-                                class="nav-link btn {{ request('tab') && request('tab') == 'entry' ? ' active' : '' }} btn-right"
-                                id="pills-item-entry-tab">Entries</a>
-                        </li>
-                    @endif
-                </ul>
-            </div>
-            <div class="d-flex gap-2 flex-wrap justify-content-center">
-
-                <div id="reader"></div>
-                <div id="result"></div>
-                <a href="{{ route('vendor.inventory.item.scan-barcode') }}" class="btn btn-primary btn_sm">Scan Barcode</a>
-
-
-                @if (hasPermission('inventory_item_entry', 'add'))
-                    <button type="button" class="btn btn-primary btn_sm" data-toggle="modal"
-                        data-target="#itemEntryModal">Item
-                        Entry</button>
-                @endif
-                @if (hasPermission('inventory_item', 'add'))
-                    <button type="button" class="btn btn-primary btn_sm add_item_btn" data-toggle="modal"
-                        data-target="#addInventoryItemModal">Add
-                        Item</button>
-                @endif
-
-            </div>
-        </div>
-        <div class="">
-
-        </div>
-        <!-- End Page Header -->
-
-
-        <div class="">
+        @include('hmis::vendor-views.partials._pharmacy_header')
+        <div class="pharmacy-page-content">
             <div class="card h-100">
                 <div class="d-block d-md-none">
                     <ul class=" nav nav-pills d-flex  tab_switch" id="pills-tab" role="tablist">
@@ -116,9 +70,21 @@
                             <div class="">
                                 <div class="col-md-12 px-0">
                                     <div class="card h-100">
-                                        <div class="card-header d-flex flex-wrap items_header">
-                                            <h3 class="mx-3 mt-2 mb-0">Items List</h3>
-                                            <div class="d-flex gap-2 flex-wrap">
+                                        <div class="card-header d-flex flex-wrap items_header align-items-center">
+                                            <h3 class="mx-3 mb-0">Items List</h3>
+                                            <div class="d-flex gap-2 flex-wrap align-items-center ml-auto">
+                                                <div id="reader"></div>
+                                                <div id="result"></div>
+                                                <a href="{{ route('vendor.inventory.item.scan-barcode') }}" class="btn btn-outline-primary btn-sm btn_sm">Scan Barcode</a>
+                                                 @if (hasPermission('inventory_item_entry', 'add'))
+                                                    <button type="button" class="btn btn-outline-primary btn-sm btn_sm" data-toggle="modal"
+                                                        data-target="#itemEntryModal">Item Entry</button>
+                                                @endif
+                                                @if (hasPermission('inventory_item', 'add'))
+                                                    <button type="button" class="btn btn-primary btn-sm btn_sm add_item_btn" data-toggle="modal"
+                                                        data-target="#addInventoryItemModal">Add Item</button>
+                                                @endif
+                                                <div class="divider mx-2" style="border-left: 1px solid #cbd5e1; height: 24px;"></div>
                                                 {{-- <form action="" class="d-flex date-range-form2">
                                                     <input type="hidden" name="tab" value="items">
                                                     <button style="width:fit-content; white-space:nowrap"
@@ -402,9 +368,15 @@
                             <div class="">
                                 <div class="col-md-12 px-0">
                                     <div class="card h-100">
-                                        <div class="card-header d-flex flex-wrap p-2">
-                                            <h3 class="mx-3 mt-2 mb-0">Entries</h3>
-                                            <div class="d-flex gap-2 flex-wrap">
+                                        <div class="card-header d-flex flex-wrap p-2 align-items-center">
+                                            <h3 class="mx-3 mb-0">Entries</h3>
+                                            <div class="d-flex gap-2 flex-wrap align-items-center ml-auto">
+                                                <a href="{{ route('vendor.inventory.item.scan-barcode') }}" class="btn btn-outline-primary btn-sm btn_sm">Scan Barcode</a>
+                                                @if (hasPermission('inventory_item_entry', 'add'))
+                                                    <button type="button" class="btn btn-primary btn-sm btn_sm" data-toggle="modal"
+                                                        data-target="#itemEntryModal">Item Entry</button>
+                                                @endif
+                                                <div class="divider mx-2" style="border-left: 1px solid #cbd5e1; height: 24px;"></div>
                                                 <form action="" class="d-flex date-range-form">
                                                     <input type="hidden" name="tab" value="entry">
                                                     <button style="width:fit-content; white-space:nowrap"

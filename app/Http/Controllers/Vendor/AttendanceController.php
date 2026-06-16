@@ -12,6 +12,7 @@ use App\Models\Department;
 use App\Models\Attendance;
 use App\Models\Staff;
 use App\Models\Leave;
+use App\Models\StoreConfig;
 use App\Exports\AttendanceExport;
 use App\Models\EmployeeTimeCard;
 use Maatwebsite\Excel\Facades\Excel;
@@ -30,9 +31,16 @@ class AttendanceController extends Controller
     {
         $v_id = Helpers::get_store_id();
 
-        $staff =  VendorEmployee::where('store_id', Helpers::get_store_id())->with(['role'])->latest()->paginate(config('default_pagination'));
+        // Unified "Attendance & Leave" workspace — one page, front-end tabs.
+        $staff = VendorEmployee::where('store_id', $v_id)->with(['role'])->latest()->get();
+        $store_config = StoreConfig::where('store_id', $v_id)->first();
+        $leaves = Leave::with('employee')
+            ->where('vendor_id', $v_id)
+            ->where('employee_type', 'vendor_employee')
+            ->latest()
+            ->get();
 
-        return view('vendor-views.attendance.index', compact('staff'));
+        return view('vendor-views.attendance.index', compact('staff', 'leaves', 'store_config'));
     }
 
 
@@ -50,26 +58,34 @@ class AttendanceController extends Controller
         $interval = new DateInterval('P1D');
         $period = new DatePeriod($startDate, $interval, $endDate);
 
+        // Batch-fetch the whole range once, then group in PHP (avoids a query per staff per day).
+        $attRows = Attendance::where('vendor_id', Helpers::get_store_id())
+            ->where('employee_type', 'vendor_employee')
+            ->whereBetween('date', [$fromdate, $todate])->get();
+        $grouped = [];
+        foreach ($attRows as $r) {
+            $grouped[$r->employee_id][Carbon::parse($r->date)->format('Y-m-d')][] = $r->toArray();
+        }
+
         foreach ($staff as $key => $value) {
             $lev = 0;
             $present = 0;
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'vendor_employee')->where('vendor_id', Helpers::get_store_id())->get()->toArray();
-                if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
+                $staff[$key][$dt] = $grouped[$value['id']][$dt] ?? [];
+                $label = $staff[$key][$dt][0]['label'] ?? null;
+                if (in_array($label, ['CL', 'SL'])) {
                     $lev++;
-                }
-                if (!empty($staff[$key][$dt]) &&  $staff[$key][$dt][0]['label'] == 'A') {
+                } elseif ($label === 'A') {
                     $absent++;
-                }
-                if (!empty($staff[$key][$dt]) &&  $staff[$key][$dt][0]['label'] == 'P') {
+                } elseif ($label === 'P') {
                     $present++;
                 }
-                $staff[$key]['casual_leaves'] = $lev;
-                $staff[$key]['absent_days'] = $absent;
-                $staff[$key]['present_days'] = $present;
             }
+            $staff[$key]['casual_leaves'] = $lev;
+            $staff[$key]['absent_days'] = $absent;
+            $staff[$key]['present_days'] = $present;
         }
         //format dates 
         $formattedDate = [];
@@ -95,26 +111,34 @@ class AttendanceController extends Controller
         $interval = new DateInterval('P1D');
         $period = new DatePeriod($startDate, $interval, $endDate);
 
+        // Batch-fetch the whole range once, then group in PHP (avoids a query per staff per day).
+        $attRows = Attendance::where('vendor_id', Helpers::get_store_id())
+            ->where('employee_type', 'vendor_employee')
+            ->whereBetween('date', [$fromdate, $todate])->get();
+        $grouped = [];
+        foreach ($attRows as $r) {
+            $grouped[$r->employee_id][Carbon::parse($r->date)->format('Y-m-d')][] = $r->toArray();
+        }
+
         foreach ($staff as $key => $value) {
             $lev = 0;
             $present = 0;
             $absent = 0;
             foreach ($period as $date) {
                 $dt = $date->format('Y-m-d');
-                $staff[$key][$dt] = Attendance::where('date', $dt)->where('employee_id', $value['id'])->where('employee_type', 'vendor_employee')->where('vendor_id', Helpers::get_store_id())->get()->toArray();
-                if (!empty($staff[$key][$dt]) && ($staff[$key][$dt][0]['label'] == 'CL' || $staff[$key][$dt][0]['label'] == 'SL')) {
+                $staff[$key][$dt] = $grouped[$value['id']][$dt] ?? [];
+                $label = $staff[$key][$dt][0]['label'] ?? null;
+                if (in_array($label, ['CL', 'SL'])) {
                     $lev++;
-                }
-                if (!empty($staff[$key][$dt]) &&  $staff[$key][$dt][0]['label'] == 'A') {
+                } elseif ($label === 'A') {
                     $absent++;
-                }
-                if (!empty($staff[$key][$dt]) &&  $staff[$key][$dt][0]['label'] == 'P') {
+                } elseif ($label === 'P') {
                     $present++;
                 }
-                $staff[$key]['casual_leaves'] = $lev;
-                $staff[$key]['absent_days'] = $absent;
-                $staff[$key]['present_days'] = $present;
             }
+            $staff[$key]['casual_leaves'] = $lev;
+            $staff[$key]['absent_days'] = $absent;
+            $staff[$key]['present_days'] = $present;
         }
         //format dates 
         $dates = [];
@@ -186,10 +210,16 @@ class AttendanceController extends Controller
             if ($att['label'] == 'CL') {
                 $day_data['cl']++;
             }
+            if ($att['label'] == 'HCL') {
+                $day_data['cl'] += 0.5;
+            }
             if ($att['label'] == 'SL') {
                 $day_data['sl']++;
             }
-            if ($att['label'] == 'HDF' || $att['label'] == 'HDS' ) {
+            if ($att['label'] == 'HSL') {
+                $day_data['sl'] += 0.5;
+            }
+            if (in_array($att['label'], ['HDF', 'HDS', 'HCL', 'HSL'])) {
                 $day_data['halfday']++;
             }
             if ($att['label'] == 'HL') {
@@ -222,13 +252,21 @@ class AttendanceController extends Controller
         $data['early_departures'] = 0;
         $total_time = 0;
 
+        // Shift-based thresholds (fall back to legacy 10:00–19:00, no grace, Sunday-off
+        // when the staff has no shift assigned or the shift omits these fields).
+        $shift        = $staff ? $staff->shift : null;
+        $shiftStart   = $shift && $shift->start_time ? substr($shift->start_time, 0, 8) : '10:00:00';
+        $shiftEnd     = $shift && $shift->end_time ? substr($shift->end_time, 0, 8) : '19:00:00';
+        $graceMinutes = $shift && $shift->grace_minutes !== null ? (int) $shift->grace_minutes : 0;
+
         $data['time_worked'] = CarbonInterval::seconds(0);
 
         foreach ($attendanceLogs as $value) {
-            if ($value->in_time > $value->date . ' 10:00:00') {
+            $lateThreshold = Carbon::parse($value->date . ' ' . $shiftStart)->addMinutes($graceMinutes);
+            if (Carbon::parse($value->in_time)->gt($lateThreshold)) {
                 $data['late_arrivals']++;
             }
-            if ($value->out_time < $value->date . ' 19:00:00') {
+            if (Carbon::parse($value->out_time)->lt(Carbon::parse($value->date . ' ' . $shiftEnd))) {
                 $data['early_departures']++;
             }
             $inTime = Carbon::parse($value->in_time);
@@ -262,9 +300,12 @@ class AttendanceController extends Controller
         $interval = new DateInterval('P1D');
         $period = new DatePeriod($start, $interval, $end->modify('+1 day'));
 
+        // Week-offs come from the shift's working_days (off = any weekday not worked).
+        // No shift / unparseable value → legacy behaviour (Sunday is the only week-off).
+        $offDays = $this->shiftOffDays($shift);
         $sundays = 0;
         foreach ($period as $date) {
-            if ($date->format('w') == 0) { // 0 = Sunday
+            if (in_array((int) $date->format('w'), $offDays, true)) {
                 $sundays++;
             }
         }
@@ -290,50 +331,73 @@ class AttendanceController extends Controller
         ));
     }
 
+    // Returns the week-off weekdays as PHP 'w' values (0=Sun..6=Sat) for a shift,
+    // derived from working_days (any weekday NOT worked is a week-off). Accepts a JSON
+    // array, a comma list, day numbers (ISO 1-7 or 0-6) or names (mon/tue/...).
+    // Falls back to [0] (Sunday) when no shift or working_days can't be resolved.
+    private function shiftOffDays($shift): array
+    {
+        $raw = $shift ? $shift->working_days : null;
+        if (empty($raw)) {
+            return [0];
+        }
+
+        $tokens = is_array($raw) ? $raw : (json_decode($raw, true) ?: explode(',', $raw));
+        $nameMap = ['sun' => 0, 'mon' => 1, 'tue' => 2, 'wed' => 3, 'thu' => 4, 'fri' => 5, 'sat' => 6];
+
+        $working = [];
+        foreach ($tokens as $t) {
+            $t = strtolower(trim((string) $t));
+            if ($t === '') {
+                continue;
+            }
+            if (is_numeric($t)) {
+                $working[] = ((int) $t) % 7; // ISO 7=Sun→0, 0-6 unchanged
+            } elseif (isset($nameMap[substr($t, 0, 3)])) {
+                $working[] = $nameMap[substr($t, 0, 3)];
+            }
+        }
+        $working = array_unique($working);
+        if (empty($working)) {
+            return [0];
+        }
+
+        return array_values(array_diff([0, 1, 2, 3, 4, 5, 6], $working));
+    }
+
     public function save_att(Request $request)
     {
 
         $id = $request->post('emp_id');
-        // prx($request->all());
-
-        Attendance::where(['month' => $request->post('month'), 'employee_id' => $id, 'employee_type' => 'vendor_employee', 'vendor_id' => Helpers::get_store_id(), 'year' =>  $request->post('year')])->delete();
-
-
         $v_id = \App\CentralLogics\Helpers::get_store_id();
 
-        foreach ($request->post('daysArr') as $key => $value) {
-            $att = new Attendance;
-            $att->vendor_id = $v_id;
-            $att->employee_type = 'vendor_employee';
-            $att->employee_id = $request->post('emp_id');
-            $att->date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('daysArr')[$key];
-            $att->label = $request->post('statusArr')[$key];
-            $att->day = $request->post('daysArr')[$key];
-            $att->month = $request->post('month');
-            $att->year = $request->post('year');
-            $att->created_at = date('Y-m-d H:i:s');
-            $att->save();
+        // Atomic: the month rebuild (clear + re-insert) all-or-nothing, so a mid-way
+        // failure can never leave the month half-wiped.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, $v_id) {
+            Attendance::where(['month' => $request->post('month'), 'employee_id' => $id, 'employee_type' => 'vendor_employee', 'vendor_id' => $v_id, 'year' => $request->post('year')])->delete();
 
-            $leave = Leave::where(['vendor_id' => $v_id, 'emp_id' => $request->post('emp_id'), 'day' => $request->post('daysArr')[$key], 'month' => $request->post('month'), 'year' => $request->post('year'), 'employee_type' => 'vendor_employee'])->exists();
-            if (!$leave && in_array($request->post('statusArr')[$key], ['SL', 'CL', 'HD'])) {
-                if ($request->post('statusArr')[$key] == 'HD') {
-                    $request->post('statusArr')[$key] = 'HDS';
-                }
-                $leave = new Leave;
-                $leave->vendor_id = $v_id;
-                $leave->emp_id = $request->post('emp_id');
-                $leave->day = $request->post('daysArr')[$key];
-                $leave->status = 'approved';
-                $leave->added_by = 'vendor';
-                $leave->month = $request->post('month');
-                $leave->year = $request->post('year');
-                $leave->leave_type = $request->post('statusArr')[$key];
-                $leave->reason = '-';
-                $leave->created_at = date('Y-m-d H:i:s');
-                $leave->leave_date = $request->post('year') . '-' . $request->post('month') . '-' . $request->post('daysArr')[$key];
-                $leave->save();
+            foreach ($request->post('daysArr') as $key => $day) {
+                // Normalise a generic half-day ('HD') to a concrete code so attendance,
+                // leave and salary all read the same label.
+                $rawStatus = $request->post('statusArr')[$key];
+                $status = $rawStatus === 'HD' ? 'HDS' : $rawStatus;
+                $date = $request->post('year') . '-' . $request->post('month') . '-' . $day;
+
+                $att = new Attendance;
+                $att->vendor_id = $v_id;
+                $att->employee_type = 'vendor_employee';
+                $att->employee_id = $id;
+                $att->date = $date;
+                $att->label = $status;
+                $att->day = $day;
+                $att->month = $request->post('month');
+                $att->year = $request->post('year');
+                $att->created_at = date('Y-m-d H:i:s');
+                $att->save();
+                // Attendance is the single source of truth — no separate Leave row written here.
+                // CL/SL/half-day counts are derived from these labels (see _attendanceMonthCounts).
             }
-        }
+        });
 
 
         Toastr::success('Attendance Information saved successfully');

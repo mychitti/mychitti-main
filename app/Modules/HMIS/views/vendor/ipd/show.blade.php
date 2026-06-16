@@ -1,14 +1,15 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'IPD — ' . $admission->admission_number)
 
 @section('content')
     <div class="content container-fluid">
+        @include('hmis::vendor.hospital._hospital_submenu_header')
         <div class="page-header d-flex justify-content-between align-items-center">
             <h1 class="page-header-title mb-0">
                 <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
                 IPD Admission
                 <small class="text-muted font-size-14 ml-2">{{ $admission->admission_number }}</small>
-            </h1>
+            </h1> 
             <div class="d-flex gap-2">
                 @if (hasPermission('ipd_admission', 'generate_bill'))
                     <a href="{{ route('vendor.hospital-bill.create-ipd', $admission->id) }}"

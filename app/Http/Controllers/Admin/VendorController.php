@@ -78,8 +78,9 @@ class VendorController extends Controller
     {
         $module_categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
         $allPlans = Plan::where('status', '1')->get();
+        StoreType::firstOrCreate(['name' => 'School', 'module_id' => Config::get('module.current_module_id')]);
         $business_types = StoreType::where('module_id', Config::get('module.current_module_id'))->get();
-     
+
             return view('admin-views.vendor.index', compact('allPlans', 'module_categories', 'business_types'));
     }
     public function types() 

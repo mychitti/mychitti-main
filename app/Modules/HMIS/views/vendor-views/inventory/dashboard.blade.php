@@ -264,10 +264,11 @@
         }
     }
     </style>
-@endpush
+@endpush 
 
 @section('content')
-    <div class="p-2">
+    @include('hmis::vendor-views.partials._pharmacy_header')
+    <div class="pharmacy-page-content">
         {{-- @include('vendor-views/sub-module/partials/inventory') --}}
         <div class="page-header d-flex flex-wrap justify-content-between">
             <h1 class="page-header-title"><i class="tio-filter-list"></i>{{ _moduleLabel('inventory') }} Dashboard</h1>

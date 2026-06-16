@@ -25,6 +25,7 @@
                 <form method="POST" action="{{ route('vendor.patient.update', $patient->id) }}"
                     enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="_full_patient_update" value="1">
                     @php $h = $patient->medicalHistory; @endphp
 
                     <h5 class="mb-3">Personal Details</h5>
@@ -217,11 +218,11 @@
 
 @push('script_2')
 <script>
-const deleteDocUrl = "{{ url('vendor/patient/' . $patient->id . '/document') }}";
+const deleteDocTpl = "{{ route('vendor.patient.delete-document', ['id' => $patient->id, 'docId' => '__DOC__']) }}";
 
 function deleteExistingDoc(docId) {
     if (!confirm('Delete this document?')) return;
-    fetch(deleteDocUrl + '/' + docId, {
+    fetch(deleteDocTpl.replace('__DOC__', docId), {
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'X-Requested-With': 'XMLHttpRequest' }
     })

@@ -21,8 +21,9 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header mt-3">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Edit Salary </h1>
             <div class="page-header-select-wrapper">
 

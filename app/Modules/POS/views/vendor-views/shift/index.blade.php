@@ -12,8 +12,9 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <!-- Page Header -->
-        <div class="page-header flex-wrap w-100 d-flex justify-content-between">
+        <div class="page-header flex-wrap w-100 d-flex justify-content-between mt-3">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <i class="tio-timer"></i>

@@ -205,9 +205,90 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             }
         }
     </style>
-</head>
 
-<body class="footer-offset ">
+    @if (strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') == 'hospital')
+        {{-- ── HMIS dark-navy skin (hospital stores only) ─────────────────── --}}
+        <style>
+            :root { --hmis-navy:#0D47A1; --hmis-navy2:#0B3C8A; --hmis-accent:#69F0AE; }
+            /* Sidebar shell */
+            body.hmis-skin .navbar-vertical-aside,
+            body.hmis-skin .navbar-vertical-aside .navbar-vertical-container,
+            body.hmis-skin .navbar-vertical-aside .navbar-brand-wrapper {
+                background-color: var(--hmis-navy) !important;
+                border-color: rgba(255,255,255,.10) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside { box-shadow: 1px 0 0 rgba(0,0,0,.06); }
+            body.hmis-skin .nav_store_title,
+            body.hmis-skin .navbar-vertical-aside .navbar-brand b { color:#fff !important; }
+            /* Nav links */
+            body.hmis-skin .navbar-vertical-aside .nav-link {
+                color: rgba(255,255,255,.72) !important; border-left:3px solid transparent;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-link:hover {
+                color:#fff !important; background: rgba(255,255,255,.07) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-item.active > .nav-link,
+            body.hmis-skin .navbar-vertical-aside .nav-link.active,
+            body.hmis-skin .navbar-vertical-aside .active > .nav-link {
+                color:#fff !important; background: rgba(255,255,255,.13) !important;
+                border-left-color: var(--hmis-accent) !important;
+            }
+            /* Icons (font + indicator dots) */
+            body.hmis-skin .navbar-vertical-aside .nav-icon,
+            body.hmis-skin .navbar-vertical-aside [class^="tio-"],
+            body.hmis-skin .navbar-vertical-aside [class*=" tio-"],
+            body.hmis-skin .navbar-vertical-aside .nav-indicator-icon {
+                color: rgba(255,255,255,.8) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-item.active > .nav-link .nav-indicator-icon { color: var(--hmis-accent) !important; }
+            /* Section subtitles + submenus */
+            body.hmis-skin .navbar-vertical-aside .nav-subtitle,
+            body.hmis-skin .navbar-vertical-aside .navbar-vertical-aside-has-menu .nav-subtitle { color: rgba(255,255,255,.38) !important; }
+            /* Expanded submenu — keep on navy, never white, links light not red */
+            body.hmis-skin .navbar-vertical-aside .nav-sub,
+            body.hmis-skin .navbar-vertical-aside .js-navbar-vertical-aside-submenu,
+            body.hmis-skin .navbar-vertical-aside .navbar-vertical-aside-has-menu .nav-sub {
+                background: rgba(0,0,0,.16) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link,
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link .text-truncate {
+                color: rgba(255,255,255,.66) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link:hover,
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link:hover .text-truncate {
+                color: #fff !important; background: rgba(255,255,255,.06) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-item.active > .nav-link,
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link.active,
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-item.active > .nav-link .text-truncate,
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link.active .text-truncate {
+                color: var(--hmis-accent) !important; background: rgba(255,255,255,.08) !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .nav-sub .nav-indicator-icon { color: rgba(255,255,255,.6) !important; }
+            body.hmis-skin .navbar-vertical-aside hr,
+            body.hmis-skin .navbar-vertical-aside .dropdown-divider { border-color: rgba(255,255,255,.10) !important; }
+            /* Toggle / search inputs inside sidebar */
+            body.hmis-skin .navbar-vertical-aside .input-group-text,
+            body.hmis-skin .navbar-vertical-aside .form-control {
+                background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.15) !important; color:#fff !important;
+            }
+            body.hmis-skin .navbar-vertical-aside .form-control::placeholder { color: rgba(255,255,255,.5) !important; }
+            /* Workspace background */
+            body.hmis-skin #content, body.hmis-skin .main { background:#F1F5F9 !important; }
+            /* Nav content shell must not stay white; keep the store logo/name readable on navy */
+            body.hmis-skin .navbar-vertical-content.bg-white,
+            body.hmis-skin #navbar-vertical-content { background: var(--hmis-navy) !important; }
+            body.hmis-skin .navbar-brand-wrapper { background: var(--hmis-navy) !important; }
+            body.hmis-skin .nav_store_title { color:#fff !important; }
+            /* Fix white background blocks on sidebar submenus */
+            body.hmis-skin .navbar-vertical-aside-has-menu .sub-link.js-navbar-vertical-aside-menu-link {
+                background: transparent !important;
+            }
+        </style> 
+    @endif
+</head>
+ 
+<body class="footer-offset {{ strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') == 'hospital' ? 'hmis-skin' : '' }}">
     @if (session()->has('impersonator_id'))
         <div
             style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;">
@@ -281,7 +362,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         {{-- <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a> --}}
         <a type="button" class="animated-btn" type="button" id="ai-chat-fab"
-            style="float: right; margin: 3px 12px; padding: 0px 15px;"><i class="tio-headphones"></i> Help</a>
+            style="float: right;    position: absolute; right: 0; margin: 3px 12px; padding: 0px 15px;"><i class="tio-headphones"></i> Help</a>
 
         @yield('content')
 

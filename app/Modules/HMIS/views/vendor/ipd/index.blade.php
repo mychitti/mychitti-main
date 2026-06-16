@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'IPD Admissions')
 
 @push('css_or_js')
@@ -48,10 +48,11 @@
 
 @section('content')
 <div class="content container-fluid">
+    @include('hmis::vendor.hospital._hospital_submenu_header')
     <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <h1 class="page-header-title mb-0">
             <span class="page-header-icon"><i class="tio-hospital" style="font-size:22px;"></i></span>
-            IPD Admissions
+            IPD Admissions 
         </h1>
         <div class="d-flex gap-2 flex-wrap align-item-center">
             @if (hasPermission('ipd_admission', 'export'))

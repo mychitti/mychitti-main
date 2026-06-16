@@ -5628,6 +5628,28 @@ if (!function_exists('_verify_otp')) {
     }
 }
 
+if (!function_exists('_attendanceMonthCounts')) {
+    function _attendanceMonthCounts($vendorId, $employeeId, $year, $month)
+    {
+        $rows = DB::table('attendances')
+            ->select('label', DB::raw('count(*) as count'))
+            ->where([
+                'vendor_id'     => $vendorId,
+                'employee_id'   => $employeeId, 
+                'employee_type' => 'vendor_employee',
+                'year'          => $year,
+                'month'         => $month,
+            ])
+            ->groupBy('label')
+            ->pluck('count', 'label')
+            ->toArray();
+
+        // Ensure key labels default to 0 to avoid PHP undefined index notices.
+        $defaults = ['CL' => 0, 'HCL' => 0, 'SL' => 0, 'HSL' => 0, 'P' => 0, 'A' => 0];
+        return array_merge($defaults, $rows);
+    }
+}
+
 
 if (!function_exists('_actionLog')) {
     function _actionLog($data)
@@ -6382,6 +6404,41 @@ if (!function_exists('_sendSchoolNotification')) {
             return false;
         }
         return _sendSchoolNotificationBulk(collect([$student]), $actionKey, $messageText, $pushData);
+    }
+} 
+
+if (!function_exists('_payrollLopDays')) {
+    function _payrollLopDays($vendorId, $empInfo, $year, $month)
+    {
+        $employeeId = is_object($empInfo) ? $empInfo->id : $empInfo;
+        
+        $counts = _attendanceMonthCounts($vendorId, $employeeId, $year, $month);
+        
+        // Explicit Loss of Pay types:
+        // 'A' counts as 1.0 day LOP
+        // 'HDF', 'HDS', 'HD' count as 0.5 days LOP
+        $lop = $counts['A'] + 0.5 * (($counts['HDF'] ?? 0) + ($counts['HDS'] ?? 0) + ($counts['HD'] ?? 0));
+        
+        // Also check if paid leaves exceed allowance pool:
+        // casual leaves used: CL + 0.5 * HCL
+        // sick leaves used: SL + 0.5 * HSL
+        $clTaken = $counts['CL'] + 0.5 * $counts['HCL'];
+        $slTaken = $counts['SL'] + 0.5 * $counts['HSL'];
+        
+        // get allowed limits
+        $emp = is_object($empInfo) ? $empInfo : \App\Models\VendorEmployee::find($employeeId);
+        if ($emp) {
+            $store_config = \App\Models\StoreConfig::where('store_id', $vendorId)->first();
+            $clAllowed = $emp->cl_allowance ?? ($store_config->cl_for_employees ?? 0);
+            $slAllowed = $emp->sl_allowance ?? ($store_config->sl_for_employees ?? 0);
+            
+            $excessCl = max(0.0, $clTaken - $clAllowed);
+            $excessSl = max(0.0, $slTaken - $slAllowed);
+            
+            $lop += $excessCl + $excessSl;
+        }
+        
+        return (float) $lop;
     }
 }
 
