@@ -456,7 +456,10 @@
                     </form>
                 </div>
 
+                @endif
+
                 {{-- TAB 6: BLOOD BANK --}}
+                @if($vBlood)
                 <div class="tab-panel" data-panel="6">
                     <div class="card">
                         <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltred)">🩸</div> Blood Bank</h3></div>
@@ -491,7 +494,10 @@
                     </div>
                 </div>
 
+                @endif
+
                 {{-- TAB 7: PRE-OP PREP --}}
+                @if($vChecklist)
                 <div class="tab-panel" data-panel="7">
                     <div class="card">
                         <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltblue)">🛁</div> Physical Pre-Op Preparation</h3></div>
@@ -525,7 +531,10 @@
                     </div>
                 </div>
 
+                @endif
+
                 {{-- TAB 8: CLEARANCES --}}
+                @if($vClearance)
                 <div class="tab-panel" data-panel="8">
                     <div class="card">
                         <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">✅</div> Pre-Op Clearances</h3></div>
@@ -552,7 +561,10 @@
                     </div>
                 </div>
 
+                @endif
+
                 {{-- TAB 9: OT HANDOVER --}}
+                @if($vHandover)
                 <div class="tab-panel" data-panel="9">
                     <div class="card">
                         <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">🚪</div> OT Handover — Ward to OT</h3></div>
@@ -582,6 +594,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
 
@@ -615,7 +628,8 @@
     };
     tabs.forEach(function(t){t.addEventListener('click',function(){preopTab(this.dataset.tab);});});
     var s=null;try{s=localStorage.getItem('preopTab');}catch(e){}
-    if(s!==null&&document.querySelector('.preopx .tab[data-tab="'+s+'"]'))preopTab(s);
+    if(s!==null&&document.querySelector('.preopx .tab[data-tab="'+s+'"]')){preopTab(s);}
+    else if(!document.querySelector('.preopx .tab.active')&&tabs.length){preopTab(tabs[0].dataset.tab);}
 
     function cd(){
         var el=document.getElementById('preopCountdown');if(!el||!el.dataset.ot)return;
