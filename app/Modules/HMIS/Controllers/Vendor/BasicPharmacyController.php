@@ -11,6 +11,7 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class BasicPharmacyController extends Controller
 {
@@ -63,7 +64,7 @@ class BasicPharmacyController extends Controller
             ]);
         }
 
-        foreach (['list', 'add', 'edit', 'delete', 'dispense'] as $action) {
+        foreach (['view', 'add', 'edit', 'delete', 'dispense'] as $action) {
             $exists = DB::table('feature_permissions')
                 ->where('feature_id', $featureId)
                 ->where('action', $action)
@@ -74,6 +75,35 @@ class BasicPharmacyController extends Controller
                     'action'     => $action,
                     'free'       => 1,
                 ]);
+            }
+        }
+
+        // Legacy: the read permission used to be 'list'. Migrate any existing role grants
+        // from 'list' → 'view' and drop the old 'list' action so the grid shows a single
+        // "View" column for basic pharmacy.
+        if (Schema::hasTable('role_feature_permissions')) {
+            $listPerm = DB::table('feature_permissions')
+                ->where('feature_id', $featureId)->where('action', 'list')->first();
+            $viewPerm = DB::table('feature_permissions')
+                ->where('feature_id', $featureId)->where('action', 'view')->first();
+            if ($listPerm && $viewPerm) {
+                $roleIds = DB::table('role_feature_permissions')
+                    ->where('feature_permission_id', $listPerm->id)->pluck('role_id');
+                foreach ($roleIds as $rid) {
+                    $already = DB::table('role_feature_permissions')
+                        ->where('role_id', $rid)
+                        ->where('feature_permission_id', $viewPerm->id)->exists();
+                    if (!$already) {
+                        DB::table('role_feature_permissions')->insert([
+                            'role_id'               => $rid,
+                            'feature_permission_id' => $viewPerm->id,
+                            'created_at'            => now(),
+                            'updated_at'            => now(),
+                        ]);
+                    }
+                }
+                DB::table('role_feature_permissions')->where('feature_permission_id', $listPerm->id)->delete();
+                DB::table('feature_permissions')->where('id', $listPerm->id)->delete();
             }
         }
     }
@@ -310,12 +340,16 @@ class BasicPharmacyController extends Controller
                     'price'             => $ln['price'],
                     'tax'               => 0,
                     'gst_status'        => 'excluding',
+                    'inv_id'            => $ln['item']->id, // link to inventory item so it appears in Sale Orders
                 ]);
 
                 // Decrement pharmacy stock.
                 $ln['item']->stock = max(0, (float) $ln['item']->stock - $ln['qty']);
                 $ln['item']->save();
             }
+
+            // Record this walk-in as an inventory Sale Order (InventoryOrder + details).
+            Helpers::_placeInventoryOrder($manual);
 
             DB::commit();
         } catch (\Throwable $e) {
@@ -417,5 +451,144 @@ class BasicPharmacyController extends Controller
         $item->delete();
         Toastr::success('Medicine removed.');
         return back();
+    }
+
+    // ── Import / Export ─────────────────────────────────────────────────────
+    private const IMPORT_COLUMNS = ['item_name', 'brand', 'sku_id', 'unit', 'mrp', 'selling_price', 'stock', 'reorder_level', 'expiry_date'];
+
+    public function exportMedicines()
+    {
+        $this->ensurePharmacyColumns();
+        $items = InventoryItem::where('store_id', $this->storeId())
+            ->where('item_type', 'product')
+            ->with('itemunit')
+            ->orderBy('item_name')
+            ->get();
+
+        $columns = self::IMPORT_COLUMNS;
+        $callback = function () use ($items, $columns) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $columns);
+            foreach ($items as $i) {
+                fputcsv($out, [
+                    $i->item_name, $i->brand, $i->sku_id,
+                    $i->itemunit->unit ?? '',
+                    $i->mrp, $i->selling_price, (int) $i->stock,
+                    (int) ($i->reorder_level ?? 0),
+                    $i->expiry_date ? \Carbon\Carbon::parse($i->expiry_date)->toDateString() : '',
+                ]);
+            }
+            fclose($out);
+        };
+
+        return response()->streamDownload($callback, 'pharmacy_medicines_' . date('Ymd') . '.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function importMedicines(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:csv,txt,xls,xlsx|max:5120']);
+        $this->ensurePharmacyColumns();
+        $storeId = $this->storeId();
+
+        try {
+            $sheet = IOFactory::load($request->file('file')->getPathname())->getActiveSheet();
+            $rows  = $sheet->toArray(null, true, true, false); // 0-indexed columns
+        } catch (\Throwable $e) {
+            Toastr::error('Could not read the file: ' . $e->getMessage());
+            return back();
+        }
+
+        if (count($rows) < 2) {
+            Toastr::error('The file has no data rows.');
+            return back();
+        }
+
+        $header = array_map(fn($h) => strtolower(trim((string) $h)), array_shift($rows));
+        $get = function ($row, array $aliases) use ($header) {
+            foreach ($aliases as $a) {
+                $i = array_search($a, $header, true);
+                if ($i !== false && isset($row[$i])) {
+                    return trim((string) $row[$i]);
+                }
+            }
+            return null;
+        };
+
+        $created = 0; $updated = 0;
+        DB::beginTransaction();
+        try {
+            foreach ($rows as $row) {
+                if (!is_array($row)) continue;
+                $name = $get($row, ['item_name', 'name', 'medicine', 'medicine name']);
+                if ($name === null || $name === '') continue;
+
+                $sku  = $get($row, ['sku_id', 'sku', 'code']);
+                $item = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
+                    ->when($sku, fn($q) => $q->where('sku_id', $sku))
+                    ->when(!$sku, fn($q) => $q->whereRaw('LOWER(item_name) = ?', [mb_strtolower($name)]))
+                    ->first();
+
+                $isNew = !$item;
+                if ($isNew) {
+                    $item = new InventoryItem();
+                    $item->store_id          = $storeId;
+                    $item->item_type         = 'product';
+                    $item->module_id         = Helpers::get_store_data()->module_id ?? null;
+                    $item->category_id       = Helpers::_saveCategoryIfNotExists('Medicine');
+                    $item->gst_rate          = 0;
+                    $item->gst_status        = 'excluding';
+                    $item->show_on_store_page = 0;
+                }
+
+                $item->item_name = $name;
+                if (($v = $get($row, ['brand'])) !== null && $v !== '')  $item->brand  = $v;
+                if ($sku !== null && $sku !== '')                        $item->sku_id = $sku;
+                if (($v = $get($row, ['unit'])) !== null && $v !== '')   $item->unit   = _saveUnitIfNotExist($v);
+                elseif ($isNew)                                          $item->unit   = _saveUnitIfNotExist('Unit');
+
+                $mrp     = $get($row, ['mrp']);
+                $selling = $get($row, ['selling_price', 'price', 'selling']);
+                $stock   = $get($row, ['stock', 'qty', 'quantity']);
+                $reorder = $get($row, ['reorder_level', 'reorder', 'min_level']);
+                $expiry  = $get($row, ['expiry_date', 'expiry', 'expiry date']);
+
+                if (is_numeric($mrp))     $item->mrp           = (float) $mrp;
+                if (is_numeric($selling)) $item->selling_price = (float) $selling;
+                elseif ($isNew)           $item->selling_price = is_numeric($mrp) ? (float) $mrp : 0;
+                if (is_numeric($stock))   $item->stock         = (float) $stock;
+                elseif ($isNew)           $item->stock         = 0;
+                if (is_numeric($reorder)) $item->reorder_level = (int) $reorder;
+                if ($expiry) {
+                    try { $item->expiry_date = \Carbon\Carbon::parse($expiry)->toDateString(); } catch (\Throwable $e) {}
+                }
+
+                $item->save();
+                $isNew ? $created++ : $updated++;
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Toastr::error('Import failed: ' . $e->getMessage());
+            return back();
+        }
+
+        Toastr::success("Import complete — {$created} added, {$updated} updated.");
+        return back();
+    }
+
+    // ── Sale Orders (free pharmacy view of inventory sale orders) ───────────
+    public function saleOrders(Request $request)
+    {
+        $this->ensurePharmacyPermission();
+        $storeId = $this->storeId();
+        $search  = trim($request->get('search', ''));
+
+        $orders = \App\Models\InventoryOrder::where('store_id', $storeId)
+            ->with(['details.item', 'invoice'])
+            ->when($search, fn($q) => $q->where('order_id', 'like', "%{$search}%")->orWhere('invoice_id', 'like', "%{$search}%"))
+            ->orderByDesc('id')
+            ->paginate(25);
+
+        return view('hmis::vendor.pharmacy.sale_orders', compact('orders', 'search'));
     }
 }

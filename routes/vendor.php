@@ -743,6 +743,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('store', 'ShiftController@store')->name('store')->middleware('permission:shift_manage,add');
             Route::get('delete/{id}', 'ShiftController@delete')->name('delete')->middleware('permission:shift_manage,delete');
             Route::post('update', 'ShiftController@update')->name('update')->middleware('permission:shift_manage,edit');
+
+            // Live Work Updates + shift change (swap)
+            Route::get('live', 'ShiftController@liveWork')->name('live');
+            Route::post('swap/store', 'ShiftController@swapStore')->name('swap.store');
+            Route::get('swap/{id}/{status}', 'ShiftController@swapStatus')->name('swap.status');
         });
         Route::group(['prefix' => 'asset', 'as' => 'asset.'], function () {
             Route::post('return', 'AssetsController@return_asset')->name('return');
@@ -1029,6 +1034,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
  
     // pos ==============================
     require app_path('Modules/POS/routes/vendor.php');
+
+    // pos retail ==============================
+    require app_path('Modules/PosRetail/routes/vendor.php');
 
     // school ==============================
     if (file_exists(app_path('Modules/School/routes/vendor.php'))) {

@@ -67,9 +67,11 @@
                         <td>{{ $nurse->department ?: '—' }}</td>
                         <td>{{ $nurse->ward?->ward_name ?: '—' }}</td>
                         <td>
-                            <span class="badge badge-soft-info">
-                                {{ \App\Models\NurseProfile::SHIFTS[$nurse->shift] ?? ucfirst($nurse->shift) }}
-                            </span>
+                            @if($nurse->employee?->storeShift)
+                                <span class="badge badge-soft-info">{{ $nurse->employee->storeShift->name }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
                         </td>
                         <td>
                             <button class="btn p-1 dropdown-toggle" type="button" data-toggle="dropdown">

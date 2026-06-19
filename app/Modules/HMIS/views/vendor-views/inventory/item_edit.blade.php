@@ -316,12 +316,6 @@
                                     <i class="fas fa-chart-line mr-2"></i>Sales Info
                                 </a>
                             </li>
-                            <li class="nav-item product_elem">
-                                <a class="nav-link" id="product-info-tab" data-toggle="tab" href="#product-info"
-                                    role="tab">
-                                    <i class="fa-solid fa-table-list"></i> Product Info
-                                </a>
-                            </li>
                         </ul>
                     </div>
 
@@ -400,7 +394,7 @@
                                             style="display: none" />
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4" id="extra_images_group">
                                     <div class="flex-grow-1 mx-auto">
                                         <label class="text-dark d-block mb-4 mb-xl-5">
                                             {{ translate('messages.item_images') }}
@@ -430,6 +424,70 @@
                                     </div>
                                 </div>
 
+                                <div class="col-12" id="website_product_info" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-12 my-1">
+                                            <label for="exampleInputEmail1">Specifications</label>
+                                            <textarea id="maineditor">{{ $item->specifications }}</textarea>
+                                        </div>
+                                        <div class="col-12 my-1">
+                                            <label for="exampleInputEmail1">Highlights</label>
+                                            <textarea class="form-control" name="description" placeholder="Highlights">{{ $item->description }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
+                                    <label class="custom-label cursor-pointer mb-0">
+                                        <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
+                                        Add Variations
+                                    </label>
+                                </div>
+                                <div class="col-12" id="variations_wrap" style="display:none;">
+                                    <div class="col-md-12 p-0" id="attribute_section">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <div class="form-group mb-0">
+                                                    <label class="input-label" for="exampleFormControlSelect1">Add
+                                                        Variation<span class="input-label-secondary"></span></label>
+                                                    <select name="attribute_id[]" id="choice_attributes"
+                                                        class="form-control js-select2-custom" multiple="multiple">
+                                                        @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
+                                                            <option value="{{ $attribute['id'] }}"
+                                                                {{ $item['attributes'] && in_array($attribute->id, json_decode($item['attributes'], true)) ? 'selected' : '' }}>
+                                                                {{ $attribute['name'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="customer_choice_options" id="customer_choice_options">
+                                                    @include('vendor-views.inventory._choices', [
+                                                        'choice_no' => json_decode($item['attributes']),
+                                                        'choice_options' => json_decode($item['choice_options'], true),
+                                                    ])
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="variant_combination" id="variant_combination">
+                                                    @include('vendor-views.inventory._edit-combinations', [
+                                                        'combinations' => json_decode($item['variations'], true),
+                                                        'stock' => 1,
+                                                        'primary_unit' => $item['unit']
+                                                            ? _unitNaneById($item['unit'])
+                                                            : '',
+                                                        'secondary_unit' => $item['secondary_unit']
+                                                            ? _unitNaneById($item['secondary_unit'])
+                                                            : '',
+                                                    ])
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="add_new_option">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="col-12 d-flex justify-content-end mt-3">
                                     <a class="btn btn--primary next_btn" data-next="attributes">
                                         Next
@@ -627,6 +685,10 @@
                                     </div>
                                 </div>
 
+                                @include('vendor-views.inventory.partials._description_attributes', [
+                                    'description_attributes' => (array) ($item->description_attributes ?: []),
+                                ])
+
                                 <div class="col-12 service_elem">
                                     <div class=" col-12 d-flex justify-content-end mt-3">
                                         <button class="btn btn--primary ">
@@ -635,10 +697,13 @@
                                     </div>
                                 </div>
                                 <div class="product_elem col-12">
-                                    <div class=" col-12 d-flex justify-content-end mt-3">
-                                        <a class="btn btn--primary next_btn" data-next="sales">
+                                    <div class=" col-12 d-flex justify-content-end mt-3 gap-2">
+                                        <a class="btn btn--primary next_btn" id="attr_next_btn" data-next="sales">
                                             Next
                                         </a>
+                                        <button type="submit" class="btn btn--primary" id="attr_save_btn" style="display:none;">
+                                            Save
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -721,74 +786,7 @@
                             </div>
 
                             <div class="col-12 d-flex justify-content-end mt-3">
-                                <a class="btn btn--primary next_btn" data-next="product-info">
-                                    Next
-                                </a>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade " id="product-info" role="tabpanel">
-                            <div class="row">
-                                <div class="col-12 my-1">
-                                    <label for="exampleInputEmail1">Specifications</label>
-                                    <textarea id="maineditor">{{ $item->specifications }}</textarea>
-                                </div>
-                                <div class="col-12 my-1">
-                                    <label for="exampleInputEmail1">Highlights</label>
-                                    <textarea class="form-control" name="description" placeholder="Highlights">{{ $item->description }}</textarea>
-                                </div>
-                                <div class="col-md-12" id="attribute_section">
-
-                                    <div class="row g-2">
-                                        <div class="col-12">
-                                            <div class="form-group mb-0">
-                                                <label class="input-label" for="exampleFormControlSelect1">Add
-                                                    Variation<span class="input-label-secondary"></span></label>
-                                                <select name="attribute_id[]" id="choice_attributes"
-                                                    class="form-control js-select2-custom" multiple="multiple">
-                                                    @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
-                                                        <option value="{{ $attribute['id'] }}"
-                                                            {{ $item['attributes'] && in_array($attribute->id, json_decode($item['attributes'], true)) ? 'selected' : '' }}>
-                                                            {{ $attribute['name'] }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-
-
-                                        <div class="col-md-12">
-                                            <div class="customer_choice_options" id="customer_choice_options">
-                                                @include('vendor-views.inventory._choices', [
-                                                    'choice_no' => json_decode($item['attributes']),
-                                                    'choice_options' => json_decode($item['choice_options'], true),
-                                                ])
-                                            </div>
-                                        </div>
-                                        <div class="col-md-12">
-                                            <div class="variant_combination" id="variant_combination">
-                                                @include('vendor-views.inventory._edit-combinations', [
-                                                    'combinations' => json_decode($item['variations'], true),
-                                                    'stock' => 1,
-                                                    'primary_unit' => $item['unit']
-                                                        ? _unitNaneById($item['unit'])
-                                                        : '',
-                                                    'secondary_unit' => $item['secondary_unit']
-                                                        ? _unitNaneById($item['secondary_unit'])
-                                                        : '',
-                                                ])
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-
-                                            <div id="add_new_option">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="col-12 d-flex justify-content-end mt-3">
-                                <button class="btn btn--primary ">
+                                <button type="submit" class="btn btn--primary">
                                     Save
                                 </button>
                             </div>
@@ -808,5 +806,102 @@
     @include('vendor-views/js/uom_js')
 
     {{-- <script src="{{ asset('public/assets/admin') }}/js/view-pages/vendor/product-index.js"></script> --}}
-    <script></script>
+    <script>
+        // Conditional Basic-Info layout (mirrors the Add form):
+        //  • "Show on Website" ON  -> Specs, Highlights, extra Images, per-variation extras shown.
+        //  • OFF -> only the main image is kept; an "Add Variations" checkbox reveals the
+        //    variation builder (without per-variation Highlights/Specs/Images).
+        //  • Once variations exist, the Sales Info tab is hidden and Save is surfaced elsewhere.
+        // Hidden required fields are disabled so they can't block submit; on Save we surface
+        // any invalid field's tab.
+        (function () {
+            var form = document.getElementById('item_form');
+            var box = document.getElementById('website_product_info');
+            var varsWrap = document.getElementById('variations_wrap');
+            var addVarWrap = document.getElementById('add_variations_wrap');
+            var addVarCb = document.getElementById('add_variations_cb');
+            var extraImages = document.getElementById('extra_images_group');
+            var combos = document.getElementById('variant_combination');
+            var salesTab = document.getElementById('sales-tab');
+            var salesLi = salesTab ? salesTab.closest('li') : null;
+            var salesPane = document.getElementById('sales');
+
+            function isProduct() {
+                var t = document.querySelector('input[name="item_type"]:checked');
+                return t ? t.value === 'product' : true;
+            }
+            function websiteOn() {
+                var web = document.getElementById('show_on_website');
+                return !!(web && web.checked) && isProduct();
+            }
+            function variationsAdded() { return !!(combos && combos.querySelector('table')); }
+            function showEl(el, on) { if (el) el.style.display = on ? '' : 'none'; }
+            function setDisabled(el, disabled) {
+                if (!el) return;
+                el.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = disabled; });
+            }
+
+            function sync() {
+                var on = websiteOn();
+                var prod = isProduct();
+                var varsVisible = prod && (on || (addVarCb && addVarCb.checked));
+                var hasVars = varsVisible && variationsAdded();
+
+                showEl(box, on); setDisabled(box, !on);
+                showEl(extraImages, on); setDisabled(extraImages, !on);
+                showEl(addVarWrap, prod && !on);
+
+                showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
+                document.querySelectorAll('.variant-extra-row').forEach(function (tr) {
+                    showEl(tr, on);
+                    tr.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = !on; });
+                });
+
+                showEl(salesLi, !hasVars);
+                setDisabled(salesPane, hasVars);
+                if (hasVars && salesTab && salesTab.classList.contains('active')) {
+                    var b = document.getElementById('basic-tab'); if (b) b.click();
+                } 
+                var activeTab = document.querySelector('#itemTabs .nav-link.active');
+                var isAttrActive = activeTab && activeTab.id === 'attributes-tab';
+                showEl(document.getElementById('attr_next_btn'), !hasVars);
+                showEl(document.getElementById('attr_save_btn'), hasVars && isAttrActive);
+            }
+
+            $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function () {
+                sync();
+            });
+
+            document.addEventListener('change', function (e) {
+                if (e.target && (e.target.id === 'show_on_website' || e.target.id === 'add_variations_cb' || e.target.name === 'item_type')) sync();
+            });
+            document.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('.custom-radio-item')) setTimeout(sync, 0);
+            });
+            if (combos && window.MutationObserver) {
+                new MutationObserver(function () { sync(); }).observe(combos, { childList: true });
+            }
+            if (form) {
+                Array.prototype.forEach.call(form.querySelectorAll('button'), function (btn) {
+                    if (btn.type !== 'submit') return;
+                    btn.addEventListener('click', function (e) {
+                        sync();
+                        var invalid = form.querySelector(':invalid');
+                        if (invalid) {
+                            var pane = invalid.closest('.tab-pane');
+                            if (pane && !pane.classList.contains('active')) {
+                                e.preventDefault();
+                                var link = document.querySelector('a[href="#' + pane.id + '"]');
+                                if (link) link.click();
+                                setTimeout(function () { invalid.reportValidity ? invalid.reportValidity() : invalid.focus(); }, 80);
+                            }
+                        }
+                    });
+                });
+            }
+            // An item being edited may already have variations — reveal them even if website is off.
+            if (addVarCb && variationsAdded()) addVarCb.checked = true;
+            sync();
+        })();
+    </script>
 @endpush

@@ -12,6 +12,7 @@
         ['vendor.radiology.schedule', 'Schedule', '📅', 0, '', 'radiology_schedule', 'view'],
         ['vendor.radiology.equipment', 'Equipment', '⚙', 0, '', 'radiology_equipment', 'view'],
         ['vendor.radiology.billing', 'Billing', '💰', 0, '', 'radiology_billing', 'view'],
+        ['vendor.radiology.catalog', 'Scan Catalog', '🗂', 0, '', 'radiology_catalog', 'view'],
     ];
     $isOwner = auth('vendor')->check();
     $fmt = fn($n) => \App\CentralLogics\Helpers::format_currency($n);
@@ -23,7 +24,6 @@
 .content.container-fluid{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important}
 .radx{--navy:#0A2463;--blue:#1565C0;--ltblue:#E3F2FD;--ltblue2:#EFF6FF;--green:#1B5E20;--ltgreen:#E8F5E9;--greenA:#2E7D32;--red:#B71C1C;--ltred:#FFEBEE;--redA:#C62828;--redB:#E53E3E;--amber:#B45309;--ltamber:#FFF8E1;--amberA:#F57C00;--purple:#4527A0;--ltpurple:#EDE7F6;--purpleA:#6D28D9;--teal:#004D40;--ltteal:#E0F2F1;--tealA:#00897B;--dark:#0D1B2A;--dark2:#1A2B3C;--dark3:#243447;--text:#0D1117;--muted:#4B5563;--light:#9CA3AF;--border:#E5E7EB;--bg:#F3F4F6;--white:#fff;--ff:'DM Sans',sans-serif;--ffm:'DM Mono',monospace}
 .radx{font-family:var(--ff);font-size:13px;color:var(--text);background:var(--bg)}
-.radx .num{font-family:var(--ffm);font-weight:700}
 .radx .kpi-strip{background:var(--white);border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(7,1fr)}
 .radx .kpi-item{padding:11px 14px;text-align:center;border-right:1px solid var(--border)}.radx .kpi-item:last-child{border-right:none}
 .radx .kpi-val{font-size:21px;font-weight:800;line-height:1;font-family:var(--ffm)}

@@ -9,5 +9,10 @@ class StoreType extends Model
 {
     use HasFactory;
 
-   
+    protected $fillable = [
+        'name',
+        'display_name',
+        'module_id',
+        'permitted_submodules',
+    ];
 }

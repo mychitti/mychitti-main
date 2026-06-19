@@ -213,7 +213,6 @@ class AttendanceController extends Controller
         }
 
 
-        // die;
         // print_r($attendance);die;
         return view('vendor-views.attendance.manage', compact(
             'staff',

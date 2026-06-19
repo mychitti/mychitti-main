@@ -25,7 +25,13 @@
                             <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search medicine / SKU...">
                             <div class="input-group-append"><button class="btn btn-outline-secondary"><i class="tio-search"></i></button></div>
                         </form>
+                        <a href="{{ route('vendor.pharmacy.medicines.export') }}" class="btn btn-sm btn-outline-secondary" style="white-space:nowrap;">
+                            <i class="tio-download-to mr-1"></i> Export
+                        </a>
                         @if (hasPermission('pharmacy', 'add'))
+                            <button class="btn btn-sm btn-outline-primary" style="white-space:nowrap;" data-toggle="modal" data-target="#importMedModal">
+                                <i class="tio-upload-on-cloud mr-1"></i> Import
+                            </button>
                             <button class="btn btn-sm btn--primary" style="white-space:nowrap; font-weight:600;" data-toggle="modal" data-target="#addMedModal">
                                 <i class="tio-add mr-1"></i> Add Medicine
                             </button>
@@ -160,6 +166,29 @@
                         </div>
                     </div>
                     <div class="modal-footer"><button class="btn btn--primary">Add Medicine</button></div>
+                </form>
+            </div></div>
+        </div>
+
+        {{-- ── Import Medicines (CSV / Excel) ───────────────────────────── --}}
+        <div class="modal fade" id="importMedModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Import Medicines</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button></div>
+                <form action="{{ route('vendor.pharmacy.medicines.import') }}" method="post" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>File (CSV or Excel) <span class="text-danger">*</span></label>
+                            <input type="file" name="file" class="form-control" accept=".csv,.txt,.xls,.xlsx" required>
+                        </div>
+                        <div class="alert alert-soft-info mb-0" style="font-size:12.5px;">
+                            Columns: <strong>item_name, brand, sku_id, unit, mrp, selling_price, stock, reorder_level, expiry_date</strong>.
+                            Existing medicines are matched by SKU (or name) and updated; new ones are created.
+                            <a href="{{ route('vendor.pharmacy.medicines.export') }}">Download current list</a> to use as a template.
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn--primary"><i class="tio-upload-on-cloud mr-1"></i> Import</button></div>
                 </form>
             </div></div>
         </div>

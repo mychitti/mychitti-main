@@ -5,6 +5,9 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+.select2-container--default .select2-selection--single{
+padding: 0px 0.875rem !important;
+}
 .content.container-fluid{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important}
 .nursex{--bg:#0B0F1A;--bg2:#111827;--bg3:#1A2235;--bg4:#1F2D42;--border:#243047;--border2:#2E3D58;--text:#E8EDF5;--muted:#7A8FAD;--light:#A8B8CE;--blue:#3B82F6;--ltblue:#1E3A5F;--green:#22C55E;--ltgreen:#14532D;--greenA:#16A34A;--red:#EF4444;--ltred:#450A0A;--redA:#DC2626;--amber:#F59E0B;--ltamber:#451A03;--amberA:#D97706;--purple:#A78BFA;--ltpurple:#2E1065;--teal:#2DD4BF;--ltteal:#042F2E;--font:'Outfit',sans-serif;--mono:'DM Mono',monospace;
   background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:calc(100vh - 0px);display:block}
@@ -25,6 +28,10 @@
 .nursex .tbadge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:var(--redA);color:#fff}
 .nursex .tbadge.am{background:var(--amberA)}
 .nursex .layout{display:grid;grid-template-columns:260px 1fr;gap:0;min-height:520px}
+/* Station-wide tab inside the ward layout (Shift Handover): hide patient list + banner, full width */
+.nursex .layout.station-mode{grid-template-columns:1fr}
+.nursex .layout.station-mode .left-panel{display:none}
+.nursex .layout.station-mode .pt-banner{display:none}
 .nursex .left-panel{background:var(--bg2);border-right:1px solid var(--border);padding:12px;max-height:78vh;overflow-y:auto}
 .nursex .right-col{padding:14px 16px;background:var(--bg);max-height:78vh;overflow-y:auto}
 .nursex .ward-hd{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;padding:0 2px}
@@ -82,6 +89,22 @@
 .nursex .fb-type.in{background:var(--ltblue);color:var(--blue)}.nursex .fb-type.out{background:var(--ltamber);color:var(--amber)}
 .nursex .nx-input,.nursex .nx-select,.nursex textarea.nx-input{background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;width:100%}
 .nursex .nx-input:focus,.nursex .nx-select:focus{border-color:var(--teal)}
+/* Dark skin for select2 (dropdown renders at body level → literal colors + !important to beat panel theme) */
+.nursex .select2-container--default .select2-selection--single,
+.nx-s2.select2-container--default .select2-selection--single{background:#1F2D42 !important;border:1px solid #2E3D58 !important;border-radius:6px !important;height:34px !important}
+.nursex .select2-container--default .select2-selection--single .select2-selection__rendered,
+.nx-s2.select2-container--default .select2-selection--single .select2-selection__rendered{color:#E8EDF5 !important;line-height:32px !important;padding-left:9px;font-size:12px}
+.nx-s2.select2-container--default .select2-selection--single .select2-selection__placeholder{color:#7A8FAD !important}
+.nx-s2.select2-container--default .select2-selection--single .select2-selection__arrow{height:32px}
+.nx-s2.select2-container--default .select2-selection--single .select2-selection__arrow b{border-color:#7A8FAD transparent transparent transparent}
+.nx-s2.select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b{border-color:transparent transparent #7A8FAD transparent}
+.nx-s2.select2-container--default .select2-selection--single .select2-selection__clear{color:#7A8FAD !important;margin-right:6px}
+.nx-s2.select2-container--default.select2-container--focus .select2-selection--single,.nx-s2.select2-container--open .select2-selection--single{border-color:#2DD4BF !important}
+.nx-s2-drop.select2-dropdown{background:#1A2235 !important;border:1px solid #2E3D58 !important;color:#E8EDF5 !important}
+.nx-s2-drop .select2-results__option{background:#1A2235 !important;color:#E8EDF5 !important;font-size:12px}
+.nx-s2-drop .select2-results__option--highlighted[aria-selected]{background:#1F2D42 !important;color:#2DD4BF !important}
+.nx-s2-drop .select2-results__option[aria-selected=true]{background:#243047 !important}
+.nx-s2-drop .select2-search--dropdown .select2-search__field{background:#1F2D42 !important;border:1px solid #2E3D58 !important;color:#E8EDF5 !important}
 .nursex .note-item{padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);margin-bottom:6px}
 .nursex .note-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:10px;color:var(--muted)}
 .nursex .note-nurse{font-weight:600;color:var(--teal)}
@@ -175,6 +198,8 @@
         @if($vHandover)<div class="tab" data-tab="4">🔁 Shift Handover</div>@endif
         @if($vTask)<div class="tab" data-tab="5">📋 Task Queue @if($patientTasks->where('status','pending')->count())<span class="tbadge">{{ $patientTasks->where('status','pending')->count() }}</span>@endif</div>@endif
         @if($vVitals)<div class="tab" data-tab="6">📈 Vitals Trend</div>@endif
+        <div class="tab" data-tab="7">👩‍⚕️ Nurses on Duty @if(($nurseRoster ?? collect())->where('on_duty', true)->count())<span class="tbadge">{{ ($nurseRoster ?? collect())->where('on_duty', true)->count() }}</span>@endif</div>
+        <div class="tab" data-tab="8">📅 Attendance</div>
     </div>
 
     <div class="layout">
@@ -414,9 +439,33 @@
                         <form method="post" action="{{ route('vendor.nursing.handover') }}">
                             @csrf
                             <input type="hidden" name="ward_id" value="{{ $current->ward_id }}">
+                            @php
+                                $rosterNames = $nurseRoster->pluck('name')->filter()->unique()->values();
+                                $outNurse = $handover->outgoing_nurse ?? $nurseName;
+                            @endphp
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-                                <div><div class="ho-sec-title">Outgoing nurse</div><input class="nx-input" name="outgoing_nurse" value="{{ $handover->outgoing_nurse ?? $nurseName }}"></div>
-                                <div><div class="ho-sec-title">Incoming nurse</div><input class="nx-input" name="incoming_nurse" value="{{ $handover->incoming_nurse ?? '' }}" placeholder="Name of nurse taking over"></div>
+                                <div><div class="ho-sec-title">Outgoing nurse</div>
+                                    <select class="nx-input nurse-select2" name="outgoing_nurse" data-placeholder="Nurse handing over">
+                                        <option value=""></option>
+                                        @foreach ($rosterNames as $rn)
+                                            <option value="{{ $rn }}" {{ $outNurse == $rn ? 'selected' : '' }}>{{ $rn }}</option>
+                                        @endforeach
+                                        @if (!empty($outNurse) && !$rosterNames->contains($outNurse))
+                                            <option value="{{ $outNurse }}" selected>{{ $outNurse }}</option>
+                                        @endif
+                                    </select>
+                                </div>
+                                <div><div class="ho-sec-title">Incoming nurse</div>
+                                    <select class="nx-input nurse-select2" name="incoming_nurse" data-placeholder="Nurse taking over">
+                                        <option value=""></option>
+                                        @foreach ($rosterNames as $rn)
+                                            <option value="{{ $rn }}" {{ ($handover->incoming_nurse ?? '') == $rn ? 'selected' : '' }}>{{ $rn }}</option>
+                                        @endforeach
+                                        @if (!empty($handover->incoming_nurse) && !$rosterNames->contains($handover->incoming_nurse))
+                                            <option value="{{ $handover->incoming_nurse }}" selected>{{ $handover->incoming_nurse }}</option>
+                                        @endif
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="ho-sec-title">Critical / warning patients</div>
@@ -523,6 +572,112 @@
         </div>
     </div>
 
+    {{-- TAB 7: NURSES ON DUTY — clean overview table --}}
+    <div class="tab-panel" data-panel="7">
+        <div class="card">
+            <div class="card-hd"><h3><div class="hd-icon" style="background:#0E7490">👩‍⚕️</div> Nurses — Today's Duty</h3></div>
+            <div class="table-responsive">
+                <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+                    <thead>
+                        <tr style="text-align:left;color:var(--muted);background:#f8fafc">
+                            <th style="padding:10px 14px">Nurse</th>
+                            <th style="padding:10px 14px">Shift</th>
+                            <th style="padding:10px 14px">Status</th>
+                            <th style="padding:10px 14px">In / Out</th>
+                            <th style="padding:10px 14px">Worked · Extra</th>
+                            <th style="padding:10px 14px">Patients</th>
+                            <th style="padding:10px 14px">Tasks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse(($nurseRoster ?? collect()) as $n)
+                            <tr style="border-top:1px solid var(--border)">
+                                <td style="padding:10px 14px">
+                                    <div style="font-weight:600">{{ $n['name'] }}</div>
+                                    @if($n['covering_for'])<span class="ptag" style="background:#e0e7ff;color:#4338ca">covering {{ $n['covering_for'] }}</span>@endif
+                                    @if($n['covered_out'])<span class="ptag" style="background:#f1f5f9;color:#64748b">swapped out</span>@endif
+                                </td>
+                                <td style="padding:10px 14px">{{ $n['shift'] ?: '—' }}<div style="font-size:10px;color:var(--muted)">{{ $n['shift_hours'] }}</div></td>
+                                <td style="padding:10px 14px">
+                                    @if($n['on_duty'])<span class="ptag" style="background:#dcfce7;color:#15803d">● On Duty</span>
+                                    @elseif($n['clocked'])<span class="ptag" style="background:#f1f5f9;color:#475569">Punched Out</span>
+                                    @else<span class="ptag" style="background:#fef2f2;color:#b91c1c">Off</span>@endif
+                                    @if($n['logged_in'])<div style="margin-top:3px"><span class="ptag" style="background:#dbeafe;color:#1d4ed8">Logged in</span></div>@endif
+                                </td>
+                                <td style="padding:10px 14px"><span style="color:#16a34a">{{ $n['in'] ? $n['in']->format('h:i A') : '—' }}</span> / <span style="color:#dc2626">{{ $n['out'] ? $n['out']->format('h:i A') : '—' }}</span></td>
+                                <td style="padding:10px 14px">{{ $n['worked'] ?: '—' }} @if($n['extra'])<span class="ptag" style="background:#fef3c7;color:#b45309">+{{ $n['extra'] }}</span>@endif</td>
+                                <td style="padding:10px 14px">
+                                    @if($n['patients']->count())
+                                        <span class="ptag" style="background:#e0f2fe;color:#075985">{{ $n['patients']->count() }}</span>
+                                        <span style="color:var(--muted)">{{ $n['patients']->take(3)->map(fn($p)=>$p['bed'])->implode(', ') }}{{ $n['patients']->count()>3 ? '…' : '' }}</span>
+                                    @else <span style="color:var(--muted)">—</span> @endif
+                                </td>
+                                <td style="padding:10px 14px">@if($n['total_tasks'])<span class="ptag" style="background:#fff7ed;color:#9a3412">{{ $n['pending_tasks'] }}/{{ $n['total_tasks'] }}</span>@else<span style="color:var(--muted)">—</span>@endif</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="empty" style="padding:24px">No nurses found for this store.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- TAB 8: ATTENDANCE — all-days history, nurse picker + clean table --}}
+    <div class="tab-panel" data-panel="8">
+        <div class="card">
+            <div class="card-hd" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <h3><div class="hd-icon" style="background:#1E3A5F">📅</div> Attendance — {{ $attMonthLabel ?? '' }}</h3>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <a href="{{ route('vendor.nursing.index', array_merge(request()->except('att_month'), ['att_month' => $attPrev ?? ''])) }}" class="btn btn-outline btn-xs">‹ Prev</a>
+                    <a href="{{ route('vendor.nursing.index', array_merge(request()->except('att_month'), ['att_month' => $attNext ?? ''])) }}" class="btn btn-outline btn-xs">Next ›</a>
+                </div>
+            </div>
+            <div style="padding:10px 14px">
+                @php $attHasAny = ($nurseAttendance ?? collect())->contains(fn($na)=>count($na['rows'])); @endphp
+                @if(!$attHasAny)
+                    <div class="empty" style="padding:24px">No attendance records for {{ $attMonthLabel ?? 'this month' }}.</div>
+                @else
+                    {{-- nurse selector chips --}}
+                    <div id="attChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                        @foreach(($nurseAttendance ?? collect()) as $i => $na)
+                            @if(count($na['rows']))
+                                <button type="button" class="att-chip ptag" data-att="{{ $i }}"
+                                    style="cursor:pointer;border:1px solid var(--border);{{ $loop->first ? 'background:#1E3A5F;color:#fff' : 'background:#fff;color: black;font-weight: 700;' }}">
+                                    {{ $na['name'] }} ({{ count($na['rows']) }})
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                    @foreach(($nurseAttendance ?? collect()) as $i => $na)
+                        @if(count($na['rows']))
+                            <div class="att-block" data-att="{{ $i }}" style="{{ $loop->first ? '' : 'display:none' }}">
+                                <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+                                    <thead><tr style="text-align:left;color:var(--muted);background:#f8fafc">
+                                        <th style="padding:9px 14px">Date</th><th style="padding:9px 14px">Punch In</th>
+                                        <th style="padding:9px 14px">Punch Out</th><th style="padding:9px 14px">Worked</th>
+                                        <th style="padding:9px 14px">Extra Duty</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        @foreach($na['rows'] as $r)
+                                            <tr style="border-top:1px solid #f3f4f6">
+                                                <td style="padding:9px 14px">{{ \Carbon\Carbon::parse($r['date'])->format('d M Y · D') }}</td>
+                                                <td style="padding:9px 14px;color:#16a34a">{{ $r['in_time'] ? $r['in_time']->format('h:i A') : '—' }}</td>
+                                                <td style="padding:9px 14px;color:#dc2626">{{ $r['out_time'] ? $r['out_time']->format('h:i A') : '—' }}</td>
+                                                <td style="padding:9px 14px">{{ $r['worked_label'] }}</td>
+                                                <td style="padding:9px 14px">@if($r['extra_label'])<span class="ptag" style="background:#fef3c7;color:#b45309">+{{ $r['extra_label'] }}</span>@else<span style="color:var(--muted)">—</span>@endif</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
+        </div>
+    </div>
+
     {{-- COMPLETE BAR --}}
     <div class="complete-bar">
         <div style="font-size:12px;color:var(--muted)">
@@ -551,13 +706,35 @@
 
 @push('script_2')
 <script>
+    $(function () {
+        if ($.fn.select2) {
+            $('.nurse-select2').each(function () {
+                $(this).select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $(this).data('placeholder') || 'Select nurse',
+                    containerCssClass: 'nx-s2',
+                    dropdownCssClass: 'nx-s2-drop',
+                });
+            });
+        }
+    });
+</script>
+<script>
 (function(){
     // Tab switching with persistence across reloads (forms redirect back)
     var tabs = document.querySelectorAll('.nursex .tab');
     var panels = document.querySelectorAll('.nursex .tab-panel');
+    var layout = document.querySelector('.nursex .layout');
     function activate(i){
         tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.tab == i); });
         panels.forEach(function(p){ p.classList.toggle('active', p.dataset.panel == i); });
+        // Station-wide tabs (Nurses on Duty = 7, Attendance = 8) hide the patient ward layout.
+        if (layout) {
+            layout.style.display = (i == 7 || i == 8) ? 'none' : '';
+            // Shift Handover (4) is shift/ward-level — hide the patient list + banner, keep the form.
+            layout.classList.toggle('station-mode', i == 4);
+        }
         try { localStorage.setItem('nxTab', i); } catch(e){}
     }
     tabs.forEach(function(t){ t.addEventListener('click', function(){ activate(this.dataset.tab); }); });
@@ -566,6 +743,24 @@
     var savedExists = saved !== null && document.querySelector('.nursex .tab[data-tab="' + saved + '"]');
     if (saved !== null && !savedExists) saved = '0';
     if (saved !== null) activate(saved);
+
+    // Attendance tab — nurse selector chips (toggle open/close)
+    document.querySelectorAll('.att-chip').forEach(function(chip){
+        chip.addEventListener('click', function(){
+            var id = this.dataset.att;
+            var block = document.querySelector('.att-block[data-att="' + id + '"]');
+            var isOpen = block && block.style.display !== 'none';
+            // collapse everything first
+            document.querySelectorAll('.att-block').forEach(function(b){ b.style.display = 'none'; });
+            document.querySelectorAll('.att-chip').forEach(function(c){ c.style.background = '#fff'; c.style.color = 'var(--text)'; });
+            // if it was already open, leave it closed (toggle); else open this one
+            if (block && !isOpen) {
+                block.style.display = '';
+                this.style.background = '#1E3A5F';
+                this.style.color = '#fff';
+            }
+        });
+    });
 
     // Clock
     setInterval(function(){

@@ -18,6 +18,8 @@ class ResolveModuleViews
                 $this->prependViewPath(config('business_modules.laundry.views'));
             } elseif ($type === 'pos') {
                 $this->prependViewPath(config('business_modules.pos.views'));
+            } elseif ($type === 'pos_retail') {
+                $this->prependViewPath(config('business_modules.pos_retail.views'));
             } elseif ($type === 'hospital') {
                 $this->prependViewPath(config('business_modules.hmis.views'));
             }

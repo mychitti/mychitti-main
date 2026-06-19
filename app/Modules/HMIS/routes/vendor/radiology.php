@@ -33,4 +33,12 @@ Route::group(['prefix' => 'radiology', 'as' => 'radiology.'], function () {
 
     Route::get('billing',                    [RadiologyController::class, 'billing'])->name('billing')->middleware('permission:radiology_billing,view');
     Route::post('studies/{id}/invoice',      [RadiologyController::class, 'generateInvoice'])->name('studies.invoice')->middleware('permission:radiology_billing,add');
+
+    // Scan Catalog (scans + prices)
+    Route::get('catalog',              [RadiologyController::class, 'catalog'])->name('catalog')->middleware('permission:radiology_catalog,view');
+    Route::get('catalog/create',       [RadiologyController::class, 'testForm'])->name('catalog.create')->middleware('permission:radiology_catalog,add');
+    Route::post('catalog/store',       [RadiologyController::class, 'saveTest'])->name('catalog.store')->middleware('permission:radiology_catalog,add');
+    Route::get('catalog/{id}/edit',    [RadiologyController::class, 'testForm'])->name('catalog.edit')->middleware('permission:radiology_catalog,edit');
+    Route::post('catalog/{id}/update', [RadiologyController::class, 'saveTest'])->name('catalog.update')->middleware('permission:radiology_catalog,edit');
+    Route::get('catalog/{id}/delete',  [RadiologyController::class, 'deleteTest'])->name('catalog.delete')->middleware('permission:radiology_catalog,delete');
 });

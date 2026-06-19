@@ -20,6 +20,7 @@ return [
         'task_manage', 'projects_manage', 'hr_manage',
         'account_manage', 'attendance', 'inventory_manage',
         'leads_manage', 'client_manage', 'analytics', 'logs', 'pos',
+        'pos_retail',
     ],
 
     'equivalences' => [
@@ -30,6 +31,12 @@ return [
         ],
         'hospital_manage' => [
             'hr_manage',
+        ],
+        // A Retail POS plan unlocks billing + inventory + accounts as one bundle.
+        'pos_retail' => [
+            'pos',
+            'inventory_manage',
+            'account_manage',
         ],
     ],
 
@@ -47,5 +54,8 @@ return [
             'hospital_manage',
             'leads_manage',
         ],
+        // Retail POS (`pos_retail`) is a PAID plan — not listed here, so stores must hold an active
+        // subscription whose permitted_modules include `pos_retail`. Holding it unlocks
+        // POS + Inventory + Accounts via the equivalence above.
     ],
 ];

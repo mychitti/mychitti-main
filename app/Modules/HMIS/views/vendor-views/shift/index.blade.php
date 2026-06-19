@@ -54,6 +54,7 @@
                                             <th class=" border-0 text-center">{{ translate('messages.name') }}</th>
                                             <th class=" border-0 text-center">{{ translate('messages.start_time') }}</th>
                                             <th class=" border-0 text-center">{{ translate('messages.end_time') }}</th>
+                                            <th class=" border-0 text-center">Assigned Staff</th>
                                             <th class=" border-0 text-center">{{ translate('messages.action') }}</th>
                                         </tr>
                                     </thead>
@@ -65,6 +66,16 @@
                                                 <td class="text-center">{{ $shift->name }}</td>
                                                 <td class="text-center">{{ $shift->start_time }}</td>
                                                 <td class="text-center">{{ $shift->end_time }}</td>
+                                                <td class="text-center" style="white-space:normal;max-width:320px;">
+                                                    @if($shift->employees->count())
+                                                        <span class="badge badge-soft-info mb-1">{{ $shift->employees->count() }}</span>
+                                                        <div style="font-size:12px;color:#475569;">
+                                                            {{ $shift->employees->map(fn($e) => trim(($e->f_name ?? '') . ' ' . ($e->l_name ?? '')))->filter()->implode(', ') }}
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted" style="font-size:12px;">No staff assigned</span>
+                                                    @endif
+                                                </td>
                                                 <td class="text-center">
                                                     <div class="btn--container justify-content-center">
                                                         @if (hasPermission('shift_manage', 'edit'))

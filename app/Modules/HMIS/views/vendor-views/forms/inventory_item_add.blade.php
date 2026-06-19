@@ -252,12 +252,6 @@
                         <i class="fas fa-chart-line mr-2"></i>Sales Info
                     </a>
                 </li>
-                <li class="nav-item ">
-                    <a class="nav-link product_elem" id="product-info-tab" data-toggle="tab" href="#product-info"
-                        role="tab">
-                        <i class="fa-solid fa-table-list"></i> Product Info
-                    </a>
-                </li>
             </ul>
         </div>
 
@@ -329,13 +323,65 @@
                                 style="display: none" />
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="extra_images_group">
                         <div class="form-group form-group-custom">
                             <label for="itemName" class="custom-label">Images</label>
                             <input type="file" accept="image/*" multiple name="item_images[]"
                                 class="form-control item_images" />
                         </div>
 
+                    </div>
+                    <div class="col-12" id="website_product_info" style="display:none;">
+                        <div class="row">
+                            <div class="col-12 my-1">
+                                <label for="exampleInputEmail1">Specifications</label>
+                                <textarea id="maineditor"></textarea>
+                            </div>
+                            <div class="col-12 my-1">
+                                <label for="exampleInputEmail1">Highlights</label>
+                                <textarea class="form-control" name="description" placeholder="Highlights"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
+                        <label class="custom-label cursor-pointer mb-0">
+                            <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
+                            Add Variations
+                        </label>
+                    </div>
+                    <div class="col-12" id="variations_wrap" style="display:none;">
+                        <div class="col-md-12 p-0" id="attribute_section">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="exampleFormControlSelect1">Add Variation<span
+                                                class="input-label-secondary"></span></label>
+                                        <select name="attribute_id[]" id="choice_attributes"
+                                            class="form-control js-select2-custom" multiple="multiple">
+                                            @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
+                                                <option value="{{ $attribute['id'] }}">{{ $attribute['name'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="table-responsive">
+                                        <div class="customer_choice_options d-flex __gap-24px"
+                                            id="customer_choice_options">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="variant_combination" id="variant_combination">
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="add_new_option">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 d-flex justify-content-end mt-3">
                         <a class="btn btn-primary next_btn" data-next="attributes">
@@ -477,6 +523,10 @@
                         <div id="custom-fields"></div>
                     </div>
 
+                    @include('vendor-views.inventory.partials._description_attributes', [
+                        'description_attributes' => [],
+                    ])
+
                     <div class="col-12 service_elem">
                         <div class=" col-12 d-flex justify-content-end mt-3">
                             <button class="btn btn--primary ">
@@ -490,9 +540,12 @@
                             <a class="btn btn-outline-primary next_btn" data-next="basic">
                                 Back
                             </a>
-                            <a class="btn btn-primary next_btn" data-next="sales">
+                            <a class="btn btn-primary next_btn" id="attr_next_btn" data-next="sales">
                                 Next
                             </a>
+                            <button type="submit" class="btn btn-primary" id="attr_save_btn" style="display:none;">
+                                Save
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -566,68 +619,7 @@
                     <a class="btn btn-outline-primary next_btn" data-next="attributes">
                         Back
                     </a>
-                    <a class="btn btn-primary next_btn" data-next="product-info">
-                        Next
-                    </a>
-                </div>
-            </div>
-            <div class="tab-pane fade " id="product-info" role="tabpanel">
-                <div class="row">
-                    <div class="col-12 my-1">
-                        <label for="exampleInputEmail1">Specifications</label>
-                        <textarea id="maineditor"></textarea>
-                    </div>
-                    <div class="col-12 my-1">
-                        <label for="exampleInputEmail1">Highlights</label>
-                        <textarea class="form-control" name="description" placeholder="Highlights"></textarea>
-                    </div>
-                    <div class="col-md-12" id="attribute_section">
-
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <div class="form-group mb-0">
-                                    <label class="input-label" for="exampleFormControlSelect1">Add Variation<span
-                                            class="input-label-secondary"></span></label>
-                                    <select name="attribute_id[]" id="choice_attributes"
-                                        class="form-control js-select2-custom" multiple="multiple">
-                                        @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
-                                            <option value="{{ $attribute['id'] }}">{{ $attribute['name'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-
-                            <div class="col-md-12">
-                                <div class="table-responsive">
-                                    <div class="customer_choice_options d-flex __gap-24px"
-                                        id="customer_choice_options">
-
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <div class="variant_combination" id="variant_combination">
-
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <!-- Empty Variation -->
-
-                                <div id="add_new_option">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="col-12 d-flex justify-content-end mt-3 gap-2">
-                    <a class="btn btn-outline-primary next_btn" data-next="sales">
-                        Back
-                    </a>
-                    <button class="btn btn-primary ">
+                    <button type="submit" class="btn btn-primary">
                         Save
                     </button>
                 </div>
@@ -635,3 +627,107 @@
         </div>
     </div>
 </form>
+<script>
+    // Conditional Basic-Info layout:
+    //  • "Show on Website" ON  -> Specs, Highlights, extra Images, and per-variation
+    //    Highlights/Specs/Images are shown; variations are available.
+    //  • "Show on Website" OFF -> only the main image is kept; an "Add Variations" checkbox
+    //    appears and, when ticked, reveals the variation builder (without per-variation
+    //    Highlights/Specs/Images).
+    //  • Once variations are added, the Sales Info tab is not needed and is hidden, so a Save
+    //    button is surfaced in the variations block and the Attributes tab.
+    // Required fields inside a hidden block can't be focused and silently block submit, so
+    // hidden sections are disabled; on Save we also surface any invalid field's tab.
+    (function () {
+        var form = document.getElementById('item_form');
+        var box = document.getElementById('website_product_info');
+        var varsWrap = document.getElementById('variations_wrap');
+        var addVarWrap = document.getElementById('add_variations_wrap');
+        var addVarCb = document.getElementById('add_variations_cb');
+        var extraImages = document.getElementById('extra_images_group');
+        var combos = document.getElementById('variant_combination');
+        var salesTab = document.getElementById('sales-tab');
+        var salesLi = salesTab ? salesTab.closest('li') : null;
+        var salesPane = document.getElementById('sales');
+
+        function isProduct() {
+            var t = document.querySelector('input[name="item_type"]:checked');
+            return t ? t.value === 'product' : true;
+        }
+        function websiteOn() {
+            var web = document.getElementById('show_on_website');
+            return !!(web && web.checked) && isProduct();
+        }
+        function variationsAdded() { return !!(combos && combos.querySelector('table')); }
+        function showEl(el, on) { if (el) el.style.display = on ? '' : 'none'; }
+        function setDisabled(el, disabled) {
+            if (!el) return;
+            el.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = disabled; });
+        }
+
+        function sync() {
+            var on = websiteOn();
+            var prod = isProduct();
+            var varsVisible = prod && (on || (addVarCb && addVarCb.checked));
+            var hasVars = varsVisible && variationsAdded();
+
+            showEl(box, on); setDisabled(box, !on);
+            showEl(extraImages, on); setDisabled(extraImages, !on);
+            showEl(addVarWrap, prod && !on);
+
+            showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
+            // Per-variation Highlights/Specs/Images — website only.
+            document.querySelectorAll('.variant-extra-row').forEach(function (tr) {
+                showEl(tr, on);
+                tr.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = !on; });
+            });
+
+            // Sales Info tab hidden when variations exist.
+            showEl(salesLi, !hasVars); 
+            setDisabled(salesPane, hasVars);
+            if (hasVars && salesTab && salesTab.classList.contains('active')) {
+                var b = document.getElementById('basic-tab'); if (b) b.click();
+            }
+            // Save button placement when Sales tab is gone.
+            var activeTab = document.querySelector('#itemTabs .nav-link.active');
+            var isAttrActive = activeTab && activeTab.id === 'attributes-tab';
+            showEl(document.getElementById('attr_next_btn'), !hasVars);
+            showEl(document.getElementById('attr_save_btn'), hasVars && isAttrActive);
+        }
+
+        $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function () {
+            sync();
+        });
+
+        document.addEventListener('change', function (e) {
+            if (e.target && (e.target.id === 'show_on_website' || e.target.id === 'add_variations_cb' || e.target.name === 'item_type')) sync();
+        });
+        document.addEventListener('click', function (e) {
+            if (e.target.closest && e.target.closest('.custom-radio-item')) setTimeout(sync, 0);
+        });
+        // Re-sync when variant combinations are (re)rendered via AJAX.
+        if (combos && window.MutationObserver) {
+            new MutationObserver(function () { sync(); }).observe(combos, { childList: true });
+        }
+
+        if (form) {
+            Array.prototype.forEach.call(form.querySelectorAll('button'), function (btn) {
+                if (btn.type !== 'submit') return;
+                btn.addEventListener('click', function (e) {
+                    sync();
+                    var invalid = form.querySelector(':invalid');
+                    if (invalid) {
+                        var pane = invalid.closest('.tab-pane');
+                        if (pane && !pane.classList.contains('active')) {
+                            e.preventDefault();
+                            var link = document.querySelector('a[href="#' + pane.id + '"]');
+                            if (link) link.click();
+                            setTimeout(function () { invalid.reportValidity ? invalid.reportValidity() : invalid.focus(); }, 80);
+                        }
+                    }
+                });
+            });
+        }
+        sync();
+    })();
+</script>

@@ -404,6 +404,26 @@
                                 <div class="staff-dash-stat-label">Total Days</div>
                             </div>
                         </div>
+
+                        {{-- Today's duty: punch in / out + extra duty (overtime) --}}
+                        @isset($duty)
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-3"
+                                 style="border-top:1px solid #eef2f7; gap:12px;">
+                                <div style="font-weight:600; font-size:12px; color:#475569;">
+                                    Today's Duty @if($duty['shift_name'])<span class="badge badge-soft-info ml-1">{{ $duty['shift_name'] }}</span>@endif
+                                </div>
+                                <div class="d-flex flex-wrap" style="gap:18px;">
+                                    <div class="text-center"><div style="font-size:11px;color:#94a3b8;">Punch In</div>
+                                        <strong style="color:#16a34a;font-size:13px;">{{ $duty['has'] && $duty['in_time'] ? $duty['in_time']->format('h:i A') : '—' }}</strong></div>
+                                    <div class="text-center"><div style="font-size:11px;color:#94a3b8;">Punch Out</div>
+                                        <strong style="color:#dc2626;font-size:13px;">{{ $duty['has'] ? ($duty['out_time'] ? $duty['out_time']->format('h:i A') : 'On duty') : '—' }}</strong></div>
+                                    <div class="text-center"><div style="font-size:11px;color:#94a3b8;">Worked</div>
+                                        <strong style="font-size:13px;">{{ $duty['worked_label'] ?: '—' }}</strong></div>
+                                    <div class="text-center"><div style="font-size:11px;color:#94a3b8;">Extra Duty</div>
+                                        <strong style="color:{{ $duty['extra_label'] ? '#b45309' : '#9ca3af' }};font-size:13px;">{{ $duty['extra_label'] ?: 'None' }}</strong></div>
+                                </div>
+                            </div>
+                        @endisset
                     </div>
 
                     <!-- Leaves -->

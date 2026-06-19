@@ -87,6 +87,13 @@
                         </div>
                         <div class="check-item">
                             <div class="form-group form-check form--check">
+                                <input type="checkbox" name="modules[]" value="post_ads" class="form-check-input"
+                                  {{ in_array('post_ads', (array) json_decode($role['modules'])) ? 'checked' : '' }}  id="post_ads">
+                                <label class="form-check-label input-label " for="post_ads">Post Ads</label>
+                            </div>
+                        </div>
+                        <div class="check-item">
+                            <div class="form-group form-check form--check">
                                 <input type="checkbox" name="modules[]" value="documents" class="form-check-input"
                                   {{ in_array('documents', (array) json_decode($role['modules'])) ? 'checked' : '' }}  id="documents">
                                 <label class="form-check-label input-label " for="documents">Documents</label>

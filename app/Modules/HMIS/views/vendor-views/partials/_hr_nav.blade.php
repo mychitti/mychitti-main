@@ -6,14 +6,15 @@
         ['label' => 'Departments', 'icon' => 'tio-folder',         'route' => 'vendor.staff-department.all',         'active' => Request::is('staff-department*'),                                                              'show' => hasAnyModulePermission(['staff_department'])],
         ['label' => 'Roles',       'icon' => 'tio-lock-outlined',  'route' => 'vendor.custom-role.create',           'active' => Request::is('custom-role*'),                                                                   'show' => hasAnyModulePermission(['staff_role'])],
         ['label' => 'Teams',       'icon' => 'tio-users',          'route' => 'vendor.staff.team.index',             'active' => Request::is('staff/team*'),                                                                    'show' => hasAnyModulePermission(['staff_team'])],
-        ['label' => 'Shifts',      'icon' => 'tio-timer',          'route' => 'vendor.shifts.index',                 'active' => Request::is('shifts*'),                                                                        'show' => hasAnyModulePermission(['shift_manage'])],
+        ['label' => 'Shifts',      'icon' => 'tio-timer',          'route' => 'vendor.shifts.index',                 'active' => Request::is('shifts*') && !Request::is('shifts/live*'),                                        'show' => hasAnyModulePermission(['shift_manage'])],
+        ['label' => 'Live Work',   'icon' => 'tio-online',         'route' => 'vendor.shifts.live',                  'active' => Request::is('shifts/live*'),                                                                   'show' => hasAnyModulePermission(['shift_manage'])],
         ['label' => 'Attendance',  'icon' => 'tio-event',          'route' => 'vendor.attendance.all',               'active' => Request::is('attendance/list', 'attendance/manage*'),                                          'show' => hasAnyModulePermission(['attendance_manage'])],
         ['label' => 'Leave',       'icon' => 'tio-calendar-note',  'route' => 'vendor.leave.all',                    'active' => Request::is('leave*'),                                                                         'show' => hasAnyModulePermission(['leave_manage', 'attendance_manage'])],
         ['label' => 'Salary',      'icon' => 'tio-money',          'route' => 'vendor.salary.list',                  'active' => Request::is('salary/list', 'salary/edit*', 'salary/manage*'),                                  'show' => hasAnyModulePermission(['salary_manage'])],
         ['label' => 'Advances',    'icon' => 'tio-wallet',         'route' => 'vendor.salary.all-advance-requests',  'active' => Request::is('salary/all-advance*'),                                                            'show' => hasAnyModulePermission(['advance_requests'])],
         ['label' => 'Reports',     'icon' => 'tio-chart-bar-4',    'route' => 'vendor.attendance.report',            'active' => Request::is('attendance/report', 'salary/report'),                                             'show' => hasAnyModulePermission(['attendance_report', 'salary_report'])],
-    ];
-@endphp
+    ]; 
+@endphp 
 <style>
     .hrnav {
         display: flex; gap: 4px; background: #fff; border-radius: 12px 12px 0 0;
@@ -32,7 +33,7 @@
 <div class="hrnav">
     @foreach ($hrTabs as $t)
         @if ($t['show'] && Route::has($t['route']))
-            <a class="hrnav-tab {{ $t['active'] ? 'active' : '' }}" href="{{ route($t['route']) }}">
+            <a class="hrnav-tab {{ $t['active'] ? 'active' : '' }}" href="{{ route($t['route']) }}"> 
                 <i class="{{ $t['icon'] }}"></i> {{ $t['label'] }}
             </a>
         @endif

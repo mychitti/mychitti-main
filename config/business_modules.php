@@ -476,6 +476,235 @@ return [
         'views' => app_path('Modules/POS/views'),
     ],
 
+    // Retail POS — full module clone (own controllers + views); business_type = pos_retail
+    'pos_retail' => [
+        'controllers' => [
+            \App\Http\Controllers\Vendor\AccountController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AccountController::class,
+
+            \App\Http\Controllers\Vendor\AccountReportController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AccountReportController::class,
+
+            \App\Http\Controllers\Vendor\AccountRequestFormController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AccountRequestFormController::class,
+
+            \App\Http\Controllers\Vendor\AccountSettingController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AccountSettingController::class,
+
+            \App\Http\Controllers\Vendor\AccountStatementController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AccountStatementController::class,
+
+            \App\Http\Controllers\Vendor\AddOnController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AddOnController::class,
+
+            \App\Http\Controllers\Vendor\AIChatController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AIChatController::class,
+
+            \App\Http\Controllers\Vendor\AnalyticsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AnalyticsController::class,
+
+            \App\Http\Controllers\Vendor\AssetsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AssetsController::class,
+
+            \App\Http\Controllers\Vendor\AttendanceController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AttendanceController::class,
+
+            \App\Http\Controllers\Vendor\AttendanceExport::class
+                => \App\Modules\PosRetail\Controllers\Vendor\AttendanceExport::class,
+
+            \App\Http\Controllers\Vendor\BankAccountController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BankAccountController::class,
+
+            \App\Http\Controllers\Vendor\BankingController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BankingController::class,
+
+            \App\Http\Controllers\Vendor\BankReconciliationController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BankReconciliationController::class,
+
+            \App\Http\Controllers\Vendor\BannerController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BannerController::class,
+
+            \App\Http\Controllers\Vendor\BasicStaffController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BasicStaffController::class,
+
+            \App\Http\Controllers\Vendor\BillingController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BillingController::class,
+
+            \App\Http\Controllers\Vendor\BranchController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BranchController::class,
+
+            \App\Http\Controllers\Vendor\BusinessSettingsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\BusinessSettingsController::class,
+
+            \App\Http\Controllers\Vendor\CampaignController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CampaignController::class,
+
+            \App\Http\Controllers\Vendor\CashBookController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CashBookController::class,
+
+            \App\Http\Controllers\Vendor\CategoryController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CategoryController::class,
+
+            \App\Http\Controllers\Vendor\ConversationController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ConversationController::class,
+
+            \App\Http\Controllers\Vendor\CouponController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CouponController::class,
+
+            \App\Http\Controllers\Vendor\CustomerController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CustomerController::class,
+
+            \App\Http\Controllers\Vendor\CustomRoleController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\CustomRoleController::class,
+
+            \App\Http\Controllers\Vendor\DashboardController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\DashboardController::class,
+
+            \App\Http\Controllers\Vendor\DeliveryManController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\DeliveryManController::class,
+
+            \App\Http\Controllers\Vendor\DocumentsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\DocumentsController::class,
+
+            \App\Http\Controllers\Vendor\EmployeeController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\EmployeeController::class,
+
+            \App\Http\Controllers\Vendor\FormBuilderController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\FormBuilderController::class,
+
+            \App\Http\Controllers\Vendor\HRController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\HRController::class,
+
+            \App\Http\Controllers\Vendor\ImpersonateController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ImpersonateController::class,
+
+            \App\Http\Controllers\Vendor\InventoryController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryController::class,
+
+            \App\Http\Controllers\Vendor\InventoryGatepassController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryGatepassController::class,
+
+            \App\Http\Controllers\Vendor\InventoryOrderController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryOrderController::class,
+
+            \App\Http\Controllers\Vendor\InventoryPurchaseController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryPurchaseController::class,
+
+            \App\Http\Controllers\Vendor\InventoryReportController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryReportController::class,
+
+            \App\Http\Controllers\Vendor\InventoryStockController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\InventoryStockController::class,
+
+            \App\Http\Controllers\Vendor\ItemController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ItemController::class,
+
+            \App\Http\Controllers\Vendor\LanguageController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\LanguageController::class,
+
+            \App\Http\Controllers\Vendor\LeadController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\LeadController::class,
+
+            \App\Http\Controllers\Vendor\LeadSubscriptionController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\LeadSubscriptionController::class,
+
+            \App\Http\Controllers\Vendor\LeaveController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\LeaveController::class,
+
+            \App\Http\Controllers\Vendor\LibraryController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\LibraryController::class,
+
+            \App\Http\Controllers\Vendor\MaintananceController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\MaintananceController::class,
+
+            \App\Http\Controllers\Vendor\MasterLedgerController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\MasterLedgerController::class,
+
+            \App\Http\Controllers\Vendor\MCVendorController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\MCVendorController::class,
+
+            \App\Http\Controllers\Vendor\MonthlyFinanceController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\MonthlyFinanceController::class,
+
+            \App\Http\Controllers\Vendor\NotificationController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\NotificationController::class,
+
+            \App\Http\Controllers\Vendor\OrderController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\OrderController::class,
+
+            \App\Http\Controllers\Vendor\POSController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\POSController::class,
+
+            \App\Http\Controllers\Vendor\ProfileController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ProfileController::class,
+
+            \App\Http\Controllers\Vendor\ProjectController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ProjectController::class,
+
+            \App\Http\Controllers\Vendor\ProjectTaskController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ProjectTaskController::class,
+
+            \App\Http\Controllers\Vendor\QuoteController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\QuoteController::class,
+
+            \App\Http\Controllers\Vendor\ReportController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ReportController::class,
+
+            \App\Http\Controllers\Vendor\ReviewController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ReviewController::class,
+
+            \App\Http\Controllers\Vendor\SalaryController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SalaryController::class,
+
+            \App\Http\Controllers\Vendor\SalespointController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SalespointController::class,
+
+            \App\Http\Controllers\Vendor\ServiceController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ServiceController::class,
+
+            \App\Http\Controllers\Vendor\SettingsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SettingsController::class,
+
+            \App\Http\Controllers\Vendor\ShiftController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\ShiftController::class,
+
+            \App\Http\Controllers\Vendor\SmartCalendarController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SmartCalendarController::class,
+
+            \App\Http\Controllers\Vendor\StaffController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\StaffController::class,
+
+            \App\Http\Controllers\Vendor\SubmoduleController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SubmoduleController::class,
+
+            \App\Http\Controllers\Vendor\SystemController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\SystemController::class,
+
+            \App\Http\Controllers\Vendor\TaskController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\TaskController::class,
+
+            \App\Http\Controllers\Vendor\TaskSalaryCategoryController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\TaskSalaryCategoryController::class,
+
+            \App\Http\Controllers\Vendor\TaxationController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\TaxationController::class,
+
+            \App\Http\Controllers\Vendor\VendorEmployeeController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\VendorEmployeeController::class,
+
+            \App\Http\Controllers\Vendor\WalletController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\WalletController::class,
+
+            \App\Http\Controllers\Vendor\WalletMethodController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\WalletMethodController::class,
+
+            \App\Http\Controllers\Vendor\WebsiteSettingsController::class
+                => \App\Modules\PosRetail\Controllers\Vendor\WebsiteSettingsController::class,
+
+        ],
+        'views' => app_path('Modules/PosRetail/views'),
+    ],
+
     'hmis' => [
         'controllers' => [
             \App\Http\Controllers\Vendor\AccountController::class

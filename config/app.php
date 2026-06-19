@@ -187,17 +187,19 @@ return [
         InterfaceServiceProvider::class,
         App\Modules\Laundry\LaundryServiceProvider::class,
         App\Modules\POS\POSServiceProvider::class,
+        App\Modules\PosRetail\PosRetailServiceProvider::class,
         App\Modules\HMIS\HMISServiceProvider::class,
         App\Modules\Ecommerce\EcommerceServiceProvider::class,
         App\Modules\SalesCRM\SalesCRMServiceProvider::class,
         App\Modules\School\SchoolServiceProvider::class,
+        Milon\Barcode\BarcodeServiceProvider::class,
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Class Aliases
     |--------------------------------------------------------------------------
-    |
+    | 
     | This array of class aliases will be registered when this application
     | is started. However, feel free to register as many as you wish as
     | the aliases are "lazy" loaded so they don't hinder performance.
@@ -244,6 +246,8 @@ return [
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
+        'DNS1D' => Milon\Barcode\Facades\DNS1DFacade::class,
+        'DNS2D' => Milon\Barcode\Facades\DNS2DFacade::class,
 
     ],
 

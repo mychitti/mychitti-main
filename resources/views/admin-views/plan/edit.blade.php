@@ -225,7 +225,7 @@
                                             $selectedDurations = collect(json_decode($plan->price_variations, true))
                                                 ->pluck('duration')
                                                 ->toArray();
-                                            $Variations = json_decode($plan->price_variations, true);
+                                            $Variations = json_decode($plan->price_variations, true) ?: [];
                                         @endphp
 
                                         <option {{ in_array('1 Month', $selectedDurations) ? 'selected' : '' }}

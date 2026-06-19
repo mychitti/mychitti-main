@@ -31,6 +31,12 @@
                 <label class="form-check-label input-label " for="notifications">Notifications</label>
             </div>
         </div>
+        <div class="check-item">
+            <div class="form-group form-check form--check">
+                <input type="checkbox" name="modules[]" value="post_ads" class="form-check-input" id="post_ads">
+                <label class="form-check-label input-label " for="post_ads">Post Ads</label>
+            </div>
+        </div>
         {{-- <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="library" class="form-check-input" id="library">

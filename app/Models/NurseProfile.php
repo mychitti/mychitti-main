@@ -8,15 +8,11 @@ class NurseProfile extends Model
 {
     protected $fillable = [
         'store_id', 'emp_id', 'qualification', 'ward_id',
-        'department', 'shift', 'registration_number', 'notes',
+        'department', 'registration_number', 'notes',
     ];
 
-    const SHIFTS = [
-        'day'     => 'Day',
-        'evening' => 'Evening',
-        'night'   => 'Night',
-        'rotating'=> 'Rotating',
-    ];
+    // Shift is managed centrally via the staff member's StoreShift (employee->storeShift),
+    // not a nurse-specific field. Use $nurse->employee->storeShift everywhere.
 
     public function employee()
     {

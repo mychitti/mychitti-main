@@ -111,14 +111,10 @@
                 <div class="card mb-3">
                     <div class="card-header"><h5 class="card-title mb-0">Shift</h5></div>
                     <div class="card-body">
-                        @foreach(\App\Models\NurseProfile::SHIFTS as $key => $label)
-                        <div class="custom-control custom-radio mb-2">
-                            <input type="radio" name="shift" id="shift_{{ $key }}" value="{{ $key }}"
-                                class="custom-control-input"
-                                {{ old('shift', 'day') === $key ? 'checked' : '' }}>
-                            <label class="custom-control-label" for="shift_{{ $key }}">{{ $label }}</label>
-                        </div>
-                        @endforeach
+                        <p class="text-muted mb-0" style="font-size:13px;">
+                            <i class="tio-info mr-1"></i> Shift is managed centrally in <strong>Staff Management → Shifts</strong>
+                            and assigned to the staff member. Attendance &amp; overtime use that shift.
+                        </p>
                     </div>
                 </div>
 

@@ -157,6 +157,7 @@
 
                     <!--<h4 class="m-3 mb-0">Personal Information</h4>-->
                     <div class="card-body main_crd">
+                    <h2>{{$staff?->f_name}} {{$staff?->l_name}}</h2>
                         <div class="row">
                             <div class="col-md-3 shadow shadow-sm m-2 py-3">
                                 <form action="">
@@ -265,11 +266,9 @@
                                         <button class="btn  btn--primary btn-outline-primary"
                                             style="height: 44px;109px;">Update</button>
                                     </div>
-
                                 </form>
                             @endif
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -361,8 +360,32 @@
                 @endif
             </div>
 
-
-
+            {{-- Overtime / Extra Duty from clock-in/out punches --}}
+            @isset($dutyHistory)
+            <div class="card mt-3">
+                <div class="card-header py-2"><h5 class="card-title mb-0"><i class="tio-time mr-1"></i> Extra Duty (Overtime) — from punches</h5></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless table-thead-bordered table-align-middle card-table mb-0">
+                            <thead class="thead-light"><tr><th>Date</th><th>Punch In</th><th>Punch Out</th><th>Worked</th><th>Extra Duty</th></tr></thead>
+                            <tbody>
+                                @forelse($dutyHistory as $row)
+                                    <tr>
+                                        <td>{{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}</td>
+                                        <td style="color:#16a34a;">{{ $row['in_time'] ? $row['in_time']->format('h:i A') : '—' }}</td>
+                                        <td style="color:#dc2626;">{{ $row['out_time'] ? $row['out_time']->format('h:i A') : '—' }}</td>
+                                        <td>{{ $row['worked_label'] }}</td>
+                                        <td>@if($row['extra_label'])<span class="badge badge-soft-warning">+{{ $row['extra_label'] }}</span>@else<span class="text-muted">—</span>@endif</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="text-center text-muted py-3">No clock-in punches this month.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endisset
 
         @endsection
 

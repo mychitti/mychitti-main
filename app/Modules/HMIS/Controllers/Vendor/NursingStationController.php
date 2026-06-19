@@ -318,9 +318,82 @@ class NursingStationController extends Controller
         // Logged-in nurse's punch in/out + extra duty for today.
         $duty = \App\Models\Attendance::dutySummary(auth('vendor_employee')->user(), $storeId);
 
+        // Approved shift swaps effective today — to flag covered-out / covering nurses.
+        \App\Models\ShiftSwap::ensureTable();
+        $todaySwaps = \App\Models\ShiftSwap::where('store_id', $storeId)
+            ->whereDate('swap_date', today())
+            ->where('status', 'approved')
+            ->with('fromEmployee')
+            ->get();
+        $coveredOutIds = $todaySwaps->pluck('from_emp_id')->all();
+        $coveringFor = []; // to_emp_id => "from name"
+        foreach ($todaySwaps as $s) {
+            $coveringFor[$s->to_emp_id] = trim(($s->fromEmployee->f_name ?? '') . ' ' . ($s->fromEmployee->l_name ?? ''));
+        }
+
+        // Roster: every nurse's clock-in status + overtime + shift + allotted patients + tasks.
+        IpdAdmission::ensureNurseAssignTable();
+        $nurseRoster = \App\Models\NurseProfile::where('store_id', $storeId)
+            ->with(['employee.storeShift', 'admissions' => fn($q) => $q->where('ipd_admissions.status', '!=', 'discharged')->with('patient', 'bed')])
+            ->get()
+            ->map(function ($n) use ($storeId, $coveredOutIds, $coveringFor) {
+                $d = \App\Models\Attendance::dutySummary($n->employee, $storeId);
+                $empId = $n->employee->id ?? null;
+                $shift = $n->employee?->storeShift;
+
+                $patients = $n->admissions->map(fn($a) => [
+                    'id'   => $a->id,
+                    'bed'  => $a->bed->bed_number ?? '—',
+                    'name' => $a->patient->name ?? 'Patient',
+                ])->values();
+
+                $admissionIds = $n->admissions->pluck('id')->all();
+                $pendingTasks = 0; $totalTasks = 0;
+                if (!empty($admissionIds)) {
+                    $totalTasks   = NursingTask::where('store_id', $storeId)->whereIn('ipd_admission_id', $admissionIds)->whereDate('task_date', today())->count();
+                    $pendingTasks = NursingTask::where('store_id', $storeId)->whereIn('ipd_admission_id', $admissionIds)->whereDate('task_date', today())->where('status', 'pending')->count();
+                }
+
+                return [
+                    'name'        => trim(($n->employee->f_name ?? '') . ' ' . ($n->employee->l_name ?? '')) ?: ('Nurse #' . $n->id),
+                    'shift'       => $shift?->name,
+                    'shift_hours' => $shift && $shift->start_time && $shift->end_time
+                        ? \Carbon\Carbon::parse($shift->start_time)->format('h:i A') . ' – ' . \Carbon\Carbon::parse($shift->end_time)->format('h:i A') : null,
+                    'logged_in'   => (bool) ($n->employee->is_logged_in ?? false),
+                    'clocked'     => $d['has'],
+                    'on_duty'     => $d['has'] && empty($d['out_time']),
+                    'in'          => $d['in_time'],
+                    'out'         => $d['out_time'],
+                    'worked'      => $d['worked_label'],
+                    'extra'       => $d['extra_label'],
+                    'covered_out' => $empId && in_array($empId, $coveredOutIds),
+                    'covering_for'=> $empId ? ($coveringFor[$empId] ?? null) : null,
+                    'patients'    => $patients,
+                    'pending_tasks' => $pendingTasks,
+                    'total_tasks'   => $totalTasks,
+                ];
+            })
+            ->sortByDesc(fn($r) => ($r['logged_in'] ? 2 : 0) + ($r['on_duty'] ? 1 : 0))
+            ->values();
+
+        // All-days attendance (per nurse) for the selected month — for the Attendance tab.
+        $attMonth = $request->get('att_month', now()->format('Y-m'));
+        $attMonthLabel = \Carbon\Carbon::createFromFormat('Y-m', $attMonth)->format('F Y');
+        $attPrev = \Carbon\Carbon::createFromFormat('Y-m', $attMonth)->subMonth()->format('Y-m');
+        $attNext = \Carbon\Carbon::createFromFormat('Y-m', $attMonth)->addMonth()->format('Y-m');
+        $nurseAttendance = \App\Models\NurseProfile::where('store_id', $storeId)
+            ->with('employee')
+            ->get()
+            ->map(fn($n) => [
+                'name' => trim(($n->employee->f_name ?? '') . ' ' . ($n->employee->l_name ?? '')) ?: ('Nurse #' . $n->id),
+                'rows' => \App\Models\Attendance::dutyHistory($n->employee, $storeId, $attMonth),
+            ])
+            ->values();
+
         return view('hmis::vendor.nursing.index', compact(
             'admissions', 'current', 'vital', 'vitalsTrend', 'marRows', 'fluids', 'fbIn', 'fbOut', 'fbNet',
-            'notes', 'tasks', 'patientTasks', 'handover', 'nurseNames', 'summary', 'emptyBeds', 'nurseName', 'duty'
+            'notes', 'tasks', 'patientTasks', 'handover', 'nurseNames', 'summary', 'emptyBeds', 'nurseName', 'duty', 'nurseRoster',
+            'nurseAttendance', 'attMonth', 'attMonthLabel', 'attPrev', 'attNext'
         ))->with('marTimes', self::MAR_TIMES)->with('shift', $this->shiftNow());
     }
 

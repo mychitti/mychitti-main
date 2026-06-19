@@ -309,7 +309,10 @@ class DashboardController extends Controller
 
             // prx($assigned_projects);
 
-            return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assigned_projects', 'employee_id'));
+            // Today's punch in/out + extra duty (overtime) for the logged-in staff member.
+            $duty = \App\Models\Attendance::dutySummary(\App\CentralLogics\Helpers::get_loggedin_user(), Helpers::get_store_id());
+
+            return view('vendor-views.staff_dashboard', compact('att', 'leaves', 'assingned_tasks', 'assigned_projects', 'employee_id', 'duty'));
         }
     }
 

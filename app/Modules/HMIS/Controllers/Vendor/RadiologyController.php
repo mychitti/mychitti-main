@@ -107,13 +107,15 @@ class RadiologyController extends Controller
         'radiology_schedule'  => ['Radiology Schedule', ['view', 'add', 'edit']],
         'radiology_equipment' => ['Radiology Equipment', ['view', 'add', 'edit']],
         'radiology_billing'   => ['Radiology Billing', ['view', 'add']],
+        'radiology_catalog'   => ['Radiology Scan Catalog', ['view', 'add', 'edit', 'delete']],
     ];
 
     // All "view" sub-permissions — used to decide sidebar visibility / landing.
     public const VIEW_PERMS = [
         'radiology_study.view', 'radiology_viewer.view', 'radiology_report.view',
         'radiology_urgent.view', 'radiology_schedule.view', 'radiology_equipment.view', 'radiology_billing.view',
-    ]; 
+        'radiology_catalog.view',
+    ];
 
     public function ensurePermission(): void
     {
@@ -280,6 +282,7 @@ class RadiologyController extends Controller
             'radiology_billing.view'   => 'vendor.radiology.billing',
             'radiology_viewer.view'    => 'vendor.radiology.viewer',
             'radiology_report.add'     => 'vendor.radiology.report',
+            'radiology_catalog.view'   => 'vendor.radiology.catalog',
         ];
         foreach ($map as $perm => $route) {
             [$f, $a] = explode('.', $perm);
@@ -615,6 +618,56 @@ class RadiologyController extends Controller
         }
 
         Toastr::success('Radiology invoice ' . $invoiceId . ' finalized.');
+        return back();
+    }
+
+    // ── Scan Catalog (manage scans + prices) ────────────────────────────────
+    public function catalog(Request $request)
+    {
+        $this->boot();
+        $tests = RadiologyTest::where('store_id', $this->storeId())
+            ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%")->orWhere('modality', 'like', "%{$request->search}%"))
+            ->orderBy('modality')->orderBy('name')->get();
+        return $this->view('catalog', compact('tests'));
+    }
+
+    public function testForm($id = null)
+    {
+        $this->boot();
+        $test = $id ? RadiologyTest::where('store_id', $this->storeId())->findOrFail($id) : null;
+        return $this->view('catalog_form', compact('test'));
+    }
+
+    public function saveTest(Request $request, $id = null)
+    {
+        $this->boot();
+        $request->validate([
+            'name'     => 'required|string|max:200',
+            'modality' => 'required|string|max:50',
+            'price'    => 'required|numeric|min:0',
+        ]);
+        $storeId = $this->storeId();
+
+        $test = $id ? RadiologyTest::where('store_id', $storeId)->findOrFail($id) : new RadiologyTest();
+        $test->fill([
+            'store_id'  => $storeId,
+            'name'      => $request->name,
+            'modality'  => $request->modality,
+            'body_part' => $request->body_part,
+            'price'     => $request->price,
+            'tat_text'  => $request->tat_text,
+            'is_active' => $request->has('is_active') ? 1 : 0,
+        ])->save();
+
+        Toastr::success('Scan ' . ($id ? 'updated' : 'added') . '.');
+        return redirect()->route('vendor.radiology.catalog');
+    }
+
+    public function deleteTest($id)
+    {
+        $this->boot();
+        RadiologyTest::where('store_id', $this->storeId())->findOrFail($id)->delete();
+        Toastr::success('Scan removed.');
         return back();
     }
 }

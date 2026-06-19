@@ -9,6 +9,7 @@ use App\Models\VendorEmployee;
 use App\Models\Department;
 use App\Models\EmployeeTimeCard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
 use Maatwebsite\Excel\Facades\Excel;
@@ -73,8 +74,26 @@ class VendorEmployeeController extends Controller
         $obj->vendor_id = $v_id;
         $obj->out_time =  date('Y-m-d H:i:s');
 
-        //  echo $v_id; die;
-
+        // Snapshot worked + extra-duty (overtime) at clock-out against the shift in effect NOW,
+        // so the value is preserved even if the staff member's shift hours change later.
+        if (!Schema::hasColumn('employee_time_cards', 'overtime_seconds')) {
+            DB::statement('ALTER TABLE `employee_time_cards` ADD COLUMN `worked_seconds` INT NULL, ADD COLUMN `overtime_seconds` INT NULL');
+        }
+        if ($obj->in_time) {
+            $emp   = Helpers::get_loggedin_user();
+            $shift = $emp->storeShift ?? null;
+            if ($shift && $shift->start_time && $shift->end_time) {
+                $s = \Carbon\Carbon::parse('2000-01-01 ' . substr($shift->start_time, 0, 8));
+                $e = \Carbon\Carbon::parse('2000-01-01 ' . substr($shift->end_time, 0, 8));
+                if ($e->lessThanOrEqualTo($s)) { $e->addDay(); }
+                $shiftSeconds = $s->diffInSeconds($e);
+            } else {
+                $shiftSeconds = 9 * 3600;
+            }
+            $worked = max(0, strtotime($obj->out_time) - strtotime($obj->in_time));
+            $obj->worked_seconds   = $worked;
+            $obj->overtime_seconds = max(0, $worked - $shiftSeconds);
+        }
 
         if ($obj->update()) {
             return response()->json(['status' => true]);
@@ -198,7 +217,20 @@ class VendorEmployeeController extends Controller
             ->whereNotNull('out_time')
             ->whereNotNull('in_time')->get();
 
-        return view('vendor-views.employee.attendance', compact('attendance', 'currentmonth'));
+        // Shift length (seconds) for per-day extra-duty (overtime) calc — fallback 9h when no shift.
+        $emp   = Helpers::get_loggedin_user();
+        $shift = $emp->storeShift ?? null;
+        $shiftName = $shift->name ?? null;
+        if ($shift && $shift->start_time && $shift->end_time) {
+            $s = \Carbon\Carbon::parse('2000-01-01 ' . substr($shift->start_time, 0, 8));
+            $e = \Carbon\Carbon::parse('2000-01-01 ' . substr($shift->end_time, 0, 8));
+            if ($e->lessThanOrEqualTo($s)) { $e->addDay(); }
+            $shiftSeconds = $s->diffInSeconds($e);
+        } else {
+            $shiftSeconds = 9 * 3600;
+        }
+
+        return view('vendor-views.employee.attendance', compact('attendance', 'currentmonth', 'shiftSeconds', 'shiftName'));
     }
 
     public function my_salary_history(Request $request)

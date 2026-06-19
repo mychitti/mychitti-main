@@ -59,6 +59,53 @@
         </div>
     </div>
 
+    {{-- Today's Duty + monthly overtime history --}}
+    @isset($duty)
+    <div class="card mb-3">
+        <div class="card-header py-2"><h6 class="mb-0"><i class="tio-time mr-1"></i> Today's Duty
+            @if($duty['shift_name'])<span class="badge badge-soft-info ml-1">{{ $duty['shift_name'] }}</span>@endif
+        </h6></div>
+        <div class="card-body">
+            @if($duty['has'])
+                <div class="d-flex flex-wrap" style="gap:24px;">
+                    <div><span class="text-muted" style="font-size:12px;">Punch In</span><br><strong style="color:#16a34a;">{{ $duty['in_time'] ? $duty['in_time']->format('h:i A') : '—' }}</strong></div>
+                    <div><span class="text-muted" style="font-size:12px;">Punch Out</span><br><strong style="color:#dc2626;">{{ $duty['out_time'] ? $duty['out_time']->format('h:i A') : 'On duty' }}</strong></div>
+                    <div><span class="text-muted" style="font-size:12px;">Worked</span><br><strong>{{ $duty['worked_label'] ?: '—' }}</strong></div>
+                    <div><span class="text-muted" style="font-size:12px;">Extra Duty</span><br><strong style="color:{{ $duty['extra_label'] ? '#b45309' : '#9ca3af' }};">{{ $duty['extra_label'] ?: 'None' }}</strong></div>
+                </div>
+            @else
+                <p class="text-muted mb-0">No clock-in recorded today.</p>
+            @endif
+        </div>
+    </div>
+    @endisset
+
+    @isset($dutyHistory)
+    <div class="card mb-3">
+        <div class="card-header py-2"><h6 class="mb-0"><i class="tio-calendar-month mr-1"></i> Duty History — {{ now()->format('F Y') }}</h6></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-borderless table-thead-bordered mb-0">
+                    <thead class="thead-light"><tr><th>Date</th><th>Punch In</th><th>Punch Out</th><th>Worked</th><th>Extra Duty</th></tr></thead>
+                    <tbody>
+                        @forelse($dutyHistory as $row)
+                            <tr>
+                                <td>{{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}</td>
+                                <td style="color:#16a34a;">{{ $row['in_time'] ? $row['in_time']->format('h:i A') : '—' }}</td>
+                                <td style="color:#dc2626;">{{ $row['out_time'] ? $row['out_time']->format('h:i A') : '—' }}</td>
+                                <td>{{ $row['worked_label'] }}</td>
+                                <td>@if($row['extra_label'])<span class="badge badge-soft-warning">+{{ $row['extra_label'] }}</span>@else<span class="text-muted">—</span>@endif</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="text-center text-muted py-3">No clock-in records this month.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endisset
+
     <div class="row">
         {{-- Add Slot --}}
         <div class="col-md-4">

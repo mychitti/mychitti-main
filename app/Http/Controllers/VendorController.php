@@ -41,6 +41,7 @@ class VendorController extends Controller
         Session::put('six_captcha', $custome_recaptcha->getPhrase());
 
         StoreType::firstOrCreate(['name' => 'School', 'module_id' => 6]);
+        _ensureRetailPosStoreType();
 
         $shop_stores_type = StoreType::where('module_id', 6)->get();
         $service_stores_type =  StoreType::where('module_id', 6)->get();

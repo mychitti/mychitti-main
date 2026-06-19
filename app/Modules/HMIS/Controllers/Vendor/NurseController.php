@@ -21,7 +21,7 @@ class NurseController extends Controller
     {
         $store_id = Helpers::get_store_id();
         $nurses   = NurseProfile::where('store_id', $store_id)
-            ->with(['employee', 'ward'])
+            ->with(['employee.storeShift', 'ward'])
             ->latest()
             ->paginate(15);
 
@@ -41,7 +41,7 @@ class NurseController extends Controller
             $n->employee?->email,
             $n->employee?->phone,
             $n->qualification,
-            $n->shift,
+            $n->employee?->storeShift?->name,
             $n->ward?->ward_name,
             $n->employee?->status ? 'Active' : 'Inactive',
         ])->toArray();
@@ -73,7 +73,6 @@ class NurseController extends Controller
     {
         $rules = [
             'qualification' => 'nullable|string|max:150',
-            'shift'         => 'nullable|in:' . implode(',', array_keys(NurseProfile::SHIFTS)),
             'ward_id'       => 'nullable|exists:wards,id',
         ];
 
@@ -115,7 +114,6 @@ class NurseController extends Controller
                 'qualification'       => $request->qualification,
                 'ward_id'             => $request->ward_id ?: null,
                 'department'          => $request->department,
-                'shift'               => $request->shift ?? 'day',
                 'registration_number' => $request->registration_number,
                 'notes'               => $request->notes,
             ]);
@@ -142,10 +140,13 @@ class NurseController extends Controller
         if (!auth('vendor')->check() && !hasPermission('staff_nurse', 'view')) abort(403);
         $store_id = Helpers::get_store_id();
         $nurse    = NurseProfile::where('store_id', $store_id)
-            ->with(['employee', 'ward'])
+            ->with(['employee.storeShift', 'ward'])
             ->findOrFail($id);
 
-        return view('hmis::vendor.nurse.view', compact('nurse'));
+        $duty = \App\Models\Attendance::dutySummary($nurse->employee, $store_id);
+        $dutyHistory = \App\Models\Attendance::dutyHistory($nurse->employee, $store_id);
+
+        return view('hmis::vendor.nurse.view', compact('nurse', 'duty', 'dutyHistory'));
     }
 
     public function edit($id)
@@ -175,7 +176,6 @@ class NurseController extends Controller
         $request->validate([
             'emp_id'        => 'required|exists:vendor_employees,id',
             'qualification' => 'nullable|string|max:150',
-            'shift'         => 'nullable|in:' . implode(',', array_keys(NurseProfile::SHIFTS)),
             'ward_id'       => 'nullable|exists:wards,id',
         ]);
 
@@ -187,7 +187,6 @@ class NurseController extends Controller
             'qualification'       => $request->qualification,
             'ward_id'             => $request->ward_id ?: null,
             'department'          => $request->department,
-            'shift'               => $request->shift ?? 'day',
             'registration_number' => $request->registration_number,
             'notes'               => $request->notes,
         ]);

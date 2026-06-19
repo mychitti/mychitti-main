@@ -204,7 +204,7 @@ class IpdController extends Controller
 
         // Nurses available to assign to this admission.
         $nurses = \App\Models\NurseProfile::where('store_id', $store_id)
-            ->with('employee')
+            ->with('employee.storeShift')
             ->get();
 
         return view('hmis::vendor.ipd.show', compact('admission', 'nursingNotes', 'dietCharts', 'consents', 'nurses'));

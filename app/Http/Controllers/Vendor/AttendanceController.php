@@ -182,6 +182,9 @@ class AttendanceController extends Controller
         $staff = VendorEmployee::find($id);
         $departments = Department::where('status', 1)->where('vendor_id', $v_id)->get();
 
+        // Per-day duty / overtime from the staff member's clock-in/out punches.
+        $dutyHistory = \App\Models\Attendance::dutyHistory($staff, $v_id, sprintf('%04d-%02d', $filter_year, $filter_month));
+
         $attendance = Attendance::where(['vendor_id' => $v_id, 'employee_type' => 'vendor_employee',  'employee_id' => $id, 'month' => $filter_month, 'year' => $filter_year])->get()->toArray();
 
         $day_data['absent'] = 0;
@@ -326,7 +329,8 @@ class AttendanceController extends Controller
             'labelArr',
             'attendanceLogs',
             'currentmonth',
-            'data'
+            'data',
+            'dutyHistory'
 
         ));
     }

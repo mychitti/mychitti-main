@@ -72,7 +72,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('claim-trial', 'AnalyticsController@claimTrial')->name('claim-trial');
         });
 
-        Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:notification']], function () {
+        Route::group(['prefix' => 'notification', 'as' => 'notification.', 'middleware' => ['module:post_ads']], function () {
             Route::get('/', 'NotificationController@index')->name('add-new');
             Route::post('store', 'NotificationController@store')->name('store');
             Route::post('schedule', 'NotificationController@storeScheduled')->name('schedule');

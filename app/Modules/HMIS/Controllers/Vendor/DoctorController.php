@@ -257,7 +257,10 @@ class DoctorController extends Controller
         $doctor   = DoctorProfile::where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
         $days     = DoctorSlot::DAYS;
 
-        return view('hmis::vendor.doctor.slots', compact('doctor', 'days'));
+        $duty        = \App\Models\Attendance::dutySummary($doctor->employee, $store_id);
+        $dutyHistory = \App\Models\Attendance::dutyHistory($doctor->employee, $store_id);
+
+        return view('hmis::vendor.doctor.slots', compact('doctor', 'days', 'duty', 'dutyHistory'));
     }
 
     public function slotStore(Request $request, $id)

@@ -40,121 +40,121 @@
                     @include('vendor-views/forms/role_add')
                 </div>
             </div>
-        @endif
+        @endif 
         @if (hasPermission('staff_role', 'list') || hasPermission('basic_staff_manage', 'role_manage'))
-
-        <div class="card mt-3">
-            <div class="card-header border-0">
-                <div class="search--button-wrapper">
-                    <h5 class="card-title">
-                        <span class="card-header-icon">
-                            <i class="tio-document-text-outlined"></i>
-                        </span>
-                        <span>
-                            {{ translate('messages.roles_table') }}<span class="badge badge-soft-dark ml-2"
-                                id="itemCount">{{ $rl->total() }}</span>
-                        </span>
-                    </h5>
-                    <form class="search-form min--250">
-                        <!-- Search -->
-                        <div class="input-group input--group">
-                            <input value="{{ request()?->search ?? '' }}" type="search" name="search" class="form-control"
-                                placeholder="{{ translate('messages.search_role') }}"
-                                aria-label="{{ translate('messages.search') }}">
-                            <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
-                        </div>
-                        <!-- End Search -->
-                    </form>
+            <div class="card mt-3">
+                <div class="card-header border-0">
+                    <div class="search--button-wrapper">
+                        <h5 class="card-title">
+                            <span class="card-header-icon">
+                                <i class="tio-document-text-outlined"></i>
+                            </span>
+                            <span>
+                                {{ translate('messages.roles_table') }}<span class="badge badge-soft-dark ml-2"
+                                    id="itemCount">{{ $rl->total() }}</span>
+                            </span>
+                        </h5>
+                        <form class="search-form min--250">
+                            <!-- Search -->
+                            <div class="input-group input--group">
+                                <input value="{{ request()?->search ?? '' }}" type="search" name="search"
+                                    class="form-control" placeholder="{{ translate('messages.search_role') }}"
+                                    aria-label="{{ translate('messages.search') }}">
+                                <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
+                            </div>
+                            <!-- End Search -->
+                        </form>
+                    </div>
                 </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive datatable-custom">
-                    <table id="columnSearchDatatable"
-                        class="table table-borderless table-thead-bordered table-align-middle card-table"
-                        data-hs-datatables-options='{
+                <div class="card-body p-0">
+                    <div class="table-responsive datatable-custom">
+                        <table id="columnSearchDatatable"
+                            class="table table-borderless table-thead-bordered table-align-middle card-table"
+                            data-hs-datatables-options='{
                             "order": [],
                             "orderCellsTop": true,
                             "paging":false
                         }'>
-                        <thead class="thead-light">
-                            <tr>
-                                <th class="border-0 w-50px">{{ translate('messages.sl#') }}</th>
-                                <th class="border-0 w-50px">{{ translate('messages.role_name') }}</th>
-                                <th class="border-0 w-100px">{{ translate('messages.modules') }}</th>
-                                <th class="border-0 w-50px">{{ translate('messages.created_at') }}</th>
-                                <th class="border-0 w-50px text-center">{{ translate('messages.action') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="set-rows">
-                            @foreach ($rl as $k => $r)
+                            <thead class="thead-light">
                                 <tr>
-                                    <td>{{ $k + $rl->firstItem() }}</td>
-                                    <td>{{ Str::limit($r['name'], 20, '...') }}</td>
-                                    <td class="text-capitalize">
-                                        @if ($r['modules'] != null)
-                                            @foreach ((array) json_decode($r['modules']) as $key => $m)
-                                                @if ($m == 'bank_info')
-                                                    {{ translate('messages.profile') }}
-                                                @else
-                                                    {{ translate(str_replace('_', ' ', $m)) }}
-                                                @endif
-
-
-                                                {{ !$loop->last ? ',' : '.' }}
-                                            @endforeach
-                                        @endif
-                                    </td>
-                                    <td>{{ date('d-M-y', strtotime($r['created_at'])) }}</td>
-                                    <td>
-                                        <div class="btn--container justify-content-center">
-                                            @if (hasPermission('staff_role', 'edit') || hasPermission('basic_staff_manage', 'role_manage'))
-                                                <a class="btn action-btn btn--primary btn-outline-primary"
-                                                    href="{{ route('vendor.custom-role.edit', [$r['id']]) }}"
-                                                    title="{{ translate('messages.edit_role') }}"><i class="tio-edit"></i>
-                                                </a>
-                                            @endif
-                                            @if (hasPermission('staff_role', 'delete') || hasPermission('basic_staff_manage', 'role_manage'))
-                                                <a class="btn action-btn btn--danger btn-outline-danger form-alert"
-                                                    href="javascript:" data-id="role-{{ $r['id'] }}"
-                                                    data-message="{{ translate('messages.Want_to_delete_this_role') }}"
-                                                    title="{{ translate('messages.delete_role') }}"><i
-                                                        class="tio-delete-outlined"></i>
-                                                </a>
-                                            @endif
-                                        </div>
-                                        @if (hasPermission('staff_role', 'delete') || hasPermission('basic_staff_manage', 'role_manage'))
-                                            <form action="{{ route('vendor.custom-role.delete', [$r['id']]) }}"
-                                                method="post" id="role-{{ $r['id'] }}">
-                                                @csrf @method('delete')
-                                            </form>
-                                        @endif
-
-                                    </td>
+                                    <th class="border-0 w-50px">{{ translate('messages.sl#') }}</th>
+                                    <th class="border-0 w-50px">{{ translate('messages.role_name') }}</th>
+                                    <th class="border-0 w-100px">{{ translate('messages.modules') }}</th>
+                                    <th class="border-0 w-50px">{{ translate('messages.created_at') }}</th>
+                                    <th class="border-0 w-50px text-center">{{ translate('messages.action') }}</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                    @if (count($rl) !== 0)
-                        <hr>
-                    @endif
-                    <div class="page-area">
-                        <table>
-                            <tfoot>
-                                {!! $rl->links() !!}
-                            </tfoot>
+                            </thead>
+                            <tbody id="set-rows">
+                                @foreach ($rl as $k => $r)
+                                    <tr>
+                                        <td>{{ $k + $rl->firstItem() }}</td>
+                                        <td>{{ Str::limit($r['name'], 20, '...') }}</td>
+                                        <td class="text-capitalize">
+                                            @if ($r['modules'] != null)
+                                                @foreach ((array) json_decode($r['modules']) as $key => $m)
+                                                    @if ($m == 'bank_info')
+                                                        {{ translate('messages.profile') }}
+                                                    @else
+                                                        {{ translate(str_replace('_', ' ', $m)) }}
+                                                    @endif
+
+
+                                                    {{ !$loop->last ? ',' : '.' }}
+                                                @endforeach
+                                            @endif
+                                        </td>
+                                        <td>{{ date('d-M-y', strtotime($r['created_at'])) }}</td>
+                                        <td>
+                                            <div class="btn--container justify-content-center">
+                                                @if (hasPermission('staff_role', 'edit') || hasPermission('basic_staff_manage', 'role_manage'))
+                                                    <a class="btn action-btn btn--primary btn-outline-primary"
+                                                        href="{{ route('vendor.custom-role.edit', [$r['id']]) }}"
+                                                        title="{{ translate('messages.edit_role') }}"><i
+                                                            class="tio-edit"></i>
+                                                    </a>
+                                                @endif
+                                                @if (hasPermission('staff_role', 'delete') || hasPermission('basic_staff_manage', 'role_manage'))
+                                                    <a class="btn action-btn btn--danger btn-outline-danger form-alert"
+                                                        href="javascript:" data-id="role-{{ $r['id'] }}"
+                                                        data-message="{{ translate('messages.Want_to_delete_this_role') }}"
+                                                        title="{{ translate('messages.delete_role') }}"><i
+                                                            class="tio-delete-outlined"></i>
+                                                    </a>
+                                                @endif
+                                            </div>
+                                            @if (hasPermission('staff_role', 'delete') || hasPermission('basic_staff_manage', 'role_manage'))
+                                                <form action="{{ route('vendor.custom-role.delete', [$r['id']]) }}"
+                                                    method="post" id="role-{{ $r['id'] }}">
+                                                    @csrf @method('delete')
+                                                </form>
+                                            @endif
+
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
                         </table>
-                    </div>
-                    @if (count($rl) === 0)
-                        <div class="empty--data">
-                            <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
-                            <h5>
-                                {{ translate('no_data_found') }}
-                            </h5>
+                        @if (count($rl) !== 0)
+                            <hr>
+                        @endif
+                        <div class="page-area">
+                            <table>
+                                <tfoot>
+                                    {!! $rl->links() !!}
+                                </tfoot>
+                            </table>
                         </div>
-                    @endif
+                        @if (count($rl) === 0)
+                            <div class="empty--data">
+                                <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" alt="public">
+                                <h5>
+                                    {{ translate('no_data_found') }}
+                                </h5>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
-        </div>
         @endif
     </div>
 @endsection

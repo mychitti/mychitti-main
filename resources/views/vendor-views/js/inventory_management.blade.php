@@ -475,12 +475,40 @@
          })
          .then(editor => {
              editorInstance = editor;
-         })
+         }) 
          .catch(error => {
              console.error('There was a problem initializing the editor.', error);
          });
 
      $('#item_form').on('submit', function(e) {
+         if ($('#show_on_website').length && $('#show_on_website').is(':checked')) {
+             let highlights = $('textarea[name="description"]').val() || '';
+             let specs = editorInstance ? editorInstance.getData() : '';
+             
+             if (!highlights.trim() || !specs.trim()) {
+                 if (!highlights.trim() && !specs.trim()) {
+                     toastr.error('Highlights and Specifications are required when Show on Website is checked.');
+                 } else if (!highlights.trim()) {
+                     toastr.error('Highlights is required when Show on Website is checked.');
+                 } else {
+                     toastr.error('Specifications is required when Show on Website is checked.');
+                 }
+                 
+                 // Focus the empty field
+                 if (!highlights.trim()) {
+                     $('textarea[name="description"]').focus();
+                 } else if (editorInstance) {
+                     editorInstance.editing.view.focus();
+                 }
+                 
+                 // Switch to basic tab
+                 $('#basic-tab').click();
+                 
+                 e.preventDefault();
+                 return false;
+             }
+         }
+
          $('#submitButton').attr('disabled', true);
          e.preventDefault();
          let formData = new FormData(this);

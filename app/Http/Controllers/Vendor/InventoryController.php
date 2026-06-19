@@ -688,8 +688,33 @@ class InventoryController extends Controller
             ->header('Content-Disposition', 'inline; filename="labels_' . $item->item_name . '.pdf"');
     }
 
+    // Guarded self-heal: JSON column that stores label=>value attributes printed
+    // under the product in quotations & bills. No migration files per project rule.
+    private function ensureDescriptionAttributesColumn(): void
+    {
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'description_attributes')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `description_attributes` JSON NULL");
+        }
+    }
+
+    private function buildDescriptionAttributes(Request $request): array
+    {
+        $labels = $request->desc_attr_label ?? [];
+        $values = $request->desc_attr_value ?? [];
+        $attrs = [];
+        foreach ($labels as $i => $label) {
+            $label = trim((string) $label);
+            if ($label === '') {
+                continue;
+            }
+            $attrs[$label] = trim((string) ($values[$i] ?? ''));
+        }
+        return $attrs;
+    }
+
     public function update_item(Request $request)
     {
+        $this->ensureDescriptionAttributesColumn();
         $validator = FacadesValidator::make($request->all(), [
             'mrp'                  => 'required',
             'unit'              => 'required',
@@ -802,6 +827,7 @@ class InventoryController extends Controller
         $inventory_item->selling_price = $request->main_selling_price;
         $inventory_item->storage_unit_id = $request->storage_unit_id;
         $inventory_item->description = $request->description;
+        $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);
         $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
 
         $inventory_item->specifications = $specifications;
@@ -940,6 +966,7 @@ class InventoryController extends Controller
 
     public function save_item(Request $request)
     {
+        $this->ensureDescriptionAttributesColumn();
         $store_id = Helpers::get_store_id();
         $rules = [
             'item_type' => 'required',
@@ -1036,7 +1063,8 @@ class InventoryController extends Controller
             $inventory_item->landing_price = $request->main_landing_price;
             $inventory_item->selling_price = $request->main_selling_price;
             $inventory_item->storage_unit_id = $request->storage_unit_id;
-            // $inventory_item->description = $request->description;
+            $inventory_item->description = $request->description;
+            $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);
             $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
             $inventory_item->specifications = $specifications;
         }

@@ -74,7 +74,7 @@
                     </td>
 
                 </tr>
-                <tr class="border border-2 border-top-0 mb-2">
+                <tr class="border border-2 border-top-0 mb-2 variant-extra-row">
                     <td colspan="2">
                         <label class="control-label m-0">Description</label>
                         <textarea name="descs_{{ $combination['type'] }}" class="form-control" required>{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->description : '' }}</textarea>

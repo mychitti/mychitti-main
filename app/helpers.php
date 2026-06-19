@@ -1319,10 +1319,10 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
     ];
 
     $bill_data['invoice_items'] = $quotation
-        ? QuotationDetailItem::where('quotation_det_id', $invoice->id)->get()
+        ? QuotationDetailItem::with('item')->where('quotation_det_id', $invoice->id)->get()
         : ($invoice instanceof ServiceInvoice
-            ? InvoiceItem::with('unitId')->where('invoice_id', $invoice->id)->get()
-            : InvoiceItem::with('unitId')->where('manual_invoice_id', $invoice->id)->get());
+            ? InvoiceItem::with('unitId', 'item')->where('invoice_id', $invoice->id)->get()
+            : InvoiceItem::with('unitId', 'item')->where('manual_invoice_id', $invoice->id)->get());
     [$bill_to, $shipping_address] = processBillToInfo($invoice, $shipping_address_id);
 
     $bill_from = processBillFromInfo($invoice, $from, $bill_data);
@@ -1853,6 +1853,23 @@ if (!function_exists('_updateInventoryStock')) {
             }
         } catch (\Throwable $th) {
             //  Log::error($th);
+        }
+    }
+}
+if (!function_exists('_ensureRetailPosStoreType')) {
+
+    // Self-heal the 'pos_retail' store type so it is selectable in admin store add/edit
+    // and vendor registration. The stored business_type must be exactly 'pos_retail'
+    // (matched by ResolveModuleViews/Controllers); a friendly label goes in display_name.
+    function _ensureRetailPosStoreType($moduleId = 6)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('store_types')) {
+            return;
+        }
+        $type = \App\Models\StoreType::firstOrCreate(['name' => 'pos_retail', 'module_id' => $moduleId]);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('store_types', 'display_name') && empty($type->display_name)) {
+            $type->display_name = 'Retail POS';
+            $type->save();
         }
     }
 }

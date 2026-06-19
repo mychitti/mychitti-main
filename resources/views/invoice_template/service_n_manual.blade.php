@@ -332,7 +332,21 @@
                 @endphp
                 <tr class="no-border">
                     <td class="no-border">{{ $key + 1 }}</td>
-                    <td class="no-border" colspan="3">{!! $qt->name !!} </td>
+                    <td class="no-border" colspan="3">
+                        {!! $qt->name !!}
+                        @php
+                            $lineDesc = optional($qt->item)->description;
+                            $lineAttrs = optional($qt->item)->description_attributes ?: [];
+                        @endphp
+                        @if (!empty($lineDesc) || !empty($lineAttrs))
+                            <div style="font-size:9px; color:#555; margin-top:3px; line-height:1.35;">
+                                @if (!empty($lineDesc)){!! nl2br(e($lineDesc)) !!}@endif
+                                @foreach ($lineAttrs as $al => $av)
+                                    <div><span style="color:#888;">{{ $al }}:</span> {{ $av }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </td>
                     @if ($bill_data['tax_type'] != 'non-gst' || $bill_data['module_id'] == 5)
                         <td class="no-border">{{ $qt->hsn }}</td>
                     @endif

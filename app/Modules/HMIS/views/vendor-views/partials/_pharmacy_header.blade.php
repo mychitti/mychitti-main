@@ -411,9 +411,16 @@
     @endif
 
     {{-- Banned / Blocked Items --}}
-    @if (Route::has('vendor.pharmacy.banned-items') && hasPermission('pharmacy', 'list'))
+    @if (Route::has('vendor.pharmacy.banned-items') && hasPermission('pharmacy', 'view'))
         <a href="{{ route('vendor.pharmacy.banned-items') }}" class="pharmacy-tab-btn {{ Str::contains($currentRouteName, 'vendor.pharmacy.banned-items') ? 'active' : '' }}">
             Banned Items
+        </a>
+    @endif
+
+    {{-- Sale Orders (free pharmacy view) --}}
+    @if (Route::has('vendor.pharmacy.sale-orders') && hasPermission('pharmacy', 'view'))
+        <a href="{{ route('vendor.pharmacy.sale-orders') }}" class="pharmacy-tab-btn {{ Str::contains($currentRouteName, 'vendor.pharmacy.sale-orders') ? 'active' : '' }}">
+            Sale Orders
         </a>
     @endif
 

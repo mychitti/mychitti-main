@@ -1,0 +1,9 @@
+<?php
+
+namespace App\Modules\PosRetail\Controllers\Vendor;
+
+use App\Http\Controllers\Vendor\OrderController as BaseOrderController;
+
+class OrderController extends BaseOrderController
+{
+}

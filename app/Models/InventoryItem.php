@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InventoryItem extends Model
 {
     protected $casts = [
-        'images' => 'array',  
+        'images' => 'array',
          'choice_options',
         'attributes',
+        'description_attributes' => 'array',
     ];
     use HasFactory; 
     protected $fillable = [ 
@@ -42,6 +43,9 @@ class InventoryItem extends Model
         'stock',
         'selling_price',
         'show_on_store_page',
+        'description',
+        'description_attributes',
+        'specifications',
     ];
  
     public function purchaseOrders()

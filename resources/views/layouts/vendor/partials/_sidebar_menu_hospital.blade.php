@@ -327,6 +327,7 @@
                                     'radiology_schedule.view',
                                     'radiology_equipment.view',
                                     'radiology_billing.view',
+                                    'radiology_catalog.view',
                                 ])))
                         <li class="nav-item {{ Request::is('radiology*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -474,16 +475,18 @@
                     </li>
                 @endif
                 <!-- Dashboards -->
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel') ? 'active' : '' }}">
-                    <a class="js-navbar-vertical-aside-menu-link nav-link"
-                        href="{{ route('vendor.master-dashboard') }}" title="{{ translate('messages.dashboard') }}">
-                        <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}"
-                            alt="" class="nav-link-icon">
-                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                            Master {{ translate('messages.dashboard') }}
-                        </span>
-                    </a>
-                </li>
+                {{-- @if (auth('vendor')->check()) --}}
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('vendor.master-dashboard') }}" title="{{ translate('messages.dashboard') }}">
+                            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Dashboard_color.png') }}"
+                                alt="" class="nav-link-icon">
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                               {{auth('vendor')->check() ? 'Master' : ''}} {{ translate('messages.dashboard') }}
+                            </span> 
+                        </a>
+                    </li>
+                {{-- @endif --}}
 
 
                 @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_tasks'))
@@ -1601,7 +1604,7 @@
                 @endif
 
                 {{-- =============================== Basic Staff (free, shown when HR not subscribed) --}}
-                @if (!\App\CentralLogics\Helpers::permission_check('hr_manage'))
+                @if (auth('vendor')->check() && !\App\CentralLogics\Helpers::permission_check('hr_manage'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                             title="Staff Management">
@@ -1773,13 +1776,24 @@
                                 </li>
                             @endif
                             @if (hasAnyModulePermission(['shift_manage']))
-                                <li class="navbar-vertical-aside {{ Request::is('shifts*') ? 'active' : '' }}">
+                                <li class="navbar-vertical-aside {{ Request::is('shifts') || Request::is('shifts/') ? 'active' : '' }}">
                                     <a class="sub-link  nav-link" href="{{ route('vendor.shifts.index') }}"
                                         title="Shifts Management">
                                         <i class="tio-timer nav-icon"></i>
                                         <span
                                             class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Shifts
                                             Management</span>
+                                    </a>
+                                </li>
+                            @endif
+                            @if (Route::has('vendor.shifts.live') && (auth('vendor')->check() || auth('vendor_employee')->check()))
+                                <li class="navbar-vertical-aside {{ Request::is('shifts/live*') ? 'active' : '' }}">
+                                    <a class="sub-link  nav-link" href="{{ route('vendor.shifts.live') }}"
+                                        title="Live Work Updates">
+                                        <i class="tio-online nav-icon"></i>
+                                        <span
+                                            class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Live Work
+                                            Updates</span>
                                     </a>
                                 </li>
                             @endif
@@ -2195,11 +2209,11 @@
                 @endif
 
 
-                @if (\App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
+                @if (\App\CentralLogics\Helpers::employee_module_permission_check('post_ads'))
                     <li
-                        class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
+                        class="navbar-vertical-aside-has-menu {{ Request::is('notification*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link "
-                            href="{{ route('vendor.notification.add-new') }}" title="push notifications">
+                            href="{{ route('vendor.notification.add-new') }}" title="Post Ads">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Advertisements_color.png') }}"
                                 alt="" class="nav-link-icon">
                             <span class="text-truncate">Post Ads</span>

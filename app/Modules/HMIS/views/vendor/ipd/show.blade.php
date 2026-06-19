@@ -208,7 +208,7 @@
                                 <select name="nurse_profile_ids[]" class="form-control js-select2-custom" multiple data-hs-select2-options='{"placeholder": "Select nurses...", "allowClear": true}'>
                                     @foreach ($nurses as $n)
                                         <option value="{{ $n->id }}" {{ $admission->assignedNurses->contains('id', $n->id) ? 'selected' : '' }}>
-                                            {{ trim(($n->employee->f_name ?? '') . ' ' . ($n->employee->l_name ?? '')) ?: 'Nurse #' . $n->id }}{{ $n->shift ? ' · ' . (\App\Models\NurseProfile::SHIFTS[$n->shift] ?? $n->shift) : '' }}
+                                            {{ trim(($n->employee->f_name ?? '') . ' ' . ($n->employee->l_name ?? '')) ?: 'Nurse #' . $n->id }}{{ $n->employee?->storeShift?->name ? ' · ' . $n->employee->storeShift->name : '' }}
                                         </option>
                                     @endforeach
                                 </select>

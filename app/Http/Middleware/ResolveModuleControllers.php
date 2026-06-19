@@ -17,6 +17,8 @@ class ResolveModuleControllers
                 $this->swapControllers($request, config('business_modules.laundry.controllers', []));
             } elseif ($type === 'pos') {
                 $this->swapControllers($request, config('business_modules.pos.controllers', []));
+            } elseif ($type === 'pos_retail') {
+                $this->swapControllers($request, config('business_modules.pos_retail.controllers', []));
             } elseif ($type === 'hospital') {
                 $this->swapControllers($request, config('business_modules.hmis.controllers', []));
             }

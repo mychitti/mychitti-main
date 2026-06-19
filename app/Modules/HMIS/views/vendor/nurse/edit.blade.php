@@ -76,14 +76,19 @@
                 <div class="card mb-3">
                     <div class="card-header"><h5 class="card-title mb-0">Shift</h5></div>
                     <div class="card-body">
-                        @foreach(\App\Models\NurseProfile::SHIFTS as $key => $label)
-                        <div class="custom-control custom-radio mb-2">
-                            <input type="radio" name="shift" id="shift_{{ $key }}" value="{{ $key }}"
-                                class="custom-control-input"
-                                {{ old('shift', $nurse->shift) === $key ? 'checked' : '' }}>
-                            <label class="custom-control-label" for="shift_{{ $key }}">{{ $label }}</label>
-                        </div>
-                        @endforeach
+                        <p class="text-muted mb-2" style="font-size:13px;">
+                            <i class="tio-info mr-1"></i> Shift is managed centrally in <strong>Staff Management → Shifts</strong>
+                            and assigned to the staff member.
+                            @if($nurse->employee?->storeShift)
+                                <br>Current: <strong>{{ $nurse->employee->storeShift->name }}</strong>
+                                ({{ \Carbon\Carbon::parse($nurse->employee->storeShift->start_time)->format('h:i A') }}–{{ \Carbon\Carbon::parse($nurse->employee->storeShift->end_time)->format('h:i A') }})
+                            @endif
+                        </p>
+                        @if($nurse->emp_id && Route::has('vendor.staff.edit'))
+                            <a href="{{ route('vendor.staff.edit', $nurse->emp_id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="tio-edit mr-1"></i> Edit Staff Profile / Shift
+                            </a>
+                        @endif
                     </div>
                 </div>
 

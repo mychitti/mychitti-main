@@ -95,6 +95,11 @@ Route::group(['prefix' => 'shifts', 'as' => 'shifts.'], function () {
     Route::post('store',      [ShiftController::class, 'store'])->name('store')->middleware('permission:shift_manage,add');
     Route::get('delete/{id}', [ShiftController::class, 'delete'])->name('delete')->middleware('permission:shift_manage,delete');
     Route::post('update',     [ShiftController::class, 'update'])->name('update')->middleware('permission:shift_manage,edit');
+
+    // Live Work Updates + shift change (swap)
+    Route::get('live',               [ShiftController::class, 'liveWork'])->name('live');
+    Route::post('swap/store',        [ShiftController::class, 'swapStore'])->name('swap.store');
+    Route::get('swap/{id}/{status}', [ShiftController::class, 'swapStatus'])->name('swap.status');
 });
 
 Route::group(['prefix' => 'hr', 'as' => 'hr.'], function () {
