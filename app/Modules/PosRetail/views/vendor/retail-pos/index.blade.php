@@ -192,7 +192,7 @@
         .rpos-tpl-classic .quick-item .font-weight-bold { font-size:13px; }
         .rpos-tpl-classic .quick-item .text-muted { font-size:14px; white-space:nowrap; margin-left:auto; }
         .rpos-tpl-classic .quick-item::after { content:"＋"; color:var(--accent); font-weight:700; font-size:15px; margin-left:8px; opacity:.55; }
-        .rpos-tpl-classic .pos-topbar h1 { color:var(--accent-dark); }
+        .rpos-tpl-classic .pos-topbar h1 { color:var(--primary,#754BFF); }
 
         /* ════════════ KIOSK MODE (full-screen New Sale only) ════════════
            While full-screen, hide the panel chrome and show just the billing screen. */

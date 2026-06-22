@@ -24,9 +24,14 @@ UPDATE `features`
 SET `master_module` = 'staff_manage', `display_name` = 'Staff Management'
 WHERE `name` = 'basic_staff_manage';
 
--- 2) Ensure its action permissions exist (list, add, edit, delete, role_manage)
+-- 2) Ensure its action permissions exist (list, add, edit, delete, role_manage).
+--    These MUST be free = 1: basic staff is a free feature shown when HR is NOT
+--    subscribed. With master_module = 'staff_manage' and free = 0, hasPermission()
+--    falls through to permission_check('staff_manage') — which is false on the free
+--    plan — so the vendor owner sees the "Staff Management" header but NO sub-options.
+--    free = 1 grants the owner directly while staff employees stay gated by their role.
 INSERT INTO `feature_permissions` (`feature_id`, `action`, `free`)
-SELECT f.id, a.action, 0
+SELECT f.id, a.action, 1
 FROM `features` f
 JOIN (
     SELECT 'list'        AS action UNION ALL
@@ -40,3 +45,12 @@ WHERE f.name = 'basic_staff_manage'
       SELECT 1 FROM `feature_permissions` fp
       WHERE fp.feature_id = f.id AND fp.action = a.action
   );
+
+-- 2b) Flip any pre-existing rows that were seeded with free = 0 (the bug). This is
+--     what actually fixes a vendor DB where the feature was filed under staff_manage
+--     but its actions are still free = 0, hiding the menu options from the owner.
+UPDATE `feature_permissions` fp
+JOIN `features` f ON fp.feature_id = f.id
+SET fp.free = 1
+WHERE f.name = 'basic_staff_manage'
+  AND fp.action IN ('list', 'add', 'edit', 'delete', 'role_manage');
