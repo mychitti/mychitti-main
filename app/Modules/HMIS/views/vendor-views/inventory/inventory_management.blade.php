@@ -36,7 +36,7 @@
         @include('hmis::vendor-views.partials._pharmacy_header')
         <div class="pharmacy-page-content">
             <div class="card h-100">
-                <div class="d-block d-md-none">
+                <div class="d-none">
                     <ul class=" nav nav-pills d-flex  tab_switch" id="pills-tab" role="tablist">
                         @if (hasPermission('inventory_item', 'add'))
                             <li class="nav-item mx-0" role="presentation">
@@ -78,7 +78,11 @@
                                                 <a href="{{ route('vendor.inventory.item.scan-barcode') }}" class="btn btn-outline-primary btn-sm btn_sm">Scan Barcode</a>
                                                  @if (hasPermission('inventory_item_entry', 'add'))
                                                     <button type="button" class="btn btn-outline-primary btn-sm btn_sm" data-toggle="modal"
-                                                        data-target="#itemEntryModal">Item Entry</button>
+                                                        data-target="#storageUnitManageModal">Stock Management</button>
+                                                @endif
+                                                @if (hasPermission('inventory_item_entry', 'add'))
+                                                    <a href="{{ route('vendor.invoice.my-bills', ['add_purchase' => 1]) }}"
+                                                        class="btn btn-outline-primary btn-sm btn_sm">Item Entry</a>
                                                 @endif
                                                 @if (hasPermission('inventory_item', 'add'))
                                                     <button type="button" class="btn btn-primary btn-sm btn_sm add_item_btn" data-toggle="modal"
@@ -374,7 +378,7 @@
                                                 <a href="{{ route('vendor.inventory.item.scan-barcode') }}" class="btn btn-outline-primary btn-sm btn_sm">Scan Barcode</a>
                                                 @if (hasPermission('inventory_item_entry', 'add'))
                                                     <button type="button" class="btn btn-primary btn-sm btn_sm" data-toggle="modal"
-                                                        data-target="#itemEntryModal">Item Entry</button>
+                                                        data-target="#storageUnitManageModal">Stock Management</button>
                                                 @endif
                                                 <div class="divider mx-2" style="border-left: 1px solid #cbd5e1; height: 24px;"></div>
                                                 <form action="" class="d-flex date-range-form">
@@ -670,6 +674,8 @@
         @include('vendor-views/form_modals/inventory_item_add')
     @endif
     @if (hasPermission('inventory_item_entry', 'add'))
+        @include('vendor-views/form_modals/storage_unit_manage')
+        {{-- BACKUP: original full stock-entry modal (#itemEntryModal). --}}
         @include('vendor-views/form_modals/inventory_item_entry')
     @endif
 

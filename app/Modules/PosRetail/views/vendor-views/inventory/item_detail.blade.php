@@ -275,6 +275,30 @@
         .btn-action {
             margin-top: 15px;
         }
+
+        /* Print-label panel */
+        .lbl-panel { background: #fff; border: 1px solid #e7eaf3; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 8px rgba(16,24,40,.06); }
+        .lbl-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .lbl-title { font-weight: 700; font-size: 14px; color: #1f2937; }
+        .lbl-title i { color: #4f46e5; margin-right: 4px; }
+        .lbl-badge { background: #eef2ff; color: #4f46e5; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; }
+        .lbl-fld { font-size: 10.5px; display: block; margin-bottom: 4px; color: #8a93a3; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+        .lbl-panel .form-control { border-radius: 9px; border-color: #e3e7ef; }
+        .lbl-print-btn { border-radius: 10px; font-weight: 700; padding: 8px 20px; box-shadow: 0 6px 16px rgba(79,70,229,.18); }
+        .lbl-links { display: flex; gap: 18px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #eceff5; }
+        .lbl-links a { font-size: 12.5px; color: #6b7280; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: color .15s; }
+        .lbl-links a:hover { color: #4f46e5; }
+
+        /* Page polish */
+        .detail-card, .specifications, .desc_card {
+            border: 1px solid #eef1f6 !important;
+            border-radius: 14px !important;
+            box-shadow: 0 1px 6px rgba(16,24,40,.05);
+        }
+        .spec-title { font-size: 15px; font-weight: 700; color: #1f2937; }
+        .info-row { transition: background .15s ease; }
+        .info-row:hover { background: #fafbfe; }
+        .product-image img { box-shadow: 0 6px 22px rgba(16,24,40,.10); }
     </style>
 @endpush
 @section('content')
@@ -361,18 +385,85 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <a style="padding: 10px 8px;white-space: nowrap;"
-                                href="{{ route('vendor.inventory.item.print', [$item->id, 'barcode']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print Barcode</a>
-                            <a style="padding: 10px 8px;white-space: nowrap;"
-                                href="{{ route('vendor.inventory.item.print', [$item->id, 'description']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print
-                                Description</a>
-                            <a style="padding: 10px 8px;white-space: nowrap;"
-                                href="{{ route('vendor.inventory.item.print', [$item->id, 'full']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print Full Label</a>
-                        </div>
+                        @if (isset($labelFormats) && count($labelFormats))
+                            @php $singleFmt = count($labelFormats) === 1 ? $labelFormats->first() : null; @endphp
+                            <div class="lbl-panel mb-2">
+                                <div class="lbl-head">
+                                    <span class="lbl-title"><i class="tio-print"></i> Print Label</span>
+                                    @if ($singleFmt)
+                                        <span class="lbl-badge">{{ $singleFmt->name }}</span>
+                                    @endif
+                                </div>
+                                <div class="d-flex flex-wrap align-items-end" style="gap:12px;">
+                                    @if ($singleFmt)
+                                        <input type="hidden" id="lbl-format" value="{{ $singleFmt->id }}">
+                                    @else
+                                        <div>
+                                            <label class="lbl-fld">Format</label>
+                                            <select id="lbl-format" class="form-control form-control-sm" style="min-width:160px;">
+                                                @foreach ($labelFormats as $lf)
+                                                    <option value="{{ $lf->id }}" {{ $lf->is_default ? 'selected' : '' }}>
+                                                        {{ $lf->name }}{{ $lf->is_default ? ' (default)' : '' }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    @endif
+                                    <div style="width:84px;">
+                                        <label class="lbl-fld">Copies</label>
+                                        <input type="number" id="lbl-copies" value="1" min="1" max="200" class="form-control form-control-sm">
+                                    </div>
+                                    <a id="lbl-print" target="_blank" class="btn btn--primary lbl-print-btn"
+                                        href="{{ route('vendor.inventory.item.print', [$item->id, 'format']) }}"
+                                        onclick="return buildLabelUrl(this)"><i class="tio-print"></i> Print Label</a>
+                                </div>
+                                <div id="lbl-dates" class="flex-wrap align-items-end mt-3" style="gap:12px;display:none;">
+                                    <div>
+                                        <label class="lbl-fld">Packing Date</label>
+                                        <input type="date" id="lbl-pkg" value="{{ now()->format('Y-m-d') }}"
+                                            class="form-control form-control-sm" style="width:150px;">
+                                    </div>
+                                    <div>
+                                        <label class="lbl-fld">Expiry Date <span class="text-muted">(optional)</span></label>
+                                        <input type="date" id="lbl-exp" class="form-control form-control-sm" style="width:150px;">
+                                    </div>
+                                </div>
+                                <div class="lbl-links">
+                                    <a href="javascript:;"
+                                        onclick="var d=document.getElementById('lbl-dates');d.style.display='flex';this.style.display='none';"><i class="tio-edit"></i> Edit dates</a>
+                                    <a href="{{ route('vendor.inventory.label-formats') }}"><i class="tio-label"></i> Change format</a>
+                                </div>
+                            </div>
+                            <script>
+                                // Native date pickers give yyyy-mm-dd; labels show dd/mm/yy.
+                                function fmtDate(v) {
+                                    if (!v) return '';
+                                    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+                                    return m ? (m[3] + '/' + m[2] + '/' + m[1].slice(2)) : v;
+                                }
+                                function buildLabelUrl(a) {
+                                    var base = '{{ route('vendor.inventory.item.print', [$item->id, 'format']) }}';
+                                    var p = new URLSearchParams({
+                                        format_id: document.getElementById('lbl-format').value,
+                                        packing_date: fmtDate(document.getElementById('lbl-pkg').value),
+                                        expiry_date: fmtDate(document.getElementById('lbl-exp').value),
+                                        copies: document.getElementById('lbl-copies').value || 1
+                                    });
+                                    a.href = base + '?' + p.toString();
+                                    return true;
+                                }
+                            </script>
+                        @else
+                            <div class="mb-2">
+                                <a href="{{ route('vendor.inventory.label-formats') }}" class="btn btn-sm btn-primary">
+                                    <i class="tio-add"></i> Design a label format
+                                </a>
+                                <span class="text-muted ml-2" style="font-size:12px;">or quick print:</span>
+                                <a target="_blank" href="{{ route('vendor.inventory.item.print', [$item->id, 'barcode']) }}"
+                                    class="btn btn-sm btn-outline-secondary"><i class="tio-print"></i> Barcode</a>
+                                <a target="_blank" href="{{ route('vendor.inventory.item.print', [$item->id, 'full']) }}"
+                                    class="btn btn-sm btn-outline-secondary"><i class="tio-print"></i> Full</a>
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

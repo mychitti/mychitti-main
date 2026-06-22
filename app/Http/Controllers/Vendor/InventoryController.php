@@ -165,9 +165,14 @@ class InventoryController extends Controller
 
         // Pharmacy: "medicines given to whoever brings the prescription" toggle.
         $this->ensurePharmacyDispenseColumn();
+        $this->ensureLabelSizeColumns();
         StoreConfig::updateOrCreate(
             ['store_id' => $storeId],
-            ['pharmacy_dispense_to_bearer' => $request->boolean('pharmacy_dispense_to_bearer') ? 1 : 0]
+            [
+                'pharmacy_dispense_to_bearer' => $request->boolean('pharmacy_dispense_to_bearer') ? 1 : 0,
+                'label_width'  => (float) $request->input('label_width', 0) > 0 ? (float) $request->input('label_width') : null,
+                'label_height' => (float) $request->input('label_height', 0) > 0 ? (float) $request->input('label_height') : null,
+            ]
         );
 
         Toastr::success('Saved Successfully');
@@ -178,8 +183,140 @@ class InventoryController extends Controller
         $store_id = Helpers::get_store_id();
         $tnc = VendorTermsCondition::where('vendor_id', $store_id)->where('type', 'purchase_order')->first();
         $this->ensurePharmacyDispenseColumn();
+        $this->ensureLabelSizeColumns();
         $pharmacyDispenseToBearer = (int) (StoreConfig::where('store_id', $store_id)->value('pharmacy_dispense_to_bearer') ?? 0);
-        return view('vendor-views.inventory.settings', compact('tnc', 'pharmacyDispenseToBearer'));
+        $cfg = StoreConfig::where('store_id', $store_id)->first();
+        $labelWidth  = $cfg && $cfg->label_width > 0 ? (float) $cfg->label_width : 50;
+        $labelHeight = $cfg && $cfg->label_height > 0 ? (float) $cfg->label_height : 25;
+        return view('vendor-views.inventory.settings', compact('tnc', 'pharmacyDispenseToBearer', 'labelWidth', 'labelHeight'));
+    }
+
+    // ── Label format designer (drag/drop) ──────────────────────────────────────
+    private function ensureLabelFormatsTable(): void
+    {
+        if (!Schema::hasTable('pos_label_formats')) {
+            DB::statement("CREATE TABLE `pos_label_formats` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT UNSIGNED NULL,
+                `name` VARCHAR(100) NULL,
+                `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+                `width_mm` DECIMAL(8,2) NOT NULL DEFAULT 50,
+                `height_mm` DECIMAL(8,2) NOT NULL DEFAULT 25,
+                `elements` LONGTEXT NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `plf_store_idx` (`store_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    public function labelFormats(Request $request)
+    {
+        $this->ensureLabelFormatsTable();
+        $storeId = Helpers::get_store_id();
+        $formats = DB::table('pos_label_formats')->where('store_id', $storeId)
+            ->orderByDesc('is_default')->orderBy('name')->get();
+        $store = Helpers::get_store_data();
+        return view('vendor-views.inventory.label-formats', compact('formats', 'store'));
+    }
+
+    public function labelFormatSave(Request $request)
+    {
+        $this->ensureLabelFormatsTable();
+        $storeId = Helpers::get_store_id();
+        $id = (int) $request->input('id');
+        $decoded = json_decode((string) $request->input('elements'), true);
+        $data = [
+            'store_id'  => $storeId,
+            'name'      => trim((string) $request->input('name')) ?: 'Format',
+            'width_mm'  => (float) $request->input('width_mm', 50) ?: 50,
+            'height_mm' => (float) $request->input('height_mm', 25) ?: 25,
+            'elements'  => json_encode(is_array($decoded) ? $decoded : []),
+            'updated_at' => now(),
+        ];
+        $makeDefault = $request->boolean('is_default');
+        if ($id && DB::table('pos_label_formats')->where('id', $id)->where('store_id', $storeId)->exists()) {
+            DB::table('pos_label_formats')->where('id', $id)->where('store_id', $storeId)->update($data);
+        } else {
+            $data['created_at'] = now();
+            if (DB::table('pos_label_formats')->where('store_id', $storeId)->count() === 0) {
+                $makeDefault = true; // first format is the default
+            }
+            $id = DB::table('pos_label_formats')->insertGetId($data);
+        }
+        if ($makeDefault) {
+            DB::table('pos_label_formats')->where('store_id', $storeId)->update(['is_default' => 0]);
+            DB::table('pos_label_formats')->where('id', $id)->update(['is_default' => 1]);
+        }
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['status' => true, 'id' => $id]);
+        }
+        Toastr::success('Label format saved');
+        return redirect()->route('vendor.inventory.label-formats');
+    }
+
+    public function labelFormatDefault(Request $request, $id)
+    {
+        $this->ensureLabelFormatsTable();
+        $storeId = Helpers::get_store_id();
+        DB::table('pos_label_formats')->where('store_id', $storeId)->update(['is_default' => 0]);
+        DB::table('pos_label_formats')->where('id', $id)->where('store_id', $storeId)->update(['is_default' => 1]);
+        Toastr::success('Default format set');
+        return back();
+    }
+
+    public function labelFormatDelete(Request $request, $id)
+    {
+        $this->ensureLabelFormatsTable();
+        $storeId = Helpers::get_store_id();
+        DB::table('pos_label_formats')->where('id', $id)->where('store_id', $storeId)->delete();
+        Toastr::success('Format deleted');
+        return back();
+    }
+
+    private function printLabelFormat(Request $request, $item)
+    {
+        $this->ensureLabelFormatsTable();
+        $storeId = Helpers::get_store_id();
+        $formatId = (int) $request->get('format_id');
+        $format = $formatId
+            ? DB::table('pos_label_formats')->where('id', $formatId)->where('store_id', $storeId)->first()
+            : null;
+        if (!$format) {
+            $format = DB::table('pos_label_formats')->where('store_id', $storeId)->where('is_default', 1)->first()
+                ?: DB::table('pos_label_formats')->where('store_id', $storeId)->first();
+        }
+        if (!$format) {
+            Toastr::error('Create a label format first (Inventory → Label Formats).');
+            return back();
+        }
+        $elements = json_decode($format->elements ?: '[]', true) ?: [];
+        $store = Helpers::get_store_data();
+        $packingDate = $request->get('packing_date');
+        $expiryDate  = $request->get('expiry_date');
+
+        $tempDir = storage_path('app/mpdf_temp');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
+        $mpdf = new Mpdf([
+            'tempDir' => $tempDir,
+            'format'  => [(float) $format->width_mm, (float) $format->height_mm],
+            'margin_left' => 0, 'margin_right' => 0, 'margin_top' => 0, 'margin_bottom' => 0,
+        ]);
+        $html = View::make('vendor-views.inventory.pdf_templates.label_custom',
+            compact('item', 'format', 'elements', 'store', 'packingDate', 'expiryDate'))->render();
+
+        $copies = max(1, min(200, (int) $request->get('copies', 1)));
+        $mpdf->WriteHTML($html);
+        for ($i = 1; $i < $copies; $i++) {
+            $mpdf->AddPage();
+            $mpdf->WriteHTML($html);
+        }
+        return response($mpdf->Output('', 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="label_' . $item->item_name . '.pdf"');
     }
 
     // Guarded column so the pharmacy dispensing rule can be stored on store_configs (no migration files).
@@ -187,6 +324,19 @@ class InventoryController extends Controller
     {
         if (!Schema::hasColumn('store_configs', 'pharmacy_dispense_to_bearer')) {
             DB::statement('ALTER TABLE `store_configs` ADD COLUMN `pharmacy_dispense_to_bearer` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+    }
+
+    // Print-label size (mm) saved per store on store_configs (no migration files).
+    private function ensureLabelSizeColumns(): void
+    {
+        if (Schema::hasTable('store_configs')) {
+            if (!Schema::hasColumn('store_configs', 'label_width')) {
+                DB::statement('ALTER TABLE `store_configs` ADD COLUMN `label_width` DECIMAL(8,2) NULL');
+            }
+            if (!Schema::hasColumn('store_configs', 'label_height')) {
+                DB::statement('ALTER TABLE `store_configs` ADD COLUMN `label_height` DECIMAL(8,2) NULL');
+            }
         }
     }
     public function items_import(Request $request)
@@ -639,24 +789,17 @@ class InventoryController extends Controller
             return back();
         }
 
+        // Custom drag/drop label format (chosen / default), with print-time dates.
+        if ($type === 'format') {
+            return $this->printLabelFormat($request, $item);
+        }
+
         $tempDir = storage_path('app/mpdf_temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0775, true);
         }
 
-        $mpdf = new Mpdf([
-            'tempDir' => $tempDir,
-            'format' => 'A4',
-            'margin_left'   => 0,
-            'margin_right'  => 0,
-            'margin_top'    => 0,
-            'margin_bottom' => 0,
-        ]);
-
-        // get actual page size
-        $pageWidth  = $mpdf->w;
-        $pageHeight = $mpdf->h;
-
+        // Label dimensions per type.
         if ($type == 'barcode') {
             $labelWidth = 38.313;
             $labelHeight = 30.908;
@@ -668,19 +811,45 @@ class InventoryController extends Controller
             $labelHeight = 65.908;
         }
 
-        // calculate capacity
-        $labelsPerRow = floor($pageWidth / $labelWidth);
-        $rowsPerPage  = floor($pageHeight / $labelHeight);
+        // Retail POS: one label per item, on a page sized to the label itself (label-roll friendly).
+        $single = strtolower(Helpers::get_store_data()->business_type ?? '') === 'pos_retail';
+
+        // Single (Retail POS) label size comes from Inventory Settings (per store), default 50×25 mm.
+        if ($single) {
+            $cfg = StoreConfig::where('store_id', Helpers::get_store_id())->first();
+            $labelWidth  = $cfg && (float) $cfg->label_width > 0 ? (float) $cfg->label_width : 50;
+            $labelHeight = $cfg && (float) $cfg->label_height > 0 ? (float) $cfg->label_height : 25;
+        }
+
+        $mpdf = new Mpdf([
+            'tempDir' => $tempDir,
+            'format'  => $single ? [$labelWidth, $labelHeight] : 'A4',
+            'margin_left'   => 0,
+            'margin_right'  => 0,
+            'margin_top'    => 0,
+            'margin_bottom' => 0,
+        ]);
+
+        // get actual page size
+        $pageWidth  = $mpdf->w;
+        $pageHeight = $mpdf->h;
+
+        // calculate capacity (single label for Retail POS, full sheet otherwise)
+        if ($single) {
+            $labelsPerRow = 1;
+            $rowsPerPage  = 1;
+        } else {
+            $labelsPerRow = floor($pageWidth / $labelWidth);
+            $rowsPerPage  = floor($pageHeight / $labelHeight);
+        }
         $totalPerPage = $labelsPerRow * $rowsPerPage;
-        // prx($totalPerPage); 
 
         if ($type == 'barcode') {
-            $html = View::make('vendor-views.inventory.pdf_templates.label_barcode', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight'));
-            // return view('vendor-views.inventory.pdf_templates.label_barcode', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight'));
+            $html = View::make('vendor-views.inventory.pdf_templates.label_barcode', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight', 'single'));
         } elseif ($type == 'description') {
-            $html = View::make('vendor-views.inventory.pdf_templates.label_description', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight'));
+            $html = View::make('vendor-views.inventory.pdf_templates.label_description', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight', 'single'));
         } else {
-            $html = View::make('vendor-views.inventory.pdf_templates.label_full', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight'));
+            $html = View::make('vendor-views.inventory.pdf_templates.label_full', compact('item', 'labelsPerRow', 'rowsPerPage', 'labelWidth', 'labelHeight', 'single'));
         }
         $mpdf->WriteHTML($html);
         return response($mpdf->Output('', 'S'))
@@ -695,6 +864,19 @@ class InventoryController extends Controller
         if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'description_attributes')) {
             DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `description_attributes` JSON NULL");
         }
+    }
+
+    private function ensureLooseColumn(): void
+    {
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'sell_loose')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `sell_loose` TINYINT(1) NOT NULL DEFAULT 0");
+        }
+    }
+
+    private function applyLooseSelling(InventoryItem $item, Request $request): void
+    {
+        // Loose item — weighed on the scale at POS sale time; billed weight × per-unit price.
+        $item->sell_loose = ($request->item_type === 'product' && $request->boolean('sell_loose')) ? 1 : 0;
     }
 
     private function buildDescriptionAttributes(Request $request): array
@@ -715,6 +897,8 @@ class InventoryController extends Controller
     public function update_item(Request $request)
     {
         $this->ensureDescriptionAttributesColumn();
+        $this->ensureLooseColumn();
+        $itemId = $request->item_id;
         $validator = FacadesValidator::make($request->all(), [
             'mrp'                  => 'required',
             'unit'              => 'required',
@@ -831,6 +1015,7 @@ class InventoryController extends Controller
         $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
 
         $inventory_item->specifications = $specifications;
+        $this->applyLooseSelling($inventory_item, $request);
         $inventory_item->save();
 
         // variation -=====================================
@@ -967,6 +1152,7 @@ class InventoryController extends Controller
     public function save_item(Request $request)
     {
         $this->ensureDescriptionAttributesColumn();
+        $this->ensureLooseColumn();
         $store_id = Helpers::get_store_id();
         $rules = [
             'item_type' => 'required',
@@ -1081,6 +1267,8 @@ class InventoryController extends Controller
         if ($request->has('image') && $show_on_store_page) {
             Helpers::upload('product/', 'png', $request->file('image'), $inventory_item->image = $inventory_item->image);
         }
+
+        $this->applyLooseSelling($inventory_item, $request);
 
         $inventory_item->save();
 
@@ -1332,7 +1520,10 @@ class InventoryController extends Controller
     public function item_detail(Request $request, $id)
     {
         $item = InventoryItem::with('entries', 'itemunit', 'storage_unit', 'secondaryUnit')->find($id);
-        return view("vendor-views.inventory.item_detail", compact('item'));
+        $this->ensureLabelFormatsTable();
+        $labelFormats = DB::table('pos_label_formats')->where('store_id', Helpers::get_store_id())
+            ->orderByDesc('is_default')->orderBy('name')->get();
+        return view("vendor-views.inventory.item_detail", compact('item', 'labelFormats'));
     }
     public function variant_combination(Request $request)
     {
@@ -1374,6 +1565,27 @@ class InventoryController extends Controller
         $storage_unit =  StorageUnit::find($request->id);
         $storage_unit->delete();
         Toastr::success('Deleted Successfully');
+        return back();
+    }
+
+    // Assign a storage unit to an inventory item (Stock Management → Manage Storage Unit modal).
+    public function assign_storage_unit(Request $request)
+    {
+        $request->validate([
+            'item_id'         => 'required',
+            'storage_unit_id' => 'required',
+        ]);
+
+        $item = InventoryItem::where('store_id', Helpers::get_store_id())->find($request->item_id);
+        if (!$item) {
+            Toastr::error('Item not found');
+            return back();
+        }
+
+        $item->storage_unit_id = $request->storage_unit_id;
+        $item->save();
+
+        Toastr::success('Storage unit assigned to ' . $item->item_name);
         return back();
     }
     public function save_entry_pdf(Request $request)

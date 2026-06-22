@@ -21,7 +21,6 @@ class RetailPosController extends Controller
     // Role-grid sub-features (master_module `pos_retail`). Self-healing seed — no migration files.
     public const FEATURES = [
         'pos_billing'       => ['New Sale', ['create', 'price_override', 'hold', 'resume']],
-        'pos_item_discount' => ['Item Discount', ['apply']],
         'pos_bill_discount' => ['Bill Discount', ['apply']],
         'pos_bills'         => ['Bills', ['view', 'void', 'print']],
         'pos_gst_report'    => ['GST Report', ['view']],
@@ -34,6 +33,126 @@ class RetailPosController extends Controller
     public static function seedPermissions(): void
     {
         try { (new self())->ensurePermissions(); } catch (\Throwable $th) {}
+    }
+
+    // Retail POS sidebar menu masterdata — all under the single "pos_retail" group, so the items
+    // appear (and are toggleable) on the Menu Preference page for pos_retail stores, like HMIS /
+    // School. Self-healing & schema-defensive (writes only columns that exist), runs once per
+    // request, never throws.
+    public const MENU_GROUP = 'pos_retail';
+    public const MENU_MASTERDATA = [
+        ['slug' => 'retail_dashboard',    'name' => 'Dashboard',           'route' => 'vendor.retail-pos.dashboard'],
+        ['slug' => 'retail_new_sale',     'name' => 'New Sale',            'route' => 'vendor.retail-pos.index'],
+        ['slug' => 'retail_bills',        'name' => "Today's Bills",       'route' => 'vendor.retail-pos.today'],
+        ['slug' => 'retail_gst_report',   'name' => 'GST Report',          'route' => 'vendor.retail-pos.gst-report'],
+        ['slug' => 'retail_branches',     'name' => 'Branches & Counters', 'route' => 'vendor.retail-pos.terminals'],
+        ['slug' => 'retail_branch_stock', 'name' => 'Branch Stock',        'route' => 'vendor.retail-pos.branch-stock'],
+        ['slug' => 'retail_gatepass',     'name' => 'Stock Transfer',      'route' => 'vendor.retail-pos.gatepass'],
+    ];
+
+    public static function ensureMenuMasterdata(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        try {
+            if (!Schema::hasTable('menu')) {
+                return;
+            }
+            $cols = Schema::getColumnListing('menu');
+            foreach (self::MENU_MASTERDATA as $item) {
+                $existing = DB::table('menu')->where('slug', $item['slug'])->where('menu_type', 'sidebar')->first();
+                if ($existing) {
+                    // Correct the group / business type on an already-seeded row (only writes when
+                    // something is actually off, so there are no per-request updates).
+                    $upd = [];
+                    if (($existing->group ?? null) !== self::MENU_GROUP) $upd['group'] = self::MENU_GROUP;
+                    if (strtolower($existing->business_type ?? '') !== 'pos_retail') $upd['business_type'] = 'pos_retail';
+                    if ($upd) {
+                        $upd['updated_at'] = now();
+                        DB::table('menu')->where('slug', $item['slug'])->where('menu_type', 'sidebar')->update($upd);
+                    }
+                    continue;
+                }
+                $row = array_merge([
+                    'menu_type'         => 'sidebar',
+                    'business_type'     => 'pos_retail',
+                    'group'             => self::MENU_GROUP,
+                    'status'            => 1,
+                    'default'           => 1,
+                    'free'              => 1,
+                    'under_development' => 0,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ], $item);
+                DB::table('menu')->insert(array_intersect_key($row, array_flip($cols)));
+            }
+        } catch (\Throwable $th) {
+            // best-effort — never block a page render
+        }
+    }
+
+    // Pre-select every Retail POS sidebar item for a store (used when the POS Retail subscription
+    // is purchased) so the menus appear immediately. Only acts when the store already has saved
+    // sidebar preferences — otherwise the menu defaults already show these items, and writing a
+    // partial set would flip selected_menu() into "explicit" mode and hide the rest.
+    public static function selectAllMenus($storeId): void
+    {
+        try {
+            if (!$storeId || !Schema::hasTable('store_menu_visibility')) {
+                return;
+            }
+            $hasPrefs = DB::table('store_menu_visibility')
+                ->where('store_id', $storeId)->where('menu_type', 'sidebar')->exists();
+            if (!$hasPrefs) {
+                return;
+            }
+            foreach (self::MENU_MASTERDATA as $item) {
+                $where = ['store_id' => $storeId, 'menu_type' => 'sidebar', 'menu_key' => $item['slug']];
+                if (DB::table('store_menu_visibility')->where($where)->exists()) {
+                    DB::table('store_menu_visibility')->where($where)->update(['is_visible' => 1]);
+                } else {
+                    DB::table('store_menu_visibility')->insert($where + ['is_visible' => 1]);
+                }
+            }
+        } catch (\Throwable $th) {
+            // best-effort
+        }
+    }
+
+    // Self-healing variant for the sidebar: when an active POS Retail subscription exists but the
+    // store already saved menu prefs (so selected_menu() is in "explicit" mode), seed every Retail
+    // POS item ONCE as visible. Runs only while no retail record exists yet, so any later manual
+    // hide/show the vendor sets on the Menu Preference page is preserved. Covers every purchase
+    // path (free trial, direct buy, temp-purchase finalize) without patching each one.
+    public static function syncMenusOnSubscription($storeId): void
+    {
+        try {
+            if (!$storeId || !Schema::hasTable('store_menu_visibility')) {
+                return;
+            }
+            $hasPrefs = DB::table('store_menu_visibility')
+                ->where('store_id', $storeId)->where('menu_type', 'sidebar')->exists();
+            if (!$hasPrefs) {
+                return; // no prefs at all → menu defaults already show the Retail POS items
+            }
+            $slugs = array_column(self::MENU_MASTERDATA, 'slug');
+            $alreadySeeded = DB::table('store_menu_visibility')
+                ->where('store_id', $storeId)->where('menu_type', 'sidebar')
+                ->whereIn('menu_key', $slugs)->exists();
+            if ($alreadySeeded) {
+                return; // seeded before → respect whatever the vendor has since chosen
+            }
+            $rows = [];
+            foreach ($slugs as $slug) {
+                $rows[] = ['store_id' => $storeId, 'menu_type' => 'sidebar', 'menu_key' => $slug, 'is_visible' => 1];
+            }
+            DB::table('store_menu_visibility')->insert($rows);
+        } catch (\Throwable $th) {
+            // best-effort — never block a page render
+        }
     }
 
     private function ensurePermissions(): void
@@ -107,6 +226,14 @@ class RetailPosController extends Controller
         // Owner's last-used billing branch (remembered for the next sale).
         if (Schema::hasTable('stores') && !Schema::hasColumn('stores', 'pos_default_branch_id')) {
             DB::statement("ALTER TABLE `stores` ADD COLUMN `pos_default_branch_id` BIGINT NULL");
+        }
+        // Chosen New Sale UI template (classic | compact | modern).
+        if (Schema::hasTable('stores') && !Schema::hasColumn('stores', 'pos_ui_template')) {
+            DB::statement("ALTER TABLE `stores` ADD COLUMN `pos_ui_template` VARCHAR(20) NULL");
+        }
+        // Chosen printed receipt template (standard | modern | elegant).
+        if (Schema::hasTable('stores') && !Schema::hasColumn('stores', 'pos_receipt_template')) {
+            DB::statement("ALTER TABLE `stores` ADD COLUMN `pos_receipt_template` VARCHAR(20) NULL");
         }
         // Tag each bill with the branch + counter it was billed at.
         if (Schema::hasTable('manual_invoices')) {
@@ -224,6 +351,36 @@ class RetailPosController extends Controller
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
 
+        // Stock-transfer gatepass: stock reaches a branch only via a gatepass that deducts the
+        // main-store stock and adds it to the branch (immediate). The header + line items also
+        // back the printable gatepass document.
+        if (!Schema::hasTable('pos_stock_gatepass')) {
+            DB::statement("CREATE TABLE `pos_stock_gatepass` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT UNSIGNED NULL,
+                `branch_id` BIGINT NULL,
+                `gatepass_no` VARCHAR(40) NULL,
+                `note` VARCHAR(255) NULL,
+                `created_by` BIGINT NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `psg_store_idx` (`store_id`),
+                KEY `psg_branch_idx` (`branch_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+        if (!Schema::hasTable('pos_stock_gatepass_items')) {
+            DB::statement("CREATE TABLE `pos_stock_gatepass_items` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `gatepass_id` BIGINT UNSIGNED NULL,
+                `inventory_item_id` BIGINT NULL,
+                `qty` DECIMAL(12,3) NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `psgi_gp_idx` (`gatepass_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
         // Audit trail (price overrides, voids, out-of-stock overrides) — immutable.
         if (!Schema::hasTable('pos_audit_log')) {
             DB::statement("CREATE TABLE `pos_audit_log` (
@@ -239,6 +396,31 @@ class RetailPosController extends Controller
                 PRIMARY KEY (`id`),
                 KEY `pos_audit_store_idx` (`store_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
+        // Loose selling — item weighed on the scale at sale time (e.g. apples sold by weight).
+        // Billed as the weighed quantity × per-unit price, like any other fractional-qty line.
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'sell_loose')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `sell_loose` TINYINT(1) NOT NULL DEFAULT 0");
+        }
+        // Optional piece count recorded on a loose line (e.g. "4 apples" sold by weight).
+        if (Schema::hasTable('invoice_items') && !Schema::hasColumn('invoice_items', 'pieces')) {
+            DB::statement("ALTER TABLE `invoice_items` ADD COLUMN `pieces` INT NULL");
+        }
+        // Loose items sell fractional weights (0.7 kg), so qty must be decimal. If the column is
+        // still an integer type it rounds 0.7 -> 1; widen it once (idempotent — skipped after).
+        if (Schema::hasTable('invoice_items') && Schema::hasColumn('invoice_items', 'qty')) {
+            try {
+                $t = DB::selectOne(
+                    "SELECT DATA_TYPE dt FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invoice_items' AND COLUMN_NAME = 'qty'"
+                );
+                if ($t && in_array(strtolower($t->dt), ['int', 'tinyint', 'smallint', 'mediumint', 'bigint'])) {
+                    DB::statement("ALTER TABLE `invoice_items` MODIFY `qty` DECIMAL(12,3) NOT NULL DEFAULT 0");
+                }
+            } catch (\Throwable $th) {
+                // best-effort
+            }
         }
     }
 
@@ -300,6 +482,9 @@ class RetailPosController extends Controller
         $store = Helpers::get_store_data();
         $upiId = $store->pos_upi_id ?? null;
         $storeName = $store->name ?? 'Store';
+        // Read the chosen template straight from the row (avoids any cached store object).
+        $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template');
+        $uiTemplate = in_array($uiTemplate, ['classic', 'compact', 'modern'], true) ? $uiTemplate : 'classic';
         $heldBills = $this->heldBillsData($storeId);
 
         // Branch context: staff are locked to their counter's branch; owner picks one
@@ -312,7 +497,7 @@ class RetailPosController extends Controller
         $defaultBranchId = $myBranchId ?: ($savedBranch ?: ($branches->first()->id ?? null));
 
         return view('posretail::vendor.retail-pos.index', compact(
-            'categories', 'quickItems', 'upiId', 'storeName', 'heldBills',
+            'categories', 'quickItems', 'upiId', 'storeName', 'heldBills', 'uiTemplate',
             'branches', 'myBranchId', 'branchLocked', 'defaultBranchId'
         ));
     }
@@ -416,12 +601,15 @@ class RetailPosController extends Controller
         $creditOutstanding = Schema::hasColumn('store_customers', 'credit_balance')
             ? (float) StoreCustomer::where('store_id', $storeId)->sum('credit_balance') : 0;
 
-        // Recent bills.
+        // Recent bills. Customer name resolves from store_customers via bill_to (no name column on
+        // manual_invoices); walk-ins (bill_to 0/null) show "Walk-in".
         $recent = (clone $final)->orderByDesc('id')->limit(8)
-            ->get(['invoice_id', 'customer_name', 'bill_to', 'total_amount', 'payment_method', 'created_at']);
+            ->get(['invoice_id', 'bill_to', 'total_amount', 'payment_method', 'created_at']);
+        $recentNames = StoreCustomer::whereIn('id', $recent->pluck('bill_to')->filter()->unique())
+            ->pluck('f_name', 'id');
 
         return view('posretail::vendor.retail-pos.dashboard', compact(
-            'stats', 'topItems', 'trend', 'payModes', 'inv', 'creditOutstanding', 'recent',
+            'stats', 'topItems', 'trend', 'payModes', 'inv', 'creditOutstanding', 'recent', 'recentNames',
             'from', 'to', 'branches', 'branch', 'preset', 'custom', 'branchSales'
         ));
     }
@@ -434,7 +622,7 @@ class RetailPosController extends Controller
         $exact = $request->boolean('exact'); // scanner sends exact barcode/SKU
         $category = $request->get('category'); // browse a category's items (tab click)
 
-        $query = InventoryItem::where('store_id', $storeId)->where('item_type', 'product');
+        $query = InventoryItem::with('itemunit')->where('store_id', $storeId)->where('item_type', 'product');
 
         if ($exact && $term !== '') {
             $query->where(fn($q) => $q->where('barcode', $term)->orWhere('sku_id', $term));
@@ -464,16 +652,18 @@ class RetailPosController extends Controller
                 'name'       => $i->item_name,
                 'sku'        => $i->sku_id,
                 'barcode'    => $i->barcode,
+                'image'      => $i->image ? asset('storage/app/public/inventory-item/' . $i->image) : '',
                 'price'      => (float) ($i->selling_price ?? 0),
                 'mrp'        => (float) ($i->mrp ?? 0),
                 'hsn'        => $i->hsn,
                 'gst_rate'   => (float) ($i->gst_rate ?? 0),
                 'gst_status' => $i->gst_status ?? 'excluding',
                 'stock'      => $stock,
-                'unit'       => $i->unit,
+                'unit'       => optional($i->itemunit)->unit ?? '',
                 'expiry'     => $i->expiry_date,
                 'expiry_warn'=> $i->expiry_date && $i->expiry_date <= now()->addDays(30)->toDateString(),
                 'low_stock'  => $stock <= 0,
+                'sell_loose' => (bool) ($i->sell_loose ?? false),
             ];
         });
 
@@ -509,7 +699,6 @@ class RetailPosController extends Controller
         // Actor capabilities (owner always passes; staff via role).
         $canOverride   = hasPermission('pos_billing', 'price_override');
         $canBillDisc   = hasPermission('pos_bill_discount', 'apply');
-        $canItemDisc   = hasPermission('pos_item_discount', 'apply');
         $allowOos      = $request->boolean('allow_oos') && $canOverride;
         $auditNotes    = [];
 
@@ -544,11 +733,10 @@ class RetailPosController extends Controller
                 $auditNotes[] = "Price {$item->item_name}: ₹{$basePrice}→₹{$price}";
             }
 
-            // Item discount cap for cashiers (§4.1). Above the cap needs the item-discount
-            // right (or manager override).
+            // Item discount cap for cashiers (§4.1). Above the cap needs manager override.
             if ($lineDiscount > 0) {
                 $discPct = ($price * $qty) > 0 ? ($lineDiscount / ($price * $qty)) * 100 : 0;
-                if ($discPct > self::DISCOUNT_CAP && !$canItemDisc && !$canOverride) {
+                if ($discPct > self::DISCOUNT_CAP && !$canOverride) {
                     return response()->json(['status' => false, 'msg' => "Discount above " . self::DISCOUNT_CAP . "% on \"{$item->item_name}\" needs manager approval"], 422);
                 }
             }
@@ -581,9 +769,14 @@ class RetailPosController extends Controller
             $subtotal += $taxable;
             $taxTotal += $tax;
 
+            // Piece count is only meaningful for a loose (weighed) line.
+            $pieces = ((int) ($item->sell_loose ?? 0) === 1 && (int) ($row['pieces'] ?? 0) > 0)
+                ? (int) $row['pieces'] : null;
+
             $lines[] = [
                 'item'       => $item,
                 'qty'        => $qty,
+                'pieces'     => $pieces,
                 'price'      => $price,
                 'rate'       => $rate,
                 'gst_status' => $status,
@@ -669,7 +862,6 @@ class RetailPosController extends Controller
         $invoice->bill_to = $customerId ?: 0;
         $invoice->bill_to_type = 'user';
         $invoice->user_type = 'store_user';
-        $invoice->customer_name = $customerId ? null : 'Walk-in Customer';
         $invoice->total_amount = $grandTotal;
         $invoice->subtotal_amount = round($subtotal, 2);
         $invoice->taxable_amount = round($subtotal, 2);
@@ -705,6 +897,7 @@ class RetailPosController extends Controller
             $ii->tax = $line['rate'];
             $ii->hsn = $line['hsn'];
             $ii->gst_status = $line['gst_status'];
+            $ii->pieces = $line['pieces'];
             $ii->save();
 
             _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit);
@@ -814,7 +1007,9 @@ class RetailPosController extends Controller
         $rows = StoreCustomer::where('store_id', $storeId)
             ->when($term !== '', fn($q) => $q->where(fn($w) => $w
                 ->where('f_name', 'like', "%{$term}%")
-                ->orWhere('phone', 'like', "%{$term}%")))
+                ->orWhere('phone', 'like', "%{$term}%")
+                ->orWhere('id', $term)
+                ->orWhere('id_number', 'like', "%{$term}%")))
             ->orderBy('f_name')->limit(20)->get();
 
         return response()->json(['customers' => $rows->map(fn($c) => [
@@ -940,7 +1135,14 @@ class RetailPosController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom'));
+        // Email/WhatsApp need a linked customer — walk-in bills have none. Resolve in one query so
+        // the view can disable those actions instead of failing on submit.
+        $custIds = $bills->pluck('bill_to')->filter()->unique()->values();
+        $customers = $custIds->isNotEmpty()
+            ? StoreCustomer::whereIn('id', $custIds)->get(['id', 'f_name', 'email', 'phone'])->keyBy('id')
+            : collect();
+
+        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom', 'customers'));
     }
 
     // ── Void (counter-entry; never deleted) ───────────────────────────────────
@@ -982,13 +1184,18 @@ class RetailPosController extends Controller
     // ── 80mm thermal receipt (browser print) ───────────────────────────────────
     public function thermal(Request $request, $id)
     {
+        $this->ensureSchema();
         $storeId = $this->storeId();
         $invoice = ManualInvoice::where('vendor_id', $storeId)->findOrFail($id);
-        $items = InvoiceItem::with('item')->where('manual_invoice_id', $invoice->id)->get();
+        $items = InvoiceItem::with('item.itemunit')->where('manual_invoice_id', $invoice->id)->get();
         $store = Helpers::get_store_data();
         $legs = DB::table('pos_payment_legs')->where('manual_invoice_id', $invoice->id)->get();
+        $customer = $invoice->bill_to ? StoreCustomer::find($invoice->bill_to) : null;
 
-        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs'));
+        $receiptTemplate = DB::table('stores')->where('id', $storeId)->value('pos_receipt_template') ?: 'standard';
+        $receiptTemplate = in_array($receiptTemplate, ['standard', 'modern', 'elegant'], true) ? $receiptTemplate : 'standard';
+
+        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate'));
     }
 
     // ── Email invoice (§4.3) ────────────────────────────────────────────────────
@@ -1111,8 +1318,20 @@ class RetailPosController extends Controller
         $staff    = VendorEmployee::where('store_id', $storeId)->orderBy('f_name')
             ->get(['id', 'f_name', 'l_name', 'branch_id']);
         $upiId    = DB::table('stores')->where('id', $storeId)->value('pos_upi_id');
+        $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template') ?: 'classic';
 
-        return view('posretail::vendor.retail-pos.terminals', compact('branches', 'counters', 'staff', 'upiId'));
+        return view('posretail::vendor.retail-pos.terminals', compact('branches', 'counters', 'staff', 'upiId', 'uiTemplate'));
+    }
+
+    // Store-level Retail POS settings page (UPI, New Sale UI template).
+    public function settings(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $upiId      = DB::table('stores')->where('id', $storeId)->value('pos_upi_id');
+        $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template') ?: 'classic';
+        $receiptTemplate = DB::table('stores')->where('id', $storeId)->value('pos_receipt_template') ?: 'standard';
+        return view('posretail::vendor.retail-pos.settings', compact('upiId', 'uiTemplate', 'receiptTemplate'));
     }
 
     public function saveUpi(Request $request)
@@ -1121,6 +1340,32 @@ class RetailPosController extends Controller
         DB::table('stores')->where('id', $this->storeId())
             ->update(['pos_upi_id' => trim((string) $request->input('upi_id')) ?: null]);
         Toastr::success('UPI ID saved');
+        return back();
+    }
+
+    // Persist the vendor's chosen New Sale UI template.
+    public function saveUiTemplate(Request $request)
+    {
+        $this->ensureSchema();
+        $tpl = $request->input('pos_ui_template');
+        if (!in_array($tpl, ['classic', 'compact', 'modern'], true)) {
+            $tpl = 'classic';
+        }
+        DB::table('stores')->where('id', $this->storeId())->update(['pos_ui_template' => $tpl]);
+        Toastr::success('New Sale UI template updated');
+        return back();
+    }
+
+    // Persist the vendor's chosen printed receipt template.
+    public function saveReceiptTemplate(Request $request)
+    {
+        $this->ensureSchema();
+        $tpl = $request->input('pos_receipt_template');
+        if (!in_array($tpl, ['standard', 'modern', 'elegant'], true)) {
+            $tpl = 'standard';
+        }
+        DB::table('stores')->where('id', $this->storeId())->update(['pos_receipt_template' => $tpl]);
+        Toastr::success('Receipt template updated');
         return back();
     }
 
@@ -1250,24 +1495,121 @@ class RetailPosController extends Controller
 
     public function branchStockSave(Request $request)
     {
+        // Direct editing is disabled — branch stock now moves in only via a Stock Transfer gatepass.
+        Toastr::info('Branch stock is managed through Stock Transfer (Gatepass).');
+        return redirect()->route('vendor.retail-pos.gatepass');
+    }
+
+    // ── Stock Transfer Gatepass (main store → branch) ───────────────────────────
+    public function gatepass(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
+
+        $search = trim((string) $request->get('q', ''));
+        $items = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
+            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")->orWhere('sku_id', 'like', "%{$search}%")))
+            ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit']);
+
+        $gatepasses = DB::table('pos_stock_gatepass as g')
+            ->leftJoin('branches as b', 'b.id', '=', 'g.branch_id')
+            ->where('g.store_id', $storeId)
+            ->orderByDesc('g.id')->limit(100)
+            ->get(['g.id', 'g.gatepass_no', 'g.note', 'g.created_at', 'b.name as branch_name']);
+
+        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'items', 'gatepasses', 'search'));
+    }
+
+    public function gatepassStore(Request $request)
+    {
         $this->ensureSchema();
         $storeId = $this->storeId();
         $branchId = (int) $request->input('branch_id');
-        if (!$branchId) {
-            Toastr::error('Select a branch');
+        $branch = Branch::where('store_id', $storeId)->where('id', $branchId)->first();
+        if (!$branch) {
+            Toastr::error('Select a valid branch');
             return back();
         }
-        $stocks = $request->input('stock', []);
-        foreach ($stocks as $itemId => $val) {
-            if ($val === '' || $val === null) {
-                continue;
+
+        $lines = [];
+        foreach ((array) $request->input('qty', []) as $itemId => $val) {
+            $qty = (float) $val;
+            if ($qty > 0) {
+                $lines[(int) $itemId] = $qty;
             }
-            DB::table('pos_branch_stock')->updateOrInsert(
-                ['branch_id' => $branchId, 'inventory_item_id' => (int) $itemId],
-                ['store_id' => $storeId, 'stock' => (float) $val, 'updated_at' => now(), 'created_at' => now()]
-            );
         }
-        Toastr::success('Branch stock updated');
-        return back();
+        if (empty($lines)) {
+            Toastr::error('Enter a transfer quantity for at least one item');
+            return back();
+        }
+
+        // Validate availability against main-store stock before moving anything.
+        $items = InventoryItem::where('store_id', $storeId)->whereIn('id', array_keys($lines))->get()->keyBy('id');
+        foreach ($lines as $itemId => $qty) {
+            $item = $items->get($itemId);
+            if (!$item) {
+                Toastr::error('Item not found');
+                return back();
+            }
+            if ($qty > (float) $item->stock) {
+                Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
+                return back();
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $serial = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->count() + 1;
+            $gpNo = 'GP-' . str_pad((string) $serial, 4, '0', STR_PAD_LEFT);
+            $gatepassId = DB::table('pos_stock_gatepass')->insertGetId([
+                'store_id'    => $storeId,
+                'branch_id'   => $branchId,
+                'gatepass_no' => $gpNo,
+                'note'        => $request->input('note'),
+                'created_by'  => auth('vendor')->id() ?? auth('vendor_employee')->id(),
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            foreach ($lines as $itemId => $qty) {
+                // Deduct from main store…
+                InventoryItem::where('id', $itemId)->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)')]);
+                // …and add to the branch (increment if a row already exists).
+                $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
+                if ($existing) {
+                    DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
+                } else {
+                    DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $qty, 'created_at' => now(), 'updated_at' => now()]);
+                }
+                DB::table('pos_stock_gatepass_items')->insert(['gatepass_id' => $gatepassId, 'inventory_item_id' => $itemId, 'qty' => $qty, 'created_at' => now()]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Transfer failed: ' . $th->getMessage());
+            return back();
+        }
+
+        Toastr::success('Stock transferred to ' . $branch->name . ' (' . $gpNo . ')');
+        return redirect()->route('vendor.retail-pos.gatepass.print', $gatepassId);
+    }
+
+    public function gatepassPrint(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $gatepass = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$gatepass) {
+            abort(404);
+        }
+        $branch = Branch::find($gatepass->branch_id);
+        $items = DB::table('pos_stock_gatepass_items as gi')
+            ->leftJoin('inventory_items as ii', 'ii.id', '=', 'gi.inventory_item_id')
+            ->leftJoin('units as u', 'u.id', '=', 'ii.unit')
+            ->where('gi.gatepass_id', $id)
+            ->get(['gi.qty', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
+        $store = Helpers::get_store_data();
+        return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'items', 'store'));
     }
 }

@@ -54,8 +54,11 @@ return [
             'hospital_manage',
             'leads_manage',
         ],
-        // Retail POS (`pos_retail`) is a PAID plan — not listed here, so stores must hold an active
-        // subscription whose permitted_modules include `pos_retail`. Holding it unlocks
-        // POS + Inventory + Accounts via the equivalence above.
+        // Retail POS (`pos_retail`) is a PAID plan, so `pos_retail` itself is NOT free here — stores
+        // must hold an active subscription to use the Retail POS module. But basic Inventory is free
+        // for pos_retail stores (manage stock without a separate inventory subscription).
+        'pos_retail' => [
+            'inventory_manage',
+        ],
     ],
 ];

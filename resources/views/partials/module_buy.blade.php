@@ -106,7 +106,14 @@
                               $tieredModule = $isHospitalModule || $isSchoolModule;
                               // hospital pre-selects the store's active tier; school lets the user pick.
                               $activeTier = $isHospitalModule ? ($bedTier ?? null) : null;
+                              // POS Retail is only offered to pos_retail stores (always on the admin store-builder).
+                              $hidePosRetail =
+                                  (str_contains(strtolower($module->name), 'pos retail') ||
+                                      strtolower($module->Key ?? '') === 'pos_retail') &&
+                                  !Route::is('admin.plan.module-store') &&
+                                  strtolower($storeBusinessType ?? '') !== 'pos_retail';
                           @endphp
+                          @continue($hidePosRetail)
                           <div class="pc-module-item" data-module-id="{{ $module->id }}">
                               <div class="pc-module-top">
                                   <input type="checkbox" class="pc-checkbox pc-module-check"

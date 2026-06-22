@@ -25,6 +25,7 @@ use App\Models\TempInvItemImage;
 use App\Models\VendorTermsCondition;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator as FacadesValidator;
 use Illuminate\Support\Facades\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -36,6 +37,19 @@ use Mpdf\Mpdf;
 
 class InventoryController extends Controller
 {
+    private function ensureLooseColumn(): void
+    {
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'sell_loose')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `sell_loose` TINYINT(1) NOT NULL DEFAULT 0");
+        }
+    }
+
+    private function applyLooseSelling(InventoryItem $item, Request $request): void
+    {
+        // Loose item — weighed on the scale at POS sale time; billed weight × per-unit price.
+        $item->sell_loose = ($request->item_type === 'product' && $request->boolean('sell_loose')) ? 1 : 0;
+    }
+
     public function dashboard(Request $request)
     {
 
@@ -784,6 +798,8 @@ class InventoryController extends Controller
         $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
 
         $inventory_item->specifications = $specifications;
+        $this->ensureLooseColumn();
+        $this->applyLooseSelling($inventory_item, $request);
         $inventory_item->save();
 
         // variation -=====================================
@@ -1027,6 +1043,9 @@ class InventoryController extends Controller
         if ($request->has('image') && $show_on_store_page) {
             Helpers::upload('product/', 'png', $request->file('image'), $inventory_item->image = $inventory_item->image);
         }
+
+        $this->ensureLooseColumn();
+        $this->applyLooseSelling($inventory_item, $request);
 
         $inventory_item->save();
 

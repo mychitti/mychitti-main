@@ -1136,6 +1136,11 @@
                     @unless (isset($skipForLaundry) && $skipForLaundry)
                         {{-- =============================== iNVENTORY Management=========================== --}}
                         @if (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage'))
+                            @php
+                                // Retail POS stores get BASIC inventory only (Items + Stock) — hide the
+                                // advanced inventory areas (Dashboard, Stock In/Out, Sales, Purchase, Reports).
+                                $posRetailBasicInv = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') === 'pos_retail';
+                            @endphp
 
                             <li
                                 class="navbar-vertical-aside-has-menu {{ Request::is('inventory*') || Request::is('item/entry') ? 'active' : '' }}">
@@ -1149,7 +1154,7 @@
                                 </a>
 
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
-                                    @if (hasPermission('inventory', 'dashboard'))
+                                    @if (hasPermission('inventory', 'dashboard') && !$posRetailBasicInv)
                                         <li
                                             class="navbar-vertical-aside-has-menu {{ Request::is('inventory/dashboard') ? 'active' : '' }}">
                                             <a class="nav-link " href="{{ route('vendor.inventory.dashboard') }}"
@@ -1206,7 +1211,7 @@
                                         </li> --}}
                                         </ul>
                                     </li>
-                                    @if (hasAnyPermission(['inventory_stock_in_out.list']))
+                                    @if (hasAnyPermission(['inventory_stock_in_out.list']) && !$posRetailBasicInv)
                                         <li
                                             class="navbar-vertical-aside-has-menu  {{ Request::is('inventory/stock*') ? 'active' : '' }}">
                                             <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -1238,7 +1243,7 @@
                                             'inventory_sale_order.export',
                                             'inventory_sale_return.export',
                                             'inventory_sale_return.list',
-                                        ]))
+                                        ]) && !$posRetailBasicInv)
                                         <li
                                             class="navbar-vertical-aside-has-menu {{ Request::is('inventory/sale*') ? 'active' : '' }} ">
                                             <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -1286,7 +1291,7 @@
                                             'inventory_purchase_order.add',
                                             'inventory_purchase_order.list',
                                             'purchase_bill.list',
-                                        ]))
+                                        ]) && !$posRetailBasicInv)
                                         <li
                                             class="navbar-vertical-aside-has-menu {{ Request::is('inventory/purchase*') ? 'active' : '' }}">
                                             <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -1349,7 +1354,7 @@
                                             'profit_loss_summary.list',
                                             'purchase_report.export',
                                             'purchase_report.list',
-                                        ]))
+                                        ]) && !$posRetailBasicInv)
                                         <li class="navbar-vertical-aside-has-menu ">
                                             <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                                 href="javascript:" title="Reports">
@@ -1431,6 +1436,7 @@
                                             </ul>
                                         </li>
                                     @endif
+                                    @if (!$posRetailBasicInv)
                                     <li
                                         class="navbar-vertical-aside-has-menu {{ Request::is('inventory/gatepass*') ? 'active' : '' }}">
                                         <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
@@ -1464,6 +1470,7 @@
                                             </li>
                                         </ul>
                                     </li>
+                                    @endif
                                     @if (hasPermission('inventory', 'settings'))
                                         <li
                                             class="navbar-vertical-aside-has-menu {{ Request::is('inventory/settings') ? 'active' : '' }}">

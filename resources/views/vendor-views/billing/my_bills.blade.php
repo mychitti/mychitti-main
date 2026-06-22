@@ -280,6 +280,14 @@
     @include('vendor-views/form_modals/purchase_bill')
     @include('vendor-views.form_modals.inventory_item_select')
 
+    @if (request('add_purchase'))
+        @push('script_2')
+            <script>
+                $(function () { $('#purchaseBillModal').modal('show'); });
+            </script>
+        @endpush
+    @endif
+
 @endsection
 
 @push('script_2')

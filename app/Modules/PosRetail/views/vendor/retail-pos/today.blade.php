@@ -67,7 +67,7 @@
                             <tr @if ($bill->pos_status === 'void') style="opacity:.55" @endif>
                                 <td>{{ $k + 1 }}</td>
                                 <td><b>{{ $bill->pos_status === 'void' ? 'V' . $bill->invoice_id : $bill->invoice_id }}</b></td>
-                                <td>{{ $bill->customer_name ?? ($bill->bill_to ? 'Customer #' . $bill->bill_to : 'Walk-in') }}</td>
+                                <td>{{ optional($customers[$bill->bill_to] ?? null)->f_name ?: 'Walk-in' }}</td>
                                 <td class="text-right font-weight-bold">₹{{ number_format((float) $bill->total_amount, 2) }}</td>
                                 <td><span class="rp-badge muted">{{ $bill->payment_method }}</span></td>
                                 <td>
@@ -91,8 +91,25 @@
                                                 @if ($bill->pdf)
                                                     <a class="dropdown-item" href="{{ asset('storage/app/public/invoice') . '/' . $bill->pdf }}" target="_blank"><i class="tio-receipt"></i> A4 invoice</a>
                                                 @endif
-                                                <a class="dropdown-item" href="{{ route('vendor.retail-pos.email', $bill->id) }}"><i class="tio-send"></i> Email invoice</a>
-                                                <a class="dropdown-item" href="{{ route('vendor.retail-pos.whatsapp', $bill->id) }}"><i class="tio-comment"></i> Send on WhatsApp</a>
+                                                @php
+                                                    $cust = $bill->bill_to ? ($customers[$bill->bill_to] ?? null) : null;
+                                                    $custEmail = $cust->email ?? null;
+                                                    $custPhone = $cust->phone ?? null;
+                                                @endphp
+                                                @if (!empty($custEmail))
+                                                    <a class="dropdown-item" href="{{ route('vendor.retail-pos.email', $bill->id) }}"><i class="tio-send"></i> Email invoice</a>
+                                                @else
+                                                    <span class="dropdown-item disabled text-muted" style="cursor:not-allowed;" title="No customer email available — link a customer with an email to this bill">
+                                                        <i class="tio-send"></i> Email invoice <small>— no email</small>
+                                                    </span>
+                                                @endif
+                                                @if (!empty($custPhone))
+                                                    <a class="dropdown-item" href="{{ route('vendor.retail-pos.whatsapp', $bill->id) }}"><i class="tio-comment"></i> Send on WhatsApp</a>
+                                                @else
+                                                    <span class="dropdown-item disabled text-muted" style="cursor:not-allowed;" title="No customer phone available — link a customer with a phone to this bill">
+                                                        <i class="tio-comment"></i> Send on WhatsApp <small>— no phone</small>
+                                                    </span>
+                                                @endif
                                             @endif
                                             @if ($bill->pos_status !== 'void' && $canVoid)
                                                 @if ($canPrint)<div class="dropdown-divider"></div>@endif

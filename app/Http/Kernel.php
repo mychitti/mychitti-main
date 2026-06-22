@@ -84,6 +84,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         'registereduser' => \App\Http\Middleware\RegisteredUserMiddleware::class,
         'installation-check' => InstallationMiddleware::class,
         'planwise' => \App\Http\Middleware\PermissionCheck::class,
+        'retail.inventory.basic' => \App\Http\Middleware\RetailInventoryBasic::class,
         'actch' => ActivationCheckMiddleware::class,
         'localization' => \App\Http\Middleware\LocalizationMiddleware::class,
         'module-check' => \App\Http\Middleware\ModuleCheckMiddleware::class,

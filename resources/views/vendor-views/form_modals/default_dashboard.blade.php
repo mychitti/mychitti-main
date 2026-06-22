@@ -14,6 +14,8 @@
         'account'         => ['icon' => 'tio-money',                     'label' => 'Accounts Dashboard',  'desc' => 'Income, expenses & ledger',                 'module' => 'account_manage'],
         'inventory'       => ['icon' => 'tio-shopping-cart',             'label' => 'Inventory Dashboard', 'desc' => 'Stock, sales & item entries',               'module' => 'inventory_manage'],
         'pos'             => ['icon' => 'tio-shopping-basket-outlined',  'label' => 'POS',                 'desc' => 'Point of sale orders',                      'module' => 'pos'],
+        // Shown only for Retail POS stores.
+        'retail_pos'      => ['icon' => 'tio-shopping-basket-outlined',  'label' => 'Retail POS Dashboard','desc' => 'Sales, branches & stock',                   'module' => null, 'business_type' => 'pos_retail'],
     ];
 @endphp  
 
@@ -38,6 +40,7 @@
                 @php
                     $active = ($ddCurrent === $key);
                     if ($opt['module'] !== null && !hasMasterModulePermission($opt['module'])) continue;
+                    if (isset($opt['business_type']) && strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') !== $opt['business_type']) continue;
                 @endphp
                 <form method="POST" action="{{ route('vendor.profile.default-dashboard') }}" style="margin-bottom:6px;">
                     @csrf

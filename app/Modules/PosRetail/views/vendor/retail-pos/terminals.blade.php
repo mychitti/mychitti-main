@@ -15,19 +15,6 @@
             </div>
         </div>
 
-        {{-- UPI ID for payment QR --}}
-        @if (hasPermission('pos_billing', 'create'))
-        <div class="rp-card">
-            <div class="bd">
-                <form method="post" action="{{ route('vendor.retail-pos.upi.save') }}" class="rp-filter">
-                    @csrf
-                    <label class="font-weight-bold mb-0 mr-1">Store UPI ID (for payment QR)</label>
-                    <input type="text" name="upi_id" value="{{ $upiId ?? '' }}" class="rp-input" placeholder="storename@upi" style="min-width:240px">
-                    <button class="rp-btn p">Save UPI ID</button>
-                </form>
-            </div>
-        </div>
-        @endif
 
         @php
             $canViewBranches = hasPermission('pos_branch', 'view') || hasPermission('pos_branch', 'delete') || hasPermission('pos_counter', 'delete');

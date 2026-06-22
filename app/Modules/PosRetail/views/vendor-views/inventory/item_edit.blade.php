@@ -8,6 +8,87 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/inventory_management.css') }}">
     <style>
+        /* Compact, modern upload zone so it doesn't dominate the Basic Info tab */
+        #basic .custom-upload-zone.upload-area {
+            min-height: 150px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #f9fafb;
+            border: 2px dashed #d1d5db;
+            cursor: pointer;
+            transition: border-color .2s ease, background .2s ease;
+        }
+
+        #basic .custom-upload-zone.upload-area:hover {
+            border-color: #f43f5e;
+            background: #fff5f6;
+        }
+
+        #basic .custom-upload-zone .custom-upload-icon i {
+            font-size: 26px;
+            color: #9ca3af;
+        }
+
+        #basic .custom-upload-zone h5 {
+            font-size: 15px;
+            margin: 6px 0 2px;
+        }
+
+        #basic .form-group-custom {
+            margin-bottom: 14px;
+        }
+
+        /* Product / Service segmented radio set */
+        #basic .custom-radio-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        #basic .custom-radio-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+            cursor: pointer;
+            transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+        }
+
+        #basic .custom-radio-item:hover {
+            border-color: #c7d2fe;
+            background: #f8faff;
+        }
+
+        #basic .custom-radio-item.active {
+            border-color: #4f46e5;
+            background: #eef2ff;
+            box-shadow: 0 0 0 1px #4f46e5 inset;
+        }
+
+        #basic .custom-radio-item label {
+            cursor: pointer;
+            font-weight: 600;
+            color: #374151;
+            margin: 0;
+        }
+
+        #basic .custom-radio-item.active label {
+            color: #4f46e5;
+        }
+
+        #basic .custom-radio-item input[type="radio"] {
+            accent-color: #4f46e5;
+            width: 16px;
+            height: 16px;
+        }
+
         .service_elem {
             display: {{ $item->item_type == 'service' ? '' : 'none' }};
         }
@@ -324,55 +405,91 @@
                         <!-- Basic Info Tab -->
                         <div class="tab-pane fade show active " id="basic" role="tabpanel">
                             <div class="row">
-                                <!-- Type Selection -->
-                                <div class="col-md-4">
-                                    <div class="form-group form-group-custom">
-                                        <label class="custom-label">Type <span class="custom-required">*</span></label>
-                                        <div class="custom-radio-wrapper">
-                                            <div class="custom-radio-item {{ $item->item_type == 'product' ? 'active' : '' }}"
-                                                onclick="selectRadio('product', this)">
-                                                <input type="radio" name="item_type" id="product" value="product"
-                                                    {{ $item->item_type == 'product' ? 'checked' : '' }} />
-                                                <label for="product" class="mb-0 ml-2">Product</label>
+                                <!-- LEFT: details -->
+                                <div class="col-md-8">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group form-group-custom">
+                                                <label class="custom-label">Type <span class="custom-required">*</span></label>
+                                                <div class="custom-radio-wrapper">
+                                                    <div class="custom-radio-item {{ $item->item_type == 'product' ? 'active' : '' }}"
+                                                        onclick="selectRadio('product', this)">
+                                                        <input type="radio" name="item_type" id="product" value="product"
+                                                            {{ $item->item_type == 'product' ? 'checked' : '' }} />
+                                                        <label for="product" class="mb-0 ml-2">Product</label>
+                                                    </div>
+                                                    <div class="custom-radio-item {{ $item->item_type == 'service' ? 'active' : '' }}"
+                                                        onclick="selectRadio('service', this)">
+                                                        <input type="radio" {{ $item->item_type == 'service' ? 'checked' : '' }}
+                                                            name="item_type" id="service" value="service" />
+                                                        <label for="service" class="mb-0 ml-2">Service</label>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="custom-radio-item {{ $item->item_type == 'service' ? 'active' : '' }}"
-                                                onclick="selectRadio('service', this)">
-                                                <input type="radio" {{ $item->item_type == 'service' ? 'checked' : '' }}
-                                                    name="item_type" id="service" value="service" />
-                                                <label for="service" class="mb-0 ml-2">Service</label>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group form-group-custom">
+                                                <div style="padding: 11px;"> </div>
+                                                <label for="show_on_website" class="custom-label cursor-pointer">
+                                                    <div class="badge badge-soft-success align-items-center"
+                                                        style="height: 39px;display: flex;">
+                                                        <div class="form-check d-flex mr-1">
+                                                            <input id="show_on_website" name="show_on_store_page" value="1"
+                                                                {{ $item->show_on_store_page ? 'checked' : '' }} type="checkbox"
+                                                                class="form-check-input">
+                                                            <span style="white-space: nowrap;" class="mt-1 form-check-label"
+                                                                for="">Show on Website</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-group form-group-custom">
+                                                <label for="itemName" class="custom-label">Name <span
+                                                        class="custom-required">*</span></label>
+                                                <input value="{{ $item->item_name }}" name="item_name" type="text"
+                                                    class="form-control" id="itemName" placeholder="Enter item name" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group form-group-custom">
+                                                <label class="custom-label">Category</label>
+                                                <select name="category" data-placeholder="Select or Type New Category"
+                                                    id="category" class="form-control js-select2-custom-tags">
+                                                    <option value=""></option>
+                                                    @php $categories = \App\Models\Category::where('status', '1')->get(); @endphp
+                                                    @foreach ($categories as $category)
+                                                        <option {{ $item->category_id == $category['id'] ? 'selected' : '' }}
+                                                            value="{{ $category['name'] }}">{{ $category['name'] }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 product_elem product_inp_group">
+                                            <div class="form-group form-group-custom">
+                                                <label class="custom-label">Brand</label>
+                                                <input type="text" value="{{ $item->brand }}" name="brand" placeholder="Brand"
+                                                    class="form-control" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 product_elem product_inp_group">
+                                            <div class="form-group form-group-custom">
+                                                <label class="custom-label">Model Number</label>
+                                                <input type="text" value="{{ $item->model_number }}" name="model_number"
+                                                    placeholder="Model Number" class="form-control" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 product_elem">
+                                            <div class="form-group form-group-custom">
+                                                <label class="custom-label">SKU ID</label>
+                                                <input type="text" value="{{ $item->sku_id }}" name="sku_id"
+                                                    placeholder="SKU ID" class="form-control" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
-
-                                <div class="col-md-5">
-                                    <div class="form-group form-group-custom">
-                                        <label for="itemName" class="custom-label">Name <span
-                                                class="custom-required">*</span></label>
-                                        <input value="{{ $item->item_name }}" name="item_name" type="text"
-                                            class="form-control" id="itemName" placeholder="Enter item name" />
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group  form-group-custom">
-                                        <div style="padding: 11px;"> </div>
-                                        <label for="show_on_website" class="custom-label cursor-pointer">
-                                            <div class="badge badge-soft-success align-items-center"
-                                                style="height: 39px;display: flex;">
-                                                <div class="form-check d-flex mr-1">
-                                                    <input id="show_on_website" name="show_on_store_page" value="1"
-                                                        {{ $item->show_on_store_page ? 'checked' : '' }} type="checkbox"
-                                                        class="form-check-input">
-                                                    <span style=" white-space: nowrap;" class="mt-1 form-check-label"
-                                                        for="">Show
-                                                        on Website</span>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-
-                                </div>
+                                <!-- RIGHT: images -->
                                 <div class="col-md-4">
                                     <div class="form-group form-group-custom">
                                         <label class="custom-label d-flex justify-content-between">Main Image <a
@@ -384,23 +501,18 @@
                                                 <i class="fas fa-cloud-upload-alt"></i>
                                             </div>
                                             <h5 class="">Upload Image</h5>
-                                            <p class="mb-1 text-muted">
-                                                Click here to upload image
-                                            </p>
-                                            <small class="text-muted">Supported formats: JPG, PNG, JPEG (Max
-                                                5MB)</small>
+                                            <p class="mb-1 text-muted">Click here to upload image</p>
+                                            <small class="text-muted">Supported formats: JPG, PNG, JPEG (Max 5MB)</small>
                                         </div>
                                         <input type="file" id="imageUpload" name="image" accept="image/*"
                                             style="display: none" />
                                     </div>
-                                </div>
-                                <div class="col-md-4" id="extra_images_group">
-                                    <div class="flex-grow-1 mx-auto">
-                                        <label class="text-dark d-block mb-4 mb-xl-5">
+                                    <div class="form-group form-group-custom" id="extra_images_group">
+                                        <label class="custom-label d-block">
                                             {{ translate('messages.item_images') }}
                                             <small class="">( {{ translate('messages.ratio') }} 1:1 )</small>
                                         </label>
-                                        <div class="d-flex" id="">
+                                        <div class="d-flex flex-wrap" id="">
                                             @if ($item->images)
                                                 @foreach ($item->images as $key => $photo)
                                                     <div style="max-width: 70px !important; margin: 5px;"
@@ -417,7 +529,6 @@
                                                     </div>
                                                 @endforeach
                                             @endif
-
                                         </div>
                                         <input type="file" accept="image/*" name="item_images[]"
                                             class="form-control mt-2  item_images  " multiple id="">
@@ -436,13 +547,29 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 my-2" id="add_variations_wrap">
-                                    <label class="custom-label cursor-pointer mb-0">
-                                        <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
-                                        Add Variations
+                                <div class="col-12 d-flex justify-content-end mt-3">
+                                    <a class="btn btn--primary next_btn" data-next="attributes">
+                                        Next
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade " id="attributes" role="tabpanel">
+                            <div class="row">
+                                <!-- Variations (uses the "Show on Website" badge design) -->
+                                <div class="col-12 p-1" id="add_variations_wrap">
+                                    <label for="add_variations_cb" class="custom-label cursor-pointer mb-0 d-inline-block">
+                                        <div class="badge badge-soft-primary align-items-center"
+                                            style="height: 39px;display: flex;">
+                                            <div class="form-check d-flex mr-1">
+                                                <input id="add_variations_cb" type="checkbox" class="form-check-input">
+                                                <span style="white-space: nowrap;" class="mt-1 form-check-label">Add
+                                                    Variations</span>
+                                            </div>
+                                        </div>
                                     </label>
                                 </div>
-                                <div class="col-12" id="variations_wrap" style="display:none;">
+                                <div class="col-12 p-1" id="variations_wrap" style="display:none;">
                                     <div class="col-md-12 p-0" id="attribute_section">
                                         <div class="row g-2">
                                             <div class="col-12">
@@ -487,55 +614,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-12 d-flex justify-content-end mt-3">
-                                    <a class="btn btn--primary next_btn" data-next="attributes">
-                                        Next
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade " id="attributes" role="tabpanel">
-                            <div class="row">
-                                <!-- Type Selection -->
-                                <div class="col-lg-3 col-sm-6">
-                                    <label for="exampleInputEmail1 ">Category </label>
-                                    <select name="category" data-placeholder="Select or Type New Category" id="category"
-                                        class="form-control js-select2-custom-tags">
-                                        <option value=""></option>
-
-                                        @php
-                                        $categories = \App\Models\Category::where('status', '1')->get(); @endphp @foreach ($categories as $category)
-                                            <option {{ $item->category_id == $category['id'] ? 'selected' : '' }}
-                                                value="{{ $category['name'] }}">
-                                                {{ $category['name'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="product_elem col-lg-3 col-sm-6 product_inp_group">
-                                    <label for="exampleInputEmail1">Brand</label>
-                                    <input type="text" value="{{ $item->brand }}" name="brand"
-                                        placeholder="Brand" class="form-control" />
-                                </div>
-
-                                <div class="product_elem col-lg-3 col-sm-6 product_inp_group">
-                                    <label for="exampleInputEmail1">Model Number</label>
-                                    <input type="text" value="{{ $item->model_number }}" name="model_number"
-                                        placeholder="Model Number" class="form-control" />
-                                </div>
-                                <div class="product_elem col-lg-3 col-sm-6">
-                                    <label for="exampleInputEmail1">SKU ID</label>
-                                    <input type="text" value="{{ $item->sku_id }}" name="sku_id"
-                                        placeholder="SKU ID" class="form-control" />
-                                </div>
-                                <div class="product_elem col-lg-3 col-sm-6">
-                                    <label class="custom-label d-flex justify-content-between">Barcode @if ($item['barcode'])
-                                            <a href="{{ asset('storage/app/public/inventory-item/barcode/') . '/' . $item['barcode'] }}"
-                                                class="text-underline">View Current</a>
-                                        @endif
-                                    </label> <input type="file" name="barcode" class="form-control" />
                                 </div>
                                 <!-- Unit Selection -->
                                 {{-- <div class="product_elem col-md-3">
@@ -781,6 +859,16 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="col-12 mt-2">
+                                    <div class="badge badge-soft-info p-2 d-block text-left">
+                                        <label class="custom-label cursor-pointer mb-0 d-flex align-items-center">
+                                            <input type="checkbox" id="sell_loose_cb" name="sell_loose" value="1"
+                                                {{ !empty($item->sell_loose) ? 'checked' : '' }}
+                                                class="form-check-input position-static ml-0 mr-2">
+                                            Sell loose — weigh at the time of sale (POS asks for the weight; billed weight × price)
+                                        </label>
+                                    </div>
+                                </div>
 
 
                             </div>
@@ -875,8 +963,32 @@
             document.addEventListener('click', function (e) {
                 if (e.target.closest && e.target.closest('.custom-radio-item')) setTimeout(sync, 0);
             });
+            // Auto-fill each variation's SKU from the main SKU + a 2-char suffix (AB, CD, EF…).
+            // Only fills blank / auto-generated inputs, so saved or manual SKUs are kept.
+            function fillVariantSkus() {
+                var mainEl = document.querySelector('input[name="sku_id"]');
+                var main = mainEl ? mainEl.value.trim() : '';
+                if (!main || !combos) return;
+                var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                combos.querySelectorAll('input[name^="sku_"]').forEach(function (inp, i) {
+                    if (inp.dataset.autoSku !== '1' && inp.value) return;
+                    var first = letters[(2 * i) % 26];
+                    var second = letters[(2 * i + 1) % 26];
+                    var cycle = Math.floor((2 * i) / 26);
+                    inp.value = main + first + second + (cycle ? cycle : '');
+                    inp.dataset.autoSku = '1';
+                });
+            }
+            if (combos) {
+                combos.addEventListener('input', function (e) {
+                    if (e.target && e.target.name && e.target.name.indexOf('sku_') === 0) e.target.dataset.autoSku = '0';
+                });
+            }
+            var mainSkuEl = document.querySelector('input[name="sku_id"]');
+            if (mainSkuEl) mainSkuEl.addEventListener('input', fillVariantSkus);
+
             if (combos && window.MutationObserver) {
-                new MutationObserver(function () { sync(); }).observe(combos, { childList: true });
+                new MutationObserver(function () { sync(); fillVariantSkus(); }).observe(combos, { childList: true });
             }
             // Re-sync on Bootstrap tab change. jQuery can load after this inline script, so
             // guard the binding (an unguarded $(...) here throws and aborts the whole setup).

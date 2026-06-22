@@ -63,14 +63,25 @@
                   <label for="exampleInputEmail1">Bill No.</label>
                   <input type="text" name="bill_number" placeholder="Bill No." class="form-control">
               </div>
+              <style>
+                  /* Wider Item Name + Storage Unit columns (applies to dynamically-added rows too) */
+                  select[name="item_id[]"] { min-width: 280px; }
+                  select[name="item_id[]"] + .select2-container { min-width: 280px; width: 100% !important; }
+                  select[name="storage_unit_id[]"] { min-width: 210px; }
+                  select[name="storage_unit_id[]"] + .select2-container { min-width: 210px; width: 100% !important; }
+                  /* Narrower number columns */
+                  input[name="quantity[]"] { max-width: 95px; }
+                  input[placeholder="MRP"] { max-width: 100px; }
+                  input[name="selling_price[]"] { max-width: 110px; }
+              </style>
               <table class="table mt-2">
                   <thead style=" background: ##f1ffff;">
                       <tr>
-                          <th class="hide_on_phone" scope="col">Item Name / SKU / Model</th>
+                          <th class="hide_on_phone" scope="col" style="min-width: 280px;">Item Name / SKU / Model</th>
                           <th class="hide_on_phone" scope="col">Variation</th>
                           <th class="hide_on_phone" scope="col">Add Stock</th>
                           <th class="hide_on_phone" scope="col">MRP</th>
-                          <th class="hide_on_phone" scope="col">Storage Unit</th>
+                          <th class="hide_on_phone" scope="col" style="min-width: 210px;">Storage Unit</th>
                           <th class="hide_on_phone" scope="col">Product Condition</th>
                           <th class="hide_on_phone" scope="col"> Purchase Price</th>
                           <th class="hide_on_phone" class="tax_inp_data " scope="col">

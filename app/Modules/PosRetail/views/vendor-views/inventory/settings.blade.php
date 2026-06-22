@@ -35,6 +35,28 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-md-12 mt-3">
+                    <label class="font-weight-bold d-block mb-1">Print Label Size (mm)</label>
+                    <small class="text-muted d-block mb-2">Used by the quick single-label print (barcode / full).</small>
+                    <div class="d-flex flex-wrap align-items-end" style="gap:12px;">
+                        <div>
+                            <label style="font-size:12px;display:block;margin-bottom:2px;color:#555;">Label Width (mm)</label>
+                            <input type="number" name="label_width" value="{{ $labelWidth ?? 50 }}" step="0.5" min="10"
+                                class="form-control" style="width:140px;" placeholder="50">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;display:block;margin-bottom:2px;color:#555;">Label Height (mm)</label>
+                            <input type="number" name="label_height" value="{{ $labelHeight ?? 25 }}" step="0.5" min="10"
+                                class="form-control" style="width:140px;" placeholder="25">
+                        </div>
+                        <div class="pb-1">
+                            <a href="{{ route('vendor.inventory.label-formats') }}" class="btn btn-primary"
+                                onclick="event.stopPropagation();">🏷 Design Label Formats</a>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Build fully custom, drag-and-drop label layouts (store name, dates, prices, barcode…) and set a default.</small>
+                </div>
                 <div class="d-flex justify-content-end w-100">
                     <button class="btn btn-primary my-2">Update</button>
                 </div>

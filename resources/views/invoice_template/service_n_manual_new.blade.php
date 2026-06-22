@@ -741,6 +741,17 @@
                             if (in_array($gst_percent, $gst_types)) {
                                 $gst_summary[$gst_percent] += $gst_amount;
                             }
+
+                            // Loose (weighed) lines show pieces + weight, e.g. "4 pc (0.9 kg)".
+                            if (!empty(optional($qt->item)->sell_loose) || !empty($qt->pieces)) {
+                                $unitLbl = optional(optional($qt->item)->itemunit)->unit;
+                                $qtyDisplay = rtrim(rtrim(number_format((float) $qt->qty, 3), '0'), '.') . ($unitLbl ? ' ' . $unitLbl : '');
+                                if (!empty($qt->pieces)) {
+                                    $qtyDisplay = (int) $qt->pieces . ' pc (' . $qtyDisplay . ')';
+                                }
+                            } else {
+                                $qtyDisplay = trim($qt->qty . ' ' . ($qt->unitId?->unit ?? ''));
+                            }
                         @endphp
                         <tr>
                             <td>{{ $key + 1 }}</td>
@@ -762,7 +773,7 @@
                             @if ($bill_data['tax_type'] != 'non-gst' || $bill_data['module_id'] == 5)
                                 <td>{{ $qt->hsn }}</td>
                             @endif
-                            <td>{{ $qt->qty }} {{ $qt->unitId?->unit }}</td>
+                            <td>{{ $qtyDisplay }}</td>
                             <td>{{ $qt->price }}</td>
                             <td>0</td>
                             <td>{{ $qt->price }}</td>

@@ -36,7 +36,7 @@
         <!-- Page Header -->
         <div class="page-header d-flex flex-wrap justify-content-between align-items-start w-100">
             <h1 class="page-header-title"><i class="tio-filter-list"></i>Inventory Management</h1>
-            <div class="d-none d-md-block">
+            <div class="d-none">
                 <ul class="nav nav-pills d-flex justify-content-center flex-nowrap" id="pills-tab" role="tablist">
                     @if (hasPermission('inventory_item', 'list'))
                         <li class="nav-item mx-0" role="presentation">
@@ -63,8 +63,11 @@
 
                 @if (hasPermission('inventory_item_entry', 'add'))
                     <button type="button" class="btn btn-primary btn_sm" data-toggle="modal"
-                        data-target="#itemEntryModal">Item
-                        Entry</button>
+                        data-target="#storageUnitManageModal">Stock Management</button>
+                @endif
+                @if (hasPermission('inventory_item_entry', 'add'))
+                    <a href="{{ route('vendor.invoice.my-bills', ['add_purchase' => 1]) }}"
+                        class="btn btn-primary btn_sm">Item Entry</a>
                 @endif
                 @if (hasPermission('inventory_item', 'add'))
                     <button type="button" class="btn btn-primary btn_sm add_item_btn" data-toggle="modal"
@@ -82,7 +85,7 @@
 
         <div class="">
             <div class="card h-100">
-                <div class="d-block d-md-none">
+                <div class="d-none">
                     <ul class=" nav nav-pills d-flex  tab_switch" id="pills-tab" role="tablist">
                         @if (hasPermission('inventory_item', 'add'))
                             <li class="nav-item mx-0" role="presentation">
@@ -698,6 +701,8 @@
         @include('vendor-views/form_modals/inventory_item_add')
     @endif
     @if (hasPermission('inventory_item_entry', 'add'))
+        @include('vendor-views/form_modals/storage_unit_manage')
+        {{-- BACKUP: original full stock-entry modal (#itemEntryModal). --}}
         @include('vendor-views/form_modals/inventory_item_entry')
     @endif
 

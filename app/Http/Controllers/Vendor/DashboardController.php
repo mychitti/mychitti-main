@@ -70,6 +70,8 @@ class DashboardController extends Controller
                 $pref = 'laundry';
             } elseif (strtolower($store->business_type) === 'pos') {
                 $pref = Helpers::permission_check('pos') ? 'pos' : 'leads_page';
+            } elseif (strtolower($store->business_type) === 'pos_retail') {
+                $pref = 'retail_pos';
             } else {
                 $pref = 'leads_page';
             }
@@ -93,6 +95,7 @@ class DashboardController extends Controller
             'account'         => (new AccountController)->dashboard($request),
             'inventory'       => (new InventoryController)->dashboard($request),
             'pos'             => (new SalespointController)->dashboard($request),
+            'retail_pos'      => (new \App\Modules\PosRetail\Controllers\Vendor\RetailPosController)->dashboard($request),
             default           => $store->business_type === 'Hospital'
                                     ? $this->hospital_dashboard($request)
                                     : $this->master_dashboard($request),

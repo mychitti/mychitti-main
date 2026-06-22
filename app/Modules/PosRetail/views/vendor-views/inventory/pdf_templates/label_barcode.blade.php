@@ -12,13 +12,13 @@
         }
 
         td.label {
-            width: {{ $labelWidth }}mm;
-            height: {{ $labelHeight }}mm;
+            width: {{ ($single ?? false) ? '100%' : $labelWidth . 'mm' }};
+            height: {{ ($single ?? false) ? 'auto' : $labelHeight . 'mm' }};
             text-align: center;
             vertical-align: middle;
-            padding: 4px;
+            padding: {{ ($single ?? false) ? '0' : '4px' }};
             margin: 0;
-            border: 1px dashed lightgrey;
+            border: {{ ($single ?? false) ? 'none' : '1px dashed lightgrey' }};
         }
 
 

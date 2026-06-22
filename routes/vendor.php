@@ -230,9 +230,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
 
         Route::post('inventory/get-item-info', 'InventoryController@get_item_info')->name('inventory.get-item-info');
-        Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage']], function () {
+        Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage', 'retail.inventory.basic']], function () {
             Route::get('settings', 'InventoryController@settings')->name('settings')->middleware('permission:inventory,settings');
             Route::post('settings-save', 'InventoryController@settings_save')->name('settings-save')->middleware('permission:inventory,settings_save');
+
+            // Label format designer (drag/drop) — multiple formats per store, one default.
+            Route::get('label-formats',                'InventoryController@labelFormats')->name('label-formats')->middleware('permission:inventory,settings');
+            Route::post('label-formats/save',          'InventoryController@labelFormatSave')->name('label-formats.save')->middleware('permission:inventory,settings');
+            Route::post('label-formats/{id}/default',  'InventoryController@labelFormatDefault')->name('label-formats.default')->middleware('permission:inventory,settings');
+            Route::post('label-formats/{id}/delete',   'InventoryController@labelFormatDelete')->name('label-formats.delete')->middleware('permission:inventory,settings');
             Route::get('dashboard', 'InventoryController@dashboard')->name('dashboard')->middleware('permission:inventory,dashboard');
             Route::get('/', 'InventoryController@inventory_management')->name('index');
             Route::post('get_my_fee_amount', 'InventoryController@get_my_fee_amount')->name('get_my_fee_amount');
@@ -257,6 +263,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             });
 
             Route::group(['prefix' => 'item', 'as' => 'item.'], function () {
+                Route::post('assign-storage-unit', 'InventoryController@assign_storage_unit')->name('assign-storage-unit')->middleware('permission:inventory_item,edit');
                 Route::get('scan-barcode', 'InventoryController@scan_barcode')->name('scan-barcode');
                 Route::post('fetch-by-sku', 'InventoryController@fetch_item_by_sku')->name('fetch-by-sku');
                 Route::post('update-variant-combination', 'InventoryController@update_variant_combination')->name('update-variant-combination');

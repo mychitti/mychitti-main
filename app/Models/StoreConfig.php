@@ -83,6 +83,8 @@ class StoreConfig extends Model
         'admission_no_serial',
         'school_serial_scope',
         'school_template_id',
+        'label_width',
+        'label_height',
     ];
 
     protected $table; 

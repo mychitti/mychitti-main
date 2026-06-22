@@ -55,7 +55,7 @@ class ProfileController extends Controller
 
     public function saveDefaultDashboard(Request $request)
     {
-        $allowed = ['main', 'leads_page', 'leads_dashboard', 'hr', 'hospital', 'laundry', 'account', 'inventory', 'pos'];
+        $allowed = ['main', 'leads_page', 'leads_dashboard', 'hr', 'hospital', 'laundry', 'account', 'inventory', 'pos', 'retail_pos'];
         $value   = in_array($request->default_dashboard, $allowed) ? $request->default_dashboard : null;
 
         StoreConfig::updateOrCreate(
@@ -397,6 +397,17 @@ class ProfileController extends Controller
             $subscription->created_at = date('Y-m-d H:i:s');
 
             $subscription->save();
+
+            // POS Retail purchased → pre-select all its sidebar menu items for the store, so the
+            // Retail POS menu shows immediately even for stores that previously saved menu prefs.
+            if (
+                str_contains(strtolower($module->name ?? ''), 'pos retail')
+                || strtolower($module->Key ?? '') === 'pos_retail'
+            ) {
+                \App\Modules\PosRetail\Controllers\Vendor\RetailPosController::selectAllMenus(
+                    auth('vendor')->check() ? Helpers::get_store_id() : ($vendorId ?: null)
+                );
+            }
 
             $invoice_items[] = [
                 'name' =>  $planDetails->title . '<br>( Valid for ' . $subscription->duration_count . ' ' . $subscription->duration_type . ' )',

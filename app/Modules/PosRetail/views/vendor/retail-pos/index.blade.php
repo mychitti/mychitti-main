@@ -46,6 +46,8 @@
         .quick-item:hover { border-color:var(--accent); box-shadow:0 6px 16px rgba(16,24,40,.10); transform:translateY(-2px); }
         .quick-item .font-weight-bold { font-size:12.5px; line-height:1.25; }
         .quick-item .text-muted { color:var(--accent) !important; font-weight:700; font-size:13px; }
+        /* Product image is hidden by default (Classic/Modern stay text-only); Compact shows it. */
+        .quick-item .qi-img { display:none; }
 
         .cust-wrap { position:relative; margin-bottom:12px; }
         #cust-search { border-radius:10px; height:42px; }
@@ -79,19 +81,142 @@
             background:var(--accent) !important; box-shadow:0 6px 16px rgba(0,0,0,.12); }
         #btn-finalize:hover { filter:brightness(.93); }
         #btn-hold { border-radius:12px; font-weight:600; }
+
+        /* Keep the "Bill Discount ₹ [input]" on one line */
+        .totals-row > span { white-space:nowrap; }
+        .totals-row #bill-discount { width:80px; }
+        /* Cart table scrolls horizontally instead of overflowing the card */
+        .cart-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+        /* ── Tablet: stack the two panels ─────────────────────────────────── */
+        @media (max-width: 991.98px) {
+            .pos-wrap { flex-direction:column; }
+            .pos-left, .pos-right { flex:1 1 100%; width:100%; }
+            .pos-right { position:static; top:auto; }
+        }
+
+        /* ── Phone ───────────────────────────────────────────────────────── */
+        @media (max-width: 767.98px) {
+            .rpos .pos-topbar { margin-bottom:12px; }
+            .rpos .pos-topbar h1 { font-size:19px; }
+            .pc-hd { flex-wrap:wrap; gap:8px; padding:11px 13px; font-size:13px; }
+            .pc-hd > span { flex:1 1 auto; }
+            .pc-bd { padding:12px; }
+            #pos-search { height:46px; font-size:14px; }
+            .btn-scan { padding:7px 11px; font-size:11.5px; }
+
+            /* Categories become a horizontal scroll strip above the item grid */
+            .items-row { flex-direction:column; gap:10px; }
+            .cat-bar { flex:0 0 auto; width:100%; flex-direction:row; max-height:none;
+                       overflow-x:auto; overflow-y:hidden; border-right:0;
+                       border-bottom:1px solid var(--line); padding:0 0 8px;
+                       -webkit-overflow-scrolling:touch; }
+            .cat-tab { flex:0 0 auto; }
+            .quick-grid { max-height:none; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); }
+
+            /* Compact cart so all columns fit a phone width */
+            .cart-table thead th, .cart-table td { font-size:11.5px; padding:7px 3px; }
+            .qty-stepper { gap:1px; padding:1px; }
+            .qty-btn { width:22px; height:22px; }
+            .qty-stepper input[type="number"] { width:44px !important; }
+
+            .grand-bar .val { font-size:20px; }
+            .pay-leg .form-control { flex:1 1 100%; }
+        }
+
+        /* ════════════ PER-TEMPLATE COLOR PALETTES ════════════
+           Each template overrides the theme variables, so the whole UI (headers, buttons,
+           totals bar, active tabs, accents) recolours automatically. Two classes outrank `.rpos`. */
+        /* Classic keeps the store's own theme colour (inherits --accent from .rpos → --primary). */
+        .rpos.rpos-tpl-compact { --accent:#0d9488; --accent-dark:#0f766e; --accent2:#5eead4; --soft:#ecfdf5; }
+        .rpos.rpos-tpl-modern  { --accent:#db2777; --accent-dark:#9d174d; --accent2:#f9a8d4; --soft:#fdf2f8; }
+        /* Tint the whole screen background to reinforce each palette (Classic stays neutral). */
+        .rpos-tpl-compact { background:#f1fbf7; }
+        .rpos-tpl-modern  { background:#fdf4f9; }
+
+        /* ════════════════ UI TEMPLATE: COMPACT ════════════════
+           Cart-first, dense layout for fast billing. Cart panel is wider and shown first. */
+        .rpos-tpl-compact .pos-wrap { flex-direction:row-reverse; }
+        .rpos-tpl-compact .pos-right { flex:1 1 54%; }
+        .rpos-tpl-compact .pos-left  { flex:1 1 46%; }
+        .rpos-tpl-compact .pc-bd { padding:10px 12px; }
+        .rpos-tpl-compact .pc-hd { padding:10px 13px; font-size:13px; }
+        .rpos-tpl-compact .cart-table td { padding:6px 5px; font-size:12.5px; }
+        .rpos-tpl-compact .cart-table thead th { padding:6px 5px; }
+        /* Compact = image-card grid: photo on top, name + price below. */
+        .rpos-tpl-compact .quick-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; max-height:440px; }
+        .rpos-tpl-compact .quick-item { min-height:auto; padding:6px 6px 9px; justify-content:flex-start; gap:4px; text-align:center; }
+        .rpos-tpl-compact .quick-item .qi-img { display:block; width:100%; height:78px; object-fit:cover; border-radius:6px; background:#eef2f7; margin-bottom:3px; }
+        .rpos-tpl-compact .quick-item .font-weight-bold { font-size:12px; }
+        .rpos-tpl-compact .cat-bar { max-height:340px; }
+        .rpos-tpl-compact #pos-search { height:44px; font-size:14px; }
+        .rpos-tpl-compact .totals { padding:8px 12px; margin-top:10px; }
+        .rpos-tpl-compact .grand-bar { padding:10px 14px; }
+        .rpos-tpl-compact .grand-bar .val { font-size:21px; }
+        @media (max-width: 991.98px) { .rpos-tpl-compact .pos-wrap { flex-direction:column; } }
+
+        /* ════════════════ UI TEMPLATE: MODERN ════════════════
+           Bold, rounded, touch-friendly tiles with a gradient header. */
+        .rpos-tpl-modern .pos-card { border:none; border-radius:20px; box-shadow:0 8px 30px rgba(16,24,40,.10); }
+        .rpos-tpl-modern .pc-hd { background:linear-gradient(135deg, var(--accent), var(--accent-dark)); font-size:15px; padding:15px 18px; }
+        .rpos-tpl-modern #pos-search { height:56px; border-radius:16px; font-size:16px; }
+        .rpos-tpl-modern .quick-grid { grid-template-columns:repeat(auto-fill,minmax(142px,1fr)); gap:14px; }
+        .rpos-tpl-modern .quick-item { border-radius:16px; min-height:92px; font-size:13px; box-shadow:0 2px 10px rgba(16,24,40,.06); border-color:#eceefb; }
+        .rpos-tpl-modern .quick-item:hover { box-shadow:0 10px 24px rgba(16,24,40,.14); }
+        .rpos-tpl-modern .cat-tab { border-radius:12px; padding:11px 13px; }
+        .rpos-tpl-modern .totals { border-radius:16px; padding:14px 18px; }
+        .rpos-tpl-modern .grand-bar { border-radius:18px; padding:18px 22px; background:linear-gradient(135deg, var(--accent), var(--accent-dark)); }
+        .rpos-tpl-modern .grand-bar .val { font-size:30px; }
+        .rpos-tpl-modern #btn-finalize, .rpos-tpl-modern #btn-finalize:hover, .rpos-tpl-modern #btn-finalize:active {
+            height:54px; font-size:16px; border-radius:16px;
+            background:linear-gradient(135deg, var(--accent), var(--accent-dark)) !important; }
+        .rpos-tpl-modern .cat-tab.active { background:linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color:var(--accent); }
+        .rpos-tpl-modern .qty-btn { width:30px; height:30px; border-radius:9px; }
+        .rpos-tpl-modern .qty-btn:hover { background:var(--accent); }
+        .rpos-tpl-modern #cust-search { height:48px; border-radius:12px; }
+        .rpos-tpl-modern .pos-topbar h1 { color:var(--accent-dark); }
+
+        /* ── Compact: flat, square, no-frills (visually opposite of Modern) ── */
+        .rpos-tpl-compact .pos-card { border-radius:8px; }
+        .rpos-tpl-compact .quick-item { border-radius:7px; }
+        .rpos-tpl-compact .totals, .rpos-tpl-compact .grand-bar { border-radius:8px; }
+        .rpos-tpl-compact .pos-topbar h1 { color:var(--accent-dark); }
+
+        /* ════════════════ UI TEMPLATE: CLASSIC ════════════════
+           Clean list-style products: name on the left, price on the right, accent left border.
+           (Compact = image cards · Modern = big rounded tiles · Classic = list rows.) */
+        .rpos-tpl-classic .quick-grid { grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px; }
+        .rpos-tpl-classic .quick-item { flex-direction:row; justify-content:flex-start; align-items:center;
+            text-align:left; min-height:auto; padding:11px 14px; border-left:3px solid var(--accent); border-radius:8px; }
+        .rpos-tpl-classic .quick-item:hover { background:var(--soft); transform:none; }
+        .rpos-tpl-classic .quick-item .font-weight-bold { font-size:13px; }
+        .rpos-tpl-classic .quick-item .text-muted { font-size:14px; white-space:nowrap; margin-left:auto; }
+        .rpos-tpl-classic .quick-item::after { content:"＋"; color:var(--accent); font-weight:700; font-size:15px; margin-left:8px; opacity:.55; }
+        .rpos-tpl-classic .pos-topbar h1 { color:var(--accent-dark); }
+
+        /* ════════════ KIOSK MODE (full-screen New Sale only) ════════════
+           While full-screen, hide the panel chrome and show just the billing screen. */
+        body.pos-kiosk #header,
+        body.pos-kiosk .navbar-vertical-aside,
+        body.pos-kiosk .footer { display:none !important; }
+        body.pos-kiosk .main { padding-left:0 !important; padding-top:0 !important; }
+        body.pos-kiosk .content.rpos { padding-top:14px; }
     </style>
 @endpush
 
 @section('content')
-    <div class="content container-fluid rpos">
+    <div class="content container-fluid rpos rpos-tpl-{{ $uiTemplate ?? 'classic' }}">
         <div class="pos-topbar">
             <div>
                 <h1 class="page-header-title">Retail POS</h1>
                 <div class="sub">Billing &amp; checkout</div>
             </div>
-            @if (hasPermission('pos_bills', 'view'))
-                <a href="{{ route('vendor.retail-pos.today') }}" class="btn btn-sm btn-outline-primary">📋 Today's Bills</a>
-            @endif
+            <div class="d-flex" style="gap:8px;">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-fullscreen" title="Toggle full screen">⛶ Full screen</button>
+                @if (hasPermission('pos_bills', 'view'))
+                    <a href="{{ route('vendor.retail-pos.today') }}" class="btn btn-sm btn-outline-primary">📋 Today's Bills</a>
+                @endif
+            </div>
         </div>
 
         <div class="pos-wrap">
@@ -142,6 +267,7 @@
                                         ];
                                     @endphp
                                     <div class="quick-item" data-item='@json($qiData)'>
+                                        <img class="qi-img" src="{{ $qi->image ? asset('storage/app/public/inventory-item/' . $qi->image) : asset('public/assets/admin/img/160x160/img2.jpg') }}" onerror="this.src='{{ asset('public/assets/admin/img/160x160/img2.jpg') }}'" alt="">
                                         <div class="font-weight-bold text-truncate">{{ $qi->item_name }}</div>
                                         <div class="text-muted">₹{{ number_format((float) ($qi->selling_price ?? 0), 2) }}</div>
                                     </div>
@@ -204,16 +330,18 @@
                             @endforelse
                         </div>
 
-                        <table class="table cart-table">
-                            <thead>
-                                <tr>
-                                    <th>Item</th><th width="120">Qty</th><th width="70" class="text-right">Rate</th><th width="80" class="text-right">Total</th><th width="28"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="cart-body">
-                                <tr id="cart-empty"><td colspan="5" class="text-center text-muted py-4">🛒 Cart is empty — scan or pick an item</td></tr>
-                            </tbody>
-                        </table>
+                        <div class="cart-scroll">
+                            <table class="table cart-table" style="min-width:330px;">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th><th width="120">Qty</th><th width="70" class="text-right">Rate</th><th width="80" class="text-right">Total</th><th width="28"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cart-body">
+                                    <tr id="cart-empty"><td colspan="5" class="text-center text-muted py-4">🛒 Cart is empty — scan or pick an item</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
 
                         <div class="totals">
                             <div class="totals-row"><span>Subtotal (taxable)</span><span>₹<span id="t-subtotal">0.00</span></span></div>
@@ -280,6 +408,9 @@
             </div>{{-- /pos-right --}}
         </div>{{-- /pos-wrap --}}
     </div>
+
+    {{-- Reuse the standard Add New Customer modal --}}
+    @include('vendor-views/form_modals/customer_add')
 @endsection
 
 @push('script')
@@ -317,11 +448,23 @@
             openDrawer: function () { return this.call('/drawer/open'); },
             printReceipt: function (url) { return this.call('/print', { url: url, format: '80mm' }); },
             readScale: function () { return this.call('/scale/read').then(r => r && r.weight); },
+            // Returns true if the hardware agent handled the print (so we skip the browser print).
             afterSale: function (d, cashUsed) {
                 if (cashUsed) this.openDrawer();
-                if (d.thermal_url) this.printReceipt(d.thermal_url);
+                if (!d.thermal_url) return Promise.resolve(false);
+                return this.printReceipt(d.thermal_url).then(function (r) { return r != null; });
             },
         };
+
+        // Direct-print the receipt in place (hidden iframe) — like the POS token, no new tab.
+        // The thermal page auto-calls window.print() on load.
+        function directPrintReceipt(url) {
+            var f = document.createElement('iframe');
+            f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+            f.src = url;
+            document.body.appendChild(f);
+            setTimeout(function () { try { f.parentNode && f.parentNode.removeChild(f); } catch (e) {} }, 60000);
+        }
 
         function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
         function posBranch() { const el = document.getElementById('pos-branch'); return el ? (el.value || '') : ''; }
@@ -340,16 +483,23 @@
                     id: item.id, name: item.name, price: parseFloat(item.price) || 0,
                     qty: 1, discount: 0, hsn: item.hsn || '',
                     gst_rate: parseFloat(item.gst_rate) || 0, gst_status: item.gst_status || 'excluding',
+                    unit: item.unit || '',
+                    // Loose item — weighed on the scale at sale time; billed weight × price/unit.
+                    // `pieces` is an optional count (e.g. 4 apples) recorded alongside the weight.
+                    sell_loose: !!item.sell_loose,
+                    pieces: item.sell_loose ? 1 : null,
                 });
+                // For a loose item, jump straight to the scale so the weight is captured.
+                if (item.sell_loose) weighLine(POS.cart.length - 1);
             }
             renderCart();
         }
 
-        // Weighing scale → set this line's qty from the connected scale (loose items).
+        // Weighing scale → set this line's qty (in the stock unit) from the connected scale.
         function weighLine(i) {
             POSAgent.readScale().then(w => {
                 if (w && w > 0) { POS.cart[i].qty = Math.round(w * 1000) / 1000; renderCart(); }
-                else { (window.toastr ? toastr.error : alert)('Scale not connected'); }
+                else { (window.toastr ? toastr.error : alert)('Scale not connected — enter weight manually'); }
             });
         }
 
@@ -362,25 +512,76 @@
                     <tr>
                         <td>
                             <div class="cart-name">${l.name}</div>
+                            ${l.sell_loose ? `<div class="cart-sub" style="color:#1a7d4f">loose · weighed${l.unit ? ' (' + l.unit + ')' : ''}</div>` : ''}
                             ${l.discount > 0 ? `<div class="cart-sub">− ₹${money(l.discount)} off</div>` : ''}
                         </td>
                         <td>
+                            ${l.sell_loose ? `
+                            <div class="qty-stepper" style="margin-bottom:4px;">
+                                <input type="number" min="0" step="1" value="${l.pieces ?? ''}" placeholder="pcs" title="Pieces (e.g. 4 apples)"
+                                    onchange="setPieces(${i}, this.value)" onfocus="this.select()"
+                                    style="width:44px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
+                                <span style="font-size:11px;color:var(--muted)">pc</span>
+                            </div>
                             <div class="qty-stepper">
                                 <button class="qty-btn" onclick="chQty(${i},-1)">−</button>
-                                <span>${l.qty}</span>
+                                <input type="number" min="0" step="0.001" value="${l.qty}" title="Weight (from scale)"
+                                    onkeyup="liveQty(${i}, this.value)" onchange="setQty(${i}, this.value)" onfocus="this.select()"
+                                    style="width:56px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
+                                <span style="font-size:11px;color:var(--muted)">${l.unit || 'kg'}</span>
                                 <button class="qty-btn" onclick="chQty(${i},1)">+</button>
-                                <button class="qty-btn" title="Weigh loose item" onclick="weighLine(${i})">⚖</button>
-                            </div>
+                                <button class="qty-btn" title="Weigh on scale" onclick="weighLine(${i})">⚖</button>
+                            </div>` : `
+                            <div class="qty-stepper">
+                                <button class="qty-btn" onclick="chQty(${i},-1)">−</button>
+                                <input type="number" min="0" step="1" value="${l.qty}"
+                                    onkeyup="liveQty(${i}, this.value)" onchange="setQty(${i}, this.value)" onfocus="this.select()"
+                                    style="width:56px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
+                                <button class="qty-btn" onclick="chQty(${i},1)">+</button>
+                            </div>`}
                         </td>
                         <td class="text-right">${money(l.price)}</td>
-                        <td class="text-right font-weight-bold">${money(l.price * l.qty - l.discount)}</td>
+                        <td class="text-right font-weight-bold" id="ltot-${i}">${money(l.price * l.qty - l.discount)}</td>
                         <td class="text-right"><a class="cart-del" title="Remove" onclick="rmLine(${i})"><i class="tio-delete"></i></a></td>
                     </tr>`).join('');
             }
             recalc();
         }
 
-        function chQty(i, d) { POS.cart[i].qty = Math.max(1, POS.cart[i].qty + d); renderCart(); }
+        function chQty(i, d) {
+            const l = POS.cart[i];
+            const step = l.sell_loose ? 0.1 : 1;
+            const min = l.sell_loose ? 0.001 : 1;
+            l.qty = Math.max(min, Math.round((l.qty + d * step) * 1000) / 1000);
+            renderCart();
+        }
+        // Live update as the cashier types (keyup) — refresh just this line's total and the
+        // running totals, without re-rendering the cart (which would steal input focus).
+        function liveQty(i, v) {
+            const l = POS.cart[i];
+            let q = parseFloat(v);
+            if (!(q >= 0)) q = 0; // allow a transient/partial value mid-typing; normalised on blur
+            l.qty = q;
+            const cell = document.getElementById('ltot-' + i);
+            if (cell) cell.textContent = money(l.price * l.qty - l.discount);
+            recalc();
+        }
+        // Typed quantity / weight — loose lines accept decimals (kg from the scale or by hand),
+        // normal lines stay whole. Price recalculates from the new quantity. Runs on blur/Enter
+        // to normalise (clamp to a minimum) and redraw the row cleanly.
+        function setQty(i, v) {
+            const l = POS.cart[i];
+            let q = parseFloat(v);
+            if (!(q > 0)) q = l.sell_loose ? 0.001 : 1;
+            l.qty = l.sell_loose ? Math.round(q * 1000) / 1000 : Math.max(1, Math.round(q));
+            renderCart();
+        }
+        // Loose item piece count (e.g. 4 apples) — recorded & printed; price stays by weight.
+        function setPieces(i, v) {
+            const p = parseInt(v, 10);
+            POS.cart[i].pieces = (p > 0) ? p : null;
+            renderCart();
+        }
         function rmLine(i) { POS.cart.splice(i, 1); renderCart(); }
 
         function recalc() {
@@ -423,29 +624,49 @@
 
         // ── Search / scan ──
         let searchTimer = null;
+        let lastInputAt = 0;
+        let fastCount = 0; // consecutive rapid keystrokes → barcode scanner (keyboard wedge)
         const searchBox = document.getElementById('pos-search');
         const resultsBox = document.getElementById('pos-results');
 
         searchBox.addEventListener('input', function () {
             clearTimeout(searchTimer);
+            const now = Date.now();
+            const gap = now - lastInputAt;
+            lastInputAt = now;
+            fastCount = (gap > 0 && gap < 35) ? fastCount + 1 : 0;
             const q = this.value.trim();
             if (q.length < 2) { resultsBox.style.display = 'none'; return; }
-            searchTimer = setTimeout(() => lookup(q, false), 200);
+            // USB barcode scanners type as a keyboard wedge — a run of characters arrives within a
+            // few ms of each other. Treat a sustained burst as a scan and auto-add even without a
+            // trailing Enter; otherwise behave as a normal (debounced) search.
+            if (fastCount >= 3) {
+                searchTimer = setTimeout(() => {
+                    const code = searchBox.value.trim();
+                    fastCount = 0;
+                    if (code) lookup(code, true);
+                }, 130);
+            } else {
+                searchTimer = setTimeout(() => lookup(q, false), 200);
+            }
         });
 
         searchBox.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); lookup(this.value.trim(), true); }
+            if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); fastCount = 0; lookup(this.value.trim(), true); }
         });
 
         function lookup(q, exact) {
-            if (!q) return;
-            fetch(POS.products + '?q=' + encodeURIComponent(q) + (exact ? '&exact=1' : '') + '&branch=' + encodeURIComponent(posBranch()))
+            if (!q) return Promise.resolve(null);
+            return fetch(POS.products + '?q=' + encodeURIComponent(q) + (exact ? '&exact=1' : '') + '&branch=' + encodeURIComponent(posBranch()))
                 .then(r => r.json())
                 .then(d => {
-                    if (exact && d.items.length === 1) {
-                        addToCart(d.items[0]); searchBox.value = ''; resultsBox.style.display = 'none'; return;
+                    if (exact && d.items.length >= 1) {
+                        const it = d.items[0];
+                        addToCart(it); searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
+                        if (window.toastr) toastr.success(it.name + ' added to cart');
+                        return it;
                     }
-                    if (!d.items.length) { resultsBox.innerHTML = '<div class="res-row text-muted">No products</div>'; resultsBox.style.display = 'block'; return; }
+                    if (!d.items.length) { resultsBox.innerHTML = '<div class="res-row text-muted">No products</div>'; resultsBox.style.display = 'block'; return null; }
                     resultsBox.innerHTML = d.items.map(it =>
                         `<div class="res-row" data-it='${JSON.stringify(it)}'>
                             <span>${it.name} <small class="text-muted">${it.sku || ''}</small></span>
@@ -458,10 +679,12 @@
                             searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
                         });
                     });
+                    return null;
                 });
         }
 
         // Quick-grid: delegated click (works for server-rendered Popular + AJAX category items).
+        const QI_PLACEHOLDER = '{{ asset('public/assets/admin/img/160x160/img2.jpg') }}';
         const quickGrid = document.getElementById('quick-grid');
         const popularHtml = quickGrid.innerHTML; // remember the Popular grid
         quickGrid.addEventListener('click', function (e) {
@@ -481,8 +704,10 @@
                 .then(d => {
                     if (!d.items.length) { quickGrid.innerHTML = '<div class="text-muted p-2">No items in this category.</div>'; return; }
                     quickGrid.innerHTML = d.items.map(it => {
-                        const data = { id: it.id, name: it.name, price: it.price, hsn: it.hsn, gst_rate: it.gst_rate, gst_status: it.gst_status, unit: it.unit, expiry_warn: it.expiry_warn, expiry: it.expiry, low_stock: it.low_stock };
+                        const data = { id: it.id, name: it.name, price: it.price, hsn: it.hsn, gst_rate: it.gst_rate, gst_status: it.gst_status, unit: it.unit, expiry_warn: it.expiry_warn, expiry: it.expiry, low_stock: it.low_stock, sell_loose: it.sell_loose };
+                        const img = it.image || QI_PLACEHOLDER;
                         return '<div class="quick-item" data-item=\'' + JSON.stringify(data).replace(/'/g, '&#39;') + '\'>' +
+                            '<img class="qi-img" src="' + img + '" onerror="this.src=\'' + QI_PLACEHOLDER + '\'" alt="">' +
                             '<div class="font-weight-bold text-truncate">' + it.name + '</div>' +
                             '<div class="text-muted">₹' + money(it.price) + '</div></div>';
                     }).join('');
@@ -595,18 +820,29 @@
             if (q.length < 2) { custResults.style.display = 'none'; return; }
             custTimer = setTimeout(() => {
                 fetch(POS.customers + '?q=' + encodeURIComponent(q)).then(r => r.json()).then(d => {
-                    if (!d.customers.length) { custResults.innerHTML = '<div class="res-row text-muted">No customers</div>'; }
-                    else custResults.innerHTML = d.customers.map(c =>
-                        `<div class="res-row" data-c='${JSON.stringify(c)}'>
-                            <span>${c.name} <small class="text-muted">${c.phone || ''}</small></span>
-                            <span>★${c.loyalty_points} · ₹${money(c.wallet_balance)}</span>
-                        </div>`).join('');
+                    let html = d.customers.length
+                        ? d.customers.map(c =>
+                            `<div class="res-row" data-c='${JSON.stringify(c)}'>
+                                <span>${c.name} <small class="text-muted">${c.phone || ''}</small></span>
+                                <span>★${c.loyalty_points} · ₹${money(c.wallet_balance)}</span>
+                            </div>`).join('')
+                        : '<div class="res-row text-muted">No customers</div>';
+                    if (POS.canCreate) {
+                        html += `<div class="res-row" id="cust-add-row" style="cursor:pointer;color:var(--accent,#e3342f);font-weight:700;">
+                                    <span>+ Add new customer</span></div>`;
+                    }
+                    custResults.innerHTML = html;
                     custResults.style.display = 'block';
                     custResults.querySelectorAll('.res-row[data-c]').forEach(row =>
                         row.addEventListener('click', () => selectCustomer(JSON.parse(row.getAttribute('data-c')))));
+                    const addRow = document.getElementById('cust-add-row');
+                    if (addRow) addRow.addEventListener('click', () => openAddCustomerModal(q));
                 });
             }, 200);
         });
+
+        // NOTE: openAddCustomerModal() and the customer-form AJAX submit live in the script_2
+        // stack at the bottom — it loads AFTER jQuery, whereas this script stack runs before it.
 
         function selectCustomer(c) {
             document.getElementById('pos-customer').value = c.id;
@@ -664,6 +900,8 @@
                     id: l.id, name: l.name, price: parseFloat(l.price) || 0, qty: parseFloat(l.qty) || 1,
                     discount: parseFloat(l.discount) || 0, hsn: l.hsn || '',
                     gst_rate: parseFloat(l.gst_rate) || 0, gst_status: l.gst_status || 'excluding',
+                    unit: l.unit || '', sell_loose: !!l.sell_loose,
+                    pieces: l.pieces ? parseInt(l.pieces, 10) : null,
                 }));
                 POS.holdId = d.hold_id;
                 document.getElementById('pos-customer').value = d.customer_id || 0;
@@ -745,8 +983,12 @@
                         if (d.points_earned > 0) m += ' · +' + d.points_earned + ' pts';
                         toastr.success(m);
                     }
-                    if (d.thermal_url) window.open(d.thermal_url, '_blank');
-                    POSAgent.afterSale(d, payments.some(p => p.mode === 'cash') || payments.length === 0);
+                    // Direct print: hardware agent if running, otherwise in-place browser print
+                    // (no new tab) — just like a POS token. Avoids double printing.
+                    POSAgent.afterSale(d, payments.some(p => p.mode === 'cash') || payments.length === 0)
+                        .then(function (agentPrinted) {
+                            if (!agentPrinted && d.thermal_url) directPrintReceipt(d.thermal_url);
+                        });
                     resetSale(); refreshHeld(); searchBox.focus();
                 })
                 .catch(() => { if (btn) { btn.disabled = false; btn.textContent = 'Finalize & Print (F12)'; } alert('Error'); });
@@ -760,10 +1002,11 @@
         (function () {
             const overlay = document.getElementById('cam-scan');
             const msg = document.getElementById('cam-msg');
-            let cam = null, lastCode = '', lastAt = 0;
+            let cam = null, lastCode = '', lastAt = 0, scanBusy = false;
 
             function open() {
                 if (typeof Html5Qrcode === 'undefined') { (window.toastr ? toastr.error : alert)('Scanner library not loaded'); return; }
+                scanBusy = false; lastCode = ''; msg.textContent = 'Point the camera at the product barcode.';
                 overlay.style.display = 'flex';
                 cam = new Html5Qrcode('cam-reader');
                 cam.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScan, () => {})
@@ -775,16 +1018,95 @@
             }
             function onScan(code) {
                 const now = Date.now();
-                if (code === lastCode && now - lastAt < 1500) return; // de-dupe rapid frames
-                lastCode = code; lastAt = now;
-                lookup(code, true);                 // exact match → adds to cart
-                msg.textContent = 'Added: ' + code;
+                if (scanBusy || (code === lastCode && now - lastAt < 1500)) return; // de-dupe rapid frames
+                lastCode = code; lastAt = now; scanBusy = true;
                 if (navigator.vibrate) navigator.vibrate(60);
+                // Exact match adds to cart; on success close the scanner and notify (toast comes
+                // from lookup). If nothing matched, keep scanning and show a hint.
+                lookup(code, true).then(item => {
+                    if (item) { msg.textContent = 'Added: ' + item.name; close(); }
+                    else { msg.textContent = 'Not found: ' + code; scanBusy = false; }
+                }).catch(() => { scanBusy = false; });
             }
 
             document.getElementById('btn-cam-scan').addEventListener('click', open);
             document.getElementById('cam-close').addEventListener('click', close);
             overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
         })();
+
+        // ── Kiosk toggle: hide the vendor sidebar + topbar (remembered per browser) ──
+        // Pure CSS — the browser's own header (tabs/address bar) stays visible, so refreshing
+        // and printing never disturb it. The preference is restored on load with no gesture.
+        (function () {
+            const KEY = 'rpos_fullscreen';
+            const btn = document.getElementById('btn-fullscreen');
+            function apply(on) {
+                document.body.classList.toggle('pos-kiosk', on);
+                if (btn) btn.innerHTML = on ? '⤢ Exit full screen' : '⛶ Full screen';
+            }
+            if (btn) btn.addEventListener('click', function () {
+                const on = !document.body.classList.contains('pos-kiosk');
+                localStorage.setItem(KEY, on ? '1' : '0');
+                apply(on);
+            });
+            apply(localStorage.getItem(KEY) === '1');
+        })();
+    </script>
+@endpush
+
+{{-- jQuery-dependent code MUST live here: script_2 loads after vendor.min.js (jQuery/Bootstrap),
+     whereas @push('script') runs before it. --}}
+@push('script_2')
+    <script>
+        // Open the standard "Add New Customer" modal, prefilling name or phone from the search box.
+        function openAddCustomerModal(prefill) {
+            prefill = (prefill || '').trim();
+            const isPhone = /^\d{5,}$/.test(prefill);
+            const $m = $('#customerAddModal');
+            $m.find('input[name="f_name"]').val(isPhone ? '' : prefill);
+            $m.find('input[name="phone"]').val(isPhone ? prefill : '');
+            document.getElementById('cust-results').style.display = 'none';
+            $m.modal('show');
+        }
+
+        // AJAX-submit the standard customer form, then select the new customer into the sale.
+        $(document).on('submit', '#customerAddModal .customer_add_form', function (e) {
+            e.preventDefault();
+            const form = this; 
+            const $btn = $(form).find('button[type="submit"], button:not([type])').last();
+            const oldTxt = $btn.text();
+            $btn.prop('disabled', true).text('Saving…');
+            const fd = new FormData(form);
+            fd.append('form_type', 'ajax');
+            $.ajax({
+                url: form.action, method: 'POST', data: fd, processData: false, contentType: false,
+                headers: { 'X-CSRF-TOKEN': POS.csrf },
+                success: function (d) {
+                    if (d && d.status && d.customer) {
+                        $('#customerAddModal').modal('hide');
+                        form.reset();
+                        selectCustomer({
+                            id: d.customer.id,
+                            name: d.customer.f_name,
+                            phone: d.customer.phone,
+                            loyalty_points: d.customer.loyalty_points || 0,
+                            wallet_balance: d.customer.wallet_balance || 0,
+                            credit_balance: d.customer.credit_balance || 0,
+                            credit_limit: d.customer.credit_limit || 0,
+                        });
+                        if (window.toastr) toastr.success('Customer added');
+                    } else {
+                        (window.toastr ? toastr.error : alert)((d && d.msg) || 'Failed to add customer');
+                    }
+                },
+                error: function (xhr) {
+                    let msg = 'Failed to add customer';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) msg = Object.values(xhr.responseJSON.errors)[0][0];
+                    else if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                    (window.toastr ? toastr.error : alert)(msg);
+                },
+                complete: function () { $btn.prop('disabled', false).text(oldTxt); }
+            });
+        });
     </script>
 @endpush

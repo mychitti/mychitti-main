@@ -7,6 +7,8 @@
         'main'            => ['icon' => 'tio-home',                      'label' => 'Main Dashboard',      'desc' => 'Overview, wallet & leads summary',        'module' => null],
         'leads_page'      => ['icon' => 'tio-chart-bar-1',               'label' => 'Leads Page',          'desc' => 'List, filters and actions for all leads',  'module' => null],
         'leads_dashboard' => ['icon' => 'tio-chart-bar-1',               'label' => 'Leads Dashboard',     'desc' => 'Lead stats, performance & analytics',      'module' => null],
+        // Retail POS store — this module view only loads for business_type = pos_retail.
+        'retail_pos'      => ['icon' => 'tio-shopping-basket-outlined',  'label' => 'Retail POS Dashboard','desc' => 'Sales, branches & stock',                   'module' => null],
         // Shown only when the store has the corresponding module
         'hospital'        => ['icon' => 'tio-hospital',                  'label' => 'Hospital Dashboard',  'desc' => 'Appointments, OPD & IPD',                  'module' => 'hospital'],
         'laundry'         => ['icon' => 'tio-shopping-basket',            'label' => 'Laundry Dashboard',   'desc' => 'Orders, challans & monthly register',       'module' => 'laundry'],

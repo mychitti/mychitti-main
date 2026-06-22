@@ -46,6 +46,7 @@ class InventoryItem extends Model
         'description',
         'description_attributes',
         'specifications',
+        'sell_loose',
     ];
  
     public function purchaseOrders()

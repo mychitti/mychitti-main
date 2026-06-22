@@ -781,6 +781,16 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="col-12 mt-2">
+                                    <div class="badge badge-soft-info p-2 d-block text-left">
+                                        <label class="custom-label cursor-pointer mb-0 d-flex align-items-center">
+                                            <input type="checkbox" id="sell_loose_cb" name="sell_loose" value="1"
+                                                {{ !empty($item->sell_loose) ? 'checked' : '' }}
+                                                class="form-check-input position-static ml-0 mr-2">
+                                            Sell loose — weigh at the time of sale (POS asks for the weight; billed weight × price)
+                                        </label>
+                                    </div>
+                                </div>
 
 
                             </div>

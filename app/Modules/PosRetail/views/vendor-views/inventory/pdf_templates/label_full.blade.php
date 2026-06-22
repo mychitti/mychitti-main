@@ -7,7 +7,7 @@
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 5px;
+            padding: {{ ($single ?? false) ? '0' : '5px' }};
             font-size: 14px !important;
         }
 
@@ -17,10 +17,10 @@
         }
 
         td.label {
-            width: {{ $labelWidth }}mm;
-            height: {{ $labelHeight }}mm;
-            border: 1px dashed #d6d6d6ff;
-            padding: 12px !important;
+            width: {{ ($single ?? false) ? '100%' : $labelWidth . 'mm' }};
+            height: {{ ($single ?? false) ? 'auto' : $labelHeight . 'mm' }};
+            border: {{ ($single ?? false) ? 'none' : '1px dashed #d6d6d6ff' }};
+            padding: {{ ($single ?? false) ? '0' : '12px' }} !important;
             vertical-align: top;
         }
 
