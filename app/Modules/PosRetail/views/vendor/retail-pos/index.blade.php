@@ -75,6 +75,19 @@
         .denoms .btn { border-radius:8px; }
         .pay-leg { display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
         .pay-leg .form-control { border-radius:8px; }
+        /* Keep cash / amount / ref on one row (BS .form-control is width:100% otherwise each wraps) */
+        .pay-leg .pay-mode   { flex:0 0 88px; width:auto; }
+        .pay-leg .pay-amount { flex:1 1 0; min-width:0; width:auto; }
+        .pay-leg .pay-ref    { flex:1 1 0; min-width:0; width:auto; }
+
+        /* Customer + branch share one row */
+        .cam-row { display:flex; gap:8px; align-items:flex-start; margin-bottom:12px; }
+        .cam-row > .cam-col { flex:1 1 50%; min-width:0; }
+        .cam-row .cust-wrap { margin-bottom:0; }
+        @media (max-width: 575.98px) {
+            .cam-row { flex-wrap:wrap; }
+            .cam-row > .cam-col { flex:1 1 100%; }
+        }
 
         #btn-finalize, #btn-finalize:hover, #btn-finalize:focus, #btn-finalize:active {
             border-radius:12px; font-weight:700; border:0; color:#fff;
@@ -288,28 +301,30 @@
                         @endif
                     </div>
                     <div class="pc-bd">
-                        @if ($branchLocked)
-                            <input type="hidden" id="pos-branch" value="{{ $myBranchId }}">
-                            <div class="rp-mini mb-2">🏬 Billing at <b>{{ optional($branches->firstWhere('id', $myBranchId))->name }}</b></div>
-                        @elseif ($branches->count())
-                            <div class="form-group mb-2">
-                                <select id="pos-branch" class="form-control" required>
-                                    <option value="">🏬 Select branch *</option>
-                                    @foreach ($branches as $b)
-                                        <option value="{{ $b->id }}" {{ $defaultBranchId == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                                    @endforeach
-                                </select>
+                        <div class="cam-row">
+                            <div class="cust-wrap cam-col">
+                                <input type="hidden" id="pos-customer" value="0">
+                                <input type="text" id="cust-search" class="form-control" autocomplete="off"
+                                    placeholder="👤 Walk-in Customer — type name/phone to link">
+                                <div class="pos-results" id="cust-results" style="display:none; position:absolute; z-index:20; width:100%;"></div>
+                                <div id="cust-info" class="small text-muted mt-1" style="display:none;"></div>
                             </div>
-                        @else
-                            <input type="hidden" id="pos-branch" value="">
-                        @endif
 
-                        <div class="cust-wrap">
-                            <input type="hidden" id="pos-customer" value="0">
-                            <input type="text" id="cust-search" class="form-control" autocomplete="off"
-                                placeholder="👤 Walk-in Customer — type name/phone to link">
-                            <div class="pos-results" id="cust-results" style="display:none; position:absolute; z-index:20; width:100%;"></div>
-                            <div id="cust-info" class="small text-muted mt-1" style="display:none;"></div>
+                            @if ($branchLocked)
+                                <input type="hidden" id="pos-branch" value="{{ $myBranchId }}">
+                                <div class="cam-col"><div class="rp-mini">🏬 Billing at <b>{{ optional($branches->firstWhere('id', $myBranchId))->name }}</b></div></div>
+                            @elseif ($branches->count())
+                                <div class="cam-col">
+                                    <select id="pos-branch" class="form-control" required>
+                                        <option value="">🏬 Select branch *</option>
+                                        @foreach ($branches as $b)
+                                            <option value="{{ $b->id }}" {{ $defaultBranchId == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @else
+                                <input type="hidden" id="pos-branch" value="">
+                            @endif
                         </div>
 
                         <div id="held-panel" class="pos-results mb-2" style="display:none;">

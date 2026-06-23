@@ -74,13 +74,17 @@
         <div class="rp-card">
             <div class="hd"><span class="accent">Receipt Template</span></div>
             <div class="bd">
+                <style>
+                    .rp-tpl-opt { border: 1.5px solid #e4e4e7; background: #fff; transition: border-color .12s, background .12s; }
+                    .rp-tpl-opt.selected { border-color: #111; background: #f4f4f5; }
+                </style>
                 <p class="text-muted" style="font-size:12px;margin-bottom:10px;">Choose the layout used for the printed customer receipt.</p>
                 <form method="post" action="{{ route('vendor.retail-pos.receipt-template.save') }}">
                     @csrf
                     <div class="row">
                         @foreach ($receiptTemplates as $key => [$label, $desc])
                             <div class="col-md-2 mb-2">
-                                <label style="display:block;cursor:pointer;border:1.5px solid {{ $receiptTemplate === $key ? '#111' : '#e4e4e7' }};border-radius:12px;padding:12px 14px;{{ $receiptTemplate === $key ? 'background:#f4f4f5;' : '' }}">
+                                <label class="rp-tpl-opt {{ $receiptTemplate === $key ? 'selected' : '' }}" style="display:block;cursor:pointer;border-radius:12px;padding:12px 14px;">
                                     <img src="{{ asset('storage/app/public/uploaded/templates/' . $key . '.png') }}" alt="{{ $label }} receipt preview"
                                         onerror="this.style.display='none';"
                                         style="display:block;max-width:140px;width:100%;height:auto;background:#fff;border:1px solid #e4e4e7;border-radius:8px;margin:0 auto 10px;">
@@ -98,4 +102,15 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.querySelectorAll('input[name="pos_receipt_template"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                document.querySelectorAll('.rp-tpl-opt').forEach(function (label) {
+                    label.classList.remove('selected');
+                });
+                this.closest('.rp-tpl-opt').classList.add('selected');
+            });
+        });
+    </script>
 @endsection
