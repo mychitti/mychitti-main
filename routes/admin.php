@@ -1614,6 +1614,10 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 //recaptcha
                 Route::get('recaptcha', 'BusinessSettingsController@recaptcha_index')->name('recaptcha_index');
                 Route::post('recaptcha-update', 'BusinessSettingsController@recaptcha_update')->name('recaptcha_update');
+                //whatsapp (Meta Cloud API)
+                Route::get('whatsapp-config', 'BusinessSettingsController@whatsapp_index')->name('whatsapp-config');
+                Route::post('whatsapp-config-update', 'BusinessSettingsController@whatsapp_update')->name('whatsapp-config-update');
+                Route::post('whatsapp-config-test', 'BusinessSettingsController@whatsapp_test')->name('whatsapp-config-test');
             });
             // Offline payment Methods
             Route::get('/offline-payment', 'OfflinePaymentMethodController@index')->name('offline');

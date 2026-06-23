@@ -97,7 +97,7 @@
             </div>
         @else
             <div class="el"
-                style="left: {{ $x }}mm; top: {{ $y }}mm; width: {{ $availW }}mm; font-size: {{ $font }}pt; font-weight: {{ $bold ? 'bold' : 'normal' }}; text-align: {{ in_array($el['align'] ?? 'center', ['left','center','right']) ? ($el['align'] ?? 'center') : 'center' }}; {{ empty($el['newline']) ? 'white-space: nowrap;' : 'white-space: normal;' }}">
+                style="left: {{ $x }}mm; top: {{ $y }}mm; width: {{ $availW }}mm; font-size: {{ $font }}pt; line-height: 1.1; font-weight: {{ $bold ? 'bold' : 'normal' }}; text-align: left; {{ empty($el['newline']) ? 'white-space: nowrap;' : 'white-space: normal;' }}">
                 {!! $content !!}
             </div>
         @endif

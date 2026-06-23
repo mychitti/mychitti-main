@@ -1235,24 +1235,28 @@ class RetailPosController extends Controller
             Toastr::error('No customer phone on file');
             return back();
         }
+        // Make sure there's a PDF to attach.
+        if (!$invoice->pdf) {
+            try { $pdf = _createBillPdf($invoice, 'vendor'); $invoice->update(['pdf' => $pdf['pdf']]); } catch (\Throwable $th) {}
+        }
         $pdfUrl = $invoice->pdf ? asset('storage/app/public/invoice/' . $invoice->pdf) : null;
-        $endpoint = config('services.whatsapp.url') ?: env('WHATSAPP_API_URL');
-        $token = config('services.whatsapp.token') ?: env('WHATSAPP_API_TOKEN');
 
-        if (!$endpoint || !$token) {
+        $wa = \App\Services\WhatsAppService::make($this->storeId());
+        if (!$wa->isConfigured()) {
             Toastr::warning('WhatsApp API not configured. Invoice link: ' . ($pdfUrl ?: '—'));
             return back();
         }
-        try {
-            \Illuminate\Support\Facades\Http::withToken($token)->post($endpoint, [
-                'phone'    => $phone,
-                'document' => $pdfUrl,
-                'caption'  => 'Invoice ' . $invoice->invoice_id,
-            ]);
+
+        $caption = 'Invoice ' . $invoice->invoice_id;
+        $res = $pdfUrl
+            ? $wa->sendDocument($phone, $pdfUrl, 'Invoice-' . $invoice->invoice_id . '.pdf', $caption)
+            : $wa->sendText($phone, $caption);
+
+        if ($res['success']) {
             $this->logAudit('whatsapp', $invoice->invoice_id, $phone);
             Toastr::success('Invoice sent via WhatsApp to ' . $phone);
-        } catch (\Throwable $th) {
-            Toastr::error('WhatsApp send failed');
+        } else {
+            Toastr::error('WhatsApp send failed: ' . $res['error']);
         }
         return back();
     }

@@ -2799,6 +2799,57 @@ class BusinessSettingsController extends Controller
         Toastr::success(translate('messages.updated_successfully'));
         return back();
     }
+
+    public function whatsapp_index(Request $request)
+    {
+        $config = \App\CentralLogics\Helpers::get_business_settings('whatsapp_config');
+        return view('admin-views.business-settings.whatsapp-index', compact('config'));
+    }
+
+    public function whatsapp_update(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+        DB::table('business_settings')->updateOrInsert(['key' => 'whatsapp_config'], [
+            'key' => 'whatsapp_config',
+            'value' => json_encode([
+                'status' => $request->status ? 1 : 0,
+                'api_version' => $request->api_version ?: 'v21.0',
+                'phone_number_id' => trim((string) $request->phone_number_id),
+                'token' => trim((string) $request->token),
+                'business_account_id' => trim((string) $request->business_account_id),
+                'default_country_code' => preg_replace('/[^0-9]/', '', (string) $request->default_country_code) ?: '91',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Toastr::success(translate('messages.updated_successfully'));
+        return back();
+    }
+
+    public function whatsapp_test(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+        $request->validate(['test_phone' => 'required']);
+        $wa = \App\Services\WhatsAppService::make();
+        if (!$wa->isConfigured()) {
+            Toastr::error('Save and enable WhatsApp credentials first.');
+            return back();
+        }
+        $message = $request->test_message ?: ('Test message from ' . config('app.name'));
+        $res = $wa->sendText($request->test_phone, $message);
+        if ($res['success']) {
+            Toastr::success('Test message sent (id: ' . ($res['id'] ?? '—') . ')');
+        } else {
+            Toastr::error('Send failed: ' . $res['error']);
+        }
+        return back();
+    }
     //Send Mail
     public function send_mail(Request $request)
     {

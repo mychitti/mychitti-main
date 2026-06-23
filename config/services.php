@@ -67,4 +67,16 @@ return [
         'token' => env('AI_SERVER_TOKEN'),
     ],
 
+    // Meta WhatsApp Cloud API — platform-wide default credentials. The admin can also
+    // store these in business_settings (key: whatsapp_config), and individual vendors
+    // can override them per store. Resolution order is handled by
+    // App\Services\WhatsAppService: per-vendor → global (DB) → this env fallback.
+    'whatsapp' => [
+        'api_version'          => env('WHATSAPP_API_VERSION', 'v21.0'),
+        'phone_number_id'      => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'token'                => env('WHATSAPP_TOKEN'),
+        'business_account_id'  => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '91'),
+    ],
+
 ];
