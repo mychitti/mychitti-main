@@ -127,7 +127,7 @@ class WhatsAppService
     }
 
     /** Low-level send. $payload is merged onto {messaging_product:'whatsapp'}. */
-    public function send(array $payload): array
+    public function send(array $payload, array $meta = []): array
     {
         if (!$this->isConfigured()) {
             return ['success' => false, 'error' => 'WhatsApp API not configured', 'id' => null];
@@ -138,38 +138,41 @@ class WhatsAppService
                 ->post($this->endpoint(), array_merge(['messaging_product' => 'whatsapp'], $payload));
 
             if ($resp->successful()) {
-                return [
+                $result = [
                     'success'  => true,
                     'error'    => null,
                     'id'       => data_get($resp->json(), 'messages.0.id'),
                     'response' => $resp->json(),
                 ];
+            } else {
+                $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+                Log::warning('WhatsApp send failed', ['status' => $resp->status(), 'body' => $resp->json()]);
+                $result = ['success' => false, 'error' => $err, 'id' => null, 'response' => $resp->json()];
             }
-
-            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
-            Log::warning('WhatsApp send failed', ['status' => $resp->status(), 'body' => $resp->json()]);
-            return ['success' => false, 'error' => $err, 'id' => null, 'response' => $resp->json()];
         } catch (\Throwable $e) {
             Log::error('WhatsApp send exception: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage(), 'id' => null];
+            $result = ['success' => false, 'error' => $e->getMessage(), 'id' => null];
         }
+
+        $this->logMessage($payload, $meta, $result);
+        return $result;
     }
 
     /**
      * Free-form text. Only delivered inside the 24h customer-initiated window;
      * outside it, use sendTemplate() with an approved template.
      */
-    public function sendText(string $to, string $body, bool $previewUrl = true): array
+    public function sendText(string $to, string $body, bool $previewUrl = true, ?string $context = null): array
     {
         return $this->send([
             'to'   => $this->normalizePhone($to),
             'type' => 'text',
             'text' => ['preview_url' => $previewUrl, 'body' => $body],
-        ]);
+        ], ['body' => $body, 'context' => $context]);
     }
 
     /** Free-form document (PDF/image link). Same 24h-window rule as sendText(). */
-    public function sendDocument(string $to, string $link, ?string $filename = null, ?string $caption = null): array
+    public function sendDocument(string $to, string $link, ?string $filename = null, ?string $caption = null, ?string $context = null): array
     {
         $doc = ['link' => $link];
         if ($filename) {
@@ -182,14 +185,14 @@ class WhatsAppService
             'to'       => $this->normalizePhone($to),
             'type'     => 'document',
             'document' => $doc,
-        ]);
+        ], ['body' => $caption ?: $filename, 'context' => $context]);
     }
 
     /**
      * Approved template message — required for business-initiated conversations
      * (OTP, order updates, marketing) outside the 24h window.
      */
-    public function sendTemplate(string $to, string $template, string $lang = 'en_US', array $components = []): array
+    public function sendTemplate(string $to, string $template, string $lang = 'en_US', array $components = [], ?string $context = null): array
     {
         $tpl = ['name' => $template, 'language' => ['code' => $lang]];
         if (!empty($components)) {
@@ -199,6 +202,80 @@ class WhatsAppService
             'to'       => $this->normalizePhone($to),
             'type'     => 'template',
             'template' => $tpl,
-        ]);
+        ], ['body' => 'template: ' . $template, 'context' => $context]);
+    }
+
+    /**
+     * Per-vendor credential columns on `stores` (for Phase 2 — each vendor's own number).
+     * Idempotent, guarded, no migration files. Populated later by the onboarding flow;
+     * resolveConfig() already reads them when wa_enabled is set.
+     */
+    public static function ensureStoreColumns(): void
+    {
+        if (!Schema::hasTable('stores')) {
+            return;
+        }
+        $cols = [
+            'wa_enabled'             => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'wa_phone_number_id'     => 'VARCHAR(64) NULL',
+            'wa_token'               => 'TEXT NULL',
+            'wa_business_account_id' => 'VARCHAR(64) NULL',
+            'wa_api_version'         => 'VARCHAR(12) NULL',
+        ];
+        foreach ($cols as $name => $def) {
+            if (!Schema::hasColumn('stores', $name)) {
+                DB::statement("ALTER TABLE `stores` ADD COLUMN `$name` $def");
+            }
+        }
+    }
+
+    /** Creates the delivery-log table once (no migration files, per project rules). */
+    public static function ensureMessagesTable(): void
+    {
+        if (!Schema::hasTable('whatsapp_messages')) {
+            DB::statement("CREATE TABLE `whatsapp_messages` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NULL,
+                `wamid` VARCHAR(255) NULL,
+                `direction` VARCHAR(10) NOT NULL DEFAULT 'out',
+                `recipient` VARCHAR(32) NULL,
+                `type` VARCHAR(30) NULL,
+                `body` TEXT NULL,
+                `context` VARCHAR(120) NULL,
+                `status` VARCHAR(20) NULL,
+                `error` TEXT NULL,
+                `sent_at` TIMESTAMP NULL,
+                `status_at` TIMESTAMP NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `wam_idx` (`wamid`),
+                KEY `wam_store_idx` (`store_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    protected function logMessage(array $payload, array $meta, array $result): void
+    {
+        try {
+            static::ensureMessagesTable();
+            DB::table('whatsapp_messages')->insert([
+                'store_id'  => $this->storeId,
+                'wamid'     => $result['id'] ?? null,
+                'direction' => 'out',
+                'recipient' => $payload['to'] ?? null,
+                'type'      => $payload['type'] ?? null,
+                'body'      => isset($meta['body']) ? mb_substr((string) $meta['body'], 0, 1000) : null,
+                'context'   => $meta['context'] ?? null,
+                'status'    => $result['success'] ? 'accepted' : 'failed',
+                'error'     => $result['error'] ?? null,
+                'sent_at'   => now(),
+                'status_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp log insert failed: ' . $e->getMessage());
+        }
     }
 }

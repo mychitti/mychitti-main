@@ -1139,7 +1139,9 @@
                             @php
                                 // Retail POS stores get BASIC inventory only (Items + Stock) — hide the
                                 // advanced inventory areas (Dashboard, Stock In/Out, Sales, Purchase, Reports).
-                                $posRetailBasicInv = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') === 'pos_retail';
+                                // Unless the store also purchased the full Inventory plan — then show everything.
+                                $posRetailBasicInv = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') === 'pos_retail'
+                                    && !\App\CentralLogics\Helpers::has_purchased_module('inventory_manage');
                             @endphp
 
                             <li

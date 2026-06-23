@@ -37,6 +37,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('mark-inactive-read', 'DashboardController@markInactiveRead')->name('mark-inactive-read');
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
 
+        // WhatsApp Embedded Signup (vendor connects their own number — DoubleTick-style).
+        Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
+        Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
+        Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
+
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');

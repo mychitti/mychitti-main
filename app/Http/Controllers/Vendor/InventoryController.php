@@ -202,12 +202,21 @@ class InventoryController extends Controller
                 `is_default` TINYINT(1) NOT NULL DEFAULT 0,
                 `width_mm` DECIMAL(8,2) NOT NULL DEFAULT 50,
                 `height_mm` DECIMAL(8,2) NOT NULL DEFAULT 25,
+                `cols` SMALLINT NOT NULL DEFAULT 1,
+                `col_gap_mm` DECIMAL(8,2) NOT NULL DEFAULT 0,
                 `elements` LONGTEXT NULL,
                 `created_at` TIMESTAMP NULL,
                 `updated_at` TIMESTAMP NULL,
                 PRIMARY KEY (`id`),
                 KEY `plf_store_idx` (`store_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+        // Multi-up printing: how many labels print across one row, and the gap between them.
+        if (!Schema::hasColumn('pos_label_formats', 'cols')) {
+            DB::statement("ALTER TABLE `pos_label_formats` ADD COLUMN `cols` SMALLINT NOT NULL DEFAULT 1");
+        }
+        if (!Schema::hasColumn('pos_label_formats', 'col_gap_mm')) {
+            DB::statement("ALTER TABLE `pos_label_formats` ADD COLUMN `col_gap_mm` DECIMAL(8,2) NOT NULL DEFAULT 0");
         }
     }
 
@@ -232,6 +241,8 @@ class InventoryController extends Controller
             'name'      => trim((string) $request->input('name')) ?: 'Format',
             'width_mm'  => (float) $request->input('width_mm', 50) ?: 50,
             'height_mm' => (float) $request->input('height_mm', 25) ?: 25,
+            'cols'      => max(1, min(10, (int) $request->input('cols', 1))),
+            'col_gap_mm' => max(0, (float) $request->input('col_gap_mm', 0)),
             'elements'  => json_encode(is_array($decoded) ? $decoded : []),
             'updated_at' => now(),
         ];
@@ -296,24 +307,48 @@ class InventoryController extends Controller
         $packingDate = $request->get('packing_date');
         $expiryDate  = $request->get('expiry_date');
 
+        $W    = (float) $format->width_mm;
+        $H    = (float) $format->height_mm;
+        $cols = max(1, min(10, (int) ($format->cols ?? 1)));
+        $gap  = max(0, (float) ($format->col_gap_mm ?? 0));
+        $pageW = $cols * $W + ($cols - 1) * $gap;
+
         $tempDir = storage_path('app/mpdf_temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0775, true);
         }
         $mpdf = new Mpdf([
             'tempDir' => $tempDir,
-            'format'  => [(float) $format->width_mm, (float) $format->height_mm],
+            'format'  => [$pageW, $H],
             'margin_left' => 0, 'margin_right' => 0, 'margin_top' => 0, 'margin_bottom' => 0,
         ]);
-        $html = View::make('vendor-views.inventory.pdf_templates.label_custom',
-            compact('item', 'format', 'elements', 'store', 'packingDate', 'expiryDate'))->render();
 
-        $copies = max(1, min(200, (int) $request->get('copies', 1)));
-        $mpdf->WriteHTML($html);
-        for ($i = 1; $i < $copies; $i++) {
-            $mpdf->AddPage();
-            $mpdf->WriteHTML($html);
+        // One page = one row of $cols labels. Render the design once per column, offset
+        // horizontally. The last page may carry fewer columns when copies aren't a multiple.
+        $renderRow = function ($columns) use ($item, $format, $elements, $store, $packingDate, $expiryDate, $W, $gap) {
+            return View::make('vendor-views.inventory.pdf_templates.label_custom', [
+                'item' => $item, 'format' => $format, 'elements' => $elements, 'store' => $store,
+                'packingDate' => $packingDate, 'expiryDate' => $expiryDate,
+                'cols' => $columns, 'singleWidth' => $W, 'colGap' => $gap,
+            ])->render();
+        };
+
+        $copies = max(1, min(2000, (int) $request->get('copies', 1)));
+        $fullPages = intdiv($copies, $cols);
+        $remainder = $copies % $cols;
+        $fullHtml  = $renderRow($cols);
+
+        $first = true;
+        for ($p = 0; $p < $fullPages; $p++) {
+            if (!$first) { $mpdf->AddPage(); }
+            $mpdf->WriteHTML($fullHtml);
+            $first = false;
         }
+        if ($remainder > 0) {
+            if (!$first) { $mpdf->AddPage(); }
+            $mpdf->WriteHTML($renderRow($remainder));
+        }
+
         return response($mpdf->Output('', 'S'))
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="label_' . $item->item_name . '.pdf"');

@@ -11,7 +11,13 @@
     </style>
 </head>
 <body>
-    @php $LW = (float) $format->width_mm; @endphp
+    @php
+        $LW   = (float) $format->width_mm;
+        $cols = isset($cols) ? (int) $cols : 1;
+        $gap  = isset($colGap) ? (float) $colGap : 0;
+    @endphp
+    @for ($c = 0; $c < $cols; $c++)
+    @php $xOffset = $c * ($LW + $gap); @endphp
     @foreach ($elements as $el)
         @php
             $type = $el['type'] ?? 'custom_text';
@@ -91,16 +97,17 @@
                     $src = 'data:image/png;base64,' . DNS1D::getBarcodePNG($item->sku_id ?: '0', 'C128', 2, 50, [0, 0, 0], false);
                 }
             @endphp
-            <div class="el" style="left: {{ $x }}mm; top: {{ $y }}mm; width: {{ $bw }}mm; text-align:center;">
+            <div class="el" style="left: {{ $x + $xOffset }}mm; top: {{ $y }}mm; width: {{ $bw }}mm; text-align:center;">
                 <img src="{{ $src }}" style="width: {{ $bw }}mm; height: {{ $bh }}mm;">
                 <div style="font-size: {{ max(5, $font - 1) }}pt;">{{ $item->sku_id }}</div>
             </div>
         @else
             <div class="el"
-                style="left: {{ $x }}mm; top: {{ $y }}mm; width: {{ $availW }}mm; font-size: {{ $font }}pt; line-height: 1.1; font-weight: {{ $bold ? 'bold' : 'normal' }}; text-align: left; {{ empty($el['newline']) ? 'white-space: nowrap;' : 'white-space: normal;' }}">
+                style="left: {{ $x + $xOffset }}mm; top: {{ $y }}mm; width: {{ $availW }}mm; font-size: {{ $font }}pt; line-height: 1.1; font-weight: {{ $bold ? 'bold' : 'normal' }}; text-align: left; {{ empty($el['newline']) ? 'white-space: nowrap;' : 'white-space: normal;' }}">
                 {!! $content !!}
             </div>
         @endif
     @endforeach
+    @endfor
 </body>
 </html>

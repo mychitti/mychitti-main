@@ -53,6 +53,10 @@ Route::get('/opcache-reset', function() {
     opcache_reset();
     return 'OPcache cleared';
 });
+
+// WhatsApp Cloud API webhook (public — Meta verifies via GET, posts status/inbound via POST).
+Route::get('whatsapp/webhook',  [App\Http\Controllers\WhatsAppWebhookController::class, 'verify']);
+Route::post('whatsapp/webhook', [App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
 // Route::get('/print-receipt', function () {
 //     try {
 //         // Printer IP and port

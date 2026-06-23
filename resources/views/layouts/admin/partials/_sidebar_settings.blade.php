@@ -128,6 +128,12 @@
                                 <span class="text-truncate">{{ translate('WhatsApp API') }}</span>
                             </a>
                         </li>
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/whatsapp-report*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.business-settings.third-party.whatsapp-report') }}" title="{{ translate('WhatsApp Report') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('WhatsApp Report') }}</span>
+                            </a>
+                        </li>
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/login-url-setup*') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.business-settings.login_url_page') }}" title="{{ translate('messages.login_url_page') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>

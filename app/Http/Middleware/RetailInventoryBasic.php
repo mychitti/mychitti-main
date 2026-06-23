@@ -27,6 +27,11 @@ class RetailInventoryBasic
             return $next($request);
         }
 
+        // A pos_retail store that has ALSO purchased the full Inventory plan gets the full module.
+        if (Helpers::has_purchased_module('inventory_manage')) {
+            return $next($request);
+        }
+
         $businessType = strtolower(Helpers::get_store_data()->business_type ?? '');
         if ($businessType === 'pos_retail' && $request->is(...self::BLOCKED)) {
             if ($request->expectsJson() || $request->ajax()) {

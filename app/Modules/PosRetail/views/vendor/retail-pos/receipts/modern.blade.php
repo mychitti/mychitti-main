@@ -5,23 +5,23 @@
     <title>{{ $invoice->invoice_id }}</title>
     <style>
         * { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        body { width: 80mm; margin: 0 auto; padding: 8px; font-size: 13px; color: #111; }
+        body { width: 80mm; margin: 0 auto; padding: 8px; font-size: 15px; font-weight: 600; color: #000; }
         .center { text-align: center; }
-        .muted { color: #555; }
+        .muted { color: #000; }
         .store { font-size: 21px; font-weight: 800; letter-spacing: .5px; margin: 0 0 2px; }
-        .rule { border: 0; border-top: 1.5px solid #111; margin: 8px 0; }
-        .soft { border: 0; border-top: 1px solid #ccc; margin: 6px 0; }
+        .rule { border: 0; border-top: 1.5px solid #000; margin: 8px 0; }
+        .soft { border: 0; border-top: 1px solid #000; margin: 6px 0; }
         table { width: 100%; border-collapse: collapse; }
-        td, th { font-size: 12.5px; padding: 3px 0; vertical-align: top; }
-        th { text-transform: uppercase; font-size: 10.5px; letter-spacing: .5px; color: #666; text-align: left; border-bottom: 1px solid #ddd; }
+        td, th { font-size: 14px; font-weight: 600; padding: 3px 0; vertical-align: top; }
+        th { text-transform: uppercase; font-size: 11.5px; letter-spacing: .5px; color: #000; text-align: left; border-bottom: 1px solid #000; }
         .r { text-align: right; white-space: nowrap; }
         .meta td { padding: 1px 0; }
-        .meta .k { color: #666; }
+        .meta .k { color: #000; }
         .totals td { padding: 2px 0; }
-        .totalbox { background: #111; color: #fff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+        .totalbox { background: #000; color: #fff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
         .totalbox .amt { font-size: 18px; }
-        .badge { display: inline-block; background: #fee2e2; color: #b91c1c; font-weight: 700; padding: 2px 10px; border-radius: 20px; font-size: 11px; }
-        .thanks { font-size: 12px; color: #444; }
+        .badge { display: inline-block; background: #fff; color: #000; border: 1.5px solid #000; font-weight: 700; padding: 2px 10px; border-radius: 20px; font-size: 11px; }
+        .thanks { font-size: 13px; font-weight: 700; color: #000; }
         @media print { .no-print { display: none; } @page { margin: 0; } }
     </style>
 </head>

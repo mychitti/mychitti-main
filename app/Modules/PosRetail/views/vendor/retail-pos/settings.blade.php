@@ -66,9 +66,9 @@
         @php
             $receiptTemplate = $receiptTemplate ?? 'standard';
             $receiptTemplates = [
-                'standard' => ['Standard', 'Monospace 80mm thermal slip with dashed separators (default).', '#475569'],
-                'modern'   => ['Modern',   'Clean sans-serif slip with a highlighted total box.', '#0d9488'],
-                'elegant'  => ['Elegant',  'Bordered boutique layout with serif heading and ruled item table.', '#b45309'],
+                'standard' => ['Standard', 'Monospace 80mm thermal slip with dashed separators (default).'],
+                'modern'   => ['Modern',   'Clean sans-serif slip with a highlighted total box.'],
+                'elegant'  => ['Elegant',  'Bordered boutique layout with serif heading and ruled item table.'],
             ];
         @endphp
         <div class="rp-card">
@@ -78,12 +78,14 @@
                 <form method="post" action="{{ route('vendor.retail-pos.receipt-template.save') }}">
                     @csrf
                     <div class="row">
-                        @foreach ($receiptTemplates as $key => [$label, $desc, $color])
-                            <div class="col-md-4 mb-2">
-                                <label style="display:block;cursor:pointer;border:1.5px solid {{ $receiptTemplate === $key ? $color : '#e4e4e7' }};border-radius:12px;padding:12px 14px;{{ $receiptTemplate === $key ? 'background:' . $color . '0f;' : '' }}">
+                        @foreach ($receiptTemplates as $key => [$label, $desc])
+                            <div class="col-md-2 mb-2">
+                                <label style="display:block;cursor:pointer;border:1.5px solid {{ $receiptTemplate === $key ? '#111' : '#e4e4e7' }};border-radius:12px;padding:12px 14px;{{ $receiptTemplate === $key ? 'background:#f4f4f5;' : '' }}">
+                                    <img src="{{ asset('storage/app/public/uploaded/templates/' . $key . '.png') }}" alt="{{ $label }} receipt preview"
+                                        onerror="this.style.display='none';"
+                                        style="display:block;max-width:140px;width:100%;height:auto;background:#fff;border:1px solid #e4e4e7;border-radius:8px;margin:0 auto 10px;">
                                     <span style="display:flex;align-items:center;gap:8px;">
                                         <input type="radio" name="pos_receipt_template" value="{{ $key }}" {{ $receiptTemplate === $key ? 'checked' : '' }}>
-                                        <span style="width:14px;height:14px;border-radius:4px;background:{{ $color }};display:inline-block;"></span>
                                         <b>{{ $label }}</b>
                                     </span>
                                     <span style="display:block;font-size:11.5px;color:#71717a;margin-top:4px;">{{ $desc }}</span>

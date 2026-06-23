@@ -1247,10 +1247,13 @@ class RetailPosController extends Controller
             return back();
         }
 
-        $caption = 'Invoice ' . $invoice->invoice_id;
+        // Brand the message with the vendor's store name (Phase 1: global number, vendor identity in content).
+        $storeName = optional(Helpers::get_store_data())->name;
+        $caption = ($storeName ? $storeName . ' — ' : '') . 'Invoice ' . $invoice->invoice_id;
+        $ctx = 'Invoice ' . $invoice->invoice_id;
         $res = $pdfUrl
-            ? $wa->sendDocument($phone, $pdfUrl, 'Invoice-' . $invoice->invoice_id . '.pdf', $caption)
-            : $wa->sendText($phone, $caption);
+            ? $wa->sendDocument($phone, $pdfUrl, 'Invoice-' . $invoice->invoice_id . '.pdf', $caption, $ctx)
+            : $wa->sendText($phone, $caption, true, $ctx);
 
         if ($res['success']) {
             $this->logAudit('whatsapp', $invoice->invoice_id, $phone);

@@ -2802,6 +2802,8 @@ class BusinessSettingsController extends Controller
 
     public function whatsapp_index(Request $request)
     {
+        \App\Services\WhatsAppService::ensureStoreColumns();
+        \App\Services\WhatsAppService::ensureMessagesTable();
         $config = \App\CentralLogics\Helpers::get_business_settings('whatsapp_config');
         return view('admin-views.business-settings.whatsapp-index', compact('config'));
     }
@@ -2821,6 +2823,11 @@ class BusinessSettingsController extends Controller
                 'token' => trim((string) $request->token),
                 'business_account_id' => trim((string) $request->business_account_id),
                 'default_country_code' => preg_replace('/[^0-9]/', '', (string) $request->default_country_code) ?: '91',
+                'verify_token' => trim((string) $request->verify_token),
+                // Embedded Signup (DoubleTick-style vendor onboarding).
+                'es_app_id' => trim((string) $request->es_app_id),
+                'es_app_secret' => trim((string) $request->es_app_secret),
+                'es_config_id' => trim((string) $request->es_config_id),
             ]),
             'created_at' => now(),
             'updated_at' => now(),
@@ -2841,14 +2848,46 @@ class BusinessSettingsController extends Controller
             Toastr::error('Save and enable WhatsApp credentials first.');
             return back();
         }
-        $message = $request->test_message ?: ('Test message from ' . config('app.name'));
-        $res = $wa->sendText($request->test_phone, $message);
+
+        if ($request->filled('test_template')) {
+            // Body variables are entered pipe-separated ( | ) → {{1}}, {{2}}, ... in order.
+            $vars = array_values(array_filter(array_map('trim', explode('|', (string) $request->test_vars)), fn($v) => $v !== ''));
+            $components = [];
+            if (!empty($vars)) {
+                $components[] = [
+                    'type' => 'body',
+                    'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $vars),
+                ];
+            }
+            $res = $wa->sendTemplate($request->test_phone, trim((string) $request->test_template), $request->test_lang ?: 'en_US', $components, 'test template');
+        } else {
+            $message = $request->test_message ?: ('Test message from ' . config('app.name'));
+            $res = $wa->sendText($request->test_phone, $message);
+        }
+
         if ($res['success']) {
-            Toastr::success('Test message sent (id: ' . ($res['id'] ?? '—') . ')');
+            Toastr::success('Sent (id: ' . ($res['id'] ?? '—') . '). Check the Delivery Report for status.');
         } else {
             Toastr::error('Send failed: ' . $res['error']);
         }
         return back();
+    }
+
+    public function whatsapp_report(Request $request)
+    {
+        \App\Services\WhatsAppService::ensureMessagesTable();
+        $q = DB::table('whatsapp_messages');
+        if ($request->filled('status')) {
+            $q->where('status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $q->where(function ($w) use ($s) {
+                $w->where('recipient', 'like', "%$s%")->orWhere('context', 'like', "%$s%")->orWhere('body', 'like', "%$s%");
+            });
+        }
+        $messages = $q->orderByDesc('id')->paginate(30)->appends($request->query());
+        return view('admin-views.business-settings.whatsapp-report', compact('messages'));
     }
     //Send Mail
     public function send_mail(Request $request)

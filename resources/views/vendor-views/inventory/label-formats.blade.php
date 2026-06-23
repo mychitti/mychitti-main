@@ -40,7 +40,7 @@
                                     <b>{{ $f->name }}</b>
                                     @if ($f->is_default)<span class="badge badge-success">Default</span>@endif
                                 </div>
-                                <small class="text-muted">{{ rtrim(rtrim($f->width_mm, '0'), '.') }} × {{ rtrim(rtrim($f->height_mm, '0'), '.') }} mm</small>
+                                <small class="text-muted">{{ rtrim(rtrim($f->width_mm, '0'), '.') }} × {{ rtrim(rtrim($f->height_mm, '0'), '.') }} mm @if(($f->cols ?? 1) > 1)· {{ $f->cols }}-up @endif</small>
                                 <div class="mt-2 d-flex flex-wrap" style="gap:6px;">
                                     <button class="btn btn-xs btn-outline-primary" onclick='editFormat(@json($f))'>Edit</button>
                                     @if (!$f->is_default)
@@ -69,9 +69,13 @@
                             <div class="col"><label class="small mb-1">Format name</label>
                                 <input id="fmt-name" class="form-control form-control-sm" placeholder="e.g. Retail 50×25"></div>
                             <div><label class="small mb-1">W (mm)</label>
-                                <input id="fmt-w" type="number" value="50" min="10" class="form-control form-control-sm" style="width:80px" onchange="render()"></div>
+                                <input id="fmt-w" type="number" value="50" min="10" class="form-control form-control-sm" style="width:80px" oninput="render()"></div>
                             <div><label class="small mb-1">H (mm)</label>
-                                <input id="fmt-h" type="number" value="25" min="10" class="form-control form-control-sm" style="width:80px" onchange="render()"></div>
+                                <input id="fmt-h" type="number" value="25" min="10" class="form-control form-control-sm" style="width:80px" oninput="render()"></div>
+                            <div><label class="small mb-1" title="How many copies of this label print side by side per row">Labels per row</label>
+                                <input id="fmt-cols" type="number" value="1" min="1" max="10" class="form-control form-control-sm" style="width:90px" oninput="render()"></div>
+                            <div><label class="small mb-1">Gap (mm)</label>
+                                <input id="fmt-gap" type="number" value="0" min="0" step="0.5" class="form-control form-control-sm" style="width:80px" oninput="render()"></div>
                             <div class="pb-1"><label class="small mb-0"><input type="checkbox" id="fmt-default"> Default</label></div>
                         </div>
 
@@ -149,7 +153,8 @@
     <form id="lf-save-form" method="post" action="{{ route('vendor.inventory.label-formats.save') }}" style="display:none;">
         @csrf
         <input name="id" id="f-id"><input name="name" id="f-name"><input name="width_mm" id="f-w">
-        <input name="height_mm" id="f-h"><input name="is_default" id="f-default"><input name="elements" id="f-elements">
+        <input name="height_mm" id="f-h"><input name="cols" id="f-cols"><input name="col_gap_mm" id="f-gap">
+        <input name="is_default" id="f-default"><input name="elements" id="f-elements">
     </form>
 
     <script>
@@ -164,6 +169,8 @@
             document.getElementById('fmt-name').value = '';
             document.getElementById('fmt-w').value = 50;
             document.getElementById('fmt-h').value = 25;
+            document.getElementById('fmt-cols').value = 1;
+            document.getElementById('fmt-gap').value = 0;
             document.getElementById('fmt-default').checked = false;
             document.getElementById('lf-props').style.display = 'none';
             render();
@@ -174,6 +181,8 @@
             document.getElementById('fmt-name').value = f.name || '';
             document.getElementById('fmt-w').value = parseFloat(f.width_mm) || 50;
             document.getElementById('fmt-h').value = parseFloat(f.height_mm) || 25;
+            document.getElementById('fmt-cols').value = parseInt(f.cols) || 1;
+            document.getElementById('fmt-gap').value = parseFloat(f.col_gap_mm) || 0;
             document.getElementById('fmt-default').checked = !!(+f.is_default);
             try { els = JSON.parse(f.elements || '[]') || []; } catch (e) { els = []; }
             // Pull any out-of-bounds fields back onto the label so they're visible/deletable.
@@ -209,9 +218,20 @@
         function render() {
             const W = parseFloat(document.getElementById('fmt-w').value) || 50;
             const H = parseFloat(document.getElementById('fmt-h').value) || 25;
-            canvas.style.width = (W * SCALE) + 'px';
+            const cols = Math.max(1, parseInt(document.getElementById('fmt-cols').value) || 1);
+            const gap = Math.max(0, parseFloat(document.getElementById('fmt-gap').value) || 0);
+            canvas.style.width = ((W * cols + gap * (cols - 1)) * SCALE) + 'px';
             canvas.style.height = (H * SCALE) + 'px';
             canvas.innerHTML = '';
+            // Faint cell outline per label so the multi-up layout is visible.
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement('div');
+                cell.style.cssText = 'position:absolute;top:0;border:1px dashed #cbd2e0;pointer-events:none;';
+                cell.style.left = (c * (W + gap) * SCALE) + 'px';
+                cell.style.width = (W * SCALE) + 'px';
+                cell.style.height = (H * SCALE) + 'px';
+                canvas.appendChild(cell);
+            }
             els.forEach((el, i) => {
                 const d = document.createElement('div');
                 d.className = 'lf-el' + (i === selIdx ? ' sel' : '');
@@ -272,8 +292,27 @@
                     d.appendChild(del);
                 }
                 d.addEventListener('mousedown', e => startDrag(e, i));
+                d.dataset.colEl = '1';
                 canvas.appendChild(d);
             });
+
+            // Ghost copies for the remaining columns — read-only preview of multi-up output.
+            if (cols > 1) {
+                const baseNodes = Array.from(canvas.querySelectorAll('.lf-el[data-col-el="1"]'));
+                for (let c = 1; c < cols; c++) {
+                    const offset = c * (W + gap) * SCALE;
+                    baseNodes.forEach(node => {
+                        const clone = node.cloneNode(true);
+                        clone.classList.remove('sel');
+                        clone.style.pointerEvents = 'none';
+                        clone.style.opacity = '0.55';
+                        clone.style.borderColor = 'transparent';
+                        clone.style.left = (parseFloat(node.style.left || 0) + offset) + 'px';
+                        clone.querySelectorAll('span[title="Edit text"], span[title="Remove field"]').forEach(b => b.remove());
+                        canvas.appendChild(clone);
+                    });
+                }
+            }
         }
 
         function removeAt(i) {
@@ -353,6 +392,8 @@
             document.getElementById('f-name').value = document.getElementById('fmt-name').value;
             document.getElementById('f-w').value = document.getElementById('fmt-w').value;
             document.getElementById('f-h').value = document.getElementById('fmt-h').value;
+            document.getElementById('f-cols').value = document.getElementById('fmt-cols').value || 1;
+            document.getElementById('f-gap').value = document.getElementById('fmt-gap').value || 0;
             document.getElementById('f-default').value = document.getElementById('fmt-default').checked ? 1 : 0;
             document.getElementById('f-elements').value = JSON.stringify(els);
             document.getElementById('lf-save-form').submit();

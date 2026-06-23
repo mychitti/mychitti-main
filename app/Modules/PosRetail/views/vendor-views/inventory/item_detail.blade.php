@@ -396,13 +396,13 @@
                                 </div>
                                 <div class="d-flex flex-wrap align-items-end" style="gap:12px;">
                                     @if ($singleFmt)
-                                        <input type="hidden" id="lbl-format" value="{{ $singleFmt->id }}">
+                                        <input type="hidden" id="lbl-format" value="{{ $singleFmt->id }}" data-cols="{{ $singleFmt->cols ?? 1 }}">
                                     @else
                                         <div>
                                             <label class="lbl-fld">Format</label>
                                             <select id="lbl-format" class="form-control form-control-sm" style="min-width:160px;">
                                                 @foreach ($labelFormats as $lf)
-                                                    <option value="{{ $lf->id }}" {{ $lf->is_default ? 'selected' : '' }}>
+                                                    <option value="{{ $lf->id }}" data-cols="{{ $lf->cols ?? 1 }}" {{ $lf->is_default ? 'selected' : '' }}>
                                                         {{ $lf->name }}{{ $lf->is_default ? ' (default)' : '' }}</option>
                                                 @endforeach
                                             </select>
@@ -410,7 +410,7 @@
                                     @endif
                                     <div style="width:84px;">
                                         <label class="lbl-fld">Copies</label>
-                                        <input type="number" id="lbl-copies" value="1" min="1" max="200" class="form-control form-control-sm">
+                                        <input type="number" id="lbl-copies" value="{{ ($singleFmt->cols ?? 1) ?: 1 }}" min="1" max="2000" class="form-control form-control-sm">
                                     </div>
                                     <a id="lbl-print" target="_blank" class="btn btn--primary lbl-print-btn"
                                         href="{{ route('vendor.inventory.item.print', [$item->id, 'format']) }}"
@@ -451,6 +451,24 @@
                                     a.href = base + '?' + p.toString();
                                     return true;
                                 }
+                                // Default Copies to the selected format's labels-per-row, and re-sync on change.
+                                function selectedFormatCols() {
+                                    var f = document.getElementById('lbl-format');
+                                    if (!f) return 1;
+                                    if (f.tagName === 'SELECT') {
+                                        var opt = f.options[f.selectedIndex];
+                                        return parseInt(opt && opt.dataset.cols) || 1;
+                                    }
+                                    return parseInt(f.dataset.cols) || 1;
+                                }
+                                function syncCopiesToFormat() {
+                                    document.getElementById('lbl-copies').value = selectedFormatCols();
+                                }
+                                (function () {
+                                    var f = document.getElementById('lbl-format');
+                                    if (f && f.tagName === 'SELECT') f.addEventListener('change', syncCopiesToFormat);
+                                    syncCopiesToFormat();
+                                })();
                             </script>
                         @else
                             <div class="mb-2">

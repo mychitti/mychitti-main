@@ -6070,6 +6070,32 @@ class Helpers
         return true;
     }
 
+    // True only if the store holds an ACTIVE purchased subscription for $module_name.
+    // Unlike permission_check(), this ignores free-by-business-type grants, so a pos_retail
+    // store that only gets BASIC inventory for free returns false here — but a pos_retail
+    // store that also bought the full Inventory plan returns true.
+    public static function has_purchased_module($module_name)
+    {
+        $v_id = Helpers::get_store_id();
+        if (!$v_id) {
+            return false;
+        }
+
+        $subscriptions = DB::table('vendor_subscriptions')
+            ->where('vendor_id', $v_id)
+            ->where('plan_expiry', '>', now())
+            ->pluck('permitted_modules');
+
+        foreach ($subscriptions as $permitted) {
+            $modules = json_decode($permitted, true);
+            if (is_array($modules) && in_array($module_name, $modules)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static function quoteId($storeId = null)
     {
         $storeId = $storeId ?? Helpers::get_store_id();

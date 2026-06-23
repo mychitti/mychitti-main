@@ -4,13 +4,16 @@
 
 @section('content')
     <div class="content container-fluid">
-        <div class="page-header">
+        <div class="page-header d-flex justify-content-between align-items-center">
             <h1 class="page-header-title">
                 <span class="page-header-icon">
                     <i class="tio-chat" style="font-size:22px;"></i>
                 </span>
                 <span>{{ translate('WhatsApp Cloud API (Meta) Setup') }}</span>
             </h1>
+            <a href="{{ route('admin.business-settings.third-party.whatsapp-report') }}" class="btn btn-sm btn-outline-primary">
+                <i class="tio-chart-bar-4"></i> {{ translate('Delivery Report') }}
+            </a>
         </div>
 
         <div class="row">
@@ -70,6 +73,44 @@
                                         <small class="text-muted">{{ translate('Prefixed to local numbers without a country code.') }}</small>
                                     </div>
                                 </div>
+                                <div class="col-12"><hr class="my-2"><b class="text-muted" style="font-size:12px;">{{ translate('WEBHOOK (delivery status & replies)') }}</b></div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('Callback URL') }}</label>
+                                        <input type="text" class="form-control" value="{{ url('whatsapp/webhook') }}" readonly onclick="this.select()">
+                                        <small class="text-muted">{{ translate('Paste this in Meta → WhatsApp → Configuration → Webhook.') }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('Verify Token') }}</label>
+                                        <input type="text" class="form-control" name="verify_token"
+                                               value="{{ $config['verify_token'] ?? '' }}" placeholder="{{ translate('a secret you choose') }}">
+                                        <small class="text-muted">{{ translate('Any secret string — must match what you enter in Meta. Subscribe to the "messages" field.') }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-12"><hr class="my-2"><b class="text-muted" style="font-size:12px;">{{ translate('EMBEDDED SIGNUP (vendor self-connect, DoubleTick-style)') }}</b></div>
+                                <div class="col-sm-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('Facebook App ID') }}</label>
+                                        <input type="text" class="form-control" name="es_app_id"
+                                               value="{{ $config['es_app_id'] ?? '' }}" placeholder="928989069726887">
+                                    </div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('App Secret') }}</label>
+                                        <input type="text" class="form-control" name="es_app_secret"
+                                               value="{{ $config['es_app_secret'] ?? '' }}" placeholder="App → Settings → Basic">
+                                    </div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('Embedded Signup config_id') }}</label>
+                                        <input type="text" class="form-control" name="es_config_id"
+                                               value="{{ $config['es_config_id'] ?? '' }}" placeholder="{{ translate('from your ES configuration') }}">
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="btn--container justify-content-end">
@@ -91,14 +132,38 @@
                                 <input type="text" class="form-control" name="test_phone" placeholder="91XXXXXXXXXX" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">{{ translate('Message') }}</label>
-                                <textarea class="form-control" name="test_message" rows="3" placeholder="Hello from {{ config('app.name') }}"></textarea>
+                                <label class="form-label">{{ translate('Message') }} <span class="text-muted">({{ translate('free-form') }})</span></label>
+                                <textarea class="form-control" name="test_message" rows="2" placeholder="Hello from {{ config('app.name') }}"></textarea>
                             </div>
+
+                            <div class="border rounded p-2 mb-2" style="background:#fafbff;">
+                                <small class="d-block text-muted mb-2"><b>{{ translate('OR send an approved template') }}</b> — {{ translate('required for business-initiated messages. Fill these to send a template instead of the text above.') }}</small>
+                                <div class="form-group mb-2">
+                                    <label class="form-label mb-1">{{ translate('Template name') }}</label>
+                                    <input type="text" class="form-control" name="test_template" placeholder="e.g. order_reminder">
+                                </div>
+                                <div class="row">
+                                    <div class="col-5">
+                                        <div class="form-group mb-1">
+                                            <label class="form-label mb-1">{{ translate('Language') }}</label>
+                                            <input type="text" class="form-control" name="test_lang" value="en_US">
+                                        </div>
+                                    </div>
+                                    <div class="col-7">
+                                        <div class="form-group mb-1">
+                                            <label class="form-label mb-1">{{ translate('Variables') }}</label>
+                                            <input type="text" class="form-control" name="test_vars" placeholder="John | KHB_3 | 12 Dec">
+                                        </div>
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ translate('Pipe-separate ( | ) the body values in order — first value fills variable 1, second fills variable 2, and so on. Leave blank if the template has no variables.') }}</small>
+                            </div>
+
                             <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}" class="btn btn--primary btn-block">{{ translate('Send Test') }}</button>
                         </form>
                         <div class="alert alert-info mt-3 mb-0" style="font-size:12px;">
                             <b>{{ translate('Note') }}:</b>
-                            {{ translate('Free-form text/documents only reach a customer within 24h of their last message. For business-initiated messages (OTP, invoices, marketing), use an approved message template.') }}
+                            {{ translate('The recipient is a normal WhatsApp number (not a business account). On the Meta test number, the recipient must be added to your allowed list. Configure the webhook to see why a message failed in the Delivery Report.') }}
                         </div>
                     </div>
                 </div>

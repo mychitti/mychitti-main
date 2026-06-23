@@ -5,24 +5,24 @@
     <title>{{ $invoice->invoice_id }}</title>
     <style>
         * { font-family: 'Cambria', 'Georgia', 'Times New Roman', serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        body { width: 80mm; margin: 0 auto; padding: 6px; font-size: 13px; color: #1a1a1a; }
-        .frame { border: 1.5px solid #1a1a1a; border-radius: 4px; padding: 10px 9px; }
+        body { width: 80mm; margin: 0 auto; padding: 6px; font-size: 15px; font-weight: 600; color: #000; }
+        .frame { border: 1.5px solid #000; border-radius: 4px; padding: 10px 9px; }
         .center { text-align: center; }
         .store { font-size: 20px; font-weight: 700; letter-spacing: 1px; margin: 0; }
-        .tag { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #555; margin-top: 2px; }
-        .addr { font-size: 11.5px; color: #444; margin-top: 4px; }
-        .dbl { border: 0; border-top: 3px double #1a1a1a; margin: 8px 0; }
-        .thin { border: 0; border-top: 1px solid #999; margin: 6px 0; }
+        .tag { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #000; margin-top: 2px; }
+        .addr { font-size: 13px; color: #000; margin-top: 4px; }
+        .dbl { border: 0; border-top: 3px double #000; margin: 8px 0; }
+        .thin { border: 0; border-top: 1px solid #000; margin: 6px 0; }
         table { width: 100%; border-collapse: collapse; }
-        td, th { font-size: 12px; padding: 3px 0; vertical-align: top; }
-        th { text-align: left; font-style: italic; font-weight: 700; border-bottom: 1.5px solid #1a1a1a; padding-bottom: 4px; }
+        td, th { font-size: 14px; font-weight: 600; padding: 3px 0; vertical-align: top; }
+        th { text-align: left; font-style: italic; font-weight: 700; border-bottom: 1.5px solid #000; padding-bottom: 4px; }
         .r { text-align: right; white-space: nowrap; }
-        .meta td { font-size: 11.5px; padding: 1.5px 0; }
-        .meta .k { color: #555; font-style: italic; }
-        .grand { border-top: 1.5px solid #1a1a1a; border-bottom: 1.5px solid #1a1a1a; }
+        .meta td { font-size: 13px; padding: 1.5px 0; }
+        .meta .k { color: #000; font-style: italic; }
+        .grand { border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; }
         .grand td { font-size: 15px; font-weight: 700; padding: 6px 0; }
-        .void { font-size: 14px; font-weight: 700; letter-spacing: 3px; border: 1.5px solid #b00; color: #b00; display: inline-block; padding: 3px 14px; border-radius: 3px; }
-        .foot { font-style: italic; font-size: 12px; color: #333; }
+        .void { font-size: 14px; font-weight: 700; letter-spacing: 3px; border: 1.5px solid #000; color: #000; display: inline-block; padding: 3px 14px; border-radius: 3px; }
+        .foot { font-style: italic; font-size: 13px; font-weight: 700; color: #000; }
         @media print { .no-print { display: none; } @page { margin: 0; } }
     </style>
 </head>
@@ -63,7 +63,7 @@
                     }
                 @endphp
                 <tr>
-                    <td>{{ $it->name }}@if ($it->hsn)<br><small style="color:#666;">HSN {{ $it->hsn }}</small>@endif</td>
+                    <td>{{ $it->name }}@if ($it->hsn)<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
                     <td class="r">{{ $qtyTxt }}</td>
                     <td class="r">{{ $money($it->price) }}</td>
                     <td class="r">{{ $money((float) $it->price * (float) $it->qty) }}</td>
@@ -73,15 +73,15 @@
         <hr class="thin">
 
         <table>
-            <tr><td class="k" style="font-style:italic;color:#555;">Subtotal</td><td class="r">{{ $money($invoice->taxable_amount ?? 0) }}</td></tr>
+            <tr><td class="k" style="font-style:italic;color:#000;">Subtotal</td><td class="r">{{ $money($invoice->taxable_amount ?? 0) }}</td></tr>
             @if (($invoice->final_tax ?? 0) > 0)
-                <tr><td class="k" style="font-style:italic;color:#555;">GST</td><td class="r">{{ $money($invoice->final_tax) }}</td></tr>
+                <tr><td class="k" style="font-style:italic;color:#000;">GST</td><td class="r">{{ $money($invoice->final_tax) }}</td></tr>
             @endif
             @if (($invoice->discount_amount ?? 0) > 0)
-                <tr><td class="k" style="font-style:italic;color:#555;">Discount</td><td class="r">-{{ $money($invoice->discount_amount) }}</td></tr>
+                <tr><td class="k" style="font-style:italic;color:#000;">Discount</td><td class="r">-{{ $money($invoice->discount_amount) }}</td></tr>
             @endif
             @if (($invoice->round_off ?? 0) != 0)
-                <tr><td class="k" style="font-style:italic;color:#555;">Round Off</td><td class="r">{{ $money($invoice->round_off) }}</td></tr>
+                <tr><td class="k" style="font-style:italic;color:#000;">Round Off</td><td class="r">{{ $money($invoice->round_off) }}</td></tr>
             @endif
         </table>
 
@@ -91,9 +91,9 @@
 
         <table style="margin-top:6px;">
             @forelse ($legs as $leg)
-                <tr><td class="k" style="font-style:italic;color:#555;">{{ ucfirst($leg->mode) }}</td><td class="r">{{ $money($leg->amount) }}</td></tr>
+                <tr><td class="k" style="font-style:italic;color:#000;">{{ ucfirst($leg->mode) }}</td><td class="r">{{ $money($leg->amount) }}</td></tr>
             @empty
-                <tr><td class="k" style="font-style:italic;color:#555;">{{ ucfirst($invoice->payment_method) }}</td><td class="r">{{ $money($invoice->total_amount) }}</td></tr>
+                <tr><td class="k" style="font-style:italic;color:#000;">{{ ucfirst($invoice->payment_method) }}</td><td class="r">{{ $money($invoice->total_amount) }}</td></tr>
             @endforelse
         </table>
         <hr class="dbl">
