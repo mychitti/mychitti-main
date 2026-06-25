@@ -85,6 +85,13 @@
                                                 : 'layouts.vendor.partials._sidebar_menu_default'))))),
                         ['store_data' => $store_data]
                     )
+
+                    {{-- default & hospital menus include the WhatsApp link above "Post Ads"; other types get it here --}}
+                    @unless (in_array(strtolower($store_data->business_type ?? ''), ['hospital']))
+                        @if (in_array(strtolower($store_data->business_type ?? ''), ['school', 'laundry', 'pos', 'pos_retail', 'ecommerce']))
+                            @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                        @endif
+                    @endunless
                 </ul>
             </div> 
             <!-- End Content -->

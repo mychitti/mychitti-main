@@ -63,11 +63,13 @@ class WhatsAppWebhookController extends Controller
                     }
 
                     // 2) Inbound messages — log so the 24h window / two-way chat is visible.
+                    $storeId = WhatsAppService::storeByPhoneNumberId(data_get($value, 'metadata.phone_number_id'));
+
                     foreach (data_get($value, 'messages', []) as $msg) {
                         $type = $msg['type'] ?? 'text';
                         $body = data_get($msg, 'text.body') ?: ('[' . $type . ']');
                         DB::table('whatsapp_messages')->insert([
-                            'store_id'   => null,
+                            'store_id'   => $storeId,
                             'wamid'      => $msg['id'] ?? null,
                             'direction'  => 'in',
                             'recipient'  => $msg['from'] ?? null,

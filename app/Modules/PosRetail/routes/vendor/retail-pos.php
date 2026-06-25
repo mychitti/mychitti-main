@@ -31,18 +31,18 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::post('terminals/{id}/delete', [RetailPosController::class, 'terminalDelete'])->name('terminals.delete')->middleware('permission:pos_counter,delete');
     Route::post('branches',    [RetailPosController::class, 'branchStore'])->name('branches.store')->middleware('permission:pos_branch,create');
     Route::post('branches/{id}/delete', [RetailPosController::class, 'branchDelete'])->name('branches.delete')->middleware('permission:pos_branch,delete');
-    Route::get('settings',     [RetailPosController::class, 'settings'])->name('settings')->middleware('permission:pos_billing,create');
-    Route::post('upi-id',      [RetailPosController::class, 'saveUpi'])->name('upi.save')->middleware('permission:pos_billing,create');
-    Route::post('ui-template', [RetailPosController::class, 'saveUiTemplate'])->name('ui-template.save')->middleware('permission:pos_billing,create');
-    Route::post('receipt-template', [RetailPosController::class, 'saveReceiptTemplate'])->name('receipt-template.save')->middleware('permission:pos_billing,create');
-    Route::post('default-branch', [RetailPosController::class, 'saveDefaultBranch'])->name('default-branch')->middleware('permission:pos_billing,create');
+    Route::get('settings',     [RetailPosController::class, 'settings'])->name('settings')->middleware('permission:pos_billing,settings');
+    Route::post('upi-id',      [RetailPosController::class, 'saveUpi'])->name('upi.save')->middleware('permission:pos_billing,settings');
+    Route::post('ui-template', [RetailPosController::class, 'saveUiTemplate'])->name('ui-template.save')->middleware('permission:pos_billing,settings');
+    Route::post('receipt-template', [RetailPosController::class, 'saveReceiptTemplate'])->name('receipt-template.save')->middleware('permission:pos_billing,settings');
+    Route::post('default-branch', [RetailPosController::class, 'saveDefaultBranch'])->name('default-branch')->middleware('permission:pos_billing,settings');
 
     // Branch stock
     Route::get('branch-stock', [RetailPosController::class, 'branchStock'])->name('branch-stock')->middleware('permission:pos_branch_stock,view');
     Route::post('branch-stock',[RetailPosController::class, 'branchStockSave'])->name('branch-stock.save')->middleware('permission:pos_branch_stock,edit');
 
     // Stock Transfer Gatepass (main store → branch)
-    Route::get('gatepass',            [RetailPosController::class, 'gatepass'])->name('gatepass')->middleware('permission:pos_branch_stock,view');
+    Route::get('gatepass',            [RetailPosController::class, 'gatepass'])->name('gatepass')->middleware('permission:pos_branch_stock,edit');
     Route::post('gatepass',           [RetailPosController::class, 'gatepassStore'])->name('gatepass.store')->middleware('permission:pos_branch_stock,edit');
-    Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_branch_stock,view');
+    Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_branch_stock,edit');
 });

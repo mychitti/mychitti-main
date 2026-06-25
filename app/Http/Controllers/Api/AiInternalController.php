@@ -199,6 +199,7 @@ class AiInternalController extends Controller
                     if ($store) {
                         _sendSMS($store->phone, $vendorMsg);
                         _inAppNotification($adminTitle, $vendorMsg, null, $store->id, $vendorUrl, 'vendor');
+                        \App\Services\WhatsAppService::sendLeadNotification($store->id, $itemDet->name ?? null, $user->f_name ?? null);
                     }
                 }
             }

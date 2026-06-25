@@ -65,6 +65,7 @@ class DispatchLeadRounds extends Command
                 if (!$store) continue;
                 _sendSMS($store->phone, $msg);
                 _inAppNotification($title, $msg, null, $store->id, $url, 'vendor');
+                \App\Services\WhatsAppService::sendLeadNotification($store->id, $itemName, $userName);
             }
 
             Log::info("Lead #{$lead->id}: advanced to round {$nextRound}, notified " . count($newStoreIds) . " stores.");

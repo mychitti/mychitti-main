@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\AccountTransaction;
+use App\Models\StoreWallet;
 use App\Services\WhatsAppService;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +33,114 @@ class WhatsAppController extends Controller
             'ready'       => !empty($config['es_app_id']) && !empty($config['es_config_id']),
         ];
 
-        return view('vendor-views.whatsapp.connect', compact('es', 'store'));
+        $features = $this->featureStatus($storeId);
+        $wallet = StoreWallet::where('vendor_id', auth('vendor')->id())->first();
+        $walletBalance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+
+        return view('vendor-views.whatsapp.connect', compact('es', 'store', 'features', 'walletBalance'));
+    }
+
+    // Builds the per-store status for every receiving add-on (subscribed/active/expiry).
+    private function featureStatus(int $storeId): array
+    {
+        WhatsAppService::ensureReceivingTable();
+        $rows = DB::table('wa_receiving_features')->where('store_id', $storeId)->get()->keyBy('feature');
+
+        $out = [];
+        foreach (WhatsAppService::RECEIVING_FEATURES as $key => $meta) {
+            $row = $rows->get($key);
+            $active = $row && $row->active_until && $row->active_until >= now()->toDateString();
+            $out[$key] = [
+                'meta'         => $meta,
+                'enabled'      => (bool) ($row->enabled ?? false),
+                'active_until' => $row->active_until ?? null,
+                'paid_active'  => (bool) $active,
+                'live'         => $active && (bool) ($row->enabled ?? false),
+            ];
+        }
+        return $out;
+    }
+
+    // Subscribe / renew a receiving add-on — debits the vendor wallet for one month.
+    public function featureSubscribe(Request $request)
+    {
+        $request->validate(['feature' => 'required']);
+        $feature = $request->feature;
+        $meta = WhatsAppService::RECEIVING_FEATURES[$feature] ?? null;
+        if (!$meta) {
+            Toastr::error('Unknown feature.');
+            return back();
+        }
+
+        $storeId  = Helpers::get_store_id();
+        $vendorId = auth('vendor')->id();
+        $price    = (float) $meta['price'];
+
+        $wallet  = StoreWallet::where('vendor_id', $vendorId)->first();
+        $balance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+        if (!$wallet || $balance < $price) {
+            Toastr::error('Insufficient wallet balance. Required: ' . _price($price));
+            return back();
+        }
+
+        $wallet->decrement('total_earning', $price);
+        $wallet->increment('total_withdrawn', $price);
+
+        $txn = new AccountTransaction();
+        $txn->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
+        $txn->from_type  = 'store';
+        $txn->amount     = $price;
+        $txn->from_id    = $vendorId;
+        $txn->method     = 'wallet';
+        $txn->action     = 'debit';
+        $txn->reason     = 'WhatsApp Receiving — ' . $meta['label'];
+        $txn->created_by = 'store';
+        $txn->save();
+
+        WhatsAppService::ensureReceivingTable();
+        $row  = DB::table('wa_receiving_features')->where('store_id', $storeId)->where('feature', $feature)->first();
+        $base = ($row && $row->active_until && $row->active_until >= now()->toDateString())
+            ? Carbon::parse($row->active_until) : now();
+        $activeUntil = $base->copy()->addMonth()->toDateString();
+
+        DB::table('wa_receiving_features')->updateOrInsert(
+            ['store_id' => $storeId, 'feature' => $feature],
+            [
+                'enabled'      => 1,
+                'price'        => $price,
+                'active_until' => $activeUntil,
+                'updated_at'   => now(),
+                'created_at'   => $row->created_at ?? now(),
+            ]
+        );
+
+        Toastr::success($meta['label'] . ' active until ' . $activeUntil . '.');
+        return back();
+    }
+
+    // Pause / resume a receiving add-on within its paid period (no charge).
+    public function featureToggle(Request $request)
+    {
+        $request->validate(['feature' => 'required']);
+        $feature = $request->feature;
+        if (!isset(WhatsAppService::RECEIVING_FEATURES[$feature])) {
+            Toastr::error('Unknown feature.');
+            return back();
+        }
+
+        $storeId = Helpers::get_store_id();
+        WhatsAppService::ensureReceivingTable();
+        $row = DB::table('wa_receiving_features')->where('store_id', $storeId)->where('feature', $feature)->first();
+        if (!$row || !$row->active_until || $row->active_until < now()->toDateString()) {
+            Toastr::error('Subscribe first to enable this feature.');
+            return back();
+        }
+
+        DB::table('wa_receiving_features')->where('id', $row->id)
+            ->update(['enabled' => $row->enabled ? 0 : 1, 'updated_at' => now()]);
+
+        Toastr::success($row->enabled ? 'Receiving paused.' : 'Receiving resumed.');
+        return back();
     }
 
     // Completes Embedded Signup: exchanges the auth code for a token and saves the vendor's number.
@@ -88,6 +198,122 @@ class WhatsAppController extends Controller
             Log::error('WA ES finish error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Connection failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    // Vendor message-template management (Business Management API on the vendor's own WABA).
+    public function templates(Request $request)
+    {
+        WhatsAppService::ensureStoreColumns();
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+
+        $connected = $wa->hasWaba();
+        $templates = [];
+        $templateError = null;
+        if ($connected) {
+            $res = $wa->listTemplates();
+            $templates = $res['data'];
+            if (!$res['success']) {
+                $templateError = $res['error'];
+            }
+        }
+
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError'));
+    }
+
+    public function templateCreate(Request $request)
+    {
+        $request->validate([
+            'tpl_name'     => 'required|regex:/^[a-z0-9_]+$/',
+            'tpl_category' => 'required',
+            'tpl_lang'     => 'required',
+            'tpl_body'     => 'required',
+        ], [
+            'tpl_name.regex' => 'Template name must be lowercase letters, numbers and underscores only.',
+        ]);
+
+        $wa = WhatsAppService::make(Helpers::get_store_id());
+        if (!$wa->hasWaba()) {
+            Toastr::error('Connect your WhatsApp number first.');
+            return back();
+        }
+
+        $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
+        $buttons = [];
+        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+        }
+        $res = $wa->createTemplate(
+            trim((string) $request->tpl_name),
+            $request->tpl_category,
+            $request->tpl_lang ?: 'en_US',
+            (string) $request->tpl_body,
+            $example,
+            $buttons
+        );
+
+        if ($res['success']) {
+            Toastr::success('Template submitted to Meta for review (id: ' . ($res['id'] ?? '—') . ').');
+        } else {
+            Toastr::error('Create failed: ' . $res['error']);
+        }
+
+        $waba = DB::table('stores')->where('id', Helpers::get_store_id())->value('wa_business_account_id') ?: '{WABA_ID}';
+        return back()->with('wa_create_result', [
+            'success'  => $res['success'],
+            'endpoint' => 'POST /' . $waba . '/message_templates',
+            'id'       => $res['id'] ?? null,
+            'error'    => $res['error'] ?? null,
+            'response' => $res['response'] ?? null,
+        ]);
+    }
+
+    public function templateUpdate(Request $request)
+    {
+        $request->validate([
+            'tpl_id'   => 'required',
+            'tpl_body' => 'required',
+        ]);
+
+        $wa = WhatsAppService::make(Helpers::get_store_id());
+        if (!$wa->hasWaba()) {
+            Toastr::error('Connect your WhatsApp number first.');
+            return back();
+        }
+
+        $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
+        $buttons = [];
+        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+        }
+
+        $res = $wa->updateTemplate(
+            trim((string) $request->tpl_id),
+            $request->tpl_category ?: null,
+            (string) $request->tpl_body,
+            $example,
+            $buttons
+        );
+
+        if ($res['success']) {
+            Toastr::success('Template updated and re-submitted to Meta for review.');
+        } else {
+            Toastr::error('Update failed: ' . $res['error']);
+        }
+        return back();
+    }
+
+    public function templateDelete(Request $request)
+    {
+        $request->validate(['name' => 'required']);
+        $wa = WhatsAppService::make(Helpers::get_store_id());
+        $res = $wa->deleteTemplate(trim((string) $request->name));
+        if ($res['success']) {
+            Toastr::success('Template deleted.');
+        } else {
+            Toastr::error('Delete failed: ' . $res['error']);
+        }
+        return back();
     }
 
     public function disconnect(Request $request)

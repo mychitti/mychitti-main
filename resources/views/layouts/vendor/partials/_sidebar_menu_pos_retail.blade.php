@@ -91,7 +91,7 @@
     </li>
 @endif
 
-@if ((auth('vendor')->check() || hasPermission('pos_branch_stock', 'view')) && selected_menu('retail_gatepass'))
+@if ((auth('vendor')->check() || hasPermission('pos_branch_stock', 'edit')) && selected_menu('retail_gatepass'))
     <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/gatepass*') ? 'active' : '' }}">
         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.gatepass') }}" title="Stock Transfer">
             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/inventory.png') }}" alt="" class="nav-link-icon">
@@ -100,7 +100,7 @@
     </li>
 @endif
 
-@if (auth('vendor')->check() || hasPermission('pos_billing', 'create'))
+@if (auth('vendor')->check())
     <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/settings') ? 'active' : '' }}">
         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.settings') }}" title="Settings">
             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/settings.png') }}" alt="" class="nav-link-icon">

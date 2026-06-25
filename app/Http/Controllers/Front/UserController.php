@@ -509,6 +509,7 @@ class UserController extends Controller
                         if ($store2) {
                             _sendSMS($store2->phone, $msg_to_vendor);
                             _inAppNotification($title, $msg_to_vendor, null, $store2->id, $url, 'vendor');
+                            \App\Services\WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
                         }
                     }
                 }

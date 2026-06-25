@@ -2568,6 +2568,7 @@
                             </ul>
                         </li>
                     @endif
+                    {{-- @include('layouts.vendor.partials._sidebar_menu_whatsapp') --}}
                     @if (selected_menu('post_ads') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">

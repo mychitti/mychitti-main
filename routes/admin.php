@@ -1618,6 +1618,9 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::get('whatsapp-config', 'BusinessSettingsController@whatsapp_index')->name('whatsapp-config');
                 Route::post('whatsapp-config-update', 'BusinessSettingsController@whatsapp_update')->name('whatsapp-config-update');
                 Route::post('whatsapp-config-test', 'BusinessSettingsController@whatsapp_test')->name('whatsapp-config-test');
+                Route::post('whatsapp-template-create', 'BusinessSettingsController@whatsapp_template_create')->name('whatsapp-template-create');
+                Route::post('whatsapp-template-update', 'BusinessSettingsController@whatsapp_template_update')->name('whatsapp-template-update');
+                Route::post('whatsapp-template-delete', 'BusinessSettingsController@whatsapp_template_delete')->name('whatsapp-template-delete');
                 Route::get('whatsapp-report', 'BusinessSettingsController@whatsapp_report')->name('whatsapp-report');
             });
             // Offline payment Methods

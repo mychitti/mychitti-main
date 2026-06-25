@@ -15,6 +15,7 @@ use App\Models\ServiceRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Zone;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Config;
 
 class LeadController extends Controller
@@ -193,6 +194,8 @@ class LeadController extends Controller
                     $acceptance->service_request_id = $serviceReq->id;
                     $acceptance->created_at = date('Y-m-d H:i:s');
                     $acceptance->save();
+
+                    $this->notifyVendorLead((int) $request->vendor_id, $request->service, $uDet);
                 }
             }
             $request_id = $serviceReq->id;
@@ -225,6 +228,17 @@ class LeadController extends Controller
         }
         $request->session()->flash('msg', 'Lead Information saved successfully');
         return back();
+    }
+
+    /**
+     * WhatsApp the vendor about a new lead — only when the store has the paid
+     * "leads" receiving add-on active. Sent from the platform number.
+     */
+    private function notifyVendorLead(int $storeId, $serviceId, $client): void
+    {
+        $serviceName = DB::table('items')->where('id', $serviceId)->value('name');
+        $clientName = trim(($client->f_name ?? '') . ' ' . ($client->l_name ?? ''));
+        WhatsAppService::sendLeadNotification($storeId, $serviceName, $clientName);
     }
 
     public function search_clients(Request $request)

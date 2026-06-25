@@ -21,6 +21,21 @@ use Illuminate\Support\Facades\Schema;
  */
 class WhatsAppService
 {
+    /** Default approved template for vendor lead notifications (overridden by whatsapp_config.lead_template). */
+    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert2';
+
+    /**
+     * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
+     * Add a new receiving capability here — no schema change needed.
+     */
+    const RECEIVING_FEATURES = [
+        'leads' => [
+            'label' => 'Lead Notifications',
+            'price' => 200,
+            'desc'  => 'Get a WhatsApp message whenever MyChitti sends you a new lead.',
+        ],
+    ];
+
     protected ?int $storeId;
     protected array $cfg;
 
@@ -206,6 +221,173 @@ class WhatsAppService
     }
 
     /**
+     * Business Management API base for the WABA (templates, phone numbers, etc.).
+     * Requires the `whatsapp_business_management` permission and a business_account_id.
+     */
+    protected function wabaEndpoint(string $edge): string
+    {
+        return sprintf(
+            'https://graph.facebook.com/%s/%s/%s',
+            $this->cfg['api_version'],
+            $this->cfg['business_account_id'],
+            $edge
+        );
+    }
+
+    public function hasWaba(): bool
+    {
+        return $this->isConfigured() && !empty($this->cfg['business_account_id']);
+    }
+
+    /**
+     * List message templates on the WABA (Business Management API).
+     * GET /{WABA_ID}/message_templates
+     */
+    public function listTemplates(int $limit = 100): array
+    {
+        if (!$this->hasWaba()) {
+            return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.', 'data' => []];
+        }
+        try {
+            $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->get($this->wabaEndpoint('message_templates'), [
+                    'limit'  => $limit,
+                    'fields' => 'name,status,category,language,components,id',
+                ]);
+            if ($resp->successful()) {
+                return ['success' => true, 'error' => null, 'data' => data_get($resp->json(), 'data', [])];
+            }
+            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            Log::warning('WhatsApp listTemplates failed', ['status' => $resp->status(), 'body' => $resp->json()]);
+            return ['success' => false, 'error' => $err, 'data' => []];
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp listTemplates exception: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage(), 'data' => []];
+        }
+    }
+
+    /**
+     * Create a message template (Business Management API).
+     * POST /{WABA_ID}/message_templates
+     * $bodyText may contain {{1}}, {{2}}, … placeholders; pass $example values in order.
+     */
+    /**
+     * Builds the component array shared by create/update.
+     * Order required by Meta: HEADER, BODY, FOOTER, BUTTONS.
+     */
+    protected function buildComponents(string $bodyText, array $example, array $buttons, ?string $header, ?string $footer): array
+    {
+        $components = [];
+
+        if ($header !== null && trim($header) !== '') {
+            $components[] = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $header];
+        }
+
+        $body = ['type' => 'BODY', 'text' => $bodyText];
+        if (!empty($example)) {
+            $body['example'] = ['body_text' => [array_values($example)]];
+        }
+        $components[] = $body;
+
+        if ($footer !== null && trim($footer) !== '') {
+            $components[] = ['type' => 'FOOTER', 'text' => $footer];
+        }
+
+        $btnDefs = [];
+        foreach ($buttons as $btn) {
+            if (!empty($btn['text']) && !empty($btn['url'])) {
+                $btnDefs[] = ['type' => 'URL', 'text' => $btn['text'], 'url' => $btn['url']];
+            }
+        }
+        if (!empty($btnDefs)) {
+            $components[] = ['type' => 'BUTTONS', 'buttons' => $btnDefs];
+        }
+
+        return $components;
+    }
+
+    public function createTemplate(string $name, string $category, string $lang, string $bodyText, array $example = [], array $buttons = [], ?string $header = null, ?string $footer = null): array
+    {
+        if (!$this->hasWaba()) {
+            return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.', 'id' => null];
+        }
+        $components = $this->buildComponents($bodyText, $example, $buttons, $header, $footer);
+
+        try {
+            $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->post($this->wabaEndpoint('message_templates'), [
+                    'name'       => $name,
+                    'category'   => $category,
+                    'language'   => $lang,
+                    'components' => $components,
+                ]);
+            if ($resp->successful()) {
+                return ['success' => true, 'error' => null, 'id' => data_get($resp->json(), 'id'), 'response' => $resp->json()];
+            }
+            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            Log::warning('WhatsApp createTemplate failed', ['status' => $resp->status(), 'body' => $resp->json()]);
+            return ['success' => false, 'error' => $err, 'id' => null, 'response' => $resp->json()];
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp createTemplate exception: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage(), 'id' => null];
+        }
+    }
+
+    /**
+     * Edit an existing template (Business Management API).
+     * POST /{message_template_id} — name & language are immutable; only category/components.
+     * Meta rejects edits while a template is in review (PENDING).
+     */
+    public function updateTemplate(string $templateId, ?string $category, string $bodyText, array $example = [], array $buttons = [], ?string $header = null, ?string $footer = null): array
+    {
+        if (!$this->hasWaba()) {
+            return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.'];
+        }
+        $components = $this->buildComponents($bodyText, $example, $buttons, $header, $footer);
+
+        $payload = ['components' => $components];
+        if ($category) {
+            $payload['category'] = $category;
+        }
+
+        try {
+            $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->post(sprintf('https://graph.facebook.com/%s/%s', $this->cfg['api_version'], $templateId), $payload);
+            if ($resp->successful()) {
+                return ['success' => true, 'error' => null, 'response' => $resp->json()];
+            }
+            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            Log::warning('WhatsApp updateTemplate failed', ['status' => $resp->status(), 'body' => $resp->json()]);
+            return ['success' => false, 'error' => $err, 'response' => $resp->json()];
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp updateTemplate exception: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Delete a message template by name (Business Management API).
+     * DELETE /{WABA_ID}/message_templates?name=...
+     */
+    public function deleteTemplate(string $name): array
+    {
+        if (!$this->hasWaba()) {
+            return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.'];
+        }
+        try {
+            $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->delete($this->wabaEndpoint('message_templates'), ['name' => $name]);
+            if ($resp->successful()) {
+                return ['success' => true, 'error' => null];
+            }
+            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            return ['success' => false, 'error' => $err];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Per-vendor credential columns on `stores` (for Phase 2 — each vendor's own number).
      * Idempotent, guarded, no migration files. Populated later by the onboarding flow;
      * resolveConfig() already reads them when wa_enabled is set.
@@ -227,6 +409,97 @@ class WhatsAppService
                 DB::statement("ALTER TABLE `stores` ADD COLUMN `$name` $def");
             }
         }
+    }
+
+    /** Per-store paid receiving add-ons. Idempotent, no migration files. */
+    public static function ensureReceivingTable(): void
+    {
+        if (!Schema::hasTable('wa_receiving_features')) {
+            DB::statement("CREATE TABLE `wa_receiving_features` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NOT NULL,
+                `feature` VARCHAR(40) NOT NULL,
+                `enabled` TINYINT(1) NOT NULL DEFAULT 0,
+                `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                `active_until` DATE NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `waf_store_feature` (`store_id`, `feature`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    /**
+     * Notify a store of a new lead on WhatsApp from the platform number — only when
+     * the store has the paid "leads" add-on active. Safe to call from any dispatch path.
+     */
+    public static function sendLeadNotification(int $storeId, ?string $serviceName, ?string $clientName): void
+    {
+        if (!static::storeHasFeature($storeId, 'leads')) {
+            return;
+        }
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store || empty($store->phone)) {
+            return;
+        }
+
+        $wa = static::make();
+        if (!$wa->isConfigured()) {
+            return;
+        }
+
+        $serviceName = $serviceName ?: 'a service';
+        $clientName  = $clientName ?: 'a customer';
+        $cfg = Helpers::get_business_settings('whatsapp_config');
+
+        // Config field overrides; otherwise fall back to the default lead template.
+        $template = !empty($cfg['lead_template']) ? $cfg['lead_template'] : self::DEFAULT_LEAD_TEMPLATE;
+
+        $sent = false;
+        if ($template) {
+            $components = [[
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn($v) => ['type' => 'text', 'text' => $v],
+                    [$store->name ?: 'Vendor', $serviceName, $clientName]
+                ),
+            ]];
+            $res = $wa->sendTemplate($store->phone, $template, $cfg['lead_template_lang'] ?? 'en_US', $components, 'lead notify');
+            $sent = !empty($res['success']);
+        }
+
+        // Fallback when no template is configured or the template send fails
+        // (e.g. not yet approved) — the vendor still gets notified.
+        if (!$sent) {
+            $msg = "🔔 *New Lead on MyChitti!*\n\n"
+                . "🛠️ *Service:* {$serviceName}\n"
+                . "👤 *Customer:* {$clientName}\n\n"
+                . "👉 Log in to your vendor panel to view details and respond.\n\n"
+                . "_— Team MyChitti_";
+            $wa->sendText($store->phone, $msg, true, 'lead notify');
+        }
+    }
+
+    /** True only when the store has the add-on enabled AND the paid period is still valid. */
+    public static function storeHasFeature(int $storeId, string $feature): bool
+    {
+        if (!array_key_exists($feature, self::RECEIVING_FEATURES)) {
+            return false;
+        }
+        static::ensureReceivingTable();
+        $row = DB::table('wa_receiving_features')
+            ->where('store_id', $storeId)->where('feature', $feature)->first();
+        return $row && $row->enabled && $row->active_until && $row->active_until >= now()->toDateString();
+    }
+
+    /** Resolve which store owns an inbound message, by its Cloud API phone_number_id. */
+    public static function storeByPhoneNumberId(?string $phoneNumberId): ?int
+    {
+        if (!$phoneNumberId || !static::storeColumnsExist()) {
+            return null;
+        }
+        return DB::table('stores')->where('wa_phone_number_id', $phoneNumberId)->value('id');
     }
 
     /** Creates the delivery-log table once (no migration files, per project rules). */

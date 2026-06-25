@@ -2805,7 +2805,131 @@ class BusinessSettingsController extends Controller
         \App\Services\WhatsAppService::ensureStoreColumns();
         \App\Services\WhatsAppService::ensureMessagesTable();
         $config = \App\CentralLogics\Helpers::get_business_settings('whatsapp_config');
-        return view('admin-views.business-settings.whatsapp-index', compact('config'));
+
+        // Business Management API: list templates on the WABA (whatsapp_business_management).
+        $templates = [];
+        $templateError = null;
+        $wa = \App\Services\WhatsAppService::make();
+        if ($wa->hasWaba()) {
+            $res = $wa->listTemplates();
+            $templates = $res['data'];
+            if (!$res['success']) {
+                $templateError = $res['error'];
+            }
+        }
+
+        return view('admin-views.business-settings.whatsapp-index', compact('config', 'templates', 'templateError'));
+    }
+
+    public function whatsapp_template_create(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+        $request->validate([
+            'tpl_name'     => 'required|regex:/^[a-z0-9_]+$/',
+            'tpl_category' => 'required',
+            'tpl_lang'     => 'required',
+            'tpl_body'     => 'required',
+        ], [
+            'tpl_name.regex' => translate('Template name must be lowercase letters, numbers and underscores only.'),
+        ]);
+
+        $wa = \App\Services\WhatsAppService::make();
+        if (!$wa->hasWaba()) {
+            Toastr::error(translate('Save the Business Account ID and enable WhatsApp credentials first.'));
+            return back();
+        }
+
+        $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
+        $buttons = [];
+        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+        }
+        $res = $wa->createTemplate(
+            trim((string) $request->tpl_name),
+            $request->tpl_category,
+            $request->tpl_lang ?: 'en_US',
+            (string) $request->tpl_body,
+            $example,
+            $buttons,
+            trim((string) $request->tpl_header) ?: null,
+            trim((string) $request->tpl_footer) ?: null
+        );
+
+        if ($res['success']) {
+            Toastr::success(translate('Template submitted to Meta for review (id: ') . ($res['id'] ?? '—') . ').');
+        } else {
+            Toastr::error(translate('Create failed: ') . $res['error']);
+        }
+
+        $wabaId = data_get(\App\CentralLogics\Helpers::get_business_settings('whatsapp_config'), 'business_account_id', '{WABA_ID}');
+        return back()->with('wa_create_result', [
+            'success'  => $res['success'],
+            'endpoint' => 'POST /' . $wabaId . '/message_templates',
+            'id'       => $res['id'] ?? null,
+            'error'    => $res['error'] ?? null,
+            'response' => $res['response'] ?? null,
+        ]);
+    }
+
+    public function whatsapp_template_update(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+        $request->validate([
+            'tpl_id'   => 'required',
+            'tpl_body' => 'required',
+        ]);
+
+        $wa = \App\Services\WhatsAppService::make();
+        if (!$wa->hasWaba()) {
+            Toastr::error(translate('Save the Business Account ID and enable WhatsApp credentials first.'));
+            return back();
+        }
+
+        $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
+        $buttons = [];
+        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+        }
+
+        $res = $wa->updateTemplate(
+            trim((string) $request->tpl_id),
+            $request->tpl_category ?: null,
+            (string) $request->tpl_body,
+            $example,
+            $buttons,
+            trim((string) $request->tpl_header) ?: null,
+            trim((string) $request->tpl_footer) ?: null
+        );
+
+        if ($res['success']) {
+            Toastr::success(translate('Template updated and re-submitted to Meta for review.'));
+        } else {
+            Toastr::error(translate('Update failed: ') . $res['error']);
+        }
+        return back();
+    }
+
+    public function whatsapp_template_delete(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+        $request->validate(['name' => 'required']);
+        $wa = \App\Services\WhatsAppService::make();
+        $res = $wa->deleteTemplate(trim((string) $request->name));
+        if ($res['success']) {
+            Toastr::success(translate('Template deleted.'));
+        } else {
+            Toastr::error(translate('Delete failed: ') . $res['error']);
+        }
+        return back();
     }
 
     public function whatsapp_update(Request $request)
@@ -2828,6 +2952,9 @@ class BusinessSettingsController extends Controller
                 'es_app_id' => trim((string) $request->es_app_id),
                 'es_app_secret' => trim((string) $request->es_app_secret),
                 'es_config_id' => trim((string) $request->es_config_id),
+                // Template used to notify vendors of new leads (business-initiated).
+                'lead_template' => trim((string) $request->lead_template),
+                'lead_template_lang' => trim((string) $request->lead_template_lang) ?: 'en_US',
             ]),
             'created_at' => now(),
             'updated_at' => now(),
