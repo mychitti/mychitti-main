@@ -46,7 +46,7 @@
                     @csrf
                     <div class="row">
                         @foreach ($uiTemplates as $key => [$label, $desc, $color])
-                            <div class="col-md-4 mb-2">
+                            <div class="col-md-3 col-sm-6 mb-2">
                                 <label style="display:block;cursor:pointer;border:1.5px solid {{ $uiTemplate === $key ? $color : '#e4e4e7' }};border-radius:12px;padding:12px 14px;{{ $uiTemplate === $key ? 'background:' . $color . '0f;' : '' }}">
                                     <span style="display:flex;align-items:center;gap:8px;">
                                         <input type="radio" name="pos_ui_template" value="{{ $key }}" {{ $uiTemplate === $key ? 'checked' : '' }}>
