@@ -47,6 +47,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
 
+        // WhatsApp (vendor self-connect, message templates, paid receiving add-ons)
+        Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
+        Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
+        Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
+        Route::get('whatsapp/templates', 'WhatsAppController@templates')->name('whatsapp.templates');
+        Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create');
+        Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
+        Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete');
+        Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
+        Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
+
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');
         Route::get('/clock-out', 'VendorEmployeeController@clock_out')->name('clockout');
         Route::get('/attendance', 'VendorEmployeeController@attendance')->name('employee-attendance');
@@ -239,6 +250,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'inventory', 'as' => 'inventory.', 'middleware' => ['planwise:inventory_manage']], function () {
             Route::get('settings', 'InventoryController@settings')->name('settings')->middleware('permission:inventory,settings');
             Route::post('settings-save', 'InventoryController@settings_save')->name('settings-save')->middleware('permission:inventory,settings_save');
+            Route::get('label-formats',                'InventoryController@labelFormats')->name('label-formats')->middleware('permission:inventory,settings');
+            Route::post('label-formats/save',          'InventoryController@labelFormatSave')->name('label-formats.save')->middleware('permission:inventory,settings');
+            Route::post('label-formats/{id}/default',  'InventoryController@labelFormatDefault')->name('label-formats.default')->middleware('permission:inventory,settings');
+            Route::post('label-formats/{id}/delete',   'InventoryController@labelFormatDelete')->name('label-formats.delete')->middleware('permission:inventory,settings');
             Route::get('dashboard', 'InventoryController@dashboard')->name('dashboard')->middleware('permission:inventory,dashboard');
             Route::get('/', 'InventoryController@inventory_management')->name('index');
             Route::post('get_my_fee_amount', 'InventoryController@get_my_fee_amount')->name('get_my_fee_amount');
@@ -270,6 +285,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('show_on_website/{id}/{status}', 'InventoryController@show_on_website')->name('show_on_website')->middleware('permission:inventory_item,show_on_website');
                 Route::get('delete/{id}', 'InventoryController@item_delete')->name('delete')->middleware('permission:inventory_item,delete');
                 Route::post('bulk-delete', 'InventoryController@item_bulk_delete')->name('bulk-delete')->middleware('permission:inventory_item,delete');
+                Route::post('assign-storage-unit', 'InventoryController@assign_storage_unit')->name('assign-storage-unit')->middleware('permission:inventory_item,edit');
                 Route::get('export', 'InventoryController@item_export')->name('export')->middleware('permission:inventory_item,export');
                 Route::get('export-selected', 'InventoryController@item_export_selected')->name('export-selected')->middleware('permission:inventory_item,export');
                 Route::get('detail/{id}', 'InventoryController@item_detail')->name('detail')->middleware('permission:inventory_item,view');
@@ -618,6 +634,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
         Route::get('service/lead-settings', 'ServiceController@lead_settings')->name('service.lead-settings');
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
+        Route::get('service/lead-subscription', '\App\Http\Controllers\Vendor\LeadSubscriptionController@index')->name('service.lead-subscription');
+        Route::post('service/lead-subscription/buy', '\App\Http\Controllers\Vendor\LeadSubscriptionController@buy')->name('service.lead-subscription.buy');
+        Route::post('service/lead-subscription/gateway', '\App\Http\Controllers\Vendor\LeadSubscriptionController@initiate_gateway')->name('service.lead-subscription.gateway');
         Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
             Route::get('leads/{id?}/{action?}', 'ServiceController@leads_list')->name('leads_list');
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
@@ -640,6 +659,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('delete-gatepass-item/{id}', 'ServiceController@delete_gatepass_item')->name('delete-gatepass-item')->middleware('permission:leads_gatepass,edit');
             Route::post('cancel', 'ServiceController@cancel')->name('cancel')->middleware('permission:leads_manage,cancel');
             Route::get('lead-details/{id}', 'ServiceController@lead_details')->name('lead-details')->middleware('permission:leads_manage,view');
+            Route::get('assigned-leads/{id?}/{action?}', 'ServiceController@assigned_leads_list')->name('assigned_leads_list');
+            Route::get('leads-dashboard', 'ServiceController@leadsDashboard')->name('leads-dashboard');
+            Route::get('lead-card/{id}', 'ServiceController@getLeadCard')->name('lead-card');
+            Route::get('assignment-logs/{id}', 'ServiceController@assignmentLogs')->name('assignment-logs');
+            Route::post('send-completion-otp', 'ServiceController@sendCompletionOtp')->name('send-completion-otp');
+            Route::post('add-custom-status', 'ServiceController@addCustomStatus')->name('add-custom-status');
+            Route::post('dismiss-leads-guide', 'ServiceController@dismissLeadsGuide')->name('dismiss-leads-guide');
+            Route::post('lead-note/add', 'ServiceController@addLeadNote')->name('lead-note.add');
             Route::get('task/{id}/{action}/{acc_id}', 'ServiceController@task_action')->name('task');
         });
 

@@ -1495,7 +1495,11 @@
                         @if (
                             !\App\CentralLogics\Helpers::permission_check('hr_manage') &&
                                 !\App\CentralLogics\Helpers::permission_check('laundry') &&
-                                selected_menu('staff_manage'))
+                                selected_menu('staff_manage') &&
+                                (auth('vendor')->check()
+                                    || hasPermission('basic_staff_manage', 'list')
+                                    || hasPermission('basic_staff_manage', 'add')
+                                    || hasPermission('basic_staff_manage', 'role_manage')))
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                     title="Staff Management">
