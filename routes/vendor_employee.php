@@ -1243,6 +1243,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
     // HOSPITAL MANAGEMENT ===================================
     require base_path('app/Modules/HMIS/routes/vendor.php');
 
+    // pos retail ==============================
+    require base_path('app/Modules/PosRetail/routes/vendor.php');
+
     // laundry ==============================
     Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry']], function () {
         Route::get('dashboard',                'LaundryController@dashboard')->name('dashboard');

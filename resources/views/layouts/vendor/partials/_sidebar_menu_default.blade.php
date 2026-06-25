@@ -14,17 +14,7 @@
                         @endif
                     @endunless
 
-                    @if (!auth('vendor')->check())
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('profile/view') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.profile.view') }}" title="My Profile">
-                                <i class="tio-user-outlined nav-link-icon" style="font-size:20px;"></i>
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                    My Profile
-                                </span>
-                            </a>
-                        </li>
-                    @endif
+                    {{-- My Profile moved into the grouped "My Account" menu below (staff self-service) --}}
 
                     @if (!auth('vendor')->check() && \App\CentralLogics\Helpers::employee_module_permission_check('assigned_tasks'))
                         <li
@@ -1984,47 +1974,46 @@
                     <!-- End Dashboards -->
 
                     @if (auth('vendor_employee')->check())
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('attendance*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.employee-attendance') }}" title="attendance">
-                                <img src="{{ asset('storage/app/public/nav/attendance.png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class=" text-truncate">
-                                    Attendance
-                                </span>
+                        @php
+                            $myAccountActive = Request::is('profile/view') || Request::is('attendance*') || Request::is('salary-history*') || Request::is('leaves*') || Request::is('my-performance*');
+                        @endphp
+                        <li class="navbar-vertical-aside-has-menu {{ $myAccountActive ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="My Account">
+                                <i class="tio-user-outlined nav-link-icon" style="font-size:20px;"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Account</span>
                             </a>
-                        </li>
-                        <li
-                            class="navbar-vertical-aside-has-menu {{ Request::is('salary-history*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.salary-history') }}" title="My Salary">
-                                <img src="{{ asset('storage/app/public/nav/salary.png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class=" text-truncate">
-                                    My Salary
-                                </span>
-                            </a>
-                        </li>
-
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('leaves*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.employee-leave') }}" title="My Leaves">
-                                <img src="{{ asset('storage/app/public/nav/leave (1).png') }}" alt=""
-                                    class="nav-link-icon">
-                                <span class=" text-truncate">
-                                    My Leaves
-                                </span>
-                            </a>
-                        </li>
-
-                        <li class="navbar-vertical-aside-has-menu {{ Request::is('my-performance*') ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link"
-                                href="{{ route('vendor.report.staff-combined') }}" title="My Performance">
-                                <i class="tio-chart-bar-4 nav-link-icon" style="font-size:20px;"></i>
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                    My Performance
-                                </span>
-                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ $myAccountActive ? 'block' : 'none' }}">
+                                <li class="nav-item {{ Request::is('profile/view') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.profile.view') }}" title="My Profile">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">My Profile</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('attendance*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.employee-attendance') }}" title="Attendance">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Attendance</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('salary-history*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.salary-history') }}" title="My Salary">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">My Salary</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('leaves*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.employee-leave') }}" title="My Leaves">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">My Leaves</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('my-performance*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('vendor.report.staff-combined') }}" title="My Performance">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">My Performance</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     @endif
 
