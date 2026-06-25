@@ -267,7 +267,7 @@
              item_name + `" ` + readonly + ` placeholder="Item Name" class="form-control item_name"></td>
                       <td style="width: 100px;"><label class="small_label">Price</label><input type="number" value="` +
              item_price + `"  step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price item_price"></td>
-                      <td style="width: 58px;"><label class="small_label">Qty</label><input type="number" name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty item_qty"></td>
+                      <td style="width: 58px;"><label class="small_label">Qty</label><input type="number" step="any" min="0" name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty item_qty"></td>
                        <td style="width:140px;">
                        
                        

@@ -24,7 +24,11 @@
                 <div class="rp-empty">Create a branch first under <b>Branches &amp; Counters</b>.</div>
             </div>
         @else
-            @php $canTransfer = auth('vendor')->check() || hasPermission('pos_branch_stock', 'edit'); @endphp
+            @php
+                $isOwner = auth('vendor')->check();
+                $canTransfer = $isOwner || hasPermission('pos_gatepass', 'create');
+                $canDelete = $isOwner || hasPermission('pos_gatepass', 'delete');
+            @endphp
 
             @if ($canTransfer)
                 <form method="post" action="{{ route('vendor.retail-pos.gatepass.store') }}">
@@ -92,32 +96,82 @@
                 </form>
             @endif
 
-            <div class="rp-card">
-                <div class="hd"><span class="accent">Recent Gatepasses</span></div>
-                <div class="table-responsive">
-                    <table class="rp-table">
-                        <thead>
-                            <tr><th>Gatepass #</th><th>To Branch</th><th>Note</th><th>Date</th><th class="text-right">Action</th></tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($gatepasses as $g)
+            <form method="post" action="{{ route('vendor.retail-pos.gatepass.delete') }}" id="gp-delete-form"
+                onsubmit="return gpConfirmDelete();">
+                @csrf
+                <div class="rp-card">
+                    <div class="hd d-flex justify-content-between align-items-center">
+                        <span class="accent">Recent Gatepasses</span>
+                        @if ($canDelete && $gatepasses->count())
+                            <button type="submit" class="btn btn-sm btn-outline-danger" id="gp-delete-btn" disabled>
+                                🗑 Delete Selected (<span id="gp-sel-count">0</span>)
+                            </button>
+                        @endif
+                    </div>
+                    <div class="table-responsive">
+                        <table class="rp-table">
+                            <thead>
                                 <tr>
-                                    <td><b>{{ $g->gatepass_no }}</b></td>
-                                    <td>{{ $g->branch_name ?? '—' }}</td>
-                                    <td class="text-muted">{{ $g->note }}</td>
-                                    <td class="text-muted">{{ \Carbon\Carbon::parse($g->created_at)->format('d M Y, h:i A') }}</td>
-                                    <td class="text-right">
-                                        <a class="btn btn-sm btn-outline-warning" target="_blank"
-                                            href="{{ route('vendor.retail-pos.gatepass.print', $g->id) }}">🖨 Print</a>
-                                    </td>
+                                    @if ($canDelete)
+                                        <th width="36" class="text-center"><input type="checkbox" id="gp-check-all"></th>
+                                    @endif
+                                    <th>Gatepass #</th><th>To Branch</th><th>Note</th><th>Date</th><th class="text-right">Action</th>
                                 </tr>
-                            @empty
-                                <tr><td colspan="5"><div class="rp-empty">No transfers yet.</div></td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @forelse ($gatepasses as $g)
+                                    <tr>
+                                        @if ($canDelete)
+                                            <td class="text-center">
+                                                <input type="checkbox" class="gp-check" name="ids[]" value="{{ $g->id }}">
+                                            </td>
+                                        @endif
+                                        <td><b>{{ $g->gatepass_no }}</b></td>
+                                        <td>{{ $g->branch_name ?? '—' }}</td>
+                                        <td class="text-muted">{{ $g->note }}</td>
+                                        <td class="text-muted">{{ \Carbon\Carbon::parse($g->created_at)->format('d M Y, h:i A') }}</td>
+                                        <td class="text-right">
+                                            <a class="btn btn-sm btn-outline-warning" target="_blank"
+                                                href="{{ route('vendor.retail-pos.gatepass.print', $g->id) }}">🖨 Print</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="{{ $canDelete ? 6 : 5 }}"><div class="rp-empty">No transfers yet.</div></td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </form>
+
+            @if ($canDelete)
+                <script>
+                    (function () {
+                        var all = document.getElementById('gp-check-all');
+                        var boxes = Array.prototype.slice.call(document.querySelectorAll('.gp-check'));
+                        var btn = document.getElementById('gp-delete-btn');
+                        var count = document.getElementById('gp-sel-count');
+
+                        function refresh() {
+                            var sel = boxes.filter(function (b) { return b.checked; }).length;
+                            if (count) count.textContent = sel;
+                            if (btn) btn.disabled = sel === 0;
+                            if (all) all.checked = sel > 0 && sel === boxes.length;
+                        }
+                        if (all) all.addEventListener('change', function () {
+                            boxes.forEach(function (b) { b.checked = all.checked; });
+                            refresh();
+                        });
+                        boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+                    })();
+
+                    function gpConfirmDelete() {
+                        var sel = document.querySelectorAll('.gp-check:checked').length;
+                        if (sel === 0) { return false; }
+                        return confirm('Delete ' + sel + ' selected gatepass(es)? This returns the transferred stock to the main store and removes it from the branch.');
+                    }
+                </script>
+            @endif
         @endif
     </div>
 @endsection

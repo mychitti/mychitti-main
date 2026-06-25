@@ -35,6 +35,7 @@
                 'classic' => ['Classic', 'Indigo theme · two columns — products left, cart right (default).', '#4f46e5'],
                 'compact' => ['Compact', 'Teal theme · dense, cart-first layout for fast billing.', '#0d9488'],
                 'modern'  => ['Modern',  'Pink/gradient theme · large rounded touch tiles.', '#db2777'],
+                'search'  => ['Search-first', 'Just a big search bar — results appear below as you type. No product grid.', '#0ea5e9'],
             ];
         @endphp
         <div class="rp-card">

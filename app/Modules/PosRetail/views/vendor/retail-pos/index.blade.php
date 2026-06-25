@@ -207,6 +207,49 @@
         .rpos-tpl-classic .quick-item::after { content:"＋"; color:var(--accent); font-weight:700; font-size:15px; margin-left:8px; opacity:.55; }
         .rpos-tpl-classic .pos-topbar h1 { color:var(--primary,#754BFF); }
 
+        /* ════════════════ UI TEMPLATE: SEARCH-FIRST ════════════════
+           Minimal — a single big search bar. Matching products appear below as you
+           type; the always-visible product grid + category bar are hidden. */
+        .rpos.rpos-tpl-search { --accent:#0ea5e9; --accent-dark:#0369a1; --accent2:#7dd3fc; --soft:#f0f9ff; }
+        .rpos-tpl-search { background:#f2fbff; }
+        .rpos-tpl-search .items-row { display:none; }          /* hide grid + categories */
+        .rpos-tpl-search .pc-bd { padding:18px 18px 22px; }
+        .rpos-tpl-search #pos-search { height:62px; font-size:18px; border-radius:14px; padding:0 18px; }
+        .rpos-tpl-search .pc-hd span { font-size:15px; }
+        .rpos-tpl-search .pos-results { max-height:none; margin-top:14px; border:0; }
+        .rpos-tpl-search .pos-results .res-row { padding:14px 18px; font-size:15px; }
+        /* Highlight each matched product as a tappable card. */
+        .rpos-tpl-search .pos-results .res-row[data-it] {
+            background:#f0f9ff; border:1px solid #bae6fd; border-left:4px solid var(--accent);
+            border-radius:10px; margin:8px 0; font-weight:600; color:#0f3460;
+        }
+        .rpos-tpl-search .pos-results .res-row[data-it]:hover { background:#dbeefe; border-color:var(--accent); }
+        .rpos-tpl-search .pos-results .res-row[data-it] small { font-weight:400; color:#64748b; }
+        .rpos-tpl-search .search-hint { display:block; }
+        .rpos-tpl-search .pos-topbar h1 { color:var(--accent-dark); }
+
+        /* Two columns kept: the cart/checkout stays on the right (sticky, as before).
+           Only the selected-items table is moved to the LEFT, below the search (via JS). */
+        .rpos-tpl-search .selected-items-hd {
+            font-weight:600; color:var(--accent-dark); font-size:13px;
+            margin:16px 0 8px; padding-top:14px; border-top:1px solid var(--line);
+        }
+        /* Show every selected row in full — no fixed height / inner scroll. */
+        .rpos-tpl-search .cart-scroll { overflow:visible; max-height:none; }
+        /* Avoid the load flash: the items table is hidden while it's still in the right
+           panel, then JS relocates it under the search (left) where this rule no longer
+           matches, so it appears only in its final position. */
+        .rpos-tpl-search .pos-right .cart-scroll { display:none; }
+
+        /* Excel-style selected-items grid (bordered cells, header fill, zebra rows). */
+        .rpos-tpl-search .cart-table { border-collapse:collapse; width:100%; }
+        .rpos-tpl-search .cart-table thead th,
+        .rpos-tpl-search .cart-table td { border:1px solid #cbd5e1; padding:8px 8px; }
+        .rpos-tpl-search .cart-table thead th { background:#eef4fb; color:#334155; }
+        .rpos-tpl-search .cart-table tbody tr:nth-child(even) td { background:#f8fafc; }
+        /* hint is hidden in every other template */
+        .search-hint { display:none; text-align:center; color:#7c8aa0; font-size:14px; padding:18px 10px 4px; }
+
         /* ════════════ KIOSK MODE (full-screen New Sale only) ════════════
            While full-screen, hide the panel chrome and show just the billing screen. */
         body.pos-kiosk #header,
@@ -243,6 +286,7 @@
                     <div class="pc-bd">
                         <input type="text" id="pos-search" class="form-control" autofocus autocomplete="off"
                             placeholder="Scan with USB scanner, or type name / SKU / barcode, then Enter">
+                        <div class="search-hint">🔎 Start typing a product name, SKU or barcode — matches appear below.</div>
                         <div class="pos-results" id="pos-results" style="display:none;"></div>
 
                         {{-- Camera scanner overlay --}}
@@ -315,8 +359,8 @@
                                 <div class="cam-col"><div class="rp-mini">🏬 Billing at <b>{{ optional($branches->firstWhere('id', $myBranchId))->name }}</b></div></div>
                             @elseif ($branches->count())
                                 <div class="cam-col">
-                                    <select id="pos-branch" class="form-control" required>
-                                        <option value="">🏬 Select branch *</option>
+                                    <select id="pos-branch" class="form-control">
+                                        <option value="" {{ !$defaultBranchId ? 'selected' : '' }}>🏬 Main Store (no branch)</option>
                                         @foreach ($branches as $b)
                                             <option value="{{ $b->id }}" {{ $defaultBranchId == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                                         @endforeach
@@ -405,10 +449,10 @@
                     </div>
 
                     <div class="totals-row mt-1"><span>Tendered</span><span>₹<span id="t-paid">0.00</span></span></div>
-                    <div class="totals-row" id="change-row" style="display:none;color:#1e7e34;font-weight:600;"><span>Change to return</span><span>₹<span id="t-change">0.00</span></span></div>
-                    <div class="totals-row" id="due-row" style="display:none;color:#c0392b;"><span>Balance (credit)</span><span>₹<span id="t-due">0.00</span></span></div>
+                    <div class="totals-row" id="change-row" style="display:none;color:#1e7e34;font-weight:700;border:2px dashed #1e7e34;background:#eafaf1;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>💵 Change to return</span><span>₹<span id="t-change">0.00</span></span></div>
+                    <div class="totals-row" id="due-row" style="display:none;color:#c0392b;font-weight:700;border:2px dashed #c0392b;background:#fdecea;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>Balance (credit)</span><span>₹<span id="t-due">0.00</span></span></div>
 
-                        <div class="d-flex gap-2 mt-3">
+                        <div class="d-flex gap-2 mt-3 cart-actions">
                             @if (hasPermission('pos_billing', 'hold'))
                                 <button type="button" class="btn btn-outline-warning btn-lg" id="btn-hold" style="flex:0 0 32%;">Hold</button>
                             @endif
@@ -483,7 +527,6 @@
 
         function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
         function posBranch() { const el = document.getElementById('pos-branch'); return el ? (el.value || '') : ''; }
-        function branchMissing() { const el = document.getElementById('pos-branch'); return el && el.tagName === 'SELECT' && !el.value; }
 
         function addToCart(item) {
             if (window.toastr) {
@@ -651,6 +694,9 @@
             lastInputAt = now;
             fastCount = (gap > 0 && gap < 35) ? fastCount + 1 : 0;
             const q = this.value.trim();
+            // Hide the "Start typing…" hint as soon as anything is entered.
+            const hintEl = document.querySelector('.search-hint');
+            if (hintEl) hintEl.style.display = this.value.length ? 'none' : '';
             if (q.length < 2) { resultsBox.style.display = 'none'; return; }
             // USB barcode scanners type as a keyboard wedge — a run of characters arrives within a
             // few ms of each other. Treat a sustained burst as a scan and auto-add even without a
@@ -678,6 +724,7 @@
                     if (exact && d.items.length >= 1) {
                         const it = d.items[0];
                         addToCart(it); searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
+                        const h = document.querySelector('.search-hint'); if (h) h.style.display = '';
                         if (window.toastr) toastr.success(it.name + ' added to cart');
                         return it;
                     }
@@ -729,16 +776,32 @@
                 });
         }));
 
-        // Default tab = All → load all items on open.
+        // Default tab = All → load all items on open. Skipped in the search-first
+        // template, where the grid is hidden and items only show via search.
         const allTab = document.querySelector('.cat-tab[data-cat="all"]');
-        if (allTab) allTab.click();
+        const searchFirst = document.querySelector('.rpos')?.classList.contains('rpos-tpl-search');
+        if (allTab && !searchFirst) allTab.click();
+
+        // Search-first: move the selected-items table to the LEFT (below the search),
+        // keeping the cart / checkout (customer, totals, payment, Finalize) on the right.
+        if (searchFirst) {
+            const leftBody = document.querySelector('.pos-left .pc-bd');
+            const cartScroll = document.querySelector('.pos-right .cart-scroll');
+            if (leftBody && cartScroll) {
+                const hd = document.createElement('div');
+                hd.className = 'selected-items-hd';
+                hd.textContent = '🛒 Selected Items';
+                leftBody.appendChild(hd);
+                leftBody.appendChild(cartScroll);
+            }
+        }
 
         // Owner switches branch → reload the grid so stock reflects that branch.
         const branchSel = document.getElementById('pos-branch');
         if (branchSel && branchSel.tagName === 'SELECT') {
             branchSel.addEventListener('change', function () {
-                // Remember this branch for next time.
-                if (this.value) fetch(POS.defaultBranch, {
+                // Remember this choice for next time (empty = Main Store / no branch).
+                fetch(POS.defaultBranch, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
                     body: new URLSearchParams({ branch_id: this.value }),
@@ -892,7 +955,6 @@
 
         document.getElementById('btn-hold')?.addEventListener('click', function () {
             if (!POS.cart.length) { (window.toastr ? toastr.error : alert)('Nothing to hold'); return; }
-            if (branchMissing()) { (window.toastr ? toastr.error : alert)('Please select a branch'); return; }
             fetch(POS.hold, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
@@ -951,7 +1013,6 @@
         // ── Finalize ──
         function finalize(allowOos) {
             if (!POS.cart.length) { toastr ? toastr.error('Cart is empty') : alert('Cart is empty'); return; }
-            if (branchMissing()) { (window.toastr ? toastr.error : alert)('Please select a branch'); document.getElementById('pos-branch').focus(); return; }
             const payments = [];
             document.querySelectorAll('.pay-leg').forEach(leg => {
                 const amt = parseFloat(leg.querySelector('.pay-amount').value) || 0;
@@ -1011,6 +1072,23 @@
 
         document.getElementById('btn-finalize')?.addEventListener('click', finalize);
         document.addEventListener('keydown', e => { if (e.key === 'F12' && POS.canCreate) { e.preventDefault(); finalize(); } });
+
+        // Enter also finalizes & prints (like F12) — except while typing in the item or
+        // customer search (Enter there adds an item / picks a customer, and a USB scanner's
+        // trailing Enter must not fire a sale).
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' || e.repeat || !POS.canCreate) return;
+            const el = e.target || {};
+            if ((el.tagName || '').toLowerCase() === 'textarea') return;
+            if (el.id === 'pos-search' || el.id === 'cust-search') return;
+            const cam = document.getElementById('cam-scan');
+            if (cam && cam.style.display !== 'none') return;   // camera scanner open
+            if (!POS.cart.length) return;                       // nothing to bill yet
+            const btn = document.getElementById('btn-finalize');
+            if (btn && btn.disabled) return;                    // already processing
+            e.preventDefault();
+            finalize();
+        });
         // Held bills render server-side on load; JS only refreshes after hold / resume / finalize.
 
         // ── Camera barcode scanner (for phones/tablets/webcam, no USB scanner) ──

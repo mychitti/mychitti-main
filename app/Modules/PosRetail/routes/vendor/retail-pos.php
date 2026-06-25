@@ -28,6 +28,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     // Branches & Counters
     Route::get('terminals',    [RetailPosController::class, 'terminals'])->name('terminals')->middleware('permission:pos_branch,view,pos_branch,create,pos_branch,delete,pos_counter,create,pos_counter,delete');
     Route::post('terminals',   [RetailPosController::class, 'terminalStore'])->name('terminals.store')->middleware('permission:pos_counter,create');
+    Route::post('terminals/{id}/staff', [RetailPosController::class, 'terminalAssignStaff'])->name('terminals.staff')->middleware('permission:pos_counter,create');
     Route::post('terminals/{id}/delete', [RetailPosController::class, 'terminalDelete'])->name('terminals.delete')->middleware('permission:pos_counter,delete');
     Route::post('branches',    [RetailPosController::class, 'branchStore'])->name('branches.store')->middleware('permission:pos_branch,create');
     Route::post('branches/{id}/delete', [RetailPosController::class, 'branchDelete'])->name('branches.delete')->middleware('permission:pos_branch,delete');
@@ -42,7 +43,14 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::post('branch-stock',[RetailPosController::class, 'branchStockSave'])->name('branch-stock.save')->middleware('permission:pos_branch_stock,edit');
 
     // Stock Transfer Gatepass (main store → branch)
-    Route::get('gatepass',            [RetailPosController::class, 'gatepass'])->name('gatepass')->middleware('permission:pos_branch_stock,edit');
-    Route::post('gatepass',           [RetailPosController::class, 'gatepassStore'])->name('gatepass.store')->middleware('permission:pos_branch_stock,edit');
-    Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_branch_stock,edit');
+    Route::get('gatepass',            [RetailPosController::class, 'gatepass'])->name('gatepass')->middleware('permission:pos_gatepass,view');
+    Route::post('gatepass',           [RetailPosController::class, 'gatepassStore'])->name('gatepass.store')->middleware('permission:pos_gatepass,create');
+    Route::post('gatepass/delete',    [RetailPosController::class, 'gatepassDelete'])->name('gatepass.delete')->middleware('permission:pos_gatepass,delete');
+    Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_gatepass,view');
+
+    // Damaged / Theft stock write-off
+    Route::get('writeoff',            [RetailPosController::class, 'writeoff'])->name('writeoff')->middleware('permission:pos_writeoff,view');
+    Route::get('writeoff/items',      [RetailPosController::class, 'writeoffItems'])->name('writeoff.items')->middleware('permission:pos_writeoff,view');
+    Route::post('writeoff',           [RetailPosController::class, 'writeoffStore'])->name('writeoff.store')->middleware('permission:pos_writeoff,create');
+    Route::post('writeoff/{id}/delete',[RetailPosController::class, 'writeoffDelete'])->name('writeoff.delete')->middleware('permission:pos_writeoff,delete');
 });

@@ -100,7 +100,7 @@
                        <input type="hidden" name="invoice_item_new[]" value="1" placeholder="Item Name" class="form-control">
                       <td><input type="text" name="item_name_new[]" placeholder="Item Name" class="form-control"></td>
                       <td style="width: 100px;"><input type="number" name="item_price_new[]" placeholder="Price" class="form-control price"></td>
-                      <td  style="width: 58px;"><input type="number" name="item_qty_new[]" value="1" placeholder="Quantity" class="form-control qty"></td>
+                      <td  style="width: 58px;"><input type="number" step="any" min="0" name="item_qty_new[]" value="1" placeholder="Quantity" class="form-control qty"></td>
                       <td style="width:140px;">
                             <select name="item_unit_new[]" class="form-control js-select2-custom">
                                 <option value="">-- Unit --</option>

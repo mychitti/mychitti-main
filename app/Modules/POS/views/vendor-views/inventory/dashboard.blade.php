@@ -795,4 +795,5 @@
     </script>
     @include('vendor-views/js/inventory_management')
     @include('vendor-views/js/date_range')
+    @include('vendor-views/js/uom_js')
 @endpush

@@ -27,6 +27,8 @@ class RetailPosController extends Controller
         'pos_branch'        => ['Branches', ['view', 'create', 'delete']],
         'pos_counter'       => ['Counters', ['create', 'delete']],
         'pos_branch_stock'  => ['Branch Stock', ['view', 'edit']],
+        'pos_gatepass'      => ['Stock Transfer (Gatepass)', ['view', 'create', 'delete']],
+        'pos_writeoff'      => ['Damaged / Theft Stock', ['view', 'create', 'delete']],
     ];
 
     // Eager-seedable so the role grid shows it without first opening New Sale.
@@ -48,6 +50,7 @@ class RetailPosController extends Controller
         ['slug' => 'retail_branches',     'name' => 'Branches & Counters', 'route' => 'vendor.retail-pos.terminals'],
         ['slug' => 'retail_branch_stock', 'name' => 'Branch Stock',        'route' => 'vendor.retail-pos.branch-stock'],
         ['slug' => 'retail_gatepass',     'name' => 'Stock Transfer',      'route' => 'vendor.retail-pos.gatepass'],
+        ['slug' => 'retail_writeoff',     'name' => 'Damaged / Theft',     'route' => 'vendor.retail-pos.writeoff'],
     ];
 
     public static function ensureMenuMasterdata(): void
@@ -381,6 +384,25 @@ class RetailPosController extends Controller
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
 
+        // Stock write-off: damaged / theft removed from main store or a branch (audited, reversible).
+        if (!Schema::hasTable('pos_stock_writeoff')) {
+            DB::statement("CREATE TABLE `pos_stock_writeoff` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT UNSIGNED NULL,
+                `branch_id` BIGINT NULL,
+                `inventory_item_id` BIGINT NULL,
+                `type` VARCHAR(20) NOT NULL,
+                `qty` DECIMAL(12,3) NOT NULL DEFAULT 0,
+                `note` VARCHAR(255) NULL,
+                `created_by` BIGINT NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `psw_store_idx` (`store_id`),
+                KEY `psw_item_idx` (`inventory_item_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
         // Audit trail (price overrides, voids, out-of-stock overrides) — immutable.
         if (!Schema::hasTable('pos_audit_log')) {
             DB::statement("CREATE TABLE `pos_audit_log` (
@@ -484,7 +506,7 @@ class RetailPosController extends Controller
         $storeName = $store->name ?? 'Store';
         // Read the chosen template straight from the row (avoids any cached store object).
         $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template');
-        $uiTemplate = in_array($uiTemplate, ['classic', 'compact', 'modern'], true) ? $uiTemplate : 'classic';
+        $uiTemplate = in_array($uiTemplate, ['classic', 'compact', 'modern', 'search'], true) ? $uiTemplate : 'classic';
         $heldBills = $this->heldBillsData($storeId);
 
         // Branch context: staff are locked to their counter's branch; owner picks one
@@ -494,7 +516,9 @@ class RetailPosController extends Controller
         $myBranchId  = $counter->branch_id ?? null;
         $branchLocked = (bool) ($counter && $counter->branch_id);
         $savedBranch = DB::table('stores')->where('id', $storeId)->value('pos_default_branch_id');
-        $defaultBranchId = $myBranchId ?: ($savedBranch ?: ($branches->first()->id ?? null));
+        // Default to the staff counter's branch, else the owner's last-used branch; otherwise
+        // fall back to Main Store (no branch) rather than forcing the first branch.
+        $defaultBranchId = $myBranchId ?: ($savedBranch ?: null);
 
         return view('posretail::vendor.retail-pos.index', compact(
             'categories', 'quickItems', 'upiId', 'storeName', 'heldBills', 'uiTemplate',
@@ -689,12 +713,9 @@ class RetailPosController extends Controller
         $payments = json_decode($request->input('payments', '[]'), true) ?: [];
         $billDiscount = (float) $request->input('bill_discount', 0);
         $customerId = (int) $request->input('customer_id', 0);
+        // Null branch = sell directly from main-store stock (no branch). Staff remain
+        // locked to their counter's branch via billingBranchId().
         $billingBranchId = $this->billingBranchId($request);
-
-        // When the store has branches, every sale must be billed against one.
-        if (!$billingBranchId && Branch::where('store_id', $storeId)->exists()) {
-            return response()->json(['status' => false, 'msg' => 'Please select a branch for this sale'], 422);
-        }
 
         // Actor capabilities (owner always passes; staff via role).
         $canOverride   = hasPermission('pos_billing', 'price_override');
@@ -1195,7 +1216,24 @@ class RetailPosController extends Controller
         $receiptTemplate = DB::table('stores')->where('id', $storeId)->value('pos_receipt_template') ?: 'standard';
         $receiptTemplate = in_array($receiptTemplate, ['standard', 'modern', 'elegant'], true) ? $receiptTemplate : 'standard';
 
-        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate'));
+        // Tendered (sum of payment legs) → over-tender shows change, short-tender shows balance due.
+        $tendered = (float) $legs->sum('amount');
+        $changeReturn = $tendered > 0 ? max(0, round($tendered - (float) $invoice->total_amount, 2)) : 0;
+        $balanceDue = $tendered > 0 ? max(0, round((float) $invoice->total_amount - $tendered, 2)) : 0;
+
+        // Customer savings vs MRP: Σ(mrp − selling price)·qty per line, plus bill discount + coupon.
+        $mrpSaving = 0;
+        foreach ($items as $it) {
+            $mrp = (float) (optional($it->item)->mrp ?? 0);
+            $price = (float) ($it->price ?? 0);
+            $qty = (float) ($it->qty ?? 0);
+            if ($mrp > $price) {
+                $mrpSaving += ($mrp - $price) * $qty;
+            }
+        }
+        $savedAmount = round($mrpSaving + (float) ($invoice->discount_amount ?? 0) + (float) ($invoice->coupon_amount ?? 0), 2);
+
+        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate', 'tendered', 'changeReturn', 'balanceDue', 'savedAmount'));
     }
 
     // ── Email invoice (§4.3) ────────────────────────────────────────────────────
@@ -1322,8 +1360,10 @@ class RetailPosController extends Controller
 
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
         $counters = DB::table('pos_terminals')->where('store_id', $storeId)->orderBy('branch_id')->orderBy('id')->get();
-        $staff    = VendorEmployee::where('store_id', $storeId)->orderBy('f_name')
-            ->get(['id', 'f_name', 'l_name', 'branch_id']);
+        // Include each staff's shift so the owner can swap counter staff per shift timing.
+        $staff    = VendorEmployee::with('storeShift:id,name,start_time,end_time')
+            ->where('store_id', $storeId)->orderBy('f_name')
+            ->get(['id', 'f_name', 'l_name', 'branch_id', 'store_shift_id']);
         $upiId    = DB::table('stores')->where('id', $storeId)->value('pos_upi_id');
         $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template') ?: 'classic';
 
@@ -1355,7 +1395,7 @@ class RetailPosController extends Controller
     {
         $this->ensureSchema();
         $tpl = $request->input('pos_ui_template');
-        if (!in_array($tpl, ['classic', 'compact', 'modern'], true)) {
+        if (!in_array($tpl, ['classic', 'compact', 'modern', 'search'], true)) {
             $tpl = 'classic';
         }
         DB::table('stores')->where('id', $this->storeId())->update(['pos_ui_template' => $tpl]);
@@ -1450,6 +1490,32 @@ class RetailPosController extends Controller
         return back();
     }
 
+    // Swap the staff manning a counter (e.g. at shift change). One counter per staff.
+    public function terminalAssignStaff(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $counter = DB::table('pos_terminals')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$counter) {
+            Toastr::error('Counter not found');
+            return back();
+        }
+        $staffId = (int) $request->input('staff_id') ?: null;
+        if ($staffId && !VendorEmployee::where('store_id', $storeId)->where('id', $staffId)->exists()) {
+            Toastr::error('Select a valid staff');
+            return back();
+        }
+        // One counter per staff: detach this staff from any other counter first.
+        if ($staffId) {
+            DB::table('pos_terminals')->where('store_id', $storeId)->where('staff_id', $staffId)
+                ->where('id', '!=', $id)->update(['staff_id' => null, 'updated_at' => now()]);
+        }
+        DB::table('pos_terminals')->where('id', $id)->where('store_id', $storeId)
+            ->update(['staff_id' => $staffId, 'updated_at' => now()]);
+        Toastr::success($staffId ? 'Counter staff updated' : 'Counter staff cleared');
+        return back();
+    }
+
     // The counter assigned to the current actor (staff). Owner has no fixed counter.
     private function currentCounter()
     {
@@ -1485,19 +1551,145 @@ class RetailPosController extends Controller
         $this->ensureSchema();
         $storeId = $this->storeId();
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
-        $branchId = (int) $request->get('branch') ?: ($branches->first()->id ?? null);
         $search = trim((string) $request->get('q', ''));
+
+        // Location selector (chosen via the summary cards): 'all' → matrix overview;
+        // 'main' → main-store breakdown; <branch id> → that branch's breakdown.
+        $default  = $branches->count() ? 'all' : 'main';
+        $sel      = $request->get('branch', $default);
+        $allMode  = ($sel === 'all') && $branches->count();
+        $mainMode = ($sel === 'main') || ($sel === 'all' && !$branches->count());
+        $branchId = (!$allMode && !$mainMode) ? (int) $sel : null;
+        if ($branchId !== null && !$branches->firstWhere('id', $branchId)) {
+            $branchId = null;
+            $allMode  = (bool) $branches->count();
+            $mainMode = !$branches->count();
+        }
+        $detailMode = $mainMode || $branchId !== null;
+        $sel = $allMode ? 'all' : ($mainMode ? 'main' : (string) $branchId);
 
         $items = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
             ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")->orWhere('sku_id', 'like', "%{$search}%")))
             ->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock']);
+        $itemIds = $items->pluck('id');
 
-        $branchStock = $branchId
-            ? DB::table('pos_branch_stock')->where('branch_id', $branchId)
-                ->pluck('stock', 'inventory_item_id')
+        // All-branches matrix: current stock keyed [item_id][branch_id].
+        $matrix = [];
+        if ($allMode && $branches->count() && $items->count()) {
+            $rows = DB::table('pos_branch_stock')
+                ->whereIn('branch_id', $branches->pluck('id'))
+                ->whereIn('inventory_item_id', $itemIds)
+                ->get(['inventory_item_id', 'branch_id', 'stock']);
+            foreach ($rows as $r) {
+                $matrix[$r->inventory_item_id][$r->branch_id] = (float) $r->stock;
+            }
+        }
+
+        // Per-item breakdown for one location: total / sold / damaged / theft / remaining.
+        $detail = [];
+        if ($detailMode && $items->count()) {
+            // Remaining = current on-hand (branch pool, else main store).
+            $remaining = [];
+            if ($branchId) {
+                $bs = DB::table('pos_branch_stock')->where('branch_id', $branchId)
+                    ->whereIn('inventory_item_id', $itemIds)->pluck('stock', 'inventory_item_id');
+                foreach ($items as $it) { $remaining[$it->id] = (float) ($bs[$it->id] ?? 0); }
+            } else {
+                foreach ($items as $it) { $remaining[$it->id] = (float) $it->stock; }
+            }
+
+            // Sold = finalized POS sale qty at this location (branch sales vs main-store/no-branch).
+            $sold = DB::table('invoice_items as ii')
+                ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
+                ->where('mi.vendor_id', $storeId)->where('mi.pos_status', 'final')->whereNotNull('ii.inv_id')
+                ->when($branchId, fn($q) => $q->where('mi.pos_branch_id', $branchId), fn($q) => $q->whereNull('mi.pos_branch_id'))
+                ->whereIn('ii.inv_id', $itemIds)
+                ->groupBy('ii.inv_id')->selectRaw('ii.inv_id as id, SUM(ii.qty) as qty')->pluck('qty', 'id');
+
+            // Damaged / theft write-offs at this location.
+            $damaged = [];
+            $theft = [];
+            $wo = DB::table('pos_stock_writeoff')->where('store_id', $storeId)
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q->whereNull('branch_id'))
+                ->whereIn('inventory_item_id', $itemIds)
+                ->groupBy('inventory_item_id', 'type')->selectRaw('inventory_item_id as id, type, SUM(qty) as qty')->get();
+            foreach ($wo as $r) {
+                if ($r->type === 'theft') { $theft[$r->id] = (float) $r->qty; }
+                else { $damaged[$r->id] = (float) $r->qty; }
+            }
+
+            foreach ($items as $it) {
+                $rem = $remaining[$it->id] ?? 0;
+                $so  = (float) ($sold[$it->id] ?? 0);
+                $dm  = $damaged[$it->id] ?? 0;
+                $th  = $theft[$it->id] ?? 0;
+                $detail[$it->id] = [
+                    'total'     => $rem + $so + $dm + $th,
+                    'sold'      => $so,
+                    'damaged'   => $dm,
+                    'theft'     => $th,
+                    'remaining' => $rem,
+                ];
+            }
+        }
+
+        $locationName = $mainMode ? 'Main Store'
+            : ($branchId ? (optional($branches->firstWhere('id', $branchId))->name ?? 'Branch') : null);
+
+        // ── Summary cards (whole-location totals, independent of the search filter) ──
+        // Remaining per location.
+        $mainRemaining = (float) InventoryItem::where('store_id', $storeId)->where('item_type', 'product')->sum('stock');
+        $branchRemaining = $branches->count()
+            ? DB::table('pos_branch_stock')->whereIn('branch_id', $branches->pluck('id'))
+                ->groupBy('branch_id')->selectRaw('branch_id, SUM(stock) as s')->pluck('s', 'branch_id')
             : collect();
 
-        return view('posretail::vendor.retail-pos.branch-stock', compact('branches', 'branchId', 'items', 'branchStock', 'search'));
+        // Sold per location (bid 0 = main store / no branch).
+        $soldByLoc = [];
+        foreach (DB::table('invoice_items as ii')
+            ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
+            ->where('mi.vendor_id', $storeId)->where('mi.pos_status', 'final')->whereNotNull('ii.inv_id')
+            ->groupBy('mi.pos_branch_id')->selectRaw('mi.pos_branch_id as bid, SUM(ii.qty) as s')->get() as $r) {
+            $soldByLoc[(int) ($r->bid ?? 0)] = (float) $r->s;
+        }
+
+        // Damaged / theft per location.
+        $dmgByLoc = [];
+        $thfByLoc = [];
+        foreach (DB::table('pos_stock_writeoff')->where('store_id', $storeId)
+            ->groupBy('branch_id', 'type')->selectRaw('branch_id as bid, type, SUM(qty) as s')->get() as $r) {
+            $bid = (int) ($r->bid ?? 0);
+            if ($r->type === 'theft') { $thfByLoc[$bid] = (float) $r->s; }
+            else { $dmgByLoc[$bid] = (float) $r->s; }
+        }
+
+        $mk = fn($key, $name, $rem, $active) => [
+            'key' => $key, 'name' => $name, 'active' => $active,
+            'remaining' => $rem,
+            'sold'      => $soldByLoc[$key === 'main' ? 0 : (int) $key] ?? 0,
+            'damaged'   => $dmgByLoc[$key === 'main' ? 0 : (int) $key] ?? 0,
+            'theft'     => $thfByLoc[$key === 'main' ? 0 : (int) $key] ?? 0,
+        ];
+
+        $cards = [];
+        if ($branches->count()) {
+            $cards[] = [
+                'key' => 'all', 'name' => 'All Branches', 'active' => $allMode,
+                'remaining' => $mainRemaining + (float) $branchRemaining->sum(),
+                'sold'      => array_sum($soldByLoc),
+                'damaged'   => array_sum($dmgByLoc),
+                'theft'     => array_sum($thfByLoc),
+            ];
+        }
+        $cards[] = $mk('main', 'Main Store', $mainRemaining, $mainMode);
+        foreach ($branches as $b) {
+            $cards[] = $mk((string) $b->id, $b->name, (float) ($branchRemaining[$b->id] ?? 0), $branchId == $b->id);
+        }
+
+        return view('posretail::vendor.retail-pos.branch-stock', compact(
+            'branches', 'branchId', 'allMode', 'mainMode', 'detailMode', 'items', 'matrix', 'detail',
+            'search', 'locationName', 'cards', 'sel'
+        ));
     }
 
     public function branchStockSave(Request $request)
@@ -1602,6 +1794,53 @@ class RetailPosController extends Controller
         return redirect()->route('vendor.retail-pos.gatepass.print', $gatepassId);
     }
 
+    // Bulk-delete gatepasses. Each delete reverses its transfer: stock returns to the main
+    // store and is deducted back from the branch (clamped at 0).
+    public function gatepassDelete(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+
+        $ids = array_filter(array_map('intval', (array) $request->input('ids', [])));
+        if (empty($ids)) {
+            Toastr::error('Select at least one gatepass to delete');
+            return back();
+        }
+
+        $gatepasses = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->whereIn('id', $ids)->get();
+        if ($gatepasses->isEmpty()) {
+            Toastr::error('No matching gatepass found');
+            return back();
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($gatepasses as $gp) {
+                $lines = DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->get();
+                foreach ($lines as $line) {
+                    $qty = (float) $line->qty;
+                    // Return to main store…
+                    InventoryItem::where('id', $line->inventory_item_id)->where('store_id', $storeId)
+                        ->update(['stock' => DB::raw('stock + ' . $qty)]);
+                    // …and pull it back out of the branch.
+                    DB::table('pos_branch_stock')
+                        ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $line->inventory_item_id)
+                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
+                }
+                DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->delete();
+                DB::table('pos_stock_gatepass')->where('id', $gp->id)->where('store_id', $storeId)->delete();
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Delete failed: ' . $th->getMessage());
+            return back();
+        }
+
+        Toastr::success(count($gatepasses) . ' gatepass(es) deleted and stock reversed');
+        return back();
+    }
+
     public function gatepassPrint(Request $request, $id)
     {
         $this->ensureSchema();
@@ -1618,5 +1857,160 @@ class RetailPosController extends Controller
             ->get(['gi.qty', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
         $store = Helpers::get_store_data();
         return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'items', 'store'));
+    }
+
+    // ── Damaged / Theft stock write-off ─────────────────────────────────────────
+    public function writeoff(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
+
+        $records = DB::table('pos_stock_writeoff as w')
+            ->leftJoin('inventory_items as ii', 'ii.id', '=', 'w.inventory_item_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'w.branch_id')
+            ->where('w.store_id', $storeId)
+            ->orderByDesc('w.id')->limit(100)
+            ->get(['w.id', 'w.type', 'w.qty', 'w.note', 'w.created_at', 'ii.item_name', 'ii.sku_id', 'b.name as branch_name']);
+
+        return view('posretail::vendor.retail-pos.writeoff', compact('branches', 'records'));
+    }
+
+    // select2 AJAX source for the write-off item picker. Stock reflects the chosen
+    // location (a branch's pool, else the main store).
+    public function writeoffItems(Request $request)
+    {
+        $storeId = $this->storeId();
+        $term = trim((string) $request->get('q', ''));
+        $branchId = (int) $request->get('branch_id') ?: null;
+
+        $items = InventoryItem::with('itemunit')->where('store_id', $storeId)->where('item_type', 'product')
+            ->when($term !== '', fn($q) => $q->where(fn($w) => $w
+                ->where('item_name', 'like', "%{$term}%")
+                ->orWhere('sku_id', 'like', "%{$term}%")
+                ->orWhere('barcode', $term)))
+            ->orderBy('item_name')->limit(30)->get(['id', 'item_name', 'sku_id', 'stock', 'unit']);
+
+        $branchStock = collect();
+        $loc = 'main store';
+        if ($branchId) {
+            $branchStock = DB::table('pos_branch_stock')->where('branch_id', $branchId)
+                ->whereIn('inventory_item_id', $items->pluck('id'))->pluck('stock', 'inventory_item_id');
+            $loc = optional(Branch::where('store_id', $storeId)->find($branchId))->name ?? 'branch';
+        }
+
+        $fmt = fn($n) => rtrim(rtrim(number_format((float) $n, 3, '.', ''), '0'), '.');
+        return response()->json([
+            'results' => $items->map(function ($i) use ($branchId, $branchStock, $fmt, $loc) {
+                $stock = $branchId ? (float) ($branchStock[$i->id] ?? 0) : (float) $i->stock;
+                return [
+                    'id'        => $i->id,
+                    'name'      => $i->item_name . ($i->sku_id ? ' (' . $i->sku_id . ')' : ''),
+                    'stock'     => $fmt($stock),
+                    'stock_num' => $stock,
+                    'unit'      => optional($i->itemunit)->unit ?? '',
+                    'loc'       => $loc,
+                ];
+            }),
+        ]);
+    }
+
+    public function writeoffStore(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+
+        $itemId = (int) $request->input('inventory_item_id');
+        $branchId = (int) $request->input('branch_id') ?: null;
+        $type = $request->input('type') === 'theft' ? 'theft' : 'damaged';
+        $qty = (float) $request->input('qty');
+
+        $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+        if (!$item) {
+            Toastr::error('Select a valid item');
+            return back();
+        }
+        if ($qty <= 0) {
+            Toastr::error('Enter a quantity greater than 0');
+            return back();
+        }
+        if ($branchId && !Branch::where('store_id', $storeId)->where('id', $branchId)->exists()) {
+            Toastr::error('Select a valid branch');
+            return back();
+        }
+
+        // Available stock at the chosen location (branch pool, else main store).
+        $available = $branchId ? $this->branchItemStock($branchId, $itemId) : (float) $item->stock;
+        if ($qty > $available + 0.0001) {
+            Toastr::error('Quantity exceeds available stock (have ' . rtrim(rtrim(number_format($available, 3), '0'), '.') . ')');
+            return back();
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($branchId) {
+                DB::table('pos_branch_stock')
+                    ->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
+                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
+            } else {
+                InventoryItem::where('id', $itemId)->where('store_id', $storeId)
+                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)')]);
+            }
+
+            DB::table('pos_stock_writeoff')->insert([
+                'store_id'          => $storeId,
+                'branch_id'         => $branchId,
+                'inventory_item_id' => $itemId,
+                'type'              => $type,
+                'qty'               => $qty,
+                'note'              => $request->input('note'),
+                'created_by'        => auth('vendor')->id() ?? auth('vendor_employee')->id(),
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Write-off failed: ' . $th->getMessage());
+            return back();
+        }
+
+        $this->logAudit('writeoff', $item->item_name, ucfirst($type) . ' ' . rtrim(rtrim(number_format($qty, 3), '0'), '.') . ($branchId ? ' (branch)' : ' (main store)'));
+        Toastr::success(ucfirst($type) . ' stock recorded for ' . $item->item_name);
+        return back();
+    }
+
+    // Deleting a write-off restores the removed stock (corrects a mistaken entry).
+    public function writeoffDelete(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $rec = DB::table('pos_stock_writeoff')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$rec) {
+            Toastr::error('Record not found');
+            return back();
+        }
+
+        DB::beginTransaction();
+        try {
+            $qty = (float) $rec->qty;
+            if ($rec->branch_id) {
+                DB::table('pos_branch_stock')
+                    ->where('branch_id', $rec->branch_id)->where('inventory_item_id', $rec->inventory_item_id)
+                    ->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
+            } else {
+                InventoryItem::where('id', $rec->inventory_item_id)->where('store_id', $storeId)
+                    ->update(['stock' => DB::raw('stock + ' . $qty)]);
+            }
+            DB::table('pos_stock_writeoff')->where('id', $id)->where('store_id', $storeId)->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Delete failed: ' . $th->getMessage());
+            return back();
+        }
+
+        Toastr::success('Write-off reversed and stock restored');
+        return back();
     }
 }

@@ -76,7 +76,17 @@
 
             @if ($canViewBranches)
             <div class="col-md-{{ $showAddCol ? '8' : '12' }}">
-                @php $staffById = $staff->keyBy('id'); $byBranch = $counters->groupBy('branch_id'); @endphp
+                @php
+                    $staffById = $staff->keyBy('id');
+                    $byBranch = $counters->groupBy('branch_id');
+                    $canAssign = auth('vendor')->check() || hasPermission('pos_counter', 'create');
+                    $shiftLabel = function ($s) {
+                        $sh = $s->storeShift ?? null;
+                        if (!$sh) return '';
+                        $t = fn($v) => $v ? substr($v, 0, 5) : '';
+                        return ' · ' . trim(($sh->name ? $sh->name . ' ' : '') . $t($sh->start_time) . '–' . $t($sh->end_time));
+                    };
+                @endphp
                 @forelse ($branches as $b)
                     <div class="rp-card">
                         <div class="hd">
@@ -98,7 +108,24 @@
                                         <tr>
                                             <td><b>{{ $c->name }}</b></td>
                                             <td class="text-muted">{{ $c->code }}</td>
-                                            <td>@if ($st)<span class="rp-badge info">{{ trim($st->f_name . ' ' . $st->l_name) }}</span>@else<span class="text-muted">Unassigned</span>@endif</td>
+                                            <td>
+                                                @if ($canAssign)
+                                                    <form method="post" action="{{ route('vendor.retail-pos.terminals.staff', $c->id) }}">
+                                                        @csrf
+                                                        <select name="staff_id" class="rp-input" style="min-width:200px;padding:5px 8px;" onchange="this.form.submit()" title="Change the staff on this counter (shift shown)">
+                                                            <option value="">— Unassigned —</option>
+                                                            @foreach ($staff as $s)
+                                                                <option value="{{ $s->id }}" {{ $c->staff_id == $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}{{ $shiftLabel($s) }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </form>
+                                                    @if ($st && $st->storeShift)
+                                                        <div class="small text-muted mt-1">🕒 {{ trim($shiftLabel($st), ' ·') }}</div>
+                                                    @endif
+                                                @else
+                                                    @if ($st)<span class="rp-badge info">{{ trim($st->f_name . ' ' . $st->l_name) }}</span>@else<span class="text-muted">Unassigned</span>@endif
+                                                @endif
+                                            </td>
                                             <td class="small text-muted">
                                                 @if (!empty($hw['thermal'])) 🖨 {{ $hw['thermal'] }} @endif
                                                 @if (!empty($hw['scale'])) · ⚖ {{ $hw['scale'] }} @endif

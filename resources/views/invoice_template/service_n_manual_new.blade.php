@@ -365,6 +365,76 @@
             font-weight: 500;
         }
 
+        /* ── PAYMENT PANEL (split legs + tendered/change) ── */
+        .pay-panel {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f7f9fc;
+            border: 1px solid #e8eaf0;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        .pay-panel td {
+            border: none;
+            font-size: 9px;
+            padding: 2px 8px;
+            line-height: 1.3;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .pay-panel .ph td {
+            padding: 3px 8px;
+            font-size: 8px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #0f3460;
+            font-weight: 600;
+            border-bottom: 1px solid #e8eaf0;
+        }
+
+        .pay-panel .pk {
+            color: #555;
+        }
+
+        .pay-panel .pv {
+            font-family: 'DM Mono', monospace;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .pay-panel .txn {
+            color: #9098a8;
+            font-size: 8px;
+        }
+
+        /* dashed divider between the payment legs and the tender/change summary */
+        .pay-panel .sep {
+            border-left: 1px dashed #d6dbe8;
+        }
+
+        .pay-panel .pos {
+            color: #1b7a43;
+        }
+
+        .pay-panel .neg {
+            color: #c62828;
+        }
+
+        .saved-line {
+            display: inline-block;
+            background: #e6f7ec;
+            color: #1b7a43;
+            border: 1px dashed #5dba5d;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 10px;
+            padding: 3px 8px;
+            margin-top: 5px;
+        }
+
         /* ── TNC / FOOTER ── */
         .tnc-block {
             padding: 14px 20px;
@@ -750,7 +820,7 @@
                                     $qtyDisplay = (int) $qt->pieces . ' pc (' . $qtyDisplay . ')';
                                 }
                             } else {
-                                $qtyDisplay = trim($qt->qty . ' ' . ($qt->unitId?->unit ?? ''));
+                                $qtyDisplay = trim(_num($qt->qty, 3, false) . ' ' . ($qt->unitId?->unit ?? ''));
                             }
                         @endphp
                         <tr>
@@ -774,9 +844,9 @@
                                 <td>{{ $qt->hsn }}</td>
                             @endif
                             <td>{{ $qtyDisplay }}</td>
-                            <td>{{ $qt->price }}</td>
+                            <td>{{ _num($qt->price, 3, false) }}</td>
                             <td>0</td>
-                            <td>{{ $qt->price }}</td>
+                            <td>{{ _num($qt->price, 3, false) }}</td>
                             @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)
                                 <td>{{ round($qt_taxable, 3) }}</td>
                                 @if ($bill_gst_type == 'cgst_sgst')
@@ -861,7 +931,7 @@
                 @if ($invoice->advance_amount)
                     <div class="payable-badge">
                         Payable:
-                        {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->total_amount - $invoice->advance_amount, 3) }}
+                        {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->total_amount - $invoice->advance_amount, 3) }}
                     </div>
                 @endif
             </div>
@@ -872,7 +942,7 @@
                     <tr>
                         <td class="lbl">Sub Total</td>
                         <td class="amt">
-                            {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->subtotal_amount ?? $subTotalPrice, 3) }}
+                            {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->subtotal_amount ?? $subTotalPrice, 3) }}
                         </td>
                     </tr>
 
@@ -886,7 +956,7 @@
                             <tr>
                                 <td class="lbl">{{ formatLabel($value->name) }}</td>
                                 <td class="amt">
-                                    {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($value->calc_amount, 3) }}
+                                    {{ \App\CentralLogics\Helpers::currency_symbol() . _num($value->calc_amount, 3) }}
                                 </td>
                             </tr>
                         @endforeach
@@ -896,13 +966,13 @@
                         <tr>
                             <td class="lbl">Taxable Amount</td>
                             <td class="amt">
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->subtotal_amount ?? $totalPrice - $totalTaxAmount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->subtotal_amount ?? $totalPrice - $totalTaxAmount, 3) }}
                             </td>
                         </tr>
                         <tr>
                             <td class="lbl">Tax Amount</td>
                             <td class="amt">
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->final_tax ?? $totalTaxAmount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->final_tax ?? $totalTaxAmount, 3) }}
                             </td>
                         </tr>
                     @endif
@@ -911,7 +981,7 @@
                         <tr>
                             <td class="lbl">Coupon</td>
                             <td class="amt">–
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->coupon_amount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->coupon_amount, 3) }}
                             </td>
                         </tr>
                     @endif
@@ -920,7 +990,7 @@
                         <tr>
                             <td class="lbl">Discount</td>
                             <td class="amt">–
-                                {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($invoice->discount_amount, 3) }}
+                                {{ \App\CentralLogics\Helpers::currency_symbol() . _num($invoice->discount_amount, 3) }}
                             </td>
                         </tr>
                     @endif
@@ -933,15 +1003,73 @@
                     <tr class="grand-total-row">
                         <td class="lbl">Grand Total</td>
                         <td class="amt">
-                            {{ \App\CentralLogics\Helpers::currency_symbol() . number_format($bill_data['total_amount'], 3) }}
+                            {{ \App\CentralLogics\Helpers::currency_symbol() . _num($bill_data['total_amount'], 3) }}
                         </td>
                     </tr>
 
-                    @if (!empty($invoice->payment_method))
+                    @if (!empty($bill_data['total_saved']) && $bill_data['total_saved'] > 0)
                         <tr>
-                            <td class="lbl">Payment</td>
-                            <td class="amt"><span class="pm-badge">{{ $invoice->payment_method }}</span></td>
+                            <td colspan="2" style="padding:0; text-align:right;">
+                                <div class="saved-line">★ You Saved {{ \App\CentralLogics\Helpers::currency_symbol() . _num($bill_data['total_saved']) }} on MRP ★</div>
+                            </td>
                         </tr>
+                    @endif
+
+                    @if (!empty($invoice->payment_method))
+                        @if (!empty($bill_data['payment_legs']) && count($bill_data['payment_legs']))
+                            <tr>
+                                <td colspan="2" style="padding:2px 0 0;">
+                                    @php
+                                        $legs = $bill_data['payment_legs'];
+                                        $hasTender = !empty($bill_data['tendered']) && $bill_data['tendered'] > 0;
+                                        $hasChange = !empty($bill_data['change_return']) && $bill_data['change_return'] > 0;
+                                        $hasBalance = !empty($bill_data['balance_due']) && $bill_data['balance_due'] > 0;
+                                        $payCols = $legs->count() + ($hasTender ? 1 + ($hasChange || $hasBalance ? 1 : 0) : 0);
+                                        if ($payCols < 2) $payCols = 2;
+                                        $cs = \App\CentralLogics\Helpers::currency_symbol();
+                                    @endphp
+                                    <table class="pay-panel">
+                                        <tr class="ph">
+                                            <td colspan="{{ $payCols - 1 }}">Payment</td>
+                                            <td style="text-align:right;"><span class="pm-badge">{{ $invoice->payment_method }}</span></td>
+                                        </tr>
+                                        <tr class="data">
+                                            @foreach ($legs as $leg)
+                                                <td>
+                                                    <span class="pk">{{ ucfirst($leg->mode) }}{{ $leg->sub_type ? ' · ' . strtoupper($leg->sub_type) : '' }}</span>
+                                                    <span class="pv">{{ $cs . _num($leg->amount, 2) }}</span>
+                                                    @if (!empty($leg->reference) || !empty($leg->approval_code))
+                                                        <span class="txn">· {{ $leg->reference ?: $leg->approval_code }}</span>
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                            @if ($hasTender)
+                                                <td class="sep">
+                                                    <span class="pk">Tendered</span>
+                                                    <span class="pv">{{ $cs . _num($bill_data['tendered']) }}</span>
+                                                </td>
+                                                @if ($hasChange)
+                                                    <td>
+                                                        <span class="pk pos">Change</span>
+                                                        <span class="pv pos">{{ $cs . _num($bill_data['change_return']) }}</span>
+                                                    </td>
+                                                @elseif ($hasBalance)
+                                                    <td>
+                                                        <span class="pk neg">Balance</span>
+                                                        <span class="pv neg">{{ $cs . _num($bill_data['balance_due']) }}</span>
+                                                    </td>
+                                                @endif
+                                            @endif
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        @else
+                            <tr>
+                                <td class="lbl">Payment</td>
+                                <td class="amt"><span class="pm-badge">{{ $invoice->payment_method }}</span></td>
+                            </tr>
+                        @endif
                     @endif
 
                     @if ($invoice->advance_amount)

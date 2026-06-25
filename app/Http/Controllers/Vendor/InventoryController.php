@@ -374,6 +374,36 @@ class InventoryController extends Controller
             }
         }
     }
+
+    // Stock & entry quantities must hold decimals (e.g. 0.5 kg). Widen any legacy
+    // integer columns to DECIMAL once — idempotent, no migration files.
+    private function ensureDecimalStockColumns(): void
+    {
+        $targets = [
+            ['inventory_items', 'stock', 'DECIMAL(12,3) NOT NULL DEFAULT 0'],
+            ['item_entries', 'quantity', 'DECIMAL(12,3) NOT NULL DEFAULT 0'],
+            ['item_entries', 'primary_quantity', 'DECIMAL(12,3) NULL'],
+            ['item_entries', 'secondary_quantity', 'DECIMAL(12,3) NULL'],
+            ['items', 'stock', 'DECIMAL(12,3) NOT NULL DEFAULT 0'],
+        ];
+        foreach ($targets as [$table, $col, $def]) {
+            try {
+                if (!Schema::hasTable($table) || !Schema::hasColumn($table, $col)) {
+                    continue;
+                }
+                $info = DB::selectOne(
+                    "SELECT DATA_TYPE dt FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    [$table, $col]
+                );
+                if ($info && in_array(strtolower($info->dt), ['int', 'tinyint', 'smallint', 'mediumint', 'bigint'], true)) {
+                    DB::statement("ALTER TABLE `$table` MODIFY `$col` $def");
+                }
+            } catch (\Throwable $e) {
+                // best-effort — never block the request
+            }
+        }
+    }
     public function items_import(Request $request)
     {
         $file = $request->file('file');
@@ -764,6 +794,7 @@ class InventoryController extends Controller
             'item_id.*' => 'required|exists:inventory_items,id',
             'quantity.*' => 'required|numeric|min:0',
         ]);
+        $this->ensureDecimalStockColumns();
         foreach ($request->item_id as $key => $item_id) {
             $inventory_item = InventoryItem::find($item_id);
 
@@ -771,11 +802,11 @@ class InventoryController extends Controller
 
             $taxable_amount = 0;
 
-            // qty conversion 
-            $kg_input = (int) $request->quantity[$key];   // e.g. 68 kg (user input)
-            $bag_capacity = $inventory_item->primary_qty ?? 1; // e.g. 1 bag = 5 kg
-            $bags_from_kgs = intdiv($kg_input, $bag_capacity);
-            $spare_kgs     = $kg_input % $bag_capacity;
+            // qty conversion — keep decimals (e.g. 0.5 kg)
+            $kg_input = (float) $request->quantity[$key];   // e.g. 68 or 0.5 kg (user input)
+            $bag_capacity = (float) ($inventory_item->primary_qty ?? 1) ?: 1; // e.g. 1 bag = 5 kg
+            $bags_from_kgs = floor($kg_input / $bag_capacity);
+            $spare_kgs     = fmod($kg_input, $bag_capacity);
             $grand_total_kg = $kg_input;
 
             $entry = new ItemEntry();
@@ -800,9 +831,9 @@ class InventoryController extends Controller
             $entry->save();
 
             $total_price = ItemEntry::where('item_id', $request->item_id)->where('store_id', Helpers::get_store_id())->sum('total_amount');
-            $old_stock = $inventory_item->stock;
+            $old_stock = (float) $inventory_item->stock;
 
-            $inventory_item->stock = $old_stock + $request->quantity[$key];
+            $inventory_item->stock = $old_stock + $kg_input;
             $inventory_item->selling_price = $selling_price;
             $inventory_item->save();
 
@@ -933,6 +964,7 @@ class InventoryController extends Controller
     {
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
+        $this->ensureDecimalStockColumns();
         $itemId = $request->item_id;
         $validator = FacadesValidator::make($request->all(), [
             'mrp'                  => 'required',
@@ -1188,6 +1220,7 @@ class InventoryController extends Controller
     {
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
+        $this->ensureDecimalStockColumns();
         $store_id = Helpers::get_store_id();
         $rules = [
             'item_type' => 'required',

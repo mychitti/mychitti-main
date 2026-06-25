@@ -95,8 +95,21 @@
             @empty
                 <tr><td class="k" style="font-style:italic;color:#000;">{{ ucfirst($invoice->payment_method) }}</td><td class="r">{{ $money($invoice->total_amount) }}</td></tr>
             @endforelse
+            @if (($tendered ?? 0) > 0)
+                <tr><td class="k" style="font-style:italic;color:#000;">Tendered</td><td class="r">{{ $money($tendered) }}</td></tr>
+                @if (($changeReturn ?? 0) > 0)
+                    <tr><td class="k" style="font-style:italic;color:#000;">Change</td><td class="r">{{ $money($changeReturn) }}</td></tr>
+                @elseif (($balanceDue ?? 0) > 0)
+                    <tr><td class="k" style="font-style:italic;color:#000;">Balance Due</td><td class="r">{{ $money($balanceDue) }}</td></tr>
+                @endif
+            @endif
         </table>
         <hr class="dbl">
+
+        @if (($savedAmount ?? 0) > 0)
+            <div class="center" style="font-weight:bold;">* * Saved Rs. {{ $money($savedAmount) }}/- On MRP * *</div>
+            <hr class="dbl">
+        @endif
 
         <div class="center">
             @if ($invoice->pos_status === 'void')<div class="void">VOID</div><br><br>@endif

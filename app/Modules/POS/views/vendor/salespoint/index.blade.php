@@ -10,7 +10,7 @@
              border-width: 1px;
              border-radius: 6px !important;
          }
-
+ 
          .dine-table-card.active {
              background-color: var(--primary-orange);
              border-color: var(--primary-orange) !important;

@@ -1286,6 +1286,19 @@ function _planGstSettings()
         ->toArray();
 }
 
+// Format a number to at most $decimals places, dropping trailing zeros (and a
+// dangling decimal point) so whole numbers render as "1" not "1.000".
+if (!function_exists('_num')) {
+    function _num($value, $decimals = 3, $thousands = true)
+    {
+        $formatted = number_format((float) $value, $decimals, '.', $thousands ? ',' : '');
+        if (strpos($formatted, '.') !== false) {
+            $formatted = rtrim(rtrim($formatted, '0'), '.');
+        }
+        return $formatted;
+    }
+}
+
 function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnly = false, $quotation = false, $heading = '')
 {
     // to show task id on invoice
@@ -1323,6 +1336,44 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
         : ($invoice instanceof ServiceInvoice
             ? InvoiceItem::with('unitId', 'item')->where('invoice_id', $invoice->id)->get()
             : InvoiceItem::with('unitId', 'item')->where('manual_invoice_id', $invoice->id)->get());
+
+    // POS Retail split-payment breakdown (cash / upi / card …) with txn references.
+    $bill_data['payment_legs'] = collect();
+    if (!$quotation && $invoice instanceof ManualInvoice) {
+        try {
+            $bill_data['payment_legs'] = DB::table('pos_payment_legs')
+                ->where('manual_invoice_id', $invoice->id)
+                ->orderBy('id')
+                ->get(['mode', 'sub_type', 'amount', 'reference', 'approval_code']);
+        } catch (\Throwable $th) {
+            $bill_data['payment_legs'] = collect();
+        }
+    }
+
+    // Tendered = what the customer actually handed over (sum of payment legs).
+    // Over-tender → change to return; short-tender → balance due.
+    $tendered = (float) $bill_data['payment_legs']->sum('amount');
+    $bill_data['tendered']      = $tendered;
+    $bill_data['change_return'] = $tendered > 0 ? max(0, round($tendered - (float) $invoice->total_amount, 2)) : 0;
+    $bill_data['balance_due']   = $tendered > 0 ? max(0, round((float) $invoice->total_amount - $tendered, 2)) : 0;
+
+    // Customer savings vs MRP: Σ(mrp − selling price)·qty per line, plus bill discount + coupon.
+    $bill_data['total_saved'] = 0;
+    if (!$quotation) {
+        $mrpSaving = 0;
+        foreach ($bill_data['invoice_items'] as $it) {
+            $mrp = (float) (optional($it->item)->mrp ?? 0);
+            $price = (float) ($it->price ?? 0);
+            $qty = (float) ($it->qty ?? 0);
+            if ($mrp > $price) {
+                $mrpSaving += ($mrp - $price) * $qty;
+            }
+        }
+        $bill_data['total_saved'] = round(
+            $mrpSaving + (float) ($invoice->discount_amount ?? 0) + (float) ($invoice->coupon_amount ?? 0),
+            2
+        );
+    }
     [$bill_to, $shipping_address] = processBillToInfo($invoice, $shipping_address_id);
 
     $bill_from = processBillFromInfo($invoice, $from, $bill_data);
@@ -1808,11 +1859,38 @@ if (!function_exists('_poTNC')) {
         return $tnc ? $tnc->terms_n_conditons : null;
     }
 }
+if (!function_exists('_ensureDecimalStockColumns')) {
+    // Stock must hold decimals (e.g. 61.6 kg). Widen any legacy integer stock columns
+    // to DECIMAL once per request — idempotent, no migration files.
+    function _ensureDecimalStockColumns()
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        foreach ([['inventory_items', 'stock'], ['items', 'stock']] as [$t, $c]) {
+            try {
+                $info = DB::selectOne(
+                    "SELECT DATA_TYPE dt FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    [$t, $c]
+                );
+                if ($info && in_array(strtolower($info->dt), ['int', 'tinyint', 'smallint', 'mediumint', 'bigint'], true)) {
+                    DB::statement("ALTER TABLE `$t` MODIFY `$c` DECIMAL(12,3) NOT NULL DEFAULT 0");
+                }
+            } catch (\Throwable $e) {
+                // best-effort
+            }
+        }
+    }
+}
 if (!function_exists('_updateInventoryStock')) {
 
     function _updateInventoryStock($inv_item_id, $qty, $unit = null)
     {
         try {
+            _ensureDecimalStockColumns();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -1878,6 +1956,7 @@ if (!function_exists('_incrementInventoryStock')) {
     function _incrementInventoryStock($inv_item_id, $qty, $unit = null)
     {
         try {
+            _ensureDecimalStockColumns();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -1886,7 +1965,7 @@ if (!function_exists('_incrementInventoryStock')) {
                 return;
             }
 
-            $addQty = $qty;
+            $addQty = (float) $qty;
 
             if (
                 $unit &&

@@ -24,7 +24,9 @@
         || hasPermission('pos_branch', 'delete')
         || hasPermission('pos_counter', 'create')
         || hasPermission('pos_counter', 'delete')
-        || hasPermission('pos_branch_stock', 'view'));
+        || hasPermission('pos_branch_stock', 'view')
+        || hasPermission('pos_gatepass', 'view')
+        || hasPermission('pos_writeoff', 'view'));
 @endphp
 
 @if ($hasPosRetail)
@@ -91,11 +93,20 @@
     </li>
 @endif
 
-@if ((auth('vendor')->check() || hasPermission('pos_branch_stock', 'edit')) && selected_menu('retail_gatepass'))
+@if ((auth('vendor')->check() || hasPermission('pos_gatepass', 'view')) && selected_menu('retail_gatepass'))
     <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/gatepass*') ? 'active' : '' }}">
         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.gatepass') }}" title="Stock Transfer">
             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/inventory.png') }}" alt="" class="nav-link-icon">
             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Stock Transfer</span>
+        </a>
+    </li>
+@endif
+
+@if ((auth('vendor')->check() || hasPermission('pos_writeoff', 'view')) && selected_menu('retail_writeoff'))
+    <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/writeoff*') ? 'active' : '' }}">
+        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.writeoff') }}" title="Damaged / Theft">
+            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/inventory.png') }}" alt="" class="nav-link-icon">
+            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Damaged / Theft</span>
         </a>
     </li>
 @endif
