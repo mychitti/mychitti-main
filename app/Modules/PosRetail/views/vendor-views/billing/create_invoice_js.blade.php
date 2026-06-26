@@ -241,14 +241,21 @@
          var tax = '';
          var taxable_amount = '';
          var total = '';
+         var item_mrp = '';
+         // MRP column is opt-in per table (purchase bill marks its table data-mrp="1").
+         var showMrp = $('.rows_parent').first().closest('table').data('mrp') == 1;
          if (item) {
              item_name = item.item_name;
              item_price = item.selling_price;
              readonly = 'readonly';
              item_id = item.id;
              item_hsn = item.hsn;
+             item_mrp = item.mrp ?? '';
              total = item_price + (item_price * tax / 100);
          }
+         var mrpCell = showMrp
+             ? `<td style="width: 100px;"><label class="small_label">MRP</label><input type="number" step="0.001" min="0" value="${item_mrp}" name="item_mrp_new[]" placeholder="MRP" class="form-control item_mrp"></td>`
+             : '';
          var html = `<tr class="item_row" data-id="` + dataId + `"
          data-secondary-unit="${item?.secondary_unit ?? ''}"
     data-primary-qty="${item?.primary_qty ?? 0}"
@@ -262,6 +269,7 @@
              item_name + `" ` + readonly + ` placeholder="Item Name" class="form-control item_name"></td>
                       <td style="width: 100px;"><label class="small_label">Price</label><input type="number" value="` +
              item_price + `"  step="0.001" name="item_price_new[]" placeholder="Price" class="form-control price item_price"></td>
+                      ` + mrpCell + `
                       <td style="width: 58px;"><label class="small_label">Qty</label><input type="number" step="any" min="0" name="item_qty_new[]" value="1" placeholder="Qunatity" class="form-control qty item_qty"></td>
                        <td style="width:140px;">
                        

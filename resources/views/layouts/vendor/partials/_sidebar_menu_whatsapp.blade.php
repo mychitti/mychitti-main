@@ -10,11 +10,11 @@
                 <span class="text-truncate">{{ translate('Connection & Add-ons') }}</span>
             </a>
         </li>
-        <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
+        {{-- <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
                 <span class="text-truncate">{{ translate('Message Templates') }}</span>
             </a>
-        </li>
+        </li> --}}
     </ul>
 </li>

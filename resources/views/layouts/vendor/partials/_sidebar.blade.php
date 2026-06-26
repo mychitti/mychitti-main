@@ -86,9 +86,10 @@
                         ['store_data' => $store_data]
                     )
 
-                    {{-- default & hospital menus include the WhatsApp link above "Post Ads"; other types get it here --}}
+                    {{-- pos_retail places the WhatsApp link above "Post Ads" (inside the default
+                         menu partial); the remaining types still get it here, at the bottom. --}}
                     @unless (in_array(strtolower($store_data->business_type ?? ''), ['hospital']))
-                        @if (in_array(strtolower($store_data->business_type ?? ''), ['school', 'laundry', 'pos', 'pos_retail', 'ecommerce']))
+                        @if (in_array(strtolower($store_data->business_type ?? ''), ['school', 'laundry', 'pos', 'ecommerce']))
                             @include('layouts.vendor.partials._sidebar_menu_whatsapp')
                         @endif
                     @endunless

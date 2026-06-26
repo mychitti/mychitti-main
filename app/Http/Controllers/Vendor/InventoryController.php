@@ -381,6 +381,8 @@ class InventoryController extends Controller
     {
         $targets = [
             ['inventory_items', 'stock', 'DECIMAL(12,3) NOT NULL DEFAULT 0'],
+            ['inventory_items', 'primary_qty', 'DECIMAL(12,3) NULL'],
+            ['inventory_items', 'secondary_qty', 'DECIMAL(12,3) NULL'],
             ['item_entries', 'quantity', 'DECIMAL(12,3) NOT NULL DEFAULT 0'],
             ['item_entries', 'primary_quantity', 'DECIMAL(12,3) NULL'],
             ['item_entries', 'secondary_quantity', 'DECIMAL(12,3) NULL'],

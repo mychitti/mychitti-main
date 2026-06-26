@@ -397,6 +397,11 @@
                                     <i class="fas fa-chart-line mr-2"></i>Sales Info
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="variations-tab" data-toggle="tab" href="#variations" role="tab">
+                                    <i class="fas fa-layer-group mr-2"></i>Variations
+                                </a>
+                            </li>
                         </ul>
                     </div>
 
@@ -556,65 +561,6 @@
                         </div>
                         <div class="tab-pane fade " id="attributes" role="tabpanel">
                             <div class="row">
-                                <!-- Variations (uses the "Show on Website" badge design) -->
-                                <div class="col-12 p-1" id="add_variations_wrap">
-                                    <label for="add_variations_cb" class="custom-label cursor-pointer mb-0 d-inline-block">
-                                        <div class="badge badge-soft-primary align-items-center"
-                                            style="height: 39px;display: flex;">
-                                            <div class="form-check d-flex mr-1">
-                                                <input id="add_variations_cb" type="checkbox" class="form-check-input">
-                                                <span style="white-space: nowrap;" class="mt-1 form-check-label">Add
-                                                    Variations</span>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                                <div class="col-12 p-1" id="variations_wrap" style="display:none;">
-                                    <div class="col-md-12 p-0" id="attribute_section">
-                                        <div class="row g-2">
-                                            <div class="col-12">
-                                                <div class="form-group mb-0">
-                                                    <label class="input-label" for="exampleFormControlSelect1">Add
-                                                        Variation<span class="input-label-secondary"></span></label>
-                                                    <select name="attribute_id[]" id="choice_attributes"
-                                                        class="form-control js-select2-custom" multiple="multiple">
-                                                        @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
-                                                            <option value="{{ $attribute['id'] }}"
-                                                                {{ $item['attributes'] && in_array($attribute->id, json_decode($item['attributes'], true)) ? 'selected' : '' }}>
-                                                                {{ $attribute['name'] }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <div class="customer_choice_options" id="customer_choice_options">
-                                                    @include('vendor-views.inventory._choices', [
-                                                        'choice_no' => json_decode($item['attributes']),
-                                                        'choice_options' => json_decode($item['choice_options'], true),
-                                                    ])
-                                                </div>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <div class="variant_combination" id="variant_combination">
-                                                    @include('vendor-views.inventory._edit-combinations', [
-                                                        'combinations' => json_decode($item['variations'], true),
-                                                        'stock' => 1,
-                                                        'primary_unit' => $item['unit']
-                                                            ? _unitNaneById($item['unit'])
-                                                            : '',
-                                                        'secondary_unit' => $item['secondary_unit']
-                                                            ? _unitNaneById($item['secondary_unit'])
-                                                            : '',
-                                                    ])
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="add_new_option">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 <!-- Unit Selection -->
                                 {{-- <div class="product_elem col-md-3">
                                     <div class="form-group form-group-custom">
@@ -654,7 +600,7 @@
                                                     <div class="input-field secondary_unit_elem">
                                                         <label class="field-label">Quantity</label>
                                                         <input type="number" class="form-control" id="secondary_qty"
-                                                            name="secondary_qty" min="1"
+                                                            name="secondary_qty" min="0" step="any"
                                                             value="{{ $item->secondary_qty ?? 1 }}"
                                                             placeholder="Enter quantity">
                                                     </div>
@@ -681,7 +627,7 @@
                                                     <div class="input-field">
                                                         <label class="field-label">Quantity</label>
                                                         <input type="number" class="form-control" id="primary_qty"
-                                                            name="primary_qty" min="1"
+                                                            name="primary_qty" min="0" step="any"
                                                             value="{{ $item->primary_qty ?? 1 }}" placeholder="Quantity">
                                                     </div>
 
@@ -789,6 +735,67 @@
                             <!-- Sales Info Tab -->
 
                         </div>
+
+                        <!-- Variations Tab -->
+                        <div class="tab-pane fade" id="variations" role="tabpanel">
+                            <div class="row">
+                                <div class="col-12 p-1" id="variations_wrap" style="display:none;">
+                                    <div class="alert alert-info py-2 px-3 mb-2" style="font-size:12px;">
+                                        Set the main product price &amp; base unit (e.g. 1 kg = ₹1000) under <b>Sales Info</b> /
+                                        <b>Multi-UOM</b>, then add a weight variation (e.g. 100g, 200g) — its MRP &amp; selling
+                                        price fill in automatically. You can still edit any value manually.
+                                    </div>
+                                    <div class="col-md-12 p-0" id="attribute_section">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <div class="form-group mb-0">
+                                                    <label class="input-label" for="exampleFormControlSelect1">Add
+                                                        Variation<span class="input-label-secondary"></span></label>
+                                                    <select name="attribute_id[]" id="choice_attributes"
+                                                        class="form-control js-select2-custom" multiple="multiple">
+                                                        @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
+                                                            <option value="{{ $attribute['id'] }}"
+                                                                {{ $item['attributes'] && in_array($attribute->id, json_decode($item['attributes'], true)) ? 'selected' : '' }}>
+                                                                {{ $attribute['name'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="customer_choice_options" id="customer_choice_options">
+                                                    @include('vendor-views.inventory._choices', [
+                                                        'choice_no' => json_decode($item['attributes']),
+                                                        'choice_options' => json_decode($item['choice_options'], true),
+                                                    ])
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="variant_combination" id="variant_combination">
+                                                    @include('vendor-views.inventory._edit-combinations', [
+                                                        'combinations' => json_decode($item['variations'], true),
+                                                        'stock' => 1,
+                                                        'primary_unit' => $item['unit']
+                                                            ? _unitNaneById($item['unit'])
+                                                            : '',
+                                                        'secondary_unit' => $item['secondary_unit']
+                                                            ? _unitNaneById($item['secondary_unit'])
+                                                            : '',
+                                                    ])
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="add_new_option">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-end mt-3 gap-2">
+                                    <a class="btn btn-outline-primary next_btn" data-next="sales">Back</a>
+                                    <button type="submit" class="btn btn--primary">Save</button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="tab-pane fade" id="sales" role="tabpanel">
                             <div class="row">
 
@@ -873,10 +880,22 @@
 
                             </div>
 
-                            <div class="col-12 d-flex justify-content-end mt-3">
-                                <button type="submit" class="btn btn--primary">
-                                    Save
-                                </button>
+                            <div class="col-12 p-1" id="add_variations_wrap">
+                                <label for="add_variations_cb" class="custom-label cursor-pointer mb-0 d-inline-block">
+                                    <div class="badge badge-soft-primary align-items-center"
+                                        style="height: 39px;display: flex;">
+                                        <div class="form-check d-flex mr-1">
+                                            <input id="add_variations_cb" type="checkbox" class="form-check-input">
+                                            <span style="white-space: nowrap;" class="mt-1 form-check-label">Add
+                                                Variations</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-12 d-flex justify-content-end mt-3 gap-2">
+                                <a class="btn btn-outline-primary next_btn" data-next="attributes">Back</a>
+                                <a class="btn btn--primary next_btn" id="sales_next_btn" data-next="variations" style="display:none;">Next</a>
+                                <button type="submit" class="btn btn--primary" id="sales_save_btn">Save</button>
                             </div>
                         </div>
                     </div>
@@ -914,6 +933,8 @@
             var salesTab = document.getElementById('sales-tab');
             var salesLi = salesTab ? salesTab.closest('li') : null;
             var salesPane = document.getElementById('sales');
+            var variationsTab = document.getElementById('variations-tab');
+            var variationsLi = variationsTab ? variationsTab.closest('li') : null;
 
             function isProduct() {
                 var t = document.querySelector('input[name="item_type"]:checked');
@@ -939,6 +960,8 @@
                 showEl(box, on); setDisabled(box, !on);
                 showEl(extraImages, on); setDisabled(extraImages, !on);
                 showEl(addVarWrap, prod);
+                // Variations tab appears only when "Add Variations" is ticked.
+                showEl(variationsLi, varsVisible);
 
                 showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
                 document.querySelectorAll('.variant-extra-row').forEach(function (tr) {
@@ -946,15 +969,21 @@
                     tr.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = !on; });
                 });
 
-                showEl(salesLi, !hasVars);
-                setDisabled(salesPane, hasVars); 
-                if (hasVars && salesTab && salesTab.classList.contains('active')) {
-                    var b = document.getElementById('basic-tab'); if (b) b.click();
+                // Sales Info stays visible & editable. Footer shows Next → Variations when
+                // variations are enabled, otherwise the Save button lives here.
+                showEl(salesLi, prod);
+                setDisabled(salesPane, false);
+                showEl(document.getElementById('sales_next_btn'), varsVisible);
+                showEl(document.getElementById('sales_save_btn'), !varsVisible);
+                showEl(document.getElementById('attr_next_btn'), true);
+                showEl(document.getElementById('attr_save_btn'), false);
+
+                if (!varsVisible) {
+                    var vt = document.getElementById('variations-tab');
+                    if (vt && vt.classList.contains('active')) {
+                        var s = document.getElementById('sales-tab'); if (s) s.click();
+                    }
                 }
-                var activeTab = document.querySelector('#itemTabs .nav-link.active');
-                var isAttrActive = activeTab && activeTab.id === 'attributes-tab';
-                showEl(document.getElementById('attr_next_btn'), !hasVars);
-                showEl(document.getElementById('attr_save_btn'), hasVars && isAttrActive);
             }
 
             document.addEventListener('change', function (e) {

@@ -116,11 +116,12 @@
                                 data-target="#inventoryItemModal">+ Add From Inventory</button>
                         @endif
                     </div>
-                    <table class="items-table">
+                    <table class="items-table" data-mrp="1">
                         <thead class="items_head">
                             <tr>
                                 <th>Description</th>
                                 <th>Unit Price</th>
+                                <th>MRP</th>
                                 <th>Quantity</th>
                                 <th>Unit</th>
                                 <th class="gst_fld hidden_gst_f">Tax</th>

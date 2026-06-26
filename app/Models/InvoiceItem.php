@@ -13,7 +13,7 @@ class InvoiceItem extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'rand_invoice_id', 'manual_invoice_id', 'name', 'price', 'tax', 'hsn', 'qty', 'gst_status', 'inv_id', 'pieces'
+        'rand_invoice_id', 'manual_invoice_id', 'name', 'price', 'mrp', 'tax', 'hsn', 'qty', 'gst_status', 'inv_id', 'pieces'
     ];
 
     public function unitId(){

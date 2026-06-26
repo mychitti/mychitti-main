@@ -140,4 +140,5 @@
 @include('layouts.vendor.partials._sidebar_menu_default', [
     'store_data' => $store_data,
     'skipForPOS' => true,
+    'showWhatsappAbovePostAds' => true,
 ])

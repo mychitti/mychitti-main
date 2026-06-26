@@ -19,8 +19,9 @@
                 if (primary_qty && primary_unit && secondary_qty && secondary_unit &&
                     primary_unit !== "Select Unit" && secondary_unit !== "Select Unit") {
 
-                    //var totalUnits = parseInt(primary_qty) * parseInt(secondary_qty);
-                    var totalUnits = parseInt(primary_qty) / parseInt(secondary_qty) ;
+                    //var totalUnits = parseFloat(primary_qty) * parseFloat(secondary_qty);
+                    var totalUnits = parseFloat(primary_qty) / parseFloat(secondary_qty);
+                    totalUnits = Math.round(totalUnits * 1000) / 1000; // keep decimals (e.g. 22.5)
                    // exampleText.text(totalUnits + ' ' + primary_unit.toLowerCase());
                     exampleText.text(totalUnits + ' ' + primary_unit.toLowerCase()+ ' per ' + secondary_unit.toLowerCase());
                     conversionExample.addClass('show');

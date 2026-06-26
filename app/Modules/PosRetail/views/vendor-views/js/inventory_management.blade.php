@@ -712,9 +712,57 @@
                  if (data.length < 1) {
                      $('input[name="current_stock"]').attr("readonly", false);
                  }
+                 autofillVariationPrices();
              }
          });
      }
+
+     // ── Auto-generate variation MRP & selling price from the main product price ──
+     // e.g. main 1kg = ₹1000  →  variation "100g" = ₹100, "200g" = ₹200. The weight is
+     // parsed from the variation label; vendor can still override any value manually.
+     function _unitFactor(name) {
+         name = (name || '').toString().trim().toLowerCase();
+         const map = {
+             mg: 0.001, ct: 0.2, carat: 0.2, g: 1, gm: 1, gms: 1, gram: 1, grams: 1,
+             kg: 1000, kgs: 1000, kilogram: 1000, kilograms: 1000,
+             ml: 1, milliliter: 1, l: 1000, ltr: 1000, litre: 1000, liter: 1000
+         };
+         return map[name] || null;
+     }
+
+     function autofillVariationPrices() {
+         const mainSell = parseFloat($('[name="main_selling_price"]').val()) || 0;
+         const mainMrp = parseFloat($('[name="main_mrp"]').val()) || 0;
+         const baseQty = parseFloat($('#primary_qty').val()) || 1;
+         const baseUnitName = $('#primary_unit option:selected').text() || '';
+         const baseFactor = _unitFactor(baseUnitName);
+         if (!baseFactor || baseQty <= 0 || (mainSell <= 0 && mainMrp <= 0)) return;
+         const baseCanonical = baseQty * baseFactor;
+
+         $('#variant_combination input[name^="askingprice_"]').each(function () {
+             const str = this.name.replace('askingprice_', '');
+             const m = str.match(/(\d+(?:\.\d+)?)\s*(mg|kgs|kg|gms|gm|grams|gram|g|kilograms|kilogram|milliliter|ml|litre|liter|ltr|l)\b/i);
+             if (!m) return;
+             const vQty = parseFloat(m[1]);
+             const vFactor = _unitFactor(m[2]);
+             if (!vFactor || !vQty) return;
+             const ratio = (vQty * vFactor) / baseCanonical;
+
+             const sellEl = this;
+             const mrpEl = document.querySelector('[name="mrpprice_' + (window.CSS && CSS.escape ? CSS.escape(str) : str) + '"]');
+             if (mainSell > 0 && sellEl.dataset.auto !== '0') sellEl.value = +(mainSell * ratio).toFixed(2);
+             if (mrpEl && mainMrp > 0 && mrpEl.dataset.auto !== '0') mrpEl.value = +(mainMrp * ratio).toFixed(2);
+         });
+     }
+
+     $(document).on('keyup change', '[name="main_selling_price"], [name="main_mrp"], #primary_qty', autofillVariationPrices);
+     $(document).on('change', '#primary_unit', autofillVariationPrices);
+     // Recompute when the Variations tab is opened (so prices fill even if the main price
+     // was set after the variants were generated).
+     $(document).on('shown.bs.tab', '#variations-tab', autofillVariationPrices);
+     $(document).on('input', '#variant_combination input[name^="askingprice_"], #variant_combination input[name^="mrpprice_"]', function () {
+         this.dataset.auto = '0';
+     });
      $("#deliveryCalcInp").on('keyup', function() {
          $(this).attr('data-value', $(this).val());
          calculateFinalTotal();

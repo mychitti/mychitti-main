@@ -13,7 +13,7 @@
 
     /* stock section */
     :root {
-        --success-color: #10b981;
+        --success-color: #10b981; 
         --gray-50: #f9fafb;
         --gray-100: #f3f4f6;
         --gray-200: #e5e7eb;
@@ -252,6 +252,11 @@
                         <i class="fas fa-chart-line mr-2"></i>Sales Info
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="variations-tab" data-toggle="tab" href="#variations" role="tab">
+                        <i class="fas fa-layer-group mr-2"></i>Variations
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -340,46 +345,6 @@
                             <div class="col-12 my-1">
                                 <label for="exampleInputEmail1">Highlights</label>
                                 <textarea class="form-control" name="description" placeholder="Highlights"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
-                        <label class="custom-label cursor-pointer mb-0">
-                            <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
-                            Add Variations
-                        </label>
-                    </div>
-                    <div class="col-12" id="variations_wrap" style="display:none;">
-                        <div class="col-md-12 p-0" id="attribute_section">
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <div class="form-group mb-0">
-                                        <label class="input-label" for="exampleFormControlSelect1">Add Variation<span
-                                                class="input-label-secondary"></span></label>
-                                        <select name="attribute_id[]" id="choice_attributes"
-                                            class="form-control js-select2-custom" multiple="multiple">
-                                            @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
-                                                <option value="{{ $attribute['id'] }}">{{ $attribute['name'] }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-12">
-                                    <div class="table-responsive">
-                                        <div class="customer_choice_options d-flex __gap-24px"
-                                            id="customer_choice_options">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-12">
-                                    <div class="variant_combination" id="variant_combination">
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div id="add_new_option">
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -553,6 +518,57 @@
                 <!-- Sales Info Tab -->
 
             </div>
+
+            <!-- Variations Tab -->
+            <div class="tab-pane fade" id="variations" role="tabpanel">
+                <div class="row g-0">
+                    <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
+                        <label class="custom-label cursor-pointer mb-0">
+                            <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
+                            Add Variations
+                        </label>
+                    </div>
+                    <div class="col-12" id="variations_wrap" style="display:none;">
+                        <div class="alert alert-info py-2 px-3 mb-2" style="font-size:12px;">
+                            Set the main product price &amp; base unit (e.g. 1 kg = ₹1000) under <b>Sales Info</b>,
+                            then add a weight variation (e.g. 100g, 200g) — its MRP &amp; selling price fill in
+                            automatically. You can still edit any value manually.
+                        </div>
+                        <div class="col-md-12 p-0" id="attribute_section">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <div class="form-group mb-0">
+                                        <label class="input-label" for="exampleFormControlSelect1">Add Variation<span
+                                                class="input-label-secondary"></span></label>
+                                        <select name="attribute_id[]" id="choice_attributes"
+                                            class="form-control js-select2-custom" multiple="multiple">
+                                            @foreach (\App\Models\Attribute::orderBy('name')->get() as $attribute)
+                                                <option value="{{ $attribute['id'] }}">{{ $attribute['name'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="table-responsive">
+                                        <div class="customer_choice_options d-flex __gap-24px"
+                                            id="customer_choice_options">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="variant_combination" id="variant_combination">
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="add_new_option">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="tab-pane fade" id="sales" role="tabpanel">
                 <div class="row">
 
@@ -658,6 +674,8 @@
         var salesTab = document.getElementById('sales-tab');
         var salesLi = salesTab ? salesTab.closest('li') : null;
         var salesPane = document.getElementById('sales');
+        var variationsTab = document.getElementById('variations-tab');
+        var variationsLi = variationsTab ? variationsTab.closest('li') : null;
 
         function isProduct() {
             var t = document.querySelector('input[name="item_type"]:checked');
@@ -683,6 +701,8 @@
             showEl(box, on); setDisabled(box, !on);
             showEl(extraImages, on); setDisabled(extraImages, !on);
             showEl(addVarWrap, prod && !on);
+            // Variations tab only applies to products.
+            showEl(variationsLi, prod);
 
             showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
             // Per-variation Highlights/Specs/Images — website only.

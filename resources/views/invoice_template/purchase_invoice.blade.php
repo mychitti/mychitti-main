@@ -315,7 +315,7 @@
                         <td class="no-border">{{ $qt->hsn }}</td>
                     @endif
                     <td class="no-border">{{ $qt->qty }} {{ $qt->unitId?->unit }}</td>
-                    <td class="no-border">{{ $qt->price }}</td>
+                    <td class="no-border">{{ $qt->mrp ?? optional($qt->item)->mrp }}</td>
                     <td class="no-border">0</td>
                     <td class="no-border">{{ $qt->price }}</td>
                     @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)
