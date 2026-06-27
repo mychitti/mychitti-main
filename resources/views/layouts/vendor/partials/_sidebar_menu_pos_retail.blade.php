@@ -111,6 +111,15 @@
     </li>
 @endif
 
+@if ((auth('vendor')->check() || hasPermission('pos_cash', 'view')) && selected_menu('retail_cash_flow'))
+    <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/cash-flow*') ? 'active' : '' }}">
+        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.cash-flow') }}" title="Cash Flow">
+            <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/settings.png') }}" alt="" class="nav-link-icon">
+            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Cash Flow</span>
+        </a>
+    </li>
+@endif
+
 @if (auth('vendor')->check())
     <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/settings') ? 'active' : '' }}">
         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.settings') }}" title="Settings">

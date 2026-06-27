@@ -109,19 +109,52 @@
                                             <td><b>{{ $c->name }}</b></td>
                                             <td class="text-muted">{{ $c->code }}</td>
                                             <td>
+                                                @php
+                                                    $isAuto = (int) ($c->auto_shift ?? 0) === 1;
+                                                    $rosterIds = $rosterMap[$c->id] ?? [];
+                                                @endphp
                                                 @if ($canAssign)
-                                                    <form method="post" action="{{ route('vendor.retail-pos.terminals.staff', $c->id) }}">
-                                                        @csrf
-                                                        <select name="staff_id" class="rp-input" style="min-width:200px;padding:5px 8px;" onchange="this.form.submit()" title="Change the staff on this counter (shift shown)">
-                                                            <option value="">— Unassigned —</option>
-                                                            @foreach ($staff as $s)
-                                                                <option value="{{ $s->id }}" {{ $c->staff_id == $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}{{ $shiftLabel($s) }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </form>
-                                                    @if ($st && $st->storeShift)
-                                                        <div class="small text-muted mt-1">🕒 {{ trim($shiftLabel($st), ' ·') }}</div>
+                                                    @if ($isAuto)
+                                                        @if ($st)
+                                                            <div class="small text-muted" style="font-weight:600;">🟢 On duty now</div>
+                                                            <span class="rp-badge ok">{{ trim($st->f_name . ' ' . $st->l_name) }}</span>
+                                                            @if ($st->storeShift)
+                                                                <div class="small text-muted mt-1">🕒 {{ trim($shiftLabel($st), ' ·') }}</div>
+                                                            @endif
+                                                        @else
+                                                            <div class="small text-muted" style="font-weight:600;">⚪ Nobody on duty now</div>
+                                                            <span class="text-muted small">No rostered staff is on shift at the moment</span>
+                                                        @endif
+                                                        <div><span class="rp-badge info mt-1">Auto by shift</span></div>
+                                                    @else
+                                                        <form method="post" action="{{ route('vendor.retail-pos.terminals.staff', $c->id) }}">
+                                                            @csrf
+                                                            <select name="staff_id" class="rp-input" style="min-width:200px;padding:5px 8px;" onchange="this.form.submit()" title="Change the staff on this counter (shift shown)">
+                                                                <option value="">— Unassigned —</option>
+                                                                @foreach ($staff as $s)
+                                                                    <option value="{{ $s->id }}" {{ $c->staff_id == $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}{{ $shiftLabel($s) }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </form>
+                                                        @if ($st && $st->storeShift)
+                                                            <div class="small text-muted mt-1">🕒 {{ trim($shiftLabel($st), ' ·') }}</div>
+                                                        @endif
                                                     @endif
+
+                                                    <details class="mt-2" {{ $isAuto ? 'open' : '' }}>
+                                                        <summary class="small" style="cursor:pointer;color:var(--accent)">⚙ Auto shift setup</summary>
+                                                        <form method="post" action="{{ route('vendor.retail-pos.terminals.roster', $c->id) }}" class="mt-1">
+                                                            @csrf
+                                                            <label class="d-block small mb-1"><input type="checkbox" name="auto_shift" value="1" {{ $isAuto ? 'checked' : '' }}> Auto-assign staff by shift time</label>
+                                                            <div class="small text-muted mb-1" style="max-width:240px;">Tick the staff who rotate on this counter. Whoever's shift covers the current time bills here automatically.</div>
+                                                            @forelse ($staff as $s)
+                                                                <label class="d-block small mb-0"><input type="checkbox" name="roster[]" value="{{ $s->id }}" {{ in_array($s->id, $rosterIds) ? 'checked' : '' }}> {{ trim($s->f_name . ' ' . $s->l_name) }}{{ $shiftLabel($s) }}</label>
+                                                            @empty
+                                                                <div class="small text-muted">No staff yet.</div>
+                                                            @endforelse
+                                                            <button class="rp-btn p sm mt-1">Save</button>
+                                                        </form>
+                                                    </details>
                                                 @else
                                                     @if ($st)<span class="rp-badge info">{{ trim($st->f_name . ' ' . $st->l_name) }}</span>@else<span class="text-muted">Unassigned</span>@endif
                                                 @endif

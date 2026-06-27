@@ -178,7 +178,7 @@
                                      </td>
                                      <td>{{ $key + 1 }}</td>
                                      <td>
-                                         <div style="">
+                                         <div style="white-space: normal; min-width: 150px; max-width: 250px; word-break: break-word;">
                                              <a href="{{ route('vendor.inventory.item.detail', [$item->id]) }}">
                                                  {{ ucwords($item->item_name) ?? 'N/A' }}
                                              </a>
@@ -191,7 +191,7 @@
                                      <td>
                                          @if ($item->stock < 1)
                                              <span class="badge badge-soft-danger">{{ $item->stock }}</span>
-                                         @elseif($item->stock < 5)
+                                          @elseif($item->stock < 5)
                                              <span class="badge badge-soft-warning">{{ $item->stock }}</span>
                                          @else
                                              <span class="badge badge-soft-success">{{ $item->stock }}</span>

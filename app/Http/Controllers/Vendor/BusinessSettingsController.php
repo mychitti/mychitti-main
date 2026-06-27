@@ -72,14 +72,46 @@ class BusinessSettingsController extends Controller
         ], 400);
     }
 
+    // Columns backing FSSAI + arbitrary "other" documents (license name/number).
+    // Self-healing — no migration files.
+    private function ensureDocColumns(): void
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('stores')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('stores', 'fssai_number')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `stores` ADD COLUMN `fssai_number` VARCHAR(50) NULL");
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('stores', 'fssai_show')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `stores` ADD COLUMN `fssai_show` TINYINT(1) NOT NULL DEFAULT 0");
+                }
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('store_documents')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('store_documents', 'doc_name')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_documents` ADD COLUMN `doc_name` VARCHAR(150) NULL");
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('store_documents', 'doc_number')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_documents` ADD COLUMN `doc_number` VARCHAR(100) NULL");
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('store_documents', 'show_on_bill')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_documents` ADD COLUMN `show_on_bill` TINYINT(1) NOT NULL DEFAULT 0");
+                }
+            }
+        } catch (\Throwable $th) {
+            // best-effort
+        }
+    }
+
     public function store_index()
     {
+        $this->ensureDocColumns();
         $store = $shop = Helpers::get_store_data();
         $store = Store::withoutGlobalScope('translate')->findOrFail($store->id);
         $store_documents = StoreDocument::where('store_id', $store->id)->where('status', 1)->get();
         $id_doc = $store_documents->where('doc_type', 'id_doc')->first();
         $gst_doc = $store_documents->where('doc_type', 'gst_doc')->first();
-        return view('vendor-views.business-settings.restaurant-index', compact('store', 'shop', 'store_documents', 'id_doc', 'gst_doc'));
+        $fssai_doc = $store_documents->where('doc_type', 'fssai_doc')->first();
+        $other_docs = $store_documents->where('doc_type', 'other')->values();
+        return view('vendor-views.business-settings.restaurant-index', compact('store', 'shop', 'store_documents', 'id_doc', 'gst_doc', 'fssai_doc', 'other_docs'));
     }
 
     public function store_setup(Store $store, Request $request)
@@ -245,8 +277,8 @@ class BusinessSettingsController extends Controller
         $storeId = Helpers::get_store_id();
         $store = Store::findOrFail($storeId);
 
-        $type = $request->file_type; // id_doc | gst_doc
-        $fileFieldFront = $type == 'id_doc' ? 'id_doc' : 'gst_doc';
+        $type = $request->file_type; // id_doc | gst_doc | fssai_doc
+        $fileFieldFront = $type; // upload field name matches the doc_type
 
         // Save number fields if provided
         if ($type == 'gst_doc' && $request->filled('gst_number')) {
@@ -255,6 +287,16 @@ class BusinessSettingsController extends Controller
         }
         if ($type == 'id_doc' && $request->filled('id_number')) {
             $store->id_number = $request->id_number;
+            $store->save();
+        }
+        if ($type == 'fssai_doc') {
+            $this->ensureDocColumns();
+            if ($request->filled('fssai_number')) {
+                $store->fssai_number = $request->fssai_number;
+            }
+            if ($request->has('fssai_show_present')) {
+                $store->fssai_show = $request->has('fssai_show') ? 1 : 0;
+            }
             $store->save();
         }
 
@@ -296,8 +338,8 @@ class BusinessSettingsController extends Controller
     ==========================*/
         $backSidePath = null;
 
-        if ($type == 'id_doc' && $request->hasFile('id_doc_back')) {
-            $backFile = $request->file('id_doc_back');
+        if ($request->hasFile($type . '_back')) {
+            $backFile = $request->file($type . '_back');
             $backExt  = $backFile->getClientOriginalExtension();
             $backSidePath = Helpers::upload('store/docs/', $backExt, $backFile);
         }
@@ -319,8 +361,8 @@ class BusinessSettingsController extends Controller
         }
 
         // ✅ ADMIN NOTIFICATION
-        $msg = "New " . ($type == 'id_doc' ? 'ID Document' : 'GST Document') .
-            " uploaded by " . $store->name . ". Please verify the document.";
+        $docLabel = ['id_doc' => 'ID Document', 'gst_doc' => 'GST Document', 'fssai_doc' => 'FSSAI Document'][$type] ?? 'Document';
+        $msg = "New " . $docLabel . " uploaded by " . $store->name . ". Please verify the document.";
 
         $url = route('admin.store.view', [
             'store' => $storeId,
@@ -330,6 +372,78 @@ class BusinessSettingsController extends Controller
         _inAppNotification("New Vendor Document", $msg, null, 0, $url, 'admin');
 
         Toastr::success("Document updated successfully");
+        return back();
+    }
+
+    // Add an arbitrary "other" document (e.g. trade licence): a name, number and the file
+    // (front, optional back). Multiple are allowed — each is its own row.
+    public function add_other_document(Request $request)
+    {
+        $request->validate([
+            'doc_name' => 'required|string|max:150',
+            'other_doc' => 'required|file|mimes:jpeg,png,jpg,webp,pdf',
+            'other_doc_back' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf',
+        ]);
+
+        $this->ensureDocColumns();
+        $storeId = Helpers::get_store_id();
+        $store = Store::findOrFail($storeId);
+
+        $front = $request->file('other_doc');
+        $frontPath = Helpers::upload('store/docs/', $front->getClientOriginalExtension(), $front);
+
+        $backPath = null;
+        if ($request->hasFile('other_doc_back')) {
+            $back = $request->file('other_doc_back');
+            $backPath = Helpers::upload('store/docs/', $back->getClientOriginalExtension(), $back);
+        }
+
+        StoreDocument::create([
+            'store_id'     => $storeId,
+            'doc_type'     => 'other',
+            'doc_name'     => $request->doc_name,
+            'doc_number'   => $request->doc_number,
+            'file_path'    => $frontPath,
+            'back_side'    => $backPath,
+            'status'       => 1,
+            'show_on_bill' => $request->has('show_on_bill') ? 1 : 0,
+        ]);
+
+        $actorType = auth('vendor')->check() ? 'vendor' : 'vendor_employee';
+        $actorId   = auth($actorType)->id();
+        _logVendorFile($actorType, $actorId, $storeId, 'store_other_doc', 'store/docs/' . $frontPath);
+        if ($backPath) {
+            _logVendorFile($actorType, $actorId, $storeId, 'store_other_doc_back', 'store/docs/' . $backPath);
+        }
+
+        $msg = "New document \"" . $request->doc_name . "\" uploaded by " . $store->name . ". Please verify the document.";
+        $url = route('admin.store.view', ['store' => $storeId, 'tab' => 'documents']);
+        _inAppNotification("New Vendor Document", $msg, null, 0, $url, 'admin');
+
+        Toastr::success('Document added successfully');
+        return back();
+    }
+
+    // Remove an "other" document the vendor added.
+    public function delete_other_document($id)
+    {
+        $storeId = Helpers::get_store_id();
+        StoreDocument::where('store_id', $storeId)->where('doc_type', 'other')->where('id', $id)->delete();
+        Toastr::success('Document removed');
+        return back();
+    }
+
+    // Toggle whether an "other" document's number prints on bills / labels.
+    public function toggle_other_document($id)
+    {
+        $this->ensureDocColumns();
+        $storeId = Helpers::get_store_id();
+        $doc = StoreDocument::where('store_id', $storeId)->where('doc_type', 'other')->where('id', $id)->first();
+        if ($doc) {
+            $doc->show_on_bill = $doc->show_on_bill ? 0 : 1;
+            $doc->save();
+            Toastr::success($doc->show_on_bill ? 'Will show on bills' : 'Hidden from bills');
+        }
         return back();
     }
 

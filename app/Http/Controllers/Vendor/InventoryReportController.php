@@ -826,4 +826,81 @@ class InventoryReportController extends Controller
         $report->file_type = $fileType;
         $report->save();
     }
+
+    // Delete a sale invoice from the Sale Report (an InventoryOrder + its line items).
+    // Optionally add the sold stock back to inventory.
+    public function sale_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $order = InventoryOrder::where('store_id', $storeId)->find($id);
+        if (!$order) {
+            Toastr::error('Sale invoice not found');
+            return back();
+        }
+
+        $details = InventoryOrderDetail::where('order_id', $order->order_id)->get();
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+        if ($request->restock == '1') {
+            foreach ($details as $d) {
+                if (in_array($d->status, ['returned', 'cancelled'])) {
+                    continue;
+                }
+                $item = InventoryItem::find($d->item_id);
+                if ($item) {
+                    $item->stock = (float) $item->stock + (float) $d->qty;
+                    $item->save();
+                }
+            }
+        }
+
+        InventoryOrderDetail::where('order_id', $order->order_id)->delete();
+        $order->delete();
+
+        Toastr::success('Sale invoice deleted');
+        return back();
+    }
+
+    // Delete a purchase invoice from the Purchase Report (a ManualInvoice + its items).
+    // Optionally remove the purchased stock that the bill had added to inventory.
+    public function purchase_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $invoice = ManualInvoice::where('id', $id)->where('bill_to', $storeId)->where('bill_to_type', 'vendor')->first();
+        if (!$invoice) {
+            Toastr::error('Purchase invoice not found');
+            return back();
+        }
+
+        $items = \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
+            ->orWhere('rand_invoice_id', $invoice->invoice_id)->get();
+
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+        if ($request->restock == '1') {
+            foreach ($items as $it) {
+                if (!$it->inv_id) {
+                    continue;
+                }
+                $item = InventoryItem::find($it->inv_id);
+                if ($item) {
+                    $item->stock = max(0, (float) $item->stock - (float) $it->qty);
+                    $item->save();
+                }
+            }
+        }
+
+        \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
+            ->orWhere('rand_invoice_id', $invoice->invoice_id)->delete();
+
+        if ($invoice->pdf && Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
+            Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+        }
+        $invoice->delete();
+
+        Toastr::success('Purchase invoice deleted');
+        return back();
+    }
 }

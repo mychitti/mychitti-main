@@ -307,6 +307,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('order-place', 'InventoryPurchaseController@order_place')->name('order-place')->middleware('permission:inventory_purchase_order,add');;
                 Route::get('return', 'InventoryPurchaseController@return')->name('return')->middleware('permission:inventory_purchase_return,add');
                 Route::post('return-store', 'InventoryPurchaseController@return_store')->name('return-store')->middleware('permission:inventory_purchase_return,add');
+                Route::post('order-delete/{id}', 'InventoryPurchaseController@purchase_order_delete')->name('order-delete');
+                Route::post('return-delete/{id}', 'InventoryPurchaseController@purchase_return_delete')->name('return-delete');
             });
             Route::group(['prefix' => 'stock', 'as' => 'stock.'], function () {
                 Route::get('stock-in-out', 'InventoryStockController@stock_in_out')->name('stock-in-out')->middleware('permission:inventory_stock_in_out,list');;
@@ -317,6 +319,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('order-export/{return?}', 'InventoryOrderController@sale_order_export')->name('order-export');
                 Route::get('orders-return', 'InventoryOrderController@order_return')->name('orders-return')->middleware('permission:inventory_sale_return,add');
                 Route::post('order-details-fetch', 'InventoryOrderController@order_details_fetch')->name('order-details-fetch');
+                Route::post('order-delete/{id}', 'InventoryOrderController@sale_order_delete')->name('order-delete');
+                Route::post('return-delete/{id}', 'InventoryOrderController@sale_return_delete')->name('return-delete');
             });
             Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
                 Route::get('gst/{export?}/{file_type?}', 'InventoryReportController@gst')->name('gst');
@@ -325,6 +329,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('purchase/{export?}/{file_type?}', 'InventoryReportController@purchase')->name('purchase');
                 Route::get('stock/{export?}/{file_type?}', 'InventoryReportController@stock')->name('stock');
                 Route::get('batch-expiry', 'InventoryReportController@batchExpiry')->name('batch-expiry');
+                Route::post('sale-delete/{id}', 'InventoryReportController@sale_delete')->name('sale-delete');
+                Route::post('purchase-delete/{id}', 'InventoryReportController@purchase_delete')->name('purchase-delete');
             });
             Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
                 Route::get('/', 'InventoryController@category')->name('index');
@@ -929,6 +935,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('tnc-fetch/{id}', 'BusinessSettingsController@tnc_fetch')->name('tnc.fetch');
             Route::get('my-documents', 'BusinessSettingsController@my_documents')->name('my-documents');
             Route::post('update-doc', 'BusinessSettingsController@update_doc')->name('update-doc');
+            Route::post('add-document', 'BusinessSettingsController@add_other_document')->name('add-document');
+            Route::post('delete-document/{id}', 'BusinessSettingsController@delete_other_document')->name('delete-document');
+            Route::post('toggle-document/{id}', 'BusinessSettingsController@toggle_other_document')->name('toggle-document');
 
             Route::get('tnc-delete/{id}', 'BusinessSettingsController@tnc_delete')->name('tnc.delete');
             Route::post('tnc-save', 'BusinessSettingsController@tnc_save')->name('tnc.save');

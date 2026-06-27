@@ -143,10 +143,11 @@
                         <button class="btn btn-sm btn-outline-dark" onclick="addEl('packing_date')">Packing Date</button>
                         <button class="btn btn-sm btn-outline-dark" onclick="addEl('expiry_date')">Expiry Date</button>
                         <button class="btn btn-sm btn-outline-dark" onclick="addEl('barcode')">Barcode</button>
+                        <button class="btn btn-sm btn-outline-dark" onclick="addEl('fssai_no')">FSSAI No</button>
                         <button class="btn btn-sm btn-outline-dark" onclick="addEl('custom_text')">Custom Text</button>
                     </div>
                 </div>
-            </div>
+            </div> 
         </div>
     </div>
 
@@ -159,8 +160,8 @@
 
     <script>
         const SCALE = 4; // px per mm
-        const LABELS = { store_name: '', subtitle: 'Firm name', item_name: '', code: 'Code', mrp: 'M.R.P', selling_price: 'S.S.C PRICE', packing_date: 'Date', expiry_date: 'Exp', custom_text: 'Text' };
-        const SAMPLE = { store_name: 'WHOLE SALE MART', subtitle: 'SRI SAI & CO', item_name: 'GN SEEDS BULLET 1KG', code: '507', mrp: '230.00', selling_price: '210.00', packing_date: '13/06/26', expiry_date: '13/12/26', custom_text: 'Text' };
+        const LABELS = { store_name: '', subtitle: 'Firm name', item_name: '', code: 'Code', mrp: 'M.R.P', selling_price: 'S.S.C PRICE', packing_date: 'Date', expiry_date: 'Exp', fssai_no: 'FSSAI', custom_text: 'Text' };
+        const SAMPLE = { store_name: 'WHOLE SALE MART', subtitle: 'SRI SAI & CO', item_name: 'GN SEEDS BULLET 1KG', code: '507', mrp: '230.00', selling_price: '210.00', packing_date: '13/06/26', expiry_date: '13/12/26', fssai_no: '12345678901234', custom_text: 'Text' };
         let els = [], selIdx = -1, editId = '';
         const canvas = document.getElementById('lf-canvas');
 
@@ -367,7 +368,7 @@
             document.getElementById('prop-text-lbl').textContent = freeText ? 'Text' : 'Prefix label (before the value)';
             document.getElementById('prop-text').placeholder = freeText ? 'Type your text…' : 'e.g. M.R.P';
             if (isBc) { document.getElementById('prop-bw').value = el.w || 30; document.getElementById('prop-bh').value = el.h || 10; }
-            const showNewline = ['mrp', 'selling_price', 'packing_date', 'expiry_date', 'code', 'item_name'].includes(el.type);
+            const showNewline = ['mrp', 'selling_price', 'packing_date', 'expiry_date', 'code', 'item_name', 'fssai_no'].includes(el.type);
             document.getElementById('prop-newline-container').style.display = showNewline ? '' : 'none';
             document.getElementById('prop-newline').checked = !!el.newline;
             document.getElementById('prop-align').value = el.align || 'center';
@@ -379,7 +380,7 @@
             el.bold = document.getElementById('prop-bold').checked;
             el.align = document.getElementById('prop-align').value || 'center';
             if (el.type === 'barcode') { el.w = parseFloat(document.getElementById('prop-bw').value) || 30; el.h = parseFloat(document.getElementById('prop-bh').value) || 10; }
-            if (['mrp', 'selling_price', 'packing_date', 'expiry_date', 'code', 'item_name'].includes(el.type)) {
+            if (['mrp', 'selling_price', 'packing_date', 'expiry_date', 'code', 'item_name', 'fssai_no'].includes(el.type)) {
                 el.newline = document.getElementById('prop-newline').checked;
             }
             render();

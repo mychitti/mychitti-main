@@ -852,6 +852,32 @@ class InventoryController extends Controller
     {
 
         $item = InventoryItem::findOrFail($item_id);
+ 
+        $variationType = $request->get('variation');
+        if ($variationType) {
+            $variations = json_decode($item->variations, true) ?: [];
+            $selectedVar = null;
+            foreach ($variations as $var) {
+                if ($var['type'] === $variationType) {
+                    $selectedVar = $var;
+                    break;
+                }
+            }
+            if ($selectedVar) {
+                $vrDet = \App\Models\InvItemVariationDetail::where('item_id', $item->id)
+                    ->where('type', $variationType)
+                    ->first();
+                
+                $item->item_name = $item->item_name . ' (' . ucwords($variationType) . ')';
+                $item->mrp = $selectedVar['mrpprice'] ?? $item->mrp;
+                $item->selling_price = $selectedVar['price'] ?? $item->selling_price;
+                if ($vrDet && $vrDet->sku) {
+                    $item->sku_id = $vrDet->sku;
+                    $item->barcode = null;
+                }
+            }
+        }
+
         if (!$item->sku_id && !$item->barcode) {
             Toastr::error('Item SKU Required to print barcode');
             return back();

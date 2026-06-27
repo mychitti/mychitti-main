@@ -362,7 +362,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
         {{-- <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a> --}}
         <a type="button" class="animated-btn" type="button" id="ai-chat-fab"
-            style="float: right;    position: absolute; right: 0; margin: 3px 12px; padding: 0px 15px;"><i class="tio-headphones"></i> Help</a>
+            style="float: right;      z-index: 43;  right: 0; margin: 3px 12px; padding: 0px 15px;"><i class="tio-headphones"></i> Help</a>
 
         @yield('content')
 

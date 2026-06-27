@@ -332,6 +332,12 @@
                                                             title="{{ translate('messages.details') }}"></i>
                                                             <i class="tio-visible"></i> View PDF
                                                         </a>
+                                                        <a class="dropdown-item text-danger inv-delete-btn"
+                                                            href="javascript:;"
+                                                            data-action="{{ route('vendor.inventory.purchase.order-delete', [$order->id]) }}"
+                                                            data-stock-label="Remove the purchased stock from inventory">
+                                                            <i class="tio-delete"></i> Delete
+                                                        </a>
                                                     </div>
                                                 </div>
                                             </td>
@@ -357,6 +363,7 @@
 
         @endif
     </div>
+    @include('vendor-views.inventory.partials._delete-with-stock')
 
 @endsection
 @push('script_2')

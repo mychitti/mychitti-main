@@ -619,12 +619,16 @@
 
         </div>
         <div class="card p-3">
-            <h4>Documents</h4>
+            <h4>Documents</h4> 
             <div class="gap-2">
                 <button class="btn btn-outline-primary" data-toggle="modal" data-target="#gstDocUpdateModal">GST
                     Document</button>
                 <button class="btn btn-outline-primary" data-toggle="modal" data-target="#idDocUpdateModal">ID Proof
                     Document</button>
+                <button class="btn btn-outline-primary" data-toggle="modal" data-target="#fssaiDocUpdateModal">FSSAI
+                    Document</button>
+                <button class="btn btn-outline-primary" data-toggle="modal" data-target="#otherDocsModal">Other
+                    Documents</button>
             </div>
 
             <div class="modal fade" id="idDocUpdateModal" tabindex  ="-1" aria-labelledby="exampleModalLabel"
@@ -809,6 +813,189 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ============ FSSAI Document (number + file, same as GST) ============ --}}
+            <div class="modal fade" id="fssaiDocUpdateModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">FSSAI Document</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                                    aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="vdp-doc-card">
+                                <div class="vdp-card-header">
+                                    <div class="vdp-file-icon">
+                                        {{ $fssai_doc ? _getFileTypeLabel($fssai_doc->file_path) : 'FSSAI' }}</div>
+                                    <div class="vdp-card-info">
+                                        <div class="vdp-doc-filename">FSSAI Document</div>
+                                    </div>
+                                </div>
+                                <div class="vdp-card-body">
+                                    <div class="vdp-info-row">
+                                        <span class="vdp-info-label">FSSAI Number</span>
+                                        <span class="vdp-info-value">{{ $store->fssai_number ?? '—' }}</span>
+                                    </div>
+                                    <div class="vdp-info-row">
+                                        <span class="vdp-info-label">File Type</span>
+                                        <span
+                                            class="vdp-info-value">{{ $fssai_doc ? _getFileTypeLabel($fssai_doc->file_path) : '' }}</span>
+                                    </div>
+                                    <div class="vdp-info-row">
+                                        <span class="vdp-info-label">Status</span>
+                                        @if ($fssai_doc)
+                                            @if ($fssai_doc->verified == 0)
+                                                <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                            @else
+                                                <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="vdp-card-footer align-items-start flex-wrap">
+                                    @if ($fssai_doc)
+                                        <a href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->file_path }}"
+                                            class="btn btn-primary">View</a>
+                                        @if ($fssai_doc->back_side)
+                                            <a href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->back_side }}"
+                                                class="btn btn-primary">View Back</a>
+                                        @endif
+                                        <a download
+                                            href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->file_path }}"
+                                            class="btn btn-outline-primary">Download</a>
+                                    @endif
+                                    <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
+                                        data-target="#fssaiCollapse">Update</button>
+                                    <div class="collapse w-100" id="fssaiCollapse">
+                                        <div class="card card-body">
+                                            <form method="POST" enctype="multipart/form-data"
+                                                action="{{ route('vendor.business-settings.update-doc') }}">
+                                                @csrf
+                                                <input type="hidden" name="file_type" value="fssai_doc">
+                                                <div class="form-group">
+                                                    <label for="fssai_number">FSSAI Number</label>
+                                                    <input type="text" class="form-control" id="fssai_number"
+                                                        name="fssai_number" value="{{ $store->fssai_number ?? '' }}"
+                                                        placeholder="FSSAI Number">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="fssai_doc">Upload FSSAI Document (Front)</label>
+                                                    <input type="file" class="form-control" id="fssai_doc"
+                                                        name="fssai_doc">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="fssai_doc_back">Back side (optional)</label>
+                                                    <input type="file" class="form-control" id="fssai_doc_back"
+                                                        name="fssai_doc_back">
+                                                </div>
+                                                <div class="d-flex w-100 justify-content-end">
+                                                    <button type="submit" class="btn btn-primary">Save</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ============ Other Documents (name + number + front/back, multiple) ============ --}}
+            <div class="modal fade" id="otherDocsModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Other Documents</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                                    aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="card card-body mb-3">
+                                <h6 class="mb-2">Add a Document</h6>
+                                <form method="POST" enctype="multipart/form-data"
+                                    action="{{ route('vendor.business-settings.add-document') }}">
+                                    @csrf
+                                    <div class="row">
+                                        <div class="col-md-6 form-group">
+                                            <label>Document / License Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="doc_name" class="form-control" required
+                                                placeholder="e.g. Trade Licence">
+                                        </div>
+                                        <div class="col-md-6 form-group">
+                                            <label>Number</label>
+                                            <input type="text" name="doc_number" class="form-control"
+                                                placeholder="License / document number">
+                                        </div>
+                                        <div class="col-md-6 form-group">
+                                            <label>Document (Front) <span class="text-danger">*</span></label>
+                                            <input type="file" name="other_doc" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6 form-group">
+                                            <label>Document (Back)</label>
+                                            <input type="file" name="other_doc_back" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-primary">Add Document</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            @forelse ($other_docs as $doc)
+                                <div class="vdp-doc-card mb-2">
+                                    <div class="vdp-card-header">
+                                        <div class="vdp-file-icon">{{ _getFileTypeLabel($doc->file_path) }}</div>
+                                        <div class="vdp-card-info">
+                                            <div class="vdp-doc-filename">{{ $doc->doc_name }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="vdp-card-body">
+                                        <div class="vdp-info-row">
+                                            <span class="vdp-info-label">Number</span>
+                                            <span class="vdp-info-value">{{ $doc->doc_number ?: '—' }}</span>
+                                        </div>
+                                        <div class="vdp-info-row">
+                                            <span class="vdp-info-label">Status</span>
+                                            @if ($doc->verified == 0)
+                                                <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                            @else
+                                                <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="vdp-card-footer align-items-start flex-wrap">
+                                        <a href="{{ asset('storage/app/public/store/docs') . '/' . $doc->file_path }}"
+                                            class="btn btn-primary">View</a>
+                                        @if ($doc->back_side)
+                                            <a href="{{ asset('storage/app/public/store/docs') . '/' . $doc->back_side }}"
+                                                class="btn btn-primary">View Back</a>
+                                        @endif
+                                        <a download
+                                            href="{{ asset('storage/app/public/store/docs') . '/' . $doc->file_path }}"
+                                            class="btn btn-outline-primary">Download</a>
+                                        <form method="POST"
+                                            action="{{ route('vendor.business-settings.delete-document', $doc->id) }}"
+                                            onsubmit="return confirm('Remove this document?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-muted mb-0">No other documents added yet.</p>
+                            @endforelse
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         </div>
                     </div>
                 </div>

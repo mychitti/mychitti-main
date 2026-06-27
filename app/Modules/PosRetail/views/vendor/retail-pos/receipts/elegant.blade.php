@@ -40,6 +40,17 @@
             <div class="tag">Tax Invoice</div>
             @if (!empty($store->address))<div class="addr">{{ $store->address }}</div>@endif
             @if (!empty($gstCode))<div class="addr">GSTIN: {{ $gstCode }}</div>@endif
+            @php
+                $rcFssai = ($store->fssai_show ?? false) && ($store->fssai_number ?? null) ? $store->fssai_number : null;
+                $rcDocs = [];
+                try {
+                    $rcDocs = \App\Models\StoreDocument::where('store_id', $store->id)->where('doc_type', 'other')
+                        ->where('status', 1)->where('show_on_bill', 1)
+                        ->whereNotNull('doc_number')->where('doc_number', '!=', '')->get();
+                } catch (\Throwable $e) { $rcDocs = []; }
+            @endphp
+            @if ($rcFssai)<div class="addr">FSSAI: {{ $rcFssai }}</div>@endif
+            @foreach ($rcDocs as $rd)<div class="addr">{{ $rd->doc_name }}: {{ $rd->doc_number }}</div>@endforeach
         </div>
         <hr class="dbl">
 
@@ -51,7 +62,7 @@
         <hr class="thin">
 
         <table>
-            <tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amt</th></tr>
+            <tr><th style="width:30%;">Qty</th><th class="r" style="width:35%;">Rate</th><th class="r" style="width:35%;">Amt</th></tr>
             @foreach ($items as $it)
                 @php
                     $isLoose = !empty(optional($it->item)->sell_loose) || !empty($it->pieces);
@@ -63,10 +74,12 @@
                     }
                 @endphp
                 <tr>
-                    <td>{{ $it->name }}@if ($it->hsn)<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
-                    <td class="r">{{ $qtyTxt }}</td>
-                    <td class="r">{{ $money($it->price) }}</td>
-                    <td class="r">{{ $money((float) $it->price * (float) $it->qty) }}</td>
+                    <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn)<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
+                </tr>
+                <tr>
+                    <td style="padding-top:0;">{{ $qtyTxt }}</td>
+                    <td class="r" style="padding-top:0;">{{ $money($it->price) }}</td>
+                    <td class="r" style="padding-top:0;">{{ $money((float) $it->price * (float) $it->qty) }}</td>
                 </tr>
             @endforeach
         </table>

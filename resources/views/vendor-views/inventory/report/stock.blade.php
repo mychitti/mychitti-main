@@ -178,7 +178,7 @@
                                      </td>
                                      <td>{{ $key + 1 }}</td>
                                      <td>
-                                         <div style="">
+                                         <div style="white-space: normal; min-width: 150px; max-width: 250px; word-break: break-word;">
                                              <a href="{{ route('vendor.inventory.item.detail', [$item->id]) }}">
                                                  {{ ucwords($item->item_name) ?? 'N/A' }}
                                              </a>

@@ -166,6 +166,11 @@
                                                         </form>
                                                     @endif
                                                 @endif
+                                                <a class="dropdown-item text-danger inv-delete-btn" href="javascript:;"
+                                                    data-action="{{ route('vendor.inventory.sale.order-delete', [$item->id]) }}"
+                                                    data-stock-label="Add this item's stock back to inventory">
+                                                    <i class="tio-delete"></i> Delete
+                                                </a>
                                             </div>
                                         </div>
 
@@ -191,6 +196,7 @@
         @endif
     </div>
     @include('vendor-views.form_modals.pos_calendar')
+    @include('vendor-views.inventory.partials._delete-with-stock')
 
 @endsection
 @push('script_2')

@@ -8,10 +8,10 @@
                 <th class="text-center border-0">
                     <span class="control-label">{{ translate('messages.Variant MRP') }}</span>
                 </th>
-                <th class="text-center border-0">
+                <th class="text-center border-0"> 
                     <span class="control-label">{{ translate('messages.Selling Price') }}</span>
                 </th>
-                <th class="text-center border-0">
+                <th class="text-center border-0" style="display: none;">
                     <span class="control-label">{{ translate('messages.Purchase Price') }}</span>
                 </th>
                 <th class="text-center border-0">
@@ -51,11 +51,11 @@
                             value="{{ $combination['price'] }}" min="0" step="0.000001" class="form-control"
                             >
                     </td>
-                    <td>
+                    <td style="display: none;">
                         {{-- <div class="input-group mb-3"> --}}
                             <input oninput="calcValues()" type="number" value="{{ $combination['purchaseprice'] }}"
                                 min="0" name="purchaseprice_{{ $combination['type'] }}" class="form-control"
-                                step="0.000001" required>
+                                step="0.000001">
 
                             {{-- <span class="input-group-text" id="remaining_price_show_{{ $combination['type'] }}">{{ isset($combination['remainingprice']) ? '+' .  number_format($combination['remainingprice'],2) : '' }}</span> --}}
                         {{-- </div> --}}
@@ -74,7 +74,7 @@
                     </td>
 
                 </tr>
-                <tr class="border border-2 border-top-0 mb-2">
+                <tr class="border border-2 border-top-0 mb-2 variant-extra-row">
                     <td colspan="2">
                         <label class="control-label m-0">Description</label>
                         <textarea name="descs_{{ $combination['type'] }}" class="form-control" required>{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->description : '' }}</textarea>

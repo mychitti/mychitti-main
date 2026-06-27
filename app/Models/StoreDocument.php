@@ -21,6 +21,9 @@ class StoreDocument extends Model
         'verified_at',
         'checked',
         'back_side',
+        'doc_name',
+        'doc_number',
+        'show_on_bill',
     ];
 
 }

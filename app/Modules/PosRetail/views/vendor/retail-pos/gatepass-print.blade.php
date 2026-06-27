@@ -50,15 +50,15 @@
             <div style="margin-bottom:10px;"><b>Note:</b> {{ $gatepass->note }}</div>
         @endif
 
-        <table>
+        <table> 
             <thead>
                 <tr><th width="40">#</th><th>Item</th><th>SKU</th><th class="r" width="140">Qty</th></tr>
             </thead>
             <tbody>
                 @forelse ($items as $i => $row)
-                    <tr>
+                    <tr> 
                         <td>{{ $i + 1 }}</td>
-                        <td>{{ $row->item_name }}</td>
+                        <td>{{ $row->variation_type ? $row->item_name . ' (' . $row->variation_type . ')' : $row->item_name }}</td>
                         <td>{{ $row->sku_id }}</td>
                         <td class="r">{{ rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.') }} {{ $row->unit_label }}</td>
                     </tr>
@@ -66,7 +66,7 @@
                     <tr><td colspan="4" style="text-align:center;">No items</td></tr>
                 @endforelse
             </tbody>
-        </table>
+        </table> 
 
         <div class="gp-sign">
             <div>Issued By</div>

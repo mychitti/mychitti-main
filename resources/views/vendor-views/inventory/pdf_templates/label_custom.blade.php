@@ -81,6 +81,14 @@
                 } else {
                     $content = htmlspecialchars($prefix . ' ' . $val);
                 }
+            } elseif ($type === 'fssai_no') {
+                $val = $store->fssai_number ?? '';
+                $prefix = $text !== '' ? $text : 'FSSAI'; 
+                if (!empty($el['newline'])) {
+                    $content = htmlspecialchars($prefix) . '<br/>' . htmlspecialchars($val);
+                } else {
+                    $content = htmlspecialchars($prefix . ' ' . $val);
+                }
             } else {
                 $content = htmlspecialchars($text); // subtitle / custom_text
             }

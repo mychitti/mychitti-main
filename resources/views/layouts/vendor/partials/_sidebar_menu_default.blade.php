@@ -2561,9 +2561,6 @@
                             </ul>
                         </li>
                     @endif
-                    @if (!empty($showWhatsappAbovePostAds))
-                        @include('layouts.vendor.partials._sidebar_menu_whatsapp')
-                    @endif
                     @if (selected_menu('post_ads') && \App\CentralLogics\Helpers::employee_module_permission_check('notifications'))
                         <li
                             class="navbar-vertical-aside-has-menu {{ Request::is('push-notification') ? 'active' : '' }}">
@@ -2575,6 +2572,9 @@
                             </a>
                         </li>
                     @endif
+                    {{-- WhatsApp — shown right after Post Ads for every business type that renders
+                         this default menu (pos, laundry, pos_retail, school, generic). --}}
+                    @include('layouts.vendor.partials._sidebar_menu_whatsapp')
 
                     {{-- Laundry --}}
                     @if(0)

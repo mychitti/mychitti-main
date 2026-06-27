@@ -328,18 +328,12 @@
                                         </td>
                                         <td>
                                             <div class="btn--container justify-content-center">
-
-
-                                                <a class="btn action-btn btn--danger btn-outline-danger "
-                                                    href="javascript:" data-id="vendor-{{ $slip['id'] }}"
-                                                    data-message="{{ translate('If you want to remove this purchase order?') }}"
-                                                    title="{{ translate('messages.delete_purchase_order') }}"><i
+                                                <a class="btn action-btn btn--danger btn-outline-danger inv-delete-btn"
+                                                    href="javascript:;"
+                                                    data-action="{{ route('vendor.inventory.purchase.return-delete', [$slip->id]) }}"
+                                                    title="{{ translate('messages.delete') }}"><i
                                                         class="tio-delete-outlined"></i>
                                                 </a>
-                                                <form action="" method="post" id="vendor-{{ $slip['id'] }}">
-                                                    @csrf @method('post')
-                                                </form>
-
                                             </div>
                                         </td>
                                     </tr>
@@ -364,6 +358,7 @@
         </div>
 
     </div>
+    @include('vendor-views.inventory.partials._delete-with-stock')
 
 @endsection
 @push('script_2')

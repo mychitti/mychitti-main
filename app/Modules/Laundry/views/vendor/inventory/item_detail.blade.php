@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 
 @section('title', ucfirst($item->item_name))
 
@@ -358,20 +358,45 @@
                                         alt="">
                                 @else
                                     {!! DNS1D::getBarcodeSVG($item->sku_id, 'C128', 2, 60, 'black', false) !!}
-                                @endif
+                                @endif 
                             </div>
-                        </div>
+                        </div> 
+                        @php $variations = json_decode($item->variations); @endphp
+                        @if ($variations && count($variations) > 0)
+                            <div class="mb-2 w-100">
+                                <label class="lbl-fld font-weight-bold" style="font-size:12px; display:block;">Variation</label>
+                                <select class="form-control form-control-sm lbl-variation-quick" style="max-width:200px;" onchange="updatePrintUrls(this, this.value)">
+                                    <option value="">Default (Main Item)</option>
+                                    @foreach ($variations as $vr)
+                                        <option value="{{ $vr->type }}">{{ ucwords($vr->type) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <script>
+                                function updatePrintUrls(selectEl, val) {
+                                    var suffix = val ? '?variation=' + encodeURIComponent(val) : '';
+                                    var container = selectEl.closest('.details-grid') || selectEl.parentElement.parentElement;
+                                    container.querySelectorAll('.btn-print-action').forEach(function(a) {
+                                        var base = a.getAttribute('data-base-href');
+                                        a.setAttribute('href', base + suffix);
+                                    });
+                                }
+                            </script>
+                        @endif
                         <div class="d-flex gap-2 flex-wrap">
                             <a style="padding: 10px 8px;white-space: nowrap;"
+                                data-base-href="{{ route('vendor.inventory.item.print', [$item->id, 'barcode']) }}"
                                 href="{{ route('vendor.inventory.item.print', [$item->id, 'barcode']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print Barcode</a>
+                                class="btn btn-sm btn--primary btn-print-action"><i class="tio-print"></i> Print Barcode</a>
                             <a style="padding: 10px 8px;white-space: nowrap;"
+                                data-base-href="{{ route('vendor.inventory.item.print', [$item->id, 'description']) }}"
                                 href="{{ route('vendor.inventory.item.print', [$item->id, 'description']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print
+                                class="btn btn-sm btn--primary btn-print-action"><i class="tio-print"></i> Print
                                 Description</a>
                             <a style="padding: 10px 8px;white-space: nowrap;"
+                                data-base-href="{{ route('vendor.inventory.item.print', [$item->id, 'full']) }}"
                                 href="{{ route('vendor.inventory.item.print', [$item->id, 'full']) }}"
-                                class="btn btn-sm btn--primary"><i class="tio-print"></i> Print Full Label</a>
+                                class="btn btn-sm btn--primary btn-print-action"><i class="tio-print"></i> Print Full Label</a>
                         </div>
                     @endif
                 </div>

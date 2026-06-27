@@ -11,7 +11,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-        }
+        } 
 
         .vdp-heading {
             font-size: 24px;
@@ -352,13 +352,17 @@
                                         </div>
                                         <div class="col-md-6 form-group">
                                             <label class="small-label">Documents</label>
-                                            <div class="gap-2">
+                                            <div class="gap-2 d-flex flex-wrap">
                                                 <button type="button" class="btn btn-outline-primary" data-toggle="modal"
                                                     data-target="#gstDocUpdateModal">GST
                                                     Document</button>
                                                 <button type="button" class="btn btn-outline-primary" data-toggle="modal"
                                                     data-target="#idDocUpdateModal">ID Proof
                                                     Document</button>
+                                                <button type="button" class="btn btn-outline-primary" data-toggle="modal"
+                                                    data-target="#fssaiDocUpdateModal">FSSAI Document</button>
+                                                <button type="button" class="btn btn-outline-primary" data-toggle="modal"
+                                                    data-target="#otherDocsModal">Other Documents</button>
                                             </div>
                                         </div>
 
@@ -507,6 +511,49 @@
                                             <input type="text" id="gst" name="gst" class="form-control"
                                                 value="{{ $store->gst_code }}"
                                                 {{ isset($store->gst_status) ? '' : 'readonly' }}>
+                                        </div>
+                                    </div>
+                                    <div class=" p-1">
+                                        <div class="form-group mb-0 ">
+                                            <label class="d-flex justify-content-between switch toggle-switch-sm text-dark"
+                                                for="fssai_show_inline">
+                                                <span>FSSAI <span class="form-label-secondary" data-toggle="tooltip"
+                                                        data-placement="right"
+                                                        data-original-title="Show FSSAI number on bills / labels"><img
+                                                            src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                            alt="FSSAI"></span></span>
+                                                <input type="checkbox" class="toggle-switch-input" name="fssai_show"
+                                                    id="fssai_show_inline" value="1"
+                                                    {{ ($store->fssai_show ?? false) ? 'checked' : '' }}>
+                                                <span class="toggle-switch-label">
+                                                    <span class="toggle-switch-indicator"></span>
+                                                </span>
+                                            </label>
+                                            <input type="text" id="fssai_number" name="fssai_number" class="form-control"
+                                                value="{{ $store->fssai_number ?? '' }}" placeholder="FSSAI Number">
+                                        </div>
+                                    </div>
+                                    <div class=" p-1">
+                                        <div class="form-group mb-0 ">
+                                            <label class="d-flex justify-content-between text-dark mb-1">
+                                                <span>Other Licenses</span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0"
+                                                    data-toggle="modal" data-target="#otherDocsModal">+ Add / Manage</button>
+                                            </label>
+                                            @forelse ($other_docs as $doc)
+                                                <label class="d-flex justify-content-between switch toggle-switch-sm text-dark mb-2">
+                                                    <span>{{ $doc->doc_name }}
+                                                        <small class="text-muted">{{ $doc->doc_number ?: '—' }}</small></span>
+                                                    <input type="checkbox" class="toggle-switch-input" name="other_show[]"
+                                                        id="other_show_{{ $doc->id }}" value="{{ $doc->id }}"
+                                                        {{ ($doc->show_on_bill ?? false) ? 'checked' : '' }}>
+                                                    <span class="toggle-switch-label">
+                                                        <span class="toggle-switch-indicator"></span>
+                                                    </span>
+                                                </label>
+                                            @empty
+                                                <small class="text-muted">No other licenses added yet.</small>
+                                            @endforelse
                                         </div>
                                     </div>
 
@@ -797,6 +844,219 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ============ FSSAI Document (number + file, same as GST) ============ --}}
+    <div class="modal fade" id="fssaiDocUpdateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">FSSAI Document</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="vdp-doc-card">
+                        <div class="vdp-card-header">
+                            <div class="vdp-file-icon">{{ $fssai_doc ? _getFileTypeLabel($fssai_doc->file_path) : 'FSSAI' }}
+                            </div>
+                            <div class="vdp-card-info">
+                                <div class="vdp-doc-filename">FSSAI Document</div>
+                            </div>
+                        </div>
+                        <div class="vdp-card-body">
+                            <div class="vdp-info-row"><span class="vdp-info-label">FSSAI Number</span><span
+                                    class="vdp-info-value">{{ $store->fssai_number ?? '—' }}</span></div>
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">Show on Bills / Labels</span>
+                                <form method="POST" action="{{ route('vendor.business-settings.update-doc') }}"
+                                    id="fssaiShowForm" class="m-0">
+                                    @csrf
+                                    <input type="hidden" name="file_type" value="fssai_doc">
+                                    <input type="hidden" name="fssai_show_present" value="1">
+                                    <label class="switch toggle-switch-sm m-0" for="fssai_show_toggle">
+                                        <input type="checkbox" class="toggle-switch-input" name="fssai_show"
+                                            id="fssai_show_toggle" value="1"
+                                            {{ ($store->fssai_show ?? false) ? 'checked' : '' }}
+                                            onchange="document.getElementById('fssaiShowForm').submit()">
+                                        <span class="toggle-switch-label"><span
+                                                class="toggle-switch-indicator"></span></span>
+                                    </label>
+                                </form>
+                            </div>
+                            <div class="vdp-info-row"><span class="vdp-info-label">File Type</span><span
+                                    class="vdp-info-value">{{ $fssai_doc ? _getFileTypeLabel($fssai_doc->file_path) : '' }}</span>
+                            </div>
+                            <div class="vdp-info-row">
+                                <span class="vdp-info-label">Status</span>
+                                @if ($fssai_doc)
+                                    @if ($fssai_doc->verified == 0)
+                                        <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                    @else
+                                        <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                    @endif
+                                @endif
+                            </div>
+                        </div>
+                        <div class="vdp-card-footer align-items-start flex-wrap">
+                            @if ($fssai_doc)
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->file_path }}"
+                                    class="btn btn-primary">View</a>
+                                @if ($fssai_doc->back_side)
+                                    <a href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->back_side }}"
+                                        class="btn btn-primary">View Back</a>
+                                @endif
+                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $fssai_doc->file_path }}"
+                                    class="btn btn-outline-primary">Download</a>
+                            @endif
+                            <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
+                                data-target="#fssaiCollapse">Update</button>
+                            <div class="collapse w-100" id="fssaiCollapse">
+                                <div class="card card-body">
+                                    <form method="POST" enctype="multipart/form-data"
+                                        action="{{ route('vendor.business-settings.update-doc') }}">
+                                        @csrf
+                                        <input type="hidden" name="file_type" value="fssai_doc">
+                                        <div class="form-group">
+                                            <label for="fssai_number">FSSAI Number</label>
+                                            <input type="text" class="form-control" id="fssai_number" name="fssai_number"
+                                                value="{{ $store->fssai_number ?? '' }}" placeholder="FSSAI Number">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fssai_doc">Upload FSSAI Document (Front)</label>
+                                            <input type="file" class="form-control" id="fssai_doc" name="fssai_doc">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fssai_doc_back">Back side (optional)</label>
+                                            <input type="file" class="form-control" id="fssai_doc_back"
+                                                name="fssai_doc_back">
+                                        </div>
+                                        <div class="d-flex w-100 justify-content-end">
+                                            <button type="submit" class="btn btn-primary">Save</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ============ Other Documents (name + number + front/back, multiple) ============ --}}
+    <div class="modal fade" id="otherDocsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Other Documents</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card card-body mb-3">
+                        <h6 class="mb-2">Add a Document</h6>
+                        <form method="POST" enctype="multipart/form-data"
+                            action="{{ route('vendor.business-settings.add-document') }}">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label>Document / License Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="doc_name" class="form-control" required
+                                        placeholder="e.g. Trade Licence">
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label>Number</label>
+                                    <input type="text" name="doc_number" class="form-control"
+                                        placeholder="License / document number">
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label>Document (Front) <span class="text-danger">*</span></label>
+                                    <input type="file" name="other_doc" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label>Document (Back)</label>
+                                    <input type="file" name="other_doc_back" class="form-control">
+                                </div>
+                                <div class="col-md-12 form-group mb-1">
+                                    <label class="switch toggle-switch-sm d-inline-flex align-items-center m-0"
+                                        style="gap:10px;">
+                                        <input type="checkbox" class="toggle-switch-input" name="show_on_bill" value="1">
+                                        <span class="toggle-switch-label"><span
+                                                class="toggle-switch-indicator"></span></span>
+                                        <span>Show this number on bills / labels</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">Add Document</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    @forelse ($other_docs as $doc)
+                        <div class="vdp-doc-card mb-2">
+                            <div class="vdp-card-header">
+                                <div class="vdp-file-icon">{{ _getFileTypeLabel($doc->file_path) }}</div>
+                                <div class="vdp-card-info">
+                                    <div class="vdp-doc-filename">{{ $doc->doc_name }}</div>
+                                </div>
+                            </div>
+                            <div class="vdp-card-body">
+                                <div class="vdp-info-row"><span class="vdp-info-label">Number</span><span
+                                        class="vdp-info-value">{{ $doc->doc_number ?: '—' }}</span></div>
+                                <div class="vdp-info-row">
+                                    <span class="vdp-info-label">Status</span>
+                                    @if ($doc->verified == 0)
+                                        <span class="vdp-status-badge vdp-status-pending">Pending</span>
+                                    @else
+                                        <span class="vdp-status-badge vdp-status-approved">Approved</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="vdp-card-footer align-items-start flex-wrap">
+                                <a href="{{ asset('storage/app/public/store/docs') . '/' . $doc->file_path }}"
+                                    class="btn btn-primary">View</a>
+                                @if ($doc->back_side)
+                                    <a href="{{ asset('storage/app/public/store/docs') . '/' . $doc->back_side }}"
+                                        class="btn btn-primary">View Back</a>
+                                @endif
+                                <a download href="{{ asset('storage/app/public/store/docs') . '/' . $doc->file_path }}"
+                                    class="btn btn-outline-primary">Download</a>
+                                <form method="POST"
+                                    action="{{ route('vendor.business-settings.toggle-document', $doc->id) }}"
+                                    class="d-inline-flex align-items-center m-0">
+                                    @csrf
+                                    <label class="switch toggle-switch-sm d-inline-flex align-items-center m-0"
+                                        style="gap:8px;" title="Show on bills / labels">
+                                        <input type="checkbox" class="toggle-switch-input" value="1"
+                                            {{ ($doc->show_on_bill ?? false) ? 'checked' : '' }}
+                                            onchange="this.form.submit()">
+                                        <span class="toggle-switch-label"><span
+                                                class="toggle-switch-indicator"></span></span>
+                                        <span>On bill</span>
+                                    </label>
+                                </form>
+                                <form method="POST"
+                                    action="{{ route('vendor.business-settings.delete-document', $doc->id) }}"
+                                    onsubmit="return confirm('Remove this document?');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">No other documents added yet.</p>
+                    @endforelse
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

@@ -7,11 +7,11 @@
                 </th>
                 <th class="text-center border-0">
                     <span class="control-label">{{ translate('messages.Variant MRP') }}</span>
-                </th>
+                </th> 
                 <th class="text-center border-0">
                     <span class="control-label">Selling Price</span>
                 </th>
-                <th class="text-center border-0">
+                <th class="text-center border-0" style="display: none;">
                     <span class="control-label">Purchase Price</span>
                 </th>
                 <th class="text-center border-0">
@@ -62,9 +62,9 @@
                         <input type="number" name="askingprice_{{ $str }}" min="0" step="0.001"
                             class="form-control" placeholder="{{ $placeholder . ' Selling Price' }}" required>
                     </td>
-                    <td>
+                    <td style="display: none;">
                         <input type="number" name="purchaseprice_{{ $str }}" min="0" step="0.001"
-                            class="form-control" placeholder="{{ $placeholder . ' Purchase Price' }}" required>
+                            class="form-control" placeholder="{{ $placeholder . ' Purchase Price' }}" value="0">
                     </td>
                     <td>
                         <input type="text" style="min-width: 90px;" name="sku_{{ $str }}" 

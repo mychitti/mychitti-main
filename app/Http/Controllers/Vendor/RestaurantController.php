@@ -32,9 +32,11 @@ class RestaurantController extends Controller
           $store_documents = StoreDocument::where('store_id', $store->id)->where('status', 1)->get();
         $id_doc = $store_documents->where('doc_type', 'id_doc')->first();
         $gst_doc = $store_documents->where('doc_type', 'gst_doc')->first();
+        $fssai_doc = $store_documents->where('doc_type', 'fssai_doc')->first();
+        $other_docs = $store_documents->where('doc_type', 'other')->values();
         $gstFilePath = ($gst_doc ? $gst_doc->file_path : null) ?? $store->gst_doc ?? null;
-        $idFilePath = ($id_doc ? $id_doc->file_path : null) ?? $store->id_doc ?? null; 
-        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc', 'gstFilePath', 'idFilePath'));
+        $idFilePath = ($id_doc ? $id_doc->file_path : null) ?? $store->id_doc ?? null;
+        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc', 'fssai_doc', 'other_docs', 'gstFilePath', 'idFilePath'));
     }
 
     public function update(Request $request)
@@ -68,7 +70,38 @@ class RestaurantController extends Controller
         $shop->zone_id = $request->zone_id;
         $shop->gst_number = $request->gst;
         $shop->gst = json_encode(['status'=> $request->gst_status , 'code'=>$request->gst]) ;
-    
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('stores', 'fssai_number')) {
+            try { \Illuminate\Support\Facades\DB::statement("ALTER TABLE `stores` ADD COLUMN `fssai_number` VARCHAR(50) NULL"); } catch (\Throwable $e) {}
+        }
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('stores', 'fssai_show')) {
+            try { \Illuminate\Support\Facades\DB::statement("ALTER TABLE `stores` ADD COLUMN `fssai_show` TINYINT(1) NOT NULL DEFAULT 0"); } catch (\Throwable $e) {}
+        }
+        $shop->fssai_number = $request->fssai_number;
+        $shop->fssai_show = $request->has('fssai_show') ? 1 : 0; 
+
+        try {
+            $otherShow = array_filter((array) $request->input('other_show', []));
+            StoreDocument::where('store_id', $shop->id)->where('doc_type', 'other')->update(['show_on_bill' => 0]);
+            if (!empty($otherShow)) {
+                StoreDocument::where('store_id', $shop->id)->where('doc_type', 'other')
+                    ->whereIn('id', $otherShow)->update(['show_on_bill' => 1]);
+            }
+        } catch (\Throwable $e) {
+            try {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('store_documents', 'show_on_bill')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_documents` ADD COLUMN `show_on_bill` TINYINT(1) NOT NULL DEFAULT 0");
+                }
+                StoreDocument::where('store_id', $shop->id)->where('doc_type', 'other')->update(['show_on_bill' => 0]);
+                if (!empty($otherShow)) {
+                    StoreDocument::where('store_id', $shop->id)->where('doc_type', 'other')
+                        ->whereIn('id', $otherShow)->update(['show_on_bill' => 1]);
+                }
+            } catch (\Throwable $ex) {
+                // Fail silently
+            }
+        }
+
         $vendorId = auth('vendor')->id();
         if ($request->has('image')) {
             $newLogo = Helpers::upload('store/', 'png', $request->file('image'));

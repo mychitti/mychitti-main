@@ -169,4 +169,79 @@ class InventoryOrderController extends Controller
         Toastr::success('Status Changed Successfully');
         return back();
     }
+
+    // Delete a single sale order line item. Optionally add its stock back to inventory.
+    // When an order has no remaining items, the order header is removed too (so it also
+    // drops out of the Sale Report, which reads InventoryOrder).
+    public function sale_order_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $detail = InventoryOrderDetail::whereHas('order', function ($q) use ($storeId) {
+            $q->where('store_id', $storeId);
+        })->find($id);
+
+        if (!$detail) {
+            Toastr::error('Sale order item not found');
+            return back();
+        }
+
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+        // 'returned' / 'cancelled' items were already added back to stock when their
+        // status changed, so only a still-active sale should restock on delete.
+        if ($request->restock == '1' && !in_array($detail->status, ['returned', 'cancelled'])) {
+            $item = InventoryItem::find($detail->item_id);
+            if ($item) {
+                $item->stock = (float) $item->stock + (float) $detail->qty;
+                $item->save();
+            }
+        }
+
+        $orderId = $detail->order_id;
+        $detail->delete();
+
+        if (!InventoryOrderDetail::where('order_id', $orderId)->exists()) {
+            InventoryOrder::where('order_id', $orderId)->where('store_id', $storeId)->delete();
+        }
+
+        Toastr::success('Sale order item deleted');
+        return back();
+    }
+
+    // Delete a returned sale line. Optionally reverse the return's restock (remove that
+    // quantity from inventory again).
+    public function sale_return_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $detail = InventoryOrderDetail::whereHas('order', function ($q) use ($storeId) {
+            $q->where('store_id', $storeId);
+        })->where('status', 'returned')->find($id);
+
+        if (!$detail) {
+            Toastr::error('Sale return not found');
+            return back();
+        }
+
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+        if ($request->restock == '1') {
+            $item = InventoryItem::find($detail->item_id);
+            if ($item) {
+                $item->stock = max(0, (float) $item->stock - (float) $detail->qty);
+                $item->save();
+            }
+        }
+
+        $orderId = $detail->order_id;
+        $detail->delete();
+
+        if (!InventoryOrderDetail::where('order_id', $orderId)->exists()) {
+            InventoryOrder::where('order_id', $orderId)->where('store_id', $storeId)->delete();
+        }
+
+        Toastr::success('Sale return deleted');
+        return back();
+    }
 }

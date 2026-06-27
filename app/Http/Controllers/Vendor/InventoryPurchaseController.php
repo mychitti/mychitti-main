@@ -281,4 +281,58 @@ class InventoryPurchaseController extends Controller
 
         return Excel::download(new POExport($data, $headings), 'PO_' .  time() . '.xlsx');
     }
+
+    // Delete a purchase order (SupplyOrder + its items). Optionally remove the
+    // corresponding stock from inventory.
+    public function purchase_order_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $order = SupplyOrder::with('order_items')->where('store_id', $storeId)->find($id);
+        if (!$order) {
+            Toastr::error('Purchase order not found');
+            return back();
+        }
+
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+        if ($request->restock == '1') {
+            foreach ($order->order_items as $it) {
+                if (!$it->item_id) {
+                    continue;
+                }
+                $item = \App\Models\InventoryItem::find($it->item_id);
+                if ($item) {
+                    $item->stock = max(0, (float) $item->stock - (float) $it->qty);
+                    $item->save();
+                }
+            }
+        }
+
+        SupplyOrderItem::where('order_table_id', $order->id)->delete();
+        $order->delete();
+
+        Toastr::success('Purchase order deleted');
+        return back();
+    }
+
+    // Delete a purchase return slip. (Return slips do not store structured per-item
+    // quantities, so no inventory adjustment is applied here.)
+    public function purchase_return_delete(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+        $slip = ReturnPurchaseSlip::where('store_id', $storeId)->find($id);
+        if (!$slip) {
+            Toastr::error('Purchase return not found');
+            return back();
+        }
+
+        if ($slip->pdf && \Illuminate\Support\Facades\Storage::disk('public')->exists('invoice/' . $slip->pdf)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete('invoice/' . $slip->pdf);
+        }
+        $slip->delete();
+
+        Toastr::success('Purchase return deleted');
+        return back();
+    }
 }

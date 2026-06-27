@@ -69,30 +69,21 @@
                 </form> --}}
                 <ul class="navbar-nav navbar-nav-lg nav-tabs">
                 
-                    @include(
-                        strtolower($store_data->business_type ?? '') === 'hospital'
-                            ? 'layouts.vendor.partials._sidebar_menu_hospital'
-                            : (strtolower($store_data->business_type ?? '') === 'school'
-                                ? 'layouts.vendor.partials._sidebar_menu_school'
-                                : (strtolower($store_data->business_type ?? '') === 'laundry'
-                                    ? 'layouts.vendor.partials._sidebar_menu_laundry'
-                                    : (strtolower($store_data->business_type ?? '') === 'pos'
-                                        ? 'layouts.vendor.partials._sidebar_menu_pos'
-                                        : (strtolower($store_data->business_type ?? '') === 'pos_retail'
-                                            ? 'layouts.vendor.partials._sidebar_menu_pos_retail'
-                                            : (strtolower($store_data->business_type ?? '') === 'ecommerce'
-                                                ? 'layouts.vendor.partials._sidebar_menu_ecommerce'
-                                                : 'layouts.vendor.partials._sidebar_menu_default'))))),
-                        ['store_data' => $store_data]
-                    )
+                    @php($bt = strtolower($store_data->business_type ?? ''))
+                    {{-- Render the business-type menu, falling back to the default menu when a
+                         type-specific partial doesn't exist (e.g. 'school' has no
+                         _sidebar_menu_school partial — without this fallback it would 500). --}}
+                    @includeFirst([
+                        'layouts.vendor.partials._sidebar_menu_' . ($bt ?: 'default'),
+                        'layouts.vendor.partials._sidebar_menu_default',
+                    ], ['store_data' => $store_data])
 
-                    {{-- pos_retail places the WhatsApp link above "Post Ads" (inside the default
-                         menu partial); the remaining types still get it here, at the bottom. --}}
-                    @unless (in_array(strtolower($store_data->business_type ?? ''), ['hospital']))
-                        @if (in_array(strtolower($store_data->business_type ?? ''), ['school', 'laundry', 'pos', 'ecommerce']))
-                            @include('layouts.vendor.partials._sidebar_menu_whatsapp')
-                        @endif
-                    @endunless
+                    {{-- Every business type shows WhatsApp right after "Post Ads" inside its own
+                         menu partial (default / hospital). Ecommerce has no Post Ads item and
+                         doesn't use the default menu, so its WhatsApp is shown here instead. --}}
+                    @if (in_array($bt, ['ecommerce']))
+                        @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                    @endif
                 </ul>
             </div> 
             <!-- End Content -->

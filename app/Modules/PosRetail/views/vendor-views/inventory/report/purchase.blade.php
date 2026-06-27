@@ -196,6 +196,7 @@
                              <th class="border-0">IGST Amt.</th>
                              <th class="border-0">Payment Status</th>
                              <th class="border-0">Total Items</th>
+                             <th class="border-0">Action</th>
                          </tr>
                      </thead>
 
@@ -232,7 +233,15 @@
                                      @endif
                                  </td>
                                  <td>{{ count($invoice->invoiceItems) }}</td>
-                              
+                                 <td>
+                                     <a class="btn action-btn btn--danger btn-outline-danger inv-delete-btn"
+                                         href="javascript:;" title="Delete"
+                                         data-action="{{ route('vendor.inventory.report.purchase-delete', [$invoice->id]) }}"
+                                         data-stock-label="Remove the purchased stock from inventory">
+                                         <i class="tio-delete"></i>
+                                     </a>
+                                 </td>
+
                              </tr>
                          @endforeach
 
@@ -250,6 +259,7 @@
              @endif
          </div>
      </div>
+     @include('vendor-views.inventory.partials._delete-with-stock')
 
  @endsection
  @push('script_2')

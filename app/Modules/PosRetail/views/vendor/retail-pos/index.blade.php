@@ -12,6 +12,9 @@
         .rpos .pos-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
         .rpos .pos-topbar h1 { font-size:22px; font-weight:700; margin:0; }
         .rpos .pos-topbar .sub { font-size:12px; color:var(--muted); }
+        .rpos .rp-shift-pill { display:inline-block; margin-top:5px; font-size:11.5px; font-weight:600; padding:3px 11px; border-radius:999px; }
+        .rpos .rp-shift-pill.on { background:#e7f7ec; color:#1b7a43; border:1px solid #b7e3c5; }
+        .rpos .rp-shift-pill.off { background:#fff4e5; color:#9a6700; border:1px solid #ffd9a8; }
 
         .pos-wrap { display:flex; gap:16px; align-items:flex-start; }
         .pos-left { flex:1 1 56%; min-width:0; }
@@ -257,6 +260,56 @@
         body.pos-kiosk .footer { display:none !important; }
         body.pos-kiosk .main { padding-left:0 !important; padding-top:0 !important; }
         body.pos-kiosk .content.rpos { padding-top:14px; }
+
+        /* Variations selection modal styles */
+        .var-select-btn {
+            display: flex;
+            justify-content: space-between; 
+            align-items: center;
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border: 1.5px solid #e7eaf3;
+            border-radius: 10px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 13.5px;
+            text-align: left;
+            color: #212b36;
+            font-weight: 600;
+        }
+        .var-select-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,.03);
+            text-decoration: none;
+            color: #fff !important;
+             background: var(--primary);
+        }
+        .var-select-btn.main-opt {
+            border: 2px dashed var(--accent);
+            background-color: var(--soft);
+        }
+        .var-select-btn .badge-pill {
+            font-size: 13px;
+            padding: 6px 10px;
+            background-color: var(--accent); 
+            border-radius: 50rem;
+            font-weight: 700;
+        }
+        .var-select-btn.main-opt .badge-pill {
+            background-color: #6c757d;
+        }
+
+        /* Springy pop-up modal animation */
+        @keyframes modalPopIn {
+            0% { transform: scale(0.85); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal.show #variationSelectModal,
+        .modal.show .modal-dialog {
+            animation: modalPopIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
     </style>
 @endpush
 
@@ -266,6 +319,17 @@
             <div>
                 <h1 class="page-header-title">Retail POS</h1>
                 <div class="sub">Billing &amp; checkout</div>
+                @if (!empty($shiftStatus))
+                    @if ($shiftStatus['on'])
+                        <div class="rp-shift-pill on" title="You are the active staff on this counter right now">
+                            🟢 On shift{{ $shiftStatus['staff'] ? ' · ' . $shiftStatus['staff'] : '' }}{{ $shiftStatus['counter'] ? ' · ' . $shiftStatus['counter'] : '' }}{{ $shiftStatus['shift'] ? ' · 🕒 ' . $shiftStatus['shift'] : '' }}{{ $shiftStatus['auto'] ? ' · auto' : '' }}
+                        </div>
+                    @else
+                        <div class="rp-shift-pill off" title="You are not the active counter staff right now — you may not be able to bill">
+                            ⚠ Not the active counter staff right now{{ $shiftStatus['shift'] ? ' · your shift 🕒 ' . $shiftStatus['shift'] : '' }}
+                        </div>
+                    @endif
+                @endif
             </div>
             <div class="d-flex" style="gap:8px;">
                 <button type="button" class="btn btn-sm btn-outline-primary" id="btn-fullscreen" title="Toggle full screen">⛶ Full screen</button>
@@ -314,13 +378,14 @@
                                 @foreach ($quickItems as $qi)
                                     @php
                                         $qiData = [
-                                            'id' => $qi->id,
+                                            'id' => (string) $qi->id,
                                             'name' => $qi->item_name,
                                             'price' => (float) ($qi->selling_price ?? 0),
                                             'hsn' => $qi->hsn,
                                             'gst_rate' => (float) ($qi->gst_rate ?? 0),
                                             'gst_status' => $qi->gst_status ?? 'excluding',
                                             'unit' => $qi->unit,
+                                            'variations' => json_decode($qi->variations, true) ?: [],
                                         ];
                                     @endphp
                                     <div class="quick-item" data-item='@json($qiData)'>
@@ -467,9 +532,28 @@
             </div>{{-- /pos-right --}}
         </div>{{-- /pos-wrap --}}
     </div>
-
+ 
     {{-- Reuse the standard Add New Customer modal --}}
     @include('vendor-views/form_modals/customer_add')
+
+    <!-- Variation Selection Modal -->
+    <div class="modal" id="variationSelectModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid #f0f0f2;">
+                    <h5 class="modal-title" id="varModalTitle" style="color: #212b36; font-size: 14px; font-weight: 700;">Select Option</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="padding: 12px 16px; margin: -12px -16px -12px auto;">
+                        <span aria-hidden="true" style="font-size: 20px;">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="padding: 12px;"> 
+                    <div id="varModalList" class="list-group">
+                        <!-- Dynamic variation rows -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script')
@@ -528,7 +612,39 @@
         function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
         function posBranch() { const el = document.getElementById('pos-branch'); return el ? (el.value || '') : ''; }
 
+        let activeVariations = [];
+        let activeParentItem = null;
         function addToCart(item) {
+            // Check if item has variations that we need to select from
+            if (item.variations && item.variations.length > 0) {
+                activeVariations = item.variations;
+                activeParentItem = item;
+                const modal = $('#variationSelectModal');
+                $('#varModalTitle').text(item.name + ' - Select Option');
+                
+                // Add the Main Product (Default) option as the first choice
+                const mainProductPrice = parseFloat(item.price) || 0;
+                const mainProductStock = parseFloat(item.stock) || 0;
+                let html = `<button type="button" class="var-select-btn " onclick="selectMainProduct()">
+                    <span><b>Main Product (Default)</b></span>
+                    <span class="badge-pill">₹${money(mainProductPrice)} <small class="">(stk ${mainProductStock})</small></span>
+                </button>`; 
+
+                item.variations.forEach((varItem, idx) => {
+                    if (varItem.type) {
+                        const price = parseFloat(varItem.price) || parseFloat(item.price) || 0;
+                        const stock = parseFloat(varItem.stock) || 0;
+                        html += `<button type="button" class="var-select-btn" onclick="selectVarIndex(${idx})">
+                            <span><b>${varItem.type}</b></span>
+                            <span class="badge-pill">₹${money(price)} <small class="">(stk ${stock})</small></span>
+                        </button>`;
+                    }
+                });
+                $('#varModalList').html(html);
+                modal.modal('show');
+                return;
+            }
+
             if (window.toastr) {
                 if (item.expiry_warn) toastr.warning(item.name + ' expires ' + (item.expiry || 'soon'), 'Expiry warning');
                 if (item.low_stock) toastr.warning(item.name + ' is out of stock', 'Stock');
@@ -551,6 +667,53 @@
                 if (item.sell_loose) weighLine(POS.cart.length - 1);
             }
             renderCart();
+        }
+
+        function selectMainProduct() {
+            $('#variationSelectModal').modal('hide');
+            if (!activeParentItem) return;
+            
+            const parentData = {
+                id: activeParentItem.id,
+                name: activeParentItem.name,
+                price: parseFloat(activeParentItem.price) || 0,
+                mrp: parseFloat(activeParentItem.mrp) || 0,
+                hsn: activeParentItem.hsn || '',
+                gst_rate: parseFloat(activeParentItem.gst_rate) || 0,
+                gst_status: activeParentItem.gst_status || 'excluding',
+                unit: activeParentItem.unit || '',
+                sell_loose: !!activeParentItem.sell_loose,
+                expiry: activeParentItem.expiry || '',
+                expiry_warn: !!activeParentItem.expiry_warn,
+                low_stock: parseFloat(activeParentItem.stock) <= 0
+            };
+            addToCart(parentData);
+        }
+
+        function selectVarIndex(idx) {
+            $('#variationSelectModal').modal('hide');
+            const varItem = activeVariations[idx];
+            if (!varItem || !activeParentItem) return;
+            
+            const price = parseFloat(varItem.price) || parseFloat(activeParentItem.price) || 0;
+            const mrp = parseFloat(varItem.mrpprice) || parseFloat(activeParentItem.mrp) || 0;
+            const stock = parseFloat(varItem.stock) || 0;
+            
+            const varData = {
+                id: activeParentItem.id + '-var-' + varItem.type,
+                name: activeParentItem.name + ' (' + varItem.type + ')',
+                price: price,
+                mrp: mrp,
+                hsn: activeParentItem.hsn || '',
+                gst_rate: parseFloat(activeParentItem.gst_rate) || 0,
+                gst_status: activeParentItem.gst_status || 'excluding',
+                unit: activeParentItem.unit || '',
+                sell_loose: !!activeParentItem.sell_loose,
+                expiry: activeParentItem.expiry || '',
+                expiry_warn: !!activeParentItem.expiry_warn,
+                low_stock: stock <= 0
+            };
+            addToCart(varData);
         }
 
         // Weighing scale → set this line's qty (in the stock unit) from the connected scale.
@@ -766,7 +929,7 @@
                 .then(d => {
                     if (!d.items.length) { quickGrid.innerHTML = '<div class="text-muted p-2">No items in this category.</div>'; return; }
                     quickGrid.innerHTML = d.items.map(it => {
-                        const data = { id: it.id, name: it.name, price: it.price, hsn: it.hsn, gst_rate: it.gst_rate, gst_status: it.gst_status, unit: it.unit, expiry_warn: it.expiry_warn, expiry: it.expiry, low_stock: it.low_stock, sell_loose: it.sell_loose };
+                        const data = { id: it.id, name: it.name, price: it.price, hsn: it.hsn, gst_rate: it.gst_rate, gst_status: it.gst_status, unit: it.unit, expiry_warn: it.expiry_warn, expiry: it.expiry, low_stock: it.low_stock, sell_loose: it.sell_loose, variations: it.variations || [] };
                         const img = it.image || QI_PLACEHOLDER;
                         return '<div class="quick-item" data-item=\'' + JSON.stringify(data).replace(/'/g, '&#39;') + '\'>' +
                             '<img class="qi-img" src="' + img + '" onerror="this.src=\'' + QI_PLACEHOLDER + '\'" alt="">' +

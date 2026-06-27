@@ -154,6 +154,7 @@ class Store extends Model
         'reviews_section' => 'boolean',
         'active' => 'boolean',
         'gst_status' => 'boolean',
+        'fssai_show' => 'boolean',
         'pos_system' => 'boolean',
         'cutlery' => 'boolean',
         'self_delivery_system' => 'integer',

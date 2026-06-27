@@ -31,6 +31,17 @@
             if ($gstRaw && ($d = json_decode($gstRaw, true)) && isset($d['code'])) { $gstCode = $d['code']; }
         @endphp
         @if (!empty($gstCode))<div>GSTIN: {{ $gstCode }}</div>@endif
+        @php
+            $rcFssai = ($store->fssai_show ?? false) && ($store->fssai_number ?? null) ? $store->fssai_number : null;
+            $rcDocs = [];
+            try {
+                $rcDocs = \App\Models\StoreDocument::where('store_id', $store->id)->where('doc_type', 'other')
+                    ->where('status', 1)->where('show_on_bill', 1)
+                    ->whereNotNull('doc_number')->where('doc_number', '!=', '')->get();
+            } catch (\Throwable $e) { $rcDocs = []; }
+        @endphp
+        @if ($rcFssai)<div>FSSAI: {{ $rcFssai }}</div>@endif
+        @foreach ($rcDocs as $rd)<div>{{ $rd->doc_name }}: {{ $rd->doc_number }}</div>@endforeach
     </div>
     <div class="line"></div>
 
@@ -39,26 +50,29 @@
         <tr><td>Date</td><td class="r">{{ $invoice->created_at->format('d-m-Y h:i A') }}</td></tr>
         <tr><td>Customer</td><td class="r">{{ optional($customer)->f_name ?: 'Walk-in' }}</td></tr>
     </table>
-    <div class="line"></div>
 
+    <div class="line"></div>
+    
     <table>
-        <tr class="b"><td>Item</td><td class="r">Qty</td><td class="r">Rate</td><td class="r">Amt</td></tr>
+        <tr class="b"><td style="width:30%;">Qty</td><td class="r" style="width:35%;">Rate</td><td class="r" style="width:35%;">Amt</td></tr>
         @foreach ($items as $it)
+            @php
+                $isLoose = !empty(optional($it->item)->sell_loose) || !empty($it->pieces);
+                if ($isLoose) {
+                    // Weighed item — show only the weight (with unit), not the piece count.
+                    $unitTxt = optional(optional($it->item)->itemunit)->unit;
+                    $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 3), '0'), '.') . ($unitTxt ? ' ' . $unitTxt : '');
+                } else {
+                    $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.');
+                }
+            @endphp
             <tr>
-                @php
-                    $isLoose = !empty(optional($it->item)->sell_loose) || !empty($it->pieces);
-                    if ($isLoose) {
-                        // Weighed item — show only the weight (with unit), not the piece count.
-                        $unitTxt = optional(optional($it->item)->itemunit)->unit;
-                        $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 3), '0'), '.') . ($unitTxt ? ' ' . $unitTxt : '');
-                    } else {
-                        $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.');
-                    }
-                @endphp
-                <td>{{ $it->name }}@if ($it->hsn) <br><small>HSN {{ $it->hsn }}</small>@endif</td>
-                <td class="r">{{ $qtyTxt }}</td>
-                <td class="r">{{ $money($it->price) }}</td>
-                <td class="r">{{ $money((float) $it->price * (float) $it->qty) }}</td>
+                <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn) <br><small>HSN {{ $it->hsn }}</small>@endif</td>
+            </tr>
+            <tr>
+                <td style="padding-top:0;">{{ $qtyTxt }}</td>
+                <td class="r" style="padding-top:0;">{{ $money($it->price) }}</td>
+                <td class="r" style="padding-top:0;">{{ $money((float) $it->price * (float) $it->qty) }}</td>
             </tr>
         @endforeach
     </table>

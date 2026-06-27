@@ -2209,7 +2209,6 @@
                 @endif
 
 
-                @include('layouts.vendor.partials._sidebar_menu_whatsapp')
                 @if (\App\CentralLogics\Helpers::employee_module_permission_check('post_ads'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('notification*') ? 'active' : '' }}">
@@ -2221,6 +2220,8 @@
                         </a>
                     </li>
                 @endif
+                {{-- WhatsApp — right after Post Ads --}}
+                @include('layouts.vendor.partials._sidebar_menu_whatsapp')
                 {{-- =============================== MY BUSINESS =========================== --}}
                 @if (selected_menu('my_business') && \App\CentralLogics\Helpers::employee_module_permission_check('my_business'))
                     <li

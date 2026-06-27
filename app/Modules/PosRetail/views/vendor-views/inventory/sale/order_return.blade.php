@@ -149,6 +149,14 @@
                                     </span>
 
                                 </td>
+                                <td>
+                                    <a class="btn action-btn btn--danger btn-outline-danger inv-delete-btn"
+                                        href="javascript:;" title="Delete"
+                                        data-action="{{ route('vendor.inventory.sale.return-delete', [$detail->id]) }}"
+                                        data-stock-label="Remove the returned stock from inventory">
+                                        <i class="tio-delete"></i>
+                                    </a>
+                                </td>
                             </tr>
                         @endforeach
 
@@ -167,6 +175,7 @@
         </div>
     </div>
     @include('vendor-views.form_modals.pos_calendar')
+    @include('vendor-views.inventory.partials._delete-with-stock')
 
 @endsection
 @push('script_2')

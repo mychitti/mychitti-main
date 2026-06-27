@@ -406,6 +406,18 @@
                                                         {{ $lf->name }}{{ $lf->is_default ? ' (default)' : '' }}</option>
                                                 @endforeach
                                             </select>
+                                        </div> 
+                                    @endif 
+                                    @php $variations = json_decode($item->variations); @endphp
+                                    @if ($variations && count($variations) > 0)
+                                        <div>
+                                            <label class="lbl-fld">Variation</label>
+                                            <select id="lbl-variation" class="form-control form-control-sm" style="min-width:160px;">
+                                                <option value="">Default (Main Item)</option>
+                                                @foreach ($variations as $vr)
+                                                    <option value="{{ $vr->type }}">{{ ucwords($vr->type) }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     @endif
                                     <div style="width:84px;">
@@ -442,11 +454,13 @@
                                 }
                                 function buildLabelUrl(a) {
                                     var base = '{{ route('vendor.inventory.item.print', [$item->id, 'format']) }}';
+                                    var varEl = document.getElementById('lbl-variation');
                                     var p = new URLSearchParams({
                                         format_id: document.getElementById('lbl-format').value,
                                         packing_date: fmtDate(document.getElementById('lbl-pkg').value),
                                         expiry_date: fmtDate(document.getElementById('lbl-exp').value),
-                                        copies: document.getElementById('lbl-copies').value || 1
+                                        copies: document.getElementById('lbl-copies').value || 1,
+                                        variation: varEl ? varEl.value : ''
                                     });
                                     a.href = base + '?' + p.toString();
                                     return true;

@@ -200,9 +200,9 @@
                              @php   $pnl_status = $orderItem->total_revenue - $orderItem->total_cost > 0 ? 'Profit' : 'Loss'; @endphp
 
                              <tr>
-                                 <td>{{ $key + 1 }}</td>
+                                 <td>{{ $key + 1 }}</td> 
                                  <td>
-                                     <div style="">
+                                     <div style="white-space: normal; min-width: 150px; max-width: 250px; word-break: break-word;">
                                          <a href="{{ route('vendor.inventory.item.detail', [$orderItem->item_id]) }}">
                                              {{ ucwords($orderItem->item_name) ?? 'N/A' }}
                                          </a>

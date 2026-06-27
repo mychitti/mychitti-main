@@ -24,8 +24,8 @@
         @endphp
         <div class="rp-head">
             <div>
-                <h1>Bills</h1>
-                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}</div>
+                <h1>{{ ($isStaff ?? false) ? 'My Sales' : 'Bills' }}</h1>
+                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}{{ !($isStaff ?? false) && ($staff ?? null) ? ' · ' . ($staffNames[$staff] ?? 'Staff') : '' }}{{ !($isStaff ?? false) && ($terminal ?? null) ? ' · ' . ($counterNames[$terminal] ?? 'Counter') : '' }}</div>
             </div>
             <form method="get" class="rp-filter date-range-form" action="{{ route('vendor.retail-pos.today') }}">
                 @if ($branches->count())
@@ -35,6 +35,22 @@
                             <option value="{{ $b->id }}" {{ $branch == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                         @endforeach
                     </select>
+                @endif
+                @if (!($isStaff ?? false))
+                    <select name="staff" class="rp-input" onchange="this.form.submit()">
+                        <option value="">All staff</option>
+                        @foreach ($staffList as $s)
+                            <option value="{{ $s->id }}" {{ ($staff ?? null) == $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}</option>
+                        @endforeach
+                    </select>
+                    @if ($counters->count())
+                        <select name="terminal" class="rp-input" onchange="this.form.submit()">
+                            <option value="">All counters</option>
+                            @foreach ($counters as $c)
+                                <option value="{{ $c->id }}" {{ ($terminal ?? null) == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                 @endif
                 @include('vendor-views.form_modals.date_range')
                 <button type="button" class="btn btn-sm btn-outline-warning" data-toggle="modal" data-target="#dateRangeModal">{{ translate($preset) }}</button>
@@ -58,7 +74,9 @@
                 <table class="rp-table">
                     <thead>
                         <tr>
-                            <th>#</th><th>Invoice</th><th>Customer</th><th class="text-right">Amount</th>
+                            <th>#</th><th>Invoice</th><th>Customer</th>
+                            @if (!($isStaff ?? false))<th>Staff</th><th>Counter</th>@endif
+                            <th class="text-right">Amount</th>
                             <th>Payment</th><th>Status</th><th>Time</th><th class="text-right">Action</th>
                         </tr>
                     </thead>
@@ -68,6 +86,10 @@
                                 <td>{{ $k + 1 }}</td>
                                 <td><b>{{ $bill->pos_status === 'void' ? 'V' . $bill->invoice_id : $bill->invoice_id }}</b></td>
                                 <td>{{ optional($customers[$bill->bill_to] ?? null)->f_name ?: 'Walk-in' }}</td>
+                                @if (!($isStaff ?? false))
+                                    <td>{{ $bill->pos_staff_id ? ($staffNames[$bill->pos_staff_id] ?? 'Staff') : 'Owner' }}</td>
+                                    <td>{{ $bill->pos_terminal_id ? ($counterNames[$bill->pos_terminal_id] ?? 'Counter') : '—' }}</td>
+                                @endif
                                 <td class="text-right font-weight-bold">₹{{ number_format((float) $bill->total_amount, 2) }}</td>
                                 <td><span class="rp-badge muted">{{ $bill->payment_method }}</span></td>
                                 <td>
@@ -126,7 +148,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8"><div class="rp-empty">No bills today yet.</div></td></tr>
+                            <tr><td colspan="{{ ($isStaff ?? false) ? 8 : 10 }}"><div class="rp-empty">No bills today yet.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>

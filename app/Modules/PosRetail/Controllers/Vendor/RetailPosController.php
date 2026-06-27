@@ -29,6 +29,7 @@ class RetailPosController extends Controller
         'pos_branch_stock'  => ['Branch Stock', ['view', 'edit']],
         'pos_gatepass'      => ['Stock Transfer (Gatepass)', ['view', 'create', 'delete']],
         'pos_writeoff'      => ['Damaged / Theft Stock', ['view', 'create', 'delete']],
+        'pos_cash'          => ['Cash Flow', ['view', 'manage']],
     ];
 
     // Eager-seedable so the role grid shows it without first opening New Sale.
@@ -51,6 +52,7 @@ class RetailPosController extends Controller
         ['slug' => 'retail_branch_stock', 'name' => 'Branch Stock',        'route' => 'vendor.retail-pos.branch-stock'],
         ['slug' => 'retail_gatepass',     'name' => 'Stock Transfer',      'route' => 'vendor.retail-pos.gatepass'],
         ['slug' => 'retail_writeoff',     'name' => 'Damaged / Theft',     'route' => 'vendor.retail-pos.writeoff'],
+        ['slug' => 'retail_cash_flow',    'name' => 'Cash Flow',           'route' => 'vendor.retail-pos.cash-flow'],
     ];
 
     public static function ensureMenuMasterdata(): void
@@ -246,6 +248,11 @@ class RetailPosController extends Controller
             if (!Schema::hasColumn('manual_invoices', 'pos_terminal_id')) {
                 DB::statement("ALTER TABLE `manual_invoices` ADD COLUMN `pos_terminal_id` BIGINT NULL");
             }
+            // The staff who actually billed (captured at sale time). The counter's staff
+            // changes per shift, so staff-wise sales must be attributed on the bill itself.
+            if (!Schema::hasColumn('manual_invoices', 'pos_staff_id')) {
+                DB::statement("ALTER TABLE `manual_invoices` ADD COLUMN `pos_staff_id` BIGINT NULL");
+            }
         }
         if (!Schema::hasTable('pos_payment_legs')) {
             DB::statement("CREATE TABLE `pos_payment_legs` (
@@ -336,6 +343,84 @@ class RetailPosController extends Controller
             if (!Schema::hasColumn('pos_terminals', 'staff_id')) {
                 DB::statement("ALTER TABLE `pos_terminals` ADD COLUMN `staff_id` BIGINT NULL");
             }
+            // When on, the counter's active staff is auto-picked from its roster by shift time.
+            if (!Schema::hasColumn('pos_terminals', 'auto_shift')) {
+                DB::statement("ALTER TABLE `pos_terminals` ADD COLUMN `auto_shift` TINYINT(1) NOT NULL DEFAULT 0");
+            }
+        }
+        // Roster of staff who man a counter across shifts (used when auto_shift is on).
+        if (!Schema::hasTable('pos_counter_staff')) {
+            DB::statement("CREATE TABLE `pos_counter_staff` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NULL,
+                `terminal_id` BIGINT NULL,
+                `staff_id` BIGINT NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `pos_counter_staff_terminal_idx` (`terminal_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
+        // Cash-flow request ledger: shift-to-shift cash accountability per counter / branch.
+        if (!Schema::hasTable('pos_cash_handovers')) {
+            DB::statement("CREATE TABLE `pos_cash_handovers` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NULL,
+                `terminal_id` BIGINT NULL,
+                `branch_id` BIGINT NULL,
+                `request_no` VARCHAR(20) NULL,
+                `type` VARCHAR(20) NOT NULL DEFAULT 'handover',
+                `purpose` VARCHAR(30) NULL,
+                `purpose_other` VARCHAR(120) NULL,
+                `payment_mode` VARCHAR(20) NOT NULL DEFAULT 'cash',
+                `from_role` VARCHAR(10) NULL,
+                `from_id` BIGINT NULL,
+                `to_role` VARCHAR(10) NULL,
+                `to_id` BIGINT NULL,
+                `requested_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `cash_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `upi_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `denominations` TEXT NULL,
+                `expected_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `counted_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `variance` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                `status` VARCHAR(12) NOT NULL DEFAULT 'pending',
+                `note` VARCHAR(500) NULL,
+                `attachment` VARCHAR(255) NULL,
+                `approved_by` BIGINT NULL,
+                `approved_by_role` VARCHAR(10) NULL,
+                `approved_at` TIMESTAMP NULL,
+                `from_label` VARCHAR(40) NULL,
+                `to_label` VARCHAR(40) NULL,
+                `raised_at` TIMESTAMP NULL,
+                `responded_at` TIMESTAMP NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `pos_cash_handovers_term_idx` (`terminal_id`),
+                KEY `pos_cash_handovers_status_idx` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        } else {
+            foreach ([
+                'branch_id' => "BIGINT NULL", 'request_no' => "VARCHAR(20) NULL",
+                'purpose' => "VARCHAR(30) NULL", 'purpose_other' => "VARCHAR(120) NULL",
+                'payment_mode' => "VARCHAR(20) NOT NULL DEFAULT 'cash'",
+                'requested_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
+                'cash_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
+                'upi_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
+                'denominations' => "TEXT NULL", 'attachment' => "VARCHAR(255) NULL",
+                'approved_by' => "BIGINT NULL", 'approved_by_role' => "VARCHAR(10) NULL",
+                'approved_at' => "TIMESTAMP NULL",
+                'from_label' => "VARCHAR(40) NULL", 'to_label' => "VARCHAR(40) NULL",
+            ] as $col => $def) {
+                if (!Schema::hasColumn('pos_cash_handovers', $col)) {
+                    DB::statement("ALTER TABLE `pos_cash_handovers` ADD COLUMN `$col` $def");
+                }
+            }
+            if (Schema::hasColumn('pos_cash_handovers', 'note')) {
+                try { DB::statement("ALTER TABLE `pos_cash_handovers` MODIFY `note` VARCHAR(500) NULL"); } catch (\Throwable $e) {}
+            }
         }
 
         // Per-branch stock — stock physically available at each branch.
@@ -380,8 +465,13 @@ class RetailPosController extends Controller
                 `qty` DECIMAL(12,3) NOT NULL DEFAULT 0,
                 `created_at` TIMESTAMP NULL,
                 PRIMARY KEY (`id`),
-                KEY `psgi_gp_idx` (`gatepass_id`)
+                KEY `psgi_gp_idx` (`gatepass_id`) 
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+        if (Schema::hasTable('pos_stock_gatepass_items') && !Schema::hasColumn('pos_stock_gatepass_items', 'variation_type')) {
+            try {
+                DB::statement("ALTER TABLE `pos_stock_gatepass_items` ADD `variation_type` VARCHAR(100) NULL AFTER `inventory_item_id`");
+            } catch (\Throwable $e) {}
         }
 
         // Stock write-off: damaged / theft removed from main store or a branch (audited, reversible).
@@ -450,6 +540,347 @@ class RetailPosController extends Controller
     private const LOYALTY_EARN_PER = 100;
     // Max discount % a cashier may apply without manager approval (§4.1).
     private const DISCOUNT_CAP = 5;
+
+    // ── Cash Flow: shift-to-shift cash handover with raise / accept ──────────────
+
+    private function isCashManager(): bool
+    {
+        return auth('vendor')->check() || hasPermission('pos_cash', 'manage');
+    }
+    private function meRole(): string
+    {
+        return auth('vendor')->check() ? 'owner' : 'staff';
+    }
+    private function meId()
+    {
+        return auth('vendor')->id() ?? auth('vendor_employee')->id();
+    }
+
+    public const CASH_PURPOSES = [
+        'opening_cash'    => 'Opening Cash',
+        'shift_handover'  => 'Shift Handover',
+        'change_request'  => 'Change Request',
+        'cash_deposit'    => 'Cash Deposit',
+        'expense_request' => 'Expense Request',
+        'cash_collection' => 'Cash Collection',
+        'other'           => 'Other',
+    ];
+    public const CASH_DENOMS = [500, 200, 100, 50, 20, 10];
+
+    private function purposeType($purpose): string
+    {
+        return ['opening_cash' => 'open', 'shift_handover' => 'handover', 'cash_deposit' => 'close'][$purpose] ?? 'other';
+    }
+
+    // "owner:0" | "staff:5" → ['staff', 5]
+    private function parsePerson($val): array
+    {
+        $p = explode(':', (string) $val);
+        $role = in_array($p[0] ?? '', ['owner', 'staff', 'manager'], true) ? $p[0] : 'staff';
+        return [$role, (int) ($p[1] ?? 0)];
+    }
+
+    // Current open cash session for a counter, derived from its last *received* open/handover.
+    private function cashState($counterId): array
+    {
+        if (!$counterId) {
+            return ['open' => false, 'holder_id' => null, 'opening' => 0.0, 'since' => null];
+        }
+        $last = DB::table('pos_cash_handovers')->where('terminal_id', $counterId)
+            ->where('status', 'received')->whereIn('type', ['open', 'handover', 'close'])
+            ->orderByDesc('responded_at')->orderByDesc('id')->first();
+        if (!$last || $last->type === 'close') {
+            return ['open' => false, 'holder_id' => null, 'opening' => 0.0, 'since' => null];
+        }
+        return ['open' => true, 'holder_id' => (int) $last->to_id, 'opening' => (float) $last->cash_amount, 'since' => $last->responded_at];
+    }
+
+    // Cash collected (cash leg of bills) by a holder on a counter since they took over.
+    private function cashSalesSince($counterId, $holderId, $since): float
+    {
+        if (!$holderId || !$since) {
+            return 0.0;
+        }
+        return (float) ManualInvoice::where('vendor_id', $this->storeId())
+            ->where('pos_terminal_id', $counterId)->where('pos_staff_id', $holderId)
+            ->where('pos_status', 'final')->where('created_at', '>=', $since)->sum('cash_amount');
+    }
+
+    // Build the common dataset (people, counters, name maps) the cash views need.
+    private function cashViewData($storeId): array
+    {
+        $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
+        $counters = DB::table('pos_terminals')->where('store_id', $storeId)->orderBy('branch_id')->orderBy('id')->get();
+        $staff    = VendorEmployee::where('store_id', $storeId)->with('role')->orderBy('f_name')->get(['id', 'f_name', 'l_name', 'employee_role_id']);
+        $staffNames = $staff->mapWithKeys(fn($s) => [(int) $s->id => trim($s->f_name . ' ' . $s->l_name)]);
+        $counterNames = $counters->mapWithKeys(fn($c) => [(int) $c->id => $c->name]);
+        $branchNames = $branches->mapWithKeys(fn($b) => [(int) $b->id => $b->name]);
+        return compact('branches', 'counters', 'staff', 'staffNames', 'counterNames', 'branchNames');
+    } 
+
+    private function personLabel($role, $id, $staffNames): string
+    {
+        if ($role === 'owner' || $role === 'manager') {
+            return $role === 'owner' ? 'Owner' : 'Owner / Manager';
+        }
+        return $staffNames[(int) $id] ?? 'Staff';
+    }
+
+    // Cash Flow list — requests + counter cash status.
+    public function cashFlow(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $this->syncCounterShiftStaff($storeId);
+
+        $d = $this->cashViewData($storeId);
+        $meId = (int) $this->meId();
+        $meRole = $this->meRole();
+        $isManager = $this->isCashManager();
+
+        // Per-counter live cash status.
+        $rows = [];
+        foreach ($d['counters'] as $c) {
+            $state = $this->cashState($c->id);
+            $cashSales = $state['open'] ? $this->cashSalesSince($c->id, $state['holder_id'], $state['since']) : 0.0;
+            $rows[] = [
+                'counter' => $c, 'branch' => $d['branchNames'][(int) $c->branch_id] ?? 'Main Store',
+                'state' => $state, 'cash_sales' => $cashSales, 'expected' => $state['opening'] + $cashSales,
+            ];
+        }
+
+        // Requests: managers/owner see all; staff see only requests they raised or must act on.
+        $q = DB::table('pos_cash_handovers')->where('store_id', $storeId)->whereIn('status', ['draft', 'pending', 'approved', 'received', 'rejected', 'closed']);
+        if (!$isManager) {
+            $q->where(function ($w) use ($meId, $meRole) {
+                $w->where(function ($x) use ($meId, $meRole) { $x->where('from_id', $meId)->where('from_role', $meRole); })
+                    ->orWhere(function ($x) use ($meId, $meRole) { $x->where('to_id', $meId)->where('to_role', $meRole); });
+            });
+        }
+        $requests = $q->orderByDesc('id')->limit(80)->get();
+
+        return view('posretail::vendor.retail-pos.cash-flow', array_merge($d, [
+            'rows' => $rows, 'requests' => $requests, 'isManager' => $isManager, 'meId' => $meId, 'meRole' => $meRole,
+        ]));
+    }
+
+    // Show the detailed cash request form (create, or view an existing request).
+    public function cashRequestForm(Request $request, $id = null)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $d = $this->cashViewData($storeId);
+
+        $req = null;
+        if ($id) {
+            $req = DB::table('pos_cash_handovers')->where('store_id', $storeId)->where('id', $id)->first();
+            if (!$req) {
+                Toastr::error('Cash request not found');
+                return redirect()->route('vendor.retail-pos.cash-flow');
+            }
+        }
+
+        $meId = (int) $this->meId();
+        $meRole = $this->meRole();
+        $isManager = $this->isCashManager();
+        $myName = $meRole === 'owner'
+            ? (Helpers::get_store_data()->name ?? 'Owner')
+            : ($d['staffNames'][$meId] ?? 'Me');
+
+        // Next request number preview for a new form.
+        $nextId = ((int) DB::table('pos_cash_handovers')->max('id')) + 1;
+        $nextNo = 'CF-' . str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
+
+        return view('posretail::vendor.retail-pos.cash-request-form', array_merge($d, [
+            'req' => $req, 'purposes' => self::CASH_PURPOSES, 'denoms' => self::CASH_DENOMS,
+            'isManager' => $isManager, 'meId' => $meId, 'meRole' => $meRole, 'myName' => $myName, 'nextNo' => $nextNo,
+        ]));
+    }
+
+    // Create / save a cash request (draft or submit).
+    public function cashRequestSave(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $meId = (int) $this->meId();
+        $meRole = $this->meRole();
+
+        $purpose = $request->input('purpose');
+        if (!array_key_exists($purpose, self::CASH_PURPOSES)) {
+            Toastr::error('Select a valid purpose');
+            return back()->withInput();
+        }
+        [$toRole, $toId] = $this->parsePerson($request->input('requested_to'));
+        if ($toRole === 'staff' && !$toId) {
+            Toastr::error('Select who the request is to');
+            return back()->withInput();
+        }
+ 
+        [$fromRole, $fromId] = $this->parsePerson($request->input('requested_by', $meRole . ':' . $meId));
+        if (!$fromRole) {
+            $fromRole = $meRole;
+            $fromId = $meId;
+        }
+
+        // Denomination breakdown → cash total cross-check.
+        $denoms = [];
+        $denomCash = 0.0;
+        foreach (self::CASH_DENOMS as $dv) {
+            $qty = max(0, (int) $request->input("denom.$dv", 0));
+            $denoms[(string) $dv] = $qty;
+            $denomCash += $dv * $qty;
+        }
+        $coins = round((float) $request->input('coins', 0), 2);
+        $denoms['coins'] = $coins;
+        $denomCash += $coins;
+
+        $mode = in_array($request->input('payment_mode'), ['cash', 'upi', 'bank_transfer', 'mixed'], true)
+            ? $request->input('payment_mode') : 'cash';
+        $cashAmount = round((float) $request->input('cash_amount', $denomCash), 2);
+        $upiAmount  = round((float) $request->input('upi_amount', 0), 2);
+        $requested  = round((float) $request->input('requested_amount', $cashAmount + $upiAmount), 2);
+
+        $type = $this->purposeType($purpose);
+        $counterId = (int) $request->input('terminal_id') ?: null;
+        $branchId  = (int) $request->input('branch_id') ?: null;
+
+        // Auto expected/variance for shift handover & close (from the holder's running cash).
+        $expected = $requested;
+        $variance = 0.0;
+        if (in_array($type, ['handover', 'close'], true) && $counterId) {
+            $state = $this->cashState($counterId);
+            if ($state['open']) {
+                $expected = round($state['opening'] + $this->cashSalesSince($counterId, $state['holder_id'], $state['since']), 2);
+                $variance = round($cashAmount - $expected, 2);
+            }
+        }
+
+        $attachment = null;
+        if ($request->hasFile('attachment')) {
+            $f = $request->file('attachment');
+            $attachment = Helpers::upload('cash-flow/', $f->getClientOriginalExtension(), $f);
+        }
+
+        $status = $request->input('save_mode') === 'draft' ? 'draft' : 'pending';
+
+        $fields = [
+            'terminal_id' => $counterId, 'branch_id' => $branchId,
+            'type' => $type, 'purpose' => $purpose, 'purpose_other' => $request->input('purpose_other'),
+            'payment_mode' => $mode,
+            'to_role' => $toRole, 'to_id' => $toId ?: null, 'to_label' => $request->input('to_label'),
+            'from_label' => $request->input('from_label'),
+            'requested_amount' => $requested, 'cash_amount' => $cashAmount, 'upi_amount' => $upiAmount,
+            'denominations' => json_encode($denoms), 'expected_amount' => $expected, 'counted_amount' => $cashAmount,
+            'variance' => $variance, 'status' => $status, 'note' => $request->input('note'),
+            'updated_at' => now(),
+        ];
+        if ($attachment) {
+            $fields['attachment'] = $attachment;
+        }
+
+        // Editing an existing draft (only the requester, only while still a draft).
+        $editId = (int) $request->input('id');
+        if ($editId) {
+            $existing = DB::table('pos_cash_handovers')->where('store_id', $storeId)->where('id', $editId)->first();
+            if (!$existing || $existing->status !== 'draft' || (int) $existing->from_id !== $meId || $existing->from_role !== $meRole) {
+                Toastr::error('This request can no longer be edited');
+                return back();
+            }
+            if ($status === 'pending') {
+                $fields['raised_at'] = now();
+            }
+            DB::table('pos_cash_handovers')->where('id', $editId)->update($fields);
+            $this->logAudit('cash_request_' . $status, $existing->request_no, '₹' . number_format($requested, 2));
+            Toastr::success($status === 'draft' ? 'Draft updated' : 'Cash request submitted');
+            return redirect()->route('vendor.retail-pos.cash-flow.show', $editId);
+        }
+ 
+        $id = DB::table('pos_cash_handovers')->insertGetId(array_merge($fields, [
+            'store_id' => $storeId, 'from_role' => $fromRole, 'from_id' => $fromId ?: $meId,
+            'attachment' => $attachment, 'raised_at' => now(), 'created_at' => now(),
+        ])); 
+        DB::table('pos_cash_handovers')->where('id', $id)->update(['request_no' => 'CF-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT)]);
+
+        $this->logAudit('cash_request_' . $status, 'CF-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT), '₹' . number_format($requested, 2));
+        Toastr::success($status === 'draft' ? 'Cash request saved as draft' : 'Cash request submitted');
+        return redirect()->route('vendor.retail-pos.cash-flow.show', $id);
+    }
+
+    // Printable handover slip — denominations, both parties, expected vs counted, variance.
+    public function cashSlip(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $req = DB::table('pos_cash_handovers')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$req) {
+            Toastr::error('Cash request not found');
+            return redirect()->route('vendor.retail-pos.cash-flow');
+        }
+        $d = $this->cashViewData($storeId);
+        $store = Helpers::get_store_data();
+        $den = $req->denominations ? (json_decode($req->denominations, true) ?: []) : [];
+
+        $fromName = $req->from_role === 'owner' ? 'Owner' : ($d['staffNames'][(int) $req->from_id] ?? 'Staff');
+        $toName = $req->to_role === 'manager' ? 'Owner / Manager' : ($req->to_id ? ($d['staffNames'][(int) $req->to_id] ?? 'Staff') : 'Owner / Manager');
+        $approvedName = $req->approved_by ? ($req->approved_by_role === 'owner' ? 'Owner' : ($d['staffNames'][(int) $req->approved_by] ?? 'Manager')) : null;
+        $counterName = $req->terminal_id ? ($d['counterNames'][(int) $req->terminal_id] ?? null) : null;
+        $branchName = $req->branch_id ? ($d['branchNames'][(int) $req->branch_id] ?? null) : 'Main Store';
+
+        return view('posretail::vendor.retail-pos.cash-slip', compact('req', 'store', 'den', 'fromName', 'toName', 'approvedName', 'counterName', 'branchName'));
+    }
+
+    // Approve / Receive Cash / Reject / Close a request.
+    public function cashRequestAction(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $action = $request->input('action'); // submit | approve | receive | reject | close
+        $row = DB::table('pos_cash_handovers')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$row) {
+            Toastr::error('Cash request not found');
+            return back();
+        }
+
+        $meId = (int) $this->meId();
+        $meRole = $this->meRole();
+        $isManager = $this->isCashManager();
+        $isRecipient = ((int) $row->to_id === $meId && $row->to_role === $meRole)
+            || ($row->to_role === 'manager' && $isManager);
+        $isRequester = ((int) $row->from_id === $meId && $row->from_role === $meRole);
+
+        $upd = ['updated_at' => now()];
+        if ($action === 'submit' && $row->status === 'draft' && $isRequester) {
+            $upd['status'] = 'pending';
+            $upd['raised_at'] = now();
+        } elseif ($action === 'approve' && in_array($row->status, ['pending'], true) && ($isManager || $isRecipient)) {
+            $upd['status'] = 'approved';
+            $upd['approved_by'] = $meId;
+            $upd['approved_by_role'] = $meRole;
+            $upd['approved_at'] = now();
+        } elseif ($action === 'receive' && in_array($row->status, ['pending', 'approved'], true) && $isRecipient) {
+            // Physical cash confirmed by the recipient — this is the accountability transfer.
+            $upd['status'] = 'received';
+            $upd['responded_at'] = now();
+            if (!$row->approved_at) {
+                $upd['approved_by'] = $meId;
+                $upd['approved_by_role'] = $meRole;
+                $upd['approved_at'] = now();
+            }
+        } elseif ($action === 'reject' && in_array($row->status, ['pending', 'approved'], true) && ($isRecipient || $isManager)) {
+            $upd['status'] = 'rejected';
+            $upd['responded_at'] = now();
+        } elseif ($action === 'close' && in_array($row->status, ['received', 'approved'], true) && $isManager) {
+            $upd['status'] = 'closed';
+        } else {
+            Toastr::error('This action is not allowed in the current state');
+            return back();
+        }
+
+        DB::table('pos_cash_handovers')->where('id', $id)->update($upd);
+        $this->logAudit('cash_' . $action, $row->request_no, '₹' . number_format((float) $row->cash_amount, 2));
+        Toastr::success('Cash request ' . $upd['status']);
+        return back();
+    }
 
     private function storeId()
     {
@@ -520,9 +951,30 @@ class RetailPosController extends Controller
         // fall back to Main Store (no branch) rather than forcing the first branch.
         $defaultBranchId = $myBranchId ?: ($savedBranch ?: null);
 
+        // "On shift now" indicator for the cashier: shows whether the logged-in staff is the
+        // active staff on a counter right now (and the shift window), so they can confirm.
+        $shiftStatus = null;
+        $empId = auth('vendor_employee')->id();
+        if ($empId) {
+            $emp = VendorEmployee::with('storeShift:id,name,start_time,end_time')->find($empId);
+            $shiftTxt = null;
+            if ($emp && $emp->storeShift) {
+                $t = fn($v) => $v ? substr($v, 0, 5) : '';
+                $shiftTxt = trim(($emp->storeShift->name ? $emp->storeShift->name . ' ' : '')
+                    . $t($emp->storeShift->start_time) . '–' . $t($emp->storeShift->end_time));
+            }
+            $shiftStatus = [
+                'on'      => (bool) $counter,
+                'staff'   => $emp ? trim($emp->f_name . ' ' . $emp->l_name) : null,
+                'counter' => $counter->name ?? null,
+                'shift'   => $shiftTxt,
+                'auto'    => (bool) ($counter->auto_shift ?? false),
+            ];
+        }
+
         return view('posretail::vendor.retail-pos.index', compact(
             'categories', 'quickItems', 'upiId', 'storeName', 'heldBills', 'uiTemplate',
-            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId'
+            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId', 'shiftStatus'
         ));
     }
 
@@ -667,14 +1119,14 @@ class RetailPosController extends Controller
         $branchStock = $branchId
             ? DB::table('pos_branch_stock')->where('branch_id', $branchId)
                 ->whereIn('inventory_item_id', $rows->pluck('id'))->pluck('stock', 'inventory_item_id')
-            : collect();
+            : collect();  
 
         $items = $rows->map(function ($i) use ($branchId, $branchStock) {
             $stock = $branchId ? (float) ($branchStock[$i->id] ?? 0) : (float) $i->stock;
             return [
-                'id'         => $i->id,
+                'id'         => (string) $i->id,
                 'name'       => $i->item_name,
-                'sku'        => $i->sku_id,
+                'sku'        => $i->sku_id, 
                 'barcode'    => $i->barcode,
                 'image'      => $i->image ? asset('storage/app/public/inventory-item/' . $i->image) : '',
                 'price'      => (float) ($i->selling_price ?? 0),
@@ -688,6 +1140,7 @@ class RetailPosController extends Controller
                 'expiry_warn'=> $i->expiry_date && $i->expiry_date <= now()->addDays(30)->toDateString(),
                 'low_stock'  => $stock <= 0,
                 'sell_loose' => (bool) ($i->sell_loose ?? false),
+                'variations' => json_decode($i->variations, true) ?: [],
             ];
         });
 
@@ -734,41 +1187,64 @@ class RetailPosController extends Controller
         $hasGst = false;
 
         foreach ($cart as $row) {
-            $item = InventoryItem::where('id', $row['id'] ?? 0)->where('store_id', $storeId)->first();
+            $idParts = explode('-var-', $row['id'] ?? '');
+            $itemId = $idParts[0];
+            $varType = $idParts[1] ?? null;
+
+            $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
             if (!$item) {
                 continue;
             }
             $qty = max(0, (float) ($row['qty'] ?? 1));
-            $price = (float) ($row['price'] ?? $item->selling_price ?? 0);
+            
+            $basePrice = (float) ($item->selling_price ?? 0);
+            $avail = $billingBranchId ? $this->branchItemStock($billingBranchId, $item->id) : (float) $item->stock;
+
+            if ($varType) {
+                $vars = json_decode($item->variations, true) ?: [];
+                foreach ($vars as $var) {
+                    if (isset($var['type']) && $var['type'] === $varType) {
+                        $basePrice = (float) ($var['price'] ?? $item->selling_price ?? 0);
+                        $varStock = (float) ($var['stock'] ?? 0);
+                        $avail = $billingBranchId ? min($varStock, $avail) : $varStock;
+                        break;
+                    }
+                }
+            }
+
+            $price = (float) ($row['price'] ?? $basePrice);
             $lineDiscount = (float) ($row['discount'] ?? 0);
             if ($qty <= 0) {
                 continue;
             }
 
             // Price override (§4.1) — only Owner/Manager may change the unit price.
-            $basePrice = (float) ($item->selling_price ?? 0);
             if (round($price, 2) !== round($basePrice, 2)) {
                 if (!$canOverride) {
-                    return response()->json(['status' => false, 'msg' => "Price override on \"{$item->item_name}\" needs manager approval"], 422);
+                    $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                    return response()->json(['status' => false, 'msg' => "Price override on \"{$displayName}\" needs manager approval"], 422);
                 }
-                $auditNotes[] = "Price {$item->item_name}: ₹{$basePrice}→₹{$price}";
+                $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                $auditNotes[] = "Price {$displayName}: ₹{$basePrice}→₹{$price}";
             }
 
             // Item discount cap for cashiers (§4.1). Above the cap needs manager override.
             if ($lineDiscount > 0) {
                 $discPct = ($price * $qty) > 0 ? ($lineDiscount / ($price * $qty)) * 100 : 0;
                 if ($discPct > self::DISCOUNT_CAP && !$canOverride) {
-                    return response()->json(['status' => false, 'msg' => "Discount above " . self::DISCOUNT_CAP . "% on \"{$item->item_name}\" needs manager approval"], 422);
+                    $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                    return response()->json(['status' => false, 'msg' => "Discount above " . self::DISCOUNT_CAP . "% on \"{$displayName}\" needs manager approval"], 422);
                 }
             }
 
             // Out-of-stock (§4.1) — checked against branch stock when billing at a branch.
-            $avail = $billingBranchId ? $this->branchItemStock($billingBranchId, $item->id) : (float) $item->stock;
             if ($qty > $avail) {
                 if (!$allowOos) {
-                    return response()->json(['status' => false, 'msg' => "Insufficient stock for \"{$item->item_name}\" (have " . $avail . "). Manager approval required.", 'oos' => true], 422);
+                    $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                    return response()->json(['status' => false, 'msg' => "Insufficient stock for \"{$displayName}\" (have " . $avail . "). Manager approval required.", 'oos' => true], 422);
                 }
-                $auditNotes[] = "OOS {$item->item_name}: sold {$qty}, stock {$avail}";
+                $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                $auditNotes[] = "OOS {$displayName}: sold {$qty}, stock {$avail}";
             }
 
             $gross = ($price * $qty) - $lineDiscount;
@@ -802,6 +1278,7 @@ class RetailPosController extends Controller
                 'rate'       => $rate,
                 'gst_status' => $status,
                 'hsn'        => $item->hsn,
+                'var_type'   => $varType,
             ];
         }
 
@@ -901,6 +1378,8 @@ class RetailPosController extends Controller
         $counter = $this->currentCounter();
         $invoice->pos_terminal_id = $counter->id ?? ((int) $request->input('terminal_id') ?: null);
         $invoice->pos_branch_id = $counter->branch_id ?? ((int) $request->input('branch_id') ?: null);
+        // Billing staff: the logged-in employee, else the counter's assigned staff (owner billing = null).
+        $invoice->pos_staff_id = auth('vendor_employee')->id() ?? ($counter->staff_id ?? null);
         $invoice->save();
 
         if (!empty($auditNotes)) {
@@ -912,16 +1391,35 @@ class RetailPosController extends Controller
             $ii->rand_invoice_id = $invoice->invoice_id;
             $ii->manual_invoice_id = $invoice->id;
             $ii->inv_id = $line['item']->id;
-            $ii->name = $line['item']->item_name;
+            $ii->name = $line['var_type'] ? $line['item']->item_name . ' (' . $line['var_type'] . ')' : $line['item']->item_name;
             $ii->qty = $line['qty'];
             $ii->price = $line['price'];
             $ii->tax = $line['rate'];
             $ii->hsn = $line['hsn'];
             $ii->gst_status = $line['gst_status'];
-            $ii->pieces = $line['pieces'];
+            $ii->pieces = $line['pieces']; 
             $ii->save();
 
             _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit);
+
+            // If it is a variation, update the stock of the variation in the JSON array
+            if ($line['var_type']) {
+                $freshItem = InventoryItem::find($line['item']->id);
+                if ($freshItem) {
+                    $vars = json_decode($freshItem->variations, true) ?: [];
+                    $modifiedVars = false;
+                    foreach ($vars as &$var) {
+                        if (isset($var['type']) && $var['type'] === $line['var_type']) {
+                            $var['stock'] = max(0, (float)($var['stock'] ?? 0) - $line['qty']);
+                            $modifiedVars = true;
+                        }
+                    }
+                    if ($modifiedVars) {
+                        $freshItem->variations = json_encode($vars);
+                        $freshItem->save();
+                    }
+                }
+            }
 
             // Decrement the branch's stock too (availability at the counter's branch).
             if ($billingBranchId) {
@@ -1134,7 +1632,16 @@ class RetailPosController extends Controller
         $storeId = $this->storeId();
 
         $branch = (int) $request->get('branch') ?: null;
+        $staff = (int) $request->get('staff') ?: null;
+        $terminal = (int) $request->get('terminal') ?: null;
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
+
+        // A logged-in staff member only ever sees their own sales ("My Sales").
+        $isStaff = (bool) auth('vendor_employee')->id();
+        if ($isStaff) {
+            $staff = auth('vendor_employee')->id();
+            $terminal = null;
+        }
 
         // Date-range picker (defaults to today).
         $preset = $request->get('date_range', 'today');
@@ -1153,6 +1660,8 @@ class RetailPosController extends Controller
             ->where('type', 'manual')
             ->whereNotNull('pos_status')
             ->when($branch, fn($q) => $q->where('pos_branch_id', $branch))
+            ->when($staff, fn($q) => $q->where('pos_staff_id', $staff))
+            ->when($terminal, fn($q) => $q->where('pos_terminal_id', $terminal))
             ->orderByDesc('id')
             ->get();
 
@@ -1163,7 +1672,13 @@ class RetailPosController extends Controller
             ? StoreCustomer::whereIn('id', $custIds)->get(['id', 'f_name', 'email', 'phone'])->keyBy('id')
             : collect();
 
-        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom', 'customers'));
+        // Filter sources + display-name maps for the Staff / Counter columns.
+        $staffList = VendorEmployee::where('store_id', $storeId)->orderBy('f_name')->get(['id', 'f_name', 'l_name']);
+        $counters = DB::table('pos_terminals')->where('store_id', $storeId)->orderBy('name')->get();
+        $staffNames = $staffList->mapWithKeys(fn($s) => [$s->id => trim($s->f_name . ' ' . $s->l_name)]);
+        $counterNames = $counters->mapWithKeys(fn($c) => [$c->id => $c->name]);
+
+        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom', 'customers', 'staff', 'terminal', 'staffList', 'counters', 'staffNames', 'counterNames', 'isStaff'));
     }
 
     // ── Void (counter-entry; never deleted) ───────────────────────────────────
@@ -1358,16 +1873,23 @@ class RetailPosController extends Controller
         $this->ensureSchema();
         $storeId = $this->storeId();
 
+        // Apply shift-based staff rotation so the page shows who is actually on each counter now.
+        $this->syncCounterShiftStaff($storeId);
+
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
         $counters = DB::table('pos_terminals')->where('store_id', $storeId)->orderBy('branch_id')->orderBy('id')->get();
         // Include each staff's shift so the owner can swap counter staff per shift timing.
         $staff    = VendorEmployee::with('storeShift:id,name,start_time,end_time')
             ->where('store_id', $storeId)->orderBy('f_name')
             ->get(['id', 'f_name', 'l_name', 'branch_id', 'store_shift_id']);
+        // counter_id => [staff_id,...] roster for the auto-shift UI.
+        $rosterMap = DB::table('pos_counter_staff')->where('store_id', $storeId)
+            ->get(['terminal_id', 'staff_id'])->groupBy('terminal_id')
+            ->map(fn($g) => $g->pluck('staff_id')->map(fn($v) => (int) $v)->all());
         $upiId    = DB::table('stores')->where('id', $storeId)->value('pos_upi_id');
         $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template') ?: 'classic';
 
-        return view('posretail::vendor.retail-pos.terminals', compact('branches', 'counters', 'staff', 'upiId', 'uiTemplate'));
+        return view('posretail::vendor.retail-pos.terminals', compact('branches', 'counters', 'staff', 'rosterMap', 'upiId', 'uiTemplate'));
     }
 
     // Store-level Retail POS settings page (UPI, New Sale UI template).
@@ -1519,11 +2041,99 @@ class RetailPosController extends Controller
     // The counter assigned to the current actor (staff). Owner has no fixed counter.
     private function currentCounter()
     {
+        // Refresh shift-based counter staff once per request before resolving.
+        static $synced = false;
+        if (!$synced) {
+            $this->syncCounterShiftStaff($this->storeId());
+            $synced = true;
+        }
         $empId = auth('vendor_employee')->id();
         if (!$empId) {
             return null;
         }
         return DB::table('pos_terminals')->where('store_id', $this->storeId())->where('staff_id', $empId)->first();
+    }
+
+    // Auto-rotate counter staff by shift: for every counter with auto_shift on, set its
+    // active staff_id to the rostered staff whose shift covers the current time (null if
+    // nobody is on shift). Runs lazily on POS page loads / billing, so no cron is needed.
+    private function syncCounterShiftStaff($storeId): void
+    {
+        if (!Schema::hasTable('pos_counter_staff') || !Schema::hasColumn('pos_terminals', 'auto_shift')) {
+            return;
+        }
+        $autoCounters = DB::table('pos_terminals')->where('store_id', $storeId)->where('auto_shift', 1)->get();
+        if ($autoCounters->isEmpty()) {
+            return;
+        }
+        $nowT = now()->format('H:i:s');
+        foreach ($autoCounters as $counter) {
+            $rosterIds = DB::table('pos_counter_staff')->where('terminal_id', $counter->id)->pluck('staff_id')->filter()->all();
+            $active = null;
+            if (!empty($rosterIds)) {
+                $emps = VendorEmployee::with('storeShift:id,start_time,end_time')->whereIn('id', $rosterIds)->get();
+                foreach ($emps as $emp) {
+                    $sh = $emp->storeShift;
+                    if (!$sh || !$sh->start_time || !$sh->end_time) {
+                        continue;
+                    }
+                    $start = substr($sh->start_time, 0, 8);
+                    $end   = substr($sh->end_time, 0, 8);
+                    // Normal shift: start <= now < end. Overnight shift (start > end) wraps midnight.
+                    $covers = ($start <= $end)
+                        ? ($nowT >= $start && $nowT < $end)
+                        : ($nowT >= $start || $nowT < $end);
+                    if ($covers) {
+                        $active = (int) $emp->id;
+                        break;
+                    }
+                }
+            }
+            if ((int) $counter->staff_id !== (int) $active) {
+                // Keep one-counter-per-staff: free this staff from any other counter first.
+                if ($active) {
+                    DB::table('pos_terminals')->where('store_id', $storeId)->where('staff_id', $active)
+                        ->where('id', '!=', $counter->id)->update(['staff_id' => null]);
+                }
+                DB::table('pos_terminals')->where('id', $counter->id)->update(['staff_id' => $active, 'updated_at' => now()]);
+            }
+        }
+    }
+
+    // Save a counter's auto-shift toggle + its staff roster.
+    public function terminalRoster(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $counter = DB::table('pos_terminals')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$counter) {
+            Toastr::error('Counter not found');
+            return back();
+        }
+
+        $auto = $request->boolean('auto_shift');
+        $roster = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('roster', [])))));
+        // Only keep staff that belong to this store.
+        if (!empty($roster)) {
+            $roster = VendorEmployee::where('store_id', $storeId)->whereIn('id', $roster)->pluck('id')->all();
+        }
+
+        DB::table('pos_terminals')->where('id', $id)->update(['auto_shift' => $auto ? 1 : 0, 'updated_at' => now()]);
+
+        DB::table('pos_counter_staff')->where('terminal_id', $id)->delete();
+        if ($auto && !empty($roster)) {
+            $rows = array_map(fn($sid) => [
+                'store_id' => $storeId, 'terminal_id' => (int) $id, 'staff_id' => (int) $sid,
+                'created_at' => now(), 'updated_at' => now(),
+            ], $roster);
+            DB::table('pos_counter_staff')->insert($rows);
+        }
+
+        // Apply immediately so the page reflects the current on-shift staff.
+        $this->syncCounterShiftStaff($storeId);
+
+        Toastr::success($auto ? 'Auto shift roster saved' : 'Auto shift turned off');
+        return back();
     }
 
     // The branch a sale is billed from: the staff's counter branch, else a posted branch_id.
@@ -1707,9 +2317,37 @@ class RetailPosController extends Controller
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
 
         $search = trim((string) $request->get('q', ''));
-        $items = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
+        $dbItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
             ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")->orWhere('sku_id', 'like', "%{$search}%")))
-            ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit']);
+            ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
+
+        $items = collect();
+        foreach ($dbItems as $it) {
+            $items->push((object)[
+                'id' => (string) $it->id,
+                'item_name' => $it->item_name,
+                'sku_id' => $it->sku_id,
+                'stock' => $it->stock,
+                'unit' => $it->unit,
+                'itemunit' => $it->itemunit,
+                'variation_type' => null,
+            ]);
+
+            $vars = json_decode($it->variations, true) ?: [];
+            foreach ($vars as $var) {
+                if (!empty($var['type'])) {
+                    $items->push((object)[
+                        'id' => $it->id . '-var-' . $var['type'],
+                        'item_name' => $it->item_name . ' (' . $var['type'] . ')',
+                        'sku_id' => $it->sku_id,
+                        'stock' => (float) ($var['stock'] ?? 0),
+                        'unit' => $it->unit,
+                        'itemunit' => $it->itemunit,
+                        'variation_type' => $var['type'],
+                    ]);
+                }
+            }
+        }
 
         $gatepasses = DB::table('pos_stock_gatepass as g')
             ->leftJoin('branches as b', 'b.id', '=', 'g.branch_id')
@@ -1732,10 +2370,10 @@ class RetailPosController extends Controller
         }
 
         $lines = [];
-        foreach ((array) $request->input('qty', []) as $itemId => $val) {
+        foreach ((array) $request->input('qty', []) as $idStr => $val) {
             $qty = (float) $val;
             if ($qty > 0) {
-                $lines[(int) $itemId] = $qty;
+                $lines[$idStr] = $qty;
             }
         }
         if (empty($lines)) {
@@ -1744,15 +2382,44 @@ class RetailPosController extends Controller
         }
 
         // Validate availability against main-store stock before moving anything.
-        $items = InventoryItem::where('store_id', $storeId)->whereIn('id', array_keys($lines))->get()->keyBy('id');
-        foreach ($lines as $itemId => $qty) {
+        $itemIds = [];
+        foreach (array_keys($lines) as $idStr) {
+            $idParts = explode('-var-', $idStr);
+            $itemIds[] = (int) $idParts[0];
+        }
+        $items = InventoryItem::where('store_id', $storeId)->whereIn('id', array_unique($itemIds))->get()->keyBy('id');
+
+        foreach ($lines as $idStr => $qty) {
+            $idParts = explode('-var-', $idStr);
+            $itemId = (int) $idParts[0];
+            $varType = $idParts[1] ?? null;
+
             $item = $items->get($itemId);
             if (!$item) {
                 Toastr::error('Item not found');
                 return back();
             }
-            if ($qty > (float) $item->stock) {
-                Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
+
+            $availStock = (float) $item->stock;
+            if ($varType) {
+                $vars = json_decode($item->variations, true) ?: [];
+                $varFound = false;
+                foreach ($vars as $var) {
+                    if (isset($var['type']) && $var['type'] === $varType) {
+                        $availStock = (float) ($var['stock'] ?? 0);
+                        $varFound = true;
+                        break;
+                    }
+                }
+                if (!$varFound) {
+                    Toastr::error("Variation \"{$varType}\" not found for \"{$item->item_name}\"");
+                    return back();
+                }
+            }
+
+            if ($qty > $availStock) {
+                $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                Toastr::error("Insufficient main-store stock for \"{$displayName}\" (have " . rtrim(rtrim(number_format($availStock, 3), '0'), '.') . ')');
                 return back();
             }
         }
@@ -1771,17 +2438,41 @@ class RetailPosController extends Controller
                 'updated_at'  => now(),
             ]);
 
-            foreach ($lines as $itemId => $qty) {
-                // Deduct from main store…
-                InventoryItem::where('id', $itemId)->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)')]);
-                // …and add to the branch (increment if a row already exists).
+            foreach ($lines as $idStr => $qty) {
+                $idParts = explode('-var-', $idStr);
+                $itemId = (int) $idParts[0];
+                $varType = $idParts[1] ?? null;
+
+                $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+
+                // Deduct from main store
+                if ($varType) {
+                    $vars = json_decode($item->variations, true) ?: [];
+                    foreach ($vars as &$var) {
+                        if (isset($var['type']) && $var['type'] === $varType) {
+                            $var['stock'] = max(0, (float)($var['stock'] ?? 0) - $qty);
+                        }
+                    }
+                    $item->variations = json_encode($vars);
+                }
+                $item->stock = max(0, (float)$item->stock - $qty);
+                $item->save();
+
+                // …and add to the branch
                 $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
                 if ($existing) {
                     DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
                 } else {
                     DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $qty, 'created_at' => now(), 'updated_at' => now()]);
                 }
-                DB::table('pos_stock_gatepass_items')->insert(['gatepass_id' => $gatepassId, 'inventory_item_id' => $itemId, 'qty' => $qty, 'created_at' => now()]);
+
+                DB::table('pos_stock_gatepass_items')->insert([
+                    'gatepass_id' => $gatepassId,
+                    'inventory_item_id' => $itemId,
+                    'variation_type' => $varType,
+                    'qty' => $qty,
+                    'created_at' => now()
+                ]);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -1819,12 +2510,28 @@ class RetailPosController extends Controller
                 $lines = DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->get();
                 foreach ($lines as $line) {
                     $qty = (float) $line->qty;
-                    // Return to main store…
-                    InventoryItem::where('id', $line->inventory_item_id)->where('store_id', $storeId)
-                        ->update(['stock' => DB::raw('stock + ' . $qty)]);
+                    $itemId = $line->inventory_item_id;
+                    $varType = $line->variation_type ?? null;
+
+                    // Return to main store
+                    $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+                    if ($item) {
+                        if ($varType) {
+                            $vars = json_decode($item->variations, true) ?: [];
+                            foreach ($vars as &$var) {
+                                if (isset($var['type']) && $var['type'] === $varType) {
+                                    $var['stock'] = (float)($var['stock'] ?? 0) + $qty;
+                                }
+                            }
+                            $item->variations = json_encode($vars);
+                        }
+                        $item->stock = (float)$item->stock + $qty;
+                        $item->save();
+                    }
+
                     // …and pull it back out of the branch.
                     DB::table('pos_branch_stock')
-                        ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $line->inventory_item_id)
+                        ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $itemId)
                         ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
                 }
                 DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->delete();
@@ -1854,7 +2561,7 @@ class RetailPosController extends Controller
             ->leftJoin('inventory_items as ii', 'ii.id', '=', 'gi.inventory_item_id')
             ->leftJoin('units as u', 'u.id', '=', 'ii.unit')
             ->where('gi.gatepass_id', $id)
-            ->get(['gi.qty', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
+            ->get(['gi.qty', 'gi.variation_type', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
         $store = Helpers::get_store_data();
         return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'items', 'store'));
     }

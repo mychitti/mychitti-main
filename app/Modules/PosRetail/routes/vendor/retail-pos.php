@@ -29,7 +29,16 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::get('terminals',    [RetailPosController::class, 'terminals'])->name('terminals')->middleware('permission:pos_branch,view,pos_branch,create,pos_branch,delete,pos_counter,create,pos_counter,delete');
     Route::post('terminals',   [RetailPosController::class, 'terminalStore'])->name('terminals.store')->middleware('permission:pos_counter,create');
     Route::post('terminals/{id}/staff', [RetailPosController::class, 'terminalAssignStaff'])->name('terminals.staff')->middleware('permission:pos_counter,create');
+    Route::post('terminals/{id}/roster', [RetailPosController::class, 'terminalRoster'])->name('terminals.roster')->middleware('permission:pos_counter,create');
     Route::post('terminals/{id}/delete', [RetailPosController::class, 'terminalDelete'])->name('terminals.delete')->middleware('permission:pos_counter,delete');
+
+    // Cash Flow — shift-to-shift cash request, handover & approval
+    Route::get('cash-flow',               [RetailPosController::class, 'cashFlow'])->name('cash-flow')->middleware('permission:pos_cash,view');
+    Route::get('cash-flow/new',           [RetailPosController::class, 'cashRequestForm'])->name('cash-flow.new')->middleware('permission:pos_cash,view');
+    Route::post('cash-flow/save',         [RetailPosController::class, 'cashRequestSave'])->name('cash-flow.save')->middleware('permission:pos_cash,view');
+    Route::get('cash-flow/{id}',          [RetailPosController::class, 'cashRequestForm'])->name('cash-flow.show')->whereNumber('id')->middleware('permission:pos_cash,view');
+    Route::post('cash-flow/{id}/action',  [RetailPosController::class, 'cashRequestAction'])->name('cash-flow.action')->whereNumber('id')->middleware('permission:pos_cash,view');
+    Route::get('cash-flow/{id}/slip',     [RetailPosController::class, 'cashSlip'])->name('cash-flow.slip')->whereNumber('id')->middleware('permission:pos_cash,view');
     Route::post('branches',    [RetailPosController::class, 'branchStore'])->name('branches.store')->middleware('permission:pos_branch,create');
     Route::post('branches/{id}/delete', [RetailPosController::class, 'branchDelete'])->name('branches.delete')->middleware('permission:pos_branch,delete');
     Route::get('settings',     [RetailPosController::class, 'settings'])->name('settings')->middleware('permission:pos_billing,settings');

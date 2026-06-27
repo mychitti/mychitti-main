@@ -155,6 +155,30 @@
                     {{ ($gst = json_decode($bill_from['gst'], true)) && isset($gst['code']) ? substr($gst['code'], 2, 10) : substr($bill_from['gst'], 2, 10) }}
                     <br>
                 @endif
+                @php
+                    $fssaiLine = null;
+                    $otherDocLines = [];
+                    try {
+                        if (!empty($bill_from['id'])) {
+                            $sellerStore = \App\Models\Store::find($bill_from['id']);
+                            if ($sellerStore && $sellerStore->fssai_show && $sellerStore->fssai_number) {
+                                $fssaiLine = $sellerStore->fssai_number;
+                            }
+                            $otherDocLines = \App\Models\StoreDocument::where('store_id', $bill_from['id'])
+                                ->where('doc_type', 'other')->where('status', 1)->where('show_on_bill', 1)
+                                ->whereNotNull('doc_number')->where('doc_number', '!=', '')->get();
+                        }
+                    } catch (\Throwable $e) {
+                        $fssaiLine = null;
+                        $otherDocLines = [];
+                    }
+                @endphp
+                @if ($fssaiLine)
+                    FSSAI: {{ $fssaiLine }}<br>
+                @endif
+                @foreach ($otherDocLines as $od)
+                    {{ $od->doc_name }}: {{ $od->doc_number }}<br>
+                @endforeach
 
                 {{ $bill_from['cin_number'] ? 'CIN No: ' . $bill_from['cin_number'] : '' }}
             </td>
@@ -546,15 +570,6 @@
                             <b>{{ \App\CentralLogics\Helpers::currency_symbol() . _num($bill_data['total_amount'], 3) }}</b>
                         </td>
                     </tr>
-                    @if (!empty($bill_data['total_saved']) && $bill_data['total_saved'] > 0)
-                        <tr>
-                            <td colspan="2" style="padding-top:4px;">
-                                <div style="background:#e6f7ec;color:#1b7a43;border:1px dashed #5dba5d;text-align:center;font-weight:bold;font-size:11px;padding:4px;">
-                                    ★ You Saved {{ \App\CentralLogics\Helpers::currency_symbol() . _num($bill_data['total_saved']) }} on MRP ★
-                                </div>
-                            </td>
-                        </tr>
-                    @endif
                     @if (!empty($invoice->payment_method))
                         <tr>
                             <td class="borderless_td" style="text-align: right; font-size:10px;">Payment Method:</td>
@@ -608,6 +623,16 @@
                             <td class="borderless_td" style="text-align: right; font-size:12px; padding-top: 30px;">
                                 <b>Advance Payment: </b> {{ $invoice->advance_amount }} <br>
                                 <b>Payable Amount: </b> {{ $invoice->total_amount - $invoice->advance_amount }}
+                            </td>
+                        </tr>
+                    @endif
+
+                    @if (!empty($bill_data['total_saved']) && $bill_data['total_saved'] > 0)
+                        <tr>
+                            <td colspan="2" class="borderless_td" style="text-align:right; padding-top:6px;">
+                                <div style="display:inline-block;background:#e6f7ec;color:#1b7a43;border:1px dashed #5dba5d;border-radius:5px;font-weight:bold;font-size:11px;padding:3px 8px;">
+                                    ★ You Saved {{ \App\CentralLogics\Helpers::currency_symbol() . _num($bill_data['total_saved']) }} on MRP ★
+                                </div>
                             </td>
                         </tr>
                     @endif
