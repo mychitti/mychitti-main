@@ -143,6 +143,20 @@ class RetailPosController extends Controller
             if (!$hasPrefs) {
                 return; // no prefs at all → menu defaults already show the Retail POS items
             }
+
+            // pos_retail also gets basic Inventory free (free-by-business-type). Seed the Inventory
+            // menu visible ONCE if the store has no row for it yet — independent of the Retail POS
+            // "seed once" guard below, so stores that already had retail menus seeded still get it.
+            // A later manual hide on the Menu Preference page creates the row and is preserved.
+            $hasInventoryRow = DB::table('store_menu_visibility')
+                ->where('store_id', $storeId)->where('menu_type', 'sidebar')
+                ->where('menu_key', 'inventory_manage')->exists();
+            if (!$hasInventoryRow) {
+                DB::table('store_menu_visibility')->insert([
+                    'store_id' => $storeId, 'menu_type' => 'sidebar', 'menu_key' => 'inventory_manage', 'is_visible' => 1,
+                ]);
+            }
+
             $slugs = array_column(self::MENU_MASTERDATA, 'slug');
             $alreadySeeded = DB::table('store_menu_visibility')
                 ->where('store_id', $storeId)->where('menu_type', 'sidebar')

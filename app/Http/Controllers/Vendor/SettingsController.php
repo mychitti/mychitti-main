@@ -458,15 +458,17 @@ class SettingsController extends Controller
                 if (!empty($item->business_type) && strtolower($item->business_type) !== 'all') {
                     return true;
                 }
-                // Generic 'all' items: apply subscription/planwise checks.
+                // Generic 'all' items: apply subscription/planwise checks. permission_check() also
+                // honors free-by-business-type grants (e.g. pos_retail gets basic Inventory free),
+                // so those modules remain toggleable here even without a purchased subscription.
                 if (!empty($item->planwise)) {
                     if (in_array($item->planwise, $allSubModuleKeys)) {
-                        return in_array($item->planwise, $accessibleKeys);
+                        return in_array($item->planwise, $accessibleKeys) || Helpers::permission_check($item->planwise);
                     }
                     return Helpers::permission_check($item->planwise);
                 }
                 if (in_array($item->slug, $allSubModuleKeys)) {
-                    return in_array($item->slug, $accessibleKeys);
+                    return in_array($item->slug, $accessibleKeys) || Helpers::permission_check($item->slug);
                 }
                 return true;
             });
