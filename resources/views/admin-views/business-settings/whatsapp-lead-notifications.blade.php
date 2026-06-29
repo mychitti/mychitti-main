@@ -19,7 +19,7 @@
         <div class="card">
             <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center">
                 <p class="mb-0 text-muted" style="font-size:13px;">
-                    {{ translate('Enable WhatsApp lead notifications per vendor. Billing charges the vendor wallet (₹) monthly; Retail enables it free with no bill. Delivery requires the vendor to have connected WhatsApp.') }}
+                    {{ translate('Enable WhatsApp lead notifications per vendor. Billing generates a bill (charges the vendor wallet ₹ monthly); Retail enables it without generating a bill. Delivery requires the vendor to have connected WhatsApp.') }}
                 </p>
                 <form method="get" class="d-flex" style="gap:8px;">
                     <input type="search" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm"
@@ -44,7 +44,6 @@
                             @forelse ($stores as $store)
                                 @php
                                     $live = $store->feat_enabled && $store->feat_active_until && $store->feat_active_until >= now()->toDateString();
-                                    $free = $live && (float) $store->feat_price == 0;
                                 @endphp
                                 <tr>
                                     <td>{{ $store->name }}</td>
@@ -58,11 +57,8 @@
                                     </td>
                                     <td class="text-right">{{ _price($store->wallet_balance ?? 0) }}</td>
                                     <td>
-                                        @if ($live && $free)
-                                            <span class="badge badge-soft-success">{{ translate('Active — Free (Retail)') }}</span>
-                                        @elseif ($live)
-                                            <span class="badge badge-soft-success">{{ translate('Active — Billed') }}</span>
-                                            <small class="text-muted d-block">{{ translate('until') }} {{ $store->feat_active_until }}</small>
+                                        @if ($live)
+                                            <span class="badge badge-soft-success">{{ translate('Active') }}</span>
                                         @else
                                             <span class="badge badge-soft-secondary">{{ translate('Inactive') }}</span>
                                         @endif
@@ -74,8 +70,8 @@
                                             <input type="hidden" name="store_id" value="{{ $store->id }}">
                                             <input type="hidden" name="action" value="enable">
                                             <select name="mode" class="form-control form-control-sm" style="width:auto;">
-                                                <option value="retail">{{ translate('Retail — free (no bill)') }}</option>
-                                                <option value="billing">{{ translate('Billing — charge ₹200/mo') }}</option>
+                                                <option value="retail">{{ translate('Retail — no bill') }}</option>
+                                                <option value="billing">{{ translate('Billing — generate bill ₹200/mo') }}</option>
                                             </select>
                                             <button class="btn btn-sm btn--primary">{{ $live ? translate('Renew / Update') : translate('Enable') }}</button>
                                         </form>

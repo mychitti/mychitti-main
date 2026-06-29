@@ -436,18 +436,25 @@ class WhatsAppService
      */
     public static function sendLeadNotification(int $storeId, ?string $serviceName, ?string $clientName): void
     {
+        Log::info('LEAD-WA: sendLeadNotification called', ['store_id' => $storeId, 'service' => $serviceName, 'client' => $clientName]);
+
         if (!static::storeHasFeature($storeId, 'leads')) {
+            Log::info('LEAD-WA: skipped — store does not have active "leads" add-on', ['store_id' => $storeId]);
             return;
         }
         $store = DB::table('stores')->where('id', $storeId)->first();
         if (!$store || empty($store->phone)) {
+            Log::info('LEAD-WA: skipped — store missing or no phone', ['store_id' => $storeId, 'phone' => $store->phone ?? null]);
             return;
         }
 
         $wa = static::make();
         if (!$wa->isConfigured()) {
+            Log::info('LEAD-WA: skipped — platform WhatsApp not configured (no phone_number_id/token)', ['store_id' => $storeId, 'source' => $wa->source()]);
             return;
         }
+
+        Log::info('LEAD-WA: all checks passed, attempting send', ['store_id' => $storeId, 'to' => $store->phone, 'source' => $wa->source()]);
 
         $serviceName = $serviceName ?: 'a service';
         $clientName  = $clientName ?: 'a customer';

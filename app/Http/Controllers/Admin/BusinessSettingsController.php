@@ -3114,13 +3114,13 @@ class BusinessSettingsController extends Controller
             return back();
         }
 
-        // Retail — no bill, free admin grant (long validity so it doesn't lapse monthly).
+        // Retail — enabled without generating a bill (long validity so it doesn't lapse monthly).
         $activeUntil = now()->addYears(10)->toDateString();
         DB::table('wa_receiving_features')->updateOrInsert(
             ['store_id' => $storeId, 'feature' => 'leads'],
             ['enabled' => 1, 'price' => 0, 'active_until' => $activeUntil, 'updated_at' => now(), 'created_at' => $existing->created_at ?? now()]
         );
-        Toastr::success($meta['label'] . ' enabled free (no bill) for ' . $store->name . '.');
+        Toastr::success($meta['label'] . ' enabled for ' . $store->name . ' (Retail — no bill generated).');
         return back();
     }
     //Send Mail
