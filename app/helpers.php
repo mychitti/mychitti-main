@@ -4110,6 +4110,42 @@ if (!function_exists('_unitNaneById')) {
         return Unit::where('id', $unitId)->first()->unit;
     }
 }
+if (!function_exists('_sellingPriceConversionFactor')) {
+    // Base (primary) units contained in one alternate (secondary) unit.
+    // e.g. 1 tray = 25.5 kg  → factor 25.5. Mirrors the stock UOM math (primary_qty / secondary_qty).
+    function _sellingPriceConversionFactor($primary_qty, $secondary_qty)
+    {
+        $primary_qty   = (float) $primary_qty;
+        $secondary_qty = (float) $secondary_qty;
+        if ($primary_qty <= 0 || $secondary_qty <= 0) {
+            return 1.0;
+        }
+        return $primary_qty / $secondary_qty;
+    }
+}
+if (!function_exists('_normalizeSellingPriceToBase')) {
+    // The vendor may enter the selling price per alternate unit (e.g. "120 per tray").
+    // selling_price is always stored per base unit (e.g. per kg) so all POS / billing / report
+    // logic stays unchanged. When the basis is the alternate unit we divide by the conversion factor.
+    function _normalizeSellingPriceToBase($entered, $basis, $primary_qty, $secondary_qty)
+    {
+        $entered = (float) $entered;
+        if ($basis !== 'secondary') {
+            return $entered;
+        }
+        $factor = _sellingPriceConversionFactor($primary_qty, $secondary_qty);
+        return $factor > 0 ? round($entered / $factor, 4) : $entered;
+    }
+}
+if (!function_exists('_ensureSellingPriceBasisColumn')) {
+    function _ensureSellingPriceBasisColumn()
+    {
+        if (\Illuminate\Support\Facades\Schema::hasTable('inventory_items')
+            && !\Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'selling_price_basis')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `selling_price_basis` VARCHAR(20) NOT NULL DEFAULT 'primary'");
+        }
+    }
+}
 if (!function_exists('_auditLogs')) {
     function _auditLogs($action, $store_id = null)
     {

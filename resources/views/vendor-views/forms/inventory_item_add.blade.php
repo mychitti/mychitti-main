@@ -579,6 +579,7 @@
                                 placeholder="HSN" />
                         </div>
                     </div>
+                    @include('vendor-views.inventory.partials._selling_price_basis')
                     <div class="col-md-3">
                         <div class="form-group form-group-custom">
                             <label for="openingStock" class="custom-label">Selling Price<span

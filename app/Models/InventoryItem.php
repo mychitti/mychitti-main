@@ -42,6 +42,7 @@ class InventoryItem extends Model
         'attributes',
         'stock',
         'selling_price',
+        'selling_price_basis',
         'show_on_store_page',
         'description',
         'description_attributes',

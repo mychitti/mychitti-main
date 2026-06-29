@@ -993,6 +993,7 @@ class InventoryController extends Controller
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
         $this->ensureDecimalStockColumns();
+        _ensureSellingPriceBasisColumn();
         $itemId = $request->item_id;
         $validator = FacadesValidator::make($request->all(), [
             'mrp'                  => 'required',
@@ -1088,7 +1089,7 @@ class InventoryController extends Controller
         $inventory_item->secondary_unit = $secondary_unit;
         $inventory_item->primary_qty = $primary_stock;
         $inventory_item->secondary_qty = $secondary_stock;
-        $inventory_item->mrp = $request->main_mrp;
+        $inventory_item->mrp = _normalizeSellingPriceToBase($request->main_mrp, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
         $inventory_item->gst_rate = $request->gst_rate ?? 0;
         $inventory_item->gst_type = $request->gst_type;
         $inventory_item->gst_status = $request->gst_status ?? 'excluding';
@@ -1102,8 +1103,10 @@ class InventoryController extends Controller
             $inventory_item->product_condition = $request->product_condition;
             $inventory_item->product_note = $request->product_note;
         }
-        $inventory_item->landing_price = $request->main_landing_price;
-        $inventory_item->selling_price = $request->main_selling_price;
+        $inventory_item->landing_price = _normalizeSellingPriceToBase($request->main_landing_price, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
+        $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
+        $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
+        $inventory_item->selling_price_basis = $sp_basis;
         $inventory_item->storage_unit_id = $request->storage_unit_id;
         $inventory_item->description = $request->description;
         $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);
@@ -1249,6 +1252,7 @@ class InventoryController extends Controller
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
         $this->ensureDecimalStockColumns();
+        _ensureSellingPriceBasisColumn();
         $store_id = Helpers::get_store_id();
         $rules = [
             'item_type' => 'required',
@@ -1332,7 +1336,7 @@ class InventoryController extends Controller
             $inventory_item->primary_qty = $primary_stock;
             $inventory_item->secondary_unit = $secondary_unit;
             $inventory_item->secondary_qty = $secondary_stock;
-            $inventory_item->mrp = $request->main_mrp;
+            $inventory_item->mrp = _normalizeSellingPriceToBase($request->main_mrp, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
             $inventory_item->gst_rate = $request->gst_rate ?? 0;
             $inventory_item->gst_type = $request->gst_type;
             $inventory_item->gst_status = $request->gst_status ?? 'excluding';
@@ -1342,8 +1346,10 @@ class InventoryController extends Controller
             $inventory_item->custom_attributes = json_encode($custom_attr);
             $inventory_item->product_condition = $request->product_condition;
             $inventory_item->product_note = $request->product_note;
-            $inventory_item->landing_price = $request->main_landing_price;
-            $inventory_item->selling_price = $request->main_selling_price;
+            $inventory_item->landing_price = _normalizeSellingPriceToBase($request->main_landing_price, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
+            $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
+            $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
+            $inventory_item->selling_price_basis = $sp_basis;
             $inventory_item->storage_unit_id = $request->storage_unit_id;
             $inventory_item->description = $request->description;
             $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);

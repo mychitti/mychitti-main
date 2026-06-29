@@ -693,7 +693,7 @@ class InventoryController extends Controller
         $inventory_item->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : $inventory_item->attributes;
         $inventory_item->category_id = $category_id;
         $inventory_item->unit = $inv_unit;
-        $inventory_item->mrp = $request->main_mrp;
+        $inventory_item->mrp = _normalizeSellingPriceToBase($request->main_mrp, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
         $inventory_item->gst_rate = $request->gst_rate ?? 0;
         $inventory_item->gst_type = $request->gst_type;
         $inventory_item->hsn = $request->hsn;
@@ -706,8 +706,11 @@ class InventoryController extends Controller
             $inventory_item->product_condition = $request->product_condition;
             $inventory_item->product_note = $request->product_note;
         }
-        $inventory_item->landing_price = $request->main_landing_price;
-        $inventory_item->selling_price = $request->main_selling_price;
+        $inventory_item->landing_price = _normalizeSellingPriceToBase($request->main_landing_price, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
+        _ensureSellingPriceBasisColumn();
+        $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
+        $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
+        $inventory_item->selling_price_basis = $sp_basis;
         $inventory_item->storage_unit_id = $request->storage_unit_id;
         $inventory_item->description = $request->description;
         $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;
@@ -913,7 +916,7 @@ class InventoryController extends Controller
             $inventory_item->primary_qty = $primary_stock;
             $inventory_item->secondary_unit = $secondary_unit;
             $inventory_item->secondary_qty = $secondary_stock;
-            $inventory_item->mrp = $request->main_mrp;
+            $inventory_item->mrp = _normalizeSellingPriceToBase($request->main_mrp, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
             $inventory_item->gst_rate = $request->gst_rate ?? 0;
             $inventory_item->gst_type = $request->gst_type;
             $inventory_item->hsn = $request->hsn;
@@ -922,8 +925,11 @@ class InventoryController extends Controller
             $inventory_item->custom_attributes = json_encode($custom_attr);
             $inventory_item->product_condition = $request->product_condition;
             $inventory_item->product_note = $request->product_note;
-            $inventory_item->landing_price = $request->main_landing_price;
-            $inventory_item->selling_price = $request->main_selling_price;
+            $inventory_item->landing_price = _normalizeSellingPriceToBase($request->main_landing_price, ($request->selling_price_basis === 'secondary' ? 'secondary' : 'primary'), $request->primary_qty, $secondary_qty);
+            _ensureSellingPriceBasisColumn();
+            $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
+            $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
+            $inventory_item->selling_price_basis = $sp_basis;
             $inventory_item->storage_unit_id = $request->storage_unit_id;
             $inventory_item->description = $request->description;
             $specifications = isset($request->specifications) ? urldecode(base64_decode($request->specifications)) : null;

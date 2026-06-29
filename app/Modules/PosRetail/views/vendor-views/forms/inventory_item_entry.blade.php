@@ -72,6 +72,7 @@
                   /* Narrower number columns */
                   input[name="quantity[]"] { max-width: 95px; }
                   input[placeholder="MRP"] { max-width: 100px; }
+                  input[name="main_mrp"] { max-width: auto; }
                   input[name="selling_price[]"] { max-width: 110px; }
               </style>
               <table class="table mt-2">

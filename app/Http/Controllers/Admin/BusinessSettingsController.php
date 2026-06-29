@@ -3016,6 +3016,113 @@ class BusinessSettingsController extends Controller
         $messages = $q->orderByDesc('id')->paginate(30)->appends($request->query());
         return view('admin-views.business-settings.whatsapp-report', compact('messages'));
     }
+
+    // Admin control: enable WhatsApp "Lead Notifications" (the wa_receiving_features 'leads' add-on)
+    // per vendor. Lists every store with its current status and wallet balance.
+    public function whatsapp_lead_notifications(Request $request)
+    {
+        \App\Services\WhatsAppService::ensureStoreColumns();
+        \App\Services\WhatsAppService::ensureReceivingTable();
+
+        $search = $request->get('search');
+        $stores = DB::table('stores')
+            ->leftJoin('wa_receiving_features as waf', function ($j) {
+                $j->on('waf.store_id', '=', 'stores.id')->where('waf.feature', '=', 'leads');
+            })
+            ->leftJoin('store_wallets as sw', 'sw.vendor_id', '=', 'stores.vendor_id')
+            ->when($search, fn($q) => $q->where('stores.name', 'like', "%{$search}%"))
+            ->select(
+                'stores.id',
+                'stores.name',
+                'stores.business_type',
+                'stores.wa_enabled',
+                'waf.enabled as feat_enabled',
+                'waf.active_until as feat_active_until',
+                'waf.price as feat_price',
+                DB::raw('(COALESCE(sw.total_earning,0) - COALESCE(sw.total_withdrawn,0)) as wallet_balance')
+            )
+            ->orderBy('stores.name')
+            ->paginate(20)
+            ->appends($request->query());
+
+        return view('admin-views.business-settings.whatsapp-lead-notifications', compact('stores', 'search'));
+    }
+
+    // Enable (billing = charge the vendor wallet / retail = free, no bill) or disable lead notifications.
+    public function whatsapp_lead_notification_toggle(Request $request)
+    {
+        $request->validate([
+            'store_id' => 'required',
+            'action'   => 'required|in:enable,disable',
+            'mode'     => 'nullable|in:billing,retail',
+        ]);
+
+        \App\Services\WhatsAppService::ensureReceivingTable();
+        $storeId = (int) $request->store_id;
+        $store = \App\Models\Store::with('vendor')->find($storeId);
+        if (!$store) {
+            Toastr::error('Store not found.');
+            return back();
+        }
+
+        $meta  = \App\Services\WhatsAppService::RECEIVING_FEATURES['leads'];
+        $price = (float) $meta['price'];
+        $existing = DB::table('wa_receiving_features')->where('store_id', $storeId)->where('feature', 'leads')->first();
+
+        if ($request->action === 'disable') {
+            DB::table('wa_receiving_features')->where('store_id', $storeId)->where('feature', 'leads')
+                ->update(['enabled' => 0, 'updated_at' => now()]);
+            Toastr::success('Lead notifications disabled for ' . $store->name . '.');
+            return back();
+        }
+
+        $mode = $request->mode ?: 'retail';
+
+        if ($mode === 'billing') {
+            // Generate a bill — debit the vendor wallet for one month, as the vendor self-subscribe flow does.
+            $vendorId = $store->vendor->id ?? null;
+            $wallet   = $vendorId ? \App\Models\StoreWallet::where('vendor_id', $vendorId)->first() : null;
+            $balance  = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+            if (!$wallet || $balance < $price) {
+                Toastr::error('Insufficient wallet balance for ' . $store->name . ' (needs ' . _price($price) . '). Use Retail (free) or top up the wallet.');
+                return back();
+            }
+
+            $wallet->decrement('total_earning', $price);
+            $wallet->increment('total_withdrawn', $price);
+
+            $txn = new \App\Models\AccountTransaction();
+            $txn->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
+            $txn->from_type  = 'store';
+            $txn->amount     = $price;
+            $txn->from_id    = $vendorId;
+            $txn->method     = 'wallet';
+            $txn->action     = 'debit';
+            $txn->reason     = 'WhatsApp Receiving — ' . $meta['label'] . ' (admin)';
+            $txn->created_by = 'admin';
+            $txn->save();
+
+            $base = ($existing && $existing->active_until && $existing->active_until >= now()->toDateString())
+                ? Carbon::parse($existing->active_until) : now();
+            $activeUntil = $base->copy()->addMonth()->toDateString();
+
+            DB::table('wa_receiving_features')->updateOrInsert(
+                ['store_id' => $storeId, 'feature' => 'leads'],
+                ['enabled' => 1, 'price' => $price, 'active_until' => $activeUntil, 'updated_at' => now(), 'created_at' => $existing->created_at ?? now()]
+            );
+            Toastr::success($meta['label'] . ' billed (' . _price($price) . ') & active until ' . $activeUntil . ' for ' . $store->name . '.');
+            return back();
+        }
+
+        // Retail — no bill, free admin grant (long validity so it doesn't lapse monthly).
+        $activeUntil = now()->addYears(10)->toDateString();
+        DB::table('wa_receiving_features')->updateOrInsert(
+            ['store_id' => $storeId, 'feature' => 'leads'],
+            ['enabled' => 1, 'price' => 0, 'active_until' => $activeUntil, 'updated_at' => now(), 'created_at' => $existing->created_at ?? now()]
+        );
+        Toastr::success($meta['label'] . ' enabled free (no bill) for ' . $store->name . '.');
+        return back();
+    }
     //Send Mail
     public function send_mail(Request $request)
     {

@@ -721,11 +721,19 @@
                                             class="form-control" id="hsn" placeholder="HSN" />
                                     </div>
                                 </div>
+                                @php
+                                    $sp_basis = $item->selling_price_basis ?? 'primary';
+                                    $sp_factor = ($item->primary_qty > 0 && $item->secondary_qty > 0) ? ($item->primary_qty / $item->secondary_qty) : 1;
+                                    $sp_display = $sp_basis === 'secondary' ? round($item->selling_price * $sp_factor, 4) : $item->selling_price;
+                                    $mrp_display = $sp_basis === 'secondary' ? round(($item->mrp ?? 0) * $sp_factor, 4) : $item->mrp;
+                                    $landing_display = $sp_basis === 'secondary' ? round(($item->landing_price ?? 0) * $sp_factor, 4) : $item->landing_price;
+                                @endphp
+                                @include('vendor-views.inventory.partials._selling_price_basis')
                                 <div class="col-md-3">
                                     <div class="form-group form-group-custom">
                                         <label for="openingStock" class="custom-label">Selling Price<span
                                                 class="text-danger">*</span></label>
-                                        <input type="number" value="{{ $item->selling_price }}"
+                                        <input type="number" value="{{ $sp_display }}"
                                             placeholder="Selling Price" name="main_selling_price" class="form-control"
                                             step="0.001" />
                                     </div>
@@ -734,14 +742,14 @@
                                     <div class="form-group form-group-custom">
                                         <label for="openingStock" class="custom-label">MRP<span
                                                 class="text-danger">*</span></label>
-                                        <input type="number" value="{{ $item->mrp }}" placeholder="MRP"
+                                        <input type="number" value="{{ $mrp_display }}" placeholder="MRP"
                                             name="main_mrp" class="form-control" step="0.001" />
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-group form-group-custom">
                                         <label for="openingStock" class="custom-label">Landing Price</label>
-                                        <input type="number" value="{{ $item->landing_price }}"
+                                        <input type="number" value="{{ $landing_display }}"
                                             placeholder="Landing Price" name="main_landing_price" class="form-control"
                                             step="0.001" />
                                     </div>
