@@ -64,6 +64,8 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
 
         $banners = DB::table('banners')->where('platform', 'app')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'item_wise')->where('data', $item_id)
+            ->where(fn($q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
+            ->where(fn($q) => $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString()))
             ->select('id','title', 'image', 'default_link', 'created_at')->orderBy('sort_order')->get();
         // prx($banners);
 
@@ -133,6 +135,8 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
 
         $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'module_wise')->where('data', $request->module_id)
+            ->where(fn($q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
+            ->where(fn($q) => $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString()))
             ->orderBy('sort_order')->get();
         // prx($banners);
 
@@ -153,6 +157,8 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
 
         $banners = DB::table('banners')->where('status', 1)->whereIn('zone_id', $zone_ids)->where('type', 'default')->where('platform', 'app')
+            ->where(fn($q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
+            ->where(fn($q) => $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString()))
             ->select("id", "title", "image", "default_link", 'created_at')
             ->orderBy('sort_order')->get();
 
@@ -171,6 +177,8 @@ class BannerController extends Controller
         $zone_ids = json_decode($request->header('zoneId'), true);
         $banners = DB::table('banners')->where('status', 1)->where('type', 'category_wise')->where('platform', 'app')->where('data', $ctId)
             ->whereIn('zone_id', $zone_ids)
+            ->where(fn($q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
+            ->where(fn($q) => $q->whereNull('expiry_date')->orWhere('expiry_date', '>=', now()->toDateString()))
             ->select("id","title", "image", "default_link", 'created_at')
             ->orderBy('sort_order')->get();
         foreach ($banners as $key => $value) {
@@ -181,6 +189,7 @@ class BannerController extends Controller
     public function get_paid_banners(Request $request)
     {
         $banners = DB::table('banners')->where('status', 1)->where('paid', 1)->where('expiry_date', '>', date('Y-m-d H:i:s'))
+            ->where(fn($q) => $q->whereNull('publish_at')->orWhere('publish_at', '<=', now()))
             ->orderBy('sort_order')->get();
         foreach ($banners as $key => $value) {
             $banners[$key]->image =  asset('storage/banner/') . '/' . $value->image;
