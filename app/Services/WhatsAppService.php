@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Schema;
 class WhatsAppService
 {
     /** Default approved template for vendor lead notifications (overridden by whatsapp_config.lead_template). */
-    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert2';
+    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert3';
 
     /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
@@ -460,6 +460,7 @@ class WhatsAppService
         $clientName  = $clientName ?: 'a customer';
         $cfg = Helpers::get_business_settings('whatsapp_config');
 
+
         // Config field overrides; otherwise fall back to the default lead template.
         $template = !empty($cfg['lead_template']) ? $cfg['lead_template'] : self::DEFAULT_LEAD_TEMPLATE;
 
@@ -472,10 +473,10 @@ class WhatsAppService
                     [$store->name ?: 'Vendor', $serviceName, $clientName]
                 ),
             ]];
+
             $res = $wa->sendTemplate($store->phone, $template, $cfg['lead_template_lang'] ?? 'en_US', $components, 'lead notify');
             $sent = !empty($res['success']);
         }
-
         // Fallback when no template is configured or the template send fails
         // (e.g. not yet approved) — the vendor still gets notified.
         if (!$sent) {
