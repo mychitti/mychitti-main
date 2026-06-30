@@ -35,7 +35,8 @@ class WhatsAppController extends Controller
 
         $features = $this->featureStatus($storeId);
         $wallet = StoreWallet::where('vendor_id', auth('vendor')->id())->first();
-        $walletBalance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+        // total_earning is the live wallet balance for this store; total_withdrawn isn't maintained here.
+        $walletBalance = $wallet ? $wallet->total_earning : 0;
 
         return view('vendor-views.whatsapp.connect', compact('es', 'store', 'features', 'walletBalance'));
     }
@@ -77,17 +78,17 @@ class WhatsAppController extends Controller
         $price    = (float) $meta['price'];
 
         $wallet  = StoreWallet::where('vendor_id', $vendorId)->first();
-        $balance = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
+        $balance = $wallet ? $wallet->total_earning : 0;
         if (!$wallet || $balance < $price) {
             Toastr::error('Insufficient wallet balance. Required: ' . _price($price));
             return back();
         }
 
+        // Balance lives in total_earning — deduct from it directly.
         $wallet->decrement('total_earning', $price);
-        $wallet->increment('total_withdrawn', $price);
 
         $txn = new AccountTransaction();
-        $txn->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
+        $txn->current_balance = $wallet->total_earning;
         $txn->from_type  = 'store';
         $txn->amount     = $price;
         $txn->from_id    = $vendorId;

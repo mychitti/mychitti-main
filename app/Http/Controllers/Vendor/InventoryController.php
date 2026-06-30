@@ -1508,6 +1508,44 @@ class InventoryController extends Controller
     {
         return view('vendor-views.inventory.scanner');
     }
+
+    // Inline selling-price edit from the items list (simple, non-variation items).
+    public function quick_update_price(Request $request)
+    {
+        $request->validate(['item_id' => 'required', 'selling_price' => 'required|numeric|min:0']);
+        $item = InventoryItem::where('id', $request->item_id)->where('store_id', Helpers::get_store_id())->first();
+        if (!$item) {
+            return response()->json(['status' => false, 'message' => 'Item not found'], 404);
+        }
+        $item->selling_price = $request->selling_price;
+        $item->save();
+        DB::table('branch_inventory_item')->where('inventory_item_id', $item->id)->update(['price' => $item->selling_price]);
+        return response()->json(['status' => true, 'message' => 'Price updated', 'price' => _price($item->selling_price)]);
+    }
+
+    // Bulk update all variation prices for one item (from the list popup).
+    public function update_variation_prices(Request $request)
+    {
+        $request->validate(['item_id' => 'required', 'prices' => 'required|array']);
+        $item = InventoryItem::where('id', $request->item_id)->where('store_id', Helpers::get_store_id())->first();
+        if (!$item || !$item->variations) {
+            return response()->json(['status' => false, 'message' => 'Item or variations not found'], 404);
+        }
+        $variations = json_decode($item->variations, true);
+        if (!is_array($variations) || !count($variations)) {
+            return response()->json(['status' => false, 'message' => 'No variations to update'], 404);
+        }
+        foreach ($variations as $i => $v) {
+            if (isset($request->prices[$i]) && is_numeric($request->prices[$i])) {
+                $variations[$i]['price'] = (float) $request->prices[$i];
+            }
+        }
+        $item->variations = json_encode($variations);
+        $item->selling_price = $variations[0]['price'] ?? $item->selling_price; // keep the list cell meaningful
+        $item->save();
+        return response()->json(['status' => true, 'message' => 'Variation prices updated']);
+    }
+
     public function update_variant_combination(Request $request)
     {
 

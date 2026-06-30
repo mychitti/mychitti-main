@@ -55,6 +55,7 @@ class DispatchLeadRounds extends Command
             $isAppointment = !empty($lead->preferred_doctor_id);
             $title = $isAppointment ? 'New Appointment Request' : 'New Service Enquiry';
             $itemName = DB::table('items')->where('id', $lead->item_id)->value('name') ?? 'a service';
+            $catId    = DB::table('items')->where('id', $lead->item_id)->value('category_id');
             $userName = DB::table('users')->where('id', $lead->user_id)->value('f_name') ?? 'a customer';
             $msg  = "Hello! You have received a new " . ($isAppointment ? 'APPOINTMENT request' : 'ENQUIRY')
                 . " from {$userName} for {$itemName}. Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
@@ -65,7 +66,13 @@ class DispatchLeadRounds extends Command
                 if (!$store) continue;
                 _sendSMS($store->phone, $msg);
                 _inAppNotification($title, $msg, null, $store->id, $url, 'vendor');
-                \App\Services\WhatsAppService::sendLeadNotification($store->id, $itemName, $userName);
+                // WhatsApp-subscribed stores auto-accept + get the "accepted" template + confirmation;
+                // everyone else just gets the normal new-lead WhatsApp.
+                if (!_autoAcceptLeadForStore($store->id, $lead->id)) {
+                    \App\Services\WhatsAppService::sendLeadNotification($store->id, $itemName, $userName);
+                }
+                // Nudge stores that can't afford to accept (low wallet, no lead subscription).
+                _remindLeadWalletRecharge($store, $catId);
             }
 
             Log::info("Lead #{$lead->id}: advanced to round {$nextRound}, notified " . count($newStoreIds) . " stores.");

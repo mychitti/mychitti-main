@@ -20,6 +20,16 @@
         .cfr .totrow { background: #eef3ff; font-weight: 800; }
         .cfr .foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
         .cfr .foot .rp-btn { min-width: 130px; justify-content: center; }
+        .cfr .vendor-header { background:#fff; border-bottom:1px solid #ddd; padding:15px 0; margin-bottom:14px; }
+        .cfr .vendor-name { font-size:24px; font-weight:bold; color:#333; margin:0; }
+        .cfr .vendor-address { color:#666; font-size:12px; margin:5px 0 0 0; line-height:1.3; }
+        .cfr .company-logo img { width:100px; }
+        .cfr .rp-input, .cfr input, .cfr select, .cfr textarea { max-width: 100%; }
+        @media (max-width: 640px) {
+            .cfr .grid2, .cfr .grid3 { grid-template-columns: 1fr; }
+            .cfr .vendor-name { font-size: 18px; }
+            .cfr .company-logo img { width: 60px; }
+        }
     </style>
 @endpush
 
@@ -40,6 +50,25 @@
         <div class="cfr">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <a href="{{ route('vendor.retail-pos.cash-flow') }}" class="rp-btn o sm">← Back</a>
+            </div>
+
+<div class="border rounded p-2">
+            <!-- Vendor Header Section -->
+            <div class="vendor-header pb-2 mb-0">
+                <div class="req_form_header container position-relative d-flex justify-content-between align-items-center">
+                    <div class="store_content">
+                        <h2 class="vendor-name">{{ \App\CentralLogics\Helpers::get_store_data()->name }}</h2>
+                        <p class="vendor-address">
+                            {{ \App\CentralLogics\Helpers::get_store_data()->address }}<br>
+                            GST NO: {{ \App\CentralLogics\Helpers::get_store_data()->gst_number }}
+                        </p>
+                    </div>
+                    <div class="logo-container">
+                        <div class="company-logo">
+                            <img src="{{ asset('storage/app/public/store/' . \App\CentralLogics\Helpers::get_store_data()->logo) }}" alt="">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <form method="post" action="{{ route('vendor.retail-pos.cash-flow.save') }}" enctype="multipart/form-data" id="cfrForm">
@@ -65,31 +94,48 @@
                             <div>
                                 <label class="fl">Branch / Store <span class="req">*</span></label>
                                 <select name="branch_id" class="rp-input" {{ $ro }}>
-                                    <option value="">Main Store</option>
+                                    @unless ($branchLocked ?? false)
+                                        <option value="">Main Store</option>
+                                    @endunless
                                     @foreach ($branches as $b)
-                                        <option value="{{ $b->id }}" {{ $req && $req->branch_id == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                        <option value="{{ $b->id }}" {{ ($req && $req->branch_id == $b->id) || ($branchLocked ?? false) ? 'selected' : '' }}>{{ $b->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div>
                                 <label class="fl">Counter (optional)</label>
                                 <select name="terminal_id" class="rp-input" {{ $ro }}>
-                                    <option value="">— None —</option>
+                                    @unless ($branchLocked ?? false)
+                                        <option value="">— None —</option>
+                                    @endunless
                                     @foreach ($counters as $c)
-                                        <option value="{{ $c->id }}" {{ $req && $req->terminal_id == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                                        <option value="{{ $c->id }}" {{ ($req && $req->terminal_id == $c->id) || ($branchLocked ?? false) ? 'selected' : '' }}>{{ $c->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
                         <label class="fl mt-2">Purpose <span class="req">*</span></label>
-                        <div>
+                        <select name="purpose" id="cfr_purpose" class="rp-input" {{ $ro }}>
                             @foreach ($purposes as $k => $lbl)
-                                <label class="opt"><input type="radio" name="purpose" value="{{ $k }}" {{ $ro }}
-                                        {{ ($req->purpose ?? 'opening_cash') === $k ? 'checked' : '' }}> {{ $lbl }}</label>
+                                <option value="{{ $k }}" {{ ($req->purpose ?? 'opening_cash') === $k ? 'selected' : '' }}>{{ $lbl }}</option>
                             @endforeach
-                        </div>
-                        <input type="text" name="purpose_other" class="rp-input mt-2" placeholder="If Other, specify…"
+                        </select>
+                        <input type="text" name="purpose_other" id="cfr_purpose_other" class="rp-input mt-2" placeholder="If Other, specify…"
                             value="{{ $req->purpose_other ?? '' }}" {{ $ro }}>
+                        <script>
+                            (function () {
+                                function tgl() {
+                                    var sel = document.getElementById('cfr_purpose');
+                                    var other = document.getElementById('cfr_purpose_other');
+                                    if (!sel || !other) return;
+                                    other.style.display = (sel.value === 'other') ? '' : 'none';
+                                }
+                                var s = document.getElementById('cfr_purpose');
+                                if (s) s.addEventListener('change', tgl);
+                                document.addEventListener('DOMContentLoaded', tgl);
+                                tgl();
+                            })();
+                        </script>
                     </div>
                 </div>
 
@@ -98,19 +144,25 @@
                     <div class="sec">
                         <div class="hd">👤 Requested By</div>
                         <div class="bd"> 
-                            <label class="fl">Role</label>
-                            <input type="text" id="from_role_display" class="rp-input mb-2" value="{{ $req->from_label ?? ($meRole === 'owner' ? 'Owner' : 'Cashier') }}" readonly style="background:#f4f6fb;">
-                            <input type="hidden" name="from_label" id="from_role_hidden" value="{{ $req->from_label ?? ($meRole === 'owner' ? 'Owner' : 'Cashier') }}">
-                            <label class="fl">Requested By</label>
                             @php
-                                $fromValue = $req ? ($req->from_role === 'staff' ? 'staff:' . $req->from_id : ($req->from_role === 'manager' ? 'manager:0' : 'owner:0')) : ($meRole === 'owner' ? 'owner:0' : 'staff:' . $meId);
+                                // The requester is always the logged-in user — auto-filled, not selectable.
+                                $myStaff = ($meRole !== 'owner') ? collect($staff)->firstWhere('id', $meId) : null;
+                                $fromValue = $req
+                                    ? ($req->from_role === 'staff' ? 'staff:' . $req->from_id : ($req->from_role === 'manager' ? 'manager:0' : 'owner:0'))
+                                    : ($meRole === 'owner' ? 'owner:0' : 'staff:' . $meId);
+                                $fromName = $req
+                                    ? ($req->from_role === 'staff' ? ($staffNames[$req->from_id] ?? 'Staff') : 'Owner / Manager')
+                                    : $myName;
+                                $fromRoleLabel = $req
+                                    ? ($req->from_label ?? ($req->from_role === 'staff' ? 'Staff' : 'Owner'))
+                                    : ($meRole === 'owner' ? 'Owner' : ($myStaff->role->name ?? 'Cashier'));
                             @endphp
-                            <select name="requested_by" id="requested_by_select" class="rp-input" {{ $ro }}>
-                                <option value="owner:0" data-role="Owner" {{ (isset($fromValue) && ($fromValue === 'owner:0' || $fromValue === 'manager:0')) ? 'selected' : '' }}>Owner / Manager</option>
-                                @foreach ($staff as $s)
-                                    <option value="staff:{{ $s->id }}" data-role="{{ $s->role->name ?? 'Staff' }}" {{ (isset($fromValue) && $fromValue === 'staff:' . $s->id) ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}</option>
-                                @endforeach
-                            </select>
+                            <label class="fl">Role</label>
+                            <input type="text" id="from_role_display" class="rp-input mb-2" value="{{ $fromRoleLabel }}" readonly style="background:#f4f6fb;">
+                            <input type="hidden" name="from_label" id="from_role_hidden" value="{{ $fromRoleLabel }}">
+                            <label class="fl">Requested By</label>
+                            <input type="text" class="rp-input" value="{{ $fromName }}" readonly style="background:#f4f6fb;">
+                            <input type="hidden" name="requested_by" id="requested_by_select" value="{{ $fromValue }}">
                         </div>
                     </div>
                     <div class="sec">
@@ -134,14 +186,16 @@
                 <div class="sec">
                     <div class="hd">💳 Payment Mode</div>
                     <div class="bd">
-                        @foreach (['cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank Transfer', 'mixed' => 'Mixed'] as $k => $lbl)
-                            <label class="opt"><input type="radio" name="payment_mode" value="{{ $k }}" {{ $ro }}
-                                    {{ ($req->payment_mode ?? 'cash') === $k ? 'checked' : '' }}> {{ $lbl }}</label>
-                        @endforeach
+                        <label class="fl">Payment Mode</label>
+                        <select name="payment_mode" id="cfr_payment_mode" class="rp-input" {{ $ro }}>
+                            @foreach (['cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank Transfer', 'coupon' => 'Coupons', 'mixed' => 'Mixed'] as $k => $lbl)
+                                <option value="{{ $k }}" {{ ($req->payment_mode ?? 'cash') === $k ? 'selected' : '' }}>{{ $lbl }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
-                {{-- AMOUNT DETAILS --}}
+                {{-- AMOUNT DETAILS — fields shown depend on the selected Payment Mode --}}
                 <div class="sec">
                     <div class="hd">🧮 Amount Details</div>
                     <div class="bd grid3">
@@ -150,23 +204,49 @@
                             <input type="number" step="0.01" min="0" name="requested_amount" id="cfr_requested" class="rp-input"
                                 value="{{ $req->requested_amount ?? '' }}" {{ $ro }} required>
                         </div>
-                        <div>
+                        <div class="cfr-amt-field" data-mode="cash mixed">
                             <label class="fl">Cash Amount (₹)</label>
                             <input type="number" step="0.01" min="0" name="cash_amount" id="cfr_cash" class="rp-input"
                                 value="{{ $req->cash_amount ?? '' }}" {{ $ro }}>
                         </div>
-                        <div>
-                            <label class="fl">UPI Amount (₹)</label>
+                        <div class="cfr-amt-field" data-mode="upi bank_transfer mixed">
+                            <label class="fl">UPI / Transfer Amount (₹)</label>
                             <input type="number" step="0.01" min="0" name="upi_amount" id="cfr_upi" class="rp-input"
                                 value="{{ $req->upi_amount ?? '' }}" {{ $ro }}>
                         </div>
+                        <div class="cfr-amt-field" data-mode="coupon mixed">
+                            <label class="fl">Coupon Discount (₹)</label>
+                            <input type="number" step="0.01" min="0" name="coupon_amount" id="cfr_coupon" class="rp-input"
+                                value="{{ $req->coupon_amount ?? '' }}" {{ $ro }}>
+                        </div>
                     </div>
                 </div>
+                <script>
+                    (function () {
+                        function cfrAmtToggle() {
+                            var sel = document.getElementById('cfr_payment_mode');
+                            if (!sel) return;
+                            var mode = sel.value;
+                            document.querySelectorAll('.cfr-amt-field').forEach(function (el) {
+                                var modes = (el.getAttribute('data-mode') || '').split(' ');
+                                el.style.display = (modes.indexOf(mode) !== -1) ? '' : 'none';
+                            });
+                        }
+                        var s = document.getElementById('cfr_payment_mode');
+                        if (s) s.addEventListener('change', cfrAmtToggle);
+                        document.addEventListener('DOMContentLoaded', cfrAmtToggle);
+                        cfrAmtToggle();
+                    })();
+                </script>
 
-                {{-- DENOMINATIONS --}}
+                {{-- DENOMINATIONS (optional — collapsed by default) --}}
+                @php $denomOpen = !empty(array_filter((array) $den)); @endphp
                 <div class="sec">
-                    <div class="hd">💵 Cash Denomination Details</div>
-                    <div class="table-responsive">
+                    <div class="hd d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="cfrToggleDenom()">
+                        <span>💵 Cash Denomination Details <small class="text-muted" style="font-weight:400;">(optional)</small></span>
+                        <span id="cfr_denom_caret">{{ $denomOpen ? '▲' : '▼' }}</span>
+                    </div>
+                    <div class="table-responsive" id="cfr_denom_body" style="{{ $denomOpen ? '' : 'display:none;' }}">
                         <table class="rp-table denom">
                             <thead><tr><th>Denomination</th><th>Quantity</th><th class="text-right">Amount (₹)</th></tr></thead>
                             <tbody>
@@ -189,6 +269,16 @@
                         </table>
                     </div>
                 </div>
+                <script>
+                    function cfrToggleDenom() {
+                        var b = document.getElementById('cfr_denom_body');
+                        var c = document.getElementById('cfr_denom_caret');
+                        if (!b) return;
+                        var hidden = b.style.display === 'none';
+                        b.style.display = hidden ? '' : 'none';
+                        if (c) c.textContent = hidden ? '▲' : '▼';
+                    }
+                </script>
 
                 {{-- NOTES & ATTACHMENTS --}}
                 <div class="sec">
@@ -234,6 +324,7 @@
                     @endif
                 </div>
             </form>
+</div>
 
             {{-- Contextual workflow actions (existing request) --}}
             @if ($req)

@@ -57,6 +57,7 @@
                                         <option value="">— Unassigned —</option>
                                         @foreach ($staff as $s)<option value="{{ $s->id }}">{{ trim($s->f_name . ' ' . $s->l_name) }}</option>@endforeach
                                     </select>
+                                    <small class="text-muted d-block mt-1"><i class="tio-info-outlined"></i> Note: assigning a staff here also updates that staff's branch saved in their Add/Edit Staff form, to keep them in sync.</small>
                                 </div>
                                 <div class="row">
                                     <div class="col rp-field"><label>Thermal printer</label><input type="text" name="thermal" class="rp-input" placeholder="Name / IP"></div>
@@ -99,6 +100,21 @@
                             </form>
                             @endif
                         </div>
+                        @if (auth('vendor')->check() || hasPermission('pos_branch', 'create'))
+                            <div class="p-2" style="border-bottom:1px solid #eee;">
+                                <form method="post" action="{{ route('vendor.retail-pos.branches.manager', $b->id) }}"
+                                    class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                                    @csrf
+                                    <label class="small mb-0 text-nowrap">👤 Branch Manager <span class="text-muted">(approves write-offs)</span>:</label>
+                                    <select name="branch_manager_id" class="rp-input" style="min-width:200px;padding:5px 8px;" onchange="this.form.submit()">
+                                        <option value="">— None —</option>
+                                        @foreach ($staff as $s)
+                                            <option value="{{ $s->id }}" {{ (int) ($b->branch_manager_id ?? 0) === (int) $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}</option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            </div>
+                        @endif
                         <div class="table-responsive">
                             <table class="rp-table">
                                 <thead><tr><th>Counter</th><th>Code</th><th>Assigned staff</th><th>Hardware</th><th></th></tr></thead>
@@ -135,6 +151,7 @@
                                                                     <option value="{{ $s->id }}" {{ $c->staff_id == $s->id ? 'selected' : '' }}>{{ trim($s->f_name . ' ' . $s->l_name) }}{{ $shiftLabel($s) }}</option>
                                                                 @endforeach
                                                             </select>
+                                                            <small class="text-muted d-block mt-1">Also updates the staff's saved branch.</small>
                                                         </form>
                                                         @if ($st && $st->storeShift)
                                                             <div class="small text-muted mt-1">🕒 {{ trim($shiftLabel($st), ' ·') }}</div>

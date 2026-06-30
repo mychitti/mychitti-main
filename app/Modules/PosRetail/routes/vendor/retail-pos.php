@@ -41,6 +41,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::get('cash-flow/{id}/slip',     [RetailPosController::class, 'cashSlip'])->name('cash-flow.slip')->whereNumber('id')->middleware('permission:pos_cash,view');
     Route::post('branches',    [RetailPosController::class, 'branchStore'])->name('branches.store')->middleware('permission:pos_branch,create');
     Route::post('branches/{id}/delete', [RetailPosController::class, 'branchDelete'])->name('branches.delete')->middleware('permission:pos_branch,delete');
+    Route::post('branches/{id}/manager', [RetailPosController::class, 'branchAssignManager'])->name('branches.manager')->middleware('permission:pos_branch,create');
     Route::get('settings',     [RetailPosController::class, 'settings'])->name('settings')->middleware('permission:pos_billing,settings');
     Route::post('upi-id',      [RetailPosController::class, 'saveUpi'])->name('upi.save')->middleware('permission:pos_billing,settings');
     Route::post('ui-template', [RetailPosController::class, 'saveUiTemplate'])->name('ui-template.save')->middleware('permission:pos_billing,settings');
@@ -61,5 +62,6 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::get('writeoff',            [RetailPosController::class, 'writeoff'])->name('writeoff')->middleware('permission:pos_writeoff,view');
     Route::get('writeoff/items',      [RetailPosController::class, 'writeoffItems'])->name('writeoff.items')->middleware('permission:pos_writeoff,view');
     Route::post('writeoff',           [RetailPosController::class, 'writeoffStore'])->name('writeoff.store')->middleware('permission:pos_writeoff,create');
+    Route::post('writeoff/{id}/decide',[RetailPosController::class, 'writeoffDecide'])->name('writeoff.decide')->middleware('permission:pos_writeoff,view');
     Route::post('writeoff/{id}/delete',[RetailPosController::class, 'writeoffDelete'])->name('writeoff.delete')->middleware('permission:pos_writeoff,delete');
 });

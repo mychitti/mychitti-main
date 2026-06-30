@@ -24,10 +24,10 @@
 
         @if ($canCreate)
             <form method="post" action="{{ route('vendor.retail-pos.writeoff.store') }}"
-                onsubmit="return confirm('Record this write-off? It deducts the quantity from stock.');">
+                onsubmit="return confirm('Submit this write-off request for manager approval? The quantity is held out of stock until decided.');">
                 @csrf
                 <div class="rp-card">
-                    <div class="hd"><span class="accent">New Write-off</span></div>
+                    <div class="hd"><span class="accent">New Damaged / Theft Request</span></div>
                     <div class="bd">
                         <div class="d-flex flex-wrap" style="gap:12px;">
                             <div style="min-width:200px;">
@@ -49,6 +49,7 @@
                                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#555;">Type <span style="color:#c0392b">*</span></label>
                                 <select name="type" class="rp-input" required style="min-width:150px;">
                                     <option value="damaged">Damaged</option>
+                                    <option value="leaked">Leaked</option>
                                     <option value="theft">Theft</option>
                                 </select>
                             </div>
@@ -63,56 +64,129 @@
                         </div>
                     </div>
                     <div class="bd text-right">
-                        <button class="rp-btn p">Save Write-off</button>
+                        <button class="rp-btn p">Submit Request</button>
                     </div>
                 </div>
             </form>
         @endif
 
         <div class="rp-card">
-            <div class="hd"><span class="accent">Recent Write-offs</span></div>
+            <div class="hd"><span class="accent">Write-off Requests</span></div>
             <div class="table-responsive">
                 <table class="rp-table">
                     <thead>
                         <tr>
                             <th>Item</th><th>Location</th><th>Type</th>
-                            <th class="text-right">Qty</th><th>Note</th><th>Date</th>
-                            @if ($canDelete)<th class="text-right">Action</th>@endif
+                            <th class="text-right">Qty</th><th>Status</th><th>Details</th><th>Date</th>
+                            <th class="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($records as $r)
+                            @php
+                                $st = $r->status ?? 'pending';
+                                $stMap = ['pending' => ['#fff4e5', '#b9770e'], 'accepted' => ['#e6f7ec', '#1b7a43'], 'rejected' => ['#fdecea', '#c0392b']];
+                                [$sbg, $sfg] = $stMap[$st] ?? ['#eee', '#555'];
+                                $disp = $dispositions[$r->id] ?? collect();
+                                $dispLabels = ['return_supplier' => 'Return to Supplier', 'resell' => 'Convert to Resell', 'scrap' => 'Scrap'];
+                            @endphp
                             <tr>
                                 <td><b>{{ $r->item_name ?? '—' }}</b> <span class="text-muted">{{ $r->sku_id }}</span></td>
                                 <td>{{ $r->branch_name ?? 'Main Store' }}</td>
-                                <td>
-                                    @if ($r->type === 'theft')
-                                        <span class="badge badge-soft" style="background:#fdecea;color:#c0392b;padding:2px 8px;border-radius:10px;font-size:11px;">Theft</span>
-                                    @else
-                                        <span class="badge badge-soft" style="background:#fff4e5;color:#b9770e;padding:2px 8px;border-radius:10px;font-size:11px;">Damaged</span>
+                                <td>{{ ucfirst($r->type) }}</td>
+                                <td class="text-right"><b>{{ $fmt($r->qty) }}</b></td>
+                                <td><span style="background:{{ $sbg }};color:{{ $sfg }};padding:2px 8px;border-radius:10px;font-size:11px;">{{ ucfirst($st) }}</span></td>
+                                <td class="text-muted" style="font-size:12px;">
+                                    @if ($r->note)<div>📝 {{ $r->note }}</div>@endif
+                                    @if ($r->manager_note)<div>👤 {{ $r->manager_note }}</div>@endif
+                                    @foreach ($disp as $d)
+                                        <div>• {{ $dispLabels[$d->disposition] ?? $d->disposition }}: {{ $fmt($d->qty) }}{{ $d->damage_category ? ' (' . $d->damage_category . ')' : '' }}@if ($d->attachment) — <a href="{{ asset('storage/app/public/writeoff/' . $d->attachment) }}" target="_blank">doc</a>@endif</div>
+                                    @endforeach
+                                </td>
+                                <td class="text-muted">{{ \Carbon\Carbon::parse($r->created_at)->format('d M Y, h:i A') }}</td>
+                                <td class="text-right">
+                                    @if (!empty($r->can_approve))
+                                        <button class="rp-btn p sm wo-accept" data-url="{{ route('vendor.retail-pos.writeoff.decide', $r->id) }}" data-qty="{{ $fmt($r->qty) }}" data-item="{{ $r->item_name }}">Accept</button>
+                                        <button class="rp-btn o sm wo-reject" style="color:#c0392b;" data-url="{{ route('vendor.retail-pos.writeoff.decide', $r->id) }}" data-item="{{ $r->item_name }}">Reject</button>
+                                    @endif
+                                    @if ($canDelete && $st === 'pending')
+                                        <form method="post" action="{{ route('vendor.retail-pos.writeoff.delete', $r->id) }}" style="display:inline"
+                                            onsubmit="return confirm('Delete this pending request and restore {{ $fmt($r->qty) }} to stock?');">
+                                            @csrf
+                                            <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
                                     @endif
                                 </td>
-                                <td class="text-right"><b>{{ $fmt($r->qty) }}</b></td>
-                                <td class="text-muted">{{ $r->note }}</td>
-                                <td class="text-muted">{{ \Carbon\Carbon::parse($r->created_at)->format('d M Y, h:i A') }}</td>
-                                @if ($canDelete)
-                                    <td class="text-right">
-                                        <form method="post" action="{{ route('vendor.retail-pos.writeoff.delete', $r->id) }}" style="display:inline"
-                                            onsubmit="return confirm('Reverse this write-off and restore {{ $fmt($r->qty) }} to stock?');">
-                                            @csrf
-                                            <button class="btn btn-sm btn-outline-danger">↩ Reverse</button>
-                                        </form>
-                                    </td>
-                                @endif
                             </tr>
                         @empty
-                            <tr><td colspan="{{ $canDelete ? 7 : 6 }}"><div class="rp-empty">No write-offs yet.</div></td></tr>
+                            <tr><td colspan="8"><div class="rp-empty">No write-off requests yet.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+
+    {{-- Accept modal — split dispositions --}}
+    <div class="modal fade" id="woAcceptModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <form method="post" id="woAcceptForm" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="action" value="accept">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Accept Write-off — <span id="woAcceptItem"></span></h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted" style="font-size:13px;">Total to dispose: <b id="woAcceptQty"></b>. Split across one or more dispositions — the quantities must add up to the total.</p>
+                        <div id="woDispRows"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="woAddDisp">+ Add disposition</button>
+                        <div class="mt-3">
+                            <label class="fl">Manager note</label>
+                            <textarea name="manager_note" class="form-control" rows="2" placeholder="Note while accepting…"></textarea>
+                        </div>
+                        <div class="mt-2 small">Allocated: <b id="woAllocated">0</b> / <span id="woAcceptQtyView"></span></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn--primary">Accept &amp; Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Reject modal --}}
+    <div class="modal fade" id="woRejectModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form method="post" id="woRejectForm">
+                    @csrf
+                    <input type="hidden" name="action" value="reject">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reject Write-off — <span id="woRejectItem"></span></h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted" style="font-size:13px;">Rejecting returns the held quantity to normal inventory.</p>
+                        <label class="fl">Manager note</label>
+                        <textarea name="manager_note" class="form-control" rows="2" placeholder="Reason for rejection…"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Reject &amp; Return Stock</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="woDamageCats">
+        @foreach ($damageCategories as $dc)
+            <option value="{{ $dc }}">
+        @endforeach
+    </datalist>
 @endsection
 
 @push('script_2')
@@ -169,6 +243,60 @@
             // Switching location changes which stock applies — clear the picked item.
             $('#wo-branch').on('change', function () {
                 $item.val(null).trigger('change');
+            });
+
+            // ---- Accept (split dispositions) ----
+            var woQty = 0, woIdx = 0;
+            function woRowHtml(i) {
+                return '<div class="wo-disp-row" style="border:1px solid #eee;border-radius:8px;padding:8px;margin-bottom:8px;">'
+                    + '<div class="d-flex flex-wrap align-items-center" style="gap:8px;">'
+                    + '<select name="disp[' + i + '][type]" class="form-control form-control-sm wo-disp-type" style="max-width:190px;">'
+                    + '<option value="resell">Convert to Resell</option>'
+                    + '<option value="return_supplier">Return to Supplier</option>'
+                    + '<option value="scrap">Scrap</option>'
+                    + '</select>'
+                    + '<input type="number" step="0.001" min="0.001" name="disp[' + i + '][qty]" class="form-control form-control-sm wo-disp-qty" style="max-width:110px;" placeholder="Qty">'
+                    + '<button type="button" class="btn btn-sm btn-outline-danger wo-disp-del">&times;</button>'
+                    + '</div>'
+                    + '<div class="wo-supplier-fields mt-2" style="display:none;">'
+                    + '<input type="text" name="disp[' + i + '][damage_category]" list="woDamageCats" class="form-control form-control-sm" placeholder="Damage category (select or type)">'
+                    + '<input type="text" name="disp[' + i + '][reason]" class="form-control form-control-sm mt-1" placeholder="Reason">'
+                    + '<input type="file" name="disp_file[' + i + ']" class="form-control-file form-control-sm mt-1" accept="image/*,.pdf">'
+                    + '</div></div>';
+            }
+            function woRecalc() {
+                var t = 0;
+                $('#woDispRows .wo-disp-qty').each(function () { t += parseFloat($(this).val()) || 0; });
+                $('#woAllocated').text(Math.round(t * 1000) / 1000);
+            }
+            function woAddRow() { $('#woDispRows').append(woRowHtml(woIdx++)); }
+
+            $(document).on('click', '.wo-accept', function () {
+                $('#woAcceptForm').attr('action', $(this).data('url'));
+                $('#woAcceptItem').text($(this).data('item') || '');
+                woQty = parseFloat($(this).data('qty')) || 0;
+                $('#woAcceptQty,#woAcceptQtyView').text($(this).data('qty'));
+                $('#woDispRows').empty(); woIdx = 0; woAddRow(); woRecalc();
+                $('#woAcceptModal').modal('show');
+            });
+            $('#woAddDisp').on('click', woAddRow);
+            $(document).on('click', '.wo-disp-del', function () {
+                if ($('#woDispRows .wo-disp-row').length > 1) { $(this).closest('.wo-disp-row').remove(); woRecalc(); }
+            });
+            $(document).on('input', '.wo-disp-qty', woRecalc);
+            $(document).on('change', '.wo-disp-type', function () {
+                $(this).closest('.wo-disp-row').find('.wo-supplier-fields').toggle($(this).val() === 'return_supplier');
+            });
+            $('#woAcceptForm').on('submit', function (e) {
+                var t = 0; $('#woDispRows .wo-disp-qty').each(function () { t += parseFloat($(this).val()) || 0; });
+                if (Math.abs(t - woQty) > 0.001) { e.preventDefault(); alert('Disposition quantities must total ' + woQty + '.'); }
+            });
+
+            // ---- Reject ----
+            $(document).on('click', '.wo-reject', function () {
+                $('#woRejectForm').attr('action', $(this).data('url'));
+                $('#woRejectItem').text($(this).data('item') || '');
+                $('#woRejectModal').modal('show');
             });
         });
     </script>

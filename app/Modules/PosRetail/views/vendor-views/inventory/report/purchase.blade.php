@@ -126,6 +126,7 @@
                              <option value="unpaid" {{ request()?->status == 'unpaid' ? 'selected' : '' }}>Unpaid</option>
                          </select>
                      </div>
+                     @include('vendor-views.inventory.report._branch_filter')
                  </form>
 
                  <div class="d-flex gap-1 flex-wrap">

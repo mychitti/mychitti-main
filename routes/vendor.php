@@ -278,6 +278,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('scan-barcode', 'InventoryController@scan_barcode')->name('scan-barcode');
                 Route::post('fetch-by-sku', 'InventoryController@fetch_item_by_sku')->name('fetch-by-sku');
                 Route::post('update-variant-combination', 'InventoryController@update_variant_combination')->name('update-variant-combination');
+                Route::post('quick-price', 'InventoryController@quick_update_price')->name('quick-price')->middleware('permission:inventory_item,edit');
+                Route::post('variation-prices', 'InventoryController@update_variation_prices')->name('variation-prices')->middleware('permission:inventory_item,edit');
                 Route::get('remove-image/{item_id}/{photo}', 'InventoryController@remove_item_image')->name('remove-image')->middleware('permission:inventory_item,edit');
                 Route::get('show_on_website/{id}/{status}', 'InventoryController@show_on_website')->name('show_on_website')->middleware('permission:inventory_item,show_on_website');
                 Route::get('delete/{id}', 'InventoryController@item_delete')->name('delete')->middleware('permission:inventory_item,delete');

@@ -164,7 +164,6 @@
         .rpos-tpl-compact .quick-item { min-height:auto; padding:6px 6px 9px; justify-content:flex-start; gap:4px; text-align:center; }
         .rpos-tpl-compact .quick-item .qi-img { display:block; width:100%; height:78px; object-fit:cover; border-radius:6px; background:#eef2f7; margin-bottom:3px; }
         .rpos-tpl-compact .quick-item .font-weight-bold { font-size:12px; }
-        .rpos-tpl-compact .cat-bar { max-height:340px; }
         .rpos-tpl-compact #pos-search { height:44px; font-size:14px; }
         .rpos-tpl-compact .totals { padding:8px 12px; margin-top:10px; }
         .rpos-tpl-compact .grand-bar { padding:10px 14px; }
@@ -197,7 +196,9 @@
         .rpos-tpl-compact .quick-item { border-radius:7px; }
         .rpos-tpl-compact .totals, .rpos-tpl-compact .grand-bar { border-radius:8px; }
         .rpos-tpl-compact .pos-topbar h1 { color:var(--accent-dark); }
-
+.cat-tab{
+    min-height: 37px;
+}
         /* ════════════════ UI TEMPLATE: CLASSIC ════════════════
            Clean list-style products: name on the left, price on the right, accent left border.
            (Compact = image cards · Modern = big rounded tiles · Classic = list rows.) */
@@ -601,10 +602,11 @@
 
         // Direct-print the receipt in place (hidden iframe) — like the POS token, no new tab.
         // The thermal page auto-calls window.print() on load.
-        function directPrintReceipt(url) {
+        function directPrintReceipt(url, html) {
             var f = document.createElement('iframe');
             f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-            f.src = url;
+            // Prefer the inlined HTML (no server round-trip); fall back to loading the URL.
+            if (html) { f.srcdoc = html; } else { f.src = url; }
             document.body.appendChild(f);
             setTimeout(function () { try { f.parentNode && f.parentNode.removeChild(f); } catch (e) {} }, 60000);
         }
@@ -992,6 +994,7 @@
             if (e.target.classList.contains('pay-amount')) {
                 e.target.dataset.auto = '0'; // user typed → stop auto-filling
                 recalc();
+                updateUpiQr(); // keep the UPI QR in sync with the typed UPI amount
             }
         });
 
@@ -1032,7 +1035,15 @@
             const box = document.getElementById('upi-qr');
             const hasUpiLeg = [...document.querySelectorAll('.pay-mode')].some(s => s.value === 'upi');
             if (!hasUpiLeg) { box.style.display = 'none'; return; }
-            const amt = window.__posGrand || 0;
+            // QR is for the UPI portion only (sum of UPI legs), not the whole bill.
+            let amt = 0;
+            document.querySelectorAll('.pay-leg').forEach(l => {
+                if (l.querySelector('.pay-mode').value === 'upi') {
+                    amt += parseFloat(l.querySelector('.pay-amount').value) || 0;
+                }
+            });
+            // UPI selected but amount not entered yet → fall back to the full bill total.
+            if (amt <= 0) amt = window.__posGrand || 0;
             const note = document.getElementById('upi-qr-note');
             if (!POS.upiId) {
                 box.style.display = 'block';
@@ -1226,7 +1237,7 @@
                     // (no new tab) — just like a POS token. Avoids double printing.
                     POSAgent.afterSale(d, payments.some(p => p.mode === 'cash') || payments.length === 0)
                         .then(function (agentPrinted) {
-                            if (!agentPrinted && d.thermal_url) directPrintReceipt(d.thermal_url);
+                            if (!agentPrinted && (d.receipt_html || d.thermal_url)) directPrintReceipt(d.thermal_url, d.receipt_html);
                         });
                     resetSale(); refreshHeld(); searchBox.focus();
                 })

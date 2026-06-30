@@ -225,8 +225,28 @@ class RetailPosController extends Controller
         }
     }
 
+    // Bump this whenever ensureSchema() changes, to force the one-time introspection to re-run.
+    private const SCHEMA_VERSION = 1;
+
     private function ensureSchema(): void
     {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        // The DDL introspection below is expensive against the remote DB and runs on hot paths
+        // (billing, printing). Run it once, then cache — so normal sales skip dozens of
+        // information_schema queries. Cleared by bumping SCHEMA_VERSION on any change here.
+        $schemaFlag = 'pos_retail_schema_v' . self::SCHEMA_VERSION;
+        try {
+            if (\Illuminate\Support\Facades\Cache::get($schemaFlag)) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            // cache unavailable → fall through and just run the checks
+        }
+
         if (Schema::hasTable('manual_invoices')) {
             if (!Schema::hasColumn('manual_invoices', 'pos_status')) {
                 DB::statement("ALTER TABLE `manual_invoices` ADD COLUMN `pos_status` VARCHAR(20) NULL");
@@ -423,6 +443,7 @@ class RetailPosController extends Controller
                 'requested_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
                 'cash_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
                 'upi_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
+                'coupon_amount' => "DECIMAL(12,2) NOT NULL DEFAULT 0",
                 'denominations' => "TEXT NULL", 'attachment' => "VARCHAR(255) NULL",
                 'approved_by' => "BIGINT NULL", 'approved_by_role' => "VARCHAR(10) NULL",
                 'approved_at' => "TIMESTAMP NULL",
@@ -506,6 +527,40 @@ class RetailPosController extends Controller
                 KEY `psw_item_idx` (`inventory_item_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
+        // Damaged/Theft approval workflow columns.
+        if (Schema::hasTable('pos_stock_writeoff')) {
+            foreach ([
+                'status'       => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+                'manager_note' => "VARCHAR(500) NULL",
+                'decided_by'   => "BIGINT NULL",
+                'decided_by_role' => "VARCHAR(20) NULL",
+                'decided_at'   => "TIMESTAMP NULL",
+            ] as $col => $def) {
+                if (!Schema::hasColumn('pos_stock_writeoff', $col)) {
+                    DB::statement("ALTER TABLE `pos_stock_writeoff` ADD COLUMN `$col` $def");
+                }
+            }
+        }
+        // Disposition rows (split: return to supplier / resell / scrap) for an accepted write-off.
+        if (!Schema::hasTable('pos_writeoff_dispositions')) {
+            DB::statement("CREATE TABLE `pos_writeoff_dispositions` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `writeoff_id` BIGINT NULL,
+                `disposition` VARCHAR(20) NOT NULL,
+                `qty` DECIMAL(12,3) NOT NULL DEFAULT 0,
+                `damage_category` VARCHAR(120) NULL,
+                `reason` VARCHAR(500) NULL,
+                `attachment` VARCHAR(255) NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `pwd_writeoff_idx` (`writeoff_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+        // Branch manager (a staff) who approves write-offs raised at that branch.
+        if (Schema::hasTable('branches') && !Schema::hasColumn('branches', 'branch_manager_id')) {
+            DB::statement("ALTER TABLE `branches` ADD COLUMN `branch_manager_id` BIGINT NULL");
+        }
 
         // Audit trail (price overrides, voids, out-of-stock overrides) — immutable.
         if (!Schema::hasTable('pos_audit_log')) {
@@ -548,6 +603,8 @@ class RetailPosController extends Controller
                 // best-effort
             }
         }
+
+        try { \Illuminate\Support\Facades\Cache::forever($schemaFlag, 1); } catch (\Throwable $e) {}
     }
 
     // 1 loyalty point earned per ₹100 of bill value; wallet redeems 1:1 (₹).
@@ -663,7 +720,8 @@ class RetailPosController extends Controller
             ];
         }
 
-        // Requests: managers/owner see all; staff see only requests they raised or must act on.
+        // Requests: the owner/manager sees every request for the store (all branches); a staff member
+        // sees the full history — all statuses — of every request they raised OR were the recipient of.
         $q = DB::table('pos_cash_handovers')->where('store_id', $storeId)->whereIn('status', ['draft', 'pending', 'approved', 'received', 'rejected', 'closed']);
         if (!$isManager) {
             $q->where(function ($w) use ($meId, $meRole) {
@@ -671,7 +729,7 @@ class RetailPosController extends Controller
                     ->orWhere(function ($x) use ($meId, $meRole) { $x->where('to_id', $meId)->where('to_role', $meRole); });
             });
         }
-        $requests = $q->orderByDesc('id')->limit(80)->get();
+        $requests = $q->orderByDesc('id')->paginate(40)->withQueryString();
 
         return view('posretail::vendor.retail-pos.cash-flow', array_merge($d, [
             'rows' => $rows, 'requests' => $requests, 'isManager' => $isManager, 'meId' => $meId, 'meRole' => $meRole,
@@ -701,6 +759,20 @@ class RetailPosController extends Controller
             ? (Helpers::get_store_data()->name ?? 'Owner')
             : ($d['staffNames'][$meId] ?? 'Me');
 
+        // A staff (not owner/manager) raising a NEW request is locked to the branch & counter
+        // of the till they man — show only those in the dropdowns.
+        $branchLocked = false;
+        if (!$isManager && !$req) {
+            $myCounter = $this->currentCounter();
+            if ($myCounter) {
+                $branchLocked = true;
+                $d['counters'] = collect([$myCounter]);
+                $d['branches'] = $myCounter->branch_id
+                    ? $d['branches']->where('id', $myCounter->branch_id)->values()
+                    : collect();
+            }
+        }
+
         // Next request number preview for a new form.
         $nextId = ((int) DB::table('pos_cash_handovers')->max('id')) + 1;
         $nextNo = 'CF-' . str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
@@ -708,6 +780,7 @@ class RetailPosController extends Controller
         return view('posretail::vendor.retail-pos.cash-request-form', array_merge($d, [
             'req' => $req, 'purposes' => self::CASH_PURPOSES, 'denoms' => self::CASH_DENOMS,
             'isManager' => $isManager, 'meId' => $meId, 'meRole' => $meRole, 'myName' => $myName, 'nextNo' => $nextNo,
+            'branchLocked' => $branchLocked,
         ]));
     }
 
@@ -748,11 +821,12 @@ class RetailPosController extends Controller
         $denoms['coins'] = $coins;
         $denomCash += $coins;
 
-        $mode = in_array($request->input('payment_mode'), ['cash', 'upi', 'bank_transfer', 'mixed'], true)
+        $mode = in_array($request->input('payment_mode'), ['cash', 'upi', 'bank_transfer', 'mixed', 'coupon'], true)
             ? $request->input('payment_mode') : 'cash';
         $cashAmount = round((float) $request->input('cash_amount', $denomCash), 2);
         $upiAmount  = round((float) $request->input('upi_amount', 0), 2);
-        $requested  = round((float) $request->input('requested_amount', $cashAmount + $upiAmount), 2);
+        $couponAmount = round((float) $request->input('coupon_amount', 0), 2);
+        $requested  = round((float) $request->input('requested_amount', $cashAmount + $upiAmount + $couponAmount), 2);
 
         $type = $this->purposeType($purpose);
         $counterId = (int) $request->input('terminal_id') ?: null;
@@ -783,7 +857,7 @@ class RetailPosController extends Controller
             'payment_mode' => $mode,
             'to_role' => $toRole, 'to_id' => $toId ?: null, 'to_label' => $request->input('to_label'),
             'from_label' => $request->input('from_label'),
-            'requested_amount' => $requested, 'cash_amount' => $cashAmount, 'upi_amount' => $upiAmount,
+            'requested_amount' => $requested, 'cash_amount' => $cashAmount, 'upi_amount' => $upiAmount, 'coupon_amount' => $couponAmount,
             'denominations' => json_encode($denoms), 'expected_amount' => $expected, 'counted_amount' => $cashAmount,
             'variance' => $variance, 'status' => $status, 'note' => $request->input('note'),
             'updated_at' => now(),
@@ -1507,13 +1581,18 @@ class RetailPosController extends Controller
                 ->where('store_id', $storeId)->update(['status' => 'billed', 'updated_at' => now()]);
         }
 
-        try {
-            $pdf = _createBillPdf($invoice, 'vendor');
-            $invoice->update(['pdf' => $pdf['pdf']]);
-            $pdfUrl = $pdf['url'];
-        } catch (\Throwable $th) {
-            $pdfUrl = null;
-        }
+        // Generate the A4 PDF at sale time (here — not lazily), but AFTER the response is flushed,
+        // so the heavy DomPDF render (~8–9s) doesn't delay the thermal print. Runs in-process on
+        // PHP-FPM termination; no queue worker needed.
+        dispatch(function () use ($invoice) {
+            try {
+                $pdf = _createBillPdf($invoice, 'vendor');
+                $invoice->update(['pdf' => $pdf['pdf']]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Retail finalize PDF generation failed (invoice ' . $invoice->id . '): ' . $e->getMessage());
+            }
+        })->afterResponse();
+        $pdfUrl = null;
 
         return response()->json([
             'status'         => true,
@@ -1527,6 +1606,8 @@ class RetailPosController extends Controller
             'payment_status' => $paymentStatus,
             'pdf_url'        => $pdfUrl,
             'thermal_url'    => route('vendor.retail-pos.thermal', $invoice->id),
+            // Inlined receipt so the browser prints immediately (no second round-trip).
+            'receipt_html'   => $this->buildThermalHtml($invoice),
         ]);
     }
 
@@ -1734,9 +1815,17 @@ class RetailPosController extends Controller
     // ── 80mm thermal receipt (browser print) ───────────────────────────────────
     public function thermal(Request $request, $id)
     {
-        $this->ensureSchema();
+        // No ensureSchema here — read-only render on the print hot path; schema is ensured elsewhere.
         $storeId = $this->storeId();
         $invoice = ManualInvoice::where('vendor_id', $storeId)->findOrFail($id);
+        return response($this->buildThermalHtml($invoice));
+    }
+
+    // Renders the thermal receipt to an HTML string — used by thermal() and inlined into the
+    // finalize response so the browser prints without a second server round-trip.
+    private function buildThermalHtml(ManualInvoice $invoice): string
+    {
+        $storeId = $this->storeId();
         $items = InvoiceItem::with('item.itemunit')->where('manual_invoice_id', $invoice->id)->get();
         $store = Helpers::get_store_data();
         $legs = DB::table('pos_payment_legs')->where('manual_invoice_id', $invoice->id)->get();
@@ -1762,7 +1851,7 @@ class RetailPosController extends Controller
         }
         $savedAmount = round($mrpSaving + (float) ($invoice->discount_amount ?? 0) + (float) ($invoice->coupon_amount ?? 0), 2);
 
-        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate', 'tendered', 'changeReturn', 'balanceDue', 'savedAmount'));
+        return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate', 'tendered', 'changeReturn', 'balanceDue', 'savedAmount'))->render();
     }
 
     // ── Email invoice (§4.3) ────────────────────────────────────────────────────
@@ -1973,8 +2062,24 @@ class RetailPosController extends Controller
         $branch->name = $name;
         $branch->address = $request->input('address');
         $branch->store_id = $this->storeId();
+        $branch->branch_manager_id = (int) $request->input('branch_manager_id') ?: null;
         $branch->save();
         Toastr::success('Branch added');
+        return back();
+    }
+
+    // Assign / change the Branch Manager (a staff) who approves write-offs for a branch.
+    public function branchAssignManager(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $managerId = (int) $request->input('branch_manager_id') ?: null;
+        if ($managerId && !VendorEmployee::where('store_id', $storeId)->where('id', $managerId)->exists()) {
+            Toastr::error('Select a valid staff');
+            return back();
+        }
+        Branch::where('store_id', $storeId)->where('id', $id)->update(['branch_manager_id' => $managerId]);
+        Toastr::success($managerId ? 'Branch Manager assigned.' : 'Branch Manager cleared.');
         return back();
     }
 
@@ -1998,13 +2103,14 @@ class RetailPosController extends Controller
             return back();
         }
         $staffId = (int) $request->input('staff_id') ?: null;
+        $branchId = (int) $request->input('branch_id') ?: null;
         // One counter per staff: clear any existing assignment for this staff first.
         if ($staffId) {
             DB::table('pos_terminals')->where('store_id', $storeId)->where('staff_id', $staffId)->update(['staff_id' => null]);
         }
         DB::table('pos_terminals')->insert([
             'store_id'   => $storeId,
-            'branch_id'  => (int) $request->input('branch_id') ?: null,
+            'branch_id'  => $branchId,
             'staff_id'   => $staffId,
             'name'       => $name,
             'code'       => strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 6)) . '-' . rand(10, 99),
@@ -2015,7 +2121,11 @@ class RetailPosController extends Controller
             ]),
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        Toastr::success('Counter added');
+        // Keep the staff's saved (HR) branch in sync with the counter they now man.
+        if ($staffId && $branchId) {
+            VendorEmployee::where('store_id', $storeId)->where('id', $staffId)->update(['branch_id' => $branchId]);
+        }
+        Toastr::success('Counter added' . ($staffId && $branchId ? " — staff's branch updated to match." : ''));
         return back();
     }
 
@@ -2048,7 +2158,13 @@ class RetailPosController extends Controller
         }
         DB::table('pos_terminals')->where('id', $id)->where('store_id', $storeId)
             ->update(['staff_id' => $staffId, 'updated_at' => now()]);
-        Toastr::success($staffId ? 'Counter staff updated' : 'Counter staff cleared');
+        // Keep the staff's saved (HR) branch in sync with the counter they now man.
+        if ($staffId && $counter->branch_id) {
+            VendorEmployee::where('store_id', $storeId)->where('id', $staffId)->update(['branch_id' => $counter->branch_id]);
+        }
+        Toastr::success($staffId
+            ? 'Counter staff updated' . ($counter->branch_id ? " — staff's branch updated to match." : '')
+            : 'Counter staff cleared');
         return back();
     }
 
@@ -2592,9 +2708,21 @@ class RetailPosController extends Controller
             ->leftJoin('branches as b', 'b.id', '=', 'w.branch_id')
             ->where('w.store_id', $storeId)
             ->orderByDesc('w.id')->limit(100)
-            ->get(['w.id', 'w.type', 'w.qty', 'w.note', 'w.created_at', 'ii.item_name', 'ii.sku_id', 'b.name as branch_name']);
+            ->get(['w.id', 'w.type', 'w.qty', 'w.note', 'w.status', 'w.manager_note', 'w.branch_id', 'w.created_at', 'ii.item_name', 'ii.sku_id', 'b.name as branch_name']);
 
-        return view('posretail::vendor.retail-pos.writeoff', compact('branches', 'records'));
+        $dispositions = DB::table('pos_writeoff_dispositions')
+            ->whereIn('writeoff_id', $records->pluck('id'))->get()->groupBy('writeoff_id');
+
+        // "Select or type" suggestions for damage category (previously used values).
+        $damageCategories = DB::table('pos_writeoff_dispositions')
+            ->where('disposition', 'return_supplier')->whereNotNull('damage_category')
+            ->where('damage_category', '!=', '')->distinct()->pluck('damage_category');
+
+        foreach ($records as $r) {
+            $r->can_approve = $r->status === 'pending' && $this->canApproveWriteoff($r->branch_id);
+        }
+
+        return view('posretail::vendor.retail-pos.writeoff', compact('branches', 'records', 'dispositions', 'damageCategories'));
     }
 
     // select2 AJAX source for the write-off item picker. Stock reflects the chosen
@@ -2643,7 +2771,7 @@ class RetailPosController extends Controller
 
         $itemId = (int) $request->input('inventory_item_id');
         $branchId = (int) $request->input('branch_id') ?: null;
-        $type = $request->input('type') === 'theft' ? 'theft' : 'damaged';
+        $type = in_array($request->input('type'), ['theft', 'leaked'], true) ? $request->input('type') : 'damaged';
         $qty = (float) $request->input('qty');
 
         $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
@@ -2685,6 +2813,7 @@ class RetailPosController extends Controller
                 'type'              => $type,
                 'qty'               => $qty,
                 'note'              => $request->input('note'),
+                'status'            => 'pending',
                 'created_by'        => auth('vendor')->id() ?? auth('vendor_employee')->id(),
                 'created_at'        => now(),
                 'updated_at'        => now(),
@@ -2697,7 +2826,131 @@ class RetailPosController extends Controller
         }
 
         $this->logAudit('writeoff', $item->item_name, ucfirst($type) . ' ' . rtrim(rtrim(number_format($qty, 3), '0'), '.') . ($branchId ? ' (branch)' : ' (main store)'));
-        Toastr::success(ucfirst($type) . ' stock recorded for ' . $item->item_name);
+        Toastr::success(ucfirst($type) . ' request submitted for manager approval.');
+        return back();
+    }
+
+    // Owner / the branch's assigned Branch Manager can approve write-off requests.
+    private function canApproveWriteoff($branchId): bool
+    {
+        if (auth('vendor')->check()) {
+            return true; // owner
+        }
+        if (!$branchId) {
+            return false; // main-store write-offs → owner only
+        }
+        $managerId = (int) (Branch::where('store_id', $this->storeId())->where('id', $branchId)->value('branch_manager_id') ?? 0);
+        return $managerId && $managerId === (int) auth('vendor_employee')->id();
+    }
+
+    private function restoreWriteoffStock($storeId, $branchId, $itemId, $qty): void
+    {
+        if ($qty <= 0) {
+            return;
+        }
+        if ($branchId) {
+            DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
+                ->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
+        } else {
+            InventoryItem::where('id', $itemId)->where('store_id', $storeId)->update(['stock' => DB::raw('stock + ' . $qty)]);
+        }
+    }
+
+    // Manager decision on a pending write-off: reject (restore stock) or accept (split dispositions).
+    public function writeoffDecide(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $rec = DB::table('pos_stock_writeoff')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$rec) {
+            Toastr::error('Request not found');
+            return back();
+        }
+        if ($rec->status !== 'pending') {
+            Toastr::error('This request has already been decided.');
+            return back();
+        }
+        if (!$this->canApproveWriteoff($rec->branch_id)) {
+            Toastr::error('Only the Owner or the Branch Manager can approve this request.');
+            return back();
+        }
+
+        $action = $request->input('action');
+        $deciderId = auth('vendor')->id() ?? auth('vendor_employee')->id();
+        $deciderRole = auth('vendor')->check() ? 'owner' : 'branch_manager';
+
+        if ($action === 'reject') {
+            DB::beginTransaction();
+            try {
+                // Deducted at request time — return it to normal inventory.
+                $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, (float) $rec->qty);
+                DB::table('pos_stock_writeoff')->where('id', $id)->update([
+                    'status' => 'rejected', 'manager_note' => $request->input('manager_note'),
+                    'decided_by' => $deciderId, 'decided_by_role' => $deciderRole, 'decided_at' => now(), 'updated_at' => now(),
+                ]);
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                Toastr::error('Reject failed: ' . $th->getMessage());
+                return back();
+            }
+            Toastr::success('Request rejected — stock returned to inventory.');
+            return back();
+        }
+
+        // ACCEPT — validate split dispositions sum to the request qty.
+        $dispositions = $request->input('disp', []); // [['type'=>..,'qty'=>..,'damage_category'=>..,'reason'=>..], ...]
+        $rows = [];
+        $sum = 0.0;
+        foreach ((array) $dispositions as $i => $d) {
+            $dtype = $d['type'] ?? null;
+            $dqty  = (float) ($d['qty'] ?? 0);
+            if (!in_array($dtype, ['return_supplier', 'resell', 'scrap'], true) || $dqty <= 0) {
+                continue;
+            }
+            $sum += $dqty;
+            $rows[$i] = ['type' => $dtype, 'qty' => $dqty,
+                'damage_category' => $d['damage_category'] ?? null, 'reason' => $d['reason'] ?? null];
+        }
+        if (!count($rows)) {
+            Toastr::error('Add at least one disposition.');
+            return back();
+        }
+        if (abs($sum - (float) $rec->qty) > 0.001) {
+            Toastr::error('Disposition quantities must total ' . rtrim(rtrim(number_format((float) $rec->qty, 3), '0'), '.') . '.');
+            return back();
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($rows as $i => $r) {
+                $attachment = null;
+                if ($request->hasFile("disp_file.$i")) {
+                    $f = $request->file("disp_file.$i");
+                    $attachment = Helpers::upload('writeoff/', $f->getClientOriginalExtension(), $f);
+                }
+                // Convert to resell → stock goes back to inventory; supplier/scrap stay out.
+                if ($r['type'] === 'resell') {
+                    $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, $r['qty']);
+                }
+                DB::table('pos_writeoff_dispositions')->insert([
+                    'writeoff_id' => $id, 'disposition' => $r['type'], 'qty' => $r['qty'],
+                    'damage_category' => $r['type'] === 'return_supplier' ? $r['damage_category'] : null,
+                    'reason' => $r['reason'], 'attachment' => $attachment,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            DB::table('pos_stock_writeoff')->where('id', $id)->update([
+                'status' => 'accepted', 'manager_note' => $request->input('manager_note'),
+                'decided_by' => $deciderId, 'decided_by_role' => $deciderRole, 'decided_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Approval failed: ' . $th->getMessage());
+            return back();
+        }
+        Toastr::success('Request accepted and dispositions recorded.');
         return back();
     }
 
@@ -2709,6 +2962,10 @@ class RetailPosController extends Controller
         $rec = DB::table('pos_stock_writeoff')->where('store_id', $storeId)->where('id', $id)->first();
         if (!$rec) {
             Toastr::error('Record not found');
+            return back();
+        }
+        if (($rec->status ?? 'pending') !== 'pending') {
+            Toastr::error('Only pending requests can be deleted.');
             return back();
         }
 

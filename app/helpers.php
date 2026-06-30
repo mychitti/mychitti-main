@@ -4146,6 +4146,222 @@ if (!function_exists('_ensureSellingPriceBasisColumn')) {
         }
     }
 }
+if (!function_exists('_remindLeadWalletRecharge')) {
+    /**
+     * When a lead is dispatched to a store that can't afford to accept it (no active lead
+     * subscription and wallet balance below the zone/category minimum), SMS them to recharge so
+     * they don't silently miss leads. Throttled to once per store per day to avoid spamming.
+     * $store is a stores row (needs id, phone, vendor_id, zone_id).
+     */
+    function _remindLeadWalletRecharge($store, $catId = null): void
+    {
+        try {
+            if (!$store || empty($store->phone)) {
+                return;
+            }
+            $storeId = (int) ($store->id ?? 0);
+            $zoneId  = $store->zone_id ?? null;
+
+            // Stores with an active lead subscription don't pay per lead — nothing to recharge for.
+            if (\App\CentralLogics\Helpers::store_has_active_lead_subscription($storeId, null, $zoneId, $catId)) {
+                return;
+            }
+
+            $min = (float) \App\CentralLogics\Helpers::get_wallet_min_balance($zoneId, $catId);
+            if ($min <= 0) {
+                return; // no minimum configured for this zone/category → no balance gate
+            }
+
+            $vendorId = $store->vendor_id ?? null;
+            $wallet   = $vendorId ? \App\Models\StoreWallet::where('vendor_id', $vendorId)->first() : null;
+            $balance  = $wallet ? (float) $wallet->total_earning : 0;
+            if ($balance >= $min) {
+                return; // can afford — no reminder
+            }
+
+            $flag = 'lead_recharge_sms_' . $storeId;
+            if (0 && \Illuminate\Support\Facades\Cache::has($flag)) {
+                return; // already reminded today
+            }
+           prx( _sendSMS($store->phone, 'You are missing out on leads on MyChitti! Your wallet balance is low. Please recharge at least ' . _price($min) . ' to accept new leads.'));
+            \Illuminate\Support\Facades\Cache::put($flag, 1, now()->addDay());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('lead recharge reminder failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_autoAcceptLeadForStore')) {
+    /**
+     * Auto-accept a lead for a store that holds an active WhatsApp "leads" add-on.
+     * Mirrors ServiceController@accept's charge logic (context-free, no auth), then sends the
+     * "lead accepted" WhatsApp template to the vendor and fires the customer confirmation request
+     * using the store's saved visiting charge. Returns true only when it actually accepted.
+     * On any guard failing (not subscribed, can't afford, expired, already accepted) it returns
+     * false so the caller falls back to the normal new-lead notification.
+     */
+    function _autoAcceptLeadForStore($storeId, $serviceRequestId): bool
+    {
+        $storeId = (int) $storeId;
+        $serviceRequestId = (int) $serviceRequestId;
+        $L = fn($m, $x = []) => \Illuminate\Support\Facades\Log::info('LEAD-AUTO: ' . $m, array_merge(['store' => $storeId, 'req' => $serviceRequestId], $x));
+        try {
+            $L('called');
+            if (!\App\Services\WhatsAppService::storeHasFeature($storeId, 'leads')) {
+                $L('skip — store does not have active "leads" add-on');
+                return false;
+            }
+            $store = \App\Models\Store::withoutGlobalScopes()->find($storeId);
+            if (!$store) {
+                $L('skip — store not found');
+                return false;
+            }
+            // Already tied up with another vendor, or already accepted by this store.
+            if (\Illuminate\Support\Facades\DB::table('accepted_service_requests')
+                ->where('service_request_id', $serviceRequestId)->where('tieup', 1)->exists()) {
+                $L('skip — already tied up with another vendor');
+                return false;
+            }
+            if (\App\Models\AcceptedServiceRequest::where('service_request_id', $serviceRequestId)
+                ->where('vendor_id', $storeId)->exists()) {
+                $L('skip — already accepted by this store');
+                return false;
+            }
+
+            $leadinfo = \Illuminate\Support\Facades\DB::table('service_requests')
+                ->join('items', 'items.id', '=', 'service_requests.item_id')
+                ->join('categories', 'categories.id', '=', 'items.category_id')
+                ->where('service_requests.id', $serviceRequestId)
+                ->where('service_requests.expired', 0)
+                ->select('categories.id as cat_id', 'service_requests.item_id', 'service_requests.created_at',
+                    'service_requests.preferred_doctor_id', 'service_requests.qty', 'service_requests.user_id',
+                    'items.name as item_name', 'service_requests.is_dedicated')
+                ->first();
+            if (!$leadinfo) {
+                $L('skip — lead not found / expired flag / item has no category (join failed)');
+                return false;
+            }
+            if ($leadinfo->created_at < now()->subMinutes(\App\CentralLogics\Helpers::get_lead_exp_minutes())) {
+                $L('skip — lead expired by time', ['created_at' => $leadinfo->created_at]);
+                return false;
+            }
+
+            $zoneId    = $store->zone_id;
+            $catId     = $leadinfo->cat_id;
+            $vendorId  = $store->vendor_id; // store owner (vendor user) — wallet is keyed by this
+            $isDedicated = (bool) $leadinfo->is_dedicated;
+
+            // --- Charge computation (mirrors ServiceController@accept) ---
+            $leadChargeInfo = \App\Models\LeadCharge::where('category_id', $catId)->where('zone_id', $zoneId)
+                ->where('item_id', $leadinfo->item_id)->first()
+                ?? \App\Models\LeadCharge::where('category_id', $catId)->where('zone_id', $zoneId)
+                ->whereNull('item_id')->first();
+
+            $totalVendors = \Illuminate\Support\Facades\DB::table('stores')
+                ->join('items', fn($j) => $j->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0'))
+                ->where('items.category_id', $catId)->where('stores.zone_id', $zoneId)
+                ->groupBy('stores.id', 'items.category_id')->select('stores.id')->get()->count();
+
+            if (!$leadChargeInfo) {
+                $charge = 0;
+            } elseif ($isDedicated && $leadChargeInfo->dedicated_lead_charge > 0) {
+                $charge = $leadChargeInfo->dedicated_lead_charge;
+            } elseif ($totalVendors <= $leadChargeInfo->vendor_count) {
+                $charge = $leadChargeInfo->ven_same_charges;
+            } else {
+                $accepted = \App\Models\AcceptedServiceRequest::where('service_request_id', $serviceRequestId)->count();
+                $charge = [$leadChargeInfo->ven_1_charges, $leadChargeInfo->ven_2_charges, $leadChargeInfo->ven_3_charges][$accepted]
+                    ?? $leadChargeInfo->ven_other_charges;
+            }
+            $charge = (float) $charge;
+
+            $hasSub = \App\CentralLogics\Helpers::store_has_active_lead_subscription($storeId, null, $zoneId, $catId);
+            $needsCharge = $charge > 0 && !$hasSub;
+            if ($needsCharge) {
+                $minBal = (float) \App\CentralLogics\Helpers::get_wallet_min_balance($zoneId, $catId);
+                $minRequired = $charge > $minBal ? $charge : $minBal;
+                $wallet = \App\Models\StoreWallet::where('vendor_id', $vendorId)->first();
+                $balance = $wallet ? (float) $wallet->total_earning : 0;
+                if (!$wallet || $balance < $minRequired) {
+                    $L('skip — wallet cannot cover lead charge', ['charge' => $charge, 'min_required' => $minRequired, 'balance' => $balance, 'vendor_id' => $vendorId]);
+                    return false; // can't afford → fall back to normal notification (manual accept)
+                }
+            }
+            $L('all checks passed — auto-accepting', ['charge' => $charge, 'needs_charge' => $needsCharge]);
+
+            $cfgTable  = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+            $visiting  = \Illuminate\Support\Facades\DB::table($cfgTable)->where('store_id', $storeId)->value('lead_visiting_charge');
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($needsCharge, $charge, $vendorId, $isDedicated, $storeId, $serviceRequestId, $leadinfo, $visiting) {
+                if ($needsCharge) {
+                    $wallet = \App\Models\StoreWallet::where('vendor_id', $vendorId)->lockForUpdate()->first();
+                    $wallet->decrement('total_earning', $charge);
+                    $wallet->increment('total_withdrawn', $charge);
+                    $txn = new \App\Models\AccountTransaction();
+                    $txn->current_balance = $wallet->total_earning - $wallet->total_withdrawn;
+                    $txn->from_type = 'store';
+                    $txn->amount = $charge;
+                    $txn->from_id = $vendorId;
+                    $txn->method = 'wallet';
+                    $txn->action = 'debit';
+                    $txn->reason = $isDedicated ? 'Dedicated Lead Charges (auto)' : 'Lead Charges (auto)';
+                    $txn->created_by = 'system';
+                    $txn->save();
+                }
+
+                $acc = new \App\Models\AcceptedServiceRequest();
+                $acc->vendor_id = $storeId;
+                $acc->service_request_id = $serviceRequestId;
+                $acc->qty = $leadinfo->qty;
+                $acc->current_status = 'Confirmation Request Sent';
+                $acc->quoted_price = $visiting;
+                $acc->created_at = now();
+                $acc->save();
+
+                $sr = \App\Models\ServiceRequest::find($serviceRequestId);
+                $sr->accepted = 1;
+                $by = array_filter(explode(',', (string) $sr->accepted_by));
+                if (!in_array((string) $storeId, $by, true)) {
+                    $by[] = $storeId;
+                }
+                $sr->accepted_by = implode(',', $by);
+                $sr->save();
+
+                \Illuminate\Support\Facades\DB::table('lead_statuses')->insert([
+                    ['service_request_id' => $serviceRequestId, 'status' => 'Requested Accepted', 'created_at' => now()],
+                    ['service_request_id' => $serviceRequestId, 'status' => 'Confirmation Request Sent', 'created_at' => now()],
+                ]);
+            });
+
+            // --- Comms (after commit) ---
+            $user = \Illuminate\Support\Facades\DB::table('users')->where('id', $leadinfo->user_id)->first();
+
+            // 1) WhatsApp to the vendor: lead accepted (includes the customer's phone to call).
+            \App\Services\WhatsAppService::sendLeadAcceptedNotification($storeId, $leadinfo->item_name,
+                $user->f_name ?? null, $visiting, $user->phone ?? null);
+
+            // 2) Confirmation request to the customer (same push the manual flow sends).
+            if ($user) {
+                $data = [
+                    'title'       => 'Service Confirmation',
+                    'description' => 'You have recieved a confirmation request from ' . $store->name . ' for rs.' . $visiting . ' .',
+                    'order_id'    => $serviceRequestId,
+                    'image'       => '',
+                    'type'        => 'block',
+                ];
+                \App\CentralLogics\Helpers::send_push_notif_to_device($user->cm_firebase_token ?? null, $data);
+                \Illuminate\Support\Facades\DB::table('user_notifications')->insert([
+                    'data' => json_encode($data), 'user_id' => $user->id, 'type' => 'service',
+                    'type_id' => $serviceRequestId, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('auto-accept lead failed (store ' . $storeId . ', req ' . $serviceRequestId . '): ' . $e->getMessage());
+            return false;
+        }
+    }
+}
 if (!function_exists('_auditLogs')) {
     function _auditLogs($action, $store_id = null)
     {
@@ -5579,7 +5795,6 @@ if (!function_exists('_sendSMS')) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, "");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 2);
         $data = json_decode(curl_exec($ch));
-
         return $data;/* result of API call*/
     }
 }

@@ -95,6 +95,11 @@
                     </tbody>
                 </table>
             </div>
+            @if ($requests->hasPages())
+                <div class="p-2 d-flex justify-content-end">
+                    {!! $requests->links() !!}
+                </div>
+            @endif
         </div>
     </div>
 @endsection

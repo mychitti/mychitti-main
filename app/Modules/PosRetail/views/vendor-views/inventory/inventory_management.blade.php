@@ -138,14 +138,14 @@
                                                     <div class="mr-1 delete_selected_btn" style="display:none;">
                                                         @if (hasPermission('inventory_item', 'delete'))
                                                             <button style=" white-space: nowrap;" id="delete_all"
-                                                                class="btn btn-sm btn-outline-danger px-3 py-2 btn_sm"
+                                                                class="btn action-btn btn-outline-danger px-3 py-2 btn_sm"
                                                                 title="Delete Selected">
                                                                 <i class="tio-delete"></i> Delete Selected
                                                             </button>
                                                         @endif
                                                         @if (hasPermission('inventory_item', 'export'))
                                                             <button id="download_selected" style=" white-space: nowrap;"
-                                                                class="btn btn-sm btn-outline-primary px-3 py-2 btn_sm "
+                                                                class="btn action-btn btn-outline-primary px-3 py-2 btn_sm "
                                                                 title="Download Selected">
                                                                 <i class="tio-download"></i> Download Selected
                                                             </button>
@@ -250,10 +250,38 @@
                                                             <td class="hide_on_phone">
                                                                 {{ _price($item->mrp) }}
                                                             </td>
-                                                            <td>
-                                                                {{ _price($item->selling_price) }}
+                                                            @php
+                                                                $sp_vars = $item->variations ? json_decode($item->variations, true) : [];
+                                                                $sp_hasVars = is_array($sp_vars) && count($sp_vars) > 0;
+                                                            @endphp
+                                                            <td class="sp-cell">
+                                                                <div class="d-flex align-items-center">
+                                                                @if ($sp_hasVars && hasPermission('inventory_item', 'edit'))
+                                                                    <span class="sp-display">{{ _price($item->selling_price) }}</span>
+                                                                    <a href="javascript:;" class="sp-var-edit btn action-btn btn-outline-primary ml-1"
+                                                                        title="{{ translate('Edit variation prices') }}"
+                                                                        data-item-id="{{ $item->id }}"
+                                                                        data-item-name="{{ $item->item_name }}"
+                                                                        data-variations='@json(array_map(fn($v) => ['type' => $v['type'] ?? '', 'price' => $v['price'] ?? 0], array_values($sp_vars)))'>
+                                                                        <i class="tio-edit"></i>
+                                                                    </a>
+                                                                @elseif (!$sp_hasVars && hasPermission('inventory_item', 'edit'))
+                                                                    <span class="sp-inline d-flex align-items-center" data-item-id="{{ $item->id }}">
+                                                                        <span class="sp-display">{{ _price($item->selling_price) }}</span>
+                                                                        <input type="number" step="0.01" min="0"
+                                                                            class="form-control form-control-sm sp-input d-none"
+                                                                            value="{{ $item->selling_price }}"
+                                                                            style="max-width:90px;display:inline-block;">
+                                                                        <a href="javascript:;" class="sp-edit-btn btn action-btn btn-outline-primary ml-1" title="{{ translate('Edit price') }}"><i class="tio-edit"></i></a>
+                                                                        <a href="javascript:;" class="sp-save-btn btn action-btn btn-outline-success ml-1 d-none" title="{{ translate('Save') }}"><i class="tio-checkmark-circle"></i></a>
+                                                                        <a href="javascript:;" class="sp-cancel-btn btn action-btn btn-outline-secondary ml-1 d-none" title="{{ translate('Cancel') }}"><i class="tio-clear-circle"></i></a>
+                                                                    </span>
+                                                                @else
+                                                                    {{ _price($item->selling_price) }}
+                                                                @endif
+                                                                </div>
                                                             </td>
-                                                           
+
                                                             <td>
                                                                 <div class="dropdown">
                                                                     <button class="btn p-1 dropdown-toggle" type="button"
@@ -433,7 +461,7 @@
                                                     <div class="mr-1 delete_selected_btn_entry" style="display:none;">
                                                         @if (hasPermission('inventory_item_entry', 'delete'))
                                                             <button style=" white-space: nowrap;" id="delete_all_entry"
-                                                                class="btn btn-sm btn-outline-danger px-3 py-2"
+                                                                class="btn action-btn btn-outline-danger px-3 py-2"
                                                                 title="Delete Selected">
                                                                 <i class="tio-delete"></i> Delete Selected
                                                             </button>
@@ -441,7 +469,7 @@
                                                         @if (hasPermission('inventory_item_entry', 'export'))
                                                             <button id="download_selected_entry"
                                                                 style=" white-space: nowrap;"
-                                                                class="btn btn-sm btn-outline-primary px-3 py-2 "
+                                                                class="btn action-btn btn-outline-primary px-3 py-2 "
                                                                 title="Download Selected">
                                                                 <i class="tio-download"></i> Download Selected
                                                             </button>
@@ -709,6 +737,26 @@
         @include('vendor-views/form_modals/inventory_item_entry')
     @endif
 
+    {{-- Variation price editor (opened from the items list price column) --}}
+    <div class="modal fade" id="variationPriceModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ translate('Edit Variation Prices') }} — <span id="vpItemName"></span></h5>
+                    <button type="button" class="btn-close close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="vpItemId">
+                    <div id="vpRows"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">{{ translate('Cancel') }}</button>
+                    <button type="button" class="btn btn--primary btn-sm" id="vpSaveBtn">{{ translate('Save Prices') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
@@ -920,8 +968,9 @@
         })
         document.querySelectorAll('.clickable-row').forEach(row => {
             row.addEventListener('click', function(e) {
-                // Ignore clicks inside a dropdown
+                // Ignore clicks inside a dropdown or the inline price-edit cell
                 if (e.target.closest('.dropdown')) return;
+                if (e.target.closest('.sp-cell')) return;
 
                 window.location = this.dataset.href;
             });
@@ -940,6 +989,82 @@
                 $(".info_text").text('');
             }
         });
+
+        // ---- Inline selling-price edit (items list) ----
+        (function () {
+            var quickUrl = "{{ route('vendor.inventory.item.quick-price') }}";
+            var varUrl   = "{{ route('vendor.inventory.item.variation-prices') }}";
+            var token    = "{{ csrf_token() }}";
+            function spNotify(type, msg) { if (typeof toastr !== 'undefined') { toastr[type](msg); } else { alert(msg); } }
+
+            // Simple item — toggle the inline input
+            $(document).on('click', '.sp-edit-btn', function () {
+                var w = $(this).closest('.sp-inline');
+                w.find('.sp-display, .sp-edit-btn').addClass('d-none');
+                w.find('.sp-input, .sp-save-btn, .sp-cancel-btn').removeClass('d-none');
+                w.find('.sp-input').focus();
+            });
+            $(document).on('click', '.sp-cancel-btn', function () {
+                var w = $(this).closest('.sp-inline'); 
+                w.find('.sp-input, .sp-save-btn, .sp-cancel-btn').addClass('d-none');
+                w.find('.sp-display, .sp-edit-btn').removeClass('d-none');
+            });
+            $(document).on('click', '.sp-save-btn', function () {
+                var w = $(this).closest('.sp-inline');
+                var id = w.data('item-id');
+                var val = w.find('.sp-input').val();
+                if (val === '' || isNaN(val) || parseFloat(val) < 0) { spNotify('error', 'Enter a valid price'); return; }
+                var btn = $(this); btn.css('pointer-events', 'none');
+                $.ajax({
+                    url: quickUrl, method: 'POST', data: { _token: token, item_id: id, selling_price: val },
+                    success: function (r) {
+                        if (r.status) {
+                            w.find('.sp-display').text(r.price);
+                            w.find('.sp-input, .sp-save-btn, .sp-cancel-btn').addClass('d-none');
+                            w.find('.sp-display, .sp-edit-btn').removeClass('d-none');
+                            spNotify('success', r.message || 'Updated');
+                        } else { spNotify('error', r.message || 'Failed'); }
+                    },
+                    error: function (x) { spNotify('error', (x.responseJSON && x.responseJSON.message) || 'Update failed'); },
+                    complete: function () { btn.css('pointer-events', 'auto'); }
+                });
+            });
+
+            // Variation item — open the price modal
+            $(document).on('click', '.sp-var-edit', function () {
+                var vars = $(this).data('variations') || [];
+                $('#vpItemId').val($(this).data('item-id'));
+                $('#vpItemName').text($(this).data('item-name'));
+                var html = '';
+                $.each(vars, function (i, v) {
+                    var label = v.type ? v.type : ('Variation ' + (i + 1));
+                    html += '<div class="form-group row align-items-center mb-2">'
+                        + '<label class="col-5 col-form-label text-truncate" title="' + label + '">' + label + '</label>'
+                        + '<div class="col-7"><input type="number" step="0.01" min="0" class="form-control form-control-sm vp-price" data-idx="' + i + '" value="' + (v.price != null ? v.price : '') + '"></div>'
+                        + '</div>';
+                });
+                $('#vpRows').html(html || '<p class="text-muted mb-0">No variations.</p>');
+                $('#variationPriceModal').modal('show');
+            });
+            $('#vpSaveBtn').on('click', function () {
+                var id = $('#vpItemId').val(), prices = {}, ok = true;
+                $('#vpRows .vp-price').each(function () {
+                    var val = $(this).val();
+                    if (val === '' || isNaN(val) || parseFloat(val) < 0) ok = false;
+                    prices[$(this).data('idx')] = val;
+                });
+                if (!ok) { spNotify('error', 'Enter valid prices for all variations'); return; }
+                var btn = $(this); btn.prop('disabled', true);
+                $.ajax({
+                    url: varUrl, method: 'POST', data: { _token: token, item_id: id, prices: prices },
+                    success: function (r) {
+                        if (r.status) { spNotify('success', r.message || 'Updated'); location.reload(); }
+                        else { spNotify('error', r.message || 'Failed'); btn.prop('disabled', false); }
+                    },
+                    error: function (x) { spNotify('error', (x.responseJSON && x.responseJSON.message) || 'Update failed'); btn.prop('disabled', false); }
+                });
+            });
+        })();
     </script>
 
 

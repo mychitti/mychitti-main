@@ -117,6 +117,11 @@
                          @include('vendor-views/form_modals/date_range')
                      </form>
 
+                     {{-- Branch --}}
+                     <form action="">
+                         @include('vendor-views.inventory.report._branch_filter')
+                     </form>
+
 
                      @if (hasPermission('sale_report', 'export'))
                          <div class="badge badge-soft-success align-items-center"

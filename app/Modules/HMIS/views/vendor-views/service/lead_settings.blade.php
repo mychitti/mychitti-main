@@ -52,6 +52,17 @@
                         </div>
                     @endif
 
+                    <div class="p-3 bg-light rounded mb-4" style="max-width:600px;">
+                        <h5 class="mb-1">Visiting Charge</h5>
+                        <small class="text-muted d-block mb-2">
+                            Your default visiting charge (₹). This amount is pre-filled and sent to the customer in the
+                            Confirmation Request.
+                        </small>
+                        <input type="number" step="0.01" min="0" name="lead_visiting_charge" class="form-control"
+                            style="max-width:220px;" placeholder="e.g. 200"
+                            value="{{ $storeConfig->lead_visiting_charge ?? '' }}">
+                    </div>
+
                     @if ($store_data->module_id == 6)
                         <div class="mt-4" style="max-width:650px;">
                             <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>

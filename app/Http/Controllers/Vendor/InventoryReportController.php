@@ -32,9 +32,28 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class InventoryReportController extends Controller
 {
+    // Branch filter for reports. Returns: null = all branches, 0 = main store (no branch), >0 = branch id.
+    private function reportBranchId(Request $request)
+    {
+        $b = $request->input('branch_id');
+        if ($b === null || $b === '' || $b === 'all') {
+            return null;
+        }
+        if ($b === 'main' || (string) $b === '0') {
+            return 0;
+        }
+        return (int) $b;
+    }
+
+    private function reportBranches()
+    {
+        return \App\Models\Branch::where('store_id', Helpers::get_store_id())->orderBy('name')->get();
+    }
+
     public function gst(Request $request, $export  = false)
     {
         $storeId = Helpers::get_store_id();
+        $branchId = $this->reportBranchId($request);
         $preset = request('date_range') ?? 'this_month';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
@@ -58,6 +77,9 @@ class InventoryReportController extends Controller
             ->where('payment_status', 'Paid')
             ->where('tax_type', 'gst')
             ->where('vendor_id', $storeId)
+            ->when($branchId !== null, function ($q) use ($branchId) {
+                $branchId === 0 ? $q->whereNull('pos_branch_id') : $q->where('pos_branch_id', $branchId);
+            })
             ->orderBy('invoice_date', 'desc')
             ->get()
             ->map(function ($invoice) {
@@ -70,6 +92,7 @@ class InventoryReportController extends Controller
             ->where('payment_status', 'Paid')
             ->where('tax_type', 'gst')
             ->where('vendor_id', $storeId)
+            ->when(is_int($branchId) && $branchId > 0, fn($q) => $q->whereRaw('0=1')) // services aren't branch-scoped
             ->orderBy('invoice_date', 'desc')
             ->get()
             ->map(function ($invoice) {
@@ -134,7 +157,8 @@ class InventoryReportController extends Controller
             ->values();
 
 
-        return view('vendor-views.inventory.report.gst', compact('preset', 'serviceInvoices', 'invoices', 'saleInvoices', 'purchaseInvoices'));
+        $branches = $this->reportBranches();
+        return view('vendor-views.inventory.report.gst', compact('preset', 'serviceInvoices', 'invoices', 'saleInvoices', 'purchaseInvoices', 'branches', 'branchId'));
     }
     public function sale(Request $request, $export = null, $export_type = null)
     {
@@ -149,6 +173,7 @@ class InventoryReportController extends Controller
             $ids = $request->invoice_ids ?? null;
 
             $storeId = Helpers::get_store_id();
+            $branchId = $this->reportBranchId($request);
             $query = InventoryOrder::with(['invoice',  'invoice.storeCustomer'])
                 ->where('store_id', $storeId)
                 ->when($search, function ($q) use ($search) {
@@ -156,6 +181,11 @@ class InventoryReportController extends Controller
                 })
                 ->when($ids, function ($q) use ($ids) {
                     $q->whereIn('id', $ids);
+                })
+                ->when($branchId !== null, function ($q) use ($branchId) {
+                    $q->whereHas('invoice', function ($i) use ($branchId) {
+                        $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
+                    });
                 })
                 ->whereBetween('created_at', [$formatted_from, $formatted_to]);
 
@@ -186,7 +216,8 @@ class InventoryReportController extends Controller
                 return back();
             }
 
-            return view('vendor-views.inventory.report.sale', compact('preset', 'formatted_from', 'formatted_to', 'invoices', 'data'));
+            $branches = $this->reportBranches();
+            return view('vendor-views.inventory.report.sale', compact('preset', 'formatted_from', 'formatted_to', 'invoices', 'data', 'branches', 'branchId'));
         } else {
             Toastr::error('Access Denied');
             return back();
@@ -468,9 +499,10 @@ class InventoryReportController extends Controller
             $storeIds = (clone $query)->pluck('vendor_id');
 
             $stores = Store::withoutGlobalScopes()->whereIn('id', $storeIds)->select('name', 'phone', 'id')->get();
-            // prx($invoices);
-
-            return view('vendor-views.inventory.report.purchase', compact('preset', 'invoices', 'stores'));
+            // Purchases are store-wide (not branch-scoped); the branch dropdown is shown for consistency.
+            $branches = $this->reportBranches();
+            $branchId = $this->reportBranchId($request);
+            return view('vendor-views.inventory.report.purchase', compact('preset', 'invoices', 'stores', 'branches', 'branchId'));
         } else {
             Toastr::error('Access Denied');
             return back();
@@ -527,6 +559,8 @@ class InventoryReportController extends Controller
             $category = ($request->category && $request->category !== 'all') ? $request->category : '';
             // prx($category);
             $storeId = Helpers::get_store_id();
+            $branchId = $this->reportBranchId($request);
+            $branchStockMode = is_int($branchId) && $branchId > 0; // showing a specific branch's stock pool
             $items = InventoryItem::with('category')
                 ->where('store_id', $storeId)
                 ->when($category, function ($query) use ($category) {
@@ -540,7 +574,8 @@ class InventoryReportController extends Controller
                 ->when($search, function ($q) use ($search) {
                     $q->where('item_name', $search);
                 })
-                ->when($stock_status, function ($q) use ($stock_status) {
+                // Stock-status filter on the main-store stock (skipped for a branch — applied below on branch stock).
+                ->when($stock_status && !$branchStockMode, function ($q) use ($stock_status) {
                     if ($stock_status == 'low_stock') {
                         $q->whereBetween('stock', [1, 5]);
                     } elseif ($stock_status == 'out_of_stock') {
@@ -550,6 +585,23 @@ class InventoryReportController extends Controller
                     }
                 })
                 ->get();
+
+            // For a specific branch, replace each item's displayed stock with that branch's pool, then
+            // apply the stock-status filter on the branch quantity.
+            if ($branchStockMode) {
+                $branchStock = \Illuminate\Support\Facades\DB::table('pos_branch_stock')
+                    ->where('branch_id', $branchId)->pluck('stock', 'inventory_item_id');
+                $items->each(fn($i) => $i->stock = (float) ($branchStock[$i->id] ?? 0));
+                if ($stock_status) {
+                    $items = $items->filter(function ($i) use ($stock_status) {
+                        $s = (float) $i->stock;
+                        if ($stock_status == 'low_stock') return $s >= 1 && $s <= 5;
+                        if ($stock_status == 'out_of_stock') return $s < 1;
+                        if ($stock_status == 'in_stock') return $s > 5;
+                        return true;
+                    })->values();
+                }
+            }
             $data['category'] = optional(
                 ModelsCategory::where('id', $category)->first()
             )->name ?? 'All';
@@ -572,7 +624,8 @@ class InventoryReportController extends Controller
 
 
             $categories = ModelsCategory::where('module_id', 6)->where('status', 1)->get();
-            return view('vendor-views.inventory.report.stock', compact('preset', 'items', 'categories'));
+            $branches = $this->reportBranches();
+            return view('vendor-views.inventory.report.stock', compact('preset', 'items', 'categories', 'branches', 'branchId'));
         } else {
             Toastr::error('Access Denied');
             return back();
@@ -645,6 +698,7 @@ class InventoryReportController extends Controller
             $formatted_to = $range['end'];
 
             $storeId = Helpers::get_store_id();
+            $branchId = $this->reportBranchId($request);
             $search = $request->search ?? '';
             $status = ($request->status && $request->status !== 'all') ? $request->status : '';
             $category = ($request->category && $request->category !== 'all') ? $request->category : '';
@@ -655,6 +709,11 @@ class InventoryReportController extends Controller
                 ->whereBetween('inventory_order_details.created_at', [$formatted_from, $formatted_to])
                 ->whereHas('order', function ($q) use ($storeId) {
                     $q->where('store_id', $storeId);
+                })
+                ->when($branchId !== null, function ($q) use ($branchId) {
+                    $q->whereHas('order.invoice', function ($i) use ($branchId) {
+                        $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
+                    });
                 })
                 ->when($category, function ($q) use ($category) {
                     $q->whereHas('item', function ($query) use ($category) {
@@ -706,7 +765,8 @@ class InventoryReportController extends Controller
             }
             // VIEW
             $categories = ModelsCategory::where('module_id', 6)->where('status', 1)->get();
-            return view('vendor-views.inventory.report.profit_and_loss', compact('preset', 'orderItems', 'categories'));
+            $branches = $this->reportBranches();
+            return view('vendor-views.inventory.report.profit_and_loss', compact('preset', 'orderItems', 'categories', 'branches', 'branchId'));
         } else {
             Toastr::error('Access Denied');
             return back();

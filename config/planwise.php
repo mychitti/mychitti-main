@@ -32,11 +32,12 @@ return [
         'hospital_manage' => [
             'hr_manage',
         ],
-        // A Retail POS plan unlocks billing + inventory + accounts as one bundle.
+        // Retail-POS routes are gated by `planwise:pos` (see PosRetail routes), so a Retail POS
+        // subscription MUST grant the `pos` key or every retail page 403s. It also unlocks basic
+        // Inventory. Account Management is a SEPARATE subscription — intentionally not bundled.
         'pos_retail' => [
             'pos',
             'inventory_manage',
-            'account_manage',
         ],
     ],
 

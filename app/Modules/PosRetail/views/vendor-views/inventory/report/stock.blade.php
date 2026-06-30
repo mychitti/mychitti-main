@@ -97,6 +97,7 @@
                                  Stock</option>
                          </select>
                      </div>
+                     @include('vendor-views.inventory.report._branch_filter')
 
                  </form>
 

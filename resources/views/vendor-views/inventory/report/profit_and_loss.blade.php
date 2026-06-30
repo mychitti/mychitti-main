@@ -133,6 +133,7 @@
                              <option value="loss" {{ request()?->status == 'loss' ? 'selected' : '' }}>Loss</option>
                          </select>
                      </div>
+                     @include('vendor-views.inventory.report._branch_filter')
                  </form>
 
                  <div class="d-flex gap-1 flex-wrap">

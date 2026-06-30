@@ -24,6 +24,12 @@ class WhatsAppService
     /** Default approved template for vendor lead notifications (overridden by whatsapp_config.lead_template). */
     const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert3';
 
+    /** Language of the default lead template (must match the approved template's language exactly). */
+    const DEFAULT_LEAD_TEMPLATE_LANG = 'en';
+
+    /** Template sent to a vendor when a lead is auto-accepted (overridden by whatsapp_config.lead_accepted_template). */
+    const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted';
+
     /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
      * Add a new receiving capability here — no schema change needed.
@@ -474,18 +480,70 @@ class WhatsAppService
                 ),
             ]];
 
-            $res = $wa->sendTemplate($store->phone, $template, $cfg['lead_template_lang'] ?? 'en_US', $components, 'lead notify');
+            $lang = !empty($cfg['lead_template_lang']) ? $cfg['lead_template_lang'] : self::DEFAULT_LEAD_TEMPLATE_LANG;
+            $res = $wa->sendTemplate($store->phone, $template, $lang, $components, 'lead notify');
             $sent = !empty($res['success']);
         }
         // Fallback when no template is configured or the template send fails
         // (e.g. not yet approved) — the vendor still gets notified.
+        // Fallback mirrors the approved `vendor_lead_alert3` template content.
         if (!$sent) {
-            $msg = "🔔 *New Lead on MyChitti!*\n\n"
-                . "🛠️ *Service:* {$serviceName}\n"
-                . "👤 *Customer:* {$clientName}\n\n"
-                . "👉 Log in to your vendor panel to view details and respond.\n\n"
-                . "_— Team MyChitti_";
+            $vendorName = $store->name ?: 'Vendor';
+            $msg = "Hello {$vendorName}, you have received a new service request on MyChitti.\n\n"
+                . "Service: {$serviceName}\n"
+                . "Customer: {$clientName}\n\n"
+                . "Log in to your vendor panel to view the details and respond.";
             $wa->sendText($store->phone, $msg, true, 'lead notify');
+        }
+    }
+
+    /**
+     * Notify a store that a lead was auto-accepted on their behalf (WhatsApp add-on active).
+     * Uses the configured/approved `vendor_lead_alert_accepted` template, with a plain-text fallback.
+     */
+    public static function sendLeadAcceptedNotification(int $storeId, ?string $serviceName, ?string $clientName, $visitingCharge = null, ?string $clientPhone = null): void
+    {
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store || empty($store->phone)) {
+            return;
+        }
+        $wa = static::make();
+        if (!$wa->isConfigured()) {
+            return;
+        }
+
+        $serviceName = $serviceName ?: 'a service';
+        $clientName  = $clientName ?: 'a customer';
+        $clientPhone = $clientPhone ?: 'N/A';
+        $charge      = ($visitingCharge !== null && $visitingCharge !== '') ? (string) $visitingCharge : '0';
+        $cfg = Helpers::get_business_settings('whatsapp_config');
+
+        $template = !empty($cfg['lead_accepted_template']) ? $cfg['lead_accepted_template'] : self::DEFAULT_LEAD_ACCEPTED_TEMPLATE;
+        $lang     = !empty($cfg['lead_accepted_template_lang']) ? $cfg['lead_accepted_template_lang'] : self::DEFAULT_LEAD_TEMPLATE_LANG;
+
+        $sent = false;
+        if ($template) {
+            $components = [[
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn($v) => ['type' => 'text', 'text' => $v],
+                    [$store->name ?: 'Vendor', $serviceName, $clientName, $clientPhone]
+                ),
+            ]];
+            $res = $wa->sendTemplate($store->phone, $template, $lang, $components, 'lead accepted');
+            $sent = !empty($res['success']);
+        }
+
+        // Fallback mirrors the approved `vendor_lead_alert_accepted` template content.
+        if (!$sent) {
+            $vendorName = $store->name ?: 'Vendor';
+            $msg = "*Service request accepted*\n\n"
+                . "Hello {$vendorName}, a new service request has been accepted for your account on MyChitti.\n\n"
+                . "Service: {$serviceName}\n"
+                . "Customer: {$clientName}\n"
+                . "Customer phone: {$clientPhone}\n\n"
+                . "A confirmation request has been sent to the customer. Open your vendor panel to view and proceed.";
+            $wa->sendText($store->phone, $msg, true, 'lead accepted');
         }
     }
 

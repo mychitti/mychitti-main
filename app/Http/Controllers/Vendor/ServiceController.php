@@ -1547,8 +1547,14 @@ class ServiceController extends Controller
     public function lead_settings_update(Request $request)
     {
         $storeId = Helpers::get_store_id();
+        $cfgTable = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'lead_visiting_charge')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `$cfgTable` ADD COLUMN `lead_visiting_charge` DECIMAL(10,2) NULL");
+        }
         \App\Models\StoreConfig::where('store_id', $storeId)->update([
             'lead_available' => $request->has('lead_available') ? 1 : 0,
+            'lead_visiting_charge' => $request->input('lead_visiting_charge') !== null && $request->input('lead_visiting_charge') !== ''
+                ? round((float) $request->input('lead_visiting_charge'), 2) : null,
         ]);
         $store = \App\Models\Store::withoutGlobalScopes()->find($storeId);
         if ($store && $store->module_id == 6) {

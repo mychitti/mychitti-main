@@ -98,7 +98,7 @@
                     <label class="form-check-label input-label " for="order">Orders</label>
                 </div>
             </div>
-        @else
+        @elseif (vendorPlanHasModule('leads_manage'))
             <div class="check-item">
                 <div class="form-group form-check form--check">
                     <input type="checkbox" name="modules[]" value="leads_manage"
@@ -170,6 +170,7 @@
             </div>
         </div>
         @endif
+        @if (vendorPlanHasModule('hospital_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="hospital_manage" class="form-check-input"
@@ -177,6 +178,7 @@
                 <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
             </div>
         </div>
+        @endif
 
         <div class="check-item">
             <div class="form-group form-check form--check">

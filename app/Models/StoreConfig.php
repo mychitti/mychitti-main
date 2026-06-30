@@ -72,6 +72,7 @@ class StoreConfig extends Model
         'printer_paper_width',
         'printer_auto_print',
         'leads_guide_dismissed',
+        'lead_visiting_charge',
         'default_dashboard',
         'patient_uid_prefix',
         'patient_uid_padding',

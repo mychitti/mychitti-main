@@ -98,7 +98,7 @@
                     <label class="form-check-label input-label " for="order">Orders</label>
                 </div>
             </div>
-        @else
+        @elseif (vendorPlanHasModule('leads_manage'))
             <div class="check-item">
                 <div class="form-group form-check form--check">
                     <input type="checkbox" name="modules[]" value="leads_manage"
@@ -134,7 +134,9 @@
                     for="reviews">{{ translate('messages.reviews') }}</label>
             </div>
         </div>
-        @if(vendorPlanHasModule('pos'))
+        {{-- 'pos' is the access key retail stores hold via the pos_retail plan; they delegate via the
+             "Retail POS" checkbox, so hide the restaurant POS checkbox for pos_retail business type. --}}
+        @if(vendorPlanHasModule('pos') && strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') !== 'pos_retail')
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="pos"
@@ -179,6 +181,7 @@
             </div>
         </div>
         @endif
+        @if (vendorPlanHasModule('hospital_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="hospital_manage" class="form-check-input"
@@ -186,6 +189,7 @@
                 <label class="form-check-label input-label " for="hospital_manage">Hospital Management</label>
             </div>
         </div>
+        @endif
 
         <div class="check-item">
             <div class="form-group form-check form--check">
@@ -241,6 +245,22 @@
             ->orderBy('name')
             ->get()
             ->groupBy('master_module');
+
+        // Retail POS stores get BASIC inventory only (Items + Item Entry + Storage) unless they've
+        // bought the full Inventory plan — hide the advanced inventory features here too, mirroring
+        // the RetailInventoryBasic middleware (no purchase / sale / gatepass / report / dashboard / stock).
+        $basicInvOnly = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') === 'pos_retail'
+            && !\App\CentralLogics\Helpers::has_purchased_module('inventory_manage');
+        if ($basicInvOnly && isset($modules['inventory_manage'])) {
+            $advancedInv = ['purchase', 'sale', 'gatepass', 'report', 'gst', 'dashboard', 'stock'];
+            $modules['inventory_manage'] = $modules['inventory_manage']->reject(function ($f) use ($advancedInv) {
+                $hay = strtolower(($f->name ?? '') . ' ' . ($f->display_name ?? ''));
+                foreach ($advancedInv as $kw) {
+                    if (str_contains($hay, $kw)) return true;
+                }
+                return false;
+            })->values();
+        }
     @endphp
 
     @foreach ($modules as $moduleName => $features)

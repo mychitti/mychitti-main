@@ -226,6 +226,9 @@
                                  type="button" data-toggle="modal"
                                  data-target="#dateRangeModal">{{ translate($preset) }}</button>
                          </form>
+                         <form action="">
+                             @include('vendor-views.inventory.report._branch_filter')
+                         </form>
 
                      </div>
                  </div>

@@ -210,7 +210,10 @@ class ServiceRequestController extends Controller
                         if ($store2) {
                             _sendSMS($store2->phone, $msg);
                             _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
-                            \App\Services\WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
+                            if (!_autoAcceptLeadForStore($store2->id, $serviceReq->id)) {
+                                \App\Services\WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
+                            }
+                            _remindLeadWalletRecharge($store2, $itemDet->category_id ?? null);
                         }
                     }
                 }
