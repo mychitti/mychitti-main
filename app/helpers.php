@@ -4183,7 +4183,7 @@ if (!function_exists('_remindLeadWalletRecharge')) {
             if (0 && \Illuminate\Support\Facades\Cache::has($flag)) {
                 return; // already reminded today
             }
-           prx( _sendSMS($store->phone, 'You are missing out on leads on MyChitti! Your wallet balance is low. Please recharge at least ' . _price($min) . ' to accept new leads.'));
+           _sendSMS($store->phone, 'You are missing out on leads on MyChitti! Your wallet balance is low. Please recharge at least ' . _price($min) . ' to accept new leads.');
             \Illuminate\Support\Facades\Cache::put($flag, 1, now()->addDay());
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('lead recharge reminder failed: ' . $e->getMessage());
