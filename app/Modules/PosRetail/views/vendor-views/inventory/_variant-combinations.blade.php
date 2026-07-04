@@ -22,12 +22,12 @@
                         <span
                             class="control-label text-capitalize">{{ $secondary_unit ? 'Opening Stock (' . $secondary_unit . ')' : 'Stock' }}</span>
                     </th> --}}
-                    <th class="text-center border-0">
+                    <th class="text-center border-0" style="display: none;">
                         <span
                             class="control-label text-capitalize">{{ $primary_unit ? 'Opening Stock (' . $primary_unit . ')' : 'Stock' }}</span>
                     </th>
                 @else
-                    <th class="text-center border-0">
+                    <th class="text-center border-0" style="display: none;">
                         <span class="control-label text-capitalize">{{ translate('messages.stock') }}</span>
                     </th>
                 @endif
@@ -75,13 +75,11 @@
                             <input type="number" name="secondary_qty_{{ $str }}" min="1"
                                 class="form-control" placeholder="{{ $secondary_unit }}" required>
                         </td> --}}
-                        <td> <input type="number" style="min-width: 90px;" name="primary_qty_{{ $str }}" min="1"
-                                class="form-control" placeholder="{{ $primary_unit }}" required>
-                        </td>
+                        <td style="display: none;"><input type="hidden" name="primary_qty_{{ $str }}"
+                                value="0"></td>
                     @else
-                        <td><input type="number" style="min-width: 90px;" name="stock_{{ $str }}"
-                                placeholder="{{ $placeholder . ' Stock' }}" value="1" min="0"
-                                step="0.001" class="form-control vr_stock" required></td>
+                        <td style="display: none;"><input type="hidden" name="stock_{{ $str }}" value="0"
+                                class="vr_stock"></td>
                     @endif
 
                 </tr>

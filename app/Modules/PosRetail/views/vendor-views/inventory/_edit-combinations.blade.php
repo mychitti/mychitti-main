@@ -22,12 +22,12 @@
                         <span
                             class="control-label text-capitalize">{{ $secondary_unit ? 'Qty(' . $secondary_unit . ')' : 'Stock' }}</span>
                     </th> --}}
-                    <th class="text-center border-0">
+                    <th class="text-center border-0" style="display: none;">
                         <span
                             class="control-label text-capitalize">{{ $primary_unit ? 'Opening Stock (' . $primary_unit . ')' : 'Stock' }}</span>
                     </th>
                 @else
-                    <th class="text-center border-0">
+                    <th class="text-center border-0" style="display: none;">
                         <span class="control-label text-capitalize">{{ translate('messages.stock') }}</span>
                     </th>
                 @endif
@@ -67,10 +67,9 @@
                             >
                     </td>
 
-                    <td>
-                        <input type="number" style="min-width: 90px;" name="stock_{{ $combination['type'] }}"
-                            placeholder="{{ $primary_unit ?? '' }}" value="{{ $combination['stock'] ?? 0 }}"
-                            min="0" class="form-control update_qty" required>
+                    <td style="display: none;">
+                        <input type="hidden" name="stock_{{ $combination['type'] }}"
+                            value="{{ $combination['stock'] ?? 0 }}" class="update_qty">
                     </td>
 
                 </tr>

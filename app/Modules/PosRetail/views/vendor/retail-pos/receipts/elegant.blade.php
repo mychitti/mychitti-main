@@ -37,7 +37,7 @@
     <div class="frame">
         <div class="center">
             <h3 class="store">{{ $store->name }}</h3>
-            <div class="tag">Tax Invoice</div>
+            @if (!empty($gstCode))<div class="tag">Tax Invoice</div>@endif
             @if (!empty($store->branch_label))<div class="addr">{{ $store->branch_label }}</div>@endif
             @if (!empty($store->address))<div class="addr">{{ $store->address }}</div>@endif
             @if (!empty($gstCode))<div class="addr">GSTIN: {{ $gstCode }}</div>@endif
@@ -75,7 +75,7 @@
                     }
                 @endphp
                 <tr>
-                    <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn)<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
+                    <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn && !empty($gstCode))<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
                 </tr>
                 <tr>
                     <td style="padding-top:0;">{{ $qtyTxt }}</td>

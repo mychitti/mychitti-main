@@ -72,7 +72,7 @@
                 }
             @endphp
             <tr>
-                <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn)<br><span class="muted" style="font-size:10px;">HSN {{ $it->hsn }}</span>@endif</td>
+                <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn && !empty($gstCode))<br><span class="muted" style="font-size:10px;">HSN {{ $it->hsn }}</span>@endif</td>
             </tr>
             <tr>
                 <td class="muted" style="padding-top:0;">{{ $qtyTxt }}</td>

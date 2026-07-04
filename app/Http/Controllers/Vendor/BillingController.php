@@ -625,6 +625,9 @@ class BillingController extends Controller
         ? InvoiceItem::where('rand_invoice_id', $invoice_id)->get()
         : InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
 
+    // POS Retail branch sales deduct from the branch too, so return branch stock on delete.
+    $branchId = ($type != 'service' && isset($invoice->pos_branch_id)) ? $invoice->pos_branch_id : null;
+
     $restoreLines = [];
     foreach ($items as $line) {
         if ($line->inv_id) {
@@ -633,15 +636,21 @@ class BillingController extends Controller
                 'qty' => (float) $line->qty,
                 'unit' => $line->unit,
                 'name' => $line->name,
+                'branch_id' => $branchId,
             ];
         }
     }
 
     if (!empty($restoreLines)) {
         if (auth('vendor')->check()) {
-            // Store owner deleted → return stock immediately.
+            // Store owner deleted → return stock immediately (main + branch).
             foreach ($restoreLines as $l) {
                 _restoreInventoryStock($l['inv_id'], $l['qty'], $l['unit']);
+                if (!empty($l['branch_id']) && \Illuminate\Support\Facades\Schema::hasTable('pos_branch_stock')) {
+                    \Illuminate\Support\Facades\DB::table('pos_branch_stock')
+                        ->where('branch_id', $l['branch_id'])->where('inventory_item_id', $l['inv_id'])
+                        ->update(['stock' => \Illuminate\Support\Facades\DB::raw('stock + ' . (float) $l['qty']), 'updated_at' => now()]);
+                }
             }
         } elseif (\Illuminate\Support\Facades\Schema::hasTable('invoice_stock_restore_approvals')) {
             // Staff deleted → hold the stock return until the vendor approves it.
@@ -657,9 +666,14 @@ class BillingController extends Controller
             ]);
             Toastr::info('Stock return sent to the vendor for approval');
         } else {
-            // Approval table not set up yet — return stock now to avoid losing it.
+            // Approval table not set up yet — return stock now (main + branch) to avoid losing it.
             foreach ($restoreLines as $l) {
                 _restoreInventoryStock($l['inv_id'], $l['qty'], $l['unit']);
+                if (!empty($l['branch_id']) && \Illuminate\Support\Facades\Schema::hasTable('pos_branch_stock')) {
+                    \Illuminate\Support\Facades\DB::table('pos_branch_stock')
+                        ->where('branch_id', $l['branch_id'])->where('inventory_item_id', $l['inv_id'])
+                        ->update(['stock' => \Illuminate\Support\Facades\DB::raw('stock + ' . (float) $l['qty']), 'updated_at' => now()]);
+                }
             }
         }
     }
@@ -708,6 +722,11 @@ class BillingController extends Controller
     }
     foreach ((array) $approval->items as $l) {
       _restoreInventoryStock($l['inv_id'] ?? null, (float) ($l['qty'] ?? 0), $l['unit'] ?? null);
+      if (!empty($l['branch_id']) && \Illuminate\Support\Facades\Schema::hasTable('pos_branch_stock')) {
+        \Illuminate\Support\Facades\DB::table('pos_branch_stock')
+          ->where('branch_id', $l['branch_id'])->where('inventory_item_id', $l['inv_id'])
+          ->update(['stock' => \Illuminate\Support\Facades\DB::raw('stock + ' . (float) ($l['qty'] ?? 0)), 'updated_at' => now()]);
+      }
     }
     $approval->status = 'approved';
     $approval->approved_by = auth('vendor')->id();

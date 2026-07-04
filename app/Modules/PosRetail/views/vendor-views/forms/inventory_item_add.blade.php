@@ -682,13 +682,8 @@
                                 class="form-control" step="0.001" />
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="form-group form-group-custom">
-                            <label for="openingStock" class="custom-label">Opening Stock</label>
-                            <input type="number" placeholder="Opening Stock" name="main_opening_stock"
-                                class="form-control" step="1" />
-                        </div>
-                    </div>
+                    <input type="hidden" name="main_opening_stock" value="0">
+
                     <div class="col-md-6">
                         <label for="gstType" class="custom-label">GST <span class="text-danger">*</span></label>
 

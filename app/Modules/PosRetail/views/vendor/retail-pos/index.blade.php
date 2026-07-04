@@ -536,7 +536,15 @@
                     <div class="totals-row" id="change-row" style="display:none;color:#1e7e34;font-weight:700;border:2px dashed #1e7e34;background:#eafaf1;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>💵 Change to return</span><span>₹<span id="t-change">0.00</span></span></div>
                     <div class="totals-row" id="due-row" style="display:none;color:#c0392b;font-weight:700;border:2px dashed #c0392b;background:#fdecea;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>Balance (credit)</span><span>₹<span id="t-due">0.00</span></span></div>
 
-                        <div id="offer-panel" class="mt-3" style="display:none;">
+                        <div id="promo-section" class="mt-3" style="display:none;">
+                            <div id="promo-toggle" class="d-flex align-items-center justify-content-between"
+                                style="cursor:pointer; padding:8px 10px; background:#f6f7fb; border-radius:8px;">
+                                <span style="font-weight:600;">🎁 Offers &amp; Coupons <span id="promo-badge"
+                                        class="badge badge-danger ml-1" style="display:none;"></span></span>
+                                <span id="promo-chevron">&#9662;</span>
+                            </div>
+                            <div id="promo-body" style="display:none; padding-top:6px;">
+                        <div id="offer-panel" style="display:none;">
                             <div class="pay-head" style="margin-bottom:6px;">🎁 Applicable Offers</div>
                             <div id="offer-list"></div>
                             <div id="offer-manual" style="display:none;">
@@ -562,6 +570,8 @@
                                 <div class="offer-chip-sub mt-1" id="coupon-msg"></div>
                             </div>
                         </div>
+                            </div>{{-- /promo-body --}}
+                        </div>{{-- /promo-section --}}
 
                         <div class="d-flex gap-2 mt-3 cart-actions">
                             @if (hasPermission('pos_billing', 'hold'))
@@ -846,6 +856,7 @@
             recalc();
             scheduleOfferMatch();
             scheduleCouponFetch();
+            if (typeof updatePromoSection === 'function') updatePromoSection();
         }
 
         function chQty(i, d) {
@@ -991,6 +1002,7 @@
                 manual.style.display = 'block';
                 document.getElementById('offer-manual-msg').textContent = '';
             }
+            if (typeof updatePromoSection === 'function') updatePromoSection();
         }
 
         function removeOffer(id) {
@@ -1109,6 +1121,7 @@
                     avail.innerHTML = '<span class="offer-chip-sub">No coupons for this customer.</span>';
                 }
             }
+            if (typeof updatePromoSection === 'function') updatePromoSection();
         }
 
         function applyCouponCode(code) {
@@ -1145,6 +1158,26 @@
         });
         document.getElementById('coupon-code-input')?.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); applyCouponCode((this.value || '').trim()); }
+        });
+
+        // ── Offers & Coupons collapsible section ──
+        function updatePromoSection() {
+            var section = document.getElementById('promo-section');
+            if (!section) return;
+            if (!POS.cart.length) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            var count = selectedOffers().length + (POS.availableCoupons ? POS.availableCoupons.length : 0) + (POS.coupon ? 1 : 0);
+            var badge = document.getElementById('promo-badge');
+            if (count > 0) { badge.style.display = ''; badge.textContent = count; }
+            else { badge.style.display = 'none'; }
+        }
+
+        document.getElementById('promo-toggle')?.addEventListener('click', function () {
+            var body = document.getElementById('promo-body');
+            var chev = document.getElementById('promo-chevron');
+            var open = body.style.display !== 'none';
+            body.style.display = open ? 'none' : 'block';
+            chev.innerHTML = open ? '&#9662;' : '&#9652;';
         });
 
         // ── Search / scan ──
