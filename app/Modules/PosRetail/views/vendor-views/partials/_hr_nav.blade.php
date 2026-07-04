@@ -2,6 +2,7 @@
     // Shared HR navigation bar — included on every HR page. Each tab is its own page (link),
     // the bar highlights the active section from the URL, and items are permission-gated.
     $hrTabs = [
+        ['label' => 'Dashboard',   'icon' => 'tio-dashboard-outlined', 'route' => 'vendor.hr.dashboard',            'active' => Request::is('hr/dashboard'),                                                                   'show' => hasPermission('hr_manage', 'dashboard')],
         ['label' => 'Staff',       'icon' => 'tio-group-junior',  'route' => 'vendor.staff.list',                  'active' => Request::is('staff/list', 'staff/add-new', 'staff/view*', 'staff/edit*', 'staff/settings*'), 'show' => hasAnyModulePermission(['staff_manage'])],
         ['label' => 'Departments', 'icon' => 'tio-folder',         'route' => 'vendor.staff-department.all',         'active' => Request::is('staff-department*'),                                                              'show' => hasAnyModulePermission(['staff_department'])],
         ['label' => 'Roles',       'icon' => 'tio-lock-outlined',  'route' => 'vendor.custom-role.create',           'active' => Request::is('custom-role*'),                                                                   'show' => hasAnyModulePermission(['staff_role'])],

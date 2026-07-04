@@ -102,16 +102,16 @@
 
                                                     
                                                     <!-- Delete Button -->
-                                                    <div class="mr-1 delete_selected_btn" style="display:none;">
+                                                    <div class="mr-1 delete_selected_btn align-self-center" style="display:none;">
                                                         @if (hasPermission('inventory_item', 'delete'))
-                                                            <button style=" white-space: nowrap;" id="delete_all"
+                                                            <button style=" white-space: nowrap; min-width:fit-content !important;padding: 5px !important;display:inline-flex !important;width:auto !important;align-items:center;" id="delete_all"
                                                                 class="btn btn-sm btn-outline-danger px-3 py-2 btn_sm"
                                                                 title="Delete Selected">
                                                                 <i class="tio-delete"></i> Delete Selected
                                                             </button>
                                                         @endif
                                                         @if (hasPermission('inventory_item', 'export'))
-                                                            <button id="download_selected" style=" white-space: nowrap;"
+                                                            <button id="download_selected" style=" white-space: nowrap; min-width:fit-content !important;padding: 5px !important;display:inline-flex !important;width:auto !important;align-items:center;"
                                                                 class="btn btn-sm btn-outline-primary px-3 py-2 btn_sm "
                                                                 title="Download Selected">
                                                                 <i class="tio-download"></i> Download Selected
@@ -209,10 +209,12 @@
                                                             {{-- <td class="hide_on_phone">{{ $item->brand }}</td>
                                                             <td class="hide_on_phone">{{ $item->model_number }}</td> --}}
                                                             <td class="hide_on_phone">
-                                                                <div
-                                                                    class="badge badge-soft-{{ $item->stock <= 5 ? 'danger' : 'success' }}">
-                                                                    {{ $item->stock ?? 0}}
-                                                                </div>
+                                                                @php
+                                                                    $__ds = (float) ($item->stock ?? 0);
+                                                                    $__vs = json_decode($item->variations ?? '[]', true);
+                                                                    if (is_array($__vs)) { foreach ($__vs as $__v) { $__ds += (float) ($__v['stock'] ?? 0); } }
+                                                                @endphp
+                                                                <div class="badge badge-soft-{{ $__ds <= 5 ? 'danger' : 'success' }}">{{ $__ds }}</div>
                                                             </td>
                                                             <td class="hide_on_phone">
                                                                 {{ _price($item->mrp) }}

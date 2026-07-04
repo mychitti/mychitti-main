@@ -23,7 +23,58 @@ use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SalaryController extends Controller
-{ 
+{
+    // Adds statutory + payslip columns once (no-op if present). Toggles default OFF, so existing
+    // payroll is unchanged until a store enables EPF/ESI/PT/TDS in HR Salary Settings.
+    private function ensureStatutoryColumns(): void
+    {
+        $cfgTable = Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+        foreach ([
+            'stat_epf' => "TINYINT(1) NOT NULL DEFAULT 0", 'stat_epf_percent' => "DECIMAL(6,2) NULL DEFAULT 12",
+            'stat_esi' => "TINYINT(1) NOT NULL DEFAULT 0", 'stat_esi_percent' => "DECIMAL(6,2) NULL DEFAULT 0.75",
+            'stat_esi_wage_limit' => "DECIMAL(12,2) NULL DEFAULT 21000",
+            'stat_pt' => "TINYINT(1) NOT NULL DEFAULT 0", 'stat_pt_amount' => "DECIMAL(10,2) NULL DEFAULT 200",
+            'stat_tds' => "TINYINT(1) NOT NULL DEFAULT 0", 'stat_tds_percent' => "DECIMAL(6,2) NULL DEFAULT 0",
+        ] as $col => $def) {
+            if (Schema::hasTable($cfgTable) && !Schema::hasColumn($cfgTable, $col)) {
+                DB::statement("ALTER TABLE `$cfgTable` ADD COLUMN `$col` $def");
+            }
+        }
+        foreach (['epf', 'esi', 'professional_tax', 'tds'] as $col) {
+            if (Schema::hasTable('salaries') && !Schema::hasColumn('salaries', $col)) {
+                DB::statement("ALTER TABLE `salaries` ADD COLUMN `$col` DECIMAL(12,2) NOT NULL DEFAULT 0");
+            }
+        }
+    }
+
+    // Statutory deductions from the store's HR settings. Returns 0 for any component that's disabled.
+    private function statutoryDeductions($base, $gross): array
+    {
+        $this->ensureStatutoryColumns();
+        $cfg = \App\Models\StoreConfig::where('store_id', Helpers::get_store_id())->first();
+        $epf = $esi = $pt = $tds = 0.0;
+        if ($cfg) {
+            if (!empty($cfg->stat_epf)) {
+                $epfWage = min((float) $base, 15000); // standard EPF wage ceiling
+                $epf = round($epfWage * ((float) ($cfg->stat_epf_percent ?? 12) / 100), 2);
+            }
+            if (!empty($cfg->stat_esi)) {
+                $limit = (float) ($cfg->stat_esi_wage_limit ?? 21000);
+                if ($limit <= 0 || $gross <= $limit) {
+                    $esi = round((float) $gross * ((float) ($cfg->stat_esi_percent ?? 0.75) / 100), 2);
+                }
+            }
+            if (!empty($cfg->stat_pt)) {
+                $pt = (float) ($cfg->stat_pt_amount ?? 0);
+            }
+            if (!empty($cfg->stat_tds)) {
+                $tds = round((float) $gross * ((float) ($cfg->stat_tds_percent ?? 0) / 100), 2);
+            }
+        }
+        $total = round($epf + $esi + $pt + $tds, 2);
+        return compact('epf', 'esi', 'pt', 'tds', 'total');
+    }
+
 
     public function index(Request $request)
     {
@@ -235,7 +286,9 @@ class SalaryController extends Controller
 
         $advance_payment_deductions = $this->advanceDeductionsForMonth($empInfo->id, $year, $month);
 
-        $total_payable = $payable_salary + $total_allowance - $deductions - $advance_payment_deductions + $bonus;
+        $gross = $payable_salary + $total_allowance + $bonus;
+        $stat  = $this->statutoryDeductions($base_salary, $gross);
+        $total_payable = $gross - $deductions - $advance_payment_deductions - $stat['total'];
 
         return [
             'base_salary'                => $base_salary,
@@ -246,6 +299,10 @@ class SalaryController extends Controller
             'deductions'                 => $deductions,
             'advance_payment_deductions' => $advance_payment_deductions,
             'allowance'                  => json_encode($allowances),
+            'epf'                        => $stat['epf'],
+            'esi'                        => $stat['esi'],
+            'professional_tax'           => $stat['pt'],
+            'tds'                        => $stat['tds'],
         ];
     }
 
@@ -627,7 +684,9 @@ class SalaryController extends Controller
         $empInfo->monthly_allowances = json_encode($allowances);
         $empInfo->save();
 
-        $total_payable = $payable_salary + $total_allowance + $bonus - $deductions - $advance_payment_deductions;
+        $gross = $payable_salary + $total_allowance + $bonus;
+        $stat  = $this->statutoryDeductions($base_salary, $gross);
+        $total_payable = $gross - $deductions - $advance_payment_deductions - $stat['total'];
 
         $staff->vendor_id = $v_id;
         $staff->employee_id = $request->post('emp_id');
@@ -644,6 +703,10 @@ class SalaryController extends Controller
         $staff->advance_payment_deductions = $advance_payment_deductions;
         $staff->allowance = json_encode($allowances);
         $staff->deductions = $deductions;
+        $staff->epf = $stat['epf'];
+        $staff->esi = $stat['esi'];
+        $staff->professional_tax = $stat['pt'];
+        $staff->tds = $stat['tds'];
         $staff->created_at = date('Y-m-d H:i:s');
 
         if ($id == '') {
@@ -655,6 +718,118 @@ class SalaryController extends Controller
         }
 
         return redirect()->route('vendor.salary.list', ['month' => $request->month]);
+    }
+
+    // Pay slip (printable) for a single salary row.
+    public function payslip(Request $request, $id)
+    {
+        $this->ensureStatutoryColumns();
+        $storeId = Helpers::get_store_id();
+        $salary = Salary::with('employee')->where('vendor_id', $storeId)->findOrFail($id);
+        $store = Helpers::get_store_data();
+        return view('vendor-views.salary.payslip', compact('salary', 'store'));
+    }
+
+    // Statutory deduction settings (EPF / ESI / Professional Tax / TDS) — off by default.
+    public function salarySettings(Request $request)
+    {
+        $this->ensureStatutoryColumns();
+        $storeConfig = \App\Models\StoreConfig::firstOrCreate(['store_id' => Helpers::get_store_id()]);
+        return view('vendor-views.salary.settings', compact('storeConfig'));
+    }
+
+    public function salarySettingsSave(Request $request)
+    {
+        $this->ensureStatutoryColumns();
+        $cfg = \App\Models\StoreConfig::firstOrCreate(['store_id' => Helpers::get_store_id()]);
+        $cfg->stat_epf = $request->has('stat_epf') ? 1 : 0;
+        $cfg->stat_epf_percent = (float) ($request->input('stat_epf_percent') ?: 12);
+        $cfg->stat_esi = $request->has('stat_esi') ? 1 : 0;
+        $cfg->stat_esi_percent = (float) ($request->input('stat_esi_percent') ?: 0.75);
+        $cfg->stat_esi_wage_limit = (float) ($request->input('stat_esi_wage_limit') ?: 21000);
+        $cfg->stat_pt = $request->has('stat_pt') ? 1 : 0;
+        $cfg->stat_pt_amount = (float) ($request->input('stat_pt_amount') ?: 0);
+        $cfg->stat_tds = $request->has('stat_tds') ? 1 : 0;
+        $cfg->stat_tds_percent = (float) ($request->input('stat_tds_percent') ?: 0);
+        $cfg->save();
+        Toastr::success('Salary statutory settings saved. They apply to salaries generated from now on.');
+        return back();
+    }
+
+    // ── HR Letters (Offer / Appointment / Termination) ──────────────────────
+    private function ensureLetterColumns(): void
+    {
+        $cfgTable = Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+        foreach (['letter_offer', 'letter_appointment', 'letter_termination'] as $col) {
+            if (Schema::hasTable($cfgTable) && !Schema::hasColumn($cfgTable, $col)) {
+                DB::statement("ALTER TABLE `$cfgTable` ADD COLUMN `$col` TEXT NULL");
+            }
+        }
+    }
+
+    private function defaultLetterTemplates(): array
+    {
+        return [
+            'offer' => "Date: {{date}}\n\nDear {{name}},\n\nWe are pleased to offer you the position of {{designation}} at {{store_name}}. Your tentative date of joining will be {{joining_date}}.\n\nYour gross remuneration will be {{salary}} per month, subject to applicable statutory deductions and the terms of your employment.\n\nWe look forward to having you on our team.\n\nSincerely,\n{{store_name}}\n{{address}}",
+            'appointment' => "Date: {{date}}\n\nDear {{name}},\n\nWith reference to your application and subsequent interview, we are pleased to confirm your appointment as {{designation}} at {{store_name}} with effect from {{joining_date}}.\n\nYour monthly salary is fixed at {{salary}}, subject to applicable deductions. You will be governed by the rules and policies of the organisation as amended from time to time.\n\nWe welcome you and wish you a long and successful association.\n\nFor {{store_name}}\n{{address}}",
+            'termination' => "Date: {{date}}\n\nDear {{name}},\n\nThis letter is to formally notify you of the termination of your employment as {{designation}} with {{store_name}}, effective {{last_working_day}}.\n\nReason: {{reason}}\n\nYou are requested to complete all pending handovers and settle any company dues before your last working day. Your final settlement will be processed as per company policy.\n\nWe thank you for your services and wish you the best in your future endeavours.\n\nFor {{store_name}}\n{{address}}",
+        ];
+    }
+
+    public function letterSettings(Request $request)
+    {
+        $this->ensureLetterColumns();
+        $cfg = \App\Models\StoreConfig::firstOrCreate(['store_id' => Helpers::get_store_id()]);
+        $defaults = $this->defaultLetterTemplates();
+        $templates = [
+            'offer'       => $cfg->letter_offer ?: $defaults['offer'],
+            'appointment' => $cfg->letter_appointment ?: $defaults['appointment'],
+            'termination' => $cfg->letter_termination ?: $defaults['termination'],
+        ];
+        return view('vendor-views.salary.letters_settings', compact('templates'));
+    }
+
+    public function letterSettingsSave(Request $request)
+    {
+        $this->ensureLetterColumns();
+        $cfg = \App\Models\StoreConfig::firstOrCreate(['store_id' => Helpers::get_store_id()]);
+        $cfg->letter_offer = $request->input('offer');
+        $cfg->letter_appointment = $request->input('appointment');
+        $cfg->letter_termination = $request->input('termination');
+        $cfg->save();
+        Toastr::success('Letter templates saved.');
+        return back();
+    }
+
+    public function generateLetter(Request $request, $type, $empId)
+    {
+        $this->ensureLetterColumns();
+        $allowed = ['offer' => 'Offer Letter', 'appointment' => 'Appointment Letter', 'termination' => 'Termination Letter'];
+        if (!isset($allowed[$type])) {
+            abort(404);
+        }
+        $storeId = Helpers::get_store_id();
+        $emp = VendorEmployee::where('store_id', $storeId)->findOrFail($empId);
+        $store = Helpers::get_store_data();
+        $cfg = \App\Models\StoreConfig::where('store_id', $storeId)->first();
+        $defaults = $this->defaultLetterTemplates();
+        $col = 'letter_' . $type;
+        $tpl = ($cfg && !empty($cfg->$col)) ? $cfg->$col : $defaults[$type];
+
+        $repl = [
+            '{{name}}'             => trim(($emp->f_name ?? '') . ' ' . ($emp->l_name ?? '')),
+            '{{designation}}'      => $emp->designation ?? '',
+            '{{salary}}'           => $emp->base_salary !== null ? ('₹ ' . number_format((float) $emp->base_salary, 2)) : '',
+            '{{joining_date}}'     => $emp->tentative_joining_date ? Carbon::parse($emp->tentative_joining_date)->format('d M Y') : '',
+            '{{date}}'             => now()->format('d M Y'),
+            '{{store_name}}'       => $store->name ?? '',
+            '{{address}}'          => $store->address ?? '',
+            '{{reason}}'           => $request->input('reason') ?: 'As per company policy',
+            '{{last_working_day}}' => $request->input('last_working_day') ? Carbon::parse($request->input('last_working_day'))->format('d M Y') : now()->format('d M Y'),
+        ];
+        $body = strtr($tpl, $repl);
+        $title = $allowed[$type];
+        return view('vendor-views.salary.letter', compact('body', 'title', 'type', 'store', 'emp'));
     }
 
 

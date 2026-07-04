@@ -311,6 +311,21 @@
         .modal.show .modal-dialog {
             animation: modalPopIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
+        .offer-chip {
+            display: flex; align-items: center; justify-content: space-between;
+            border: 1px solid #cdefe0; background: #f2fbf7; border-radius: 8px;
+            padding: 8px 10px; margin-bottom: 6px;
+        }
+        .offer-chip-title { font-weight: 700; font-size: 12.5px; color: #14794f; }
+        .offer-chip-sub { font-size: 11px; color: #5b6b64; }
+        .offer-chip-x {
+            border: none; background: transparent; color: #c0392b;
+            font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px;
+        }
+        .offer-row-modal {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #f0f0f2; padding: 10px 4px;
+        }
     </style>
 @endpush
 
@@ -334,6 +349,7 @@
             </div>
             <div class="d-flex" style="gap:8px;">
                 <button type="button" class="btn btn-sm btn-outline-primary" id="btn-fullscreen" title="Toggle full screen">⛶ Full screen</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-all-offers" title="View all offers">🎁 All Offers</button>
                 @if (hasPermission('pos_bills', 'view'))
                     <a href="{{ route('vendor.retail-pos.today') }}" class="btn btn-sm btn-outline-primary">📋 Today's Bills</a>
                 @endif
@@ -470,7 +486,7 @@
 
                         <div class="totals">
                             <div class="totals-row"><span>Subtotal (taxable)</span><span>₹<span id="t-subtotal">0.00</span></span></div>
-                            <div class="totals-row"><span>GST</span><span>₹<span id="t-tax">0.00</span></span></div>
+                            <div class="totals-row" id="gst-row" style="{{ ($gstOn ?? true) ? '' : 'display:none;' }}"><span>GST</span><span>₹<span id="t-tax">0.00</span></span></div>
                             @if (hasPermission('pos_bill_discount', 'apply'))
                                 <div class="totals-row align-items-center">
                                     <span>Bill Discount</span>
@@ -479,6 +495,8 @@
                             @else
                                 <input type="hidden" id="bill-discount" value="0">
                             @endif
+                            <div class="totals-row" id="offer-discount-row" style="display:none;"><span>Offer Discount</span><span>− ₹<span id="t-offer-disc">0.00</span></span></div>
+                            <div class="totals-row" id="coupon-discount-row" style="display:none;"><span>Coupon (<span id="coupon-code-label"></span>)</span><span>− ₹<span id="t-coupon-disc">0.00</span></span></div>
                         </div>
                         <div class="grand-bar"><span class="lbl">Total Payable</span><span class="val">₹<span id="t-grand">0.00</span></span></div>
 
@@ -518,6 +536,33 @@
                     <div class="totals-row" id="change-row" style="display:none;color:#1e7e34;font-weight:700;border:2px dashed #1e7e34;background:#eafaf1;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>💵 Change to return</span><span>₹<span id="t-change">0.00</span></span></div>
                     <div class="totals-row" id="due-row" style="display:none;color:#c0392b;font-weight:700;border:2px dashed #c0392b;background:#fdecea;border-radius:8px;padding:9px 12px;margin-top:8px;"><span>Balance (credit)</span><span>₹<span id="t-due">0.00</span></span></div>
 
+                        <div id="offer-panel" class="mt-3" style="display:none;">
+                            <div class="pay-head" style="margin-bottom:6px;">🎁 Applicable Offers</div>
+                            <div id="offer-list"></div>
+                            <div id="offer-manual" style="display:none;">
+                                <div class="d-flex" style="gap:6px;">
+                                    <input type="text" id="offer-code-input" class="form-control form-control-sm"
+                                        placeholder="Enter offer code" autocomplete="off">
+                                    <button type="button" class="btn btn-sm btn--primary" id="offer-code-apply">Apply</button>
+                                </div>
+                                <div class="offer-chip-sub mt-1" id="offer-manual-msg"></div>
+                            </div>
+                        </div>
+
+                        <div id="coupon-panel" class="mt-3" style="display:none;">
+                            <div class="pay-head" style="margin-bottom:6px;">🏷️ Coupon</div>
+                            <div id="coupon-applied"></div>
+                            <div id="coupon-entry">
+                                <div class="d-flex" style="gap:6px;">
+                                    <input type="text" id="coupon-code-input" class="form-control form-control-sm"
+                                        placeholder="Enter coupon code" autocomplete="off">
+                                    <button type="button" class="btn btn-sm btn--primary" id="coupon-apply-btn">Apply</button>
+                                </div>
+                                <div id="coupon-available" class="mt-2"></div>
+                                <div class="offer-chip-sub mt-1" id="coupon-msg"></div>
+                            </div>
+                        </div>
+
                         <div class="d-flex gap-2 mt-3 cart-actions">
                             @if (hasPermission('pos_billing', 'hold'))
                                 <button type="button" class="btn btn-outline-warning btn-lg" id="btn-hold" style="flex:0 0 32%;">Hold</button>
@@ -547,9 +592,28 @@
                         <span aria-hidden="true" style="font-size: 20px;">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body" style="padding: 12px;"> 
+                <div class="modal-body" style="padding: 12px;">
                     <div id="varModalList" class="list-group">
                         <!-- Dynamic variation rows -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Offers Modal -->
+    <div class="modal" id="allOffersModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid #f0f0f2;">
+                    <h5 class="modal-title" style="color: #212b36; font-size: 14px; font-weight: 700;">🎁 All Offers</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="padding: 12px 16px; margin: -12px -16px -12px auto;">
+                        <span aria-hidden="true" style="font-size: 20px;">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="padding: 12px; max-height: 65vh; overflow-y: auto;">
+                    <div id="allOffersList">
+                        <div class="text-center text-muted py-3">Loading…</div>
                     </div>
                 </div>
             </div>
@@ -563,6 +627,11 @@
             products: "{{ route('vendor.retail-pos.products') }}",
             finalize: "{{ route('vendor.retail-pos.finalize') }}",
             customers: "{{ route('vendor.retail-pos.customers') }}",
+            offersAll: "{{ route('vendor.retail-pos.offers.all') }}",
+            offersMatch: "{{ route('vendor.retail-pos.offers.match') }}",
+            offersApplyCode: "{{ route('vendor.retail-pos.offers.apply-code') }}",
+            coupons: "{{ route('vendor.retail-pos.coupons') }}",
+            couponApply: "{{ route('vendor.retail-pos.coupon-apply') }}",
             hold: "{{ route('vendor.retail-pos.hold') }}",
             defaultBranch: "{{ route('vendor.retail-pos.default-branch') }}",
             held: "{{ route('vendor.retail-pos.held') }}",
@@ -571,6 +640,12 @@
             csrf: "{{ csrf_token() }}",
             cart: [],
             holdId: null,
+            gstOn: @json($gstOn ?? true),
+            matchedOffers: [],
+            removedOffers: [],
+            offerDiscount: 0,
+            coupon: null,
+            availableCoupons: [],
             upiId: @json($upiId ?? null),
             storeName: @json($storeName ?? 'Store'),
             canHold: @json(hasPermission('pos_billing', 'hold')),
@@ -769,6 +844,8 @@
                     </tr>`).join('');
             }
             recalc();
+            scheduleOfferMatch();
+            scheduleCouponFetch();
         }
 
         function chQty(i, d) {
@@ -811,18 +888,31 @@
             let subtotal = 0, tax = 0;
             POS.cart.forEach(l => {
                 let gross = Math.max(0, l.price * l.qty - l.discount);
+                let rate = POS.gstOn ? (l.gst_rate || 0) : 0;
                 if (l.gst_status === 'including') {
-                    let taxable = l.gst_rate > 0 ? gross / (1 + l.gst_rate / 100) : gross;
+                    let taxable = rate > 0 ? gross / (1 + rate / 100) : gross;
                     subtotal += taxable; tax += gross - taxable;
                 } else {
-                    subtotal += gross; tax += gross * l.gst_rate / 100;
+                    subtotal += gross; tax += gross * rate / 100;
                 }
             });
             let disc = parseFloat(document.getElementById('bill-discount').value) || 0;
-            let grand = Math.round(Math.max(0, subtotal + tax - disc));
+            let offDisc = offerDiscountTotal();
+            POS.offerDiscount = offDisc;
+            let couponDisc = POS.coupon ? (parseFloat(POS.coupon.discount) || 0) : 0;
+            let grand = Math.round(Math.max(0, subtotal + tax - disc - offDisc - couponDisc));
             document.getElementById('t-subtotal').textContent = money(subtotal);
             document.getElementById('t-tax').textContent = money(tax);
             document.getElementById('t-grand').textContent = money(grand);
+            const offRow = document.getElementById('offer-discount-row');
+            if (offDisc > 0) { offRow.style.display = 'flex'; document.getElementById('t-offer-disc').textContent = money(offDisc); }
+            else { offRow.style.display = 'none'; }
+            const couponRow = document.getElementById('coupon-discount-row');
+            if (couponDisc > 0 && POS.coupon) {
+                couponRow.style.display = 'flex';
+                document.getElementById('coupon-code-label').textContent = POS.coupon.code;
+                document.getElementById('t-coupon-disc').textContent = money(couponDisc);
+            } else { couponRow.style.display = 'none'; }
 
             // Default the amount to the bill total (single leg, until manually changed).
             const legEls = document.querySelectorAll('.pay-leg');
@@ -844,6 +934,218 @@
             window.__posGrand = grand;
             if (typeof updateUpiQr === 'function') updateUpiQr();
         }
+
+        // ── Offers: matched offers are shown for the cashier to keep or remove; never auto-applied ──
+        function offerIsRemoved(id) { return POS.removedOffers.indexOf(id) !== -1; }
+        function selectedOffers() { return POS.matchedOffers.filter(o => !offerIsRemoved(o.id)); }
+        function offerDiscountTotal() {
+            return selectedOffers().reduce((s, o) => s + (parseFloat(o.discount) || 0), 0);
+        }
+
+        let offerMatchTimer = null;
+        function scheduleOfferMatch() { clearTimeout(offerMatchTimer); offerMatchTimer = setTimeout(matchOffers, 350); }
+
+        function matchOffers() {
+            if (!POS.cart.length) { POS.matchedOffers = []; renderOfferPanel(); recalc(); return; }
+            fetch(POS.offersMatch, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
+                body: new URLSearchParams({
+                    items: JSON.stringify(POS.cart),
+                    customer_id: document.getElementById('pos-customer').value || 0,
+                    branch_id: posBranch(),
+                }),
+            })
+                .then(r => r.json())
+                .then(d => {
+                    POS.matchedOffers = d.offers || [];
+                    const ids = POS.matchedOffers.map(o => o.id);
+                    POS.removedOffers = POS.removedOffers.filter(id => ids.indexOf(id) !== -1);
+                    renderOfferPanel(); recalc();
+                })
+                .catch(() => { POS.matchedOffers = []; renderOfferPanel(); recalc(); });
+        }
+
+        function renderOfferPanel() {
+            const panel = document.getElementById('offer-panel');
+            const list = document.getElementById('offer-list');
+            const manual = document.getElementById('offer-manual');
+            if (!POS.cart.length) { panel.style.display = 'none'; list.innerHTML = ''; return; }
+
+            panel.style.display = 'block';
+            const active = selectedOffers();
+            if (active.length) {
+                // An offer is applied — show it, hide the manual code field.
+                manual.style.display = 'none';
+                list.innerHTML = active.map(o => `
+                    <div class="offer-chip" data-id="${o.id}">
+                        <div>
+                            <div class="offer-chip-title">${o.label}</div>
+                            <div class="offer-chip-sub">${o.summary}</div>
+                        </div>
+                        <button type="button" class="offer-chip-x" title="Remove offer" onclick="removeOffer(${o.id})">&times;</button>
+                    </div>`).join('');
+            } else {
+                // No offer applied — let the cashier check a code manually.
+                list.innerHTML = '';
+                manual.style.display = 'block';
+                document.getElementById('offer-manual-msg').textContent = '';
+            }
+        }
+
+        function removeOffer(id) {
+            if (POS.removedOffers.indexOf(id) === -1) POS.removedOffers.push(id);
+            renderOfferPanel(); recalc();
+        }
+        window.removeOffer = removeOffer;
+
+        function applyOfferCode() {
+            const input = document.getElementById('offer-code-input');
+            const msg = document.getElementById('offer-manual-msg');
+            const code = (input.value || '').trim();
+            if (!code) { msg.textContent = 'Enter an offer code.'; return; }
+            if (!POS.cart.length) { msg.textContent = 'Cart is empty.'; return; }
+            msg.textContent = 'Checking…';
+            fetch(POS.offersApplyCode, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
+                body: new URLSearchParams({
+                    items: JSON.stringify(POS.cart),
+                    code: code,
+                    customer_id: document.getElementById('pos-customer').value || 0,
+                    branch_id: posBranch(),
+                }),
+            })
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.status) { msg.textContent = d.msg || 'Offer not valid.'; return; }
+                    const o = d.offer;
+                    if (!POS.matchedOffers.some(x => x.id === o.id)) POS.matchedOffers.push(o);
+                    POS.removedOffers = POS.removedOffers.filter(id => id !== o.id);
+                    input.value = '';
+                    renderOfferPanel(); recalc();
+                })
+                .catch(() => { msg.textContent = 'Could not validate the code.'; });
+        }
+
+        document.getElementById('offer-code-apply')?.addEventListener('click', applyOfferCode);
+        document.getElementById('offer-code-input')?.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); applyOfferCode(); }
+        });
+
+        document.getElementById('btn-all-offers')?.addEventListener('click', function () {
+            const box = document.getElementById('allOffersList');
+            box.innerHTML = '<div class="text-center text-muted py-3">Loading…</div>';
+            $('#allOffersModal').modal('show');
+            fetch(POS.offersAll).then(r => r.json()).then(d => {
+                const offers = d.offers || [];
+                if (!offers.length) { box.innerHTML = '<div class="text-center text-muted py-3">No offers created yet.</div>'; return; }
+                box.innerHTML = offers.map(o => `
+                    <div class="offer-row-modal">
+                        <div>
+                            <div class="offer-chip-title">${o.name} <small class="text-muted">(${o.code})</small></div>
+                            <div class="offer-chip-sub">${o.type} · ${o.start} → ${o.end}</div>
+                        </div>
+                        <span class="badge ${o.active ? 'badge-soft-success' : 'badge-soft-secondary'}">${o.active ? 'Active' : (o.status === 'draft' ? 'Draft' : 'Inactive')}</span>
+                    </div>`).join('');
+            }).catch(() => { box.innerHTML = '<div class="text-center text-danger py-3">Failed to load offers.</div>'; });
+        });
+
+        // ── Coupons (customer coupons + manual code; adjusted off the bill total) ──
+        let couponFetchTimer = null;
+        function scheduleCouponFetch() { clearTimeout(couponFetchTimer); couponFetchTimer = setTimeout(fetchCoupons, 350); }
+
+        function fetchCoupons() {
+            if (!POS.cart.length) { POS.availableCoupons = []; POS.coupon = null; renderCouponPanel(); recalc(); return; }
+            fetch(POS.coupons, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
+                body: new URLSearchParams({
+                    items: JSON.stringify(POS.cart),
+                    customer_id: document.getElementById('pos-customer').value || 0,
+                    branch_id: posBranch(),
+                }),
+            })
+                .then(r => r.json())
+                .then(d => {
+                    POS.availableCoupons = d.coupons || [];
+                    if (POS.coupon) {
+                        // Keep the applied coupon's discount in sync with the cart; drop if no longer valid.
+                        const still = POS.availableCoupons.find(c => c.code === POS.coupon.code);
+                        POS.coupon = still || null;
+                    }
+                    renderCouponPanel(); recalc();
+                })
+                .catch(() => { POS.availableCoupons = []; renderCouponPanel(); recalc(); });
+        }
+
+        function renderCouponPanel() {
+            const panel = document.getElementById('coupon-panel');
+            const applied = document.getElementById('coupon-applied');
+            const entry = document.getElementById('coupon-entry');
+            const avail = document.getElementById('coupon-available');
+            if (!POS.cart.length) { panel.style.display = 'none'; applied.innerHTML = ''; return; }
+            panel.style.display = 'block';
+
+            if (POS.coupon) {
+                entry.style.display = 'none';
+                applied.innerHTML = `
+                    <div class="offer-chip" data-code="${POS.coupon.code}">
+                        <div>
+                            <div class="offer-chip-title">${POS.coupon.title || POS.coupon.code} (${POS.coupon.code})</div>
+                            <div class="offer-chip-sub">${POS.coupon.label}</div>
+                        </div>
+                        <button type="button" class="offer-chip-x" title="Remove coupon" onclick="removeCoupon()">&times;</button>
+                    </div>`;
+            } else {
+                applied.innerHTML = '';
+                entry.style.display = 'block';
+                document.getElementById('coupon-msg').textContent = '';
+                if (POS.availableCoupons.length) {
+                    avail.innerHTML = POS.availableCoupons.map(c =>
+                        `<a href="javascript:;" class="badge badge-soft-primary mr-1 mb-1" style="font-size:11px;"
+                            onclick="applyCouponCode('${c.code}')" title="${c.label}">🏷️ ${c.code} · ${c.label}</a>`).join('');
+                } else {
+                    avail.innerHTML = '<span class="offer-chip-sub">No coupons for this customer.</span>';
+                }
+            }
+        }
+
+        function applyCouponCode(code) {
+            const msg = document.getElementById('coupon-msg');
+            if (!code) { msg.textContent = 'Enter a coupon code.'; return; }
+            if (!POS.cart.length) { msg.textContent = 'Cart is empty.'; return; }
+            msg.textContent = 'Checking…';
+            fetch(POS.couponApply, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': POS.csrf },
+                body: new URLSearchParams({
+                    items: JSON.stringify(POS.cart),
+                    code: code,
+                    customer_id: document.getElementById('pos-customer').value || 0,
+                    branch_id: posBranch(),
+                }),
+            })
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.status) { msg.textContent = d.msg || 'Coupon not valid.'; return; }
+                    POS.coupon = d.coupon;
+                    document.getElementById('coupon-code-input').value = '';
+                    renderCouponPanel(); recalc();
+                })
+                .catch(() => { msg.textContent = 'Could not validate the coupon.'; });
+        }
+        window.applyCouponCode = applyCouponCode;
+
+        function removeCoupon() { POS.coupon = null; renderCouponPanel(); recalc(); }
+        window.removeCoupon = removeCoupon;
+
+        document.getElementById('coupon-apply-btn')?.addEventListener('click', function () {
+            applyCouponCode((document.getElementById('coupon-code-input').value || '').trim());
+        });
+        document.getElementById('coupon-code-input')?.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); applyCouponCode((this.value || '').trim()); }
+        });
 
         // ── Search / scan ──
         let searchTimer = null;
@@ -1102,6 +1404,8 @@
             custResults.style.display = 'none';
             custInfo.style.display = 'block';
             custInfo.innerHTML = `Points: <b>★${c.loyalty_points}</b> · Wallet: <b>₹${money(c.wallet_balance)}</b> · Credit: <b>₹${money(c.credit_balance)}</b> / ₹${money(c.credit_limit)}`;
+            scheduleOfferMatch();
+            scheduleCouponFetch();
         }
 
         // ── Hold & Resume ──
@@ -1170,6 +1474,9 @@
 
         function resetSale() {
             POS.cart = []; POS.holdId = null;
+            POS.matchedOffers = []; POS.removedOffers = []; POS.offerDiscount = 0;
+            POS.coupon = null; POS.availableCoupons = [];
+            renderOfferPanel(); renderCouponPanel();
             document.getElementById('bill-discount').value = 0;
             document.getElementById('pos-customer').value = 0;
             custBox.value = ''; custInfo.style.display = 'none';
@@ -1212,6 +1519,8 @@
                     payments: JSON.stringify(payments),
                     customer_id: document.getElementById('pos-customer').value || 0,
                     bill_discount: document.getElementById('bill-discount').value || 0,
+                    offer_ids: JSON.stringify(selectedOffers().map(o => o.id)),
+                    coupon_code: POS.coupon ? POS.coupon.code : '',
                     branch_id: posBranch(),
                     hold_id: POS.holdId || '',
                     allow_oos: allowOos ? 1 : '',

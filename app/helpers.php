@@ -1559,6 +1559,20 @@ function processVendorBillFrom($invoice, &$bill_data)
         ? ($invoice->tax_type ?? 'non-gst')
         : 'non-gst';
 
+    // POS Retail branch sale — bill from the branch name/address (pos_branch_id is only set on
+    // POS Retail sales, so this leaves every other module's invoice untouched).
+    $fromAddress = $store->address;
+    $bill_data['branch_label'] = null;
+    if (!empty($invoice->pos_branch_id) && \Illuminate\Support\Facades\Schema::hasTable('branches')) {
+        $branch = \App\Models\Branch::where('store_id', $store->id)->find($invoice->pos_branch_id);
+        if ($branch) {
+            if (!empty($branch->address)) {
+                $fromAddress = $branch->address;
+            }
+            $bill_data['branch_label'] = $branch->name;
+        }
+    }
+
     return [
         'id' => $store->id,
         'logo' => $store->logo,
@@ -1566,7 +1580,7 @@ function processVendorBillFrom($invoice, &$bill_data)
         'gst' => $store->gst,
         'phone' => $store->phone,
         'email' => $store->email,
-        'address' => $store->address,
+        'address' => $fromAddress,
         'state_code' => getStateCodeFromPincode($store->pin_code),
         'pin_code' => $store->pin_code,
         'cin_number' => null,
@@ -1931,6 +1945,42 @@ if (!function_exists('_updateInventoryStock')) {
             }
         } catch (\Throwable $th) {
             //  Log::error($th);
+        }
+    }
+}
+if (!function_exists('_restoreInventoryStock')) {
+
+    // Reverse of _updateInventoryStock — adds the quantity back to stock (e.g. when a sale
+    // bill is deleted). Mirrors the same secondary→primary unit conversion used on deduction,
+    // so the amount returned equals the amount originally taken.
+    function _restoreInventoryStock($inv_item_id, $qty, $unit = null)
+    {
+        try {
+            _ensureDecimalStockColumns();
+            $inv_item = InventoryItem::where('id', $inv_item_id)
+                ->where('store_id', Helpers::get_store_id())
+                ->first();
+
+            if (!$inv_item || $qty <= 0) {
+                return;
+            }
+
+            $addQty = $qty;
+            if (
+                $unit &&
+                $inv_item->secondary_unit &&
+                $unit == $inv_item->secondary_unit &&
+                $inv_item->primary_qty > 0 &&
+                $inv_item->secondary_qty > 0
+            ) {
+                $conversionRate = $inv_item->primary_qty / $inv_item->secondary_qty;
+                $addQty = $qty * $conversionRate;
+            }
+
+            $inv_item->stock = (float) $inv_item->stock + $addQty;
+            $inv_item->save();
+        } catch (\Throwable $th) {
+            // best-effort; bill deletion must not fail on stock restore
         }
     }
 }

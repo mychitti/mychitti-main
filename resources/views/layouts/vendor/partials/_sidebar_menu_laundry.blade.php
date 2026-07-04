@@ -337,118 +337,12 @@
             selected_menu('leave_manage') ||
             selected_menu('salary_manage')) &&
         hasMasterModulePermission('hr_manage'))
-    <li
-        class="nav-item {{ Request::is('hr*') || Request::is('staff*') || Request::is('attendance*') || Request::is('salary*') || Request::is('shifts*') || Request::is('leave*') ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('vendor.attendance.all') }}"
-            title="HR Management">
+    <li class="nav-item {{ Request::is('hr*') || Request::is('staff*') || Request::is('attendance*') || Request::is('salary*') || Request::is('shifts*') || Request::is('leave*') || Request::is('custom-role*') || Request::is('task-salary-categories') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('vendor.hr.dashboard') }}" title="HR Management">
             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}"
                 alt="" class="nav-link-icon">
             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">HR Management</span>
         </a>
-        {{-- Sub-sections now live in the in-page HR tab bar (_hr_nav). Submenu kept hidden. --}}
-        <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:none !important;">
-            @if (hasPermission('hr_manage', 'dashboard'))
-                <li class="nav-item {{ Request::is('hr/dashboard') ? 'active' : '' }}">
-                    <a class="nav-link" href="{{ route('vendor.hr.dashboard') }}" title="HR Dashboard">
-                        <span class="tio-dashboard-outlined nav-icon"></span>
-                        <span class="text-truncate">Dashboard</span>
-                    </a>
-                </li>
-            @endif
-            @if (hasAnyModulePermission(['staff_manage', 'staff_team', 'staff_department']) && selected_menu('staff_manage'))
-                <li
-                    class="navbar-vertical-aside-has-menu {{ Request::is('staff*') || Request::is('staff-department*') ? 'active' : '' }}">
-                    <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                        href="javascript:;" title="Staff Management">
-                        <i class="tio-group-junior nav-icon"></i>
-                        <span class="text-truncate">Staff Management</span>
-                    </a>
-                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                        style="display: {{ Request::is('staff*') || Request::is('staff-department*') ? 'block' : 'none' }}">
-                        @if (hasPermission('staff_manage', 'add'))
-                            <li class="nav-item {{ Request::is('staff/add-new') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.staff.add-new') }}"
-                                    title="Add Staff">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Add Staff</span>
-                                </a>
-                            </li>
-                        @endif
-                        @if (hasAnyPermission(['staff_manage.list']))
-                            <li class="nav-item {{ Request::is('staff/list') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.staff.list') }}"
-                                    title="Staff List">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Staff List</span>
-                                </a>
-                            </li>
-                        @endif
-                        @if (hasAnyModulePermission(['staff_team']))
-                            <li class="nav-item {{ Request::is('staff/team') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.staff.team.index') }}"
-                                    title="Teams">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Teams</span>
-                                </a>
-                            </li>
-                        @endif
-                        @if (hasAnyModulePermission(['staff_role']))
-                            <li class="nav-item {{ Request::is('custom-role/create') ? 'active' : '' }}">
-                                <a class="nav-link " href="{{ route('vendor.custom-role.create') }}"
-                                    title="Staff Role">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Staff Roles (Permissions)</span>
-                                </a>
-                            </li>
-                        @endif
-                        @if (hasAnyModulePermission(['staff_department']))
-                            <li class="nav-item {{ Request::is('staff-department*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.staff-department.all') }}"
-                                    title="Departments">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Staff Department</span>
-                                </a>
-                            </li>
-                        @endif
-                        @if (hasPermission('staff_manage', 'settings'))
-                            <li class="nav-item {{ Request::is('staff/settings*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('vendor.staff.settings') }}"
-                                    title="Staff Settings">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Staff Settings</span>
-                                </a>
-                            </li>
-                        @endif
-                    </ul>
-                </li>
-            @endif
-            @if ((selected_menu('attendance_manage') || selected_menu('leave_manage')) && hasAnyModulePermission(['attendance_manage', 'attendance_report', 'leave_manage']))
-                <li class="nav-item {{ Request::is('attendance*') || Request::is('leave*') ? 'active' : '' }}">
-                    <a class="sub-link nav-link" href="{{ route('vendor.attendance.all') }}"
-                        title="Attendance & Leave">
-                        <i class="tio-event nav-icon"></i>
-                        <span class="text-truncate">Attendance &amp; Leave</span>
-                    </a>
-                </li>
-            @endif
-            @if (selected_menu('salary_manage') && hasAnyModulePermission(['salary_manage', 'salary_report']))
-                <li class="nav-item {{ Request::is('salary*') ? 'active' : '' }}">
-                    <a class="sub-link nav-link" href="{{ route('vendor.salary.list') }}" title="Salary Management">
-                        <i class="tio-money nav-icon"></i>
-                        <span class="text-truncate">Salary Management</span>
-                    </a>
-                </li>
-            @endif
-            @if (hasAnyModulePermission(['shift_manage']))
-                <li class="navbar-vertical-aside {{ Request::is('shifts*') ? 'active' : '' }}">
-                    <a class="sub-link nav-link" href="{{ route('vendor.shifts.index') }}" title="Shifts">
-                        <i class="tio-timer nav-icon"></i>
-                        <span class="text-truncate">Shifts Management</span>
-                    </a> 
-                </li>
-            @endif
-            {{-- Leave Management merged into "Attendance & Leave" above --}}
-        </ul>
     </li>
 @endif
 

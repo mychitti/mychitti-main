@@ -1060,9 +1060,12 @@ class RetailPosController extends Controller
             ];
         }
 
+        $gstStore = Helpers::get_store_data();
+        $gstOn = empty($gstStore->gst) || (bool) (json_decode($gstStore->gst)->status ?? 0);
+
         return view('posretail::vendor.retail-pos.index', compact(
             'categories', 'quickItems', 'upiId', 'storeName', 'heldBills', 'uiTemplate',
-            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId', 'shiftStatus'
+            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId', 'shiftStatus', 'gstOn'
         ));
     }
 
@@ -1274,6 +1277,9 @@ class RetailPosController extends Controller
         $taxTotal = 0.0;
         $hasGst = false;
 
+        // Store-level GST toggle — when off, no GST is charged or shown on the bill/receipt.
+        $gstOn = empty($store->gst) || (bool) (json_decode($store->gst)->status ?? 0);
+
         foreach ($cart as $row) {
             $idParts = explode('-var-', $row['id'] ?? '');
             $itemId = $idParts[0];
@@ -1337,7 +1343,7 @@ class RetailPosController extends Controller
 
             $gross = ($price * $qty) - $lineDiscount;
             $gross = max(0, $gross);
-            $rate = (float) ($item->gst_rate ?? 0);
+            $rate = $gstOn ? (float) ($item->gst_rate ?? 0) : 0;
             $status = $item->gst_status ?? 'excluding';
 
             if ($rate > 0) {
@@ -1374,13 +1380,51 @@ class RetailPosController extends Controller
             return response()->json(['status' => false, 'msg' => 'No valid items'], 422);
         }
 
-        $grandTotal = max(0, $subtotal + $taxTotal - $billDiscount);
+        $customer = $customerId ? StoreCustomer::find($customerId) : null;
+
+        // Item offers (Buy X Get Y / discounts / bundles) — free reward lines are added
+        // at ₹0 and any offer discount is applied at bill level, alongside the manual one.
+        $selectedOfferIds = json_decode($request->input('offer_ids', '[]'), true) ?: [];
+        $offerEngine = app(\App\Modules\PosRetail\Services\PosOfferEngine::class);
+        $offerResult = $offerEngine->apply($lines, [
+            'store_id'  => $storeId,
+            'branch_id' => $billingBranchId,
+            'customer'  => $customer,
+            'subtotal'  => $subtotal,
+        ], $selectedOfferIds);
+        $offerDiscount = (float) $offerResult['discount'];
+        foreach ($offerResult['free_lines'] as $freeLine) {
+            $lines[] = $freeLine;
+        }
+
+        // Coupon — validated server-side, discount adjusted off the bill total.
+        $couponCode = trim((string) $request->input('coupon_code', ''));
+        $couponDiscount = 0.0;
+        $couponModel = null;
+        $serviceCoupon = null;
+        if ($couponCode !== '') {
+            if (\Illuminate\Support\Facades\Schema::hasTable('coupons')) {
+                $couponModel = \App\Models\Coupon::where('store_id', $storeId)
+                    ->whereRaw('LOWER(code) = ?', [strtolower($couponCode)])->first();
+                if ($couponModel) {
+                    $couponDiscount = (float) ($this->posCouponDiscount($couponModel, $subtotal, $customer) ?? 0);
+                }
+            }
+            if ($couponDiscount <= 0 && \Illuminate\Support\Facades\Schema::hasTable('service_coupons')) {
+                $couponModel = null;
+                $serviceCoupon = \App\Models\ServiceCoupon::where('user_type', 'store')->where('user_type_id', $storeId)
+                    ->whereRaw('LOWER(code) = ?', [strtolower($couponCode)])->first();
+                if ($serviceCoupon) {
+                    $couponDiscount = (float) ($this->serviceCouponDiscount($serviceCoupon, $subtotal) ?? 0);
+                }
+            }
+        }
+
+        $grandTotal = max(0, $subtotal + $taxTotal - $billDiscount - $offerDiscount - $couponDiscount);
         $roundOff = round($grandTotal) - $grandTotal;
         $grandTotal = round($grandTotal);
 
         $taxType = $hasGst ? 'gst' : 'non-gst';
-
-        $customer = $customerId ? StoreCustomer::find($customerId) : null;
 
         $cashAmount = 0.0;
         $onlineAmount = 0.0;
@@ -1452,7 +1496,7 @@ class RetailPosController extends Controller
         $invoice->subtotal_amount = round($subtotal, 2);
         $invoice->taxable_amount = round($subtotal, 2);
         $invoice->final_tax = round($taxTotal, 2);
-        $invoice->discount_amount = $billDiscount;
+        $invoice->discount_amount = $billDiscount + $offerDiscount + $couponDiscount;
         $invoice->round_off = round($roundOff, 2);
         $invoice->tax_type = $taxType;
         $invoice->type = 'manual';
@@ -1480,6 +1524,9 @@ class RetailPosController extends Controller
             $ii->manual_invoice_id = $invoice->id;
             $ii->inv_id = $line['item']->id;
             $ii->name = $line['var_type'] ? $line['item']->item_name . ' (' . $line['var_type'] . ')' : $line['item']->item_name;
+            if (!empty($line['is_offer'])) {
+                $ii->name .= ' (Offer Free)';
+            }
             $ii->qty = $line['qty'];
             $ii->price = $line['price'];
             $ii->tax = $line['rate'];
@@ -1515,6 +1562,23 @@ class RetailPosController extends Controller
                     ->where('branch_id', $billingBranchId)->where('inventory_item_id', $line['item']->id)
                     ->update(['stock' => DB::raw('GREATEST(stock - ' . (float) $line['qty'] . ', 0)'), 'updated_at' => now()]);
             }
+        }
+
+        // Record offer redemptions so per-day / per-customer / campaign limits hold next sale.
+        $offerEngine->logRedemptions($offerResult['applied'], $storeId, $invoice->id, $customerId ?: null);
+
+        // Record coupon usage + stamp it on the invoice.
+        if ($couponDiscount > 0 && ($couponModel || $serviceCoupon)) {
+            if ($couponModel) {
+                $couponModel->increment('total_uses');
+            } else {
+                $serviceCoupon->increment('used_count');
+            }
+            $invoice->meta = array_merge((array) $invoice->meta, [
+                'coupon_code'     => $couponModel->code ?? $serviceCoupon->code,
+                'coupon_discount' => round($couponDiscount, 2),
+            ]);
+            $invoice->save();
         }
 
         // Sale Order (inventory) from the invoice lines.
@@ -1604,11 +1668,343 @@ class RetailPosController extends Controller
             'change'         => $due < 0 ? abs($due) : 0,
             'points_earned'  => $earned,
             'payment_status' => $paymentStatus,
+            'offer_discount' => round($offerDiscount, 2),
+            'coupon_discount' => round($couponDiscount, 2),
+            'applied_offers' => array_map(fn($a) => [
+                'label'    => $a['label'],
+                'free_qty' => $a['free_qty'],
+                'discount' => $a['discount'],
+            ], $offerResult['applied']),
             'pdf_url'        => $pdfUrl,
             'thermal_url'    => route('vendor.retail-pos.thermal', $invoice->id),
             // Inlined receipt so the browser prints immediately (no second round-trip).
             'receipt_html'   => $this->buildThermalHtml($invoice),
         ]);
+    }
+
+    // ── Offers: list all + match against the current cart (preview, not applied) ──
+    public function offersAll(Request $request)
+    {
+        $storeId = $this->storeId();
+        if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_offers')) {
+            return response()->json(['offers' => []]);
+        }
+        $today = date('Y-m-d');
+        $offers = \App\Models\InventoryOffer::where('store_id', $storeId)->orderByDesc('id')->get();
+
+        return response()->json(['offers' => $offers->map(fn($o) => [
+            'id'     => $o->id,
+            'name'   => $o->offer_name,
+            'code'   => $o->offer_code,
+            'type'   => ucwords(str_replace('_', ' ', $o->offer_type)),
+            'start'  => $o->start_date,
+            'end'    => $o->end_date,
+            'status' => $o->status,
+            'active' => $o->status === 'published' && $o->start_date <= $today && $o->end_date >= $today,
+        ])]);
+    }
+
+    public function offersMatch(Request $request)
+    {
+        $store = Helpers::get_store_data();
+        $storeId = $store->id;
+
+        $cart = json_decode($request->input('items', '[]'), true) ?: [];
+        if (empty($cart)) {
+            return response()->json(['offers' => []]);
+        }
+
+        $billingBranchId = $this->billingBranchId($request);
+        $customerId = (int) $request->input('customer_id', 0);
+        $customer = $customerId ? StoreCustomer::find($customerId) : null;
+
+        [$lines, $subtotal] = $this->buildOfferLines($cart, $storeId);
+        if (empty($lines)) {
+            return response()->json(['offers' => []]);
+        }
+
+        $matches = app(\App\Modules\PosRetail\Services\PosOfferEngine::class)->matches($lines, [
+            'store_id'  => $storeId,
+            'branch_id' => $billingBranchId,
+            'customer'  => $customer,
+            'subtotal'  => $subtotal,
+        ]);
+
+        return response()->json(['offers' => array_map(fn($m) => [
+            'id'       => $m['offer']->id,
+            'label'    => $m['label'],
+            'type'     => $m['offer']->offer_type,
+            'summary'  => $m['summary'],
+            'discount' => $m['discount'],
+            'free_qty' => $m['free_qty'],
+        ], $matches)]);
+    }
+
+    public function offersApplyCode(Request $request)
+    {
+        $store = Helpers::get_store_data();
+        $storeId = $store->id;
+
+        $code = trim((string) $request->input('code', ''));
+        if ($code === '') {
+            return response()->json(['status' => false, 'msg' => 'Enter an offer code']);
+        }
+
+        $cart = json_decode($request->input('items', '[]'), true) ?: [];
+        if (empty($cart)) {
+            return response()->json(['status' => false, 'msg' => 'Cart is empty']);
+        }
+
+        $billingBranchId = $this->billingBranchId($request);
+        $customerId = (int) $request->input('customer_id', 0);
+        $customer = $customerId ? StoreCustomer::find($customerId) : null;
+
+        [$lines, $subtotal] = $this->buildOfferLines($cart, $storeId);
+
+        $matches = app(\App\Modules\PosRetail\Services\PosOfferEngine::class)->matches($lines, [
+            'store_id'  => $storeId,
+            'branch_id' => $billingBranchId,
+            'customer'  => $customer,
+            'subtotal'  => $subtotal,
+        ]);
+
+        foreach ($matches as $m) {
+            if (strcasecmp($m['offer']->offer_code, $code) === 0) {
+                return response()->json(['status' => true, 'offer' => [
+                    'id'       => $m['offer']->id,
+                    'label'    => $m['label'],
+                    'type'     => $m['offer']->offer_type,
+                    'summary'  => $m['summary'],
+                    'discount' => $m['discount'],
+                    'free_qty' => $m['free_qty'],
+                ]]);
+            }
+        }
+
+        $exists = \Illuminate\Support\Facades\Schema::hasTable('inventory_offers')
+            && \App\Models\InventoryOffer::where('store_id', $storeId)
+                ->whereRaw('LOWER(offer_code) = ?', [strtolower($code)])->exists();
+
+        return response()->json([
+            'status' => false,
+            'msg'    => $exists ? 'Offer not applicable to this cart' : 'Invalid offer code',
+        ]);
+    }
+
+    // ── Coupons: list the customer's applicable coupons + validate a code (preview) ──
+    public function couponsForCart(Request $request)
+    {
+        $storeId = $this->storeId();
+        if (!\Illuminate\Support\Facades\Schema::hasTable('coupons')) {
+            return response()->json(['coupons' => []]);
+        }
+
+        $cart = json_decode($request->input('items', '[]'), true) ?: [];
+        [, $subtotal] = $this->buildOfferLines($cart, $storeId);
+        $customerId = (int) $request->input('customer_id', 0);
+        $customer = $customerId ? StoreCustomer::find($customerId) : null;
+
+        $today = date('Y-m-d');
+        $coupons = \App\Models\Coupon::where('store_id', $storeId)
+            ->where('status', 1)
+            ->whereDate('expire_date', '>=', $today)
+            ->orderByDesc('id')
+            ->get();
+
+        $out = [];
+        foreach ($coupons as $c) {
+            $disc = $this->posCouponDiscount($c, $subtotal, $customer);
+            if ($disc === null) {
+                continue;
+            }
+            $out[] = $this->couponPayload($c, $disc);
+        }
+
+        // Store service-coupons (admin/platform issued to this store).
+        if (\Illuminate\Support\Facades\Schema::hasTable('service_coupons')) {
+            $serviceCoupons = \App\Models\ServiceCoupon::where('user_type', 'store')
+                ->where('user_type_id', $storeId)->get();
+            foreach ($serviceCoupons as $sc) {
+                $disc = $this->serviceCouponDiscount($sc, $subtotal);
+                if ($disc === null) {
+                    continue;
+                }
+                $out[] = $this->serviceCouponPayload($sc, $disc);
+            }
+        }
+
+        return response()->json(['coupons' => $out]);
+    }
+
+    public function applyCoupon(Request $request)
+    {
+        $storeId = $this->storeId();
+        $code = trim((string) $request->input('code', ''));
+        if ($code === '') {
+            return response()->json(['status' => false, 'msg' => 'Enter a coupon code']);
+        }
+        if (!\Illuminate\Support\Facades\Schema::hasTable('coupons')) {
+            return response()->json(['status' => false, 'msg' => 'Coupons unavailable']);
+        }
+
+        $cart = json_decode($request->input('items', '[]'), true) ?: [];
+        [, $subtotal] = $this->buildOfferLines($cart, $storeId);
+        $customerId = (int) $request->input('customer_id', 0);
+        $customer = $customerId ? StoreCustomer::find($customerId) : null;
+
+        $found = false;
+
+        $coupon = \App\Models\Coupon::where('store_id', $storeId)
+            ->whereRaw('LOWER(code) = ?', [strtolower($code)])->first();
+        if ($coupon) {
+            $found = true;
+            $disc = $this->posCouponDiscount($coupon, $subtotal, $customer);
+            if ($disc !== null) {
+                return response()->json(['status' => true, 'coupon' => $this->couponPayload($coupon, $disc)]);
+            }
+        }
+
+        // Fall back to a store service-coupon with this code.
+        if (\Illuminate\Support\Facades\Schema::hasTable('service_coupons')) {
+            $sc = \App\Models\ServiceCoupon::where('user_type', 'store')->where('user_type_id', $storeId)
+                ->whereRaw('LOWER(code) = ?', [strtolower($code)])->first();
+            if ($sc) {
+                $found = true;
+                $disc = $this->serviceCouponDiscount($sc, $subtotal);
+                if ($disc !== null) {
+                    return response()->json(['status' => true, 'coupon' => $this->serviceCouponPayload($sc, $disc)]);
+                }
+            }
+        }
+
+        return response()->json([
+            'status' => false,
+            'msg'    => $found ? 'Coupon not applicable to this bill' : 'Invalid coupon code',
+        ]);
+    }
+
+    private function couponPayload($coupon, float $disc): array
+    {
+        return [
+            'code'     => $coupon->code,
+            'title'    => $coupon->title,
+            'discount' => $disc,
+            'source'   => 'coupon',
+            'label'    => $coupon->discount_type === 'percent'
+                ? (rtrim(rtrim((string) $coupon->discount, '0'), '.') . '% off (₹' . $disc . ')')
+                : ('₹' . $disc . ' off'),
+        ];
+    }
+
+    private function serviceCouponPayload($sc, float $disc): array
+    {
+        return [
+            'code'     => $sc->code,
+            'title'    => $sc->code,
+            'discount' => $disc,
+            'source'   => 'service',
+            'label'    => '₹' . $disc . ' off',
+        ];
+    }
+
+    /** Validate a store service-coupon (flat amount, limited by use_limit vs used_count). */
+    private function serviceCouponDiscount($sc, float $amount): ?float
+    {
+        if ($sc->use_limit !== null && (int) ($sc->used_count ?? 0) >= (int) $sc->use_limit) {
+            return null;
+        }
+        $disc = (float) $sc->amount;
+        if ($disc <= 0) {
+            return null;
+        }
+        $disc = min($disc, $amount);
+
+        return round(max(0, $disc), 2);
+    }
+
+    /** Validate a coupon for the POS bill and return the discount amount, or null if not applicable. */
+    private function posCouponDiscount($coupon, float $amount, $customer): ?float
+    {
+        if ((int) $coupon->status !== 1) {
+            return null;
+        }
+        $today = date('Y-m-d');
+        if ($coupon->start_date && \Illuminate\Support\Carbon::parse($coupon->start_date)->format('Y-m-d') > $today) {
+            return null;
+        }
+        if ($coupon->expire_date && \Illuminate\Support\Carbon::parse($coupon->expire_date)->format('Y-m-d') < $today) {
+            return null;
+        }
+        if ($coupon->min_purchase && $amount < (float) $coupon->min_purchase) {
+            return null;
+        }
+
+        // Customer targeting: customer_id is a JSON array of ids, or ["all"].
+        $custIds = json_decode($coupon->customer_id, true) ?: [];
+        if (!empty($custIds) && !in_array('all', $custIds, true)) {
+            if (!$customer || !in_array((string) $customer->id, array_map('strval', $custIds), true)) {
+                return null;
+            }
+        }
+
+        // Global usage limit.
+        if ($coupon->limit && (int) $coupon->total_uses >= (int) $coupon->limit) {
+            return null;
+        }
+
+        $disc = $coupon->discount_type === 'percent'
+            ? $amount * ((float) $coupon->discount / 100)
+            : (float) $coupon->discount;
+        if ($coupon->max_discount > 0) {
+            $disc = min($disc, (float) $coupon->max_discount);
+        }
+        $disc = min($disc, $amount);
+
+        return round(max(0, $disc), 2);
+    }
+
+    /** Lightweight cart → lines for offer matching (no stock/price-override validation). */
+    private function buildOfferLines(array $cart, int $storeId): array
+    {
+        $lines = [];
+        $subtotal = 0.0;
+        foreach ($cart as $row) {
+            $idParts = explode('-var-', $row['id'] ?? '');
+            $item = InventoryItem::where('id', $idParts[0])->where('store_id', $storeId)->first();
+            if (!$item) {
+                continue;
+            }
+            $varType = $idParts[1] ?? null;
+            $qty = max(0, (float) ($row['qty'] ?? 1));
+            if ($qty <= 0) {
+                continue;
+            }
+            $basePrice = (float) ($item->selling_price ?? 0);
+            if ($varType) {
+                foreach (json_decode($item->variations, true) ?: [] as $var) {
+                    if (($var['type'] ?? null) === $varType) {
+                        $basePrice = (float) ($var['price'] ?? $basePrice);
+                        break;
+                    }
+                }
+            }
+            $price = (float) ($row['price'] ?? $basePrice);
+            $gross = max(0, $price * $qty - (float) ($row['discount'] ?? 0));
+            $rate = (float) ($item->gst_rate ?? 0);
+            $status = $item->gst_status ?? 'excluding';
+            $subtotal += $status === 'including' ? ($rate > 0 ? $gross / (1 + $rate / 100) : $gross) : $gross;
+
+            $lines[] = [
+                'item'       => $item,
+                'qty'        => $qty,
+                'price'      => $price,
+                'rate'       => $rate,
+                'gst_status' => $status,
+                'hsn'        => $item->hsn,
+                'var_type'   => $varType,
+            ];
+        }
+        return [$lines, $subtotal];
     }
 
     // ── Customer search (for linking + loyalty/credit) ────────────────────────
@@ -1830,6 +2226,17 @@ class RetailPosController extends Controller
         $store = Helpers::get_store_data();
         $legs = DB::table('pos_payment_legs')->where('manual_invoice_id', $invoice->id)->get();
         $customer = $invoice->bill_to ? StoreCustomer::find($invoice->bill_to) : null;
+
+        // Branch sale — show the branch's name/address on the receipt instead of the main store's.
+        if ($invoice->pos_branch_id) {
+            $branch = Branch::where('store_id', $storeId)->find($invoice->pos_branch_id);
+            if ($branch) {
+                if (!empty($branch->address)) {
+                    $store->address = $branch->address;
+                }
+                $store->branch_label = $branch->name;
+            }
+        }
 
         $receiptTemplate = DB::table('stores')->where('id', $storeId)->value('pos_receipt_template') ?: 'standard';
         $receiptTemplate = in_array($receiptTemplate, ['standard', 'modern', 'elegant'], true) ? $receiptTemplate : 'standard';

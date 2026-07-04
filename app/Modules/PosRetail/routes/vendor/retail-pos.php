@@ -1,14 +1,29 @@
 <?php
 
+use App\Modules\PosRetail\Controllers\Vendor\InventoryOfferController;
 use App\Modules\PosRetail\Controllers\Vendor\RetailPosController;
 use Illuminate\Support\Facades\Route;
 
 // Retail POS  →  URL: /retail-pos/…
 Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
+
+    // Inventory item offers (Buy X Get Y, discounts, bundles)
+    Route::prefix('offer')->as('offer.')->group(function () {
+        Route::get('/',                 [InventoryOfferController::class, 'index'])->name('index');
+        Route::get('create/{item_id?}', [InventoryOfferController::class, 'create'])->name('create');
+        Route::get('search-items',      [InventoryOfferController::class, 'searchItems'])->name('search-items');
+        Route::post('store',            [InventoryOfferController::class, 'store'])->name('store');
+        Route::get('delete/{id}',       [InventoryOfferController::class, 'delete'])->name('delete');
+    });
     Route::get('dashboard',    [RetailPosController::class, 'dashboard'])->name('dashboard')->middleware('permission:pos_bills,view');
     Route::get('/',            [RetailPosController::class, 'index'])->name('index')->middleware('permission:pos_billing,create');
     Route::get('products',     [RetailPosController::class, 'products'])->name('products')->middleware('permission:pos_billing,create');
     Route::get('customers',    [RetailPosController::class, 'customers'])->name('customers')->middleware('permission:pos_billing,create');
+    Route::get('offers-all',   [RetailPosController::class, 'offersAll'])->name('offers.all')->middleware('permission:pos_billing,create');
+    Route::post('offers-match',[RetailPosController::class, 'offersMatch'])->name('offers.match')->middleware('permission:pos_billing,create');
+    Route::post('offers-apply-code',[RetailPosController::class, 'offersApplyCode'])->name('offers.apply-code')->middleware('permission:pos_billing,create');
+    Route::post('coupons',      [RetailPosController::class, 'couponsForCart'])->name('coupons')->middleware('permission:pos_billing,create');
+    Route::post('coupon-apply', [RetailPosController::class, 'applyCoupon'])->name('coupon-apply')->middleware('permission:pos_billing,create');
     Route::post('finalize',    [RetailPosController::class, 'finalize'])->name('finalize')->middleware('permission:pos_billing,create');
 
     // Hold & Resume — actions of New Sale

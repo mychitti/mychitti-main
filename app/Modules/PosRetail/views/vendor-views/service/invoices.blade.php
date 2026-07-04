@@ -78,6 +78,18 @@
                         <button data-toggle="modal" data-target="#importExcelModal" class="btn btn_sm btn--primary">Import
                             Excel</button>
                     @endif
+                    @if (auth('vendor')->check() && \Illuminate\Support\Facades\Schema::hasTable('invoice_stock_restore_approvals'))
+                        @php
+                            $pendingStockApprovals = \App\Models\InvoiceStockRestoreApproval::where('store_id', \App\CentralLogics\Helpers::get_store_id())
+                                ->where('status', 'pending')->count();
+                        @endphp
+                        <a href="{{ route('vendor.invoice.stock-approvals') }}" class="btn btn_sm btn-outline-primary">
+                            Stock Approvals
+                            @if ($pendingStockApprovals > 0)
+                                <span class="badge badge-danger">{{ $pendingStockApprovals }}</span>
+                            @endif
+                        </a>
+                    @endif
                     @if (hasPermission('billing', 'export'))
                         <form id="exportForm" action="{{ route('vendor.invoice.export') }}" method="POST" target="_blank">
                             @csrf

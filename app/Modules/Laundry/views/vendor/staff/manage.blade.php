@@ -8,6 +8,7 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <!-- Page Header -->
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Edit Staff </h1>

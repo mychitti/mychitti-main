@@ -43,10 +43,21 @@
                         </li>
                     @endif
 
-                   
+
                     {{-- hasMasterModulePermission('leads_manage') && --}}
                     @unless (isset($skipForPOS) && $skipForPOS)
-                        @if (selected_menu('leads_manage') && hasMasterModulePermission('leads_manage') && $store_data->module->id == 6 && (hasAnyPermission(['leads_manage.dashboard', 'leads_manage.list', 'leads_manage.add', 'leads_manage.statuses', 'leads_manage.export', 'leads_manage.report', 'leads_manage.settings'])))
+                        @if (selected_menu('leads_manage') &&
+                                hasMasterModulePermission('leads_manage') &&
+                                $store_data->module->id == 6 &&
+                                hasAnyPermission([
+                                    'leads_manage.dashboard',
+                                    'leads_manage.list',
+                                    'leads_manage.add',
+                                    'leads_manage.statuses',
+                                    'leads_manage.export',
+                                    'leads_manage.report',
+                                    'leads_manage.settings',
+                                ]))
                             <li
                                 class="navbar-vertical-aside-has-menu {{ Request::is('service/report') || Request::is('lead*') || Request::is('service/leads*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
@@ -69,9 +80,8 @@
                                             </a>
                                         </li>
                                     @endif
-                                 
+
                                     @if (auth('vendor_employee')->check() && hasAnyPermission(['leads_manage.assigned_list']))
-                                      
                                         <li
                                             class="nav-item  {{ Request::is('service/assigned-services*') && !Request::is('service/leads-dashboard*') ? 'active' : '' }}">
                                             <a class="nav-link" href="{{ route('vendor.service.assigned_services') }}"
@@ -129,7 +139,8 @@
                                             <a class="nav-link" href="{{ route('vendor.service.lead-subscription') }}"
                                                 title="Lead Subscription">
                                                 <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">{{ _isHospital() ? 'Appointment Subscription' : 'Lead Subscription' }}</span>
+                                                <span
+                                                    class="text-truncate">{{ _isHospital() ? 'Appointment Subscription' : 'Lead Subscription' }}</span>
                                             </a>
                                         </li>
                                     @endif
@@ -137,8 +148,10 @@
                                 </ul>
                             </li>
                         @elseif(auth('vendor_employee')->check() && hasAnyPermission(['leads_manage.assigned_list']))
-                            <li class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
-                                <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.service.assigned_services') }}"
+                            <li
+                                class="navbar-vertical-aside-has-menu {{ Request::is('service/assigned-services*') ? 'active' : '' }}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                    href="{{ route('vendor.service.assigned_services') }}"
                                     title="Assigned {{ _isHospital() ? 'Appointments' : 'Leads' }}">
                                     <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/leads_management_color.png') }}"
                                         alt="" class="nav-link-icon">
@@ -270,7 +283,7 @@
                             </li>
                         @endif
                     @endunless
-               
+
                     {{-- =============================== CLIENT Management=========================== --}}
                     @unless (isset($skipForLaundry) && $skipForLaundry)
                         @if (
@@ -1130,8 +1143,10 @@
                                 // Retail POS stores get BASIC inventory only (Items + Stock) — hide the
                                 // advanced inventory areas (Dashboard, Stock In/Out, Sales, Purchase, Reports).
                                 // Unless the store also purchased the full Inventory plan — then show everything.
-                                $posRetailBasicInv = strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') === 'pos_retail'
-                                    && !\App\CentralLogics\Helpers::has_purchased_module('inventory_manage');
+                                $posRetailBasicInv =
+                                    strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') ===
+                                        'pos_retail' &&
+                                    !\App\CentralLogics\Helpers::has_purchased_module('inventory_manage');
                             @endphp
 
                             <li
@@ -1429,39 +1444,39 @@
                                         </li>
                                     @endif
                                     @if (!$posRetailBasicInv)
-                                    <li
-                                        class="navbar-vertical-aside-has-menu {{ Request::is('inventory/gatepass*') ? 'active' : '' }}">
-                                        <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                            href="javascript:" title="Gatepass">
-                                            <i class="tio-shopping-cart nav-icon"></i>
-                                            <span class=" text-truncate">
-                                                Gatepass
-                                            </span>
-                                        </a>
-                                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                            style="display: {{ Request::is('inventory/gatepass*') ? 'block' : 'none' }}">
-                                            <li class="nav-item  {{ Request::is('inventory') ? 'active' : '' }}">
-                                                <a class="nav-link"
-                                                    href="{{ route('vendor.inventory.gatepass.list', ['purchase']) }}"
-                                                    title=" {{ translate('messages.purchase gatepass') }}">
-                                                    <span class="tio-circle nav-indicator-icon"></span>
-                                                    <span class="text-truncate sidebar--badge-container">
-                                                        Purchase Gatepass
-                                                    </span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-item  {{ Request::is('inventory') ? 'active' : '' }}">
-                                                <a class="nav-link"
-                                                    href="{{ route('vendor.inventory.gatepass.list', ['sale']) }}"
-                                                    title=" {{ translate('messages.sale gatepass') }}">
-                                                    <span class="tio-circle nav-indicator-icon"></span>
-                                                    <span class="text-truncate sidebar--badge-container">
-                                                        Sale Gatepass
-                                                    </span>
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </li>
+                                        <li
+                                            class="navbar-vertical-aside-has-menu {{ Request::is('inventory/gatepass*') ? 'active' : '' }}">
+                                            <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                                                href="javascript:" title="Gatepass">
+                                                <i class="tio-shopping-cart nav-icon"></i>
+                                                <span class=" text-truncate">
+                                                    Gatepass
+                                                </span>
+                                            </a>
+                                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                                style="display: {{ Request::is('inventory/gatepass*') ? 'block' : 'none' }}">
+                                                <li class="nav-item  {{ Request::is('inventory') ? 'active' : '' }}">
+                                                    <a class="nav-link"
+                                                        href="{{ route('vendor.inventory.gatepass.list', ['purchase']) }}"
+                                                        title=" {{ translate('messages.purchase gatepass') }}">
+                                                        <span class="tio-circle nav-indicator-icon"></span>
+                                                        <span class="text-truncate sidebar--badge-container">
+                                                            Purchase Gatepass
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                                <li class="nav-item  {{ Request::is('inventory') ? 'active' : '' }}">
+                                                    <a class="nav-link"
+                                                        href="{{ route('vendor.inventory.gatepass.list', ['sale']) }}"
+                                                        title=" {{ translate('messages.sale gatepass') }}">
+                                                        <span class="tio-circle nav-indicator-icon"></span>
+                                                        <span class="text-truncate sidebar--badge-container">
+                                                            Sale Gatepass
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </li>
                                     @endif
                                     @if (hasPermission('inventory', 'settings'))
                                         <li
@@ -1486,10 +1501,10 @@
                             !\App\CentralLogics\Helpers::permission_check('hr_manage') &&
                                 !\App\CentralLogics\Helpers::permission_check('laundry') &&
                                 selected_menu('staff_manage') &&
-                                (auth('vendor')->check()
-                                    || hasPermission('basic_staff_manage', 'list')
-                                    || hasPermission('basic_staff_manage', 'add')
-                                    || hasPermission('basic_staff_manage', 'role_manage')))
+                                (auth('vendor')->check() ||
+                                    hasPermission('basic_staff_manage', 'list') ||
+                                    hasPermission('basic_staff_manage', 'add') ||
+                                    hasPermission('basic_staff_manage', 'role_manage')))
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                                     title="Staff Management">
@@ -1510,7 +1525,8 @@
                                         </li>
                                     @endif
                                     @if (hasPermission('basic_staff_manage', 'add'))
-                                        <li class="nav-item {{ Request::is('basic-staff/create') || Request::is('basic-staff/edit/*') ? 'active' : '' }}">
+                                        <li
+                                            class="nav-item {{ Request::is('basic-staff/create') || Request::is('basic-staff/edit/*') ? 'active' : '' }}">
                                             <a class="nav-link" href="{{ route('vendor.basic-staff.create') }}"
                                                 title="Add Staff">
                                                 <span class="tio-circle nav-indicator-icon"></span>
@@ -1540,220 +1556,11 @@
                                 selected_menu('leave_manage') ||
                                 selected_menu('salary_manage')) &&
                                 hasMasterModulePermission('hr_manage'))
-                            <li
-                                class="navbar-vertical-aside-has-menu {{ Request::is('hr*') || Request::is('task-salary-categories') || Request::is('shifts*') || Request::is('custom-role*') || Request::is('staff*') || Request::is('salary*') || Request::is('leave*') || Request::is('attendance*') ? 'active' : '' }} ">
-                                <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                                    title="HR Management">
-                                    <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}"
-                                        alt="" class="nav-link-icon">
-
-                                    <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                        HR Management</span>
+                            <li class="navbar-vertical-aside {{ Request::is('hr*') || Request::is('task-salary-categories') || Request::is('shifts*') || Request::is('custom-role*') || Request::is('staff*') || Request::is('salary*') || Request::is('leave*') || Request::is('attendance*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('vendor.hr.dashboard') }}" title="HR Management">
+                                    <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/HR_management_color.png') }}" alt="" class="nav-link-icon">
+                                    <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">HR Management</span>
                                 </a>
-
-                                <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
-                                    @if (hasPermission('hr_manage', 'dashboard'))
-                                        <li class="nav-item {{ Request::is('hr/dashboard') ? 'active' : '' }}">
-                                            <a class="nav-link " href="{{ route('vendor.hr.dashboard') }}"
-                                                title="HR Management Dashboard">
-                                                <span class="tio-dashboard-outlined nav-icon"></span>
-                                                <span class="text-truncate">Dashboard</span>
-                                            </a>
-                                        </li>
-                                    @endif
-                                    @if (hasAnyModulePermission(['staff_manage', 'staff_team', 'staff_department', 'staff_role']) &&
-                                            selected_menu('staff_manage'))
-                                        <li
-                                            class="navbar-vertical-aside-has-menu {{ Request::is('staff*') || Request::is('custom-role*') ? 'active' : '' }}">
-                                            <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                                href="javascript:;"
-                                                title="Staff
-                                                Management">
-                                                <i class="tio-group-junior nav-icon"></i>
-                                                <span class=" text-truncate">Staff
-                                                    Management</span>
-                                            </a>
-
-                                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                                style="display: {{ Request::is('staff*') || Request::is('custom-role*') ? 'block' : 'none' }}">
-                                                @if (hasPermission('staff_manage', 'add'))
-                                                    <li
-                                                        class="nav-item {{ Request::is('staff/add-new') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.staff.add-new') }}"
-                                                            title="{{ translate('messages.add') }} {{ translate('messages.new') }} {{ translate('messages.Employee') }}">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">{{ translate('messages.add') }}
-                                                                {{ translate('messages.new') }} Staff</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyPermission(['staff_manage.list', 'staff_manage.export']))
-                                                    <li class="nav-item {{ Request::is('staff/list') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.staff.list') }}"
-                                                            title="Staff {{ translate('messages.list') }}">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Staff
-                                                                {{ translate('messages.list') }} </span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['staff_team']))
-                                                    <li class="nav-item {{ Request::is('staff/team') ? 'active' : '' }}">
-                                                        <a class="nav-link "
-                                                            href="{{ route('vendor.staff.team.index') }}"
-                                                            title="Teams">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Teams </span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['staff_department']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('staff-department') ? 'active' : '' }}">
-                                                        <a class="nav-link "
-                                                            href="{{ route('vendor.staff-department.all') }}"
-                                                            title="Staff Department">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Staff Department</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['staff_role']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('custom-role/create') ? 'active' : '' }}">
-                                                        <a class="nav-link "
-                                                            href="{{ route('vendor.custom-role.create') }}"
-                                                            title="Staff Role">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Staff Roles (Permissions)</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasPermission('staff_manage', 'settings'))
-                                                    <li
-                                                        class="nav-item {{ Request::is('staff/settings*') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.staff.settings') }}"
-                                                            title="Staff T&C">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Staff Settings</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                            </ul>
-                                        </li>
-                                    @endif
-                                    @if (selected_menu('attendance_manage') && hasAnyModulePermission(['attendance_manage', 'attendance_report']))
-                                        <li
-                                            class="navbar-vertical-aside-has-menu {{ Request::is('attendance*') ? 'active' : '' }}">
-                                            <a class="sub-link  js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                                href="javascript:;" title="Attendance Management">
-                                                <i class="tio-event nav-icon"></i>
-                                                <span class="text-truncate">Attendance
-                                                    Management</span>
-                                            </a>
-
-                                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                                style="display: {{ Request::is('attendance*') ? 'block' : 'none' }}">
-                                                @if (hasPermission('attendance_manage', 'list'))
-                                                    <li
-                                                        class="nav-item {{ Request::is('attendance/list') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.attendance.all') }}"
-                                                            title="{{ translate('messages.manage') }}">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Attendance Manage</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['attendance_report']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('attendance/report') ? 'active' : '' }}">
-                                                        <a class="nav-link "
-                                                            href="{{ route('vendor.attendance.report') }}"
-                                                            title="Reports">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Attendance Reports</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                            </ul>
-                                        </li>
-                                    @endif
-
-
-                                    @if (selected_menu('salary_manage') &&
-                                            hasAnyModulePermission(['salary_advanced', 'salary_report', 'task_salary_category', 'salary_manage']))
-                                        <li
-                                            class="navbar-vertical-aside-has-menu {{ Request::is('salary*') || Request::is('task-salary-categories') ? 'active' : '' }}">
-                                            <a class="sub-link js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                                href="javascript:;" title="Salary">
-                                                <i class="tio-user nav-icon"></i>
-                                                <span
-                                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate text-truncate">Salary
-                                                    Management</span>
-                                            </a>
-                                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                                style="display: {{ Request::is('salary*') || Request::is('task-salary-categories') ? 'block' : 'none' }}">
-                                                @if (hasAnyModulePermission(['salary_manage']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('salary/list') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.salary.list') }}"
-                                                            title="manage">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Salary Manage</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['task_salary_category']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('task-salary-categories') ? 'active' : '' }}">
-                                                        <a class="nav-link "
-                                                            href="{{ route('vendor.task-salary-categories.index') }}"
-                                                            title="report">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Task Salary Category</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-                                                @if (hasAnyModulePermission(['salary_report']))
-                                                    <li
-                                                        class="nav-item {{ Request::is('salary/report') ? 'active' : '' }}">
-                                                        <a class="nav-link " href="{{ route('vendor.salary.report') }}"
-                                                            title="report">
-                                                            <span class="tio-circle nav-indicator-icon"></span>
-                                                            <span class="text-truncate">Salary Report</span>
-                                                        </a>
-                                                    </li>
-                                                @endif
-
-                                            </ul>
-                                        </li>
-                                    @endif
-                                    @if (hasAnyModulePermission(['shift_manage']))
-                                        <li class="navbar-vertical-aside {{ Request::is('shifts*') ? 'active' : '' }}">
-                                            <a class="sub-link  nav-link" href="{{ route('vendor.shifts.index') }}"
-                                                title="Shifts Management">
-                                                <i class="tio-timer nav-icon"></i>
-                                                <span
-                                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Shifts
-                                                    Management</span>
-                                            </a>
-                                        </li>
-                                    @endif
-
-
-                                    @if (selected_menu('leave_manage') && hasAnyModulePermission(['leave_manage']))
-                                        <li class="navbar-vertical-aside {{ Request::is('leave*') ? 'active' : '' }}">
-                                            <a class="sub-link  nav-link" href="{{ route('vendor.leave.all') }}"
-                                                title="Leave Management">
-                                                <i class="tio-category nav-icon"></i>
-                                                <span
-                                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Leave
-                                                    Management</span>
-                                            </a>
-                                        </li>
-                                    @endif
-
-                                </ul>
                             </li>
                         @endif
                     @endunless
@@ -1775,64 +1582,65 @@
 
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
                                 @if (hasPermission('webpage_settings', 'view'))
-                                <li class="nav-item  {{ Request::is('settings/settings/webpage') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.settings.webpage') }}"
-                                        title="Webpage Settings">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Webpage Settings</span>
-                                    </a>
-                                </li>
+                                    <li
+                                        class="nav-item  {{ Request::is('settings/settings/webpage') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('vendor.settings.webpage') }}"
+                                            title="Webpage Settings">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Webpage Settings</span>
+                                        </a>
+                                    </li>
                                 @endif
                                 @if (hasPermission('store_settings', 'view'))
-                                <li class="nav-item {{ Request::is('store/edit') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.shop.edit') }}"
-                                        title="Store Settings">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Store Settings</span>
-                                    </a>
-                                </li>
+                                    <li class="nav-item {{ Request::is('store/edit') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('vendor.shop.edit') }}"
+                                            title="Store Settings">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Store Settings</span>
+                                        </a>
+                                    </li>
                                 @endif
                                 @if (hasPermission('service_setup', 'view'))
-                                <li class="nav-item {{ Request::is('settings/service-setup') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.settings.service-setup') }}"
-                                        title="Service Setup">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Service Setup</span>
-                                    </a>
-                                </li>
+                                    <li class="nav-item {{ Request::is('settings/service-setup') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('vendor.settings.service-setup') }}"
+                                            title="Service Setup">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Service Setup</span>
+                                        </a>
+                                    </li>
                                 @endif
                                 @if (hasPermission('profile_settings', 'view'))
-                                <li class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.settings.general.profile') }}"
-                                        title="Profile Settings">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Profile Settings</span>
-                                    </a>
-                                </li>
+                                    <li
+                                        class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">
+                                        <a class="nav-link " href="{{ route('vendor.settings.general.profile') }}"
+                                            title="Profile Settings">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">Profile Settings</span>
+                                        </a>
+                                    </li>
                                 @endif
                                 @if (hasPermission('performance_analytics', 'view'))
-                                <li
-                                    class="nav-item {{ Request::is('store-panel/performance-analytics*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.performance-analytics.index') }}"
-                                        title="Performance Analytics">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">
-                                            Performance Analytics
-                                        </span>
-                                    </a>
-                                </li>
+                                    <li
+                                        class="nav-item {{ Request::is('store-panel/performance-analytics*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.performance-analytics.index') }}"
+                                            title="Performance Analytics">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">
+                                                Performance Analytics
+                                            </span>
+                                        </a>
+                                    </li>
                                 @endif
                                 @if (hasPermission('reviews', 'view'))
-                                <li class="nav-item {{ Request::is('service/reviews*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.service.reviews') }}"
-                                        title="Reviews">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">
-                                            Reviews
-                                        </span>
-                                    </a>
-                                </li>
-                              
+                                    <li class="nav-item {{ Request::is('service/reviews*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.service.reviews') }}"
+                                            title="Reviews">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">
+                                                Reviews
+                                            </span>
+                                        </a>
+                                    </li>
                                 @endif
                                 {{-- <li
                                     class="navbar-vertical-aside-has-menu  {{ Request::is('business-settings/terms-and-conditions') ? 'active' : '' }}">
@@ -1975,40 +1783,53 @@
 
                     @if (auth('vendor_employee')->check())
                         @php
-                            $myAccountActive = Request::is('profile/view') || Request::is('attendance*') || Request::is('salary-history*') || Request::is('leaves*') || Request::is('my-performance*');
+                            $myAccountActive =
+                                Request::is('profile/view') ||
+                                Request::is('attendance*') ||
+                                Request::is('salary-history*') ||
+                                Request::is('leaves*') ||
+                                Request::is('my-performance*');
                         @endphp
                         <li class="navbar-vertical-aside-has-menu {{ $myAccountActive ? 'active' : '' }}">
-                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="My Account">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="My Account">
                                 <i class="tio-user-outlined nav-link-icon" style="font-size:20px;"></i>
-                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My Account</span>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">My
+                                    Account</span>
                             </a>
-                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{ $myAccountActive ? 'block' : 'none' }}">
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ $myAccountActive ? 'block' : 'none' }}">
                                 <li class="nav-item {{ Request::is('profile/view') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.profile.view') }}" title="My Profile">
+                                    <a class="nav-link" href="{{ route('vendor.profile.view') }}"
+                                        title="My Profile">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">My Profile</span>
                                     </a>
                                 </li>
                                 <li class="nav-item {{ Request::is('attendance*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.employee-attendance') }}" title="Attendance">
+                                    <a class="nav-link" href="{{ route('vendor.employee-attendance') }}"
+                                        title="Attendance">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Attendance</span>
                                     </a>
                                 </li>
                                 <li class="nav-item {{ Request::is('salary-history*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.salary-history') }}" title="My Salary">
+                                    <a class="nav-link" href="{{ route('vendor.salary-history') }}"
+                                        title="My Salary">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">My Salary</span>
                                     </a>
                                 </li>
                                 <li class="nav-item {{ Request::is('leaves*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.employee-leave') }}" title="My Leaves">
+                                    <a class="nav-link" href="{{ route('vendor.employee-leave') }}"
+                                        title="My Leaves">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">My Leaves</span>
                                     </a>
                                 </li>
                                 <li class="nav-item {{ Request::is('my-performance*') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.report.staff-combined') }}" title="My Performance">
+                                    <a class="nav-link" href="{{ route('vendor.report.staff-combined') }}"
+                                        title="My Performance">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">My Performance</span>
                                     </a>
@@ -2574,55 +2395,57 @@
                     @endif
                     {{-- WhatsApp — shown right after Post Ads for every business type that renders
                          this default menu (pos, laundry, pos_retail, school, generic). --}}
-                    @include('layouts.vendor.partials._sidebar_menu_whatsapp')
-
+                    @if (auth('vendor')->check())
+                        @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                    @endif
                     {{-- Laundry --}}
-                    @if(0)
-                    @unless (isset($skipForLaundry) && $skipForLaundry)
-                        @if (selected_menu('laundry') && \App\CentralLogics\Helpers::permission_check('laundry'))
-                            <li class="navbar-vertical-aside-has-menu {{ Request::is('laundry*') ? 'active' : '' }}">
-                                <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
-                                    href="javascript:;" title="Laundry">
-                                    <i class="tio-shopping-basket nav-icon"></i>
-                                    <span
-                                        class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Laundry</span>
-                                </a>
-                                <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                    style="display: {{ Request::is('laundry*') ? 'block' : 'none' }}">
-                                    <li class="nav-item {{ Request::is('laundry/dashboard*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.laundry.dashboard') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Dashboard</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item {{ Request::is('laundry/orders*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.laundry.orders') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Walk-in Orders</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item {{ Request::is('laundry/challans*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.laundry.challans') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Hotel Challans</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item {{ Request::is('laundry/register*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.laundry.register') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Monthly Register</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item {{ Request::is('laundry/items*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('vendor.laundry.items') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">Item Master</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        @endif
-                    @endunless
+                    @if (0)
+                        @unless (isset($skipForLaundry) && $skipForLaundry)
+                            @if (selected_menu('laundry') && \App\CentralLogics\Helpers::permission_check('laundry'))
+                                <li
+                                    class="navbar-vertical-aside-has-menu {{ Request::is('laundry*') ? 'active' : '' }}">
+                                    <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                                        href="javascript:;" title="Laundry">
+                                        <i class="tio-shopping-basket nav-icon"></i>
+                                        <span
+                                            class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Laundry</span>
+                                    </a>
+                                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                        style="display: {{ Request::is('laundry*') ? 'block' : 'none' }}">
+                                        <li class="nav-item {{ Request::is('laundry/dashboard*') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('vendor.laundry.dashboard') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Dashboard</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item {{ Request::is('laundry/orders*') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('vendor.laundry.orders') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Walk-in Orders</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item {{ Request::is('laundry/challans*') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('vendor.laundry.challans') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Hotel Challans</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item {{ Request::is('laundry/register*') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('vendor.laundry.register') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Monthly Register</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item {{ Request::is('laundry/items*') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('vendor.laundry.items') }}">
+                                                <span class="tio-circle nav-indicator-icon"></span>
+                                                <span class="text-truncate">Item Master</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            @endif
+                        @endunless
                     @endif
 
                     @if (selected_menu('subscriptions') && \App\CentralLogics\Helpers::employee_module_permission_check('subscriptions'))

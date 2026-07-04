@@ -29,12 +29,13 @@
     @php
         $money = fn($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.');
         $gstRaw = $store->gst ?? null;
-        $gstCode = $gstRaw;
-        if ($gstRaw && ($d = json_decode($gstRaw, true)) && isset($d['code'])) { $gstCode = $d['code']; }
+        $gstCode = null;
+        if ($gstRaw && ($d = json_decode($gstRaw, true)) && !empty($d['status']) && !empty($d['code'])) { $gstCode = $d['code']; }
     @endphp
 
     <div class="center">
         <h3 class="store">{{ $store->name }}</h3>
+        @if (!empty($store->branch_label))<div class="muted">{{ $store->branch_label }}</div>@endif
         @if (!empty($store->address))<div class="muted">{{ $store->address }}</div>@endif
         @if (!empty($gstCode))<div class="muted">GSTIN: {{ $gstCode }}</div>@endif
         @php

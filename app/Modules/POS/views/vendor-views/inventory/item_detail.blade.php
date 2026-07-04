@@ -456,7 +456,6 @@
                             <th class="border-0"> Name</th>
                             <th class="border-0 ">MRP</th>
                             <th class="border-0 ">Selling Price</th>
-                            <th class="border-0 ">Purchase Price</th>
                             <th class="border-0 ">Images</th>
                             <th class="border-0 ">SKU</th>
                             <th class="border-0 ">Stock</th>
@@ -479,9 +478,6 @@
                                     {{ _price($vr->price) }}
                                 </td>
                                 <td>
-                                    {{ _price($vr->purchaseprice) }}
-                                </td>
-                                <td>
                                     <div class="d-flex gap-1">
                                         @php
                                             $vr_det = \App\Models\InvItemVariationDetail::where('type', $vr->type)
@@ -502,7 +498,7 @@
                                     {{ $vr_det->sku }}
                                 </td>
                                 <td>
-                                    {{ $vr_det->stock ?? 0 }}
+                                    {{ $vr->stock ?? 0 }}
                                 </td>
                                 <td>
                                     <div class="btn--container justify-content-warning">

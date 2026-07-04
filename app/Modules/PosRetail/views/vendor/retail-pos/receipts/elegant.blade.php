@@ -30,14 +30,15 @@
     @php
         $money = fn($n) => rtrim(rtrim(number_format((float) $n, 2), '0'), '.');
         $gstRaw = $store->gst ?? null;
-        $gstCode = $gstRaw;
-        if ($gstRaw && ($d = json_decode($gstRaw, true)) && isset($d['code'])) { $gstCode = $d['code']; }
+        $gstCode = null;
+        if ($gstRaw && ($d = json_decode($gstRaw, true)) && !empty($d['status']) && !empty($d['code'])) { $gstCode = $d['code']; }
     @endphp
 
     <div class="frame">
         <div class="center">
             <h3 class="store">{{ $store->name }}</h3>
             <div class="tag">Tax Invoice</div>
+            @if (!empty($store->branch_label))<div class="addr">{{ $store->branch_label }}</div>@endif
             @if (!empty($store->address))<div class="addr">{{ $store->address }}</div>@endif
             @if (!empty($gstCode))<div class="addr">GSTIN: {{ $gstCode }}</div>@endif
             @php

@@ -135,16 +135,16 @@
 
                                                     
                                                     <!-- Delete Button -->
-                                                    <div class="mr-1 delete_selected_btn" style="display:none;">
+                                                    <div class="mr-1 delete_selected_btn align-self-center" style="display:none;">
                                                         @if (hasPermission('inventory_item', 'delete'))
-                                                            <button style=" white-space: nowrap;" id="delete_all"
+                                                            <button style=" white-space: nowrap; min-width:fit-content !important;padding: 5px !important;display:inline-flex !important;width:auto !important;align-items:center;" id="delete_all"
                                                                 class="btn action-btn btn-outline-danger px-3 py-2 btn_sm"
                                                                 title="Delete Selected">
                                                                 <i class="tio-delete"></i> Delete Selected
                                                             </button>
                                                         @endif
                                                         @if (hasPermission('inventory_item', 'export'))
-                                                            <button id="download_selected" style=" white-space: nowrap;"
+                                                            <button id="download_selected" style=" white-space: nowrap; min-width:fit-content !important;padding: 5px !important;display:inline-flex !important;width:auto !important;align-items:center;"
                                                                 class="btn action-btn btn-outline-primary px-3 py-2 btn_sm "
                                                                 title="Download Selected">
                                                                 <i class="tio-download"></i> Download Selected
@@ -204,12 +204,29 @@
                                                         <th class="border-0 hide_on_phone ">MRP</th>
                                                         <th class="border-0 ">Selling Price</th>
 
+                                                        <th class="border-0 ">Offer</th>
                                                         <th class="border-0 ">Action</th>
                                                     </tr>
                                                 </thead>
 
                                                 <tbody id="set-rows">
-                                                    @foreach ($inventory_items as $key => $item)
+                                                    @php
+                                                            $offerCounts = [];
+                                                            if (\Illuminate\Support\Facades\Schema::hasTable('inventory_offers')) {
+                                                                $storeOffers = \App\Models\InventoryOffer::where('store_id', \App\CentralLogics\Helpers::get_store_id())
+                                                                    ->get(['id', 'item_id', 'buy_product_ids', 'reward_product_id']);
+                                                                foreach ($storeOffers as $of) {
+                                                                    $ids = [];
+                                                                    if ($of->item_id) $ids[] = (int) $of->item_id;
+                                                                    if ($of->reward_product_id) $ids[] = (int) $of->reward_product_id;
+                                                                    foreach ((array) $of->buy_product_ids as $bid) $ids[] = (int) $bid;
+                                                                    foreach (array_unique($ids) as $iid) {
+                                                                        $offerCounts[$iid] = ($offerCounts[$iid] ?? 0) + 1;
+                                                                    }
+                                                                }
+                                                            }
+                                                        @endphp
+                                                        @foreach ($inventory_items as $key => $item)
                                                         <tr class="clickable-row"
                                                             data-href="{{ route('vendor.inventory.item.detail', [$item->id]) }}">
                                                             <td class="text-center"> <input type="checkbox"
@@ -242,10 +259,12 @@
                                                             {{-- <td class="hide_on_phone">{{ $item->brand }}</td>
                                                             <td class="hide_on_phone">{{ $item->model_number }}</td> --}}
                                                             <td class="hide_on_phone">
-                                                                <div
-                                                                    class="badge badge-soft-{{ $item->stock <= 5 ? 'danger' : 'success' }}">
-                                                                    {{ $item->stock ?? 0}}
-                                                                </div>
+                                                                @php
+                                                                    $__ds = (float) ($item->stock ?? 0);
+                                                                    $__vs = json_decode($item->variations ?? '[]', true);
+                                                                    if (is_array($__vs)) { foreach ($__vs as $__v) { $__ds += (float) ($__v['stock'] ?? 0); } }
+                                                                @endphp
+                                                                <div class="badge badge-soft-{{ $__ds <= 5 ? 'danger' : 'success' }}">{{ $__ds }}</div>
                                                             </td>
                                                             <td class="hide_on_phone">
                                                                 {{ _price($item->mrp) }}
@@ -262,6 +281,7 @@
                                                                         title="{{ translate('Edit variation prices') }}"
                                                                         data-item-id="{{ $item->id }}"
                                                                         data-item-name="{{ $item->item_name }}"
+                                                                        data-selling-price="{{ $item->selling_price }}"
                                                                         data-variations='@json(array_map(fn($v) => ['type' => $v['type'] ?? '', 'price' => $v['price'] ?? 0], array_values($sp_vars)))'>
                                                                         <i class="tio-edit"></i>
                                                                     </a>
@@ -282,6 +302,25 @@
                                                                 </div>
                                                             </td>
 
+                                                            <td>
+                                                                @php $offerCount = $offerCounts[$item->id] ?? 0; @endphp
+                                                                @if ($offerCount > 0)
+                                                                    <a class="btn btn_sm btn-outline-success text-nowrap"
+                                                                        onclick="event.stopPropagation()"
+                                                                        href="{{ route('vendor.retail-pos.offer.index', ['item_id' => $item->id]) }}"
+                                                                        title="This item has {{ $offerCount }} offer(s)">
+                                                                        <i class="tio-gift"></i> View Offer
+                                                                        <span class="badge badge-light" style="min-width:auto;">{{ $offerCount }}</span>
+                                                                    </a>
+                                                                @else
+                                                                    <a class="btn btn-sm btn-outline-info text-nowrap"
+                                                                        onclick="event.stopPropagation()"
+                                                                        href="{{ route('vendor.retail-pos.offer.create', [$item->id]) }}"
+                                                                        title="No offer yet — create one">
+                                                                        <i class="tio-add-circle"></i> Create Offer 
+                                                                    </a>
+                                                                @endif
+                                                            </td>
                                                             <td>
                                                                 <div class="dropdown">
                                                                     <button class="btn p-1 dropdown-toggle" type="button"
@@ -747,6 +786,13 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="vpItemId">
+                    <div class="form-group row align-items-center mb-2">
+                        <label class="col-5 col-form-label font-weight-bold">{{ translate('Main Selling Price') }}</label>
+                        <div class="col-7"><input type="number" step="0.01" min="0"
+                                class="form-control form-control-sm" id="vpBasePrice"></div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="text-muted small mb-2">{{ translate('Variation Prices') }}</div>
                     <div id="vpRows"></div>
                 </div>
                 <div class="modal-footer">
@@ -1035,6 +1081,7 @@
                 var vars = $(this).data('variations') || [];
                 $('#vpItemId').val($(this).data('item-id'));
                 $('#vpItemName').text($(this).data('item-name'));
+                $('#vpBasePrice').val($(this).data('selling-price'));
                 var html = '';
                 $.each(vars, function (i, v) {
                     var label = v.type ? v.type : ('Variation ' + (i + 1));
@@ -1048,15 +1095,17 @@
             });
             $('#vpSaveBtn').on('click', function () {
                 var id = $('#vpItemId').val(), prices = {}, ok = true;
+                var basePrice = $('#vpBasePrice').val();
+                if (basePrice === '' || isNaN(basePrice) || parseFloat(basePrice) < 0) ok = false;
                 $('#vpRows .vp-price').each(function () {
                     var val = $(this).val();
                     if (val === '' || isNaN(val) || parseFloat(val) < 0) ok = false;
                     prices[$(this).data('idx')] = val;
                 });
-                if (!ok) { spNotify('error', 'Enter valid prices for all variations'); return; }
+                if (!ok) { spNotify('error', 'Enter valid prices'); return; }
                 var btn = $(this); btn.prop('disabled', true);
                 $.ajax({
-                    url: varUrl, method: 'POST', data: { _token: token, item_id: id, prices: prices },
+                    url: varUrl, method: 'POST', data: { _token: token, item_id: id, selling_price: basePrice, prices: prices },
                     success: function (r) {
                         if (r.status) { spNotify('success', r.message || 'Updated'); location.reload(); }
                         else { spNotify('error', r.message || 'Failed'); btn.prop('disabled', false); }

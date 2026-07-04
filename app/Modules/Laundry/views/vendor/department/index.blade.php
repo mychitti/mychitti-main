@@ -8,6 +8,7 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-filter-list"></i> Departments<span class="badge badge-soft-dark ml-2"
                     id="itemCount">{{ count($departments) }}</span></h1>

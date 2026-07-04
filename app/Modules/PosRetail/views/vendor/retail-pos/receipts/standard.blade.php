@@ -24,11 +24,12 @@
     @endphp
     <div class="center">
         <h3 class="b">{{ $store->name }}</h3>
+        @if (!empty($store->branch_label))<div>{{ $store->branch_label }}</div>@endif
         @if (!empty($store->address))<div>{{ $store->address }}</div>@endif
         @php
             $gstRaw = $store->gst ?? null;
-            $gstCode = $gstRaw;
-            if ($gstRaw && ($d = json_decode($gstRaw, true)) && isset($d['code'])) { $gstCode = $d['code']; }
+            $gstCode = null;
+            if ($gstRaw && ($d = json_decode($gstRaw, true)) && !empty($d['status']) && !empty($d['code'])) { $gstCode = $d['code']; }
         @endphp
         @if (!empty($gstCode))<div>GSTIN: {{ $gstCode }}</div>@endif
         @php

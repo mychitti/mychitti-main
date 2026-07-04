@@ -209,12 +209,13 @@
                                             <span class="badge badge-soft-success">Paid</span>
                                         @elseif($token->payment_status == 'unpaid')
                                             @if (hasPermission('pos_token', 'mark_paid') && $token->payment_status == 'unpaid')
-                                                <a class="btn btn_sm btn-outline-danger form-alert" href="javascript:"
-                                                    data-id="mark-paid-{{ $token->id }}"
+                                                <a class="btn btn_sm btn-outline-danger mark-paid-btn" href="javascript:"
+                                                    data-action="{{ route('vendor.pos.token.mark-paid', [$token->id]) }}"
+                                                    data-method="{{ $token->payment_method }}" data-toggle="modal"
+                                                    data-target="#markPaidModal"
                                                     style="    font-size: 11px;
                                                 padding: 4px 21px;
                                                 background: #ffecec !important;"
-                                                    data-message="{{ translate('Want to mark paid this token') }}"
                                                     title="{{ translate('messages.mark paid') }}"> Unpaid
                                                 </a>
                                             @else
@@ -235,16 +236,13 @@
                                             </button>
                                             <div class="dropdown-menu">
                                                 @if (hasPermission('pos_token', 'mark_paid') && $token->payment_status == 'unpaid')
-                                                    <a class="dropdown-item text-success form-alert" href="javascript:"
-                                                        data-id="mark-paid-{{ $token->id }}"
-                                                        data-message="{{ translate('Want to mark paid this token') }}"
+                                                    <a class="dropdown-item text-success mark-paid-btn" href="javascript:"
+                                                        data-action="{{ route('vendor.pos.token.mark-paid', [$token->id]) }}"
+                                                        data-method="{{ $token->payment_method }}" data-toggle="modal"
+                                                        data-target="#markPaidModal"
                                                         title="{{ translate('messages.mark paid') }}"><i
                                                             class="fa-solid fa-check-double"></i> Mark Paid
                                                     </a>
-                                                    <form action="{{ route('vendor.pos.token.mark-paid', [$token->id]) }}"
-                                                        method="get" id="mark-paid-{{ $token->id }}">
-                                                        @csrf @method('get')
-                                                    </form>
                                                 @endif
                                                 @if ($token->invoice)
                                                     <a href="{{ asset('storage/app/public/invoice') . '/' . $token->invoice->pdf }}"
@@ -372,6 +370,58 @@
         </div>
     </div>
 
+    <div class="modal fade" id="markPaidModal" tabindex="-1" aria-labelledby="markPaidModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="markPaidModalLabel">Mark Paid</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="get" action="" id="markPaidForm">
+                    <div class="modal-body">
+                        <div class="pos--payment-options ">
+                            <ul style="flex-wrap: nowrap;">
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="mark_paid_method"
+                                            value="cash" hidden>
+                                        <span class="size_span">Cash</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="mark_paid_method"
+                                            value="card" hidden>
+                                        <span class="size_span">Card</span>
+                                    </label>
+                                </li>
+                                <li>
+                                    <label>
+                                        <input type="radio" name="payment_method" class="mark_paid_method"
+                                            value="upi" hidden>
+                                        <span class="size_span">UPI</span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="form-group mt-3" id="markPaidUpiReferenceDiv" style="display: none;">
+                            <label for="mark_paid_transaction_reference">Transaction Reference Number <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" name="transaction_reference" id="mark_paid_transaction_reference"
+                                class="form-control" placeholder="Enter UPI transaction reference number">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Mark Paid</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
@@ -385,6 +435,31 @@
             $('.edit_token_id').val(id)
             $('.payment_method[value="' + method + '"]').prop('checked', true);
         })
+
+        function toggleMarkPaidReference() {
+            if ($('.mark_paid_method:checked').val() === 'upi') {
+                $('#markPaidUpiReferenceDiv').show();
+                $('#mark_paid_transaction_reference').prop('required', true);
+            } else {
+                $('#markPaidUpiReferenceDiv').hide();
+                $('#mark_paid_transaction_reference').prop('required', false);
+            }
+        }
+
+        $(document).on('click', '.mark-paid-btn', function() {
+            var action = $(this).data('action')
+            var method = $(this).data('method')
+
+            $('#markPaidForm').attr('action', action)
+            $('.mark_paid_method').prop('checked', false)
+            if (method) {
+                $('.mark_paid_method[value="' + method + '"]').prop('checked', true)
+            }
+            $('#mark_paid_transaction_reference').val('')
+            toggleMarkPaidReference()
+        })
+
+        $(document).on('change', '.mark_paid_method', toggleMarkPaidReference);
         $(document).on('change', '.item_type', function() {
             if ($(this).val() === 'inv_item') {
                 $('#itemDiv').show();

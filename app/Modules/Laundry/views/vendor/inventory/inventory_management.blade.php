@@ -241,10 +241,12 @@
                                                             <td class="hide_on_phone">{{ $item->brand }}</td>
                                                             <td class="hide_on_phone">{{ $item->model_number }}</td>
                                                             <td class="hide_on_phone">
-                                                                <div
-                                                                    class="badge badge-soft-{{ $item->stock <= 5 ? 'danger' : 'success' }}">
-                                                                    {{ $item->stock }}
-                                                                </div>
+                                                                @php
+                                                                    $__ds = (float) ($item->stock ?? 0);
+                                                                    $__vs = json_decode($item->variations ?? '[]', true);
+                                                                    if (is_array($__vs)) { foreach ($__vs as $__v) { $__ds += (float) ($__v['stock'] ?? 0); } }
+                                                                @endphp
+                                                                <div class="badge badge-soft-{{ $__ds <= 5 ? 'danger' : 'success' }}">{{ $__ds }}</div>
                                                             </td>
                                                             <td class="hide_on_phone">
                                                                 {{ _price($item->mrp) }}

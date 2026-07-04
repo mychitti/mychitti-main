@@ -618,6 +618,60 @@ class BillingController extends Controller
       }
     }
     _auditLogs('Deleted Invoice : ' . $invoice->invoice_id);
+
+    // Snapshot inventory-linked lines so stock can be returned (now for the owner, or after
+    // vendor approval when a staff member is the one deleting).
+    $items = $type == 'service'
+        ? InvoiceItem::where('rand_invoice_id', $invoice_id)->get()
+        : InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
+
+    $restoreLines = [];
+    foreach ($items as $line) {
+        if ($line->inv_id) {
+            $restoreLines[] = [
+                'inv_id' => (int) $line->inv_id,
+                'qty' => (float) $line->qty,
+                'unit' => $line->unit,
+                'name' => $line->name,
+            ];
+        }
+    }
+
+    if (!empty($restoreLines)) {
+        if (auth('vendor')->check()) {
+            // Store owner deleted → return stock immediately.
+            foreach ($restoreLines as $l) {
+                _restoreInventoryStock($l['inv_id'], $l['qty'], $l['unit']);
+            }
+        } elseif (\Illuminate\Support\Facades\Schema::hasTable('invoice_stock_restore_approvals')) {
+            // Staff deleted → hold the stock return until the vendor approves it.
+            $staff = auth('vendor_employee')->user();
+            \App\Models\InvoiceStockRestoreApproval::create([
+                'store_id' => Helpers::get_store_id(),
+                'invoice_ref' => $invoice->invoice_id,
+                'invoice_type' => $type == 'service' ? 'service' : 'manual',
+                'items' => $restoreLines,
+                'requested_by' => $staff->id ?? null,
+                'requested_by_name' => $staff->name ?? ($staff->f_name ?? null),
+                'status' => 'pending',
+            ]);
+            Toastr::info('Stock return sent to the vendor for approval');
+        } else {
+            // Approval table not set up yet — return stock now to avoid losing it.
+            foreach ($restoreLines as $l) {
+                _restoreInventoryStock($l['inv_id'], $l['qty'], $l['unit']);
+            }
+        }
+    }
+
+    // Remove the inventory sale order (stock-out record) this invoice created.
+    $invOrders = \App\Models\InventoryOrder::where('store_id', Helpers::get_store_id())
+        ->where('invoice_id', $invoice->invoice_id)->get();
+    foreach ($invOrders as $invOrder) {
+        \App\Models\InventoryOrderDetail::where('order_id', $invOrder->order_id)->delete();
+        $invOrder->delete();
+    }
+
     if ($type == 'service') {
         InvoiceItem::where('rand_invoice_id', $invoice_id)->delete();
     } else {
@@ -625,6 +679,66 @@ class BillingController extends Controller
     }
     return redirect()->back();
   }
+
+  // Vendor reviews stock-return requests raised when a staff member deletes an invoice.
+  public function stockApprovals(Request $request)
+  {
+    $storeId = Helpers::get_store_id();
+    $approvals = collect();
+    if (\Illuminate\Support\Facades\Schema::hasTable('invoice_stock_restore_approvals')) {
+      $approvals = \App\Models\InvoiceStockRestoreApproval::where('store_id', $storeId)
+        ->orderByRaw("FIELD(status,'pending','approved','rejected')")
+        ->orderByDesc('id')
+        ->paginate(30);
+    }
+    return view('vendor-views.billing.stock_approvals', compact('approvals'));
+  }
+
+  public function approveStockRestore(Request $request, $id)
+  {
+    if (!auth('vendor')->check()) {
+      Toastr::error('Only the store owner can approve stock returns');
+      return back();
+    }
+    $storeId = Helpers::get_store_id();
+    $approval = \App\Models\InvoiceStockRestoreApproval::where('store_id', $storeId)->findOrFail($id);
+    if ($approval->status !== 'pending') {
+      Toastr::info('This request is already ' . $approval->status);
+      return back();
+    }
+    foreach ((array) $approval->items as $l) {
+      _restoreInventoryStock($l['inv_id'] ?? null, (float) ($l['qty'] ?? 0), $l['unit'] ?? null);
+    }
+    $approval->status = 'approved';
+    $approval->approved_by = auth('vendor')->id();
+    $approval->decided_at = now();
+    $approval->save();
+    _auditLogs('Approved stock return for invoice : ' . $approval->invoice_ref);
+    Toastr::success('Stock returned to inventory');
+    return back();
+  }
+
+  public function rejectStockRestore(Request $request, $id)
+  {
+    if (!auth('vendor')->check()) {
+      Toastr::error('Only the store owner can reject stock returns');
+      return back();
+    }
+    $storeId = Helpers::get_store_id();
+    $approval = \App\Models\InvoiceStockRestoreApproval::where('store_id', $storeId)->findOrFail($id);
+    if ($approval->status !== 'pending') {
+      Toastr::info('This request is already ' . $approval->status);
+      return back();
+    }
+    $approval->status = 'rejected';
+    $approval->approved_by = auth('vendor')->id();
+    $approval->decided_at = now();
+    $approval->save();
+    _auditLogs('Rejected stock return for invoice : ' . $approval->invoice_ref);
+    Toastr::success('Stock return rejected');
+    return back();
+  }
+
   public function service_update_invoice(Request $request)
   {
     $request->validate(
@@ -1322,6 +1436,10 @@ class BillingController extends Controller
     if ($invoice) {
       if (Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
         Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+      }
+      // A purchase added stock on creation — remove that same stock before deleting the lines.
+      foreach (InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get() as $line) {
+        _updateInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
       }
       $invoice->delete();
       Toastr::success('Invoice deleted successfully');

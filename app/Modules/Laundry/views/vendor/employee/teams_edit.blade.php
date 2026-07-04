@@ -91,6 +91,7 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
         <div class="page-header">
             <div class="d-flex flex-wrap justify-content-between align-items-center">
                 <h1 class="page-header-title mb-2">

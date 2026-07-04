@@ -56,6 +56,10 @@
                             </span>
                         </div>
                         <div class="d-flex align-items-center" style="gap:6px;">
+                            @if (hasPermission('salary_manage', 'edit'))
+                                <a href="{{ route('vendor.salary.settings') }}" class="btn btn-sm btn-outline-info"
+                                    title="EPF / ESI / Professional Tax / TDS"><i class="tio-settings mr-1"></i> Statutory</a>
+                            @endif
                             @if ($generated)
                                 @if (hasPermission('salary_manage', 'generate'))
                                     <a href="{{ route('vendor.salary.generate-monthly', [$selectedMonth]) }}"
@@ -147,6 +151,11 @@
                                                 <a class="btn action-btn btn--primary btn-outline-primary"
                                                     href="{{ route('vendor.salary.edit', [$lead->ven_id]) }}?month={{ $selectedMonth }}"
                                                     title="Edit Salary"><i class="tio-edit"></i></a>
+                                                @if ($lead->id)
+                                                    <a class="btn action-btn btn--primary btn-outline-primary"
+                                                        href="{{ route('vendor.salary.payslip', [$lead->id]) }}" target="_blank"
+                                                        title="Pay Slip"><i class="tio-receipt"></i></a>
+                                                @endif
                                                 @if (hasPermission('salary_manage', 'mark_paid') && $lead->id && $lead->pay_status != 'paid')
                                                     <a data-toggle="modal" data-target="#markPaidModal{{ $key }}"
                                                         style="min-width:fit-content; padding:0 5px;"

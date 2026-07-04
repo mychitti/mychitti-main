@@ -92,9 +92,21 @@ class SalespointController extends Controller
 
     public function mark_paid(Request $request, $id)
     {
+        $request->validate([
+            'payment_method' => 'nullable|in:cash,card,upi',
+            'transaction_reference' => 'nullable|string|max:255',
+        ]);
+        if ($request->payment_method === 'upi') {
+            $request->validate(['transaction_reference' => 'required|string|max:255']);
+        }
+
         $token = PosToken::findOrFail($id);
         $token->payment_status = 'paid';
         $token->paid_at = NOW();
+        if ($request->filled('payment_method')) {
+            $token->payment_method = $request->payment_method;
+            $token->transaction_reference = $request->payment_method === 'upi' ? $request->transaction_reference : null;
+        }
         $token->save();
 
         $store_id = Helpers::get_store_id();

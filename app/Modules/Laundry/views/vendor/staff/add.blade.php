@@ -13,6 +13,7 @@
 
 @section('content')
     <div class="content container-fluid">
+        @include('vendor-views.partials._hr_header')
     <div class="content container-fluid">
         <!-- Page Header -->
         <div class="page-header">

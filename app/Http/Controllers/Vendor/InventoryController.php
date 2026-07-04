@@ -671,14 +671,28 @@ class InventoryController extends Controller
     {
         $items = InventoryItem::whereIn('id', $request->item_ids)->get();
         foreach ($items as $item) {
+            $this->deleteSaleOrdersForItem($item->id);
             $item->delete();
         }
     }
     public function item_delete(Request $request, $id)
     {
+        $this->deleteSaleOrdersForItem($id);
         InventoryItem::where('id', $id)->delete();
         Toastr::success('Deleted Successfully');
         return back();
+    }
+
+    // Remove sale-order records tied to an item; drop any order left with no items.
+    private function deleteSaleOrdersForItem($itemId): void
+    {
+        $orderIds = \App\Models\InventoryOrderDetail::where('item_id', $itemId)->pluck('order_id')->unique();
+        \App\Models\InventoryOrderDetail::where('item_id', $itemId)->delete();
+        foreach ($orderIds as $orderId) {
+            if (!\App\Models\InventoryOrderDetail::where('order_id', $orderId)->exists()) {
+                \App\Models\InventoryOrder::where('order_id', $orderId)->delete();
+            }
+        }
     }
     public function inventory_management(Request $request, $tab = null)
     {
@@ -1049,15 +1063,15 @@ class InventoryController extends Controller
             }
         }
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
 
-        // CATEGORY 
+        // CATEGORY
         $category_id = Helpers::_saveCategoryIfNotExists($request->category);
         // $category_id = 391;
 
@@ -1068,11 +1082,11 @@ class InventoryController extends Controller
         $secondary_unit = $request->has('secondary_unit') && $request->secondary_unit ? _saveUnitIfNotExist($request->secondary_unit) : null;
 
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
         $inventory_item->item_type = $request->item_type;
@@ -1144,10 +1158,10 @@ class InventoryController extends Controller
             }
         }
 
-        //Generates the combinations of customer choice options
+        // Generates the combinations of customer choice options
         $combinations = Helpers::combinations($options);
         if (count($combinations[0]) > 0) {
-            $total_stock = 0;
+            $total_stock = (float) ($request->main_opening_stock ?? 0); // base/main stock only; variant totals are summed at render
             $primary_stock = 0;
             $secondary_stock = 0;
 
@@ -1183,15 +1197,15 @@ class InventoryController extends Controller
                 $vrDetails->item_id = $inventory_item->id;
                 $vrDetails->sku = $request['sku_' . str_replace('.', '_', $str)];
                 $vrDetails->save();
-
+ 
                 $item = [];
                 // $stock = abs($request['stock_' . str_replace('.', '_', $str)]);
 
-                $input_kgs = abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
+                $input_kgs = (float) abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
                 if ($input_kgs) {
-                    $bag_capacity = $inventory_item->primary_qty; // e.g. 1 bag = 5 kg
-                    $bags_from_kgs = $bag_capacity ? intdiv($input_kgs, $bag_capacity) : null;
-                    $spare_kgs  = $bag_capacity ? $input_kgs % $bag_capacity : $input_kgs;
+                    $bag_capacity = (float) ($inventory_item->primary_qty ?? 0); // e.g. 1 bag = 5 kg (may be fractional)
+                    $bags_from_kgs = $bag_capacity > 0 ? floor($input_kgs / $bag_capacity) : null;
+                    $spare_kgs  = $bag_capacity > 0 ? fmod($input_kgs, $bag_capacity) : $input_kgs;
                     $total_bags = $bags_from_kgs;
                 }
 
@@ -1207,7 +1221,6 @@ class InventoryController extends Controller
                 $item['secondary_qty'] = $total_bags ?? 0;
                 $item['variations_table_id'] = $vrDetails->id;
 
-                $total_stock += $input_kgs ?? 0;
                 array_push($variations, $item);
             }
             $inventory_item->variations =  json_encode($variations);
@@ -1304,11 +1317,11 @@ class InventoryController extends Controller
         $inventory_item = new InventoryItem();
 
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
         // PRODUCT =======================
@@ -1406,7 +1419,7 @@ class InventoryController extends Controller
         //Generates the combinations of customer choice options
         $combinations = Helpers::combinations($options);
         if (count($combinations[0]) > 0) {
-            $total_stock = 0;
+            $total_stock = (float) ($request->main_opening_stock ?? 0); // base/main stock only; variant totals are summed at render
             $primary_stock = 0;
             $secondary_stock = 0;
 
@@ -1442,14 +1455,14 @@ class InventoryController extends Controller
                 $vrDetails->item_id = $inventory_item->id;
                 $vrDetails->sku = $request['sku_' . str_replace('.', '_', $str)];
                 $vrDetails->save();
-                $item = [];
+                $item = [];  
 
                 // $stock = abs($request['stock_' . str_replace('.', '_', $str)]);
-                $input_kgs = abs($request['primary_qty_' . str_replace('.', '_', $str)]); // user input in kg
-                $bag_capacity = $inventory_item->primary_qty; // e.g. 1 bag = 5 kg
+                $input_kgs = (float) abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
+                $bag_capacity = (float) ($inventory_item->primary_qty ?? 0); // e.g. 1 bag = 5 kg (may be fractional)
 
-                $bags_from_kgs = intdiv($input_kgs, $bag_capacity);
-                $spare_kgs     = $input_kgs % $bag_capacity;
+                $bags_from_kgs = $bag_capacity > 0 ? floor($input_kgs / $bag_capacity) : null;
+                $spare_kgs     = $bag_capacity > 0 ? fmod($input_kgs, $bag_capacity) : $input_kgs;
 
                 $total_bags = $bags_from_kgs;
 
@@ -1464,7 +1477,6 @@ class InventoryController extends Controller
                 $item['primary_qty'] = $spare_kgs;
                 $item['variations_table_id'] = $vrDetails->id;
 
-                $total_stock += $input_kgs;
                 array_push($variations, $item);
             }
         }
@@ -1526,7 +1538,11 @@ class InventoryController extends Controller
     // Bulk update all variation prices for one item (from the list popup).
     public function update_variation_prices(Request $request)
     {
-        $request->validate(['item_id' => 'required', 'prices' => 'required|array']);
+        $request->validate([
+            'item_id' => 'required',
+            'prices' => 'required|array',
+            'selling_price' => 'nullable|numeric|min:0',
+        ]);
         $item = InventoryItem::where('id', $request->item_id)->where('store_id', Helpers::get_store_id())->first();
         if (!$item || !$item->variations) {
             return response()->json(['status' => false, 'message' => 'Item or variations not found'], 404);
@@ -1541,7 +1557,12 @@ class InventoryController extends Controller
             }
         }
         $item->variations = json_encode($variations);
-        $item->selling_price = $variations[0]['price'] ?? $item->selling_price; // keep the list cell meaningful
+        // Main product selling price — edited directly (falls back to first variation for old callers).
+        if ($request->filled('selling_price') && is_numeric($request->selling_price)) {
+            $item->selling_price = (float) $request->selling_price;
+        } else {
+            $item->selling_price = $variations[0]['price'] ?? $item->selling_price;
+        }
         $item->save();
         return response()->json(['status' => true, 'message' => 'Variation prices updated']);
     }

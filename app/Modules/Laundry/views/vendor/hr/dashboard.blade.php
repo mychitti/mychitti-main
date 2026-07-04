@@ -572,6 +572,8 @@
     @endif
 
 
+    @include('vendor-views.partials._hr_header')
+
     <div class="dashboard">
 
 

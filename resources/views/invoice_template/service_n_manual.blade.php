@@ -147,6 +147,7 @@
             <td style="width: 70%;">
                 <strong>Sold By: {{ $bill_from['name'] }}</strong><br>
                 {!! $composition_vendor ? '<b>Composition Vendor</b> <br>' : '' !!}
+                @if (!empty($bill_data['branch_label'])){{ $bill_data['branch_label'] }}<br>@endif
                 {{ $bill_from['address'] }}<br>
                 @if ($bill_data['tax_type'] != 'non-gst')
                     GST NO:

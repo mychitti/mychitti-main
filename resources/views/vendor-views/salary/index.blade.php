@@ -56,6 +56,12 @@
                             </span>
                         </div>
                         <div class="d-flex align-items-center" style="gap:6px;">
+                            @if (hasPermission('salary_manage', 'edit'))
+                                <a href="{{ route('vendor.salary.settings') }}" class="btn btn-sm btn-outline-info"
+                                    title="EPF / ESI / Professional Tax / TDS"><i class="tio-settings mr-1"></i> Statutory</a>
+                                <a href="{{ route('vendor.salary.letters') }}" class="btn btn-sm btn-outline-info"
+                                    title="Offer / Appointment / Termination letter templates"><i class="tio-document-text mr-1"></i> Letters</a>
+                            @endif
                             @if ($generated)
                                 @if (hasPermission('salary_manage', 'generate'))
                                     <a href="{{ route('vendor.salary.generate-monthly', [$selectedMonth]) }}"
@@ -147,6 +153,22 @@
                                                 <a class="btn action-btn btn--primary btn-outline-primary"
                                                     href="{{ route('vendor.salary.edit', [$lead->ven_id]) }}?month={{ $selectedMonth }}"
                                                     title="Edit Salary"><i class="tio-edit"></i></a>
+                                                @if ($lead->id)
+                                                    <a class="btn action-btn btn--primary btn-outline-primary"
+                                                        href="{{ route('vendor.salary.payslip', [$lead->id]) }}" target="_blank"
+                                                        title="Pay Slip"><i class="tio-receipt"></i></a>
+                                                @endif
+                                                @if ($lead->ven_id)
+                                                    <div class="btn-group">
+                                                        <a class="btn action-btn btn--primary btn-outline-primary dropdown-toggle"
+                                                            href="#" data-toggle="dropdown" title="Letters"><i class="tio-document-text"></i></a>
+                                                        <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" target="_blank" href="{{ route('vendor.salary.letter', ['offer', $lead->ven_id]) }}">Offer Letter</a>
+                                                            <a class="dropdown-item" target="_blank" href="{{ route('vendor.salary.letter', ['appointment', $lead->ven_id]) }}">Appointment Letter</a>
+                                                            <a class="dropdown-item" target="_blank" href="{{ route('vendor.salary.letter', ['termination', $lead->ven_id]) }}">Termination Letter</a>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                                 @if (hasPermission('salary_manage', 'mark_paid') && $lead->id && $lead->pay_status != 'paid')
                                                     <a data-toggle="modal" data-target="#markPaidModal{{ $key }}"
                                                         style="min-width:fit-content; padding:0 5px;"

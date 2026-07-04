@@ -604,6 +604,7 @@
                         ? '<span style="font-size:9px;background:#fff3cd;color:#856404;padding:2px 7px;border-radius:3px;display:inline-block;margin-bottom:4px;">Composition Vendor</span>'
                         : '' !!}
                     <div class="detail-line">
+                        @if (!empty($bill_data['branch_label'])){{ $bill_data['branch_label'] }}<br>@endif
                         {{ $bill_from['address'] }}<br>
                         @if ($bill_data['tax_type'] != 'non-gst')
                             GST:

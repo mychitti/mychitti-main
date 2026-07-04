@@ -583,10 +583,10 @@ class InventoryController extends Controller
             $taxable_amount = 0;
 
             // qty conversion
-            $kg_input = (int) $request->quantity[$key];   // e.g. 68 kg (user input)
-            $bag_capacity = $inventory_item->primary_qty ?? 1; // e.g. 1 bag = 5 kg
-            $bags_from_kgs = intdiv($kg_input, $bag_capacity);
-            $spare_kgs     = $kg_input % $bag_capacity;
+            $kg_input = (float) $request->quantity[$key];   // e.g. 68 or 0.5 kg (user input)
+            $bag_capacity = (float) ($inventory_item->primary_qty ?? 1) ?: 1; // e.g. 1 bag = 5 kg (may be fractional)
+            $bags_from_kgs = floor($kg_input / $bag_capacity);
+            $spare_kgs     = fmod($kg_input, $bag_capacity);
             $grand_total_kg = $kg_input;
 
             $entry = new ItemEntry();
@@ -737,11 +737,11 @@ class InventoryController extends Controller
             }
         }
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
 
@@ -756,11 +756,11 @@ class InventoryController extends Controller
         $secondary_unit = $request->has('secondary_unit') && $request->secondary_unit ? _saveUnitIfNotExist($request->secondary_unit) : null;
 
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
         $inventory_item->item_type = $request->item_type;
@@ -836,7 +836,7 @@ class InventoryController extends Controller
         //Generates the combinations of customer choice options
         $combinations = Helpers::combinations($options);
         if (count($combinations[0]) > 0) {
-            $total_stock = 0;
+            $total_stock = (float) ($request->main_opening_stock ?? 0); // base/main stock only; variant totals are summed at render
             $primary_stock = 0;
             $secondary_stock = 0;
 
@@ -876,11 +876,11 @@ class InventoryController extends Controller
                 $item = [];
                 // $stock = abs($request['stock_' . str_replace('.', '_', $str)]);
 
-                $input_kgs = abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
+                $input_kgs = (float) abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
                 if ($input_kgs) {
-                    $bag_capacity = $inventory_item->primary_qty; // e.g. 1 bag = 5 kg
-                    $bags_from_kgs = $bag_capacity ? intdiv($input_kgs, $bag_capacity) : null;
-                    $spare_kgs  = $bag_capacity ? $input_kgs % $bag_capacity : $input_kgs;
+                    $bag_capacity = (float) ($inventory_item->primary_qty ?? 0); // e.g. 1 bag = 5 kg (may be fractional)
+                    $bags_from_kgs = $bag_capacity > 0 ? floor($input_kgs / $bag_capacity) : null;
+                    $spare_kgs  = $bag_capacity > 0 ? fmod($input_kgs, $bag_capacity) : $input_kgs;
                     $total_bags = $bags_from_kgs;
                 }
 
@@ -896,7 +896,6 @@ class InventoryController extends Controller
                 $item['secondary_qty'] = $total_bags ?? 0;
                 $item['variations_table_id'] = $vrDetails->id;
 
-                $total_stock += $input_kgs ?? 0;
                 array_push($variations, $item);
             }
             $inventory_item->variations =  json_encode($variations);
@@ -984,11 +983,11 @@ class InventoryController extends Controller
         $inventory_item = new InventoryItem();
 
         //stock calculation (UOM)
-        $secondary_qty =  $request->secondary_qty ?? 1;
+        $secondary_qty =  (float) ($request->secondary_qty ?? 1) ?: 1;
 
         $total_stock = $request->main_opening_stock;
 
-        $primary_stock = $request->primary_qty / $secondary_qty; // bagcapacity
+        $primary_stock = (float) $request->primary_qty / $secondary_qty; // bagcapacity
         $secondary_stock = 1;
 
         // PRODUCT =======================
@@ -1087,7 +1086,7 @@ class InventoryController extends Controller
         //Generates the combinations of customer choice options
         $combinations = Helpers::combinations($options);
         if (count($combinations[0]) > 0) {
-            $total_stock = 0;
+            $total_stock = (float) ($request->main_opening_stock ?? 0); // base/main stock only; variant totals are summed at render
             $primary_stock = 0;
             $secondary_stock = 0;
 
@@ -1126,11 +1125,11 @@ class InventoryController extends Controller
                 $item = [];
 
                 // $stock = abs($request['stock_' . str_replace('.', '_', $str)]);
-                $input_kgs = abs($request['primary_qty_' . str_replace('.', '_', $str)]); // user input in kg
-                $bag_capacity = $inventory_item->primary_qty; // e.g. 1 bag = 5 kg
+                $input_kgs = (float) abs($request['stock_' . str_replace('.', '_', $str)]); // user input in kg
+                $bag_capacity = (float) ($inventory_item->primary_qty ?? 0); // e.g. 1 bag = 5 kg (may be fractional)
 
-                $bags_from_kgs = intdiv($input_kgs, $bag_capacity);
-                $spare_kgs     = $input_kgs % $bag_capacity;
+                $bags_from_kgs = $bag_capacity > 0 ? floor($input_kgs / $bag_capacity) : null;
+                $spare_kgs     = $bag_capacity > 0 ? fmod($input_kgs, $bag_capacity) : $input_kgs;
 
                 $total_bags = $bags_from_kgs;
 
@@ -1145,7 +1144,6 @@ class InventoryController extends Controller
                 $item['primary_qty'] = $spare_kgs;
                 $item['variations_table_id'] = $vrDetails->id;
 
-                $total_stock += $input_kgs;
                 array_push($variations, $item);
             }
         }

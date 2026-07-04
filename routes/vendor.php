@@ -176,6 +176,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('pay-bill/{invoice_id}', 'BillingController@pay_bill')->name('pay-bill')->middleware('permission:billing,pay');
             Route::get('make-payment/{invoice_id}', 'BillingController@make_payment')->name('make-payment')->middleware('permission:billing,pay');
             Route::get('delete/{type}/{invoice_id}', 'BillingController@delete')->name('delete')->middleware('permission:billing,delete');
+            Route::get('stock-approvals', 'BillingController@stockApprovals')->name('stock-approvals')->middleware('permission:billing,list');
+            Route::get('stock-approvals/approve/{id}', 'BillingController@approveStockRestore')->name('stock-approvals.approve');
+            Route::get('stock-approvals/reject/{id}', 'BillingController@rejectStockRestore')->name('stock-approvals.reject');
             Route::post('import-sheet', 'BillingController@importInvoiceSheet')->name('import-sheet')->middleware('permission:billing,import');
             Route::post('export', 'BillingController@exportInvoiceSheet')->name('export')->middleware('permission:billing,export');
             Route::group(['prefix' => 'purchase-invoice', 'as' => 'purchase-invoice.'], function () {
@@ -220,6 +223,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('report', 'SalaryController@report')->name('report');
             Route::get('export-salaries', 'SalaryController@export_salaries')->name('export-salaries')->middleware('permission:salary_manage,export');
             Route::get('list', 'SalaryController@index')->name('list');
+            Route::get('payslip/{id}', 'SalaryController@payslip')->name('payslip');
+            Route::get('settings', 'SalaryController@salarySettings')->name('settings')->middleware('permission:salary_manage,edit');
+            Route::post('settings', 'SalaryController@salarySettingsSave')->name('settings.save')->middleware('permission:salary_manage,edit');
+            Route::get('letters', 'SalaryController@letterSettings')->name('letters')->middleware('permission:salary_manage,edit');
+            Route::post('letters', 'SalaryController@letterSettingsSave')->name('letters.save')->middleware('permission:salary_manage,edit');
+            Route::get('letter/{type}/{empId}', 'SalaryController@generateLetter')->name('letter');
             Route::get('export', 'SalaryController@export')->name('export')->middleware('permission:salary_manage,export');
             Route::post('get-info', 'SalaryController@get_info')->name('get-info');
             Route::post('salary-history', 'SalaryController@my_salary_history')->name('salary-history');
