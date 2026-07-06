@@ -22,13 +22,13 @@ use Illuminate\Support\Facades\Schema;
 class WhatsAppService
 {
     /** Default approved template for vendor lead notifications (overridden by whatsapp_config.lead_template). */
-    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert3';
+    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert4';
 
     /** Language of the default lead template (must match the approved template's language exactly). */
     const DEFAULT_LEAD_TEMPLATE_LANG = 'en_US';
 
     /** Template sent to a vendor when a lead is auto-accepted (overridden by whatsapp_config.lead_accepted_template). */
-    const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted';
+    const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted2';
 
     /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
@@ -517,6 +517,17 @@ class WhatsAppService
         $clientPhone = $clientPhone ?: 'N/A';
         $charge      = ($visitingCharge !== null && $visitingCharge !== '') ? (string) $visitingCharge : '0';
         $cfg = Helpers::get_business_settings('whatsapp_config');
+
+        // Send the customer phone with the country code (+91 default) in the template.
+        if ($clientPhone !== 'N/A') {
+            $digits = ltrim(preg_replace('/[^0-9]/', '', $clientPhone), '0');
+            $cc = preg_replace('/[^0-9]/', '', (string) ($cfg['default_country_code'] ?? '91')) ?: '91';
+            if ($digits !== '') {
+                $clientPhone = (strlen($digits) > 10 && str_starts_with($digits, $cc))
+                    ? '+' . $digits
+                    : '+' . $cc . $digits;
+            }
+        }
 
         $template = !empty($cfg['lead_accepted_template']) ? $cfg['lead_accepted_template'] : self::DEFAULT_LEAD_ACCEPTED_TEMPLATE;
         $lang     = !empty($cfg['lead_accepted_template_lang']) ? $cfg['lead_accepted_template_lang'] : self::DEFAULT_LEAD_TEMPLATE_LANG;
