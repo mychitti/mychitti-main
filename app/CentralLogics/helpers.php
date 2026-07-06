@@ -4334,6 +4334,12 @@ class Helpers
 
     public static function get_business_settings($name)
     {
+        // Request-scoped memoization (see get_settings) — same key is read many times per request.
+        static $memo = [];
+        if (array_key_exists($name, $memo)) {
+            return $memo[$name];
+        }
+
         $config = null;
 
         $paymentmethod = BusinessSetting::where('key', $name)->first();
@@ -4342,7 +4348,7 @@ class Helpers
             $config = json_decode($paymentmethod->value, true);
         }
 
-        return $config;
+        return $memo[$name] = $config;
     }
 
     public static function get_business_data($name)
@@ -6208,6 +6214,14 @@ class Helpers
 
     public static function get_settings($name)
     {
+        // Request-scoped memoization: a business setting is read many times per request
+        // (80+ call sites). Cache within the request only — resets each request, so config
+        // edits apply on the very next request with zero staleness / no invalidation needed.
+        static $memo = [];
+        if (array_key_exists($name, $memo)) {
+            return $memo[$name];
+        }
+
         $config = null;
         $data = BusinessSetting::where(['key' => $name])->first();
         if (isset($data)) {
@@ -6216,7 +6230,7 @@ class Helpers
                 $config = $data['value'];
             }
         }
-        return $config;
+        return $memo[$name] = $config;
     }
 
     public static function setEnvironmentValue($envKey, $envValue)
