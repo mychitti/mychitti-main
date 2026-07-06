@@ -25,7 +25,7 @@ class WhatsAppService
     const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert3';
 
     /** Language of the default lead template (must match the approved template's language exactly). */
-    const DEFAULT_LEAD_TEMPLATE_LANG = 'en';
+    const DEFAULT_LEAD_TEMPLATE_LANG = 'en_US';
 
     /** Template sent to a vendor when a lead is auto-accepted (overridden by whatsapp_config.lead_accepted_template). */
     const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted';
