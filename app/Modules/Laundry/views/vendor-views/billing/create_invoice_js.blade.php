@@ -209,7 +209,7 @@
      function addMoreRow(item = null) {
 
          if ($('.item_row').length >= 10) {
-             toasterNotification('You cannot add more than 10 items3.')
+             toasterNotification('You cannot add more than 10 items.')
              return false; // Stops further execution
          }
 

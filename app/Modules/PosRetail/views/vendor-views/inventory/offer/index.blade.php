@@ -13,8 +13,7 @@
         }
         .offer-banner {
             position: relative;
-            aspect-ratio: 16 / 8;
-            min-height: 160px;
+            min-height: 84px;
             background: linear-gradient(135deg, #1e3a8a, #0b1e54);
             background-size: cover;
             background-position: center;
@@ -23,27 +22,28 @@
             justify-content: center;
             text-align: center;
             color: #fff;
-            padding: 16px;
+            padding: 10px;
         }
-        .offer-headline { font-size: 30px; font-weight: 800; line-height: 1.05; letter-spacing: .5px; }
-        .offer-headline small { display: block; font-size: 18px; font-weight: 700; }
-        .offer-banner-sub { font-size: 12px; opacity: .85; margin-top: 6px; }
+        .offer-headline { font-size: 17px; font-weight: 800; line-height: 1.05; letter-spacing: .3px; }
+        .offer-headline small { display: block; font-size: 12px; font-weight: 700; }
+        .offer-banner-sub { font-size: 10px; opacity: .85; margin-top: 3px; }
         .offer-ribbon {
-            position: absolute; top: 10px; right: 10px; background: #f97316; color: #fff;
-            font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 4px; transform: rotate(3deg);
+            position: absolute; top: 6px; right: 6px; background: #f97316; color: #fff;
+            font-size: 7px; font-weight: 700; padding: 2px 5px; border-radius: 3px; transform: rotate(3deg);
         }
-        .offer-summary-title { color: #1e40af; font-weight: 700; font-size: 15px; margin: 0; }
+        .offer-preview-card .card-body { padding: 10px 12px; }
+        .offer-summary-title { color: #1e40af; font-weight: 700; font-size: 12.5px; margin: 0; }
         .offer-summary dl { margin: 0; }
         .offer-summary .row-line {
-            display: flex; justify-content: space-between; gap: 12px;
-            padding: 5px 0; border-bottom: 1px dashed #f0f1f5; font-size: 13px;
+            display: flex; justify-content: space-between; gap: 10px;
+            padding: 3px 0; border-bottom: 1px dashed #f0f1f5; font-size: 11px;
         }
         .offer-summary .row-line:last-child { border-bottom: 0; }
         .offer-summary .k { color: #8a93a6; }
         .offer-summary .v { font-weight: 600; text-align: right; }
         .offer-day-chip {
             display: inline-block; background: #eef2ff; color: #1e40af;
-            font-size: 10px; padding: 2px 6px; border-radius: 4px; margin: 1px; text-transform: capitalize;
+            font-size: 9px; padding: 1px 5px; border-radius: 3px; margin: 1px; text-transform: capitalize;
         }
     </style>
 @endpush
@@ -89,7 +89,7 @@
                         ? 'All Branches'
                         : collect((array) $offer->branch_ids)->map(fn($b) => $branchNames[$b] ?? null)->filter()->implode(', ');
                 @endphp
-                <div class="col-lg-6 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
                     <div class="offer-preview-card">
                         <div class="offer-banner"
                             @if ($offer->banner) style="background-image:linear-gradient(rgba(11,30,84,.55),rgba(11,30,84,.55)),url('{{ asset('storage/app/public/offer/' . $offer->banner) }}');" @endif>
@@ -137,6 +137,10 @@
                             </div>
 
                             <div class="text-right mt-3">
+                                <a class="btn btn-sm btn-outline-primary"
+                                    href="{{ route('vendor.retail-pos.offer.edit', [$offer->id]) }}" title="Edit">
+                                    <i class="tio-edit"></i> Edit
+                                </a>
                                 <a class="btn btn-sm btn-outline-danger form-alert" href="javascript:;"
                                     data-id="offer-{{ $offer->id }}"
                                     data-message="{{ translate('Want to delete this offer') }}" title="Delete">

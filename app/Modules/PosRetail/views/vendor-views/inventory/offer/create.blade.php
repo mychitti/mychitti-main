@@ -57,17 +57,18 @@
 @section('content')
     <div class="content container-fluid">
         <div class="page-header d-flex align-items-center justify-content-between">
-            <h1 class="page-header-title mb-0"><i class="tio-gift"></i> Create Offer</h1>
+            <h1 class="page-header-title mb-0"><i class="tio-gift"></i> {{ $offer ? 'Edit Offer' : 'Create Offer' }}</h1>
             <a href="{{ route('vendor.retail-pos.offer.index') }}" class="btn btn-outline-secondary btn_sm">
                 <i class="tio-back-ui"></i> Back to Offers
             </a>
         </div>
 
-        <form action="{{ route('vendor.retail-pos.offer.store') }}" method="post" enctype="multipart/form-data"
-            id="offerForm">
+        <form
+            action="{{ $offer ? route('vendor.retail-pos.offer.update', $offer->id) : route('vendor.retail-pos.offer.store') }}"
+            method="post" enctype="multipart/form-data" id="offerForm">
             @csrf
-            <input type="hidden" name="status" id="offerStatus" value="published">
-            <input type="hidden" name="item_id" value="{{ $item->id ?? '' }}">
+            <input type="hidden" name="status" id="offerStatus" value="{{ $offer->status ?? 'published' }}">
+            <input type="hidden" name="item_id" value="{{ $offer->item_id ?? ($item->id ?? '') }}">
 
             <div class="row">
                 <div class="col-lg-8">
@@ -403,7 +404,7 @@
             <div class="card offer-card mb-4">
                 <div class="card-body d-flex justify-content-end flex-wrap" style="gap: 10px;">
                     <button type="button" class="btn btn-outline-secondary" id="saveDraftBtn">Save Draft</button>
-                    <button type="submit" class="btn btn-primary">Save &amp; Publish Offer</button>
+                    <button type="submit" class="btn btn-primary">{{ $offer ? 'Update Offer' : 'Save & Publish Offer' }}</button>
                 </div>
             </div>
         </form>
@@ -413,10 +414,55 @@
 @push('script_2')
     @php
         $initialItem = $item ? ['id' => $item->id, 'name' => $item->item_name, 'sku' => $item->sku_id, 'stock' => $item->stock] : null;
+        $editData = null;
+        if ($offer) {
+            $editData = [
+                'offer_name' => $offer->offer_name,
+                'offer_code' => $offer->offer_code,
+                'offer_type' => $offer->offer_type,
+                'description' => $offer->description,
+                'apply_on' => $offer->apply_on,
+                'buy_quantity' => $offer->buy_quantity,
+                'buy_type' => $offer->buy_type,
+                'count_based_on' => $offer->count_based_on,
+                'reward_type' => $offer->reward_type,
+                'reward_value' => $offer->reward_value,
+                'free_quantity' => $offer->free_quantity,
+                'min_bill_value' => $offer->min_bill_value,
+                'max_offer_value' => $offer->max_offer_value,
+                'apply_only_if_reward_stock_available' => (bool) $offer->apply_only_if_reward_stock_available,
+                'max_free_qty_per_bill' => $offer->max_free_qty_per_bill,
+                'max_uses_per_day' => $offer->max_uses_per_day,
+                'max_uses_per_customer' => $offer->max_uses_per_customer,
+                'total_campaign_limit' => $offer->total_campaign_limit,
+                'priority' => $offer->priority,
+                'combine_with_other_offers' => (bool) $offer->combine_with_other_offers,
+                'show_in_pos' => (bool) $offer->show_in_pos,
+                'auto_expire_after_end_date' => (bool) $offer->auto_expire_after_end_date,
+                'start_date' => $offer->start_date,
+                'end_date' => $offer->end_date,
+                'start_time' => $offer->start_time,
+                'end_time' => $offer->end_time,
+                'applicable_days' => (array) $offer->applicable_days,
+                'all_branches' => (bool) $offer->all_branches,
+                'branch_ids' => array_map('intval', (array) $offer->branch_ids),
+                'customer_type' => $offer->customer_type,
+                'notify_sms' => (bool) $offer->notify_sms,
+                'notify_whatsapp' => (bool) $offer->notify_whatsapp,
+                'notify_push' => (bool) $offer->notify_push,
+                'notify_in_app' => (bool) $offer->notify_in_app,
+                'customer_eligibility' => $offer->customer_eligibility,
+                'allow_multiple_times' => (bool) $offer->allow_multiple_times,
+                'reward_product_id' => $offer->reward_product_id,
+                'reward_product_name' => $rewardProduct->item_name ?? '',
+                'buy_products' => $buyProducts->map(fn($b) => ['id' => $b->id, 'name' => $b->item_name, 'sku' => $b->sku_id, 'stock' => $b->stock])->values(),
+            ];
+        }
     @endphp
     <script>
         $(function() {
             var initialItem = @json($initialItem);
+            var editData = @json($editData);
             var searchUrl = "{{ route('vendor.retail-pos.offer.search-items') }}";
             var buyIds = [];
 
@@ -438,7 +484,65 @@
                 $('#buyProducts').append(chip);
             }
 
-            if (initialItem) renderBuyProduct(initialItem);
+            function prefillEdit(d) {
+                $('input[name="offer_name"]').val(d.offer_name || '');
+                $('input[name="offer_code"]').val(d.offer_code || '');
+                $('select[name="offer_type"]').val(d.offer_type);
+                $('textarea[name="description"]').val(d.description || '');
+                $('input[name="apply_on"][value="' + d.apply_on + '"]').prop('checked', true);
+                $('input[name="buy_quantity"]').val(d.buy_quantity);
+                $('select[name="buy_type"]').val(d.buy_type);
+                $('select[name="count_based_on"]').val(d.count_based_on);
+                $('select[name="reward_type"]').val(d.reward_type);
+                $('input[name="reward_value"]').val(d.reward_value ?? '');
+                $('input[name="free_quantity"]').val(d.free_quantity);
+                $('input[name="min_bill_value"]').val(d.min_bill_value ?? '');
+                $('input[name="max_offer_value"]').val(d.max_offer_value ?? '');
+                $('#rewardStock').prop('checked', !!d.apply_only_if_reward_stock_available);
+                $('input[name="max_free_qty_per_bill"]').val(d.max_free_qty_per_bill ?? '');
+                $('input[name="max_uses_per_day"]').val(d.max_uses_per_day ?? '');
+                $('input[name="max_uses_per_customer"]').val(d.max_uses_per_customer ?? '');
+                $('input[name="total_campaign_limit"]').val(d.total_campaign_limit ?? '');
+                $('input[name="priority"]').val(d.priority);
+                $('select[name="combine_with_other_offers"]').val(d.combine_with_other_offers ? '1' : '0');
+                $('select[name="show_in_pos"]').val(d.show_in_pos ? '1' : '0');
+                $('#autoExpire').prop('checked', !!d.auto_expire_after_end_date);
+                $('input[name="start_date"]').val((d.start_date || '').substring(0, 10));
+                $('input[name="end_date"]').val((d.end_date || '').substring(0, 10));
+                $('input[name="start_time"]').val((d.start_time || '').substring(0, 5));
+                $('input[name="end_time"]').val((d.end_time || '').substring(0, 5));
+                $('input[name="applicable_days[]"]').prop('checked', false);
+                (d.applicable_days || []).forEach(function(day) {
+                    $('input[name="applicable_days[]"][value="' + day + '"]').prop('checked', true);
+                });
+                if (d.all_branches) {
+                    $('#allBranches').prop('checked', true);
+                    $('.branch-checkbox').prop('checked', true).prop('disabled', true);
+                } else {
+                    (d.branch_ids || []).forEach(function(b) {
+                        $('.branch-checkbox[value="' + b + '"]').prop('checked', true);
+                    });
+                }
+                $('select[name="customer_type"]').val(d.customer_type);
+                $('input[name="notify_sms"]').prop('checked', !!d.notify_sms);
+                $('input[name="notify_whatsapp"]').prop('checked', !!d.notify_whatsapp);
+                $('input[name="notify_push"]').prop('checked', !!d.notify_push);
+                $('input[name="notify_in_app"]').prop('checked', !!d.notify_in_app);
+                $('select[name="customer_eligibility"]').val(d.customer_eligibility);
+                $('select[name="allow_multiple_times"]').val(d.allow_multiple_times ? '1' : '0');
+                if (d.reward_product_id) {
+                    $('#rewardProductId').val(d.reward_product_id);
+                    $('#rewardSearch').val(d.reward_product_name || '');
+                    $('#rewardSelected').text(d.reward_product_name ? 'Selected: ' + d.reward_product_name : '');
+                }
+                (d.buy_products || []).forEach(renderBuyProduct);
+            }
+
+            if (editData) {
+                prefillEdit(editData);
+            } else if (initialItem) {
+                renderBuyProduct(initialItem);
+            }
 
             function bindSearch(inputSel, resultSel, onPick) {
                 var timer = null;

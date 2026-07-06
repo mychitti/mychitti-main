@@ -11,8 +11,10 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::prefix('offer')->as('offer.')->group(function () {
         Route::get('/',                 [InventoryOfferController::class, 'index'])->name('index');
         Route::get('create/{item_id?}', [InventoryOfferController::class, 'create'])->name('create');
+        Route::get('edit/{id}',         [InventoryOfferController::class, 'edit'])->name('edit');
         Route::get('search-items',      [InventoryOfferController::class, 'searchItems'])->name('search-items');
         Route::post('store',            [InventoryOfferController::class, 'store'])->name('store');
+        Route::post('update/{id}',      [InventoryOfferController::class, 'update'])->name('update');
         Route::get('delete/{id}',       [InventoryOfferController::class, 'delete'])->name('delete');
     });
     Route::get('dashboard',    [RetailPosController::class, 'dashboard'])->name('dashboard')->middleware('permission:pos_bills,view');

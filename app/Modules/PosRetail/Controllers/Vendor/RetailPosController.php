@@ -48,6 +48,7 @@ class RetailPosController extends Controller
         ['slug' => 'retail_new_sale',     'name' => 'New Sale',            'route' => 'vendor.retail-pos.index'],
         ['slug' => 'retail_bills',        'name' => "Today's Bills",       'route' => 'vendor.retail-pos.today'],
         ['slug' => 'retail_gst_report',   'name' => 'GST Report',          'route' => 'vendor.retail-pos.gst-report'],
+        ['slug' => 'retail_offers',       'name' => 'Offers',              'route' => 'vendor.retail-pos.offer.index'],
         ['slug' => 'retail_branches',     'name' => 'Branches & Counters', 'route' => 'vendor.retail-pos.terminals'],
         ['slug' => 'retail_branch_stock', 'name' => 'Branch Stock',        'route' => 'vendor.retail-pos.branch-stock'],
         ['slug' => 'retail_gatepass',     'name' => 'Stock Transfer',      'route' => 'vendor.retail-pos.gatepass'],

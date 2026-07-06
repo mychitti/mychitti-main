@@ -75,6 +75,15 @@
     </li>
 @endif
 
+@if ((auth('vendor')->check() || hasPermission('inventory_item', 'view')) && selected_menu('retail_offers'))
+    <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/offer*') ? 'active' : '' }}">
+        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.offer.index') }}" title="Offers">
+            <i class="tio-gift nav-link-icon"></i>
+            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Offers</span>
+        </a>
+    </li>
+@endif
+
 @if ((auth('vendor')->check() || hasPermission('pos_branch', 'view') || hasPermission('pos_branch', 'create') || hasPermission('pos_branch', 'delete') || hasPermission('pos_counter', 'create') || hasPermission('pos_counter', 'delete')) && selected_menu('retail_branches'))
     <li class="navbar-vertical-aside-has-menu {{ Request::is('retail-pos/terminals') ? 'active' : '' }}">
         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.retail-pos.terminals') }}" title="Branches & Counters">

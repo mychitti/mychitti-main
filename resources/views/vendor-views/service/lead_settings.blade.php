@@ -16,6 +16,25 @@
                 <form action="{{ route('vendor.service.lead-settings.update') }}" method="POST">
                     @csrf
 
+                    <div class="p-3 bg-light rounded mb-4" style="max-width:600px;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h5 class="mb-1">Accept Leads &amp; Enquiries</h5>
+                                <small class="text-muted d-block">
+                                    When on, customers can send enquiries from your store page and you
+                                    receive leads. Turn off to disable the enquiry option and receiving leads.
+                                </small>
+                            </div>
+                            <label class="toggle-switch toggle-switch-sm ml-3">
+                                <input type="checkbox" name="lead_available" value="1" class="toggle-switch-input"
+                                    {{ ($storeConfig->lead_available ?? 1) ? 'checked' : '' }}>
+                                <span class="toggle-switch-label">
+                                    <span class="toggle-switch-indicator"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
                     @if ($store_data->module_id == 6)
                         @php
                             $hasDedicatedSub = \App\CentralLogics\Helpers::store_has_active_lead_subscription($store_data->id, 'dedicated');

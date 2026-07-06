@@ -52,8 +52,28 @@ class InventoryOfferController extends Controller
         }
 
         $branches = Branch::where('store_id', $store_id)->get();
+        $offer = null;
+        $buyProducts = collect();
+        $rewardProduct = null;
 
-        return view('posretail::vendor-views.inventory.offer.create', compact('item', 'branches'));
+        return view('posretail::vendor-views.inventory.offer.create', compact('item', 'branches', 'offer', 'buyProducts', 'rewardProduct'));
+    }
+
+    public function edit(Request $request, $id)
+    {
+        $store_id = Helpers::get_store_id();
+        $offer = InventoryOffer::where('store_id', $store_id)->findOrFail($id);
+
+        $item = $offer->item_id ? InventoryItem::where('store_id', $store_id)->find($offer->item_id) : null;
+        $branches = Branch::where('store_id', $store_id)->get();
+
+        $buyIds = array_map('intval', (array) $offer->buy_product_ids);
+        $buyProducts = InventoryItem::whereIn('id', $buyIds)->get(['id', 'item_name', 'sku_id', 'stock']);
+        $rewardProduct = $offer->reward_product_id
+            ? InventoryItem::find($offer->reward_product_id)
+            : null;
+
+        return view('posretail::vendor-views.inventory.offer.create', compact('item', 'branches', 'offer', 'buyProducts', 'rewardProduct'));
     }
 
     public function searchItems(Request $request)
@@ -85,7 +105,37 @@ class InventoryOfferController extends Controller
     public function store(Request $request)
     {
         $store_id = Helpers::get_store_id();
+        $this->validateOffer($request);
 
+        $data = $this->offerPayload($request);
+        $data['store_id'] = $store_id;
+        $data['banner'] = $request->hasFile('banner') ? Helpers::upload('offer/', 'png', $request->file('banner')) : null;
+
+        InventoryOffer::create($data);
+
+        Toastr::success('Offer created successfully');
+        return redirect()->route('vendor.retail-pos.offer.index');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $store_id = Helpers::get_store_id();
+        $offer = InventoryOffer::where('store_id', $store_id)->findOrFail($id);
+        $this->validateOffer($request);
+
+        $data = $this->offerPayload($request);
+        if ($request->hasFile('banner')) {
+            $data['banner'] = Helpers::upload('offer/', 'png', $request->file('banner'));
+        }
+
+        $offer->update($data);
+
+        Toastr::success('Offer updated successfully');
+        return redirect()->route('vendor.retail-pos.offer.index');
+    }
+
+    private function validateOffer(Request $request): void
+    {
         $request->validate([
             'offer_name' => 'required|string|max:255',
             'offer_code' => 'required|string|max:100',
@@ -100,14 +150,11 @@ class InventoryOfferController extends Controller
             'priority' => 'required|integer|min:1',
             'banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
         ]);
+    }
 
-        $banner = null;
-        if ($request->hasFile('banner')) {
-            $banner = Helpers::upload('offer/', 'png', $request->file('banner'));
-        }
-
-        InventoryOffer::create([
-            'store_id' => $store_id,
+    private function offerPayload(Request $request): array
+    {
+        return [
             'item_id' => $request->item_id,
             'offer_name' => $request->offer_name,
             'offer_code' => $request->offer_code,
@@ -147,12 +194,8 @@ class InventoryOfferController extends Controller
             'notify_in_app' => $request->boolean('notify_in_app'),
             'customer_eligibility' => $request->customer_eligibility ?? 'all_customers',
             'allow_multiple_times' => $request->boolean('allow_multiple_times'),
-            'banner' => $banner,
             'status' => $request->input('status', 'published'),
-        ]);
-
-        Toastr::success('Offer created successfully');
-        return redirect()->route('vendor.retail-pos.offer.index');
+        ];
     }
 
     public function delete(Request $request, $id)
