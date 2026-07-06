@@ -625,7 +625,6 @@
                                                                                     </div>
                                                                                 </div>
                                                                             @endif
-{{$data['store_config']->lead_available}} f
                                                                             @if ($pro->item_type == 'product' && ($pro->stock ?? 1) <= 0)
                                                                                 <span class="badge bg-danger">Out of Stock</span>
                                                                             @elseif (($data['store_config']->lead_available ?? 1) == 0)
