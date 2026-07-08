@@ -206,7 +206,7 @@ class InventoryReportController extends Controller
             if (hasPermission('sale_report', 'export')) {
                 if ($export && $export_type == 'pdf') {
                     $data = $this->sale_export_pdf($invoices, $data);
-                    return $data;
+                    return redirect()->to($data['url']);
                 } elseif ($export && $export_type == 'excel') {
                     $data = $this->sale_export_excel($invoices, $data);
                     return $data;
@@ -666,8 +666,8 @@ class InventoryReportController extends Controller
         $this->save_report($fileName, $data,  'stock', 'pdf');
 
 
-        $store = Helpers::get_store_data();
-        $jobcard = View::make('document_templates/stock_report_pdf', compact('items', 'data', 'store'))->render();
+        $store_data = Helpers::get_store_data();
+        $jobcard = View::make('document_templates/stock_report_pdf', compact('items', 'data', 'store_data'))->render();
         $tempDir = storage_path('app/mpdf_temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0775, true);
