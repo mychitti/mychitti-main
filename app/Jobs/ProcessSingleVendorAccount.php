@@ -23,6 +23,10 @@ class ProcessSingleVendorAccount implements ShouldQueue
     {
         $this->storeId = $storeId;
         $this->date = $date;
+
+        // Own queue with its own worker(s) — end-of-day accounting must never flood
+        // the shared default queue (thousands of stores/day).
+        $this->onQueue('accounts');
     }
 
     public function handle()
@@ -41,36 +45,49 @@ class ProcessSingleVendorAccount implements ShouldQueue
             $store_id = $this->storeId;
             $store_config = StoreConfig::where('store_id', $store_id)->first();
 
-            // daybook entry 
+            // daybook entry — skip if one already exists for this store/date so a
+            // re-run (or a drained backlog job) can't double-post the same day.
             if (!$store_config || $store_config->pos_daybook_entry == 'end_of_day') {
-                DayBook::create([
-                    'amount'     => $total,
-                    'store_id'   => $this->storeId,
-                    'type'       => 'credit',
-                    'particular' => 'POS Token Sales',
-                ]);
+                $daybookExists = DayBook::where('store_id', $this->storeId)
+                    ->where('particular', 'POS Token Sales')
+                    ->whereDate('created_at', $this->date)
+                    ->exists();
+                if (!$daybookExists) {
+                    DayBook::create([
+                        'amount'     => $total,
+                        'store_id'   => $this->storeId,
+                        'type'       => 'credit',
+                        'particular' => 'POS Token Sales',
+                    ]);
+                }
             }
 
-            //account entry 
+            //account entry
             if (!$store_config || $store_config->pos_account_entry == 'end_of_day') {
-                Account::create(
-                    [
-                        'store_id' => $this->storeId,
-                        'date'      => $this->date,
-                        'amount' => $total,
-                        'user_type' => 'vendor',
-                        'user_type_id' => $this->storeId,
-                        'type' => 'income',
-                        'account_type' => 'vendor',
-                        'status' => 'completed',
-                        'payment_mode' => 'cash',
-                        'category' => 'POS Token',
-                        'description' => 'POS Token Sales',
-                        'ledger_account_type' => 9,
-                        'purpose' => 'Sales',
-                        'gst_amount' => 0,
-                    ]
-                );
+                $accountExists = Account::where('store_id', $this->storeId)
+                    ->where('category', 'POS Token')
+                    ->where('date', $this->date)
+                    ->exists();
+                if (!$accountExists) {
+                    Account::create(
+                        [
+                            'store_id' => $this->storeId,
+                            'date'      => $this->date,
+                            'amount' => $total,
+                            'user_type' => 'vendor',
+                            'user_type_id' => $this->storeId,
+                            'type' => 'income',
+                            'account_type' => 'vendor',
+                            'status' => 'completed',
+                            'payment_mode' => 'cash',
+                            'category' => 'POS Token',
+                            'description' => 'POS Token Sales',
+                            'ledger_account_type' => 9,
+                            'purpose' => 'Sales',
+                            'gst_amount' => 0,
+                        ]
+                    );
+                }
             }
         }
     }
