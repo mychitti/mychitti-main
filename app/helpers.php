@@ -2221,29 +2221,48 @@ function getStateFromPincode($pincode)
 }
 function getPincodeFromCoordinates($lat, $lng)
 {
-    $apiKey = \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value;
-    $url = "https://maps.googleapis.com/maps/api/geocode/json";
+    // Runs synchronously on booking submit, so it must never hang the request:
+    // nearby coordinates resolve to the same pincode → cache them, bound the Google
+    // call with a short timeout, and fail soft (null) on any timeout/error.
+    $cacheKey = 'pincode:' . round((float) $lat, 3) . ',' . round((float) $lng, 3);
+    try {
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($cached) {
+            return $cached;
+        }
+    } catch (\Throwable $e) {
+        // cache unavailable — fall through to a live lookup
+    }
 
-    $response = Http::get($url, [
-        'latlng' => "$lat,$lng",
-        'key' => $apiKey
-    ]);
-
-    if ($response->successful()) {
-        $results = $response->json('results');
-
-        if (!empty($results)) {
-            foreach ($results as $key => $value) {
+    $pincode = null;
+    try {
+        $apiKey = \App\Models\BusinessSetting::where('key', 'map_api_key')->first()->value;
+        $response = Http::timeout(4)->get('https://maps.googleapis.com/maps/api/geocode/json', [
+            'latlng' => "$lat,$lng",
+            'key' => $apiKey,
+        ]);
+        if ($response->successful()) {
+            foreach ($response->json('results') ?? [] as $value) {
                 foreach ($value['address_components'] as $component) {
                     if (in_array('postal_code', $component['types'])) {
-                        return $component['long_name'];
+                        $pincode = $component['long_name'];
+                        break 2;
                     }
                 }
             }
         }
+    } catch (\Throwable $e) {
+        return null; // timeout / network error — don't block the booking
     }
 
-    return null; // if no postal code found
+    if ($pincode) {
+        try {
+            \Illuminate\Support\Facades\Cache::put($cacheKey, $pincode, 86400);
+        } catch (\Throwable $e) {
+        }
+    }
+
+    return $pincode;
 }
 function isInTrial($userId, $planId, $currentDate = null)
 {
