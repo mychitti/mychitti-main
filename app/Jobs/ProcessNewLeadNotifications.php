@@ -39,6 +39,8 @@ class ProcessNewLeadNotifications implements ShouldQueue
 
     public function handle(): void
     {
+        Log::info('lead job ran on worker', ['req' => $this->serviceRequestId, 'stores' => count($this->storeIds)]);
+
         $serviceReq = DB::table('service_requests')->where('id', $this->serviceRequestId)->first();
         if (!$serviceReq) {
             return;
