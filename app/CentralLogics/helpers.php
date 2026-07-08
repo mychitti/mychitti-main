@@ -4334,19 +4334,16 @@ class Helpers
 
     public static function get_business_settings($name)
     {
-        // Request-scoped memoization (see get_settings) — same key is read many times per request.
+        // Request memoization + cross-request cache (see get_settings).
         static $memo = [];
         if (array_key_exists($name, $memo)) {
             return $memo[$name];
         }
 
-        $config = null;
-
-        $paymentmethod = BusinessSetting::where('key', $name)->first();
-
-        if ($paymentmethod) {
-            $config = json_decode($paymentmethod->value, true);
-        }
+        $config = \Illuminate\Support\Facades\Cache::remember('mc_bsetting:' . $name, 60, function () use ($name) {
+            $paymentmethod = BusinessSetting::where('key', $name)->first();
+            return $paymentmethod ? json_decode($paymentmethod->value, true) : null;
+        });
 
         return $memo[$name] = $config;
     }
@@ -6214,23 +6211,36 @@ class Helpers
 
     public static function get_settings($name)
     {
-        // Request-scoped memoization: a business setting is read many times per request
-        // (80+ call sites). Cache within the request only — resets each request, so config
-        // edits apply on the very next request with zero staleness / no invalidation needed.
+        // Layer 1: request-scoped memoization (zero-latency repeat reads within a request).
         static $memo = [];
         if (array_key_exists($name, $memo)) {
             return $memo[$name];
         }
 
-        $config = null;
-        $data = BusinessSetting::where(['key' => $name])->first();
-        if (isset($data)) {
-            $config = json_decode($data['value'], true);
-            if (is_null($config)) {
-                $config = $data['value'];
+        // Layer 2: cross-request cache (Redis). The 5-min TTL is the correctness safety net;
+        // writes bust the key instantly via the BusinessSetting model event, and raw-query
+        // writes can call Helpers::forget_setting_cache($name).
+        $config = \Illuminate\Support\Facades\Cache::remember('mc_setting:' . $name, 60, function () use ($name) {
+            $data = BusinessSetting::where(['key' => $name])->first();
+            if (isset($data)) {
+                $value = json_decode($data['value'], true);
+                return is_null($value) ? $data['value'] : $value;
             }
-        }
+            return null;
+        });
+
         return $memo[$name] = $config;
+    }
+
+    /** Bust the cached copy of a business setting (call after raw-query writes to business_settings). */
+    public static function forget_setting_cache($name): void
+    {
+        try {
+            \Illuminate\Support\Facades\Cache::forget('mc_setting:' . $name);
+            \Illuminate\Support\Facades\Cache::forget('mc_bsetting:' . $name);
+        } catch (\Throwable $e) {
+            // cache may be unavailable during migrations/CLI — never block a write on it
+        }
     }
 
     public static function setEnvironmentValue($envKey, $envValue)

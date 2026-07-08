@@ -199,46 +199,13 @@ class ServiceRequestController extends Controller
                 $url = route('admin.service.lead-list');
                 _sendSMSToAdmin($adminMsg, $title, $url);
 
-                $itemDet = DB::table('items')->where('id', $request->item_id)->first();
-                $userDet = User::find($request->user_id);
-
-                if (count($storesChunk)) {
-                    $msg = "Hello! , You have received a new " . ($isAppointment ? 'APPOINTMENT request' : 'ENQUIRY') . " from " . (!empty($userDet->f_name) ? $userDet->f_name : "a customer") . " for " . (!empty($itemDet->name) ? $itemDet->name : "a service") . ". Please visit the My Chitti Vendor App. Thank you, My Chitti Team.";
-                    foreach ($storesChunk as $store) {
-                        $store2 = DB::table('stores')->where('id', $store)->first();
-                        $url = parse_url(route('vendor.service.leads_list'), PHP_URL_PATH);
-                        if ($store2) {
-                            _sendSMS($store2->phone, $msg);
-                            _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
-                            if (!_autoAcceptLeadForStore($store2->id, $serviceReq->id)) {
-                                \App\Services\WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
-                            }
-                            _remindLeadWalletRecharge($store2, $itemDet->category_id ?? null);
-                        }
-                    }
-                }
-
-                $request_id = $serviceReq->id;
-                $user = DB::table('service_requests')->join('users',  'users.id', 'service_requests.user_id')->where('service_requests.id', $request_id)->select('users.cm_firebase_token', 'service_requests.user_id')->first();
-                if ($user) {
-                    $fcm_token = $user->cm_firebase_token;
-                    $data = [
-                        'title' => "Service Request",
-                        'description' => "Service Requested Successfully.",
-                        'order_id' => $request_id,
-                        'image' => '',
-                        'type' => 'block'
-                    ];
-                    Helpers::send_push_notif_to_device($fcm_token, $data);
-                    DB::table('user_notifications')->insert([
-                        'data' => json_encode($data),
-                        'user_id' => $user->user_id,
-                        'type' => 'service',
-                        'type_id' => $request_id,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                }
+                // Offload the vendor fan-out (SMS + WhatsApp per vendor) and the customer
+                // confirmation push to the queue (Horizon) so this request returns immediately.
+                \App\Jobs\ProcessNewLeadNotifications::dispatch(
+                    $serviceReq->id,
+                    array_values(array_map('intval', (array) $storesChunk)),
+                    $isAppointment
+                )->afterCommit();
 
                 return response()->json(['status' => true, 'message' => 'Requested Successfully']);
             } else {

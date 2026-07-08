@@ -2959,6 +2959,7 @@ class BusinessSettingsController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\CentralLogics\Helpers::forget_setting_cache('whatsapp_config');
         Toastr::success(translate('messages.updated_successfully'));
         return back();
     }
