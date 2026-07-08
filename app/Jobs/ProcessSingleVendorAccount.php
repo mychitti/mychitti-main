@@ -32,12 +32,15 @@ class ProcessSingleVendorAccount implements ShouldQueue
     public function handle()
     {
         // DB::reconnect();
-        // Sum all token transactions for this store on that date
+        // Sum all token transactions for this store on that date. Use datetime ranges
+        // (not whereDate) so the query can use an index instead of scanning pos_tokens.
+        $start = $this->date . ' 00:00:00';
+        $end   = $this->date . ' 23:59:59';
         $total = PosToken::where('store_id', $this->storeId)
             ->where('payment_status', 'paid')
-            ->where(function ($q) {
-                $q->whereDate('created_at', $this->date)
-                    ->orWhereDate('paid_at', $this->date);
+            ->where(function ($q) use ($start, $end) {
+                $q->whereBetween('created_at', [$start, $end])
+                    ->orWhereBetween('paid_at', [$start, $end]);
             })
             ->sum('total');
 

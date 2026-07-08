@@ -15,6 +15,7 @@ use App\Jobs\Scheduled\RegenerateSitemapJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
 use App\Models\Banner;
+use App\Models\PosToken;
 use App\Models\Store;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -78,15 +79,25 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         // PROCESS VENDOR ====================================
+        // Only enqueue stores that actually had a paid POS token today. Most stores
+        // have none on a given day, so fanning out one job per store just floods the
+        // queue with no-ops — dispatch for the stores with real sales only.
         $schedule->call(function () {
-            $date = now()->toDateString();
+            $date  = now()->toDateString();
+            $start = $date . ' 00:00:00';
+            $end   = $date . ' 23:59:59';
 
-            // Process vendors in chunks to avoid memory overload
-            Store::withoutGlobalScopes()->chunk(100, function ($stores) use ($date) {
-                foreach ($stores as $store) {
-                    ProcessSingleVendorAccount::dispatch($store->id, $date);
-                }
-            });
+            $storeIds = PosToken::where('payment_status', 'paid')
+                ->where(function ($q) use ($start, $end) {
+                    $q->whereBetween('created_at', [$start, $end])
+                        ->orWhereBetween('paid_at', [$start, $end]);
+                })
+                ->distinct()
+                ->pluck('store_id');
+
+            foreach ($storeIds as $storeId) {
+                ProcessSingleVendorAccount::dispatch($storeId, $date);
+            }
         })->name('process-vendor-accounts')->dailyAt('23:59')
             ->timezone($tz)
             ->withoutOverlapping();
