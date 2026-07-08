@@ -2700,13 +2700,14 @@ class Helpers
         if (empty($storeIds)) return [];
 
         // Step 2.5: Filter stores with minimum wallet balance ?
-        $storeVendorMap = DB::table('stores')
-            ->whereIn('id', $storeIds)
-            ->pluck('vendor_id', 'id')
-            ->toArray();
-
-        // Get zone-wise + category-wise minimum balance per store
-        $storeZones = DB::table('stores')->whereIn('id', $storeIds)->pluck('zone_id', 'id')->toArray();
+        // One query for both vendor + zone maps (was two identical whereIn queries).
+        $storeRows = DB::table('stores')->whereIn('id', $storeIds)->get(['id', 'vendor_id', 'zone_id']);
+        $storeVendorMap = [];
+        $storeZones     = [];
+        foreach ($storeRows as $sRow) {
+            $storeVendorMap[$sRow->id] = $sRow->vendor_id;
+            $storeZones[$sRow->id]     = $sRow->zone_id;
+        }
         $categoryId = $item->category_id ?? null;
 
         // Stores with active subscription bypass wallet gate entirely
@@ -2732,6 +2733,12 @@ class Helpers
             $forcedStoreId = (int)$dedicatedSubscribedStore;
         }
 
+        // Batch wallet balances for all vendors in one query (was N+1 inside the loop).
+        $walletBalances = DB::table('store_wallets')
+            ->whereIn('vendor_id', array_values(array_unique($storeVendorMap)))
+            ->pluck('total_earning', 'vendor_id')
+            ->toArray();
+
         $walletQualifiedStoreIds = [];
         foreach ($storeVendorMap as $sId => $vendorId) {
             if (in_array((int)$sId, $subscribedStoreIds)) {
@@ -2740,8 +2747,7 @@ class Helpers
             }
             $zoneId = $storeZones[$sId] ?? null;
             $minimumBalance = Helpers::get_wallet_min_balance($zoneId, $categoryId);
-            $walletRow = DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
-            $walletBalance = $walletRow ? (float)$walletRow->total_earning : 0;
+            $walletBalance = isset($walletBalances[$vendorId]) ? (float)$walletBalances[$vendorId] : 0;
             if ($walletBalance >= $minimumBalance) {
                 $walletQualifiedStoreIds[] = (int) $sId;
             }
@@ -2860,9 +2866,15 @@ class Helpers
 
         if (empty($storeIds)) return $empty;
 
-        $storeVendorMap = DB::table('stores')->whereIn('id', $storeIds)->pluck('vendor_id', 'id')->toArray();
-        $storeZones     = DB::table('stores')->whereIn('id', $storeIds)->pluck('zone_id', 'id')->toArray();
-        $categoryId     = $item->category_id ?? null;
+        // One query for both vendor + zone maps (was two identical whereIn queries).
+        $storeRows = DB::table('stores')->whereIn('id', $storeIds)->get(['id', 'vendor_id', 'zone_id']);
+        $storeVendorMap = [];
+        $storeZones     = [];
+        foreach ($storeRows as $sRow) {
+            $storeVendorMap[$sRow->id] = $sRow->vendor_id;
+            $storeZones[$sRow->id]     = $sRow->zone_id;
+        }
+        $categoryId = $item->category_id ?? null;
 
         $subscribedStoreIds = DB::table('lead_subscriptions')
             ->whereIn('store_id', $storeIds)
@@ -2881,16 +2893,21 @@ class Helpers
             $forcedStoreId = (int)$dedicatedSubscribedStore;
         }
 
+        // Batch wallet balances for all vendors in one query (was N+1 inside the loop).
+        $walletBalances = DB::table('store_wallets')
+            ->whereIn('vendor_id', array_values(array_unique($storeVendorMap)))
+            ->pluck('total_earning', 'vendor_id')
+            ->toArray();
+
         $walletQualifiedStoreIds = [];
         foreach ($storeVendorMap as $sId => $vendorId) {
             if (in_array((int)$sId, $subscribedStoreIds)) {
                 $walletQualifiedStoreIds[] = (int)$sId;
                 continue;
             }
-            $zoneId = $storeZones[$sId] ?? null;
-            $minBalance  = self::get_wallet_min_balance($zoneId, $categoryId);
-            $walletRow   = DB::table('store_wallets')->where('vendor_id', $vendorId)->first();
-            $balance     = $walletRow ? (float)$walletRow->total_earning : 0;
+            $zoneId     = $storeZones[$sId] ?? null;
+            $minBalance = self::get_wallet_min_balance($zoneId, $categoryId);
+            $balance    = isset($walletBalances[$vendorId]) ? (float)$walletBalances[$vendorId] : 0;
             if ($balance >= $minBalance) $walletQualifiedStoreIds[] = (int)$sId;
         }
         $storeIds = array_values(array_intersect($storeIds, $walletQualifiedStoreIds));
@@ -5613,28 +5630,36 @@ class Helpers
      * Lookup priority: zone + category → zone only (category=null) → global business setting fallback.
      */
     public static function get_wallet_min_balance($zone_id = null, $category_id = null)
-    { 
-        if ($zone_id) { 
+    {
+        // Request-scoped memo: the matcher calls this once per candidate store, almost always
+        // with the same (zone, category), so this collapses N lookups to one.
+        static $memo = [];
+        $key = ($zone_id ?? 'null') . ':' . ($category_id ?? 'null');
+        if (array_key_exists($key, $memo)) {
+            return $memo[$key];
+        }
+
+        if ($zone_id) {
             // First try zone + category specific
             if ($category_id) {
                 $config = DB::table('zone_wallet_configs')
                     ->where('zone_id', $zone_id)
                     ->where('category_id', $category_id)
                     ->first();
-                if ($config) return $config->min_balance;
+                if ($config) return $memo[$key] = $config->min_balance;
             }
 
-            // Fallback to zone level (category = null) 
+            // Fallback to zone level (category = null)
             $config = DB::table('zone_wallet_configs')
                 ->where('zone_id', $zone_id)
                 ->whereNull('category_id')
                 ->first();
-            if ($config) return $config->min_balance;
+            if ($config) return $memo[$key] = $config->min_balance;
         }
 
-        // Fallback to global setting
-        $setting = BusinessSetting::where('key', 'wallet_min_balance')->first();
-        return $setting ? $setting->value : 100;
+        // Fallback to global setting (cached via get_settings).
+        $setting = self::get_settings('wallet_min_balance');
+        return $memo[$key] = ($setting !== null && $setting !== '' ? $setting : 100);
     }
 
     public static function getChartData(string $preset, \Carbon\Carbon $from, \Carbon\Carbon $to)

@@ -556,6 +556,7 @@
                             <th class="border-0 ">Selling Price</th>
                             <th class="border-0 ">Images</th>
                             <th class="border-0 ">SKU</th>
+                            <th class="border-0 ">Barcode</th>
                             <th class="border-0 ">Stock</th>
                             <th class="border-0 ">Action</th>
                         </tr>
@@ -594,6 +595,18 @@
                                 </td>
                                 <td>
                                     {{ $vr_det->sku }}
+                                </td>
+                                <td>
+                                    @if (!empty($vr_det->sku))
+                                        @php
+                                            $vrBarcode = DNS1D::getBarcodePNG($vr_det->sku, 'C128', 2, 40, [0, 0, 0], false);
+                                        @endphp
+                                        <img src="data:image/png;base64,{{ $vrBarcode }}" alt="barcode"
+                                            style="height:40px; max-width:100%;">
+                                        <div class="text-muted" style="font-size:11px;">{{ $vr_det->sku }}</div>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     {{ $vr->stock ?? 0 }}

@@ -1192,12 +1192,36 @@ class RetailPosController extends Controller
 
         $query = InventoryItem::with('itemunit')->where('store_id', $storeId)->where('item_type', 'product');
 
+        // Variation SKUs live in inv_item_variation_details (not on the item row), so a scan of a
+        // variation barcode/SKU must be matched there and mapped back to its parent item.
+        $matchedVarByItem = []; // item_id => variation type (the specific variation that was scanned)
+        if ($term !== '') {
+            $varRows = DB::table('inv_item_variation_details as v')
+                ->join('inventory_items as ii', 'ii.id', '=', 'v.item_id')
+                ->where('ii.store_id', $storeId)
+                ->where('v.sku', $term)
+                ->get(['v.item_id', 'v.type']);
+            foreach ($varRows as $vr) {
+                $matchedVarByItem[$vr->item_id] = $vr->type;
+            }
+        }
+
         if ($exact && $term !== '') {
-            $query->where(fn($q) => $q->where('barcode', $term)->orWhere('sku_id', $term));
+            $query->where(function ($q) use ($term, $matchedVarByItem) {
+                $q->where('barcode', $term)->orWhere('sku_id', $term);
+                if (!empty($matchedVarByItem)) {
+                    $q->orWhereIn('id', array_keys($matchedVarByItem));
+                }
+            });
         } elseif ($term !== '') {
-            $query->where(fn($q) => $q->where('item_name', 'like', "%{$term}%")
-                ->orWhere('sku_id', 'like', "%{$term}%")
-                ->orWhere('barcode', $term));
+            $query->where(function ($q) use ($term, $matchedVarByItem) {
+                $q->where('item_name', 'like', "%{$term}%")
+                    ->orWhere('sku_id', 'like', "%{$term}%")
+                    ->orWhere('barcode', $term);
+                if (!empty($matchedVarByItem)) {
+                    $q->orWhereIn('id', array_keys($matchedVarByItem));
+                }
+            });
         }
         if ($category && $category !== 'all') {
             $query->where('category_id', $category);
@@ -1213,12 +1237,15 @@ class RetailPosController extends Controller
                 ->whereIn('inventory_item_id', $rows->pluck('id'))->pluck('stock', 'inventory_item_id')
             : collect();  
 
-        $items = $rows->map(function ($i) use ($branchId, $branchStock) {
+        $items = $rows->map(function ($i) use ($branchId, $branchStock, $matchedVarByItem) {
             $stock = $branchId ? (float) ($branchStock[$i->id] ?? 0) : (float) $i->stock;
             return [
                 'id'         => (string) $i->id,
                 'name'       => $i->item_name,
-                'sku'        => $i->sku_id, 
+                'sku'        => $i->sku_id,
+                // Set when the search term matched a variation's SKU — the front-end adds
+                // that specific variation straight to the cart (skips the pick-variation modal).
+                'matched_variation' => $matchedVarByItem[$i->id] ?? null,
                 'barcode'    => $i->barcode,
                 'image'      => $i->image ? asset('storage/app/public/inventory-item/' . $i->image) : '',
                 'price'      => (float) ($i->selling_price ?? 0),
@@ -2693,6 +2720,20 @@ class RetailPosController extends Controller
             ->where('inventory_item_id', $itemId)->value('stock');
     }
 
+    // Item IDs (this store) that own a variation whose SKU matches $term. Variation SKUs live in
+    // inv_item_variation_details, so this lets a scan/search of a variation SKU surface its parent item.
+    private function itemIdsByVariationSku(int $storeId, string $term, bool $like = false): array
+    {
+        if ($term === '') {
+            return [];
+        }
+        $q = DB::table('inv_item_variation_details as v')
+            ->join('inventory_items as ii', 'ii.id', '=', 'v.item_id')
+            ->where('ii.store_id', $storeId);
+        $like ? $q->where('v.sku', 'like', "%{$term}%") : $q->where('v.sku', $term);
+        return $q->distinct()->pluck('v.item_id')->all();
+    }
+
     // ── Per-branch stock management ──────────────────────────────────────────────
     public function branchStock(Request $request)
     {
@@ -2716,8 +2757,11 @@ class RetailPosController extends Controller
         $detailMode = $mainMode || $branchId !== null;
         $sel = $allMode ? 'all' : ($mainMode ? 'main' : (string) $branchId);
 
+        $varItemIds = $this->itemIdsByVariationSku($storeId, $search, true);
         $items = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
-            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")->orWhere('sku_id', 'like', "%{$search}%")))
+            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")
+                ->orWhere('sku_id', 'like', "%{$search}%")
+                ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
             ->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock']);
         $itemIds = $items->pluck('id');
 
@@ -2855,8 +2899,11 @@ class RetailPosController extends Controller
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
 
         $search = trim((string) $request->get('q', ''));
+        $varItemIds = $this->itemIdsByVariationSku($storeId, $search, true);
         $dbItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
-            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")->orWhere('sku_id', 'like', "%{$search}%")))
+            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")
+                ->orWhere('sku_id', 'like', "%{$search}%")
+                ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
             ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
 
         $items = collect();
@@ -3141,11 +3188,13 @@ class RetailPosController extends Controller
         $term = trim((string) $request->get('q', ''));
         $branchId = (int) $request->get('branch_id') ?: null;
 
+        $varItemIds = $this->itemIdsByVariationSku($storeId, $term, true);
         $items = InventoryItem::with('itemunit')->where('store_id', $storeId)->where('item_type', 'product')
             ->when($term !== '', fn($q) => $q->where(fn($w) => $w
                 ->where('item_name', 'like', "%{$term}%")
                 ->orWhere('sku_id', 'like', "%{$term}%")
-                ->orWhere('barcode', $term)))
+                ->orWhere('barcode', $term)
+                ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
             ->orderBy('item_name')->limit(30)->get(['id', 'item_name', 'sku_id', 'stock', 'unit']);
 
         $branchStock = collect();

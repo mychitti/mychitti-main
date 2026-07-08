@@ -1223,6 +1223,19 @@
                 .then(d => {
                     if (exact && d.items.length >= 1) {
                         const it = d.items[0];
+                        // Scanned a variation's SKU → add that exact variation, skip the picker.
+                        if (it.matched_variation && Array.isArray(it.variations) && it.variations.length) {
+                            const vIdx = it.variations.findIndex(v => v.type === it.matched_variation);
+                            if (vIdx > -1) {
+                                activeVariations = it.variations;
+                                activeParentItem = it;
+                                selectVarIndex(vIdx);
+                                searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
+                                const h0 = document.querySelector('.search-hint'); if (h0) h0.style.display = '';
+                                if (window.toastr) toastr.success(it.name + ' (' + it.matched_variation + ') added to cart');
+                                return it;
+                            }
+                        }
                         addToCart(it); searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
                         const h = document.querySelector('.search-hint'); if (h) h.style.display = '';
                         if (window.toastr) toastr.success(it.name + ' added to cart');

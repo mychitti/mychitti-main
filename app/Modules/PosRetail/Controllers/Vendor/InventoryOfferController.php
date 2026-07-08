@@ -81,11 +81,19 @@ class InventoryOfferController extends Controller
         $store_id = Helpers::get_store_id();
         $q = trim($request->get('q', ''));
 
+        // Variation SKUs live in inv_item_variation_details; match there too so a variation SKU
+        // surfaces its parent item. Store scope is enforced by the outer where('store_id').
+        $varItemIds = $q === '' ? [] : \App\Models\InvItemVariationDetail::where('sku', 'like', "%{$q}%")
+            ->distinct()->pluck('item_id')->all();
+
         $items = InventoryItem::where('store_id', $store_id)
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($sub) use ($q) {
+            ->when($q !== '', function ($query) use ($q, $varItemIds) {
+                $query->where(function ($sub) use ($q, $varItemIds) {
                     $sub->where('item_name', 'like', "%{$q}%")
                         ->orWhere('sku_id', 'like', "%{$q}%");
+                    if (!empty($varItemIds)) {
+                        $sub->orWhereIn('id', $varItemIds);
+                    }
                 });
             })
             ->orderBy('item_name')
