@@ -68,7 +68,9 @@ class MarketingDashboardController extends Controller
         // ── Top categories by store visits ───────────────────────────────────
         $topCategoriesByVisits = DB::table('analytics_logs as al')
             ->join('stores as s', 'al.ref_id', '=', 's.id')
-            ->join('items as i', DB::raw('FIND_IN_SET(s.id, i.store_ids)'), '>', DB::raw('0'))
+            ->join('items as i', function ($join) {
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)');
+            })
             ->join('categories as c', 'i.category_id', '=', 'c.id')
             ->where('al.screen_type', 'store')
             ->where('s.module_id', $moduleId)
@@ -95,7 +97,9 @@ class MarketingDashboardController extends Controller
         // ── Categories generating most leads (calls) ─────────────────────────
         $topCategoriesByLeads = DB::table('analytics_logs as al')
             ->join('stores as s', 'al.ref_id', '=', 's.id')
-            ->join('items as i', DB::raw('FIND_IN_SET(s.id, i.store_ids)'), '>', DB::raw('0'))
+            ->join('items as i', function ($join) {
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)');
+            })
             ->join('categories as c', 'i.category_id', '=', 'c.id')
             ->where('al.screen_type', 'call')
             ->where('s.module_id', $moduleId)

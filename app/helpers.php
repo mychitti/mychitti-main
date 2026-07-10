@@ -3059,7 +3059,7 @@ if (!function_exists('_newServiceRequestsCount')) {
         $count = 0;
         foreach ($serviceRequests as $serviceRequest) {
             $itemExists = Item::withoutGlobalScope(StoreScope::class)->where('id', $serviceRequest->item_id)
-                ->whereRaw("FIND_IN_SET(?, store_ids)", [$store_id])
+                ->whereIn('id', \App\CentralLogics\Helpers::store_items_sub($store_id))
                 ->exists();
 
             if ($itemExists) {
@@ -4326,7 +4326,7 @@ if (!function_exists('_autoAcceptLeadForStore')) {
                 ->whereNull('item_id')->first();
 
             $totalVendors = \Illuminate\Support\Facades\DB::table('stores')
-                ->join('items', fn($j) => $j->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0'))
+                ->join('items', fn($j) => $j->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)'))
                 ->where('items.category_id', $catId)->where('stores.zone_id', $zoneId)
                 ->groupBy('stores.id', 'items.category_id')->select('stores.id')->get()->count();
 
@@ -4821,10 +4821,7 @@ if (!function_exists('_getIdsFrist')) {
     function _getIdsFrist($item_id)
     {
         try {
-            $ids = DB::table('items')->where('id', $item_id)->first();
-            if ($ids) {
-                return $ids->store_ids;
-            }
+            return implode(',', \App\CentralLogics\Helpers::item_store_ids($item_id));
         } catch (\Throwable $th) {
             //throw $th;
         }
@@ -4870,7 +4867,7 @@ if (!function_exists('_getProductsByCat')) {
         if (Config::get('module.current_module_id') == 6) {
             $data =  DB::table('items')
                 ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->where('items.is_approved', 1)
                 ->whereIn('stores.zone_id',  json_decode(session('zone_ids'), true))
@@ -4997,7 +4994,7 @@ if (!function_exists('_getSpecialProduct')) {
             } else {
                 $item = Item::withoutGlobalScopes()
                     ->join('stores', function ($join) use ($zone_id) {
-                        $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                        $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                         $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
                     })
                     ->where('items.id', $homepageItemId->value)
@@ -5015,7 +5012,7 @@ if (!function_exists('_getPopularService')) {
         $items =  DB::table('service_requests')
             ->join('items', 'service_requests.item_id', 'items.id')
             ->join('stores', function ($join) use ($zone_id) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
                 $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
             })
@@ -5652,8 +5649,8 @@ if (!function_exists('_footerInfo')) {
 function _getServiceProviders($item_id)
 {
     $item = DB::table('items')->where('id', $item_id)->first();
-    $store_ids = $item->store_ids;
-    $data = Store::whereIn('id', explode(',', $store_ids))
+    $store_ids = \App\CentralLogics\Helpers::item_store_ids($item_id, $item->store_ids ?? null);
+    $data = Store::whereIn('id', $store_ids)
         ->active()
         ->select('logo', 'slug') // Only select the logo field
         ->latest()
@@ -6341,7 +6338,7 @@ if (!function_exists('_getServiceByCatId')) {
     {
         $data =  DB::table('items')
             ->join('stores', function ($join) {
-                $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
             ->where('items.is_approved', 1)
             ->whereIn('stores.zone_id',  json_decode(session('zone_ids'), true))

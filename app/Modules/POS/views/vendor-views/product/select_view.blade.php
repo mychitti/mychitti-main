@@ -100,8 +100,7 @@
                            
 
                             <td>
-                                @php $stores = _getWhere('items', ['id'=> $lead->id])[0]->store_ids;
-                                $storeArr = explode(',', $stores); @endphp
+                                @php $storeArr = \App\CentralLogics\Helpers::item_store_ids($lead->id); @endphp
                                 <label class="toggle-switch toggle-switch-sm" for="stausCheckbox{{$lead->id}}">
                                     <input type="checkbox"
                                            class="toggle-switch-input serviceCheckBox"

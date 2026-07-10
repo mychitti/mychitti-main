@@ -168,9 +168,11 @@ class Item extends Model
     {
         return $this->belongsTo(Store::class);
     }
+    // Stores that carry/offer this item — the item_store pivot replaces the legacy
+    // comma-separated items.store_ids column.
     public function stores()
     {
-        return $this->belongsToMany(Item::class, 'store_ids');
+        return $this->belongsToMany(Store::class, 'item_store', 'item_id', 'store_id');
     }
 
     public function category()

@@ -234,7 +234,7 @@ class ServiceController extends Controller
 
         $totalVendors = DB::table('stores')
             ->join('items', function ($join) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
             ->where('items.category_id', $cat_id)
             ->where('stores.zone_id', $zoneId)

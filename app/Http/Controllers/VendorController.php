@@ -186,7 +186,6 @@ class VendorController extends Controller
             } else {
                 $store->category_1 = $request->category_1;
             }
-            $store->services_1 = isset($request->services_1) ? implode(',', $request->services_1) : null;
 
             if ($request->has('second_cat_on') && $request->second_cat_on) {
                 if ($request->category_1 == 'other') {
@@ -195,7 +194,6 @@ class VendorController extends Controller
                 } else {
                     $store->category_2 = $request->category_2;
                 }
-                $store->services_2 = isset($request->services_2) ? implode(',', $request->services_2) : null;
             }
         }
 
@@ -243,12 +241,13 @@ class VendorController extends Controller
             if (isset($request->services_1) && count($request->services_1)) {
                 foreach ($request->services_1 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('store_ajax_service1', $newStoreString, $value, '-', 0 . '_vendor', $oldIds);
                 }
             }
@@ -256,12 +255,13 @@ class VendorController extends Controller
             if (isset($request->services_2) && count($request->services_2)) {
                 foreach ($request->services_2 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('store_ajax_service2', $newStoreString, $value, '-', 0 . '_vendor', $oldIds);
                 }
             }

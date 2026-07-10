@@ -62,14 +62,14 @@ class CategoryController extends Controller
 
         if ($store->module_id == 6) {
             // services  offered 1
-            $services_1 = explode(',', $store->services_1);
+            $services_1 = \App\CentralLogics\Helpers::store_item_ids($store->id); // all currently-carried items (from pivot)
             //   prx($services_1);
             if (count($services_1) && $services_1[0]) {
                 foreach ($services_1 as $key => $value) {
                     // echo $value . ' - ' ;
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
                     if ($fetchServicesRow) {
-                        $storeArr = explode(',', $fetchServicesRow->store_ids);
+                        $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
 
                         //remove store
                         $index = array_search($store->id, $storeArr);
@@ -78,7 +78,8 @@ class CategoryController extends Controller
                         $newStoreString = implode(',', $storeArr);
 
                         $oldIds = _getIdsFrist($value);
-                        DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                        // store_ids column write removed — item_store pivot is the source of truth
+                        Helpers::sync_item_store_pivot($value, $newStoreString);
                         _trackStoreIds('test 15', $newStoreString, $value, '-', Helpers::get_store_id() . '_vendor', $oldIds);
                     }
                 }
@@ -86,13 +87,13 @@ class CategoryController extends Controller
             }
 
             // services offered 2
-            $services_2 = explode(',', $store->services_2);
+            $services_2 = []; // services_1 above already covers all carried items (pivot)
             if (count($services_2) && $services_2[0]) {
                 foreach ($services_2 as $key => $value) {
 
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
                     if ($fetchServicesRow) {
-                        $storeArr = explode(',', $fetchServicesRow->store_ids);
+                        $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
 
                         //remove store
                         $index = array_search($store->id, $storeArr);
@@ -101,7 +102,8 @@ class CategoryController extends Controller
                         $newStoreString = implode(',', $storeArr);
 
                         $oldIds = _getIdsFrist($value);
-                        DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                        // store_ids column write removed — item_store pivot is the source of truth
+                        Helpers::sync_item_store_pivot($value, $newStoreString);
                         _trackStoreIds('test 14', $newStoreString, $value, '-', Helpers::get_store_id() . '_vendor', $oldIds);
                     }
                 }
@@ -109,20 +111,19 @@ class CategoryController extends Controller
 
             $store->category_1 = $request->category_1;
             $store->category_2 = $request->category_2;
-            $store->services_1 = $request->services_1 ? implode(',', $request->services_1) : '';
-            $store->services_2 = $request->services_2 ? implode(',', $request->services_2) : '';
             $store->update();
 
             // services  offered 1
             if ($request->services_1 && count($request->services_1)) {
                 foreach ($request->services_1 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('test 13', $newStoreString, $value, '-', Helpers::get_store_id() . '_vendor', $oldIds);
                 }
             }
@@ -131,11 +132,12 @@ class CategoryController extends Controller
             if ($request->services_2  && count($request->services_2)) {
                 foreach ($request->services_2 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('test 12', $newStoreString, $value, '-', Helpers::get_store_id() . '_vendor',  $oldIds);
                 }
             }

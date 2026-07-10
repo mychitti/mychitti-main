@@ -717,15 +717,13 @@ class DashboardController extends Controller
             $total_orders = $total_orders->StoreOrder()->where('zone_id', $zone_id)->count();
             $total_stores = $total_stores->where('zone_id', $zone_id)->count();
 
-            // Filter items by zone (items use store_ids with FIND_IN_SET)
+            // Filter items by zone via the item_store pivot (item -> store).
             if (!empty($zoneStoreIds)) {
-                $storeIdConditions = implode(' OR ', array_map(function ($sid) {
-                    return "FIND_IN_SET({$sid}, store_ids) > 0";
-                }, $zoneStoreIds));
-                $total_items = $total_items->whereRaw("({$storeIdConditions})")->count();
-                $new_items = $new_items->whereRaw("({$storeIdConditions})")->count();
+                $zoneCarriedItemIds = DB::table('item_store')->whereIn('store_id', $zoneStoreIds)->distinct()->pluck('item_id')->toArray();
+                $total_items = $total_items->whereIn('id', $zoneCarriedItemIds)->count();
+                $new_items = $new_items->whereIn('id', $zoneCarriedItemIds)->count();
                 // Filter service leads by zone (via item -> store)
-                $zoneItemIds = DB::table('items')->where('module_id', $module_id)->whereRaw("({$storeIdConditions})")->pluck('id')->toArray();
+                $zoneItemIds = DB::table('items')->where('module_id', $module_id)->whereIn('id', $zoneCarriedItemIds)->pluck('id')->toArray();
                 $service_leads = !empty($zoneItemIds) ? $service_leads->whereIn('item_id', $zoneItemIds)->count() : 0;
             } else {
                 $total_items = 0;
@@ -956,7 +954,7 @@ class DashboardController extends Controller
 
             $top_sell = Item::withoutGlobalScopes()
                 ->join('stores', function ($join) {
-                    $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->leftJoin(
                     DB::raw('(SELECT service_requests.item_id, COUNT(*) as service_request_count 

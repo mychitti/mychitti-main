@@ -55,11 +55,7 @@ class MyDoctorProfileController extends Controller
         }
 
         $store_id       = Helpers::get_store_id();
-        $store          = \App\Models\Store::find($store_id);
-        $serviceIds     = array_filter(array_unique(array_merge(
-            explode(',', $store->services_1 ?? ''),
-            explode(',', $store->services_2 ?? '')
-        )));
+        $serviceIds     = Helpers::store_item_ids($store_id);
         $store_services = \App\Models\Item::withoutGlobalScopes()->whereIn('id', $serviceIds)->select('id', 'name')->get();
         $days           = DoctorSlot::DAYS;
 

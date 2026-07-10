@@ -28,11 +28,12 @@ class ProductLogic
     }
     public static function stores_limited_columns($id, $zone_id, $limit, $offset, $type, $longitude, $latitude)
     {
-        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids;
+        $itemRow = DB::table('items')->where('id', $id)->first();
+        $store_ids = \App\CentralLogics\Helpers::item_store_ids($id, $itemRow->store_ids ?? null);
         $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0)
             ->where('module_id', 6)
             ->whereIn('zone_id', json_decode($zone_id, true))
-            ->whereIn('id', explode(',', $store_ids))
+            ->whereIn('id', $store_ids)
             ->active()->type($type)
             ->select('id', 'name', 'address', 'logo', 'meta_description', 'rating_count', 'average_rating')
             ->latest()->paginate($limit, ['*'], 'page', $offset);
@@ -46,7 +47,8 @@ class ProductLogic
     }
     public static function stores($id, $zone_id, $limit, $offset, $type, $longitude, $latitude)
     {
-        $store_ids = DB::table('items')->where('id', $id)->first()->store_ids;
+        $itemRow = DB::table('items')->where('id', $id)->first();
+        $store_ids = \App\CentralLogics\Helpers::item_store_ids($id, $itemRow->store_ids ?? null);
         $paginator = Store::withOpen($longitude ?? 0, $latitude ?? 0)
             ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                 $query->whereHas('zone.modules', function ($query) {
@@ -56,7 +58,7 @@ class ProductLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
-            ->whereIn('id', explode(',', $store_ids))
+            ->whereIn('id', $store_ids)
             ->active()->type($type)
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
@@ -108,7 +110,7 @@ class ProductLogic
                 ->latest()->paginate($limit, ['*'], 'page', $offset);
         } else {
             $paginator = Item::join('stores', function ($join) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
                 ->where('stores.id', $store_id)
                 ->where('stores.active', 1)

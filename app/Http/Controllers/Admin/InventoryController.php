@@ -630,7 +630,7 @@ class InventoryController extends Controller
             'mrp'                  => 'required',
             'unit'                 => 'required',
             'gst_rate'             => 'required|numeric|min:0',
-            'item_type'            => 'required',
+            'item_type'            => 'required', 
             'category'             => 'required',
         ]);
         $inventory_item =  InventoryItem::findOrFail($request->item_id);

@@ -423,7 +423,7 @@ class AccountController extends Controller
         } else {
             $top_sell = Item::withoutGlobalScopes()
                 ->join('stores', function ($join) {
-                    $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->leftJoin(
                     DB::raw('(SELECT service_requests.item_id, COUNT(*) as service_request_count 
@@ -452,7 +452,7 @@ class AccountController extends Controller
             ->join('users', 'service_requests.user_id', '=', 'users.id')
             ->leftJoin('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
             ->whereNull('accepted_service_requests.tieup')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+            ->whereIn('items.id', Helpers::store_items_sub(Helpers::get_store_id()))
             ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
             ->select('accepted_service_requests.tieup', 'service_requests.*', 'items.name as item_name', 'items.image as image', 'categories.name as category_name', 'users.f_name as f_name', 'users.id as uid')
             ->count();

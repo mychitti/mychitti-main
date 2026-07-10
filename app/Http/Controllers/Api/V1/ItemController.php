@@ -82,7 +82,7 @@ class ItemController extends Controller
         $items =  DB::table('service_requests')
             ->join('items', 'service_requests.item_id', 'items.id')
             ->join('stores', function ($join) use ($zone_id) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
                 $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
             })
@@ -112,7 +112,7 @@ class ItemController extends Controller
             ->where('items.status', 1)
 
             ->join('stores', function ($join) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids)');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
 
             ->whereIn('stores.zone_id', json_decode($zone_id, true))
@@ -308,7 +308,7 @@ class ItemController extends Controller
                     SELECT 1 
                     FROM stores s 
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
-                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
             GROUP BY i.id
@@ -338,7 +338,7 @@ class ItemController extends Controller
                     SELECT 1 
                     FROM stores s 
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
-                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
             GROUP BY sk.id
@@ -829,7 +829,7 @@ class ItemController extends Controller
         //                 ->whereIn('zone_id', json_decode($zone_id, true))
         //                 ->where('module_id', $moduleId)
         //                 ->where('active', 1)
-        //                 ->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+        //                 ->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
         //         })
         //             ->get();
         //     }
@@ -1091,7 +1091,7 @@ class ItemController extends Controller
                 //     }]);
                 // }])
                 ->when($request->store_id, function ($query) use ($request) {
-                    return $query->whereRaw("FIND_IN_SET(?, store_ids)", [$request->store_id]);
+                    return $query->whereIn('id', \App\CentralLogics\Helpers::store_items_sub($request->store_id));
                 })
                 ->when($request->category_id, function ($query) use ($request) {
                     $query->whereHas('category', function ($q) use ($request) {
@@ -1529,7 +1529,7 @@ class ItemController extends Controller
                 ->where('items.is_approved', 1)
                 ->join('categories', 'items.category_id', 'categories.id')
                 ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($zone_id, true))
                 ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])

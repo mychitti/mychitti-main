@@ -2293,10 +2293,10 @@ Route::get('debug/wallet-check', function (\Illuminate\Http\Request $request) {
     } elseif ($itemId) {
         // Item mode — check all stores linked to this item
         $item = \Illuminate\Support\Facades\DB::table('items')->where('id', $itemId)->first();
-        if (!$item || empty($item->store_ids)) {
-            $rows[] = ['error' => 'Item not found or has no store_ids'];
+        $storeIds = $item ? \App\CentralLogics\Helpers::item_store_ids($itemId) : [];
+        if (!$item || empty($storeIds)) {
+            $rows[] = ['error' => 'Item not found or has no linked stores'];
         } else {
-            $storeIds   = array_map('intval', array_filter(explode(',', trim($item->store_ids))));
             $categoryId = $item->category_id ?? null;
             $stores     = \Illuminate\Support\Facades\DB::table('stores')->whereIn('id', $storeIds)->get();
 

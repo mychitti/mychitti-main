@@ -96,22 +96,10 @@ class ItemController extends Controller
         $selectedSer = $request->services;
         // print_r($selectedSer);
         foreach ($selectedSer as $s) {
-            $item =  Item::withoutGlobalScope(StoreScope::class)->where('id', $s)->get();
-
-            if ($item[0]->store_ids == '') {
-                $ids = Helpers::get_store_id();
-            } else {
-                $idArr = explode(',', $item[0]->store_ids);
-                if (!in_array(Helpers::get_store_id(), $idArr)) {
-                    $ids = $item[0]->store_ids . ',' . Helpers::get_store_id();
-                } else {
-                    $ids = $item[0]->store_ids;
-                }
-            }
-            // prx($ids);
             $oldIds = _getIdsFrist($s);
-            Item::withoutGlobalScope(StoreScope::class)->where('id', $s)->update(['store_ids' => $ids]);
-            _trackStoreIds('test 11', $ids, $s, '-', Helpers::get_store_id() . '_vendor', $oldIds);
+            // Attach this store to the item via the pivot (item_store is the source of truth).
+            DB::table('item_store')->insertOrIgnore(['item_id' => $s, 'store_id' => Helpers::get_store_id()]);
+            _trackStoreIds('test 11', _getIdsFrist($s), $s, '-', Helpers::get_store_id() . '_vendor', $oldIds);
         }
         return true;
     }
@@ -1486,7 +1474,7 @@ class ItemController extends Controller
                     ->orWhereNull('service_requests.accepted_by');
             })
             // ->whereNull('accepted_service_requests.tieup')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+            ->whereIn('items.id', Helpers::store_items_sub(Helpers::get_store_id()))
             ->where('service_requests.created_at', '>', now()->subMinutes(Helpers::get_lead_exp_minutes()))
             ->select(
                 'service_requests.*',

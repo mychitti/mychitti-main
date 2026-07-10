@@ -26,7 +26,7 @@ class CategoryLogic
 
       
             $paginator = Item::join('stores', function ($join) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
             ->whereIn('stores.zone_id', $zoneIds)
             ->where('stores.active', 1)

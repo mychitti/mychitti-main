@@ -207,7 +207,7 @@ class DashboardController extends Controller
             $store = Helpers::get_store_data();
             $minimumBalance = Helpers::get_wallet_min_balance($store->zone_id);
             $completionHasDoc     = !empty($store->gst_doc) || !empty($store->id_doc);
-            $completionHasService = $store->services_1 || $store->services_2;
+            $completionHasService = Helpers::store_items_sub($store->id)->exists();
             $completionHasAddress = !empty($store->address) && !empty($store->latitude);
             $completionHasCover   = !empty($store->cover_photo);
             $completionHasLogo    = !empty($store->logo);
@@ -644,7 +644,7 @@ class DashboardController extends Controller
         } else {
             $top_sell = Item::withoutGlobalScopes()
                 ->join('stores', function ($join) {
-                    $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->leftJoin(
                     DB::raw('(SELECT service_requests.item_id, COUNT(*) as service_request_count 
@@ -672,7 +672,7 @@ class DashboardController extends Controller
             ->join('categories', 'items.category_id', '=', 'categories.id')
             ->join('users', 'service_requests.user_id', '=', 'users.id')
             ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+            ->whereIn('items.id', Helpers::store_items_sub(Helpers::get_store_id()))
             ->whereBetween('service_requests.created_at', [$from, $to])
             ->select(
                 'service_requests.*',
@@ -695,7 +695,7 @@ class DashboardController extends Controller
             ->join('items', 'service_requests.item_id', '=', 'items.id')
             ->join('categories', 'items.category_id', '=', 'categories.id')
             ->join('users', 'service_requests.user_id', '=', 'users.id')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [Helpers::get_store_id()])
+            ->whereIn('items.id', Helpers::store_items_sub(Helpers::get_store_id()))
             ->whereRaw("FIND_IN_SET(?, service_requests.sent_to)", [Helpers::get_store_id()])
             ->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
             ->where(function ($query) {

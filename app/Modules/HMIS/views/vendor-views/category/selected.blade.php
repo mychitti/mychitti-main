@@ -52,7 +52,7 @@
                                     data-placeholder="Subcategory">
                                     <option value=""></option>
                                     @foreach($items_1 as $sc)
-                                    <option {{in_array($sc->id, explode(',',$store_data->services_1)) ? 'selected': ''}} value="{{$sc->id}}">{{$sc->name}}</option>
+                                    <option {{in_array($sc->id, \App\CentralLogics\Helpers::store_item_ids($store_data->id)) ? 'selected': ''}} value="{{$sc->id}}">{{$sc->name}}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -78,7 +78,7 @@
                                     data-placeholder="Subcategory">
                                     <option value=""></option>
                                     @foreach($items_2 as $sc)
-                                    <option {{in_array($sc->id, explode(',',$store_data->services_2)) ? 'selected': ''}} value="{{$sc->id}}">{{$sc->name}}</option>
+                                    <option {{in_array($sc->id, \App\CentralLogics\Helpers::store_item_ids($store_data->id)) ? 'selected': ''}} value="{{$sc->id}}">{{$sc->name}}</option>
                                     @endforeach
                                 </select>
                             </div>

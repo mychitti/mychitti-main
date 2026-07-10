@@ -693,7 +693,7 @@ class InventoryController extends Controller
             'gst_rate'            => 'required|numeric|min:0',
             // 'selling_price'            => 'required|numeric|min:0',
             'item_type'            => 'required',
-            'category'            => 'required',
+            'category'            => 'required', 
         ]);
         $inventory_item =  InventoryItem::findOrFail($request->item_id);
 

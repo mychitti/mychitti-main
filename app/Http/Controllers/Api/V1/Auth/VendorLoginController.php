@@ -314,8 +314,6 @@ class VendorLoginController extends Controller
         $store->status = 0;
         $store->category_1 = $request->category_1;
         $store->category_2 = $request->category_2;
-        $store->services_1 = isset($request->services_1) ? implode(',',$request->services_1) : null;
-        $store->services_2 = isset($request->services_2) ? implode(',',$request->services_2) : null;
         if ($request->business_type == 'business') {
             $store->other_verification = $request->other_verification ?? '';
             $store->google_verification = $request->google_verification;
@@ -345,12 +343,13 @@ class VendorLoginController extends Controller
          if(isset($request->services_1) && count($request->services_1)){
             foreach ($request->services_1 as $key => $value) {
                 $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                $storeArr = explode(',', $fetchServicesRow->store_ids);
+                $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                 array_push($storeArr, $store->id);
                 $newStoreString = implode(',', $storeArr);
 
                 $oldIds = _getIdsFrist($value);
-                DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                // store_ids column write removed — item_store pivot is the source of truth
+                \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                 _trackStoreIds('test 18', $newStoreString, $value, '-', 'api_ven_reg',$oldIds);
 
             }
@@ -359,12 +358,13 @@ class VendorLoginController extends Controller
         if( isset($request->services_2) && count($request->services_2)){
             foreach ($request->services_2 as $key => $value) {
                 $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                $storeArr = explode(',', $fetchServicesRow->store_ids);
+                $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                 array_push($storeArr, $store->id);
                 $newStoreString = implode(',', $storeArr);
 
                 $oldIds = _getIdsFrist($value);
-                DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                // store_ids column write removed — item_store pivot is the source of truth
+                \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                 _trackStoreIds('test 17', $newStoreString, $value, '-', 'api_ven_reg',$oldIds);
 
             }

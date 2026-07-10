@@ -396,7 +396,7 @@ class LeadController extends Controller
         $zone_id = Helpers::get_store_data()->zone_id;
         $reported_issue_list  = CommonServiceIssue::all();
         $customers  = StoreCustomer::where('store_id', Helpers::get_store_id())->get();
-        $services = DB::table('items')->join('categories', 'categories.id', 'items.category_id')->where('categories.status', 1)->where('items.status', '1')->whereRaw("FIND_IN_SET(?, items.store_ids)", [Helpers::get_store_id()])->select('items.*')
+        $services = DB::table('items')->join('categories', 'categories.id', 'items.category_id')->where('categories.status', 1)->where('items.status', '1')->whereIn('items.id', Helpers::store_items_sub(Helpers::get_store_id()))->select('items.*')
             ->distinct()->get();
         // prx($services); 
         return view('vendor-views.lead.add', compact('services', 'customers', 'reported_issue_list'));

@@ -421,13 +421,13 @@ class UserController extends Controller
         if ($request->filled('preferred_doctor_id')) {
             $isDedicated =  true;
             $storesChunk = [$storeId];
-        } else {
+        } else { 
           
             $storesChunk = Helpers::get_store_range($request->serviceId, $this->zone_id, $user_id, $storeId);
             if (empty($storesChunk)) {
                 return response()->json(['status' => false, 'message' => 'No providers are currently available for this service. Please try again later.']);
             }
-
+ 
             // Check if this is a dedicated lead (store has dedicated_leads enabled)
             $isDedicated = false;
             if ($storeId) {

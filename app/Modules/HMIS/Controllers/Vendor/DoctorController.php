@@ -231,11 +231,7 @@ class DoctorController extends Controller
 
     private function getStoreServices(int $storeId): \Illuminate\Support\Collection
     {
-        $store = Store::find($storeId);
-        $ids   = array_filter(array_unique(array_merge(
-            explode(',', $store->services_1 ?? ''),
-            explode(',', $store->services_2 ?? '')
-        )));
+        $ids = \Illuminate\Support\Facades\DB::table('item_store')->where('store_id', $storeId)->pluck('item_id')->all();
         return Item::withoutGlobalScopes()->whereIn('id', $ids)->select('id', 'name')->get();
     }
 

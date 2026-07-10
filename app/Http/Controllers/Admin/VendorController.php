@@ -373,8 +373,6 @@ class VendorController extends Controller
         } else {
             $store->category_1 = $request->category_1;
             $store->category_2 = $request->category_2;
-            $store->services_1 = isset($request->services_1) ? implode(',', $request->services_1) : '';
-            $store->services_2 =   isset($request->services_2) ? implode(',', $request->services_2) : '';
 
             // // Add store ID to new services
             self::updateStoreItems($store, $request->services_1 ?? [], 'add');
@@ -505,12 +503,13 @@ class VendorController extends Controller
 
                 foreach ($request->services_1 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('admin_vendor_create_service1', $newStoreString, $value, '-', '_admin', $oldIds);
                 }
             }
@@ -520,12 +519,13 @@ class VendorController extends Controller
             if (isset($request->services_2) && $request->services_2 && count($request->services_2)) {
                 foreach ($request->services_2 as $key => $value) {
                     $fetchServicesRow  = DB::table('items')->where('id', $value)->first();
-                    $storeArr = explode(',', $fetchServicesRow->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
                     array_push($storeArr, $store->id);
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($value);
-                    DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                     _trackStoreIds('admin_vendor_create_service2', $newStoreString, $value, '-', '_admin',  $oldIds);
                 }
             }
@@ -1182,7 +1182,7 @@ class VendorController extends Controller
                 $fetchServicesRow = DB::table('items')->where('id', $value)->first();
                 if (!$fetchServicesRow) continue; // Skip if item not found
 
-                $storeArr = !empty($fetchServicesRow->store_ids) ? explode(',', $fetchServicesRow->store_ids) : [];
+                $storeArr = \App\CentralLogics\Helpers::item_store_ids($value);
 
                 if ($action === 'remove') {
                     // Ensure IDs are treated as strings and remove all occurrences
@@ -1198,7 +1198,8 @@ class VendorController extends Controller
                 // Convert back to a comma-separated string and update
                 $newStoreString = implode(',', $storeArr);
                 $oldIds = _getIdsFrist($value);
-                DB::table('items')->where('id', $value)->update(['store_ids' => $newStoreString]);
+                // store_ids column write removed — item_store pivot is the source of truth
+                \App\CentralLogics\Helpers::sync_item_store_pivot($value, $newStoreString);
                 _trackStoreIds('update_stoe_items_admin_vendor', $newStoreString, $value, '-', '_admin', $oldIds);
             }
         }
@@ -1380,13 +1381,8 @@ class VendorController extends Controller
             $store->category_1 = $request->category_1;
             $store->category_2 = $request->category_2;
 
-            // Convert services arrays to strings for processing
-            $store->services_1 = isset($request->services_1) ? implode(',', $request->services_1) : '';
-            $store->services_2 = isset($request->services_2) ? implode(',', $request->services_2) : '';
-
-            // Remove store ID from existing services
-            self::updateStoreItems($store, explode(',', $store->services_1), 'remove');
-            self::updateStoreItems($store, explode(',', $store->services_2), 'remove');
+            // Remove store from all its currently-carried items (from the pivot), then re-add below.
+            self::updateStoreItems($store, \App\CentralLogics\Helpers::store_item_ids($store->id), 'remove');
 
             // Add store ID to new services
             self::updateStoreItems($store, $request->services_1 ?? [], 'add');
@@ -1394,12 +1390,12 @@ class VendorController extends Controller
 
             $usedItems = array_merge($request->services_1 ?? [], $request->services_2 ?? []);
             $allItems = DB::table('items')
-                ->whereRaw("FIND_IN_SET(?, store_ids)", [$store->id])
+                ->whereIn('id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                 ->get();
 
             foreach ($allItems as $item) {
                 if (!in_array($item->id, $usedItems)) {
-                    $storeArr = explode(',', $item->store_ids);
+                    $storeArr = \App\CentralLogics\Helpers::item_store_ids($item->id);
                     $storeArr = array_filter($storeArr, function ($id) use ($store) {
                         return trim($id) !== (string)$store->id;
                     });
@@ -1407,7 +1403,8 @@ class VendorController extends Controller
                     $newStoreString = implode(',', $storeArr);
 
                     $oldIds = _getIdsFrist($item->id);
-                    DB::table('items')->where('id', $item->id)->update(['store_ids' => $newStoreString]);
+                    // store_ids column write removed — item_store pivot is the source of truth
+                    \App\CentralLogics\Helpers::sync_item_store_pivot($item->id, $newStoreString);
                     _trackStoreIds('test 19', $newStoreString, $item->id, '-', '_admin', $oldIds);
 
                     // print_r($newStoreString);
@@ -1759,10 +1756,7 @@ class VendorController extends Controller
             }
         } 
 
-        $serviceIds = array_filter(array_merge(
-            $store->services_1 ? explode(',', $store->services_1) : [],
-            $store->services_2 ? explode(',', $store->services_2) : []
-        ));
+        $serviceIds = \App\CentralLogics\Helpers::store_item_ids($store->id);
         $services = $serviceIds
             ? Item::withoutGlobalScopes()->whereIn('id', $serviceIds)->pluck('name')->toArray()
             : [];
@@ -1941,7 +1935,7 @@ class VendorController extends Controller
 
         // --- Profile completion ---
         $hasDoc          = !empty($store->gst_doc) || !empty($store->id_doc);
-        $hasService      = $store->services_1 || $store->services_2 ;
+        $hasService      = \App\CentralLogics\Helpers::store_items_sub($store->id)->exists();
         $hasAddress      = !empty($store->address) && !empty($store->latitude);
         $hasCoverPic     = !empty($store->cover_photo);
         $hasLogo         = !empty($store->logo);
@@ -2004,7 +1998,7 @@ class VendorController extends Controller
             ->count();
  
         $hasDoc = !empty($store->gst_doc) || !empty($store->id_doc);
-        $hasService = $store->services_1 || $store->services_2;
+        $hasService = \App\CentralLogics\Helpers::store_items_sub($store->id)->exists();
         $hasAddress = !empty($store->address) && !empty($store->latitude);
         $hasCoverPic = !empty($store->cover_photo);
         $hasLogo = !empty($store->logo);

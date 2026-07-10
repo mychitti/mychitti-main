@@ -137,7 +137,7 @@ class ProjectTaskController extends Controller
             ->where('status', '1')
             ->where(function ($query) use ($storeId) {
                 $query->where('store_id', $storeId)
-                    ->orWhereRaw("FIND_IN_SET(?, store_ids)", [$storeId]);
+                    ->orWhereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($storeId));
             })
             ->get();
         $inventory_items = InventoryItem::where('store_id', $store_id)->get();
@@ -433,7 +433,7 @@ class ProjectTaskController extends Controller
             ->where('status', '1')
             ->where(function ($query) use ($storeId) {
                 $query->where('store_id', $storeId)
-                    ->orWhereRaw("FIND_IN_SET(?, store_ids)", [$storeId]);
+                    ->orWhereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($storeId));
             })
             ->get();
         return view('admin-views.project.task.add', compact('projects','services', 'data', 'departments', 'data', 'rls', 'staff', 'store_data', 'statuses', 'titles', 'project'));

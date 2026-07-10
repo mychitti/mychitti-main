@@ -609,7 +609,7 @@ class StoreController extends Controller
         }
         $serviceData1 = DB::table('items')
             ->join('categories', 'items.category_id', 'categories.id')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
+            ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($request->store_id))
             ->whereNull('items.inventory_item_id')
             ->where('categories.status', 1)
             ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
@@ -618,7 +618,7 @@ class StoreController extends Controller
 
         foreach ($serviceData1 as $cat) {
             $cat->items = DB::table('items')
-                ->whereRaw('FIND_IN_SET(?, store_ids)', [$request->store_id])
+                ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($request->store_id))
                 ->whereNull('items.inventory_item_id')
                 ->where('category_id', $cat->id)
                 ->where('status', 1)
@@ -633,7 +633,7 @@ class StoreController extends Controller
         //INVENTORY ITEMS
         $invItemdata = DB::table('items')
             ->join('categories', 'items.category_id', 'categories.id')
-            ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
+            ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($request->store_id))
             ->whereNotNull('items.inventory_item_id')
             ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
             ->distinct()
@@ -642,7 +642,7 @@ class StoreController extends Controller
         foreach ($invItemdata as $cat) {
             $cat->items = DB::table('items')
                 ->leftJoin('inventory_items', 'inventory_items.id', '=', 'items.inventory_item_id')
-                ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$request->store_id])
+                ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($request->store_id))
                 ->whereNotNull('items.inventory_item_id')
                 ->where('items.category_id', $cat->id)
                 ->where('items.status', 1)

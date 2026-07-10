@@ -259,6 +259,13 @@ class Store extends Model
     {
         return $this->hasMany(Item::class);
     }
+
+    // Catalog items/services this store offers — via the item_store pivot (replaces the
+    // legacy items.store_ids comma string). Distinct from items() (the store's own inventory).
+    public function carriedItems()
+    {
+        return $this->belongsToMany(Item::class, 'item_store', 'store_id', 'item_id');
+    }
     public function storeTnc(): HasMany
     {
         return $this->hasMany(StoreTnc::class);

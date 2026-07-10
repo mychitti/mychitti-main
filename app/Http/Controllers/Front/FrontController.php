@@ -402,7 +402,7 @@ class FrontController extends Controller
         // TOP SELLING  SERVICES 
         $categoryIds = Item::withoutGlobalScopes()
             ->join('stores', function ($join) use ($zone_id) {
-                $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 $join->whereIn('stores.zone_id', json_decode($zone_id, true));
             })
             ->join('categories', 'categories.id', 'items.category_id')
@@ -418,7 +418,7 @@ class FrontController extends Controller
         foreach ($categoryIds as $categoryId) {
             $randomItem = Item::withoutGlobalScopes()
                 ->join('stores', function ($join) use ($zone_id) {
-                    $join->whereRaw('FIND_IN_SET(stores.id, items.store_ids) > 0');
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                     $join->whereIn('stores.zone_id', json_decode($zone_id, true));
                 })
                 ->where('items.status', 1)
@@ -666,7 +666,7 @@ class FrontController extends Controller
                     SELECT 1 
                     FROM stores s 
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
-                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
             GROUP BY i.id
@@ -697,7 +697,7 @@ class FrontController extends Controller
                     SELECT 1 
                     FROM stores s 
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
-                    AND FIND_IN_SET(s.id, i.store_ids) > 0
+                    AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
             GROUP BY sk.id
@@ -821,7 +821,7 @@ class FrontController extends Controller
         // 1. Search Products with relevance scoring
         $products = DB::table('items')
             ->join('stores', function ($join) {
-                $join->whereRaw("FIND_IN_SET(stores.id, items.store_ids)");
+                $join->whereRaw("EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)");
             })
             ->join('categories', 'categories.id', '=', 'items.category_id')
             ->where(function ($query) use ($keyword, $searchTerm) {
@@ -855,7 +855,7 @@ class FrontController extends Controller
             ->join('items', 'items.id', '=', 'service_keywords.service_id')
             ->join('categories', 'categories.id', '=', 'items.category_id')
             ->join('stores', function ($join) {
-                $join->whereRaw("FIND_IN_SET(stores.id, items.store_ids)");
+                $join->whereRaw("EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)");
             })
             ->where(function ($query) use ($keyword, $searchTerm) {
                 $query->where('service_keywords.keyword', 'LIKE', $searchTerm)
@@ -2592,7 +2592,7 @@ class FrontController extends Controller
                 $keywordsData = DB::table('items')
                     ->where('items.is_approved', 1)
                     ->join('categories', 'items.category_id', '=', 'categories.id')
-                    ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$store->id])
+                    ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                     ->select('items.name as item_name', 'categories.name as category_name')
                     ->distinct()
                     ->get();
@@ -2602,7 +2602,7 @@ class FrontController extends Controller
                 // SERVICES
                 $productdata1 = DB::table('items')
                     ->join('categories', 'items.category_id', 'categories.id')
-                    ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$store->id])
+                    ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                     ->whereNull('items.inventory_item_id')
                     ->where('categories.status', 1)
                     ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
@@ -2612,7 +2612,7 @@ class FrontController extends Controller
 
                 foreach ($productdata1 as $cat) {
                     $cat->items = DB::table('items')
-                        ->whereRaw('FIND_IN_SET(?, store_ids)', [$store->id])
+                        ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                         ->whereNull('items.inventory_item_id')
                         ->where('category_id', $cat->id)
                         ->where('status', 1)
@@ -2622,7 +2622,7 @@ class FrontController extends Controller
                 //INVENTORY ITEMS
                 $invItemdata = DB::table('items')
                     ->join('categories', 'items.category_id', 'categories.id')
-                    ->whereRaw('FIND_IN_SET(?, items.store_ids)', [$store->id])
+                    ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                     ->whereNotNull('items.inventory_item_id')
                     ->select('categories.id', 'categories.name', 'categories.slug as cat_slug')
                     ->distinct()
@@ -2630,7 +2630,7 @@ class FrontController extends Controller
 
                 foreach ($invItemdata as $cat) {
                     $cat->items = DB::table('items')
-                        ->whereRaw('FIND_IN_SET(?, store_ids)', [$store->id])
+                        ->whereIn('items.id', \App\CentralLogics\Helpers::store_items_sub($store->id))
                         ->whereNotNull('items.inventory_item_id')
                         ->where('category_id', $cat->id)
                         ->where('status', 1)
@@ -2782,13 +2782,9 @@ class FrontController extends Controller
 
             // prx($item);
             $zone_id = $this->zone_id;
-            $store_ids = $item->store_ids;
-
+            $store_ids = $item->store_ids ?? null;
             $zoneIds = json_decode($this->zone_id, true);
-            $storeIds = explode(',', $store_ids);
-
-            $zoneIds = json_decode($this->zone_id, true);
-            $storeIds = explode(',', $store_ids);
+            $storeIds = \App\CentralLogics\Helpers::item_store_ids($item->id, $store_ids);
 
             // subscribed store IDs
             $subscribedStoreIds = DB::table('vendor_subscriptions')
@@ -2851,7 +2847,7 @@ class FrontController extends Controller
                 ->where('items.module_id', $module)
                 ->join('categories', 'items.category_id', 'categories.id')
                 ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
                 ->where(['categories.featured' => 1, 'categories.status' => 1,  'items.status' => 1])
@@ -2865,7 +2861,7 @@ class FrontController extends Controller
                 ->where('items.is_approved', 1)
                 ->join('categories', 'items.category_id', 'categories.id')
                 ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
                 ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
@@ -2944,8 +2940,7 @@ class FrontController extends Controller
         $items = DB::table('items')
             ->select('items.id', 'items.name', 'items.slug', 'stores.id as store_id')
             ->join('stores', function ($join) {
-                $join->whereRaw("FIND_IN_SET(items.id, stores.services_1)")
-                    ->orWhereRaw("FIND_IN_SET(items.id, stores.services_2)");
+                $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
             })
             ->whereIn('stores.id', $storeIds)
             ->orderBy('items.id') // pick top items
@@ -3008,7 +3003,7 @@ class FrontController extends Controller
             $catProducts  = DB::table('items')
                 ->where('items.is_approved', 1)
                 ->join('stores', function ($join) {
-                    $join->on(DB::raw('FIND_IN_SET(stores.id, items.store_ids)'), '>', DB::raw('0'));
+                    $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->join('categories', 'categories.id', 'items.category_id')
                 ->where('stores.status', 1)

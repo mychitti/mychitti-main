@@ -1011,10 +1011,10 @@ class InventoryController extends Controller
         $itemId = $request->item_id;
         $validator = FacadesValidator::make($request->all(), [
             'mrp'                  => 'required',
-            'unit'              => 'required',
+            'unit'              => 'required', 
             'gst_rate'            => 'required|numeric|min:0',
             // 'selling_price'            => 'required|numeric|min:0',
-            'item_type'            => 'required',
+            'item_type'            => 'required', 
             'category'            => 'required',
             'item_name' => Rule::unique('items')->where(function ($query) use ($request) {
                 return $query->where('category', $request->category)

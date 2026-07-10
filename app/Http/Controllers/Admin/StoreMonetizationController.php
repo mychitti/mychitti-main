@@ -287,7 +287,7 @@ class StoreMonetizationController extends Controller
         $data['inventory_count'] = InventoryItem::where('store_id', $id)->whereBetween('created_at', $dateRange)->count();
         // $data['banner_count'] = OfferBanner::where('store_id', $id)->count();
         $data['template_count'] = TemplatePurchase::where('vendor_id', $store->vendor_id)->whereBetween('created_at', $dateRange)->count();
-        $data['service_count'] = (explode(',', $store->services_1) ? count(explode(',', $store->services_1)) : 0) + (explode(',', $store->services_2) ? count(explode(',', $store->services_2)) : 0);
+        $data['service_count'] = count(\App\CentralLogics\Helpers::store_item_ids($store->id));
         $data['quotation_count'] = DB::table('quotations')->where('vendor_id', $id)->whereBetween('created_at', $dateRange)->count();
         // $data['account_count'] = StoreAccount::where('store_id', $id)->count();
         $data['store_voucher_count'] = StoreVoucher::where('store_id', $id)->whereBetween('created_at', $dateRange)->count();
@@ -359,7 +359,7 @@ class StoreMonetizationController extends Controller
         }
 
         if ($tab === 'services') {
-            $data['services'] = Item::withoutGlobalScopes()->whereIn('id', $store->services_1 ? explode(',', $store->services_1) : [])->orWhereIn('id', $store->services_2 ? explode(',', $store->services_2) : [])
+            $data['services'] = Item::withoutGlobalScopes()->whereIn('id', \App\CentralLogics\Helpers::store_item_ids($store->id))
                 ->latest()->paginate(20);
         }
 
