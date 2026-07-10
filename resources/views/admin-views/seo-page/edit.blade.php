@@ -105,7 +105,7 @@
                     <h5 class="card-title">Details</h5>
                     <table class="table table-borderless table-sm mb-0">
                         <tr><td class="text-muted">Stores</td><td>{{ $combo->store_count }}</td></tr>
-                        <tr><td class="text-muted">URL</td><td><a href="{{ url($combo->slug) }}" target="_blank">/{{ $combo->slug }}</a></td></tr>
+                        {{-- <tr><td class="text-muted">URL</td><td><a href="{{ url($combo->slug) }}" target="_blank">/{{ $combo->slug }}</a></td></tr> --}}
                         <tr><td class="text-muted">Model</td><td>{{ $combo->model ?? '—' }}</td></tr>
                         <tr><td class="text-muted">Generated</td><td>{{ $combo->generated_at ? $combo->generated_at->diffForHumans() : 'never' }}</td></tr>
                     </table>
