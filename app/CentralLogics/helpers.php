@@ -1381,10 +1381,17 @@ class Helpers
     }
     public static function _saveCategoryIfNotExists($category)
     {
+        // No category supplied (e.g. an item edit that left the field blank) — return the
+        // "no category" sentinel instead of creating a category with a NULL name, which
+        // violates the NOT NULL constraint on categories.name across every inventory module.
+        if ($category === null || (is_string($category) && trim($category) === '')) {
+            return 0;
+        }
 
         if (is_numeric($category)) {
             return $category;
         }
+        $category = trim($category);
         $category_exist = Category::whereRaw('LOWER(name) = ?', [strtolower($category)])->where('status', 1)->first();
         if ($category_exist) {
             $category_id = $category_exist->id;
