@@ -1517,13 +1517,13 @@ class Helpers
         $item->unit_id = $inventory_item->unit;
         $item->add_ons =  json_encode([]);
         $item->store_id = null;
-        $item->store_ids = Helpers::get_store_id();
         $item->maximum_cart_quantity = 100;
 
         $item->module_id = 6;
         $item->organic =  0;
         $item->stock = $inventory_item->stock;
         $item->save();
+        DB::table('item_store')->insertOrIgnore(['item_id' => $item->id, 'store_id' => Helpers::get_store_id()]);
 
         $invItemVariationDetails = InvItemVariationDetail::where('item_id', $inventory_item->id)->get();
 
@@ -2679,11 +2679,12 @@ class Helpers
 
         $item = DB::table('items')->where('id', $item_id)->first();
 
-        if (!$item || empty($item->store_ids)) return [];
+        if (!$item) return [];
 
-        // Step 1: Clean store IDs
-        $storeIds = array_unique(array_filter(explode(',', trim($item->store_ids))));
-        $storeIds = array_map('intval', $storeIds);
+        // Step 1: Stores that carry this item — from the item_store pivot, falling back to the
+        // legacy items.store_ids string until the backfill has populated the pivot (transition).
+        $storeIds = self::item_store_ids($item_id, $item->store_ids ?? null);
+        if (empty($storeIds)) return [];
 
         // Step 2: Get only active, zone-matching, lead-available stores
         $existingStoreIds = DB::table('stores')
@@ -2848,10 +2849,11 @@ class Helpers
         $zId = json_decode($zone_ids, true);
 
         $item = DB::table('items')->where('id', $item_id)->first();
-        if (!$item || empty($item->store_ids)) return $empty;
+        if (!$item) return $empty;
 
-        $storeIds = array_unique(array_filter(explode(',', trim($item->store_ids))));
-        $storeIds = array_map('intval', $storeIds);
+        // Stores that carry this item — pivot first, legacy string as transition fallback.
+        $storeIds = self::item_store_ids($item_id, $item->store_ids ?? null);
+        if (empty($storeIds)) return $empty;
 
         $existingStoreIds = DB::table('stores')
             ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
@@ -2968,28 +2970,90 @@ class Helpers
         return $chunks;
     }
 
+    // Subquery of item ids carried by a store — for ->whereIn('items.id', Helpers::store_items_sub($id)).
+    // Replaces raw FIND_IN_SET(?, items.store_ids) reads with an indexed item_store lookup.
+    public static function store_items_sub($storeId)
+    {
+        return DB::table('item_store')->select('item_id')->where('store_id', (int) $storeId);
+    }
+
+    // int[] of item ids a store carries (from the item_store pivot). Replaces the combined
+    // explode(services_1) + explode(services_2) reads. Request-memoized so per-row callers
+    // (e.g. a Blade option loop) hit the DB once.
+    public static function store_item_ids($storeId): array
+    {
+        static $memo = [];
+        $storeId = (int) $storeId;
+        if (array_key_exists($storeId, $memo)) {
+            return $memo[$storeId];
+        }
+        return $memo[$storeId] = DB::table('item_store')->where('store_id', $storeId)
+            ->pluck('item_id')->map(fn($v) => (int) $v)->all();
+    }
+
+    // Store ids that carry an item — reads the item_store pivot, falling back to the legacy
+    // items.store_ids CSV while the backfill is still rolling out. Returns int[] (deduped).
+    public static function item_store_ids($itemId, $legacyCsv = null): array
+    {
+        try {
+            $ids = DB::table('item_store')->where('item_id', (int) $itemId)
+                ->pluck('store_id')->map(fn($v) => (int) $v)->all();
+            if (!empty($ids)) {
+                return array_values(array_unique($ids));
+            }
+        } catch (\Throwable $e) {
+            // pivot unavailable — fall through to the legacy string
+        }
+        return array_values(array_unique(array_filter(array_map('intval', explode(',', trim((string) $legacyCsv))))));
+    }
+
+    // Mirror an item's final store list into the item_store pivot (transition: replacing the
+    // legacy items.store_ids comma string). Idempotent — adds new links, removes dropped ones.
+    // Never throws; a pivot hiccup must not break the item write it shadows. Accepts a CSV
+    // string or an array of store ids.
+    public static function sync_item_store_pivot($itemId, $storeIds): void
+    {
+        try {
+            $itemId  = (int) $itemId;
+            $desired = is_array($storeIds) ? $storeIds : explode(',', trim((string) $storeIds));
+            $desired = array_values(array_unique(array_filter(array_map('intval', $desired))));
+
+            $current = DB::table('item_store')->where('item_id', $itemId)
+                ->pluck('store_id')->map(fn($v) => (int) $v)->all();
+
+            $toAdd    = array_diff($desired, $current);
+            $toRemove = array_diff($current, $desired);
+
+            if (!empty($toAdd)) {
+                DB::table('item_store')->insertOrIgnore(array_map(
+                    fn($sid) => ['item_id' => $itemId, 'store_id' => $sid],
+                    $toAdd
+                ));
+            }
+            if (!empty($toRemove)) {
+                DB::table('item_store')->where('item_id', $itemId)
+                    ->whereIn('store_id', $toRemove)->delete();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('sync_item_store_pivot failed for item ' . (int) $itemId . ': ' . $e->getMessage());
+        }
+    }
+
     public static function clean_item_store_ids($item_id)
     {
-        $item = DB::table('items')->where('id', $item_id)->first();
-
-        if (!$item || empty($item->store_ids)) {
-            return false; // Nothing to process
-        }
-
-        $storeIds = array_filter(explode(',', $item->store_ids));
+        // Candidate stores come from the pivot (the source of truth) — nothing to reconcile
+        // against a legacy column anymore.
+        $storeIds = self::item_store_ids($item_id);
 
         if (empty($storeIds)) {
             return false;
         }
 
-        // Get stores where service_1 or service_2 includes this item_id
-        $validStores = DB::table('stores')
-            ->whereIn('id', $storeIds)
-            ->where(function ($query) use ($item_id) {
-                $query->whereRaw('FIND_IN_SET(?, services_1)', [$item_id])
-                    ->orWhereRaw('FIND_IN_SET(?, services_2)', [$item_id]);
-            })
-            ->pluck('id')
+        // Stores (among the candidates) that actually carry this item, per the item_store pivot.
+        $validStores = DB::table('item_store')
+            ->where('item_id', $item_id)
+            ->whereIn('store_id', $storeIds)
+            ->pluck('store_id')
             ->toArray();
 
         // Keep only valid stores
@@ -2997,9 +3061,7 @@ class Helpers
 
         // Only update if there is a change
         if (implode(',', $storeIds) !== implode(',', $filteredStoreIds)) {
-            DB::table('items')
-                ->where('id', $item_id)
-                ->update(['store_ids' => implode(',', $filteredStoreIds)]);
+            self::sync_item_store_pivot($item_id, $filteredStoreIds);
 
             return true; // Updated
         }
