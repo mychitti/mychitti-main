@@ -73,7 +73,18 @@ class GenerateServiceZoneSeo implements ShouldQueue
                 . 'Specific services offered here: ' . (implode(', ', $itemNames) ?: $category->name);
         }
 
-        $result = app(AiServiceClient::class)->chat(0, 'admin', $context, systemPrompt: $this->systemPrompt($isItemLevel));
+        // Force OpenAI (gpt-4o) explicitly. The 'admin' guard would otherwise look for an ACTIVE
+        // admin row in system_prompts to source the provider; there is only a draft one, so it
+        // would fall through to the AI service's default (Anthropic) which is unfunded. Passing
+        // modelConfig here makes SEO independent of that DB state and uses the same funded
+        // provider as the vendor chat, so it never depends on Anthropic credits.
+        $result = app(AiServiceClient::class)->chat(
+            0,
+            'admin',
+            $context,
+            systemPrompt: $this->systemPrompt($isItemLevel),
+            modelConfig: ['ai_provider' => 'openai', 'ai_model' => 'gpt-4o']
+        );
 
         if (empty($result['success']) || empty($result['message'])) {
             $reason = $result['message'] ?? 'no response from AI service';
