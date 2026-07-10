@@ -13,36 +13,9 @@ class SeoPageController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ServiceZoneSeo::query()
-            ->join('categories', 'categories.id', '=', 'service_zone_seo.category_id')
-            ->join('zones', 'zones.id', '=', 'service_zone_seo.zone_id')
-            ->leftJoin('items', 'items.id', '=', 'service_zone_seo.item_id')
-            ->select('service_zone_seo.*', 'categories.name as category_name', 'zones.name as zone_name', 'items.name as item_name');
-
-        if ($request->filled('status')) {
-            $query->where('service_zone_seo.status', $request->status);
-        }
-        if ($request->filled('zone_id')) {
-            $query->where('service_zone_seo.zone_id', $request->zone_id);
-        }
-        if ($request->filled('category_id')) {
-            $query->where('service_zone_seo.category_id', $request->category_id);
-        }
-        if ($request->filled('level')) {
-            $request->level === 'item'
-                ? $query->where('service_zone_seo.item_id', '>', 0)
-                : $query->where('service_zone_seo.item_id', 0);
-        }
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('categories.name', 'like', "%{$search}%")
-                    ->orWhere('zones.name', 'like', "%{$search}%")
-                    ->orWhere('items.name', 'like', "%{$search}%");
-            });
-        }
-
-        $combos = $query->orderByDesc('service_zone_seo.store_count')
+        $combos = $this->applyFilters($request)
+            ->select('service_zone_seo.*', 'categories.name as category_name', 'zones.name as zone_name', 'items.name as item_name')
+            ->orderByDesc('service_zone_seo.store_count')
             ->paginate(20)->withQueryString();
 
         $counts = ServiceZoneSeo::select('status', DB::raw('count(*) as c'))->groupBy('status')->pluck('c', 'status');
@@ -67,6 +40,81 @@ class SeoPageController extends Controller
             Toastr::error('Generation failed: ' . ($outcome['message'] ?? 'unknown error'));
         }
         return back();
+    }
+
+    // Queue generation for the explicitly checked rows. Dispatched (not run inline) so any
+    // number of selections returns instantly; the 'seo' queue worker generates them in the
+    // background and the job publishes each page on success.
+    public function bulkGenerate(Request $request)
+    {
+        $ids = ServiceZoneSeo::whereIn('id', array_filter(array_map('intval', (array) $request->input('ids', []))))
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            Toastr::warning('No pages selected.');
+            return back();
+        }
+
+        foreach ($ids as $id) {
+            GenerateServiceZoneSeo::dispatch($id);
+        }
+        Toastr::success('Queued ' . $ids->count() . ' page(s) for generation — they publish automatically as the SEO worker processes them.');
+        return back();
+    }
+
+    // Queue generation for every UNGENERATED page matching the current filter. Skips pages that
+    // already have keywords so it never silently re-bills AI for work already done.
+    public function generateAll(Request $request)
+    {
+        $ids = $this->applyFilters($request)
+            ->where(function ($q) {
+                $q->whereNull('service_zone_seo.keywords')
+                    ->orWhere('service_zone_seo.keywords', '');
+            })
+            ->pluck('service_zone_seo.id');
+
+        if ($ids->isEmpty()) {
+            Toastr::info('Nothing to generate — every page matching this filter is already generated.');
+            return back();
+        }
+
+        foreach ($ids as $id) {
+            GenerateServiceZoneSeo::dispatch($id);
+        }
+        Toastr::success('Queued ' . $ids->count() . ' ungenerated page(s) for generation.');
+        return back();
+    }
+
+    private function applyFilters(Request $request)
+    {
+        $query = ServiceZoneSeo::query()
+            ->join('categories', 'categories.id', '=', 'service_zone_seo.category_id')
+            ->join('zones', 'zones.id', '=', 'service_zone_seo.zone_id')
+            ->leftJoin('items', 'items.id', '=', 'service_zone_seo.item_id');
+
+        if ($request->filled('status')) {
+            $query->where('service_zone_seo.status', $request->status);
+        }
+        if ($request->filled('zone_id')) {
+            $query->where('service_zone_seo.zone_id', $request->zone_id);
+        }
+        if ($request->filled('category_id')) {
+            $query->where('service_zone_seo.category_id', $request->category_id);
+        }
+        if ($request->filled('level')) {
+            $request->level === 'item'
+                ? $query->where('service_zone_seo.item_id', '>', 0)
+                : $query->where('service_zone_seo.item_id', 0);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('categories.name', 'like', "%{$search}%")
+                    ->orWhere('zones.name', 'like', "%{$search}%")
+                    ->orWhere('items.name', 'like', "%{$search}%");
+            });
+        }
+        return $query;
     }
 
     public function edit($id)

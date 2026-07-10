@@ -2698,9 +2698,14 @@ class FrontController extends Controller
                 $viewName = ($tplId == 19 || $tplId == 2) ? 'school-2' : 'school';
             }
 
-            $schoolView = view()->exists('front-views.store_webpage.' . $viewName)
-                ? 'front-views.store_webpage.' . $viewName
-                : 'front-views.store_webpage.school';
+            // Resolve the first view that actually exists: the specific school template, then the
+            // generic 'school' view, then 'template-1' as a last resort — so a not-yet-deployed
+            // school view degrades to a working store page instead of a 500.
+            $schoolView = collect([
+                'front-views.store_webpage.' . $viewName,
+                'front-views.store_webpage.school',
+                'front-views.store_webpage.template-1',
+            ])->first(fn($v) => view()->exists($v));
 
             return view($schoolView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module', 'city', 'slug'));
         }

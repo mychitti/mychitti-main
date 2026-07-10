@@ -80,10 +80,33 @@
                 </div>
             </form>
 
+            <div class="d-flex flex-wrap align-items-center mb-3" style="gap:8px;">
+                <button type="button" id="btnGenerateSelected" class="btn btn-sm btn--primary">
+                    <i class="tio-repeat-vertical"></i> Generate selected (<span id="selCount">0</span>)
+                </button>
+                <form action="{{ route('admin.seo-pages.generate-all') }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Queue generation for ALL ungenerated pages matching the current filter? This uses AI credits.');">
+                    @csrf
+                    @foreach (['search', 'category_id', 'zone_id', 'level', 'status'] as $f)
+                        <input type="hidden" name="{{ $f }}" value="{{ request($f) }}">
+                    @endforeach
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="tio-magic-wand"></i> Generate all (ungenerated)
+                    </button>
+                </form>
+                <span class="text-muted small">Bulk actions queue generation; pages publish as the SEO worker processes them.</span>
+            </div>
+
+            <form id="bulkGenerateForm" action="{{ route('admin.seo-pages.bulk-generate') }}" method="POST" class="d-none">
+                @csrf
+                <div id="bulkIds"></div>
+            </form>
+
             <div class="table-responsive">
                 <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
                     <thead class="thead-light">
                         <tr>
+                            <th style="width:30px;"><input type="checkbox" id="checkAll" title="Select all on this page"></th>
                             <th>Category / Item</th>
                             <th>City</th>
                             <th>Stores</th>
@@ -96,6 +119,7 @@
                     <tbody>
                         @forelse ($combos as $combo)
                             <tr>
+                                <td><input type="checkbox" class="seo-check" value="{{ $combo->id }}"></td>
                                 <td>
                                     {{ $combo->category_name }}
                                     @if ($combo->item_id)
@@ -139,7 +163,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="text-center text-muted py-4">No SEO combos yet — they're created automatically once a store offers a service in a city.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-4">No SEO combos yet — they're created automatically once a store offers a service in a city.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -149,4 +173,48 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        var boxes = function () { return Array.prototype.slice.call(document.querySelectorAll('.seo-check')); };
+        var updateCount = function () {
+            var n = boxes().filter(function (b) { return b.checked; }).length;
+            var el = document.getElementById('selCount');
+            if (el) el.textContent = n;
+        };
+
+        var checkAll = document.getElementById('checkAll');
+        if (checkAll) {
+            checkAll.addEventListener('change', function () {
+                boxes().forEach(function (b) { b.checked = checkAll.checked; });
+                updateCount();
+            });
+        }
+
+        document.addEventListener('change', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('seo-check')) {
+                updateCount();
+            }
+        });
+
+        var btn = document.getElementById('btnGenerateSelected');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                var ids = boxes().filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+                if (!ids.length) { alert('Select at least one page first.'); return; }
+                if (!confirm('Queue generation for ' + ids.length + ' selected page(s)? This uses AI credits.')) return;
+                var container = document.getElementById('bulkIds');
+                container.innerHTML = '';
+                ids.forEach(function (id) {
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'ids[]';
+                    inp.value = id;
+                    container.appendChild(inp);
+                });
+                document.getElementById('bulkGenerateForm').submit();
+            });
+        }
+    })();
+</script>
 @endsection
