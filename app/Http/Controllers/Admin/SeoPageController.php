@@ -22,7 +22,15 @@ class SeoPageController extends Controller
         $categories = DB::table('categories')->whereNull('added_by')->orderBy('name')->get(['id', 'name']);
         $zones = DB::table('zones')->orderBy('name')->get(['id', 'name']);
 
-        return view('admin-views.seo-page.index', compact('combos', 'counts', 'categories', 'zones'));
+        // How many pages "Generate all" would queue right now (ungenerated, matching the active filter)
+        // — surfaced in the confirmation dialog so the admin knows exactly what they're triggering.
+        $ungeneratedCount = $this->applyFilters($request)
+            ->where(function ($q) {
+                $q->whereNull('service_zone_seo.keywords')->orWhere('service_zone_seo.keywords', '');
+            })
+            ->count('service_zone_seo.id');
+
+        return view('admin-views.seo-page.index', compact('combos', 'counts', 'categories', 'zones', 'ungeneratedCount'));
     }
 
     public function generate($id)

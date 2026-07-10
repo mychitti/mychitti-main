@@ -82,16 +82,16 @@
 
             <div class="d-flex flex-wrap align-items-center mb-3" style="gap:8px;">
                 <button type="button" id="btnGenerateSelected" class="btn btn-sm btn--primary">
-                    <i class="tio-repeat-vertical"></i> Generate selected (<span id="selCount">0</span>)
+                    <i class="tio-repeat"></i> Generate selected (<span id="selCount">0</span>)
                 </button>
                 <form action="{{ route('admin.seo-pages.generate-all') }}" method="POST" class="d-inline"
-                      onsubmit="return confirm('Queue generation for ALL ungenerated pages matching the current filter? This uses AI credits.');">
+                      onsubmit="return confirm('Queue AI generation for {{ $ungeneratedCount }} ungenerated page(s) matching the current filter?\n\nThis uses AI credits and cannot be undone.');">
                     @csrf
                     @foreach (['search', 'category_id', 'zone_id', 'level', 'status'] as $f)
                         <input type="hidden" name="{{ $f }}" value="{{ request($f) }}">
                     @endforeach
-                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                        <i class="tio-magic-wand"></i> Generate all (ungenerated)
+                    <button type="submit" class="btn btn-sm btn-outline-primary" {{ $ungeneratedCount ? '' : 'disabled' }}>
+                        <i class="tio-magic-wand"></i> Generate all ({{ $ungeneratedCount }} ungenerated)
                     </button>
                 </form>
                 <span class="text-muted small">Bulk actions queue generation; pages publish as the SEO worker processes them.</span>
@@ -146,7 +146,7 @@
                                             @csrf
                                             <button type="submit" class="btn action-btn btn--primary btn-outline-primary"
                                                     title="{{ $combo->keywords ? 'Regenerate' : 'Generate' }}">
-                                                <i class="tio-repeat-vertical"></i>
+                                                <i class="tio-repeat"></i>
                                             </button>
                                         </form>
                                         <a href="{{ route('admin.seo-pages.edit', $combo->id) }}"

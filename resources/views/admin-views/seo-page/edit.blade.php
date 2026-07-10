@@ -114,7 +114,7 @@
                     <form action="{{ route('admin.seo-pages.generate', $combo->id) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-outline-primary btn-block">
-                            <i class="tio-repeat-vertical"></i> Regenerate with AI
+                            <i class="tio-repeat"></i> Regenerate with AI
                         </button>
                         <small class="form-text text-muted">Overwrites the fields on the left with a fresh AI generation.</small>
                     </form>
