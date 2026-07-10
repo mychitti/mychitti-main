@@ -36,7 +36,7 @@
 
 @section('content')
     <style>
-        .seo-lp { --lp-accent: #2563eb; --lp-accent-dark: #1e40af; --lp-ink: #0f172a; --lp-muted: #64748b; color: var(--lp-ink); }
+        .seo-lp { --lp-accent: var(--color-primary, #C8522A); --lp-accent-dark: var(--color-primary, #C8522A); --lp-ink: #0f172a; --lp-muted: #64748b; color: var(--lp-ink); }
         .seo-lp a { text-decoration: none; }
 
         .seo-hero { position: relative; background: linear-gradient(135deg, #0b2545 0%, #13315c 45%, #1e4d8c 100%); color: #fff; padding: 56px 0 120px; overflow: hidden; }
@@ -69,26 +69,42 @@
         .seo-section-sub { color: var(--lp-muted); font-size: 14px; margin-bottom: 20px; }
 
         .seo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
-        .seo-store { display: flex; flex-direction: column; background: #fff; border: 1px solid #e6eaf0; border-radius: 16px;
-            padding: 18px; box-shadow: 0 1px 2px rgba(15,23,42,.04); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; height: 100%; }
-        .seo-store:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(15,23,42,.12); border-color: #c7d6ec; }
-        .seo-store-head { display: flex; align-items: center; gap: 14px; }
-        .seo-avatar { width: 54px; height: 54px; border-radius: 13px; object-fit: cover; flex: 0 0 54px; }
-        .seo-avatar-ph { width: 54px; height: 54px; border-radius: 13px; flex: 0 0 54px; display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 20px; color: #fff; background: linear-gradient(135deg, var(--lp-accent), #0ea5e9); }
-        .seo-store-name { font-weight: 700; font-size: 16px; color: var(--lp-ink); line-height: 1.25; }
-        .seo-store-addr { font-size: 13px; color: var(--lp-muted); margin-top: 6px; line-height: 1.45;
+        .seo-store { position: relative; display: flex; flex-direction: column; background: #fff; border: 1px solid #e6eaf0; border-radius: 18px;
+            padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.05); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; height: 100%; overflow: hidden; }
+        .seo-store::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--lp-accent);
+            transform: scaleX(0); transform-origin: left; transition: transform .25s ease; }
+        .seo-store:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(15,23,42,.14); border-color: #c7d6ec; }
+        .seo-store:hover::before { transform: scaleX(1); }
+
+        .seo-store-head { display: flex; align-items: flex-start; gap: 14px; }
+        .seo-avatar, .seo-avatar-ph { width: 58px; height: 58px; border-radius: 14px; flex: 0 0 58px; box-shadow: 0 4px 10px rgba(15,23,42,.10); }
+        .seo-avatar { object-fit: cover; }
+        .seo-avatar-ph { display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #fff; background: var(--lp-accent); }
+        .seo-store-hi { min-width: 0; flex: 1; }
+        .seo-store-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 16.5px; color: var(--lp-ink); line-height: 1.25; }
+        .seo-store-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .seo-verified { flex: 0 0 auto; width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center;
+            background: var(--lp-accent); color: #fff; border-radius: 50%; font-size: 10px; line-height: 1; }
+
+        .seo-ratingrow { display: flex; align-items: center; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+        .seo-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 800; color: #fff; padding: 3px 9px; border-radius: 8px; }
+        .seo-pill.good { background: #16a34a; }
+        .seo-pill.ok { background: #f59e0b; }
+        .seo-pill.low { background: #ef4444; }
+        .seo-pill.new { background: #eef2f8; color: #64748b; font-weight: 700; }
+        .seo-reviews { font-size: 12.5px; color: var(--lp-muted); }
+
+        .seo-store-addr { font-size: 13px; color: var(--lp-muted); margin-top: 14px; line-height: 1.5;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-        .seo-rating { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--lp-muted); }
-        .seo-stars { --pct: calc(var(--r, 0) / 5 * 100%); position: relative; display: inline-block; font-size: 15px; line-height: 1; letter-spacing: 1px; font-family: Arial, sans-serif; }
-        .seo-stars::before { content: "★★★★★"; color: #dbe1ea; }
-        .seo-stars::after { content: "★★★★★"; color: #f59e0b; position: absolute; left: 0; top: 0; width: var(--pct); overflow: hidden; white-space: nowrap; }
-        .seo-rating b { color: var(--lp-ink); }
+        .seo-store-foot { margin-top: auto; padding-top: 16px; }
+        .seo-store-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; font-weight: 700; font-size: 14px; color: var(--lp-accent);
+            background: #f4f1ef; padding: 10px 14px; border-radius: 11px; transition: background .15s ease, color .15s ease, gap .15s ease; }
+        .seo-store:hover .seo-store-btn { background: var(--lp-accent); color: #fff; gap: 9px; }
 
-        .seo-store-foot { margin-top: auto; padding-top: 14px; }
-        .seo-store-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--lp-accent); }
-        .seo-store:hover .seo-store-link { gap: 10px; }
+        .seo-ribbon { position: absolute; top: 15px; right: -36px; transform: rotate(45deg); z-index: 2;
+            background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
+            padding: 4px 42px; box-shadow: 0 4px 10px rgba(0,0,0,.18); text-transform: uppercase; }
 
         .seo-empty { background: #fff; border: 1px dashed #cdd6e4; border-radius: 16px; padding: 40px; text-align: center; color: var(--lp-muted); }
 
@@ -121,7 +137,7 @@
     <div class="seo-lp">
         {{-- ============ HERO ============ --}}
         <section class="seo-hero">
-            <div class="container">
+            <div class="container mt-4">
                 <div class="seo-breadcrumb">
                     <a href="{{ url('/') }}">Home</a>
                     <span class="mx-1">/</span>
@@ -132,7 +148,7 @@
                     @endif
                 </div>
 
-                <h1>{{ $seo->h1 ?: ($subject . ' in ' . $zone->name) }}</h1>
+                <h1 class="text-white">{{ $seo->h1 ?: ($subject . ' in ' . $zone->name) }}</h1>
 
                 @if ($seo->intro_paragraph)
                     <p class="lead">{{ $seo->intro_paragraph }}</p>
@@ -188,26 +204,34 @@
                                 @php
                                     $rating = (float) ($store->average_rating ?? 0);
                                     $storeUrl = url($zone->slug . '/store/' . $store->slug);
+                                    $pillClass = $rating >= 4 ? 'good' : ($rating >= 3 ? 'ok' : 'low');
                                 @endphp
                                 <a href="{{ $storeUrl }}" class="seo-store">
+                                    @if ($loop->first && $store->rating_count && $rating >= 4.5)
+                                        <span class="seo-ribbon">Top rated</span>
+                                    @endif
+
                                     <div class="seo-store-head">
                                         @if ($store->logo)
                                             <img src="{{ asset('storage/app/public/store/' . $store->logo) }}"
                                                  alt="{{ $store->name }} — {{ $subject }} in {{ $zone->name }}"
-                                                 class="seo-avatar" loading="lazy" width="54" height="54">
+                                                 class="seo-avatar" loading="lazy" width="58" height="58">
                                         @else
                                             <span class="seo-avatar-ph">{{ strtoupper(mb_substr($store->name, 0, 1)) }}</span>
                                         @endif
-                                        <div>
-                                            <div class="seo-store-name">{{ $store->name }}</div>
-                                            @if ($store->rating_count)
-                                                <div class="seo-rating">
-                                                    <span class="seo-stars" style="--r: {{ $rating }};"></span>
-                                                    <span><b>{{ number_format($rating, 1) }}</b> ({{ $store->rating_count }})</span>
-                                                </div>
-                                            @else
-                                                <div class="seo-rating"><span class="seo-stars" style="--r: 0;"></span> <span>New</span></div>
-                                            @endif
+                                        <div class="seo-store-hi">
+                                            <div class="seo-store-name">
+                                                <span>{{ $store->name }}</span>
+                                                <i class="seo-verified" title="Verified provider">&check;</i>
+                                            </div>
+                                            <div class="seo-ratingrow">
+                                                @if ($store->rating_count)
+                                                    <span class="seo-pill {{ $pillClass }}">{{ number_format($rating, 1) }} ★</span>
+                                                    <span class="seo-reviews">{{ $store->rating_count }} {{ Str::plural('review', $store->rating_count) }}</span>
+                                                @else
+                                                    <span class="seo-pill new">New</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
 
@@ -216,7 +240,7 @@
                                     @endif
 
                                     <div class="seo-store-foot">
-                                        <span class="seo-store-link">View details &rarr;</span>
+                                        <span class="seo-store-btn">View details &rarr;</span>
                                     </div>
                                 </a>
                             @endforeach
