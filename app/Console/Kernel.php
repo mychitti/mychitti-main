@@ -195,6 +195,15 @@ class Kernel extends ConsoleKernel
             }
         })->everyMinute()->timezone($tz)->name('lead-note-reminders')->withoutOverlapping();
 
+        // SEO COMBOS (category x zone) reconciliation + queue keyword generation =========
+        // DISABLED for now — while AI credits/provider are still being sorted, run manually via
+        // `php artisan seo:sync-combos --generate` so generation never fires unattended and drains
+        // credits. Re-enable this block once the provider is funded and a `seo` queue worker is up.
+        // $schedule->command('seo:sync-combos --generate')->dailyAt('02:30')
+        //     ->timezone($tz)
+        //     ->name('seo-sync-combos')
+        //     ->withoutOverlapping();
+
         // PLATFORM FEE MONTHLY DEDUCTION =======================================
         $schedule->command('platform-fee:deduct')
             ->monthlyOn(1, '00:00')

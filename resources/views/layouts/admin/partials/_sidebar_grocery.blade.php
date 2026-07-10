@@ -666,7 +666,17 @@
                             </span>
                         </a>
                     </li>
-                   
+
+                   <li class="navbar-vertical-aside-has-menu {{ Request::is('seo-pages*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.seo-pages.index') }}" title="SEO Pages">
+                            <i class="tio-search nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                SEO Pages
+                            </span>
+                        </a>
+                    </li>
+
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('suspicious-activity*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('admin.suspicious.index') }}" title="Suspicious Activity">

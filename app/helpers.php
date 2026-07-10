@@ -5573,6 +5573,24 @@ if (!function_exists('_nearbyStoresMonthlyBillingWise')) {
         return $data['nearby_stores'];
     }
 }
+if (!function_exists('_zoneCitySlug')) {
+    /**
+     * The single canonical rule for turning a zone name into a URL city-slug: take the
+     * first comma-segment (zone names are "City, State, Country"), lowercase, hyphenate.
+     * Every part of the app that builds or resolves a {city} URL segment must go through
+     * this — store_details(), _storeCity(), the SEO landing pages, and category_listing()
+     * all share this one definition so a given zone always maps to the same URL.
+     */
+    function _zoneCitySlug(?string $zoneName): string
+    {
+        $zoneName = trim((string) $zoneName);
+        if ($zoneName === '') {
+            return 'tirupati';
+        }
+        return strtolower(str_replace(' ', '-', trim(explode(',', $zoneName)[0])));
+    }
+}
+
 if (!function_exists('_selectedCity')) {
     function _selectedCity()
     {
@@ -5591,8 +5609,7 @@ if (!function_exists('_storeCity')) {
     {
         static $zoneMap = null;
         if ($zoneMap === null) {
-            $zoneMap = DB::table('zones')->pluck('name', 'id')
-                ->map(fn($n) => \Illuminate\Support\Str::slug(trim(explode(',', $n)[0])))->all();
+            $zoneMap = DB::table('zones')->pluck('name', 'id')->map(fn($n) => _zoneCitySlug($n))->all();
         }
         $zid = is_object($store) ? ($store->zone_id ?? null) : null;
         return ($zid && isset($zoneMap[$zid])) ? $zoneMap[$zid] : 'tirupati';

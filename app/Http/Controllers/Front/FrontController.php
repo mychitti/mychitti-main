@@ -2491,7 +2491,7 @@ class FrontController extends Controller
         if ($check_module->zone_id) {
             $zone = DB::table('zones')->where('id', $check_module->zone_id)->value('name');
             if ($zone) {
-                $canonicalCity = strtolower(str_replace(' ', '-', trim(explode(',', $zone)[0])));
+                $canonicalCity = _zoneCitySlug($zone);
             }
         }
         // 301 any other city to the single canonical URL — kills duplicate / soft-404 pages.
@@ -2968,23 +2968,62 @@ class FrontController extends Controller
         return view($view, compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
     }
 
-    public function category_listing(Request $request, $slug)
+    public function category_listing(Request $request, $slug, $city = null)
     {
-        $zone_id = $this->zone_id;
-
         $cat = DB::table('categories')->where('slug', $slug)->whereNull('added_by')->first();
         if ($cat) {
             $module = $cat->module_id;
         }else{
             return back();
         }
-        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'category_wise',  $cat->id, 'web');
         $catDetails = Category::where('slug', $slug)
             ->where('module_id', $module)
             ->first();
         if (!$catDetails) {
             return redirect()->route('home');
         }
+
+        // Resolve zone(s) from the URL's {city} segment (not the session) so the page is
+        // crawlable/indexable per city. Same slug rule as _zoneCitySlug()/store_details().
+        // If the city doesn't resolve to a real zone (e.g. stale/mismatched slug), fall back
+        // to the session zone so existing internal links/navigation keep working.
+        $cityZoneIds = [];
+        if ($city) {
+            $cityZoneIds = DB::table('zones')
+                ->where(fn($q) => $q->where('slug', $city)->orWhere('slug', 'like', $city . '-%'))
+                ->pluck('id')->map(fn($id) => (int) $id)->all();
+        }
+        $usingSessionZone = empty($cityZoneIds);
+        $zone_ids = $usingSessionZone ? (json_decode($this->zone_id, true) ?: []) : $cityZoneIds;
+        // zone_id passed to BannerLogic must stay a JSON string (its existing contract).
+        $zone_id = $usingSessionZone ? $this->zone_id : json_encode($cityZoneIds);
+
+        // A richer, AI-generated landing page exists for this exact (category, city) combo —
+        // send crawlers/users there instead of rendering a duplicate of this general listing.
+        if ($module == 6 && !$usingSessionZone) {
+            $hasSeoPage = DB::table('service_zone_seo')
+                ->where('category_id', $catDetails->id)
+                ->whereIn('zone_id', $cityZoneIds)
+                ->where('status', 'published')
+                ->exists();
+            if ($hasSeoPage) {
+                return redirect()->to(url($city . '/services/' . $slug), 301);
+            }
+        }
+
+        $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'category_wise',  $cat->id, 'web');
+
+        // City name for the page's SEO signals (title/H1/meta). Only set when the city was
+        // resolved from the URL — so "AC Repair in Mumbai" vs "AC Repair in Patna" are distinct
+        // pages, not near-duplicate "AC Repair" titles competing with each other.
+        $seoCityName = null;
+        if ($city && !$usingSessionZone) {
+            // Self-referencing canonical — this exact city+category page is its own canonical URL.
+            view()->share('canonical', url('category/' . $slug . '/' . $city));
+            $zoneName = DB::table('zones')->whereIn('id', $cityZoneIds)->value('name');
+            $seoCityName = $zoneName ? trim(explode(',', $zoneName)[0]) : null;
+        }
+
         $catArr = [];
 
         if ($catDetails) {
@@ -2996,7 +3035,7 @@ class FrontController extends Controller
             $catArr = array_merge($catArr, $childIds);
         }
 
-        // all categories 
+        // all categories
         $data['all_categories'] = DB::table('categories')->where('status', 1)->whereNull('added_by')->where('module_id', $module)->where('position', 0)->orderBy('priority', 'desc')->get()->toArray();
 
         if ($module == 6) {
@@ -3008,19 +3047,19 @@ class FrontController extends Controller
                 ->join('categories', 'categories.id', 'items.category_id')
                 ->where('stores.status', 1)
                 ->whereNull('items.inventory_item_id')
-                ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->whereIn('stores.zone_id', $zone_ids)
                 ->where('items.category_id', $catDetails->id)->select('items.*',  'categories.slug as cat_slug')->distinct()->where('items.status', 1)->get();
         } else {
             $catProducts  = DB::table('items')
                 ->where('items.is_approved', 1)
                 ->join('stores', 'stores.id', 'items.store_id')
                 ->join('categories', 'categories.id', 'items.category_id')
-                ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->whereIn('stores.zone_id', $zone_ids)
                 ->where('stores.status', 1)
                 ->whereIn('items.category_id', $catArr)->select('items.*', 'categories.slug as cat_slug', 'stores.active as store_open', 'stores.delivery_time')->distinct()->where('items.status', 1)->get();
         }
 
-        return view('front-views.category_listing', compact('catDetails', 'catProducts', 'data', 'module'));
+        return view('front-views.category_listing', compact('catDetails', 'catProducts', 'data', 'module', 'seoCityName'));
     }
     public function mc_vendor_hub_tnc(Request $request)
     {

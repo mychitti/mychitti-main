@@ -744,6 +744,14 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('store/{id}', 'StoreMonetizationController@storeDetail')->name('store-detail');
         });
 
+        // SEO Pages (category x city landing page combos)
+        Route::group(['prefix' => 'seo-pages', 'as' => 'seo-pages.'], function () {
+            Route::get('/', 'SeoPageController@index')->name('index');
+            Route::post('{id}/generate', 'SeoPageController@generate')->name('generate');
+            Route::get('{id}/edit', 'SeoPageController@edit')->name('edit');
+            Route::put('{id}', 'SeoPageController@update')->name('update');
+        });
+
         // Webpage Template Management
         Route::group(['prefix' => 'webpage-templates', 'as' => 'webpage-templates.'], function () {
             Route::get('/', 'SettingsController@webpageTemplates')->name('index');

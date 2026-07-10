@@ -1,10 +1,19 @@
 @extends('front-views.layout')
 
-@section('title', $catDetails->name)
+@php
+    // City-aware SEO signals: when the page is resolved for a specific city (from the URL),
+    // make each city's title/description distinct — "AC Repair in Mumbai" vs "AC Repair in Patna"
+    // — instead of an identical "AC Repair" across every city URL.
+    $seoSubject = ($seoCityName ?? null) ? ($catDetails->name . ' in ' . $seoCityName) : $catDetails->name;
+@endphp
 
-@section('metatitle', $catDetails->name)
+@section('title', $seoSubject)
+
+@section('metatitle', $seoSubject)
 @section('meta_keywords', $catDetails->keywords)
-@section('meta_description', $catDetails->name)
+@section('meta_description', ($seoCityName ?? null)
+    ? ('Find and book ' . $catDetails->name . ' services in ' . $seoCityName . '. Compare local providers, ratings and prices.')
+    : $catDetails->name)
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -159,7 +168,7 @@
                             @endforeach
                         </div>
                         <div class="position-relative d-flex mb-3 top_elem">
-                            <h1 class="fs-3 ">{{ $catDetails->name }}</h1>
+                            <h1 class="fs-3 ">{{ $seoSubject }}</h1>
                             <div class="sec-searchbar">
                                 <div id="searchContainer" class="">
                                     <input type="text" id="prSearchInput" placeholder="Type to search..."

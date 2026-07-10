@@ -19,9 +19,10 @@ class SitemapController extends Controller
 
         $today = date('Y-m-d');
 
-        // Zone slug map: zone_id → url-safe city slug (lowercase)
-        $zones = DB::table('zones')->pluck('name', 'id')
-            ->map(fn($name) => strtolower(str_replace(' ', '-', $name)));
+        // Zone slug map: zone_id → url-safe city slug. Must use the SAME rule as
+        // store_details()/_storeCity() (_zoneCitySlug — first comma-segment of the zone name),
+        // otherwise these sitemap URLs don't match the real canonical URLs and just 301 away.
+        $zones = DB::table('zones')->pluck('name', 'id')->map(fn($name) => _zoneCitySlug($name));
 
         $stores = DB::table('stores')->where('status', 1)->get();
         $items  = DB::table('items')->where('status', 1)->get();
@@ -39,9 +40,55 @@ class SitemapController extends Controller
         $xml .= $this->urlTag($baseUrl . '/list-your-business', '2025-01-01', 'monthly', '0.6');
         $xml .= $this->urlTag($baseUrl . '/blog', $today, 'weekly', '0.7');
 
-        // Category pages — one entry per zone actually used
+        // Category pages — module 6 (services) is gated to real supply: only emit a URL for a
+        // (category, city) combo that actually has a store offering it there (via item_store),
+        // preferring the AI-generated /{city}/services/{category} page when published, else the
+        // general listing. This avoids submitting thousands of empty "category in city" pages.
+        $serviceCategories = $categories->where('module_id', 6)->keyBy('id');
+        if ($serviceCategories->isNotEmpty()) {
+            $serviceCombos = DB::table('item_store as ist')
+                ->join('items as i', 'i.id', '=', 'ist.item_id')
+                ->join('stores as s', 's.id', '=', 'ist.store_id')
+                ->where('s.status', 1)->where('i.status', 1)
+                ->whereIn('i.category_id', $serviceCategories->keys()->all())
+                ->groupBy('i.category_id', 's.zone_id')
+                ->select('i.category_id', 's.zone_id')
+                ->get();
+
+            // Category-level (item_id = 0) published pages only — item-level rows are handled below.
+            $publishedCategorySeo = DB::table('service_zone_seo')
+                ->where('status', 'published')->where('item_id', 0)
+                ->get(['category_id', 'zone_id', 'slug'])
+                ->keyBy(fn($r) => $r->category_id . ':' . $r->zone_id);
+
+            foreach ($serviceCombos as $combo) {
+                $citySlug = $zones[$combo->zone_id] ?? null;
+                $cat = $serviceCategories[$combo->category_id] ?? null;
+                if (!$citySlug || !$cat) continue;
+
+                $lastmod = $cat->updated_at ?? $today;
+                $seoKey  = $combo->category_id . ':' . $combo->zone_id;
+
+                if (isset($publishedCategorySeo[$seoKey])) {
+                    $xml .= $this->urlTag($baseUrl . '/' . $publishedCategorySeo[$seoKey]->slug, $lastmod, 'weekly', '0.9');
+                } else {
+                    $xml .= $this->urlTag($baseUrl . '/category/' . $cat->slug . '/' . $citySlug, $lastmod, 'weekly', '0.7');
+                }
+            }
+
+            // Item-level published pages — specific high-supply services with their own page.
+            $publishedItemSeo = DB::table('service_zone_seo')
+                ->where('status', 'published')->where('item_id', '>', 0)
+                ->get(['slug', 'updated_at']);
+            foreach ($publishedItemSeo as $row) {
+                $xml .= $this->urlTag($baseUrl . '/' . $row->slug, $row->updated_at ?? $today, 'weekly', '0.85');
+            }
+        }
+
+        // Other modules — items belong to exactly one store (no cross-vendor pivot), so a
+        // category page per zone-with-any-store is the existing, simpler mechanism.
         $usedZoneIds = $stores->pluck('zone_id')->unique()->filter();
-        foreach ($categories as $cat) {
+        foreach ($categories->where('module_id', '!=', 6) as $cat) {
             $lastmod = $cat->updated_at ?? $today;
             foreach ($usedZoneIds as $zid) {
                 $citySlug = $zones[$zid] ?? null;
