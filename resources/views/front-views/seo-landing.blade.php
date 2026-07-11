@@ -53,10 +53,22 @@
             $crumbs[] = ['@type' => 'ListItem', 'position' => 3, 'name' => $item->name, 'item' => $canonical];
         }
 
+        // Speakable (voice search / GEO): the H1, intro paragraph and FAQ answers are the
+        // read-aloud-worthy content on this page.
+        $webPageNode = [
+            '@type' => 'WebPage',
+            'url' => $canonical,
+            'speakable' => [
+                '@type' => 'SpeakableSpecification',
+                'cssSelector' => ['.seo-hero h1', '.seo-hero .lead', '.seo-faq-a'],
+            ],
+        ];
+
         $graph = [
             '@context' => 'https://schema.org',
             '@graph' => array_values(array_filter([
                 $serviceNode,
+                $webPageNode,
                 ['@type' => 'BreadcrumbList', 'itemListElement' => $crumbs],
                 $faqJson->isNotEmpty() ? ['@type' => 'FAQPage', 'mainEntity' => $faqJson] : null,
             ])),

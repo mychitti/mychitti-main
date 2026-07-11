@@ -10,6 +10,23 @@
             $lbCity = $lbZoneName ? trim(explode(',', $lbZoneName)[0]) : null;
         }
 
+        $lbOgTitle = $lb->name . ($lbCity ? ' in ' . $lbCity : '') . ' | My Chitti';
+        $lbOgDesc = $lb->name . ($lbCity ? ' — verified local business in ' . $lbCity : '')
+            . '. View services, ratings and contact details on My Chitti.';
+        $lbOgImage = !empty($lb->logo)
+            ? asset('storage/app/public/store/' . $lb->logo)
+            : asset('storage/app/public/business/' . (\App\Models\BusinessSetting::where('key', 'logo')->value('value')));
+    @endphp
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="My Chitti" />
+    <meta property="og:title" content="{{ $lbOgTitle }}" />
+    <meta property="og:description" content="{{ $lbOgDesc }}" />
+    <meta property="og:url" content="{{ $canonical ?? url()->current() }}" />
+    <meta property="og:image" content="{{ $lbOgImage }}" />
+
+    @php
+
         $lbSchema = array_filter([
             '@context'   => 'https://schema.org',
             '@type'      => 'LocalBusiness',
