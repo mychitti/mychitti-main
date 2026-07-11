@@ -802,6 +802,55 @@ class FrontController extends Controller
         return response()->json(['status' => true, 'html' => $html]);
     }
 
+    // Server-rendered search results page — the target of the homepage SearchAction (sitelinks
+    // searchbox). Deliberately noindex,follow (crawl-budget rule: search result pages are not
+    // indexed) while still returning real results so the searchbox action resolves.
+    public function searchResults(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+        $city    = _selectedCity();
+        $zoneIds = json_decode($this->zone_id, true) ?: [];
+
+        // Search pages must not be indexed; canonical points to itself sans query.
+        view()->share('metaRobots', 'noindex, follow');
+
+        $items = collect();
+        $stores = collect();
+        $categories = collect();
+
+        if (strlen($keyword) >= 2 && !empty($zoneIds)) {
+            $like = '%' . $keyword . '%';
+
+            $items = DB::table('items')
+                ->join('categories', 'categories.id', '=', 'items.category_id')
+                ->where('items.is_approved', 1)->where('items.status', 1)->where('items.module_id', 6)
+                ->where('items.name', 'like', $like)
+                ->whereExists(function ($q) use ($zoneIds) {
+                    $q->select(DB::raw(1))->from('item_store as ist')
+                        ->join('stores as s', 's.id', '=', 'ist.store_id')
+                        ->whereColumn('ist.item_id', 'items.id')
+                        ->whereIn('s.zone_id', $zoneIds)
+                        ->where('s.status', 1);
+                })
+                ->select('items.name', 'items.slug', 'items.image', 'categories.name as cat_name')
+                ->distinct()->limit(24)->get();
+
+            $stores = DB::table('stores')
+                ->where('module_id', 6)->where('status', 1)->where('active', 1)
+                ->whereIn('zone_id', $zoneIds)
+                ->where('name', 'like', $like)
+                ->select('name', 'slug', 'logo', 'address', 'average_rating', 'rating_count')
+                ->limit(12)->get();
+
+            $categories = DB::table('categories')
+                ->where('module_id', 6)->where('status', 1)->where('position', 0)->whereNull('added_by')
+                ->where('name', 'like', $like)
+                ->select('name', 'slug')->limit(12)->get();
+        }
+
+        return view('front-views.search_results', compact('keyword', 'city', 'items', 'stores', 'categories'));
+    }
+
     public function search_old(Request $request)
     {
         $zone_id = json_decode($this->zone_id, true);

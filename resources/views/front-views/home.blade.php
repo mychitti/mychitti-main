@@ -22,16 +22,23 @@
     <meta property="og:url" content="{{ url('/') }}" />
     <meta property="og:image" content="{{ $homeOgImage }}" />
 
-    {{-- WebSite schema (homepage only) — helps Google resolve the site name for sitelinks.
-         SearchAction (sitelinks searchbox) is intentionally omitted: it needs a server-rendered
-         /search?q= results page, but MyChitti search is AJAX-only. Add once that page exists. --}}
+    {{-- WebSite schema (homepage only) — site name for sitelinks + sitelinks searchbox
+         (SearchAction) pointing at the server-rendered /search?q= results page. --}}
     <script type="application/ld+json">
-    {!! json_encode([ 
+    {!! json_encode([
         '@context'      => 'https://schema.org',
         '@type'         => 'WebSite',
         'name'          => 'My Chitti',
         'alternateName' => 'MyChitti',
         'url'           => url('/'),
+        'potentialAction' => [
+            '@type'       => 'SearchAction',
+            'target'      => [
+                '@type'       => 'EntryPoint',
+                'urlTemplate' => url('/search') . '?q={search_term_string}',
+            ],
+            'query-input' => 'required name=search_term_string',
+        ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 @endpush
