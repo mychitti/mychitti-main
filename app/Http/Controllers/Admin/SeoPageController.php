@@ -8,6 +8,7 @@ use App\Models\ServiceZoneSeo;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SeoPageController extends Controller
 {
@@ -31,6 +32,51 @@ class SeoPageController extends Controller
             ->count('service_zone_seo.id');
 
         return view('admin-views.seo-page.index', compact('combos', 'counts', 'categories', 'zones', 'ungeneratedCount'));
+    }
+
+    // Live SEO overview — programmatic-landing coverage + trust-layer health, from the DB.
+    public function overview()
+    {
+        $totals = [
+            'total'       => ServiceZoneSeo::count(),
+            'published'   => ServiceZoneSeo::where('status', 'published')->count(),
+            'draft'       => ServiceZoneSeo::where('status', 'draft')->count(),
+            'unpublished' => ServiceZoneSeo::where('status', 'unpublished')->count(),
+            'ungenerated' => ServiceZoneSeo::where(fn($q) => $q->whereNull('keywords')->orWhere('keywords', ''))->count(),
+        ];
+
+        // status x level (category vs item) matrix
+        $matrix = ['category' => [], 'item' => []];
+        ServiceZoneSeo::selectRaw("status, CASE WHEN item_id = 0 THEN 'category' ELSE 'item' END as lvl, COUNT(*) as c")
+            ->groupBy('status', 'lvl')->get()
+            ->each(function ($r) use (&$matrix) {
+                $matrix[$r->lvl][$r->status] = $r->c;
+            });
+
+        $topCities = DB::table('service_zone_seo')
+            ->join('zones', 'zones.id', '=', 'service_zone_seo.zone_id')
+            ->where('service_zone_seo.status', 'published')
+            ->groupBy('zones.id', 'zones.name')
+            ->selectRaw('zones.name, COUNT(*) as c')
+            ->orderByDesc('c')->limit(15)->get();
+
+        $categoriesCovered = DB::table('service_zone_seo')->where('status', 'published')->distinct()->count('category_id');
+        $citiesCovered     = DB::table('service_zone_seo')->where('status', 'published')->distinct()->count('zone_id');
+
+        // Trust layer — only if the column has been created by vendor:sync-trust-score.
+        $trust = null;
+        if (Schema::hasColumn('stores', 'vendor_trust_score')) {
+            $base = fn() => DB::table('stores')->where('status', 1);
+            $trust = [
+                'avg'   => round((float) $base()->avg('vendor_trust_score'), 1),
+                'high'  => $base()->where('vendor_trust_score', '>=', 71)->count(),
+                'mid'   => $base()->whereBetween('vendor_trust_score', [41, 70])->count(),
+                'low'   => $base()->whereBetween('vendor_trust_score', [1, 40])->count(),
+                'zero'  => $base()->where('vendor_trust_score', 0)->count(),
+            ];
+        }
+
+        return view('admin-views.seo-page.overview', compact('totals', 'matrix', 'topCities', 'categoriesCovered', 'citiesCovered', 'trust'));
     }
 
     public function generate($id)

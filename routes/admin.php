@@ -747,6 +747,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
         // SEO Pages (category x city landing page combos)
         Route::group(['prefix' => 'seo-pages', 'as' => 'seo-pages.'], function () {
             Route::get('/', 'SeoPageController@index')->name('index');
+            Route::get('overview', 'SeoPageController@overview')->name('overview');
             Route::post('bulk-generate', 'SeoPageController@bulkGenerate')->name('bulk-generate');
             Route::post('generate-all', 'SeoPageController@generateAll')->name('generate-all');
             Route::post('{id}/generate', 'SeoPageController@generate')->name('generate');
