@@ -403,6 +403,7 @@ class InventoryController extends Controller
         $filter  = $request->filter ?? '';
         $search  = $request->search ?? '';
         $type  = $request->type ?? '';
+        $missing = $request->missing ?? '';
 
         $categories = Category::where(['position' => 0])
             ->module(6)
@@ -428,6 +429,9 @@ class InventoryController extends Controller
             ->when($filter, function ($query) {
                 $query->where('stock', '<', 5);
             })
+            ->when($missing, function ($query) use ($missing) {
+                $this->applyMissingFieldFilter($query, $missing);
+            })
             ->orderBy('id', 'desc')
             ->paginate(50);
 
@@ -449,7 +453,53 @@ class InventoryController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(50);
 
-        return view('admin-views.inventory.inventory_management', compact('tab', 'preset', 'categories', 'entries', 'storage_units', 'inventory_items', 'items', 'variations'));
+        return view('admin-views.inventory.inventory_management', compact('tab', 'preset', 'categories', 'entries', 'storage_units', 'inventory_items', 'items', 'variations', 'missing'));
+    }
+
+    // Filter items that are missing a given field (blank / null / non-positive price).
+    // "any" matches items missing at least one of the tracked fields.
+    private function applyMissingFieldFilter($query, string $missing): void
+    {
+        $blank = function ($q, $col) {
+            $q->whereNull($col)->orWhere($col, '');
+        };
+        $blankPrice = function ($q, $col) {
+            $q->whereNull($col)->orWhere($col, '')->orWhere($col, '<=', 0);
+        };
+        $blankId = function ($q, $col) {
+            $q->whereNull($col)->orWhere($col, 0);
+        };
+
+        switch ($missing) {
+            case 'selling_price':
+                $query->where(fn ($q) => $blankPrice($q, 'selling_price'));
+                break;
+            case 'mrp':
+                $query->where(fn ($q) => $blankPrice($q, 'mrp'));
+                break;
+            case 'unit':
+                $query->where(fn ($q) => $blankId($q, 'unit'));
+                break;
+            case 'hsn':
+                $query->where(fn ($q) => $blank($q, 'hsn'));
+                break;
+            case 'sku_id':
+                $query->where(fn ($q) => $blank($q, 'sku_id'));
+                break;
+            case 'category':
+                $query->where(fn ($q) => $blankId($q, 'category_id'));
+                break;
+            case 'any':
+                $query->where(function ($q) use ($blank, $blankPrice, $blankId) {
+                    $q->where(fn ($s) => $blankPrice($s, 'selling_price'))
+                        ->orWhere(fn ($s) => $blankPrice($s, 'mrp'))
+                        ->orWhere(fn ($s) => $blankId($s, 'unit'))
+                        ->orWhere(fn ($s) => $blank($s, 'hsn'))
+                        ->orWhere(fn ($s) => $blank($s, 'sku_id'))
+                        ->orWhere(fn ($s) => $blankId($s, 'category_id'));
+                });
+                break;
+        }
     }
 
     public function get_item_info(Request $request)

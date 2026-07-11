@@ -171,6 +171,23 @@
                                                     </div>
                                                     <!-- End Search -->
                                                 </form>
+                                                <form action="" class="h-100">
+                                                    <input type="hidden" name="tab" value="items">
+                                                    <input type="hidden" name="search" value="{{ request('search') }}">
+                                                    <select name="missing" class="form-control"
+                                                        style="height: 100%; min-width: 190px;"
+                                                        title="{{ translate('messages.Show items missing a field') }}"
+                                                        onchange="this.form.submit()">
+                                                        <option value="">{{ translate('messages.Missing field') }}…</option>
+                                                        <option value="any" {{ request('missing') == 'any' ? 'selected' : '' }}>{{ translate('messages.Any missing field') }}</option>
+                                                        <option value="selling_price" {{ request('missing') == 'selling_price' ? 'selected' : '' }}>{{ translate('messages.No Selling Price') }}</option>
+                                                        <option value="mrp" {{ request('missing') == 'mrp' ? 'selected' : '' }}>{{ translate('messages.No MRP') }}</option>
+                                                        <option value="unit" {{ request('missing') == 'unit' ? 'selected' : '' }}>{{ translate('messages.No Unit') }}</option>
+                                                        <option value="hsn" {{ request('missing') == 'hsn' ? 'selected' : '' }}>{{ translate('messages.No HSN Code') }}</option>
+                                                        <option value="sku_id" {{ request('missing') == 'sku_id' ? 'selected' : '' }}>{{ translate('messages.No SKU ID') }}</option>
+                                                        <option value="category" {{ request('missing') == 'category' ? 'selected' : '' }}>{{ translate('messages.No Category') }}</option>
+                                                    </select>
+                                                </form>
                                                 @if (hasPermission('inventory_item', 'export'))
                                                     <a href="{{ route('admin.inventory.item.export') }}"
                                                         class="btn btn-outline-primary btn_sm">Export Items</a>
