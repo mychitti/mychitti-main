@@ -28,6 +28,17 @@
     <meta property="og:description" content="{{ $seoDesc }}" />
     <meta property="og:url" content="{{ $canonical ?? url()->current() }}" />
     <meta property="og:image" content="{{ $catOgImage }}" />
+
+    <script type="application/ld+json">
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $seoSubject, 'item' => $canonical ?? url()->current()],
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
 @endpush
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
