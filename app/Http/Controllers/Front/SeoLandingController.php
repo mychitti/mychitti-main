@@ -52,13 +52,52 @@ class SeoLandingController extends Controller
                     ->where('i.status', 1)
                     ->when($item, fn($q2) => $q2->where('i.id', $item->id));
             })
-            ->select('id', 'name', 'address', 'logo', 'slug', 'rating_count', 'average_rating')
+            ->select('id', 'name', 'address', 'logo', 'slug', 'rating_count', 'average_rating', 'gst', 'total_order')
             ->orderByDesc('average_rating')
             ->limit(60)
             ->get();
 
         $canonical = url($zone->slug . '/services/' . $category->slug . ($item ? '/' . $item->slug : ''));
 
-        return view('front-views.seo-landing', compact('seo', 'zone', 'category', 'item', 'stores', 'canonical'));
+        // On a category landing, link its published item-level sub-service landings (AC Repair, …)
+        // — the proper SEO silo: category page → the specific services it contains.
+        $subServices = collect();
+        if (!$item) {
+            $subServices = ServiceZoneSeo::where('service_zone_seo.zone_id', $zone->id)
+                ->where('service_zone_seo.category_id', $category->id)
+                ->where('service_zone_seo.item_id', '>', 0)
+                ->where('service_zone_seo.status', 'published')
+                ->join('items', 'items.id', '=', 'service_zone_seo.item_id')
+                ->orderByDesc('service_zone_seo.store_count')
+                ->limit(30)
+                ->get(['items.name as name', 'service_zone_seo.slug as slug']);
+        }
+
+        // Same service in nearby cities — the "Category → City" internal-link pattern. Links this
+        // exact category (or item) to its published landings in OTHER cities, spreading link equity
+        // across the multi-city page set. Each city name is reduced to its first comma-segment.
+        $otherCities = ServiceZoneSeo::join('zones', 'zones.id', '=', 'service_zone_seo.zone_id')
+            ->where('service_zone_seo.category_id', $category->id)
+            ->where('service_zone_seo.item_id', $item->id ?? 0)
+            ->where('service_zone_seo.status', 'published')
+            ->where('service_zone_seo.zone_id', '!=', $zone->id)
+            ->orderByDesc('service_zone_seo.store_count')
+            ->limit(20)
+            ->get(['zones.name as zone_name', 'service_zone_seo.slug as slug'])
+            ->map(function ($r) {
+                $r->city = trim(explode(',', $r->zone_name)[0]);
+                return $r;
+            });
+
+        // AggregateRating over this city's providers — feeds Schema.org aggregateRating (only
+        // meaningful when at least one provider actually has reviews).
+        $rated = $stores->where('rating_count', '>', 0);
+        $ratingValue = $rated->count() ? round((float) $rated->avg('average_rating'), 1) : null;
+        $reviewCount = (int) $rated->sum('rating_count');
+
+        return view('front-views.seo-landing', compact(
+            'seo', 'zone', 'category', 'item', 'stores', 'canonical',
+            'subServices', 'otherCities', 'ratingValue', 'reviewCount'
+        ));
     }
 }

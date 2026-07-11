@@ -2519,6 +2519,9 @@ class FrontController extends Controller
             // no specialised business type) out of the index so they aren't flagged soft-404.
             view()->share('metaRobots',
                 ($store->items_count == 0 && $store->campaigns_count == 0 && empty($store->business_type)) ? 'noindex, follow' : null);
+ 
+            // LocalBusiness JSON-LD (P0) — emitted in the layout head for every store template.
+            view()->share('localBusinessStore', $store);
 
             // Increment store visit analytics
             $ip = $request->ip();
@@ -3003,16 +3006,26 @@ class FrontController extends Controller
         // zone_id passed to BannerLogic must stay a JSON string (its existing contract).
         $zone_id = $usingSessionZone ? $this->zone_id : json_encode($cityZoneIds);
 
-        // A richer, AI-generated landing page exists for this exact (category, city) combo —
-        // send crawlers/users there instead of rendering a duplicate of this general listing.
-        if ($module == 6 && !$usingSessionZone) {
-            $hasSeoPage = DB::table('service_zone_seo')
+        // Crawl budget: filter/sort/query-param variants are near-duplicates of the clean listing
+        // URL — noindex them (still follow) so Google spends crawl budget on the canonical page.
+        if (request()->getQueryString()) {
+            view()->share('metaRobots', 'noindex, follow');
+        }
+
+        // A richer, AI-generated SEO landing may exist for this category in the current city.
+        // We keep rendering the listing (no redirect) and instead surface a prominent link to
+        // the landing, so users get both the browsable listing and the guide.
+        $seoLandingUrl = null;
+        if ($module == 6 && !empty($zone_ids)) {
+            $seoLanding = DB::table('service_zone_seo')
                 ->where('category_id', $catDetails->id)
-                ->whereIn('zone_id', $cityZoneIds)
+                ->whereIn('zone_id', $zone_ids)
+                ->where('item_id', 0)
                 ->where('status', 'published')
-                ->exists();
-            if ($hasSeoPage) {
-                return redirect()->to(url($city . '/services/' . $slug), 301);
+                ->orderByDesc('store_count')
+                ->value('slug');
+            if ($seoLanding) {
+                $seoLandingUrl = url($seoLanding);
             }
         }
 
@@ -3064,7 +3077,45 @@ class FrontController extends Controller
                 ->whereIn('items.category_id', $catArr)->select('items.*', 'categories.slug as cat_slug', 'stores.active as store_open', 'stores.delivery_time')->distinct()->where('items.status', 1)->get();
         }
 
-        return view('front-views.category_listing', compact('catDetails', 'catProducts', 'data', 'module', 'seoCityName'));
+        // Internal links into the item-level SEO landing pages for this category+city. The exact
+        // category-level combo already 301-redirects above (when a city is in the URL), so the
+        // untapped links are the item-level landings (e.g. "Split AC Repair") — surface the
+        // best-supply ones so crawlers/users can reach them from the general listing.
+        $seoLinks = collect(); 
+        if ($module == 6 && !empty($zone_ids)) {
+            $seoLinks = DB::table('service_zone_seo')
+                ->join('items', 'items.id', '=', 'service_zone_seo.item_id')
+                ->where('service_zone_seo.category_id', $catDetails->id)
+                ->whereIn('service_zone_seo.zone_id', $zone_ids)
+                ->where('service_zone_seo.item_id', '>', 0)
+                ->where('service_zone_seo.status', 'published')
+                ->orderByDesc('service_zone_seo.store_count')
+                ->select('items.name as title', 'service_zone_seo.slug')
+                ->get()
+                ->unique('title')
+                ->take(12)
+                ->values();
+        }
+
+        // Same category in other cities — cross-city internal linking (doc: Category→City pattern).
+        $otherCityLinks = collect();
+        if ($module == 6) {
+            $otherCityLinks = DB::table('service_zone_seo')
+                ->join('zones', 'zones.id', '=', 'service_zone_seo.zone_id')
+                ->where('service_zone_seo.category_id', $catDetails->id)
+                ->where('service_zone_seo.item_id', 0)
+                ->where('service_zone_seo.status', 'published')
+                ->when(!empty($zone_ids), fn($q) => $q->whereNotIn('service_zone_seo.zone_id', $zone_ids))
+                ->orderByDesc('service_zone_seo.store_count')
+                ->limit(12)
+                ->get(['zones.name as zone_name', 'service_zone_seo.slug as slug'])
+                ->map(function ($r) {
+                    $r->city = trim(explode(',', $r->zone_name)[0]);
+                    return $r;
+                });
+        }
+
+        return view('front-views.category_listing', compact('catDetails', 'catProducts', 'data', 'module', 'seoCityName', 'seoLinks', 'seoLandingUrl', 'otherCityLinks'));
     }
     public function mc_vendor_hub_tnc(Request $request)
     {

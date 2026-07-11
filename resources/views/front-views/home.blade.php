@@ -6,7 +6,36 @@
     \App\CentralLogics\Helpers::get_settings('meta_description') : '')
 @section('meta_keywords', \App\CentralLogics\Helpers::get_settings('meta_keywords') != 'null' ?
     \App\CentralLogics\Helpers::get_settings('meta_keywords') : '')
- 
+
+@push('meta_tags')
+    @php
+        $homeOgTitle = \App\CentralLogics\Helpers::get_settings('meta_title') != 'null'
+            ? \App\CentralLogics\Helpers::get_settings('meta_title') : 'My Chitti';
+        $homeOgDesc = \App\CentralLogics\Helpers::get_settings('meta_description') != 'null'
+            ? \App\CentralLogics\Helpers::get_settings('meta_description') : '';
+        $homeOgImage = asset('storage/app/public/business/' . (\App\Models\BusinessSetting::where('key', 'logo')->value('value')));
+    @endphp
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="My Chitti" />
+    <meta property="og:title" content="{{ $homeOgTitle }}" />
+    <meta property="og:description" content="{{ $homeOgDesc }}" />
+    <meta property="og:url" content="{{ url('/') }}" />
+    <meta property="og:image" content="{{ $homeOgImage }}" />
+
+    {{-- WebSite schema (homepage only) — helps Google resolve the site name for sitelinks.
+         SearchAction (sitelinks searchbox) is intentionally omitted: it needs a server-rendered
+         /search?q= results page, but MyChitti search is AJAX-only. Add once that page exists. --}}
+    <script type="application/ld+json">
+    {!! json_encode([ 
+        '@context'      => 'https://schema.org',
+        '@type'         => 'WebSite',
+        'name'          => 'My Chitti',
+        'alternateName' => 'MyChitti',
+        'url'           => url('/'),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
+@endpush
+
     @push('css_or_js') 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -380,7 +409,9 @@
                         @endforeach
                     </div>
                 </div>
-            @endif
+            @endif 
+
+            @include('front-views.partials._popular_services_seo', ['context' => 'home', 'limit' => 8])
 
             {{-- TOP SELLING ITEMS  --}}
             <div class="  m-2 mt-3 ">

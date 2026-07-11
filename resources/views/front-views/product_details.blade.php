@@ -1211,6 +1211,10 @@
             </table>
         </div>
     </div>
+
+    <div class="container my-4">
+        @include('front-views.partials._popular_services_seo', ['context' => 'home', 'limit' => 8])
+    </div>
 @endsection
 
 @push('script_2')
