@@ -213,32 +213,6 @@
                                 <span style="color:#C8522A; font-weight:700; white-space:nowrap;">View guide &rarr;</span>
                             </a>
                         @endif
-                        @if (isset($seoLinks) && $seoLinks->isNotEmpty())
-                            <div class="mb-4">
-                                <p class="mb-2 fw-bold text_dark">Popular {{ $catDetails->name }} services{{ ($seoCityName ?? null) ? ' in ' . $seoCityName : '' }}</p>
-                                 <div class="d-flex flex-wrap" style="gap:10px;">
-                                    @foreach ($seoLinks as $link)
-                                        <a href="{{ url($link->slug) }}"
-                                           style="display:inline-block; padding:8px 16px; background:#f4f1ef; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
-                                            {{ $link->title }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                        @if (isset($otherCityLinks) && $otherCityLinks->isNotEmpty())
-                            <div class="mb-4">
-                                <p class="mb-2 fw-bold text_dark">{{ $catDetails->name }} in other cities</p>
-                                <div class="d-flex flex-wrap" style="gap:10px;">
-                                    @foreach ($otherCityLinks as $ocl)
-                                        <a href="{{ url($ocl->slug) }}"
-                                           style="display:inline-block; padding:8px 16px; background:#ffffff; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
-                                            {{ $catDetails->name }} in {{ $ocl->city }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
                         <div class=" justify-content-center grid-container">
 
                             @foreach ($catProducts as $pro)
@@ -360,6 +334,33 @@
                                 src="{{ asset('public/assets/front/img/sorry-item-not-found-3328225-2809510.webp') }}"
                                 alt="no-results">
                             <h4 style="text-align: center;">Oops! No products found</h4>
+                        @endif
+
+                        @if (isset($seoLinks) && $seoLinks->isNotEmpty())
+                            <div class="mb-4 mt-5">
+                                <p class="mb-2 fw-bold text_dark">Popular {{ $catDetails->name }} services{{ ($seoCityName ?? null) ? ' in ' . $seoCityName : '' }}</p>
+                                <div class="d-flex flex-wrap" style="gap:10px;">
+                                    @foreach ($seoLinks as $link)
+                                        <a href="{{ url($link->slug) }}"
+                                           style="display:inline-block; padding:8px 16px; background:#f4f1ef; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
+                                            {{ $link->title }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        @if (isset($otherCityLinks) && $otherCityLinks->isNotEmpty())
+                            <div class="mb-4">
+                                <p class="mb-2 fw-bold text_dark">{{ $catDetails->name }} in other cities</p>
+                                <div class="d-flex flex-wrap" style="gap:10px;">
+                                    @foreach ($otherCityLinks as $ocl)
+                                        <a href="{{ url($ocl->slug) }}"
+                                           style="display:inline-block; padding:8px 16px; background:#ffffff; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
+                                            {{ $catDetails->name }} in {{ $ocl->city }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
                         @endif
 
                     </div>
