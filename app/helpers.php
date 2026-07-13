@@ -5616,6 +5616,74 @@ if (!function_exists('_storeCity')) {
     }
 }
 
+if (!function_exists('_topServicesInCity')) {
+    /**
+     * Published category-level SEO landing pages for the visitor's active city (session zone_ids),
+     * best-supply-first. Powers the "Popular services in {city}" internal-link blocks on the
+     * homepage and footer — sitewide links into the programmatic SEO landings. Returns
+     * ['city' => 'Mumbai'|null, 'services' => Collection<{title, slug, store_count}>].
+     */
+    function _topServicesInCity(int $limit = 6): array
+    { 
+        $zoneIds = json_decode(session('zone_ids', '[]'), true);
+        if (!is_array($zoneIds) || empty($zoneIds)) {
+            return ['city' => null, 'services' => collect()];
+        }
+
+        $firstZone = DB::table('zones')->whereIn('id', $zoneIds)->orderBy('id')->value('name');
+        $cityName  = $firstZone ? trim(explode(',', $firstZone)[0]) : null;
+
+        // Category-level combos only (item_id = 0). Dedupe by category so multiple zones mapping
+        // to the same city don't repeat a service; keep the highest store_count instance.
+        $services = DB::table('service_zone_seo')
+            ->join('categories', 'categories.id', '=', 'service_zone_seo.category_id')
+            ->whereIn('service_zone_seo.zone_id', $zoneIds)
+            ->where('service_zone_seo.item_id', 0)
+            ->where('service_zone_seo.status', 'published')
+            ->orderByDesc('service_zone_seo.store_count')
+            ->select('categories.name as title', 'service_zone_seo.slug', 'service_zone_seo.store_count')
+            ->get()
+            ->unique('title')
+            ->take($limit)
+            ->values();
+
+        return ['city' => $cityName, 'services' => $services];
+    }
+}
+
+if (!function_exists('_topItemServicesInCity')) {
+    /**
+     * Published ITEM-level SEO landing pages for the visitor's active city (session zone_ids),
+     * best-supply-first. Companion to [[_topServicesInCity]] — that returns whole categories
+     * (item_id = 0), this returns specific services (item_id > 0, e.g. "AC Repair").
+     * Returns ['city' => 'Tirupati'|null, 'services' => Collection<{title, slug, store_count}>].
+     */
+    function _topItemServicesInCity(int $limit = 8): array
+    {
+        $zoneIds = json_decode(session('zone_ids', '[]'), true);
+        if (!is_array($zoneIds) || empty($zoneIds)) {
+            return ['city' => null, 'services' => collect()];
+        }
+
+        $firstZone = DB::table('zones')->whereIn('id', $zoneIds)->orderBy('id')->value('name');
+        $cityName  = $firstZone ? trim(explode(',', $firstZone)[0]) : null;
+
+        $services = DB::table('service_zone_seo')
+            ->join('items', 'items.id', '=', 'service_zone_seo.item_id')
+            ->whereIn('service_zone_seo.zone_id', $zoneIds)
+            ->where('service_zone_seo.item_id', '>', 0)
+            ->where('service_zone_seo.status', 'published')
+            ->orderByDesc('service_zone_seo.store_count')
+            ->select('items.name as title', 'service_zone_seo.slug', 'service_zone_seo.store_count')
+            ->get()
+            ->unique('title')
+            ->take($limit)
+            ->values();
+
+        return ['city' => $cityName, 'services' => $services];
+    }
+}
+
 if (!function_exists('_navCats')) {
     function _navCats()
     {

@@ -204,6 +204,15 @@ class Kernel extends ConsoleKernel
         //     ->name('seo-sync-combos')
         //     ->withoutOverlapping();
 
+        // DPDP DATA RETENTION — anonymize PII on behavioral logs older than 12 months.
+        // Dry-run first (`php artisan data:purge-retention --dry-run`) to verify counts before
+        // relying on this scheduled run.
+        $schedule->command('data:purge-retention')
+            ->dailyAt('03:30')
+            ->timezone($tz)
+            ->name('data-purge-retention')
+            ->withoutOverlapping();
+
         // PLATFORM FEE MONTHLY DEDUCTION =======================================
         $schedule->command('platform-fee:deduct')
             ->monthlyOn(1, '00:00')

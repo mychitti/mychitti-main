@@ -19,7 +19,11 @@
     <!-- Google tag (gtag.js) -->
     @include('front-views/partials/ads')
 
-    @stack('meta_tags')
+    @stack('meta_tags') 
+
+    @isset($localBusinessStore)
+        @include('front-views.partials._local_business_schema', ['store' => $localBusinessStore])
+    @endisset
 
     @if(!empty($metaRobots))<meta name="robots" content="{{ $metaRobots }}" />@endif
     <link rel="canonical" href="{{ $canonical ?? url()->current() }}" />
@@ -492,6 +496,7 @@
 
     @include('front-views.partials._school_admission_cta')
     @include('front-views.partials._footer')
+    @include('front-views.partials._cookie_consent')
     <div id="toast" class="toast"></div>
 
     {{-- AI Chat Panel --}}

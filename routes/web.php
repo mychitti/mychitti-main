@@ -231,6 +231,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 Route::get('mc-vendor-hub-tnc', [FrontController::class, 'mc_vendor_hub_tnc'])->name('mc-vendor-hub-tnc');
 Route::get('mc-vendor-hub-privacy-policy', [FrontController::class, 'mc_vendor_hub_pp'])->name('mc-vendor-hub-pp');
 Route::get('FAQs', [FrontController::class, 'faq'])->name('faq');
+Route::get('search', [FrontController::class, 'searchResults'])->name('search-page');
 Route::get('about-us', [FrontController::class, 'about'])->name('about-us');
 Route::get('contact-us', [FrontController::class, 'contact'])->name('contact-us');
 Route::get('privacy-policy', [FrontController::class, 'privacy_policy'])->name('privacy-policy');

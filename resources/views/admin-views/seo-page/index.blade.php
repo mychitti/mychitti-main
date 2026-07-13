@@ -6,6 +6,9 @@
 <div class="content container-fluid">
     <div class="page-header d-flex justify-content-between align-items-center mb-3">
         <h1 class="page-header-title mb-0">SEO Pages <span class="badge badge-soft-dark">{{ $combos->total() }}</span></h1>
+        <a href="{{ route('admin.seo-pages.overview') }}" class="btn btn-outline-primary btn-sm">
+            <i class="tio-chart-bar-1"></i> SEO Overview
+        </a>
     </div>
 
     <div class="row mb-3">
@@ -149,12 +152,12 @@
                                                 <i class="tio-repeat"></i>
                                             </button>
                                         </form>
-                                        <a href="{{ route('admin.seo-pages.edit', $combo->id) }}"
+                                         <a href="{{ route('admin.seo-pages.edit', $combo->id) }}"
                                            class="btn action-btn btn--warning btn-outline-warning" title="Edit / review">
                                             <i class="tio-edit"></i>
                                         </a>
                                         @if ($combo->status === 'published')
-                                            <a href="{{ url($combo->slug) }}" target="_blank"
+                                            <a href="https://mychitti.net/{{ $combo->slug }}" target="_blank"
                                                class="btn action-btn btn--info btn-outline-info" title="View live page">
                                                 <i class="tio-visible"></i>
                                             </a>

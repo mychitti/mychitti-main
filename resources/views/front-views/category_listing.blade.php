@@ -5,15 +5,41 @@
     // make each city's title/description distinct — "AC Repair in Mumbai" vs "AC Repair in Patna"
     // — instead of an identical "AC Repair" across every city URL.
     $seoSubject = ($seoCityName ?? null) ? ($catDetails->name . ' in ' . $seoCityName) : $catDetails->name;
+    // Title carries a CTA (doc P0: city + category + strong CTA).
+    $seoTitle = $seoSubject . ' | Compare & Book — My Chitti';
+    $seoDesc = ($seoCityName ?? null)
+        ? ('Find and book ' . $catDetails->name . ' services in ' . $seoCityName . '. Compare local providers, ratings and prices.')
+        : $catDetails->name;
+    $catOgImage = !empty($catDetails->image)
+        ? asset('storage/app/public/category/' . $catDetails->image)
+        : asset('storage/app/public/business/' . (\App\Models\BusinessSetting::where('key', 'logo')->value('value')));
 @endphp
 
-@section('title', $seoSubject)
+@section('title', $seoTitle)
 
-@section('metatitle', $seoSubject)
+@section('metatitle', $seoTitle)
 @section('meta_keywords', $catDetails->keywords)
-@section('meta_description', ($seoCityName ?? null)
-    ? ('Find and book ' . $catDetails->name . ' services in ' . $seoCityName . '. Compare local providers, ratings and prices.')
-    : $catDetails->name)
+@section('meta_description', $seoDesc)
+
+@push('meta_tags')
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="My Chitti" />
+    <meta property="og:title" content="{{ $seoSubject }}" />
+    <meta property="og:description" content="{{ $seoDesc }}" />
+    <meta property="og:url" content="{{ $canonical ?? url()->current() }}" />
+    <meta property="og:image" content="{{ $catOgImage }}" />
+
+    <script type="application/ld+json">
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $seoSubject, 'item' => $canonical ?? url()->current()],
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
+@endpush
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -178,6 +204,41 @@
                                 </div>
                             </div>
                         </div>
+                        @if (!empty($seoLandingUrl))
+                            <a href="{{ $seoLandingUrl }}" class="d-flex align-items-center justify-content-between mb-3 text-decoration-none"
+                               style="gap:12px; padding:14px 18px; border-radius:12px; background:linear-gradient(135deg,#fff5f1,#f4f1ef); border:1px solid #eadfd9;">
+                                <span style="color:#7a3418; font-weight:600; font-size:14.5px;">
+                                    📖 Read our complete {{ $catDetails->name }}{{ ($seoCityName ?? null) ? ' in ' . $seoCityName : '' }} guide — top providers, FAQs &amp; more
+                                </span>
+                                <span style="color:#C8522A; font-weight:700; white-space:nowrap;">View guide &rarr;</span>
+                            </a>
+                        @endif
+                        @if (isset($seoLinks) && $seoLinks->isNotEmpty())
+                            <div class="mb-4">
+                                <p class="mb-2 fw-bold text_dark">Popular {{ $catDetails->name }} services{{ ($seoCityName ?? null) ? ' in ' . $seoCityName : '' }}</p>
+                                 <div class="d-flex flex-wrap" style="gap:10px;">
+                                    @foreach ($seoLinks as $link)
+                                        <a href="{{ url($link->slug) }}"
+                                           style="display:inline-block; padding:8px 16px; background:#f4f1ef; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
+                                            {{ $link->title }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        @if (isset($otherCityLinks) && $otherCityLinks->isNotEmpty())
+                            <div class="mb-4">
+                                <p class="mb-2 fw-bold text_dark">{{ $catDetails->name }} in other cities</p>
+                                <div class="d-flex flex-wrap" style="gap:10px;">
+                                    @foreach ($otherCityLinks as $ocl)
+                                        <a href="{{ url($ocl->slug) }}"
+                                           style="display:inline-block; padding:8px 16px; background:#ffffff; color:#C8522A; border-radius:999px; font-weight:600; font-size:13.5px; border:1px solid #eadfd9;">
+                                            {{ $catDetails->name }} in {{ $ocl->city }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                         <div class=" justify-content-center grid-container">
 
                             @foreach ($catProducts as $pro)

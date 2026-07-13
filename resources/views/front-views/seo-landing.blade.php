@@ -1,15 +1,25 @@
 @extends('front-views.layout')
 
-@php $subject = $item->name ?? $category->name; @endphp
+@php
+    $subject = $item->name ?? $category->name;
+    // og:image — prefer a real provider logo (concrete local business), else the brand logo.
+    $ogStoreLogo = optional($stores->first(fn($s) => !empty($s->logo)))->logo;
+    $ogImage = $ogStoreLogo
+        ? asset('storage/app/public/store/' . $ogStoreLogo)
+        : asset('storage/app/public/business/' . (\App\Models\BusinessSetting::where('key', 'logo')->value('value')));
+@endphp
 
 @section('title', $seo->meta_title ?: ($subject . ' in ' . $zone->name))
 @section('meta_description', $seo->meta_description)
 @section('meta_keywords', implode(', ', $seo->keywords ?? []))
 
 @push('meta_tags')
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="My Chitti" />
     <meta property="og:title" content="{{ $seo->meta_title ?: ($subject . ' in ' . $zone->name) }}" />
     <meta property="og:description" content="{{ $seo->meta_description }}" />
     <meta property="og:url" content="{{ $canonical }}" />
+    <meta property="og:image" content="{{ $ogImage }}" />
     <script type="application/ld+json">
     @php
         $faqJson = collect($seo->faqs ?? [])->map(fn($f) => [
@@ -17,15 +27,49 @@
             'name' => $f['q'] ?? '',
             'acceptedAnswer' => ['@type' => 'Answer', 'text' => $f['a'] ?? ''],
         ])->values();
+        $serviceNode = [
+            '@type' => 'Service',
+            'name' => ($subject . ' in ' . $zone->name),
+            'areaServed' => ['@type' => 'City', 'name' => $zone->name],
+            'url' => $canonical,
+        ];
+        if (($ratingValue ?? null) && ($reviewCount ?? 0) > 0) {
+            $serviceNode['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => $ratingValue,
+                'reviewCount' => $reviewCount,
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ];
+        }
+
+        // BreadcrumbList: Home → {Category} in {City} → {Item} (item pages only).
+        $crumbs = [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $category->name . ' in ' . $zone->name,
+                'item' => url($zone->slug . '/services/' . $category->slug)],
+        ];
+        if ($item) {
+            $crumbs[] = ['@type' => 'ListItem', 'position' => 3, 'name' => $item->name, 'item' => $canonical];
+        }
+
+        // Speakable (voice search / GEO): the H1, intro paragraph and FAQ answers are the
+        // read-aloud-worthy content on this page.
+        $webPageNode = [
+            '@type' => 'WebPage',
+            'url' => $canonical,
+            'speakable' => [
+                '@type' => 'SpeakableSpecification',
+                'cssSelector' => ['.seo-hero h1', '.seo-hero .lead', '.seo-faq-a'],
+            ],
+        ];
+
         $graph = [
             '@context' => 'https://schema.org',
             '@graph' => array_values(array_filter([
-                [
-                    '@type' => 'Service',
-                    'name' => ($subject . ' in ' . $zone->name),
-                    'areaServed' => ['@type' => 'City', 'name' => $zone->name],
-                    'url' => $canonical,
-                ],
+                $serviceNode,
+                $webPageNode,
+                ['@type' => 'BreadcrumbList', 'itemListElement' => $crumbs],
                 $faqJson->isNotEmpty() ? ['@type' => 'FAQPage', 'mainEntity' => $faqJson] : null,
             ])),
         ];
@@ -96,6 +140,10 @@
 
         .seo-store-addr { font-size: 13px; color: var(--lp-muted); margin-top: 14px; line-height: 1.5;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .seo-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .seo-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700;
+            color: #0f766e; background: #e6f5f2; border: 1px solid #c7e9e2; padding: 3px 8px; border-radius: 7px; }
 
         .seo-store-foot { margin-top: auto; padding-top: 16px; }
         .seo-store-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; font-weight: 700; font-size: 14px; color: var(--lp-accent);
@@ -239,6 +287,20 @@
                                         <div class="seo-store-addr">📍 {{ $store->address }}</div>
                                     @endif
 
+                                    @php
+                                        $trustBadges = [];
+                                        if (!empty($store->gst)) $trustBadges[] = 'GST Verified';
+                                        if ((int) ($store->total_order ?? 0) >= 5) $trustBadges[] = 'Booking Verified';
+                                        if (($store->rating_count ?? 0) > 0 && (float) $store->average_rating >= 4.0) $trustBadges[] = 'Top Rated';
+                                    @endphp
+                                    @if (!empty($trustBadges))
+                                        <div class="seo-badges">
+                                            @foreach ($trustBadges as $b)
+                                                <span class="seo-badge">&check; {{ $b }}</span>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
                                     <div class="seo-store-foot">
                                         <span class="seo-store-btn">View details &rarr;</span>
                                     </div>
@@ -247,6 +309,32 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- Sub-services: link the category landing to its item-level service landings --}}
+                @if (!empty($subServices) && $subServices->isNotEmpty())
+                    <div class="seo-block">
+                        <h2 class="seo-section-title">{{ $category->name }} services in {{ $zone->name }}</h2>
+                        <p class="seo-section-sub">Explore the specific services offered in {{ $zone->name }}.</p>
+                        <div class="seo-chips">
+                            @foreach ($subServices as $sub)
+                                <a class="seo-chip" href="{{ url($sub->slug) }}">{{ $sub->name }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Same service in nearby cities — Category→City internal linking --}}
+                @if (!empty($otherCities) && $otherCities->isNotEmpty())
+                    <div class="seo-block">
+                        <h2 class="seo-section-title">{{ $subject }} in other cities</h2>
+                        <p class="seo-section-sub">Looking for {{ $subject }} elsewhere? Browse nearby cities.</p>
+                        <div class="seo-chips">
+                            @foreach ($otherCities as $oc)
+                                <a class="seo-chip" href="{{ url($oc->slug) }}">{{ $subject }} in {{ $oc->city }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Popular searches (generated keywords → real on-page content) --}}
                 @if (!empty($seo->keywords))

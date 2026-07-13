@@ -113,7 +113,9 @@
                             @endif --}}
                         @endif
                     </div>
-                </div>
+                </div> 
+
+                @include('front-views.partials._popular_services_seo', ['context' => 'footer', 'limit' => 6])
 
                 <div class="col-lg-3 col-md-6">
                     <div class="footer-item">

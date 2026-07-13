@@ -1,2 +1,29 @@
+# AI crawlers — explicitly allowed for GEO (ChatGPT, Claude, Perplexity, Gemini).
+# NOTE: Cloudflare Bot Fight Mode overrides robots.txt at the network level — it must be
+# OFF (or replaced with WAF custom allow-rules) or these bots are blocked regardless.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# All other crawlers — full access
 User-agent: *
 Disallow:
+
+Sitemap: https://mychitti.net/sitemap.xml

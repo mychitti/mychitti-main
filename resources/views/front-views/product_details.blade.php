@@ -18,6 +18,42 @@
 
 @section('title', $title ?? $item->name)
 
+@push('meta_tags')
+    <script type="application/ld+json">
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $service_name, 'item' => url()->current()],
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
+
+    @php
+        $svcSchema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Service',
+            'name' => $service_name . ' in ' . $city_name,
+            'serviceType' => $service_name,
+            'areaServed' => ['@type' => 'City', 'name' => $city_name],
+            'url' => url()->current(),
+        ];
+        if ((int) ($item->rating_count ?? 0) > 0) {
+            $svcSchema['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => round((float) $item->avg_rating, 1),
+                'reviewCount' => (int) $item->rating_count,
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ];
+        }
+    @endphp
+    <script type="application/ld+json">
+    {!! json_encode($svcSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
+@endpush
+
 @section('meta_keywords', $keywords)
 @section('meta_description', $desc ?? $item->description)
 
@@ -1210,6 +1246,10 @@
                 </tr>
             </table>
         </div>
+    </div>
+
+    <div class="container my-4">
+        @include('front-views.partials._popular_services_seo', ['context' => 'home', 'limit' => 8])
     </div>
 @endsection
 
