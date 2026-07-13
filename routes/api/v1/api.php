@@ -28,7 +28,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
 
     Route::group(['prefix' => 'search'], function () {
         Route::get('/', 'ItemController@search');
-        Route::get('save', 'ItemController@save_search');
+        Route::get('save', 'ItemController@save_search'); 
         Route::get('recent', 'ItemController@recent_search');
         Route::get('clear-recent', 'ItemController@clear_recent_search');
     });
