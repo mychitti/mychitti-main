@@ -19,7 +19,8 @@ class SyncBusinessEmbeddings extends Command
     protected $signature = 'ai:sync-business-embeddings
         {--store= : Sync a single store by id}
         {--limit= : Cap the number of stores processed}
-        {--batch=20 : Stores per ingest request}';
+        {--batch=25 : Stores per ingest request}
+        {--sleep=20 : Seconds to pause between batches (Voyage free tier = 3 requests/min)}';
 
     protected $description = 'Push per-store search text to the ai-server pgvector index for AI Search';
 
@@ -54,8 +55,17 @@ class SyncBusinessEmbeddings extends Command
         $sent = 0;
         $failed = 0;
         $batchSize = max(1, (int) $this->option('batch'));
+        $sleep = max(0, (int) $this->option('sleep'));
 
-        foreach ($stores->chunk($batchSize) as $chunk) {
+        $chunks = $stores->chunk($batchSize);
+        $total = $chunks->count();
+        $this->info("Syncing {$stores->count()} stores in {$total} batch(es), pausing {$sleep}s between each…");
+
+        foreach ($chunks->values() as $i => $chunk) {
+            // Pace requests to respect Voyage's free-tier 3 RPM cap (skip the wait before the first).
+            if ($i > 0 && $sleep > 0) {
+                sleep($sleep);
+            }
             $storeIds = $chunk->pluck('id')->all();
             $catsByStore = $this->categoriesByStore($storeIds);
             $itemsByStore = $this->servicesByStore($storeIds);
@@ -68,16 +78,17 @@ class SyncBusinessEmbeddings extends Command
             }
 
             try {
-                $response = Http::timeout(120)->post($endpoint, ['items' => $items]);
+                $response = Http::timeout(180)->post($endpoint, ['items' => $items]);
                 if ($response->ok() && $response->json('success')) {
                     $sent += (int) $response->json('count', count($items));
+                    $this->line(sprintf('  [%d/%d] ok — %d synced so far', $i + 1, $total, $sent));
                 } else {
                     $failed += count($items);
-                    $this->warn("Batch failed (HTTP {$response->status()}): " . $response->body());
+                    $this->warn(sprintf('  [%d/%d] failed (HTTP %d): %s', $i + 1, $total, $response->status(), $response->body()));
                 }
             } catch (\Exception $e) {
                 $failed += count($items);
-                $this->warn('Batch error: ' . $e->getMessage());
+                $this->warn(sprintf('  [%d/%d] error: %s', $i + 1, $total, $e->getMessage()));
             }
         }
 
