@@ -846,7 +846,16 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('update/{id}', 'CustomRoleController@update')->name('update')->middleware('permission:staff_role,edit');
             Route::delete('delete/{id}', 'CustomRoleController@distroy')->name('delete')->middleware('permission:staff_role,delete');
             //            Route::post('search', 'CustomRoleController@search')->name('search');
-        });
+        }); 
+
+        // Local Offers Engine (Phase 3 §3.5)
+        Route::group(['prefix' => 'offer', 'as' => 'offer.'], function () {
+            Route::get('/', 'OfferController@index')->name('index');
+            Route::post('store', 'OfferController@store')->name('store');
+            Route::post('update/{id}', 'OfferController@update')->name('update');
+            Route::get('status/{id}', 'OfferController@status')->name('status');
+            Route::delete('delete/{id}', 'OfferController@destroy')->name('destroy');
+        }); 
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:deliveryman']], function () {
             Route::get('add', 'DeliveryManController@index')->name('add');

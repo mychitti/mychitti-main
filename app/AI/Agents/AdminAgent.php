@@ -10,6 +10,6 @@ class AdminAgent
     {
         return DB::table('system_prompts')
             ->where('user_type', 'admin')
-            ->value('prompt') ?? '';
+            ->value('prompt') ?? ''; 
     } 
-}
+} 

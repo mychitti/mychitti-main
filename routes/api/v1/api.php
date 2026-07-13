@@ -32,8 +32,19 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::get('recent', 'ItemController@recent_search');
         Route::get('clear-recent', 'ItemController@clear_recent_search');
     });
-
+ 
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
+ 
+    // AI Search — RAG-powered natural-language local discovery (Phase 3 §3.1)
+    Route::post('ai-search', 'AiSearchController@search');
+
+    // Local Offers Engine (Phase 3 §3.5)
+    Route::get('offers/feed', 'OfferController@feed');
+    Route::get('offers/{store_id}', 'OfferController@byStore');
+
+    // Lead Inbox signal capture (Phase 3 §3.3)
+    Route::post('lead-signal', 'LeadSignalController@store');
+    Route::get('lead-signal/{store_id}/summary', 'LeadSignalController@summary');
     Route::get('zone/list', 'ZoneController@get_zones');
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 

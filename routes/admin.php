@@ -154,7 +154,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('{id}',      'RagDocumentController@update')->name('update');
             Route::delete('{id}',    'RagDocumentController@destroy')->name('destroy');
         });
-
+ 
+        // AI Citation Monitoring — GEO KPI (Phase 3 §3.6)
+        Route::group(['prefix' => 'ai-citations', 'as' => 'ai-citations.'], function () {
+            Route::get('/',       'AiCitationController@index')->name('index');
+            Route::post('save',   'AiCitationController@save')->name('save');
+            Route::delete('{id}', 'AiCitationController@destroy')->name('destroy');
+        });
+ 
 Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () {
             Route::get('/',                             'PromptBoardController@index')->name('index');
             Route::post('store',                        'PromptBoardController@store')->name('store');

@@ -6940,3 +6940,36 @@ if (!function_exists('_payrollLopDays')) {
     }
 }
 
+
+if (!function_exists('store_trust_badges')) {
+    /**
+     * MC Trust Layer (Phase 3 §3.2 / §1.2) — derive display badges from a store's real signals.
+     * Accepts an Eloquent Store or a plain DB row; returns [['key'=>..,'label'=>..], ...].
+     */
+    function store_trust_badges($store): array
+    { 
+        $gst    = $store->gst ?? null;
+        $rating = (float) ($store->average_rating ?? 0);
+        $count  = (int) ($store->rating_count ?? 0);
+        $orders = (int) ($store->total_order ?? 0);  
+        $trust  = (int) ($store->vendor_trust_score ?? 0);
+
+        $badges = [];
+        if (!empty($gst)) {
+            $badges[] = ['key' => 'gst', 'label' => 'GST Verified'];
+        }
+        if ($orders >= 5) {
+            $badges[] = ['key' => 'booking', 'label' => 'Booking Verified'];
+        }
+        if ($count > 0 && $rating >= 4.0) {
+            $badges[] = ['key' => 'top_rated', 'label' => 'Top Rated'];
+        }
+        if ($trust >= 70) {
+            $badges[] = ['key' => 'trusted', 'label' => 'MC Trusted'];
+        }
+        if ($orders >= 20) {
+            $badges[] = ['key' => 'popular', 'label' => 'Popular'];
+        }
+        return $badges;
+    }
+}

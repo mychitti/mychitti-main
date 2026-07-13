@@ -1608,7 +1608,15 @@
                                             <span class="text-truncate">Service Setup</span>
                                         </a>
                                     </li>
-                                @endif
+                                @endif  
+                                {{-- Local Offers Engine (Phase 3 §3.5) --}}
+                                <li class="nav-item {{ Request::is('offer*') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.offer.index') }}"
+                                        title="Local Offers">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Local Offers</span>
+                                    </a>
+                                </li> 
                                 @if (hasPermission('profile_settings', 'view'))
                                     <li
                                         class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">

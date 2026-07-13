@@ -1122,8 +1122,15 @@
                         <i class="tio-book-outlined nav-icon"></i>
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Knowledge Base</span>
                     </a>
-                </li>
+                </li> 
 
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('ai-citations*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.ai-citations.index') }}" title="AI Citations">
+                        <i class="tio-chart-bar-4 nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">AI Citations</span>
+                    </a>
+                </li>
+ 
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('prompt-board*') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.prompt-board.index') }}" title="Prompt Board">
                         <i class="tio-format-text nav-icon"></i>
