@@ -1169,6 +1169,15 @@
                         },
                         success: function(data) {
                             $('#' + resultElem).html(data.html);
+                            var kw = $(elem).val().trim();
+                            if (data.status && kw.length >= 2) {
+                                $('#' + resultElem).append(
+                                    '<a href="{{ route('search-page') }}?q=' + encodeURIComponent(kw) +
+                                    '" class="d-block text-center py-2 fw-bold text-primary" ' +
+                                    'style="border-top:1px solid #eee; text-decoration:none;">' +
+                                    'See all results for “' + $('<span>').text(kw).html() + '” →</a>'
+                                );
+                            }
                         },
                         error: function(xhr, status, error) {
                             if (status !== 'abort') {
