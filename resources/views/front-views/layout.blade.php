@@ -1126,6 +1126,16 @@
             searchBar('autocomplete', this);
         });
 
+        // Enter on any search box → full server-rendered results page (fallback to the AJAX dropdown).
+        $(document).on('keydown', '#searchBarBtn, #mainSearchbar', function(e) {
+            if (e.key === 'Enter') {
+                var q = $(this).val().trim();
+                if (q.length >= 2) {
+                    window.location.href = '{{ route('search-page') }}?q=' + encodeURIComponent(q);
+                }
+            }
+        });
+
         function searchBar(resultElem, elem) {
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
