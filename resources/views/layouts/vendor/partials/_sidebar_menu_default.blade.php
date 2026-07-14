@@ -1616,6 +1616,14 @@
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Local Offers</span>
                                     </a>
+                                </li>
+                                {{-- Lead Inbox — contact signals (Phase 3 §3.3) --}}
+                                <li class="nav-item {{ Request::is('lead-signals*') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('vendor.lead-signals.index') }}"
+                                        title="Lead Inbox">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">Lead Inbox</span>
+                                    </a>
                                 </li> 
                                 @if (hasPermission('profile_settings', 'view'))
                                     <li
@@ -2500,3 +2508,4 @@
                                 Preferences</span>
                         </a>
                     @endif
+ 

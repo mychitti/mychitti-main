@@ -855,6 +855,11 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('update/{id}', 'OfferController@update')->name('update');
             Route::get('status/{id}', 'OfferController@status')->name('status');
             Route::delete('delete/{id}', 'OfferController@destroy')->name('destroy');
+        });
+
+        // Lead Inbox — contact signals (Phase 3 §3.3)
+        Route::group(['prefix' => 'lead-signals', 'as' => 'lead-signals.'], function () {
+            Route::get('/', 'LeadSignalController@index')->name('index');
         }); 
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:deliveryman']], function () {
@@ -1052,7 +1057,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}/{user_type}', 'ConversationController@store')->name('store');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
-        });
+        }); 
 
         Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['module:report']], function () {
             Route::post('set-date', 'ReportController@set_date')->name('set-date');

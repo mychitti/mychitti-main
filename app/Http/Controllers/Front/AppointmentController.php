@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Front;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
-use App\Models\AppointmentToken;
+use App\Models\AppointmentToken; 
 use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\Patient;
@@ -202,6 +202,21 @@ class AppointmentController extends Controller
             $tokenNumber = $this->generateToken($doctor->id, $request->appointment_date, $appointment->id);
 
             DB::commit();
+
+            // Lead Inbox — a completed booking is a strong inbound lead (Phase 3 §3.3).
+            try {
+                DB::table('lead_signals')->insert([
+                    'store_id'   => $store->id,
+                    'user_id'    => $user->id,
+                    'type'       => 'booking',
+                    'source'     => 'appointment',
+                    'meta'       => json_encode(['appointment_id' => $appointment->id]),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                // lead capture must never block a booking
+            }
 
             return redirect()->route('front.appointment.confirm', [
                 'city'  => $city,

@@ -17,7 +17,7 @@
     @endif
 
     <!-- Google tag (gtag.js) -->
-    @include('front-views/partials/ads')
+    @include('front-views/partials/ads') 
 
     @stack('meta_tags') 
 
@@ -497,6 +497,7 @@
     @include('front-views.partials._school_admission_cta')
     @include('front-views.partials._footer')
     @include('front-views.partials._cookie_consent')
+    @include('front-views.partials._lead_tracker')
     <div id="toast" class="toast"></div>
 
     {{-- AI Chat Panel --}}

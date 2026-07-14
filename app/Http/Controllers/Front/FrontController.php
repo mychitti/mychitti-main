@@ -2423,15 +2423,21 @@ class FrontController extends Controller
         $storeId = $request->store_id;
         $action  = $request->action;
 
-        // screen_type = event ('call' reuses the existing phone-call analytics,
-        // 'copy' is a web-only event, 'share' = store share).
+        // Platform analytics events (analytics_logs) — unchanged: call reuses phone-call analytics,
+        // copy is a web-only event, share = store share.
         $screenType = match ($action) {
             'call'  => 'call',
             'copy'  => 'copy',
             'share' => 'share',
             default => null,
         };
-        if (!$screenType) {
+
+        // Inbound-lead actions (Phase 3 §3.3) — also recorded to lead_signals for the MC Vendor Hub
+        // Lead Inbox. 'copy'/'share' are analytics-only; everything here is a real lead intent.
+        $leadTypes = ['call', 'whatsapp', 'booking', 'quote', 'direction', 'website'];
+        $isLead = in_array($action, $leadTypes, true);
+
+        if (!$screenType && !$isLead) {
             return response()->json(['message' => 'Invalid action'], 422);
         }
 
@@ -2440,22 +2446,44 @@ class FrontController extends Controller
             return response()->json(['message' => 'Store not found'], 404);
         }
 
-        // sub_type: for 'share' it holds the share target ('store'); otherwise the source platform ('web').
-        $subType = $action === 'share' ? 'store' : 'web';
-
         $ip = $request->ip();
 
-        try {
-            DB::table('analytics_logs')->insert([
-                'screen_type' => $screenType,
-                'sub_type'    => $subType,
-                'ref_id'      => $storeId,
-                'user_id'     => auth()->check() ? auth()->id() : null,
-                'ip'          => $ip,
-                'created_at'  => now(),
-            ]);
-        } catch (\Exception $e) {
-            // analytics failure must not break the click
+        // 1) Platform analytics — identical to before (only for call/copy/share).
+        if ($screenType) {
+            // sub_type: for 'share' it holds the share target ('store'); otherwise the source platform ('web').
+            $subType = $action === 'share' ? 'store' : 'web';
+            try {
+                DB::table('analytics_logs')->insert([
+                    'screen_type' => $screenType,
+                    'sub_type'    => $subType,
+                    'ref_id'      => $storeId,
+                    'user_id'     => auth()->check() ? auth()->id() : null,
+                    'ip'          => $ip,
+                    'created_at'  => now(),
+                ]);
+            } catch (\Exception $e) {
+                // analytics failure must not break the click
+            }
+        }
+
+        // 2) Lead Inbox signal — full funnel (call/whatsapp/booking/quote/direction/website).
+        if ($isLead) {
+            try {
+                DB::table('lead_signals')->insert([
+                    'store_id'     => $storeId,
+                    'user_id'      => auth()->check() ? auth()->id() : null,
+                    'type'         => $action,
+                    'source'       => $request->input('source', 'web'),
+                    'utm_source'   => $request->input('utm_source'),
+                    'utm_medium'   => $request->input('utm_medium'),
+                    'utm_campaign' => $request->input('utm_campaign'),
+                    'meta'         => json_encode(['ip' => $ip, 'ua' => substr((string) $request->userAgent(), 0, 255)]),
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            } catch (\Exception $e) {
+                // lead capture failure must not break the click
+            }
         }
 
         return response()->json(['message' => 'ok']);
@@ -2480,7 +2508,7 @@ class FrontController extends Controller
             })
             ->latest();
     }
-
+ 
     public function allAds()
     {
         $ads = $this->adsBaseQuery()->paginate(18);
