@@ -34,38 +34,42 @@ class AiSearchController extends Controller
     }
 
     public function search(Request $request)
-    {
+    {  
         $validated = $request->validate([
             'query'     => 'required|string|max:300',
             'latitude'  => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'limit'     => 'nullable|integer|min:1|max:30',
+            'zone_ids'   => 'nullable|array',
+            'zone_ids.*' => 'integer',
         ]);
 
         $query = trim($validated['query']);
         $lat   = $validated['latitude']  ?? null;
         $lng   = $validated['longitude'] ?? null;
         $limit = (int) ($validated['limit'] ?? 10);
+        // Scope results to the user's selected city/zone(s) — a Tirupati user should not see Mumbai.
+        $zoneIds = array_values(array_filter(array_map('intval', $validated['zone_ids'] ?? [])));
 
-        [$candidates, $usedFallback] = $this->retrieveCandidates($query);
-        if (empty($candidates)) {
-            return response()->json([
-                'success'  => true,
-                'query'    => $query,
-                'answer'   => '',
-                'results'  => [],
-                'fallback' => $usedFallback,
-            ]);
+        $outOfArea = false;
+        [$candidates, $usedFallback] = $this->retrieveCandidates($query, $zoneIds);
+        $stores = empty($candidates) ? collect() : $this->loadStores(array_keys($candidates), $zoneIds);
+
+        // Nothing in the user's city — widen to all cities and tell the UI so it can label them.
+        if ($zoneIds && $stores->isEmpty()) {
+            $outOfArea = true;
+            [$candidates, $usedFallback] = $this->retrieveCandidates($query, []);
+            $stores = empty($candidates) ? collect() : $this->loadStores(array_keys($candidates), []);
         }
 
-        $stores = $this->loadStores(array_keys($candidates));
         if ($stores->isEmpty()) {
             return response()->json([
-                'success'  => true,
-                'query'    => $query,
-                'answer'   => '',
-                'results'  => [],
-                'fallback' => $usedFallback,
+                'success'     => true,
+                'query'       => $query,
+                'answer'      => '',
+                'results'     => [],
+                'fallback'    => $usedFallback,
+                'out_of_area' => false,
             ]);
         }
 
@@ -74,23 +78,26 @@ class AiSearchController extends Controller
         $answer  = $this->composeAnswer($query, $results);
 
         return response()->json([
-            'success'  => true,
-            'query'    => $query,
-            'answer'   => $answer,
-            'results'  => $results,
-            'fallback' => $usedFallback,
+            'success'     => true,
+            'query'       => $query,
+            'answer'      => $answer,
+            'results'     => $results,
+            'fallback'    => $usedFallback,
+            'out_of_area' => $outOfArea,
         ]);
     }
 
     /**
+     * @param array<int> $zoneIds
      * @return array{0: array<int,float>, 1: bool} [ store_id => semanticScore, usedFallback ]
      */
-    private function retrieveCandidates(string $query): array
+    private function retrieveCandidates(string $query, array $zoneIds = []): array
     {
         try {
+            // Retrieve a wider pool when we'll filter by zone, so enough in-city vendors survive.
             $response = Http::timeout(15)->post("{$this->businessUrl}/search", [
                 'query' => $query,
-                'top_k' => 40,
+                'top_k' => $zoneIds ? 120 : 40,
             ]);
             if ($response->ok() && $response->json('success')) {
                 $map = [];
@@ -110,22 +117,24 @@ class AiSearchController extends Controller
             Log::warning('AI search: ai-server unreachable, using MySQL fallback', ['error' => $e->getMessage()]);
         }
 
-        return [$this->keywordFallback($query), true];
+        return [$this->keywordFallback($query, $zoneIds), true];
     }
 
     /**
      * MySQL keyword fallback over store name/address and the services they offer. Every match
      * gets a neutral semantic score so hybrid ranking still orders by trust / distance / popularity.
      *
+     * @param array<int> $zoneIds
      * @return array<int,float>
      */
-    private function keywordFallback(string $query): array
+    private function keywordFallback(string $query, array $zoneIds = []): array
     {
         $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $query) . '%';
 
         $ids = DB::table('stores')
             ->where('stores.status', 1)
             ->where('stores.active', 1)
+            ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->where(function ($q) use ($like) {
                 $q->where('stores.name', 'like', $like)
                     ->orWhere('stores.address', 'like', $like)
@@ -148,12 +157,14 @@ class AiSearchController extends Controller
 
     /**
      * @param array<int> $storeIds
+     * @param array<int> $zoneIds
      */
-    private function loadStores(array $storeIds)
+    private function loadStores(array $storeIds, array $zoneIds = [])
     {
         return DB::table('stores')
             ->leftJoin('zones', 'zones.id', '=', 'stores.zone_id')
             ->whereIn('stores.id', $storeIds)
+            ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->where('stores.status', 1)
             ->where('stores.active', 1)
             ->select(

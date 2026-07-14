@@ -4,7 +4,8 @@
   
 @section('content')
 <style>  
-    .aisr-wrap { max-width: 860px; margin: 0 auto; padding: 18px 16px 60px; }
+    .aisr-wrap { max-width: 860px; margin: 0 auto; padding: 18px 16px 60px;    position: relative;
+    top: 69px; } 
     .aisr-q { font-size: 14px; color: #6b7280; margin-bottom: 4px; }
     .aisr-q b { color: #1d2a12; }
     .aisr-answer { background: #f3f9ea; border: 1px solid #d5ecb3; border-left: 4px solid #81c408;
@@ -12,6 +13,8 @@
     .aisr-answer .aisr-answer-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
         color:#5a9e00; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
     .aisr-count { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+    .aisr-note { background:#fff4e5; border:1px solid #f3d9a8; color:#92600b; border-radius:8px;
+         padding:8px 12px; margin-bottom:8px; font-size:13px; }
     .aisr-card { display: flex; gap: 14px; background: #fff; border: 1px solid #eceff2; border-radius: 14px;
         padding: 14px; margin-bottom: 12px; transition: box-shadow .15s, transform .15s; text-decoration:none; color:inherit; }
     .aisr-card:hover { box-shadow: 0 10px 26px -14px rgba(20,32,47,.28); transform: translateY(-1px); }
@@ -50,6 +53,9 @@
 <script>
     (function () {
         var QUERY = @json($query);
+        var ZONE_IDS = @json($zoneIds ?? []);
+        var LAT = @json($lat ?? null);
+        var LNG = @json($lng ?? null);
         var stateEl = document.getElementById('aisrState');
         var resultsEl = document.getElementById('aisrResults');
 
@@ -64,7 +70,7 @@
         fetch('{{ url('api/v1/ai-search') }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ query: QUERY })
+            body: JSON.stringify({ query: QUERY, zone_ids: ZONE_IDS, latitude: LAT, longitude: LNG })
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -81,7 +87,13 @@
                 document.getElementById('aisrAnswer').style.display = 'block';
                 document.getElementById('aisrAnswerText').textContent = data.answer;
             }
-            document.getElementById('aisrCount').textContent = results.length + ' vendor' + (results.length > 1 ? 's' : '') + ' found';
+            var countEl = document.getElementById('aisrCount');
+            var countText = results.length + ' vendor' + (results.length > 1 ? 's' : '') + ' found';
+            if (data.out_of_area) {
+                countEl.innerHTML = '<div class="aisr-note">No vendors in your city yet — showing results from other cities.</div>' + esc(countText);
+            } else {
+                countEl.textContent = countText;
+            }
 
             var html = results.map(function (s) {
                 var badges = (s.badges || []).map(function (b) {

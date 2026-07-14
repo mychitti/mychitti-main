@@ -203,21 +203,9 @@ class AppointmentController extends Controller
 
             DB::commit();
 
-            // Lead Inbox — a completed booking is a strong inbound lead (Phase 3 §3.3).
-            try {
-                DB::table('lead_signals')->insert([
-                    'store_id'   => $store->id,
-                    'user_id'    => $user->id,
-                    'type'       => 'booking',
-                    'source'     => 'appointment',
-                    'meta'       => json_encode(['appointment_id' => $appointment->id]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } catch (\Exception $e) {
-                // lead capture must never block a booking
-            }
-
+            // (No lead_signal here — a completed appointment already has its own record in the
+            // Appointments/OPD flow. The Lead Inbox tracks only soft, pre-conversion signals.)
+  
             return redirect()->route('front.appointment.confirm', [
                 'city'  => $city,
                 'slug'  => $slug,

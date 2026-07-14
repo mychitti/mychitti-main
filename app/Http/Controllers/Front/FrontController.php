@@ -1103,10 +1103,14 @@ class FrontController extends Controller
 
     // AI Search results page (Phase 3 §3.1) — renders the query; the page fetches /api/v1/ai-search.
     public function aiSearch(Request $request)
-    {
+    { 
         $query = trim((string) $request->get('q', ''));
-        return view('front-views.ai-search', compact('query'));
-    }
+        // The user's selected city/zone(s) + coordinates — so results stay in-city and rank by distance.
+        $zoneIds = array_values(array_filter((array) json_decode($this->zone_id, true)));
+        $lat = $this->latitude;
+        $lng = $this->longitude;
+        return view('front-views.ai-search', compact('query', 'zoneIds', 'lat', 'lng'));
+    } 
     public function disclaimer()
     {
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'disclaimer')->first();

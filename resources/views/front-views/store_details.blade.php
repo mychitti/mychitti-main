@@ -330,9 +330,17 @@
                             @else
                                 {{ $store['phone'] }}
                             @endif
-                        </p>
+                        </p> 
                         <p class="mb-0"><i class="fa fa-envelope"></i>
                             {{ $data['store_config']?->webpage_email ?? $store->email }}</p>
+                        @php $__wa = store_whatsapp_link($data['store_config']?->webpage_whatsapp ?? ($store['phone'] ?? null)); @endphp
+                        @if ($__wa)
+                            <a href="{{ $__wa }}" target="_blank" rel="noopener" data-lead-store="{{ $store['id'] ?? '' }}"
+                                class="d-inline-flex align-items-center mt-2"
+                                style="gap:6px;background:#25D366;color:#fff;font-weight:600;font-size:13px;padding:7px 14px;border-radius:999px;text-decoration:none;">
+                                <i class="fab fa-whatsapp"></i> Chat on WhatsApp
+                            </a>
+                        @endif 
                         <div class="d-flex my-3">
                             @php $store_rating = number_format($store->average_rating, 1); @endphp
                             {{ $store_rating }} &nbsp; <div class="rating-stars" data-rating="{{ $store_rating }}">

@@ -101,16 +101,17 @@ class SettingsController extends Controller
             return back();
         }
         $storeId = Helpers::get_store_id();
-
+  
         StoreConfig::updateOrInsert(['store_id' => $storeId], [
             'webpage_name' => $request->website_name,
             'webpage_email' => $request->email,
             'webpage_address' => $request->address,
             'webpage_phones' => json_encode($request->phone),
+            'webpage_whatsapp' => preg_replace('/[^0-9]/', '', (string) $request->whatsapp) ?: null,
             'webpage_latitude' => $request->latitude,
             'webpage_longitude' => $request->longitude,
             'inventory_items_position' => $request->inventory_items_position,
-        ]);
+        ]); 
         Toastr::success('Updated Successfully');
 
         return back();

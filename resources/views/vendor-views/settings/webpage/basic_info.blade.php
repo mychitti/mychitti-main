@@ -69,6 +69,19 @@
                              </div>
                          @endif
                      </div>
+                 </div> 
+                 <div class="mb-3">
+                     <label class="settings-label">
+                         <span class="settings-icon">💬</span>
+                         <span>WhatsApp Number</span>
+                     </label>
+                     <div class="row">
+                         <div class="col-md-6">
+                             <input type="text" name="whatsapp" value="{{ $storeConfig?->webpage_whatsapp }}"
+                                 class="form-control intl_input" placeholder="WhatsApp number (with country code)">
+                             <small class="text-muted">Shown as a “Chat on WhatsApp” button on your store page. Leave blank to hide it.</small>
+                         </div>
+                     </div> 
                  </div>
                  <div class="border p-2">
                      <div class="row">

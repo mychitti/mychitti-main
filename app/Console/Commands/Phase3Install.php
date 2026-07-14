@@ -19,15 +19,28 @@ class Phase3Install extends Command
 {
     protected $signature = 'phase3:install';
     protected $description = 'Install Phase 3 (AI Search & Intelligence) tables and columns';
-
+ 
     public function handle(): int
-    {
+    { 
         $this->storeOffers();
         $this->aiCitations();
         $this->leadSignals();
         $this->reviewSentiment();
+        $this->storeWhatsapp();
         $this->info('Phase 3 schema installed.');
         return self::SUCCESS;
+    }
+
+    private function storeWhatsapp(): void
+    {
+        // Model resolves its table as 'storeConfigs' or 'store_configs' at runtime — match that.
+        $table = Schema::hasTable('storeConfigs') ? 'storeConfigs'
+            : (Schema::hasTable('store_configs') ? 'store_configs' : null);
+
+        if ($table && !Schema::hasColumn($table, 'webpage_whatsapp')) {
+            DB::statement("ALTER TABLE `{$table}` ADD COLUMN webpage_whatsapp VARCHAR(20) NULL AFTER webpage_phones");
+            $this->info("Added {$table}.webpage_whatsapp.");
+        }
     }
 
     private function storeOffers(): void

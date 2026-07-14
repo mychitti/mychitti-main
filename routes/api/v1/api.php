@@ -34,10 +34,13 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     });
  
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
- 
+  
     // AI Search — RAG-powered natural-language local discovery (Phase 3 §3.1)
       // Stricter cap: each call hits an LLM (cost) — 20/min per IP on top of the default api limiter.
     Route::post('ai-search', 'AiSearchController@search')->middleware('throttle:20,1');
+
+    // Personalized Recommendation Engine (Phase 4 §4.2) — home-feed sections.
+    Route::post('recommendations', 'RecommendationController@index')->middleware('throttle:60,1');
 
     // Local Offers Engine (Phase 3 §3.5) — cheap reads, modest cap.
     Route::get('offers/feed', 'OfferController@feed')->middleware('throttle:60,1');
