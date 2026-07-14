@@ -36,15 +36,16 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
     Route::get('keywords-search', 'ItemController@keywords_searchbar');
  
     // AI Search — RAG-powered natural-language local discovery (Phase 3 §3.1)
-    Route::post('ai-search', 'AiSearchController@search');
+      // Stricter cap: each call hits an LLM (cost) — 20/min per IP on top of the default api limiter.
+    Route::post('ai-search', 'AiSearchController@search')->middleware('throttle:20,1');
 
-    // Local Offers Engine (Phase 3 §3.5)
-    Route::get('offers/feed', 'OfferController@feed');
-    Route::get('offers/{store_id}', 'OfferController@byStore');
+    // Local Offers Engine (Phase 3 §3.5) — cheap reads, modest cap.
+    Route::get('offers/feed', 'OfferController@feed')->middleware('throttle:60,1');
+    Route::get('offers/{store_id}', 'OfferController@byStore')->middleware('throttle:60,1');
 
-    // Lead Inbox signal capture (Phase 3 §3.3)
-    Route::post('lead-signal', 'LeadSignalController@store');
-    Route::get('lead-signal/{store_id}/summary', 'LeadSignalController@summary');
+    // Lead Inbox signal capture (Phase 3 §3.3) — anti-spam cap on writes.
+    Route::post('lead-signal', 'LeadSignalController@store')->middleware('throttle:30,1');
+    Route::get('lead-signal/{store_id}/summary', 'LeadSignalController@summary')->middleware('throttle:60,1');
     Route::get('zone/list', 'ZoneController@get_zones');
     Route::get('offline_payment_method_list', 'ConfigController@offline_payment_method_list');
 

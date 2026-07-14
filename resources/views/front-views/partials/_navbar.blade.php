@@ -66,7 +66,9 @@
                 {{-- @if (Request::is('/')) --}}
 
 
-                <div class="d-flex ">
+                <div class="d-flex align-items-center">
+                     {{-- KEYWORD search (default). The sparkling button switches to AI Search. --}}
+                    <div id="mcKeywordSearch" style="display:flex; align-items:center; gap:8px;">
                     <div class="position-relative search_inp_grp">
                         <input onkeyup="searchBar('search_results3', this)" id="mainSearchbar"
                             class="form-control border-2 border-secondary p-2 rounded-pill new_searchbar"
@@ -99,6 +101,27 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                        <button type="button" class="mc-ai-magic-btn" data-mc-search-mode="ai" title="Try AI Search — ask in plain words">
+                            <span class="mc-spark mc-spark-1">✦</span>
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                            <span class="mc-ai-magic-label"><i class="fa fa-search"></i> AI Search</span>
+                            <span class="mc-spark mc-spark-2">✦</span>
+                        </button>
+                    </div>
+
+                    {{-- AI search (hidden until toggled from keyword mode) --}}
+                    <div id="mcAiSearch" style="display:none; align-items:center; gap:8px;">
+                        <form action="{{ route('ai.search') }}" method="GET" class="mc-ai-search" role="search">
+                            <span class="mc-ai-badge"><i class="fas fa-wand-magic-sparkles"></i> AI</span>
+                            <input type="text" name="q" class="mc-ai-input" id="mcAiInput" autocomplete="off" required
+                                value="{{ request('q') }}"
+                                placeholder="Describe what you need…">
+                            <button type="submit" class="mc-ai-btn"><span>Ask</span> <i class="fas fa-arrow-right"></i></button>
+                        </form>
+                        <button type="button" class="mc-search-switch" data-mc-search-mode="keyword" title="Switch to keyword search">
+                            <i class="fa fa-search"></i> Keyword
+                        </button>
                     </div>
                     {{-- <a type="button" class=" search_modal_btn text-primary d-flex" data-bs-toggle="modal"
                             data-bs-target="#searchbarModal">Search Products, Services, Keywords, Stores <i
@@ -212,7 +235,96 @@
 @endif
 
 <div class="container-fluid secondary_nav">
+    @if (!Route::is('store.details') && !Request::is('store*') && !request()->attributes->get('is_store_domain'))
+        @once
+             <style>  
+                .mc-ai-search { display:flex; align-items:center; gap:6px;
+                    background:#fff; border:2px solid #7c3aed; border-radius:999px;
+                    padding:3px 4px 3px 12px; box-shadow:0 4px 18px -8px rgba(124,58,237,.6); }
+                .mc-ai-badge { display:inline-flex; align-items:center; gap:4px; flex:none;
+                    font-weight:700; font-size:11px; letter-spacing:.02em; color:#fff;
+                    background:linear-gradient(135deg,#2563eb,#7c3aed); padding:5px 9px; border-radius:999px; }
+                .mc-ai-input { border:0; outline:0; font-size:14px; background:transparent; color:#1d2333;
+                    width:240px; max-width:42vw; }
+                .mc-ai-input::placeholder { color:#8688a8; }
+                .mc-ai-btn { flex:none; border:0; border-radius:999px; font-weight:700; font-size:13px;
+                    color:#fff; background:#7c3aed; padding:7px 13px; cursor:pointer; transition:background .15s; }
+                .mc-ai-btn:hover { background:#6d28d9; }
+                .mc-search-switch { border:1px solid #d8e6c0; background:#f3f9ea; color:#5a9e00;
+                    font-weight:600; font-size:12.5px; border-radius:999px; padding:7px 12px; cursor:pointer;
+                    white-space:nowrap; transition:background .15s,border-color .15s; }
+                .mc-search-switch:hover { background:#e9f4d8; border-color:#81c408; }
 
+                /* Sparkling, magical AI Search button — blue → purple */
+                .mc-ai-magic-btn { position:relative; display:inline-flex; align-items:center; gap:6px;
+                    border:0; border-radius:9px; font-weight:700; font-size:13.5px; color:#fff; cursor:pointer;
+                       padding: 10px 8px; white-space:nowrap;
+                    background:linear-gradient(120deg,#2563eb,#7c3aed,#4f46e5,#8b5cf6);
+                    background-size:280% 280%;
+                    animation: mcShimmer 4s ease infinite, mcGlow 2.4s ease-in-out infinite; }
+                .mc-ai-magic-btn:hover { filter:brightness(1.08) saturate(1.1); }
+                .mc-spark { font-size:10px; line-height:1; color:#fde68a; animation: mcTwinkle 1.6s ease-in-out infinite; }
+                .mc-spark-2 { animation-delay:.8s; }
+                @keyframes mcShimmer { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+                @keyframes mcGlow { 0%,100%{ box-shadow:0 0 6px rgba(124,58,237,.5) } 50%{ box-shadow:0 0 22px rgba(124,58,237,.95) } }
+                @keyframes mcTwinkle { 0%,100%{ opacity:.35; transform:scale(.8) } 50%{ opacity:1; transform:scale(1.25) } }
+                @media (prefers-reduced-motion: reduce){ .mc-ai-magic-btn,.mc-spark{ animation:none } }
+                @media (max-width:575px){
+                    .mc-ai-input{ width:150px; }
+                    .mc-ai-btn span{ display:none; } .mc-ai-btn{ padding:8px 11px; }
+                    .mc-ai-magic-label{ display:none; }
+                }
+            </style>
+        @endonce
+        @once
+            <script>
+                (function () {
+                    var el = document.getElementById('mcAiInput');
+                    if (!el || el.value) return;
+                    var ex = [
+                        'my AC is not cooling',
+                        'need a plumber for a leaking tap',
+                        'best salon for a haircut near me',
+                        'RO water purifier service in my area',
+                        'electrician for a fan installation'
+                    ], i = 0;
+                    setInterval(function () {
+                        if (document.activeElement === el || el.value) return;
+                        i = (i + 1) % ex.length;
+                        el.setAttribute('placeholder', 'Describe what you need — e.g. “' + ex[i] + '”');
+                    }, 2600);
+                })();
+
+                // Search-mode toggle: swap between the keyword bar and the AI bar (one visible at a time).
+                (function () {
+                    var KEY = 'mcSearchMode';
+                    var ai = document.getElementById('mcAiSearch');
+                    var kw = document.getElementById('mcKeywordSearch');
+                    if (!ai || !kw) return;
+
+                    function apply(mode) {
+                        var isAi = mode === 'ai';
+                        ai.style.display = isAi ? 'flex' : 'none';
+                        kw.style.display = isAi ? 'none' : 'flex';
+                        try { localStorage.setItem(KEY, isAi ? 'ai' : 'keyword'); } catch (e) {}
+                    }
+                    // Default to KEYWORD search; honour the visitor's last choice.
+                    var saved;
+                    try { saved = localStorage.getItem(KEY); } catch (e) {}
+                    apply(saved || 'keyword');
+
+                    document.querySelectorAll('[data-mc-search-mode]').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var mode = btn.getAttribute('data-mc-search-mode');
+                            apply(mode);
+                            var focusEl = document.getElementById(mode === 'keyword' ? 'mainSearchbar' : 'mcAiInput');
+                            if (focusEl) focusEl.focus();
+                        });
+                    });
+                })();
+            </script>
+        @endonce
+    @endif
 </div>
 <!-- Navbar End -->
 <!-- Modal Search Start -->

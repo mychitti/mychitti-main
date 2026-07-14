@@ -221,7 +221,7 @@ Route::get('invoice-correction', [FrontController::class, 'invoice_correction'])
 Route::get('gatepass-details/{id}', [FrontUserController::class, 'gatepass_details'])->name('gatepass-details');
 Route::get('quotation-details/{id}', [FrontUserController::class, 'quotation_details'])->name('quotation-details');
 Route::get('unavailable-provider-check', [CronController::class, 'unavailable_provider']);
-
+    
 Route::post('check-business', [ControllersVendorController::class, 'check_business'])->name('check-business');
 
 // modul pages for vendor reg 
@@ -232,6 +232,7 @@ Route::get('mc-vendor-hub-tnc', [FrontController::class, 'mc_vendor_hub_tnc'])->
 Route::get('mc-vendor-hub-privacy-policy', [FrontController::class, 'mc_vendor_hub_pp'])->name('mc-vendor-hub-pp');
 Route::get('FAQs', [FrontController::class, 'faq'])->name('faq');
 Route::get('search', [FrontController::class, 'searchResults'])->name('search-page');
+Route::get('ai-search', [FrontController::class, 'aiSearch'])->name('ai.search');
 Route::get('about-us', [FrontController::class, 'about'])->name('about-us');
 Route::get('contact-us', [FrontController::class, 'contact'])->name('contact-us');
 Route::get('privacy-policy', [FrontController::class, 'privacy_policy'])->name('privacy-policy');

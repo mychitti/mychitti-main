@@ -196,14 +196,15 @@ class Kernel extends ConsoleKernel
         })->everyMinute()->timezone($tz)->name('lead-note-reminders')->withoutOverlapping();
 
         // SEO COMBOS (category x zone) reconciliation + queue keyword generation =========
-        // DISABLED for now — while AI credits/provider are still being sorted, run manually via
-        // `php artisan seo:sync-combos --generate` so generation never fires unattended and drains
-        // credits. Re-enable this block once the provider is funded and a `seo` queue worker is up.
-        // $schedule->command('seo:sync-combos --generate')->dailyAt('02:30')
-        //     ->timezone($tz)
-        //     ->name('seo-sync-combos')
-        //     ->withoutOverlapping();
- 
+        // Reconciles landing-page combos and queues AI copy generation for new/ungenerated ones.
+        // Generation is dispatched to the `seo` queue — a worker MUST be processing it, e.g.
+        // `php artisan queue:work --queue=seo` (or add `seo` to your Supervisor worker's --queue list),
+         // otherwise the jobs pile up unprocessed.
+        $schedule->command('seo:sync-combos --generate')->dailyAt('02:30')
+            ->timezone($tz)
+            ->name('seo-sync-combos')
+            ->withoutOverlapping();
+  
         // PHASE 3 — AI SEARCH & INTELLIGENCE =================================
         // Recompute MC Trust Layer scores/badges (pure SQL, fast).
         $schedule->command('vendor:sync-trust-score')

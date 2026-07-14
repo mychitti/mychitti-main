@@ -1088,17 +1088,24 @@ class FrontController extends Controller
     public function contact()
     {
         return view('front-views.contact');
-    }
+      }
     public function about()
     {
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'about_us')->first();
         $title = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'about_title')->first();
         return view('front-views.about', compact('content', 'title'));
-    }
+    } 
     public function faq()
-    {
+    { 
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'faq')->first();
         return view('front-views.faq', compact('content'));
+    }
+
+    // AI Search results page (Phase 3 §3.1) — renders the query; the page fetches /api/v1/ai-search.
+    public function aiSearch(Request $request)
+    {
+        $query = trim((string) $request->get('q', ''));
+        return view('front-views.ai-search', compact('query'));
     }
     public function disclaimer()
     {

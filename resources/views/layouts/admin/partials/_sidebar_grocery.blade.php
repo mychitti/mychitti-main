@@ -675,6 +675,16 @@
                                 SEO Pages
                             </span>
                         </a>
+                    </li> 
+  
+                   <li class="navbar-vertical-aside-has-menu {{ Request::is('ai-citations*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.ai-citations.index') }}" title="AI Citations">
+                            <i class="tio-chart-bar-4 nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                AI Citations
+                            </span>
+                        </a>
                     </li>
 
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('suspicious-activity*') ? 'show active' : '' }}">
