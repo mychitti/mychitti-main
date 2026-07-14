@@ -203,6 +203,30 @@ class Kernel extends ConsoleKernel
         //     ->timezone($tz)
         //     ->name('seo-sync-combos')
         //     ->withoutOverlapping();
+ 
+        // PHASE 3 — AI SEARCH & INTELLIGENCE =================================
+        // Recompute MC Trust Layer scores/badges (pure SQL, fast).
+        $schedule->command('vendor:sync-trust-score')
+            ->dailyAt('01:30')
+            ->timezone($tz)
+            ->name('vendor-sync-trust-score')
+            ->withoutOverlapping();
+
+        // Review Intelligence — sentiment on NEW reviews only (incremental, cheap). Falls back to
+        // OpenAI on the ai-server if Anthropic is unfunded.
+        $schedule->command('reviews:analyze-sentiment')
+            ->dailyAt('01:45')
+            ->timezone($tz)
+            ->name('reviews-analyze-sentiment')
+            ->withoutOverlapping();
+
+        // Rebuild the AI Search business index. Paced for the Voyage free tier (~70 min full run),
+        // so give the overlap lock a wide window. Runs at a low-traffic hour.
+        $schedule->command('ai:sync-business-embeddings')
+            ->dailyAt('02:00')
+            ->timezone($tz)
+            ->name('ai-sync-business-embeddings')
+            ->withoutOverlapping(180);
 
         // DPDP DATA RETENTION — anonymize PII on behavioral logs older than 12 months.
         // Dry-run first (`php artisan data:purge-retention --dry-run`) to verify counts before
