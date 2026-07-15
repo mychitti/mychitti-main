@@ -802,6 +802,9 @@ class EmployeeController extends Controller
         if ($request->has('image')) {
             $e['image'] = Helpers::update('vendor/', $e->image, 'png', $request->file('image'));
         }
+        if (empty($e->employee_id)) {
+            $e->employee_id = _newEmpId(true);
+        }
         $e->f_name = $request->f_name;
         $e->l_name = $request->l_name;
         $e->phone = $request->phone;

@@ -67,7 +67,7 @@
                                 <label class="input-label text-capitalize"
                                     for="f_name">{{ translate('messages.employee_id') }} </label>
                                 <input type="text" name="" class="form-control" id=""
-                                    placeholder="Auto Generated" readonly value="{{ $e->employee_id }}">
+                                    placeholder="Auto Generated" readonly value="{{ $e->employee_id ?: _newEmpId() }}">
                             </div>
                             <div class="form-group col-md-4">
                                 <label class="input-label text-capitalize"
