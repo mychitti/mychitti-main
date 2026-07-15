@@ -41,28 +41,30 @@ If they must be fully off, also guard the routes — not done yet.
 
 ---
 
-## 2026-07-15 — Where the Phase 4 code lives (IMPORTANT)
+## 2026-07-15 — Phase 4 code now lives on the `phase4` branch (RESOLVED)
 
-**There is no `phase4` branch.** The Phase 4 AI work is in a **git stash**:
+The Phase 4 AI work **was** parked in a git stash (`On main: phase4: reviews, lead signals, billing,
+about_us WIP`) with **no branch** — so it vanished from the working tree whenever another branch was
+checked out. It has now been restored:
 
 ```
-stash@{0}: On main: phase4: reviews, lead signals, billing, about_us WIP
+main → branched to `phase4` → stash popped → committed 880ec5c5 (32 files)
 ```
-29 files, ~1280 insertions. Stashed from **`main`**. Branches that exist: `main`, `hmis` (current),
-`backup-main`, `inventory-missing-filter-modules`, `seo-enhancements`.
+**All Phase 4 work is committed on the `phase4` branch.** Not yet merged to `main`, not yet pushed.
 
-Inspect without applying:
+### ⚠️ Parked: hmis WIP
+While restoring, uncommitted `hmis` work was parked in a stash:
+```
+stash@{0}: On hmis: hmis WIP: pharmacy walkin (parked by Claude 2026-07-15)
+```
+That's `app/Modules/HMIS/views/vendor/pharmacy/walkin.blade.php`. To get it back:
 ```bash
-git stash show --stat "stash@{0}"     # file list
-git stash show -p "stash@{0}"         # full diff
+git checkout hmis
+git stash pop "stash@{0}"     # verify it's still index 0 first: git stash list
 ```
-Suggested restore (keeps `main` clean, doesn't disturb other branches):
-```bash
-git checkout main
-git checkout -b phase4
-git stash pop "stash@{0}"
-```
-> Working tree only reflects the current branch — if the AI buttons "disappear", check the stash first.
+
+> Lesson: the working tree only reflects the current branch. If a feature "disappears",
+> run `git stash list` and `git branch` before assuming it was lost.
 
 ---
 
