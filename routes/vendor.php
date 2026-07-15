@@ -67,6 +67,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('/store-token', 'DashboardController@updateDeviceToken')->name('store.token');
         Route::get('/reviews', 'ReviewController@index')->name('reviews')->middleware('module:reviews');
         Route::post('submit-reply', 'ReviewController@submit_reply')->name('submit-reply');
+        Route::post('reviews/ai-draft-reply', 'ReviewController@ai_draft_reply')->name('reviews.ai-draft-reply');
         Route::get('site_direction', 'BusinessSettingsController@site_direction_vendor')->name('site_direction');
 
         Route::group(['prefix' => 'performance-analytics', 'as' => 'performance-analytics.'], function () {
@@ -155,6 +156,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('get-invoices-by-vendor', 'BillingController@get_invoices_by_vendor')->name('get-invoices-by-vendor')->middleware('permission:billing,list'); // only for manual invoices
             Route::get('veiw-invoice/{invoice_id}', 'BillingController@view_invoice')->name('view-invoice')->middleware('permission:billing,view'); // only for manual invoices
             Route::get('create-invoice', 'BillingController@create_invoice')->name('create-invoice')->middleware('permission:billing,add_advanced'); // only for manual invoices
+            Route::post('ai-quotation-items', 'BillingController@ai_quotation_items')->name('ai-quotation-items')->middleware('permission:billing,add_advanced');
             Route::post('validate-invoicenum', 'BillingController@validate_invoicenum')->name('validate-invoicenum'); // only for manual invoices
             Route::get('get-invoice-id-for-date', 'BillingController@getInvoiceIdForDate')->name('get-invoice-id-for-date');
 
@@ -860,6 +862,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Lead Inbox — contact signals (Phase 3 §3.3)
         Route::group(['prefix' => 'lead-signals', 'as' => 'lead-signals.'], function () {
             Route::get('/', 'LeadSignalController@index')->name('index');
+            Route::post('ai-follow-up', 'LeadSignalController@ai_follow_up')->name('ai-follow-up');
         });  
 
         // Vendor AI generators — Sam (ops) + Zayan (marketing) (Phase 4 §4.1)
@@ -983,6 +986,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
             Route::get('about-us', 'BusinessSettingsController@about_us')->name('about-us');
             Route::post('about-us-save', 'BusinessSettingsController@about_us_save')->name('about-us.save');
+            Route::post('about-us-ai', 'BusinessSettingsController@ai_description')->name('about-us.ai');
             Route::get('terms-and-conditions', 'BusinessSettingsController@common_terms_and_conditions')->name('common-terms-and-conditions');
             Route::post('common-tnc-save', 'BusinessSettingsController@common_tnc_save')->name('common-tnc-save');
             Route::post('common-pp-save', 'BusinessSettingsController@common_pp_save')->name('common-pp-save');

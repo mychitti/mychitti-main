@@ -88,6 +88,15 @@
                                         <a href="{{ $wa }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success" title="Message on WhatsApp">
                                             <i class="tio-chat"></i> WhatsApp
                                         </a>
+                                        @if (config('services.vendor_ai_tools.enabled'))
+                                            <button type="button" class="btn btn-sm btn-outline-primary mc-lead-draft"
+                                                data-type="{{ $row->type }}"
+                                                data-name="{{ $row->f_name ? trim($row->f_name) : '' }}"
+                                                data-wa="{{ $wa }}"
+                                                title="Draft a follow-up with AI, then send on WhatsApp">
+                                                <i class="tio-magic-wand"></i> Draft
+                                            </button>
+                                        @endif
                                     @endif
                                 @else
                                     <span class="text-muted small">—</span>
@@ -105,4 +114,83 @@
         <div class="card-footer">{{ $recent->appends(['days' => $days])->links() }}</div>
     </div>
 </div>
+
+{{-- AI follow-up composer — drafts a WhatsApp message from the lead, vendor edits then sends --}}
+<div class="modal fade" id="mcFollowupModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="tio-magic-wand text-primary"></i> Follow-up message</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">AI drafted this from what the customer did. Edit it, then send on WhatsApp.</p>
+                <textarea id="mcFollowupText" class="form-control" rows="5" placeholder="Drafting…"></textarea>
+                <div id="mcFollowupErr" class="text-danger small mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="mcFollowupCopy"><i class="tio-copy"></i> Copy</button>
+                <a href="#" target="_blank" rel="noopener" class="btn btn-success" id="mcFollowupSend"><i class="tio-chat"></i> Send on WhatsApp</a>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('script_2')
+<script>
+    (function () {
+        var modalEl = $('#mcFollowupModal'),
+            txt     = $('#mcFollowupText'),
+            errEl   = $('#mcFollowupErr'),
+            sendBtn = $('#mcFollowupSend'),
+            copyBtn = $('#mcFollowupCopy'),
+            waBase  = '';
+
+        function buildWa() {
+            if (!waBase) return '#';
+            var msg = (txt.val() || '').trim();
+            return waBase + (msg ? ('?text=' + encodeURIComponent(msg)) : '');
+        }
+
+        $(document).on('click', '.mc-lead-draft', function () {
+            var b = $(this);
+            waBase = b.data('wa') || '';
+            errEl.hide().text('');
+            txt.val('').attr('placeholder', 'Drafting…');
+            sendBtn.attr('href', '#');
+            modalEl.modal('show');
+            $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+            $.post('{{ route('vendor.lead-signals.ai-follow-up') }}', { type: b.data('type'), name: b.data('name') })
+                .done(function (res) {
+                    if (res && res.success) {
+                        txt.val(res.text);
+                        sendBtn.attr('href', buildWa());
+                    } else {
+                        errEl.text((res && res.message) || 'Could not draft a message.').show();
+                    }
+                })
+                .fail(function (xhr) {
+                    var m = (xhr && xhr.responseJSON && xhr.responseJSON.message)
+                        ? xhr.responseJSON.message : 'Could not draft a message. Please try again.';
+                    errEl.text(m).show();
+                })
+                .always(function () { txt.attr('placeholder', 'Type your message…'); });
+        });
+
+        // Keep the WhatsApp link in sync while the vendor edits the text.
+        txt.on('input', function () { sendBtn.attr('href', buildWa()); });
+
+        copyBtn.on('click', function () {
+            var t = txt.val() || '';
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(t).then(function () {
+                    var o = copyBtn.html();
+                    copyBtn.html('<i class="tio-done"></i> Copied');
+                    setTimeout(function () { copyBtn.html(o); }, 1500);
+                });
+            }
+        });
+    })();
+</script>
+@endpush

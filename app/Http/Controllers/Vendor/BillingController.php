@@ -34,6 +34,7 @@ use App\Traits\Payment;
 use Brian2694\Toastr\Facades\Toastr;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 use Maatwebsite\Excel\Facades\Excel;
@@ -1480,4 +1481,73 @@ class BillingController extends Controller
     }
     return view('vendor-views.billing.view_invoice', compact('invoice'));
   }
+
+    /**
+     * Turn a plain-language job description into invoice line items (Phase 4 §4.1 "AI Quotation
+     * Generator", made contextual — fills the Create Invoice form the vendor is already on).
+     * Returns a clean items array [{name, price, qty}]; the vendor edits before saving. OpenAI gpt-4o-mini.
+     */
+    public function ai_quotation_items(Request $request)
+    {
+        $request->validate(['input' => 'required|string|max:2000']);
+
+        $store     = DB::table('stores')->where('id', Helpers::get_store_id())->first(['name']);
+        $storeName = $store->name ?? 'the business';
+
+        $key = config('services.openai.key');
+        if (!$key) {
+            return response()->json(['success' => false, 'message' => 'AI is not configured. Please contact support.'], 500);
+        }
+
+        $system = "You are Sam, helping \"{$storeName}\" (a local service business in India) turn a plain-language "
+            . "description of work into invoice line items. Return ONLY strict JSON of the form "
+            . "{\"items\":[{\"name\":\"string\",\"price\":number,\"qty\":number}]}. Rules: name = a short clear item/service "
+            . "name; price = unit price in rupees as a plain number (no symbols, no commas), use 0 when the vendor did not "
+            . "state a price; qty = quantity as a number, default 1. Only include items the vendor actually mentioned. "
+            . "Never invent prices. No commentary outside the JSON.";
+
+        try {
+            $response = Http::timeout(45)->withToken($key)->post('https://api.openai.com/v1/chat/completions', [
+                'model'           => 'gpt-4o-mini',
+                'max_tokens'      => 800,
+                'temperature'     => 0.3,
+                'response_format' => ['type' => 'json_object'],
+                'messages'        => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => trim((string) $request->input('input'))],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'AI service is temporarily unavailable. Please try again.'], 503);
+        }
+
+        if (!$response->ok()) {
+            return response()->json(['success' => false, 'message' => 'Could not generate right now. Please try again.'], 502);
+        }
+
+        $parsed   = json_decode((string) $response->json('choices.0.message.content'), true);
+        $rawItems = is_array($parsed) && isset($parsed['items']) && is_array($parsed['items']) ? $parsed['items'] : [];
+
+        $items = [];
+        foreach ($rawItems as $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $name = trim((string) ($it['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $items[] = [
+                'name'  => mb_substr($name, 0, 255),
+                'price' => isset($it['price']) && is_numeric($it['price']) ? round((float) $it['price'], 2) : 0,
+                'qty'   => isset($it['qty']) && is_numeric($it['qty']) && (float) $it['qty'] > 0 ? (float) $it['qty'] : 1,
+            ];
+        }
+
+        if (empty($items)) {
+            return response()->json(['success' => false, 'message' => 'Couldn’t find any items — try describing the work more clearly.'], 200);
+        }
+
+        return response()->json(['success' => true, 'items' => $items]);
+    }
 }

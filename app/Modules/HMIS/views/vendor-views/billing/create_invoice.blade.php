@@ -268,6 +268,9 @@
 
                                 <button type="button" class="btn btn--primary" onclick="addMoreRow()">+ Add
                                     Item</button>
+                                @if (config('services.vendor_ai_tools.enabled'))
+                                    <button type="button" class="btn btn--primary mc-ai-draft-items"><i class="tio-magic-wand"></i> AI Draft Items</button>
+                                @endif
                                 @if (_isSubscription())
                                     <button type="button" class="btn btn--primary" data-toggle="modal"
                                         data-target="#inventoryItemModal">+ Add From {{ _moduleLabel('inventory') }}</button>
@@ -854,5 +857,71 @@
                 }
             });
         }
+    </script>
+@endpush
+
+@push('script_2')
+    <script>
+        // AI Draft Items (Phase 4 §4.1) — describe the work, AI fills invoice line items to edit.
+        (function () {
+            var genUrl = '{{ route('vendor.invoice.ai-quotation-items') }}';
+            var modalHtml =
+                '<div class="modal fade" id="mcQuoteModal" tabindex="-1" role="dialog" aria-hidden="true">' +
+                  '<div class="modal-dialog" role="document"><div class="modal-content">' +
+                    '<div class="modal-header"><h5 class="modal-title"><i class="tio-magic-wand text-primary"></i> Draft items with AI</h5>' +
+                      '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>' +
+                    '<div class="modal-body">' +
+                      '<p class="text-muted small mb-2">Describe the work in plain words — include prices if you know them. AI turns it into invoice line items you can edit.</p>' +
+                      '<textarea id="mcQuoteInput" class="form-control" rows="4" placeholder="e.g. AC service for a 1.5 ton split 1200, gas refill 1800 x2"></textarea>' +
+                      '<div id="mcQuoteErr" class="text-danger small mt-2" style="display:none;"></div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                      '<button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>' +
+                      '<button type="button" class="btn btn--primary" id="mcQuoteGen"><i class="tio-magic-wand"></i> Generate items</button>' +
+                    '</div>' +
+                  '</div></div>' +
+                '</div>';
+
+            $(function () {
+                if (!$('#mcQuoteModal').length) $('body').append(modalHtml);
+
+                $(document).on('click', '.mc-ai-draft-items', function () {
+                    $('#mcQuoteErr').hide().text('');
+                    $('#mcQuoteModal').modal('show');
+                });
+
+                $(document).on('click', '#mcQuoteGen', function () {
+                    var btn = $(this), val = ($('#mcQuoteInput').val() || '').trim(), err = $('#mcQuoteErr');
+                    err.hide().text('');
+                    if (!val) { err.text('Please describe the work first.').show(); return; }
+                    var orig = btn.html();
+                    btn.prop('disabled', true).html('<i class="tio-sync tio-spin"></i> Generating…');
+                    $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+                    $.post(genUrl, { input: val })
+                        .done(function (res) {
+                            if (res && res.success && res.items && res.items.length) {
+                                res.items.forEach(function (it) {
+                                    if (typeof addMoreRow === 'function') addMoreRow();
+                                    var row = $('.item_row').last();
+                                    row.find('.item_name').val(it.name || '');
+                                    if (it.price !== null && it.price !== undefined && it.price !== '') row.find('.item_price').val(it.price);
+                                    row.find('.item_qty').val(it.qty !== null && it.qty !== undefined && it.qty !== '' ? it.qty : 1);
+                                });
+                                if (typeof recalculateInvoice === 'function') recalculateInvoice();
+                                if (typeof updateEmptyState === 'function') updateEmptyState();
+                                $('#mcQuoteModal').modal('hide');
+                                $('#mcQuoteInput').val('');
+                            } else {
+                                err.text((res && res.message) || 'Could not generate items. Try rephrasing.').show();
+                            }
+                        })
+                        .fail(function (xhr) {
+                            var m = (xhr && xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Could not generate items. Please try again.';
+                            err.text(m).show();
+                        })
+                        .always(function () { btn.prop('disabled', false).html(orig); });
+                });
+            });
+        })();
     </script>
 @endpush

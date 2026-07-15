@@ -1624,31 +1624,7 @@
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Lead Inbox</span>
                                     </a>
-                                </li> 
-                                {{-- Sam — AI Assistant (Phase 4 §4.1) --}}
-                                <li class="nav-item {{ Request::is('ai-tools') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.ai-tools.index') }}"
-                                        title="AI Assistant">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                         <span class="text-truncate">AI Assistant</span>
-                                    </a>
                                 </li>
-                                {{-- Zayan — Marketing AI (Phase 4 §4.1) --}}
-                                <li class="nav-item {{ Request::is('ai-tools/marketing') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.ai-tools.marketing') }}"
-                                        title="Marketing AI">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Marketing AI</span>
-                                    </a>
-                                </li>
-                                {{-- Business Insights (Phase 4 §4.3) --}}
-                                <li class="nav-item {{ Request::is('insights') ? 'active' : '' }}">
-                                    <a class="nav-link " href="{{ route('vendor.insights') }}"
-                                        title="Business Insights">
-                                        <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class="text-truncate">Business Insights</span>
-                                    </a>
-                                </li> 
                                 @if (hasPermission('profile_settings', 'view'))
                                     <li
                                         class="nav-item {{ Request::is('settings/general/profile') ? 'active' : '' }}">

@@ -367,7 +367,8 @@
                                 <a href="#services" class="btn btn-primary me-2">
                                     Enquire Now
                                 </a>
-                                <a href="tel:{{ $store['phone'] }}" class="btn btn-outline-primary">
+                                <a href="tel:{{ $store['phone'] }}" class="btn btn-outline-primary"
+                                    data-lead-action="call" data-lead-store="{{ $store['id'] }}">
                                     Call Now
                                 </a>
                             </div>
