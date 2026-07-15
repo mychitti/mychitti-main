@@ -388,6 +388,87 @@
                     @endif
                 @endforeach
             </div>
+
+            {{--  Personalized Recommendation feeds (Phase 4 §4.2) — populated from /api/v1/recommendations --}}
+            <div id="mcRecoWrap" style="display:none;">
+                <style>
+                    .mc-reco-section { margin-top: 26px; }
+                    .mc-reco-row { display:flex; gap:12px; overflow-x:auto; padding:6px 2px 10px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+                    .mc-reco-row::-webkit-scrollbar { height:6px; } .mc-reco-row::-webkit-scrollbar-thumb { background:#d7dbe0; border-radius:99px; }
+                    .mc-reco-card { flex:0 0 auto; width:230px; scroll-snap-align:start; background:#fff; border:1px solid #edeff2;
+                    border-radius:14px; overflow:hidden; text-decoration:none; color:inherit; transition:box-shadow .15s, transform .15s; }
+                    .mc-reco-card:hover { box-shadow:0 10px 26px -14px rgba(20,32,47,.28); transform:translateY(-2px); }
+                    .mc-reco-logo { width:100%; height:110px; object-fit:cover; background:#f2f4f6; display:block; }
+                    .mc-reco-body { padding:10px 12px 12px; }
+                    .mc-reco-name { font-weight:700; font-size:14px; color:#14202f; margin:0 0 3px;
+                        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                    .mc-reco-meta { font-size:12px; color:#6b7280; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+                    .mc-reco-rating { color:#e0a800; font-weight:600; }
+                    .mc-reco-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+                    .mc-reco-badge { font-size:10px; padding:2px 7px; border-radius:99px; background:#eef7ee; color:#2e7d32; white-space:nowrap; }
+                    .mc-reco-badge.gst { background:#e8f0fe; color:#1a56db; } .mc-reco-badge.trusted { background:#fff4e5; color:#b45309; }
+                </style>
+                <div class="mc-reco-section" id="mcRecoForYou" style="display:none;">
+                    <h2 class="section_heading text_dark">Recommended for You</h2>
+                    <div class="mc-reco-row" id="mcRecoForYouRow"></div>
+                </div>
+                <div class="mc-reco-section" id="mcRecoTrending" style="display:none;">
+                    <h2 class="section_heading text_dark">🔥 Trending This Week</h2>
+                    <div class="mc-reco-row" id="mcRecoTrendingRow"></div>
+                </div>
+            </div>
+            <script>
+                (function () {
+                    var ZONE_IDS = @json(json_decode(session('zone_ids', '[]'), true) ?: []);
+                    var LAT = @json($latitude ?? null);
+                    var LNG = @json($longitude ?? null);
+                    var USER_ID = @json(auth('web')->id());
+                    var FALLBACK_LOGO = '{{ asset('assets/admin/img/160x160/img1.jpg') }}';
+                    var STORE_BASE = '{{ asset('storage/app/public/store') }}/';
+
+                    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+                    function card(s) {
+                        var logo = s.logo ? STORE_BASE + esc(s.logo) : FALLBACK_LOGO;
+                        var meta = [];
+                        if (s.rating) meta.push('<span class="mc-reco-rating">★ ' + s.rating + '</span>');
+                        if (s.distance_km != null) meta.push('~' + s.distance_km + ' km');
+                        else if (s.city) meta.push(esc(s.city));
+                        var badges = (s.badges || []).slice(0, 2).map(function (b) {
+                            var cls = b.key === 'gst' ? 'gst' : (b.key === 'trusted' ? 'trusted' : '');
+                            return '<span class="mc-reco-badge ' + cls + '">' + esc(b.label) + '</span>';
+                        }).join('');
+                        return '<a class="mc-reco-card" href="' + esc(s.booking_url || '#') + '">' +
+                            '<img class="mc-reco-logo" loading="lazy" src="' + logo + '" onerror="this.src=\'' + FALLBACK_LOGO + '\'" alt="' + esc(s.name) + '">' +
+                            '<div class="mc-reco-body">' +
+                                '<div class="mc-reco-name">' + esc(s.name) + '</div>' +
+                                '<div class="mc-reco-meta">' + meta.join('<span>·</span>') + '</div>' +
+                                (badges ? '<div class="mc-reco-badges">' + badges + '</div>' : '') +
+                            '</div></a>';
+                    }
+
+                    function fill(sectionId, rowId, items) {
+                        if (!items || !items.length) return;
+                        document.getElementById(rowId).innerHTML = items.map(card).join('');
+                        document.getElementById(sectionId).style.display = 'block';
+                        document.getElementById('mcRecoWrap').style.display = 'block';
+                    }
+
+                    fetch('{{ url('api/v1/recommendations') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ zone_ids: ZONE_IDS, latitude: LAT, longitude: LNG, user_id: USER_ID })
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data || !data.success || !data.feeds) return;
+                        fill('mcRecoForYou', 'mcRecoForYouRow', data.feeds.recommended);
+                        fill('mcRecoTrending', 'mcRecoTrendingRow', data.feeds.trending);
+                    })
+                    .catch(function () {});
+                })();
+            </script>
+
             @if (count($data['popular_services']) > 0)
 
                 <h1 style="text-align: center;font-size: 31px;margin-top: 45px;">Find Trusted Local Services Near You</h1>

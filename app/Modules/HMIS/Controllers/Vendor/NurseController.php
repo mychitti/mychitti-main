@@ -104,6 +104,7 @@ class NurseController extends Controller
                 $emp->vendor_id = $vendor_id;
                 $emp->status    = 1;
                 $emp->password  = bcrypt(Str::random(16));
+                $emp->employee_id = _newEmpId(true);
                 $emp->save();
                 $empId = $emp->id;
             }

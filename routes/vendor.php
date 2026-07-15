@@ -860,7 +860,17 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Lead Inbox — contact signals (Phase 3 §3.3)
         Route::group(['prefix' => 'lead-signals', 'as' => 'lead-signals.'], function () {
             Route::get('/', 'LeadSignalController@index')->name('index');
-        }); 
+        });  
+
+        // Vendor AI generators — Sam (ops) + Zayan (marketing) (Phase 4 §4.1)
+        Route::group(['prefix' => 'ai-tools', 'as' => 'ai-tools.'], function () {
+            Route::get('/', 'AiToolController@index')->name('index');
+            Route::get('marketing', 'AiToolController@marketing')->name('marketing');
+            Route::post('generate', 'AiToolController@generate')->name('generate');
+        });
+
+        // Business Insights — trends & reputation (Phase 4 §4.3)
+        Route::get('insights', 'InsightsController@index')->name('insights'); 
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:deliveryman']], function () {
             Route::get('add', 'DeliveryManController@index')->name('add');

@@ -109,6 +109,7 @@ class EmployeeService
             $employee['image'] = $this->updateAndUpload('admin/', $employee->image, 'png', $request->file('image'));
         }
         return [
+            'employee_id' => $employee->employee_id ?: _newEmpId(true),
             'f_name' => $request->f_name,
             'l_name' => $request->l_name,
             'phone' => $request->phone,
