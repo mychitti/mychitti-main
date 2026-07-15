@@ -16,5 +16,5 @@ Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
     Route::get('{id}',       [NurseController::class, 'show'])->name('show')->middleware('permission:staff_nurse,view');
     Route::get('{id}/edit',  [NurseController::class, 'edit'])->name('edit')->middleware('permission:staff_nurse,edit');
     Route::post('{id}/update',[NurseController::class, 'update'])->name('update')->middleware('permission:staff_nurse,edit');
-    Route::get('{id}/delete',[NurseController::class, 'destroy'])->name('delete')->middleware('permission:staff_nurse,delete');
+    Route::post('{id}/delete',[NurseController::class, 'destroy'])->name('delete')->middleware('permission:staff_nurse,delete');
 });
