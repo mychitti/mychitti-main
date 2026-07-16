@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\DoctorProfile;
 use App\Models\InventoryItem;
+use App\Models\InventoryOrder;
+use App\Models\InventoryOrderDetail;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
 use App\Models\Patient;
@@ -504,12 +506,64 @@ class PrescriptionController extends Controller
 
         $invoice->increment('total_amount', $total);
 
+        // Mirror the invoice into an inventory order so dispensed medicines show up in
+        // Pharmacy → Sale Orders (walk-in sales do this via Helpers::_placeInventoryOrder).
+        $this->syncInventoryOrder($invoice, $storeId);
+
         try {
             $invoice->refresh();
             $data = _createBillPdf($invoice, 'vendor');
             $invoice->update(['pdf' => $data['pdf']]);
         } catch (\Throwable) {
         }
+    }
+
+    /**
+     * Keep exactly one inventory order per pharmacy invoice, in sync with its items.
+     * A same-day invoice is appended to on each dispense, so the order's lines are rebuilt from
+     * the invoice rather than placed again (which would duplicate earlier lines and the order).
+     */
+    private function syncInventoryOrder(ManualInvoice $invoice, int $storeId): void
+    {
+        $order = InventoryOrder::where('store_id', $storeId)
+            ->where('invoice_id', $invoice->invoice_id)
+            ->first();
+
+        if (!$order) {
+            Helpers::_placeInventoryOrder($invoice);
+            return;
+        }
+
+        $items = InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get();
+
+        InventoryOrderDetail::where('order_id', $order->order_id)->delete();
+
+        $subtotal = 0;
+        $taxTotal = 0;
+        foreach ($items as $item) {
+            $lineTotal = $item->price * $item->qty;
+            $lineTax   = ($lineTotal * (float) $item->tax) / 100;
+
+            // This model has no $fillable, so assign properties (same as Helpers::_placeInventoryOrder).
+            $detail = new InventoryOrderDetail();
+            $detail->order_id    = $order->order_id;
+            $detail->item_id     = $item->inv_id;
+            $detail->qty         = $item->qty;
+            $detail->unit_price  = $item->price;
+            $detail->total_price = $lineTotal;
+            $detail->tax_rate    = $item->tax;
+            $detail->tax_amount  = $lineTax;
+            $detail->status      = 'pending';
+            $detail->save();
+
+            $subtotal += $lineTotal;
+            $taxTotal += $lineTax;
+        }
+
+        $order->subtotal_amount = $subtotal;
+        $order->tax_amount      = $taxTotal;
+        $order->total_amount    = $subtotal + $taxTotal;
+        $order->save();
     }
 
     public function searchMedicines(Request $request)

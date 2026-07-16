@@ -340,6 +340,14 @@
 
                 {{-- Prescriptions --}}
                 <div class="tab-pane fade" id="tab-rx">
+                    @if (hasPermission('pharmacy_dispense_queue', 'list'))
+                        <div class="d-flex justify-content-end mb-2">
+                            <a href="{{ route('vendor.prescription.dispense.queue') }}"
+                               class="btn btn-xs btn-outline-secondary" title="Open the full dispense queue">
+                                <i class="tio-filter-list"></i> Dispense Queue
+                            </a>
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
                             <thead class="thead-light">
@@ -360,6 +368,12 @@
                                     <td>
                                         <a href="{{ route('vendor.prescription.show', $rx->id) }}"
                                            class="btn btn-xs btn-outline-secondary">View</a>
+                                        {{-- Only a finalized Rx can be dispensed (dispenseProcess requires it). --}}
+                                        @if ($rx->is_finalized && hasPermission('pharmacy_dispense_queue', 'view'))
+                                            <a href="{{ route('vendor.prescription.dispense.show', $rx->id) }}"
+                                               class="btn btn-xs btn-outline-primary"
+                                               title="Dispense this prescription">Dispense</a>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty

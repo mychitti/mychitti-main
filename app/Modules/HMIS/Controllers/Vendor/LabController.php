@@ -140,6 +140,18 @@ class LabController extends Controller
             if (!Schema::hasColumn('lab_orders', 'priority'))          DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `priority` VARCHAR(20) NOT NULL DEFAULT 'routine'");
             if (!Schema::hasColumn('lab_orders', 'status'))            DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'ordered'");
             if (!Schema::hasColumn('lab_orders', 'sample_type'))       DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `sample_type` VARCHAR(80) NULL");
+            // An order can need several samples (e.g. blood + urine) — stored comma-separated,
+            // so widen the original single-value column.
+            if (Schema::hasColumn('lab_orders', 'sample_type')) {
+                $sampleLen = DB::table('information_schema.columns')
+                    ->where('table_schema', DB::getDatabaseName())
+                    ->where('table_name', 'lab_orders')
+                    ->where('column_name', 'sample_type')
+                    ->value('character_maximum_length');
+                if ($sampleLen !== null && (int) $sampleLen < 255) {
+                    DB::statement("ALTER TABLE `lab_orders` MODIFY `sample_type` VARCHAR(255) NULL");
+                }
+            }
             if (!Schema::hasColumn('lab_orders', 'clinical_notes'))    DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `clinical_notes` TEXT NULL");
             if (!Schema::hasColumn('lab_orders', 'total_amount'))      DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0");
             if (!Schema::hasColumn('lab_orders', 'referred_by'))       DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `referred_by` VARCHAR(150) NULL");
@@ -707,15 +719,30 @@ class LabController extends Controller
         $patients = Patient::where('store_id', $storeId)->orderBy('name')->get(['id', 'name', 'patient_uid', 'gender', 'dob']);
         $doctors = DoctorProfile::where('store_id', $storeId)->with('employee:id,f_name,l_name')->get();
         $tests = LabTest::where('store_id', $storeId)->where('is_active', 1)->orderBy('department')->orderBy('name')->get();
-        return $this->view('order', compact('patients', 'doctors', 'tests'));
+
+        // Sample types offered on the order form = the standard ones + whatever this store has
+        // actually typed against its tests in the Test Catalog (each may be a comma-separated list).
+        $sampleTypes = collect(['Venous Blood', 'Capillary Blood', 'Urine', 'Stool', 'Sputum', 'Swab'])
+            ->merge(
+                LabTest::where('store_id', $storeId)->whereNotNull('sample_type')->pluck('sample_type')
+                    ->flatMap(fn ($s) => preg_split('/\s*,\s*/', (string) $s))
+            )
+            ->map(fn ($s) => trim($s))
+            ->filter()
+            ->unique(fn ($s) => mb_strtolower($s))
+            ->values();
+
+        return $this->view('order', compact('patients', 'doctors', 'tests', 'sampleTypes'));
     }
 
     public function storeOrder(Request $request)
     {
         $this->boot();
         $request->validate([
-            'patient_id' => 'required|exists:patients,id',
-            'tests'      => 'required|array|min:1',
+            'patient_id'    => 'required|exists:patients,id',
+            'tests'         => 'required|array|min:1',
+            'sample_types'  => 'nullable|array',
+            'sample_types.*' => 'nullable|string|max:80',
         ]);
         $storeId = $this->storeId();
         [$actorId, $actorType] = $this->actor();
@@ -734,7 +761,7 @@ class LabController extends Controller
             'department'        => $request->department ?: 'OPD',
             'priority'          => $request->priority ?: 'routine',
             'status'            => 'ordered',
-            'sample_type'       => $request->sample_type,
+            'sample_type'       => $this->resolveSampleTypes($request, $selected),
             'clinical_notes'    => $request->clinical_notes,
             'referred_by'       => $request->referred_by,
             'total_amount'      => $selected->sum('price'),
@@ -757,6 +784,26 @@ class LabController extends Controller
 
         Toastr::success('Lab order ' . $order->order_no . ' placed.');
         return redirect()->route('vendor.lab.worklist');
+    }
+
+    /**
+     * An order may need several samples (e.g. blood + urine). Combine every sample the selected
+     * tests require with any extra ones the user ticked, de-duplicated. Each source may itself be
+     * a comma-separated list, so they're split before merging. Falls back to the legacy single
+     * `sample_type` field for callers that still send it.
+     */
+    private function resolveSampleTypes(Request $request, $selected): ?string
+    {
+        $samples = collect($request->input('sample_types', []))
+            ->merge($selected->pluck('sample_type'))
+            ->merge([$request->input('sample_type')])
+            ->flatMap(fn ($s) => preg_split('/\s*,\s*/', (string) $s))
+            ->map(fn ($s) => trim($s))
+            ->filter()
+            ->unique(fn ($s) => mb_strtolower($s))
+            ->values();
+
+        return $samples->isEmpty() ? null : mb_substr($samples->implode(', '), 0, 255);
     }
 
     // ── Create a lab order straight from an OPD/IPD consultation ──────────

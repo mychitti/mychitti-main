@@ -61,6 +61,15 @@
 .labx .fl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
 .labx .fi,.labx .fs{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);outline:none;background:var(--white);width:100%;font-family:var(--ff)}
 .labx .fi:focus,.labx .fs:focus{border-color:var(--blue)}
+/* select2 multi-select: the theme's fixed height makes wrapped chips spill outside the box.
+   Grow with the chips and match the .fi/.fs field styling. */
+.labx .select2-container{width:100%!important}
+.labx .select2-container--default .select2-selection--multiple{height:auto!important;min-height:34px;padding:3px 5px;border:1.5px solid var(--border)!important;border-radius:8px;background:var(--white)}
+.labx .select2-container--default.select2-container--focus .select2-selection--multiple{border-color:var(--blue)!important}
+.labx .select2-container--default .select2-selection--multiple .select2-selection__rendered{display:flex;flex-wrap:wrap;gap:4px;padding:0;margin:0;overflow:visible}
+.labx .select2-container--default .select2-selection--multiple .select2-selection__choice{background:var(--ltblue)!important;color:var(--blue)!important;border:none!important;border-radius:6px;font-size:11px;font-weight:600;padding:2px 7px;margin:0!important;display:flex;align-items:center;gap:4px}
+.labx .select2-container--default .select2-selection--multiple .select2-selection__choice__remove{color:var(--blue)!important;margin:0!important;font-weight:700}
+.labx .select2-container--default .select2-search--inline .select2-search__field{margin:0;height:22px;font-size:12px;font-family:var(--ff)}
 .labx .fg{display:flex;flex-direction:column;gap:4px}
 .labx .frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .labx .frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}

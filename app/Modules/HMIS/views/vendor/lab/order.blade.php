@@ -33,8 +33,13 @@
                                 <div class="fg"><label class="fl">Department</label>
                                     <select class="fs" name="department"><option>OPD</option><option>IPD</option><option>ICU</option><option>Emergency</option></select>
                                 </div>
-                                <div class="fg"><label class="fl">Sample Type</label>
-                                    <select class="fs" name="sample_type"><option>Venous Blood</option><option>Capillary Blood</option><option>Urine</option><option>Stool</option><option>Sputum</option><option>Swab</option></select>
+                                <div class="fg"><label class="fl">Sample Type(s)</label>
+                                    <select class="fs" name="sample_types[]" id="sampleTypes" multiple>
+                                        @foreach ($sampleTypes as $s)
+                                            <option value="{{ $s }}">{{ $s }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div style="font-size:10px;color:var(--light)">Auto-filled from the tests you pick — type to add a one-off, or set a test's sample in the <a href="{{ route('vendor.lab.catalog') }}" style="color:var(--blue);font-weight:600">Test Catalog</a>.</div>
                                 </div>
                                 <div class="fg"><label class="fl">External Referral</label><input class="fi" name="referred_by" placeholder="Outside doctor / clinic"></div>
                             </div>
@@ -45,7 +50,7 @@
                                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="testGrid">
                                     @forelse ($tests as $t)
                                         <label class="test-opt" data-name="{{ strtolower($t->name) }}" onclick="setTimeout(labRecalc,0)">
-                                            <input type="checkbox" name="tests[]" value="{{ $t->id }}" data-price="{{ $t->price }}" style="accent-color:var(--blue)">
+                                            <input type="checkbox" name="tests[]" value="{{ $t->id }}" data-price="{{ $t->price }}" data-sample="{{ $t->sample_type }}" style="accent-color:var(--blue)">
                                             <div><div style="font-size:12px;font-weight:600">{{ $t->name }}</div><div style="font-size:10px;color:var(--light)">{{ $t->department }} · {{ \App\CentralLogics\Helpers::format_currency($t->price) }}</div></div>
                                         </label>
                                     @empty
@@ -77,6 +82,26 @@
 @push('script_2')
 <script>
 var sym="{{ \App\CentralLogics\Helpers::currency_symbol() ?? '₹' }}";
+// Select every sample the chosen tests need (an order can need blood AND urine).
+// Only ever adds — anything picked by hand stays picked.
+function labSyncSamples(){
+  var sel=document.getElementById('sampleTypes');
+  if(!sel) return;
+  var needed={};
+  document.querySelectorAll('#testGrid input[type=checkbox]:checked').forEach(function(cb){
+    (cb.dataset.sample||'').split(',').forEach(function(s){
+      s=s.trim(); if(s){needed[s.toLowerCase()]=true;}
+    });
+  });
+  var changed=false;
+  Array.prototype.forEach.call(sel.options,function(op){
+    if(needed[op.value.toLowerCase()] && !op.selected){op.selected=true;changed=true;}
+  });
+  // Repaint select2 without re-firing our own change handlers.
+  if(changed && window.jQuery && jQuery(sel).hasClass('select2-hidden-accessible')){
+    jQuery(sel).trigger('change.select2');
+  }
+}
 function labRecalc(){
   var c=0,t=0;
   document.querySelectorAll('#testGrid input[type=checkbox]').forEach(function(cb){
@@ -85,6 +110,10 @@ function labRecalc(){
   });
   document.getElementById('testCount').textContent=c+' test'+(c!==1?'s':'');
   document.getElementById('testTotal').textContent=sym+' '+t.toFixed(2);
+  labSyncSamples();
+}
+if(window.jQuery && jQuery.fn.select2){
+  jQuery('#sampleTypes').select2({placeholder:'Select sample type(s)',width:'100%',closeOnSelect:false,tags:true});
 }
 document.querySelectorAll('#testGrid input').forEach(function(cb){cb.addEventListener('change',labRecalc);});
 document.getElementById('testFilter').addEventListener('input',function(){

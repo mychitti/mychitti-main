@@ -987,6 +987,20 @@
                                     <i class="tio-edit"></i> Edit Rx
                                 </button>
                             @endif
+                            {{-- Straight to the pharmacy counter. Only a finalized Rx can be
+                                 dispensed (dispenseProcess requires it) — a draft won't be in the queue. --}}
+                            @if ($currentPrescription->is_finalized && hasPermission('pharmacy_dispense_queue', 'view'))
+                                <a href="{{ route('vendor.prescription.dispense.show', $currentPrescription->id) }}"
+                                   class="btn btn-sm btn-outline-primary" title="Dispense this prescription">
+                                    <i class="tio-pill"></i> Dispense
+                                </a>
+                            @endif
+                            @if (hasPermission('pharmacy_dispense_queue', 'list'))
+                                <a href="{{ route('vendor.prescription.dispense.queue') }}"
+                                   class="btn btn-sm btn-outline-secondary" title="Open the full dispense queue">
+                                    <i class="tio-filter-list"></i> Dispense Queue
+                                </a>
+                            @endif
                         </div>
                     </div>
 

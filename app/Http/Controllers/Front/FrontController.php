@@ -2849,10 +2849,25 @@ class FrontController extends Controller
         if ($item) {
             $module = $item->module_id;
         }
-        $zone_id = $this->zone_id;
         if (!$item) {
             abort(404);
         }
+
+        // City comes from the URL segment, NEVER the session — Googlebot has no session, so a
+        // session-derived zone made every city's URL render identical default-zone content and
+        // self-canonicalise, i.e. a set of mutual duplicates. Same rule as SeoLandingController.
+        // An unknown segment falls back to the session zone and canonicalises to THAT city's
+        // URL, so legacy links keep working and fold into one indexable page.
+        $cityZoneIds     = _zoneIdsByCitySlug($category_slug);
+        $usingSessionZone = empty($cityZoneIds);
+        $zoneIds         = $usingSessionZone ? (json_decode($this->zone_id, true) ?: []) : $cityZoneIds;
+        // BannerLogic's contract is a JSON string of zone IDs, not an array.
+        $zone_id         = $usingSessionZone ? $this->zone_id : json_encode($cityZoneIds);
+
+        $cityName  = _zoneCityName($zoneIds);
+        $citySlug  = _zoneCitySlug($cityName);
+        $canonical = url($citySlug . '/' . $item->slug);
+
         // prx($item->id);
         $data['banners'] =  BannerLogic::get_all_module_banners($zone_id, 0, $type = 'item_wise',  $item->id, 'web');
         // prx($data['banners']);
@@ -2877,9 +2892,7 @@ class FrontController extends Controller
                 ->first();
 
             // prx($item);
-            $zone_id = $this->zone_id;
             $store_ids = $item->store_ids ?? null;
-            $zoneIds = json_decode($this->zone_id, true);
             $storeIds = \App\CentralLogics\Helpers::item_store_ids($item->id, $store_ids);
 
             // subscribed store IDs
@@ -2923,12 +2936,18 @@ class FrontController extends Controller
             // prx($stores);
         }
 
-        $keywords = implode(',', ServiceKeyword::where('service_id', $item->id)->whereNotNull('keyword')->pluck('keyword')->toArray());
+        // Deduped and capped — the raw rows repeat heavily. Cosmetic only: Google has ignored
+        // meta keywords since 2009, so this is tidiness, not a ranking or spam fix.
+        $keywords = ServiceKeyword::where('service_id', $item->id)
+            ->whereNotNull('keyword')
+            ->pluck('keyword')
+            ->map(fn($k) => trim($k))
+            ->filter()
+            ->unique(fn($k) => mb_strtolower($k))
+            ->take(8)
+            ->implode(', ');
 
-        $item_area_keywords = Helpers::getAreasByZoneIds(
-            json_decode($this->zone_id, true),
-            21
-        );
+        $item_area_keywords = Helpers::getAreasByZoneIds($zoneIds, 21);
         $item_area_keywords_arr = $item_area_keywords;
         $item_area_keywords = $item_area_keywords->implode(', ');
 
@@ -3061,7 +3080,24 @@ class FrontController extends Controller
         $view = ($module == 5 || $is_inventory_product)
             ? 'front-views.ecommerce_product_detail'
             : 'front-views.product_details';
-        return view($view, compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module'));
+
+        $viewData = compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module');
+
+        if ($view === 'front-views.product_details') {
+            // City-scoped canonical + name apply to the services page only. The ecommerce view's
+            // correct city is the owning store's zone, not the visitor's — leave it on the
+            // layout's url()->current() default rather than canonicalising it wrongly.
+            $viewData['cityName']  = $cityName;
+            $viewData['canonical'] = $canonical;
+
+            // Thin-content guard: a service page with no providers in this city is an empty
+            // listing — keep it out of the index (still follow) so it isn't flagged thin/soft-404.
+            if (count($stores) === 0) {
+                view()->share('metaRobots', 'noindex, follow');
+            }
+        }
+
+        return view($view, $viewData);
     }
 
     public function category_listing(Request $request, $slug, $city = null)

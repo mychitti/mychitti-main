@@ -167,13 +167,12 @@
             render();
         });
 
+        // Rebuilds the cart rows. Only call on add/remove — it replaces the row
+        // inputs, so calling it while a field has focus would kill the caret.
         function render(){
             if(emptyRow) emptyRow.style.display = cart.length ? 'none' : '';
             bodyEl.querySelectorAll('.wk-line').forEach(r => r.remove());
-            let subtotal = 0, hasBanned = false;
             cart.forEach((c, idx) => {
-                const amount = c.price * c.qty; subtotal += amount;
-                if(c.banned) hasBanned = true;
                 const tr = document.createElement('tr');
                 tr.className = 'wk-line';
                 tr.innerHTML = `
@@ -182,9 +181,22 @@
                     </td>
                     <td><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="items[${idx}][price]" value="${c.price.toFixed(2)}" data-idx="${idx}" data-f="price"></td>
                     <td><input type="number" step="1" min="1" class="form-control form-control-sm" name="items[${idx}][qty]" value="${c.qty}" data-idx="${idx}" data-f="qty"></td>
-                    <td class="text-right">${wkCurrency(amount)}</td>
+                    <td class="text-right" data-amt="${idx}"></td>
                     <td><button type="button" class="btn btn-xs btn-outline-danger" data-rm="${idx}"><i class="tio-clear"></i></button></td>`;
                 bodyEl.appendChild(tr);
+            });
+            recalc();
+        }
+
+        // Updates amounts, totals and the banner from the cart model without
+        // touching the row inputs, so it is safe to run on every keystroke.
+        function recalc(){
+            let subtotal = 0, hasBanned = false;
+            cart.forEach((c, idx) => {
+                const amount = c.price * c.qty; subtotal += amount;
+                if(c.banned) hasBanned = true;
+                const cell = bodyEl.querySelector(`[data-amt="${idx}"]`);
+                if(cell) cell.textContent = wkCurrency(amount);
             });
 
             const discount = parseFloat(document.getElementById('wkDiscount').value) || 0;
@@ -203,15 +215,28 @@
         bodyEl.addEventListener('input', function(e){
             const el = e.target; if(el.dataset.idx === undefined) return;
             const c = cart[+el.dataset.idx]; if(!c) return;
+            // Read the raw value while typing — an empty or half-typed field
+            // counts as 0/1 for the running total but is left alone on screen.
             if(el.dataset.f === 'price') c.price = parseFloat(el.value) || 0;
-            if(el.dataset.f === 'qty') c.qty = Math.max(1, parseInt(el.value) || 1);
-            render();
+            if(el.dataset.f === 'qty')   c.qty   = Math.max(1, parseInt(el.value, 10) || 1);
+            recalc();
         });
+
+        // Normalise what the user left behind once they leave the field, so the
+        // posted values always match the totals shown.
+        bodyEl.addEventListener('change', function(e){
+            const el = e.target; if(el.dataset.idx === undefined) return;
+            const c = cart[+el.dataset.idx]; if(!c) return;
+            if(el.dataset.f === 'price'){ c.price = Math.max(0, parseFloat(el.value) || 0); el.value = c.price.toFixed(2); }
+            if(el.dataset.f === 'qty'){ c.qty = Math.max(1, parseInt(el.value, 10) || 1); el.value = c.qty; }
+            recalc();
+        });
+
         bodyEl.addEventListener('click', function(e){
             const btn = e.target.closest('[data-rm]'); if(!btn) return;
             cart.splice(+btn.dataset.rm, 1); render();
         });
-        document.getElementById('wkDiscount').addEventListener('input', render);
+        document.getElementById('wkDiscount').addEventListener('input', recalc);
 
         // Payment mode → require transaction id for non-cash.
         const payMode = document.getElementById('wkPayMode');
@@ -225,8 +250,34 @@
         }
         payMode.addEventListener('change', syncPay); syncPay();
 
+        // Billing without a prescription is allowed, but must be confirmed first.
+        var wkRxConfirmed = false;
         document.getElementById('walkinForm').addEventListener('submit', function(e){
-            if(cart.length === 0){ e.preventDefault(); alert('Add at least one medicine.'); }
+            if(cart.length === 0){ e.preventDefault(); alert('Add at least one medicine.'); return; }
+
+            var form  = this;
+            var rxDoc = (form.querySelector('[name="rx_doctor"]').value || '').trim();
+            var rxNum = (form.querySelector('[name="rx_number"]').value || '').trim();
+            if(rxDoc !== '' || rxNum !== '' || wkRxConfirmed) return;
+
+            e.preventDefault();
+            var proceed = function(){ wkRxConfirmed = true; form.submit(); };
+
+            if(window.Swal){
+                Swal.fire({
+                    title: 'Bill without prescription?',
+                    text: 'No prescribing doctor or prescription number has been entered for this sale.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    cancelButtonColor: 'default',
+                    confirmButtonColor: '#FC6A57',
+                    cancelButtonText: 'Add prescription',
+                    confirmButtonText: 'Bill anyway',
+                    reverseButtons: true
+                }).then(function(result){ if(result.value){ proceed(); } });
+            } else if(confirm('No prescription entered for this sale. Generate the bill anyway?')){
+                proceed();
+            }
         });
     </script>
 @endpush

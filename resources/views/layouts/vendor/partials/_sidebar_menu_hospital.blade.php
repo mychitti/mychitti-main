@@ -211,12 +211,35 @@
                                 : route('vendor.inventory.dashboard');
                         @endphp
                         <li
-                            class="nav-item  {{ Request::is('pharmacy*') || Request::is('inventory*') || Request::is('prescription/dispense*') || Request::is('billing/purchase-bills*') ? 'active' : '' }}">
+                            {{-- 'prescription/dispense*' intentionally omitted — the Dispense Queue
+                                 item below owns that route, otherwise both highlight at once. --}}
+                            class="nav-item  {{ Request::is('pharmacy*') || Request::is('inventory*') || Request::is('billing/purchase-bills*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ $pharmacyDefaultRoute }}" title="Pharmacy">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Inventory_management_color.png') }}"
                                     alt="" class="nav-link-icon">
                                 <span
                                     class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Pharmacy</span>
+                            </a>
+                        </li>
+                    @endif
+
+                    {{-- Dispense Queue — its own entry. Prescriptions are written on the clinical
+                         screens (OPD / Patient), so the pharmacy header tab alone is easy to miss. --}}
+                    @if (Route::has('vendor.prescription.dispense.queue') && hasPermission('pharmacy_dispense_queue', 'list'))
+                        <li class="nav-item {{ Request::is('prescription/dispense*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                href="{{ route('vendor.prescription.dispense.queue') }}" title="Dispense Queue">
+                                <span class="nav-link-icon"
+                                    style="display:inline-flex;align-items:center;justify-content:center;width:1.5rem;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z" />
+                                        <path d="m8.5 8.5 7 7" />
+                                    </svg>
+                                </span>
+                                <span
+                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Dispense Queue</span>
                             </a>
                         </li>
                     @endif

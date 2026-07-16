@@ -5591,6 +5591,56 @@ if (!function_exists('_zoneCitySlug')) {
     }
 }
 
+if (!function_exists('_zoneIdsByCitySlug')) {
+    /**
+     * Every zone ID whose URL {city} segment is $citySlug — the inverse of _zoneCitySlug().
+     * Matches BOTH slug conventions live in the codebase: the zones.slug column (used by
+     * SeoLandingController and category_listing, incl. the "city-2" multi-zone suffix) and
+     * the name-derived slug (used by the sitemap, _selectedCity() and every internal link).
+     * Returns [] when the slug names no known city — callers fall back to the session zone.
+     */
+    function _zoneIdsByCitySlug(?string $citySlug): array
+    {
+        $citySlug = strtolower(trim((string) $citySlug));
+        if ($citySlug === '') {
+            return [];
+        }
+
+        static $cache = [];
+        if (array_key_exists($citySlug, $cache)) {
+            return $cache[$citySlug];
+        }
+
+        $ids = DB::table('zones')
+            ->where(fn($q) => $q->where('slug', $citySlug)->orWhere('slug', 'like', $citySlug . '-%'))
+            ->pluck('id')->map(fn($id) => (int) $id)->all();
+
+        if (empty($ids)) {
+            $ids = DB::table('zones')->pluck('name', 'id')
+                ->filter(fn($name) => _zoneCitySlug($name) === $citySlug)
+                ->keys()->map(fn($id) => (int) $id)->all();
+        }
+
+        return $cache[$citySlug] = $ids;
+    }
+}
+
+if (!function_exists('_zoneCityName')) {
+    /**
+     * Display city name for a set of zone IDs — the first comma-segment of the lowest-ID
+     * zone's name, so a multi-zone city ("Tirupati", "Tirupati-2") reads as one city.
+     * Falls back to the default city when the IDs resolve to nothing.
+     */
+    function _zoneCityName(array $zoneIds): string
+    {
+        $name = empty($zoneIds)
+            ? null
+            : DB::table('zones')->whereIn('id', $zoneIds)->orderBy('id')->value('name');
+
+        return $name ? trim(explode(',', $name)[0]) : 'Tirupati';
+    }
+}
+
 if (!function_exists('_selectedCity')) {
     function _selectedCity()
     {

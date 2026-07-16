@@ -1,22 +1,26 @@
 @extends('front-views.layout')
 @php
     $service_name = ucwords($item->name);
-    $city_name = session('customer_city') ?? 'Tirupati';
+    // Resolved from the URL city segment by the controller — not the session, which Googlebot
+    // never has and which made every city's URL render the default city's name.
+    $city_name = $cityName;
     $same_category_services = '';
 
+    // str_replace() on a null meta_title returns '' — not null — so these need ?: (not ??)
+    // at every use site, or the page renders an empty <title>/description.
     $title = str_replace(
         ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
         [$service_name, $city_name, $item_area_keywords ?? ''],
-        $item->meta_title, 
+        $item->meta_title ?? '',
     );
     $desc = str_replace(
         ['{SERVICE_NAME}', '{CITY_NAME}', '{LOCALITIES}'],
         [$service_name, $city_name, $item_area_keywords ?? ''],
-        $item->meta_desc,
+        $item->meta_desc ?? '',
     );
 @endphp
 
-@section('title', $title ?? $item->name)
+@section('title', $title ?: ($service_name . ' in ' . $city_name . ' | My Chitti'))
 
 @push('meta_tags')
     <script type="application/ld+json">
@@ -55,14 +59,15 @@
 @endpush
 
 @section('meta_keywords', $keywords)
-@section('meta_description', $desc ?? $item->description)
+@section('meta_description', $desc ?: Str::limit(strip_tags($item->description ?? ''), 200))
 
 @push('meta_tags')
-    <meta property="og:title" content="{{ $item->name }}">
-    <meta property="og:description" content="{{ $item->description }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="My Chitti">
+    <meta property="og:title" content="{{ $title ?: ($service_name . ' in ' . $city_name) }}">
+    <meta property="og:description" content="{{ $desc ?: Str::limit(strip_tags($item->description), 200) }}">
     <meta property="og:image" content="{{ asset('storage/app/public/product/') . '/' . $item->image }}">
-    <meta property="og:url" content="{{ asset('storage/app/public/product/') . '/' . $item->image }}">
-    <meta property="og:type" content="service">
+    <meta property="og:url" content="{{ url()->current() }}">
 @endpush
 @push('css_or_js')
     <script type="text/javascript"
