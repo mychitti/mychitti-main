@@ -296,7 +296,16 @@ class PatientController extends Controller
      */
     public function orderTests(Request $request, $id)
     {
-        if (!auth('vendor')->check() && !hasPermission('patient', 'view')) abort(403);
+        // Two entry points, two different permissions: the patient page needs patient.view, the
+        // OPD consultation tab needs opd_register.view. Gating on patient.view alone 403'd every
+        // doctor ordering from a consult, which is the common case.
+        if (
+            !auth('vendor')->check()
+            && !hasPermission('patient', 'view')
+            && !hasPermission('opd_register', 'view')
+        ) {
+            abort(403);
+        }
 
         $request->validate([
             'lab_tests'         => 'nullable|array',

@@ -1964,9 +1964,20 @@
                 radiology_tests:   radTests,
             }),
         })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (!ok || !d.success) throw new Error(d.message || 'Could not save the tests.');
+        .then(async r => {
+            // Not every failure answers JSON (a 403/419/500 may be an HTML error page), and
+            // abort() sends an empty message — so always fall back to the status code rather
+            // than a generic string that says nothing about what went wrong.
+            const body = await r.text();
+            let d = null;
+            try { d = JSON.parse(body); } catch (_) { /* not JSON */ }
+            if (!r.ok || !d || !d.success) {
+                const detail = (d && (d.message || d.error)) || `${r.status} ${r.statusText}`;
+                throw new Error('Could not save the tests — ' + detail);
+            }
+            return d;
+        })
+        .then(d => {
             updateSaveTime();
             if (confirm(`Raised ${d.summary}.\n\nOpen the department worklist now?`)) {
                 window.location.href = d.redirect || labWorklistUrl;
