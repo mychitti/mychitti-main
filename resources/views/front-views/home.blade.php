@@ -393,8 +393,9 @@
             <div id="mcRecoWrap" style="display:none;">
                 <style>
                     .mc-reco-section { margin-top: 26px; }
-                    .mc-reco-row { display:flex; gap:12px; overflow-x:auto; padding:6px 2px 10px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
-                    .mc-reco-row::-webkit-scrollbar { height:6px; } .mc-reco-row::-webkit-scrollbar-thumb { background:#d7dbe0; border-radius:99px; }
+                    .mc-reco-row { display:flex; gap:12px; overflow-x:auto; padding:6px 2px 10px; -webkit-overflow-scrolling:touch;
+                        scrollbar-width:none; -ms-overflow-style:none; }
+                    .mc-reco-row::-webkit-scrollbar { display:none; width:0; height:0; }
                     .mc-reco-card { flex:0 0 auto; width:230px; scroll-snap-align:start; background:#fff; border:1px solid #edeff2;
                     border-radius:14px; overflow:hidden; text-decoration:none; color:inherit; transition:box-shadow .15s, transform .15s; }
                     .mc-reco-card:hover { box-shadow:0 10px 26px -14px rgba(20,32,47,.28); transform:translateY(-2px); }
@@ -449,9 +450,33 @@
 
                     function fill(sectionId, rowId, items) {
                         if (!items || !items.length) return;
-                        document.getElementById(rowId).innerHTML = items.map(card).join('');
+                        var row = document.getElementById(rowId);
+                        row.innerHTML = items.map(card).join('');
                         document.getElementById(sectionId).style.display = 'block';
                         document.getElementById('mcRecoWrap').style.display = 'block';
+                        autoScroll(row);
+                    }
+
+                    // Gentle ping-pong auto-scroll; pauses on hover/touch, respects reduced-motion.
+                    function autoScroll(row) {
+                        if (!row || row.__mcAuto) return;
+                        row.__mcAuto = true;
+                        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                        var dir = 1, paused = false, speed = 0.5;
+                        var pause = function () { paused = true; }, resume = function () { paused = false; };
+                        row.addEventListener('mouseenter', pause);
+                        row.addEventListener('mouseleave', resume);
+                        row.addEventListener('touchstart', pause, { passive: true });
+                        row.addEventListener('touchend', resume);
+                        (function step() {
+                            var max = row.scrollWidth - row.clientWidth;
+                            if (!paused && max > 2) {
+                                row.scrollLeft += dir * speed;
+                                if (row.scrollLeft >= max - 0.5) dir = -1;
+                                else if (row.scrollLeft <= 0.5) dir = 1;
+                            }
+                            requestAnimationFrame(step);
+                        })();
                     }
 
                     fetch('{{ url('api/v1/recommendations') }}', {

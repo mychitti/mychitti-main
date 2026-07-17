@@ -136,6 +136,7 @@ ClassicEditor
 })
 .then(editor => {
     editorInstance = editor;
+    window.mcAboutEditor = editor; // exposed so "Write with AI" can fill the About Us editor
 })
 .catch(error => {
     console.error('There was a problem initializing the editor.', error);

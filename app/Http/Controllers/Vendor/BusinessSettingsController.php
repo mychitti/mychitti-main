@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Store;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 use App\Models\StoreSchedule;
 use Brian2694\Toastr\Facades\Toastr;
@@ -662,6 +663,115 @@ class BusinessSettingsController extends Controller
 
         Toastr::success('Saved Successfully');
         return back();
+    }
+
+    /**
+     * Write the store's public "About Us" description with AI (Phase 4 §4.1 "AI Business Description /
+     * Profile Builder", made contextual — writes straight into the store-webpage editor). Uses the
+     * store's own name/address + any existing text + optional owner notes. OpenAI gpt-4o-mini.
+     */
+    public function ai_description(Request $request)
+    {
+        $request->validate(['input' => 'nullable|string|max:1500']);
+
+        $storeId   = Helpers::get_store_id();
+        $store     = DB::table('stores')->where('id', $storeId)->first(['name', 'address']);
+        $storeName = $store->name ?? 'the business';
+        $address   = trim((string) ($store->address ?? ''));
+        $existing  = (string) optional(StoreConfig::where('store_id', $storeId)->first())->about_us;
+        $extra     = trim((string) $request->input('input'));
+
+        // Pull the store's real services/products so the description reflects what they actually offer.
+        $services   = collect();
+        $categories = collect();
+        try {
+            $services = DB::table('items')
+                ->where('store_id', $storeId)
+                ->whereNull('deleted_at')
+                ->orderByDesc('id')
+                ->limit(60)
+                ->pluck('name')
+                ->map(fn ($n) => trim((string) $n))
+                ->filter()
+                ->unique()
+                ->take(30)
+                ->values();
+
+            $catIds = DB::table('items')
+                ->where('store_id', $storeId)
+                ->whereNull('deleted_at')
+                ->distinct()
+                ->pluck('category_id')
+                ->filter()
+                ->all();
+            if (!empty($catIds)) {
+                $categories = DB::table('categories')->whereIn('id', $catIds)->pluck('name')
+                    ->map(fn ($n) => trim((string) $n))->filter()->unique()->values();
+            }
+        } catch (\Exception $e) {
+            // If the items/categories schema differs on this install, just proceed without them.
+        }
+
+        $key = config('services.openai.key');
+        if (!$key) {
+            return response()->json(['success' => false, 'message' => 'AI is not configured. Please contact support.'], 500);
+        }
+
+        $system = "You are Sam, writing the public \"About Us\" description for \"{$storeName}\", a local service "
+            . "business in India, for its My Chitti store page. Write 2 short paragraphs (60–110 words total): what they do, "
+            . "who they serve, and why customers can trust them. Base what they do on the services/products listed below — "
+            . "mention the main ones naturally and NEVER invent services they don't offer. Natural, benefit-led and "
+            . "SEO-friendly (weave the service and city in naturally, no keyword stuffing). No false claims, no invented "
+            . "awards, years or prices. Return ONLY simple HTML: each paragraph wrapped in <p>…</p>, with no other tags, "
+            . "no markdown and no headings.";
+
+        $ctx = "Business name: {$storeName}";
+        if ($address !== '') {
+            $ctx .= "\nAddress / area: {$address}";
+        }
+        if ($categories->isNotEmpty()) {
+            $ctx .= "\nCategories they work in: " . $categories->implode(', ');
+        }
+        if ($services->isNotEmpty()) {
+            $ctx .= "\nServices / products they actually offer (use these, do not add others): " . $services->implode(', ');
+        }
+        if ($extra !== '') {
+            $ctx .= "\nExtra details from the owner: {$extra}";
+        }
+        if ($existing !== '') {
+            $ctx .= "\nCurrent description (improve/rewrite but keep any true facts): " . strip_tags($existing);
+        }
+
+        try {
+            $response = Http::timeout(45)->withToken($key)->post('https://api.openai.com/v1/chat/completions', [
+                'model'       => 'gpt-4o-mini',
+                'max_tokens'  => 400,
+                'temperature' => 0.7,
+                'messages'    => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $ctx],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'AI service is temporarily unavailable. Please try again.'], 503);
+        }
+
+        if (!$response->ok()) {
+            return response()->json(['success' => false, 'message' => 'Could not generate right now. Please try again.'], 502);
+        }
+
+        $html = trim((string) $response->json('choices.0.message.content'));
+        if ($html === '') {
+            return response()->json(['success' => false, 'message' => 'Empty response — please try again.'], 502);
+        }
+
+        // If the model returned bare text, wrap paragraphs so the editor renders it cleanly.
+        if (stripos($html, '<p') === false) {
+            $paras = array_filter(array_map('trim', preg_split('/\n{2,}/', $html)));
+            $html  = implode('', array_map(fn ($p) => '<p>' . e($p) . '</p>', $paras));
+        }
+
+        return response()->json(['success' => true, 'html' => $html]);
     }
     public function updateStoreMetaData(Store $store, Request $request)
     {

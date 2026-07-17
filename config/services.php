@@ -79,4 +79,11 @@ return [
         'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '91'),
     ],
 
+    // Vendor-panel "generate with AI" buttons (Phase 4): Review Auto-Reply, Lead follow-up,
+    // AI Draft Items (invoice), Write with AI (About Us). HIDDEN by default — turn them on with
+    // VENDOR_AI_TOOLS_ENABLED=true in .env, then `php artisan config:clear`. See PROJECT_NOTES.md.
+    'vendor_ai_tools' => [
+        'enabled' => env('VENDOR_AI_TOOLS_ENABLED', false),
+    ],
+
 ];

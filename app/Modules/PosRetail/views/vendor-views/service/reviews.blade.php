@@ -176,8 +176,17 @@
                                                             <input type="hidden" value="{{ $rev->rev_id }}"
                                                                 name="rev_id">
                                                             <label for="revie" title="">Reply</label>
-                                                            <textarea name="reply" class="form-control mb-2" id="revie"placeholder="Start typing..."></textarea>
-                                                            <button type="submit" class="btn btn-primary">Submit</button>
+                                                            <textarea name="reply" class="form-control mb-2 mc-ai-reply-text" id="revie"placeholder="Start typing..."></textarea>
+                                                            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                                                                <button type="submit" class="btn btn-primary">Submit</button>
+                                                                @if (config('services.vendor_ai_tools.enabled'))
+                                                                    <button type="button" class="btn btn-outline-primary mc-ai-draft"
+                                                                        data-rev="{{ $rev->rev_id }}">
+                                                                        <i class="tio-magic-wand"></i> Draft with AI
+                                                                    </button>
+                                                                @endif
+                                                                <span class="mc-ai-draft-err text-danger small" style="display:none;"></span>
+                                                            </div>
                                                         </form>
                                                     </div>
                                                 </div>
@@ -289,6 +298,36 @@
             }).fail(function() {
                 toastr.error('Failed to update status');
             });
+        });
+
+        // AI "Draft with AI" — reads the actual review, fills the reply box (vendor edits before sending).
+        $(document).on('click', '.mc-ai-draft', function() {
+            var btn = $(this);
+            var scope = btn.closest('.modal-content');
+            if (!scope.length) scope = btn.closest('form');
+            if (!scope.length) scope = $(document);
+            var textarea = scope.find('.mc-ai-reply-text').first();
+            var errEl = scope.find('.mc-ai-draft-err').first();
+            var orig = btn.html();
+            errEl.hide().text('');
+            btn.prop('disabled', true).html('<i class="tio-sync tio-spin"></i> Drafting…');
+            $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+            $.post('{{ route('vendor.reviews.ai-draft-reply') }}', { rev_id: btn.data('rev') })
+                .done(function(res) {
+                    if (res && res.success) {
+                        textarea.val(res.text).trigger('focus');
+                    } else {
+                        errEl.text((res && res.message) || 'Could not draft a reply.').show();
+                    }
+                })
+                .fail(function(xhr) {
+                    var msg = (xhr && xhr.responseJSON && xhr.responseJSON.message)
+                        ? xhr.responseJSON.message : 'Could not draft a reply. Please try again.';
+                    errEl.text(msg).show();
+                })
+                .always(function() {
+                    btn.prop('disabled', false).html(orig);
+                });
         });
 
         $(document).on('ready', function() {
