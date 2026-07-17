@@ -14,6 +14,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\RadiologyInvoice;
 use App\Models\RadiologyStudy;
+use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -305,8 +306,13 @@ class HospitalBillController extends Controller
             $invoice->update(['pdf' => $data['pdf']]);
             return redirect(route('vendor.invoice.view-invoice', $invoice->id));
         } catch (\Throwable $e) {
-            return redirect(route('vendor.ipd.index'))
-                ->with('success', 'Bill #' . $invoice_id . ' created successfully.');
+            // The bill is already committed — only the PDF failed. Reporting plain success and
+            // bouncing to the admissions list made a real failure look like a redirect bug, so
+            // log the cause and say what actually happened. Most often this is the 'public' disk
+            // (DO Spaces) missing its AWS_* config, which _createBillPdf writes the PDF to.
+            report($e);
+            Toastr::warning('Bill #' . $invoice_id . ' was created, but its PDF could not be generated: ' . $e->getMessage());
+            return redirect(route('vendor.ipd.index'));
         }
     }
 }
