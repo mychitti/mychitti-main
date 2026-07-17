@@ -4,12 +4,19 @@ namespace App\Modules\HMIS\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\DoctorProfile;
+use App\Models\LabOrder;
+use App\Models\LabOrderItem;
+use App\Models\LabTest;
 use App\Models\Patient;
 use App\Models\PatientDocument;
 use App\Models\PatientMedicalHistory;
+use App\Models\RadiologyStudy;
+use App\Models\RadiologyTest;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PatientController extends Controller
 {
@@ -222,9 +229,161 @@ class PatientController extends Controller
             ->orderByDesc('signed_at')
             ->get();
 
+        // Lab/Radiology build their tables lazily on first visit to those modules, so a hospital
+        // that has never opened them has no lab_* tables at all. Guard every read — the patient
+        // page must not depend on another module having been visited.
+        $hasLab = Schema::hasTable('lab_tests') && Schema::hasTable('lab_orders');
+        $hasRad = Schema::hasTable('radiology_tests') && Schema::hasTable('radiology_studies');
+
+        // Catalogs the doctor picks from, grouped the way each department reads them.
+        $labTests = $hasLab
+            ? LabTest::where('store_id', $store_id)->where('is_active', 1)
+                ->orderBy('department')->orderBy('name')->get()
+                ->groupBy(fn ($t) => $t->department ?: 'Other')
+            : collect();
+
+        $radiologyTests = $hasRad
+            ? RadiologyTest::where('store_id', $store_id)->where('is_active', 1)
+                ->orderBy('modality')->orderBy('name')->get()
+                ->groupBy(fn ($t) => $t->modality ?: 'Other')
+            : collect();
+
+        $doctors = DoctorProfile::where('store_id', $store_id)
+            ->with('employee:id,f_name,l_name')->get();
+
+        // What has already been raised for this patient, so the doctor sees it before re-ordering.
+        $labOrders = $hasLab
+            ? LabOrder::where('store_id', $store_id)->where('patient_id', $id)
+                ->with(['items', 'doctorProfile.employee'])
+                ->orderByDesc('created_at')->get()
+            : collect();
+
+        $radiologyStudies = $hasRad
+            ? RadiologyStudy::where('store_id', $store_id)->where('patient_id', $id)
+                ->with('doctorProfile.employee')
+                ->orderByDesc('created_at')->get()
+            : collect();
+
         return view('hmis::vendor.patient.view', compact(
-            'patient', 'appointments', 'opdVisits', 'ipdAdmissions', 'prescriptions', 'consents'
+            'patient', 'appointments', 'opdVisits', 'ipdAdmissions', 'prescriptions', 'consents',
+            'labTests', 'radiologyTests', 'doctors', 'labOrders', 'radiologyStudies'
         ));
+    }
+
+    /**
+     * Raise the tests a doctor selected on the patient page: one lab order carrying every
+     * selected lab test, plus one radiology study per selected scan (radiology tracks each
+     * scan as its own study). Both land in their department's worklist queue.
+     */
+    public function orderTests(Request $request, $id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('patient', 'view')) abort(403);
+
+        $request->validate([
+            'lab_tests'         => 'nullable|array',
+            'lab_tests.*'       => 'integer',
+            'radiology_tests'   => 'nullable|array',
+            'radiology_tests.*' => 'integer',
+            'doctor_profile_id' => 'nullable|integer',
+            'priority'          => 'nullable|in:routine,urgent,stat',
+            'clinical_notes'    => 'nullable|string|max:1000',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
+
+        $hasLab = Schema::hasTable('lab_tests') && Schema::hasTable('lab_orders');
+        $hasRad = Schema::hasTable('radiology_tests') && Schema::hasTable('radiology_studies');
+
+        // Scope by store as well as id — an id alone would let one store order another's tests.
+        $labSelected = $hasLab
+            ? LabTest::where('store_id', $store_id)->whereIn('id', $request->lab_tests ?: [])->get()
+            : collect();
+        $radSelected = $hasRad
+            ? RadiologyTest::where('store_id', $store_id)->whereIn('id', $request->radiology_tests ?: [])->get()
+            : collect();
+
+        if ($labSelected->isEmpty() && $radSelected->isEmpty()) {
+            Toastr::error('Select at least one test or scan.');
+            return back();
+        }
+
+        $actorId   = auth('vendor_employee')->id() ?? auth('vendor')->id();
+        $actorType = auth('vendor_employee')->check() ? 'vendor_employee' : 'vendor';
+        $doctorId  = $request->doctor_profile_id ?: null;
+        $priority  = $request->priority ?: 'routine';
+
+        DB::beginTransaction();
+        try {
+            $summary = [];
+
+            if ($labSelected->isNotEmpty()) {
+                $order = LabOrder::create([
+                    'store_id'          => $store_id,
+                    'patient_id'        => $patient->id,
+                    'doctor_profile_id' => $doctorId,
+                    'source'            => 'patient',
+                    'department'        => 'OPD',
+                    'priority'          => $priority,
+                    'status'            => 'ordered',
+                    'sample_type'       => $labSelected->pluck('sample_type')->filter()->unique()->implode(', ') ?: null,
+                    'clinical_notes'    => $request->clinical_notes,
+                    'total_amount'      => $labSelected->sum('price'),
+                    'created_by'        => $actorId,
+                    'created_by_type'   => $actorType,
+                ]);
+                $order->order_no = 'LAB-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
+                $order->save();
+
+                foreach ($labSelected as $t) {
+                    LabOrderItem::create([
+                        'lab_order_id' => $order->id,
+                        'lab_test_id'  => $t->id,
+                        'test_name'    => $t->name,
+                        'department'   => $t->department,
+                        'price'        => $t->price,
+                        'status'       => 'pending',
+                    ]);
+                }
+                $summary[] = $order->order_no . ' (' . $labSelected->count() . ' test' . ($labSelected->count() > 1 ? 's' : '') . ')';
+            }
+
+            foreach ($radSelected as $t) {
+                $study = RadiologyStudy::create([
+                    'store_id'          => $store_id,
+                    'patient_id'        => $patient->id,
+                    'doctor_profile_id' => $doctorId,
+                    'modality'          => $t->modality ?: 'X-Ray',
+                    'study_name'        => $t->name,
+                    'body_part'         => $t->body_part,
+                    'priority'          => $priority,
+                    'status'            => 'pending',
+                    'source'            => 'patient',
+                    'department'        => 'OPD',
+                    'clinical_history'  => $request->clinical_notes,
+                    'price'             => $t->price,
+                    'scheduled_at'      => now(),
+                    'created_by'        => $actorId,
+                    'created_by_type'   => $actorType,
+                ]);
+                $study->update(['study_no' => 'RAD-' . str_pad($study->id, 4, '0', STR_PAD_LEFT)]);
+                $summary[] = $study->study_no;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Toastr::error('Could not raise the tests: ' . $e->getMessage());
+            return back();
+        }
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'patient', $patient->id, 'tests_ordered',
+            'Tests ordered for ' . $patient->name . ': ' . implode(', ', $summary)
+        );
+
+        Toastr::success('Raised ' . implode(', ', $summary) . '.');
+        return back();
     }
 
     public function edit($id)

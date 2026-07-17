@@ -212,6 +212,12 @@
                         <span class="badge badge-soft-warning ml-1">{{ $consents->count() }}</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#tab-tests">
+                        Tests &amp; Scans
+                        <span class="badge badge-soft-danger ml-1">{{ $labOrders->count() + $radiologyStudies->count() }}</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -425,6 +431,160 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                {{-- Tests & Scans --}}
+                <div class="tab-pane fade" id="tab-tests">
+                    <div class="p-3">
+
+                        {{-- Already raised for this patient --}}
+                        <h6 class="font-weight-bold mb-2" style="font-size:13px;">Ordered Tests &amp; Scans</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr><th>Order</th><th>Type</th><th>Tests</th><th>Doctor</th><th>Status</th><th>Ordered</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($labOrders as $o)
+                                    <tr>
+                                        <td style="font-size:12px;">{{ $o->order_no }}</td>
+                                        <td><span class="badge badge-soft-info">Lab</span></td>
+                                        <td style="font-size:12px;">{{ $o->items->pluck('test_name')->implode(', ') ?: '—' }}</td>
+                                        <td style="font-size:12px;">
+                                            {{ $o->doctorProfile?->employee ? trim($o->doctorProfile->employee->f_name . ' ' . $o->doctorProfile->employee->l_name) : '—' }}
+                                        </td>
+                                        <td><span class="badge badge-soft-secondary">{{ ucfirst($o->status) }}</span></td>
+                                        <td style="font-size:12px;">{{ $o->created_at?->format('d M Y') }}</td>
+                                        <td>
+                                            <a href="{{ route('vendor.lab.worklist') }}" class="btn btn-xs btn-outline-primary">
+                                                <i class="tio-visible"></i> Worklist
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    @endforelse
+
+                                    @forelse($radiologyStudies as $s)
+                                    <tr>
+                                        <td style="font-size:12px;">{{ $s->study_no }}</td>
+                                        <td><span class="badge badge-soft-warning">Radiology</span></td>
+                                        <td style="font-size:12px;">{{ $s->study_name }} @if($s->modality)<span class="text-muted">· {{ $s->modality }}</span>@endif</td>
+                                        <td style="font-size:12px;">
+                                            {{ $s->doctorProfile?->employee ? trim($s->doctorProfile->employee->f_name . ' ' . $s->doctorProfile->employee->l_name) : '—' }}
+                                        </td>
+                                        <td><span class="badge badge-soft-secondary">{{ ucfirst($s->status) }}</span></td>
+                                        <td style="font-size:12px;">{{ $s->created_at?->format('d M Y') }}</td>
+                                        <td>
+                                            <a href="{{ route('vendor.radiology.worklist') }}" class="btn btn-xs btn-outline-primary">
+                                                <i class="tio-visible"></i> Worklist
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    @endforelse
+
+                                    @if($labOrders->isEmpty() && $radiologyStudies->isEmpty())
+                                    <tr><td colspan="7" class="text-center text-muted py-3">Nothing ordered for this patient yet.</td></tr>
+                                    @endif
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Order new --}}
+                        <h6 class="font-weight-bold mb-2" style="font-size:13px;">Order Tests &amp; Scans</h6>
+
+                        @if($labTests->isEmpty() && $radiologyTests->isEmpty())
+                            <div class="alert py-2 px-3" style="background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; font-size:12.5px;">
+                                No tests are set up yet. Add them in
+                                <a href="{{ route('vendor.lab.catalog') }}">Laboratory → Test Catalog</a> or
+                                <a href="{{ route('vendor.radiology.catalog') }}">Radiology → Catalog</a>, and they will appear here.
+                            </div>
+                        @else
+                        <form action="{{ route('vendor.patient.order-tests', $patient->id) }}" method="post">
+                            @csrf
+                            <div class="row">
+                                {{-- Lab catalog --}}
+                                <div class="col-md-6 mb-3">
+                                    <div class="font-weight-bold mb-2" style="font-size:12.5px; color:#0f172a;">
+                                        <i class="tio-labs"></i> Lab Tests
+                                    </div>
+                                    @forelse($labTests as $department => $tests)
+                                        <div class="mb-2">
+                                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $department }}</div>
+                                            @foreach($tests as $t)
+                                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                                    <input type="checkbox" name="lab_tests[]" value="{{ $t->id }}" class="mr-2">
+                                                    {{ $t->name }}
+                                                    <span class="text-muted ml-1">
+                                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                                        @if($t->sample_type) · {{ $t->sample_type }} @endif
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @empty
+                                        <div class="text-muted" style="font-size:12px;">No lab tests in the catalog.</div>
+                                    @endforelse
+                                </div>
+
+                                {{-- Radiology catalog --}}
+                                <div class="col-md-6 mb-3">
+                                    <div class="font-weight-bold mb-2" style="font-size:12.5px; color:#0f172a;">
+                                        <i class="tio-heart-outlined"></i> Radiology Scans
+                                    </div>
+                                    @forelse($radiologyTests as $modality => $tests)
+                                        <div class="mb-2">
+                                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $modality }}</div>
+                                            @foreach($tests as $t)
+                                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                                    <input type="checkbox" name="radiology_tests[]" value="{{ $t->id }}" class="mr-2">
+                                                    {{ $t->name }}
+                                                    <span class="text-muted ml-1">
+                                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                                        @if($t->body_part) · {{ $t->body_part }} @endif
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @empty
+                                        <div class="text-muted" style="font-size:12px;">No radiology scans in the catalog.</div>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label style="font-size:12px;">Referring Doctor</label>
+                                    <select name="doctor_profile_id" class="form-control form-control-sm">
+                                        <option value="">— Select —</option>
+                                        @foreach($doctors as $d)
+                                            <option value="{{ $d->id }}">
+                                                {{ $d->employee ? trim($d->employee->f_name . ' ' . $d->employee->l_name) : ('Doctor #' . $d->id) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label style="font-size:12px;">Priority</label>
+                                    <select name="priority" class="form-control form-control-sm">
+                                        <option value="routine">Routine</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="stat">STAT</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label style="font-size:12px;">Clinical Notes</label>
+                                    <input type="text" name="clinical_notes" class="form-control form-control-sm"
+                                           placeholder="Indication / provisional diagnosis (optional)">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-sm btn--primary">
+                                <i class="tio-checkmark-circle"></i> Order Selected
+                            </button>
+                        </form>
+                        @endif
                     </div>
                 </div>
 

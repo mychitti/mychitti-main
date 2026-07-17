@@ -12,6 +12,9 @@ Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
     Route::get('{id}',                               [PatientController::class, 'show'])->name('show')->middleware('permission:patient,view');
     Route::get('{id}/edit',                          [PatientController::class, 'edit'])->name('edit')->middleware('permission:patient,edit');
     Route::post('{id}/update',                       [PatientController::class, 'update'])->name('update')->middleware('permission:patient,edit');
+    // Tests/scans raised from the patient page (no per-feature gate — same as lab.order.from-opd,
+    // any hospital_manage staff examining the patient may order).
+    Route::post('{id}/order-tests',                  [PatientController::class, 'orderTests'])->name('order-tests');
     Route::get('{id}/documents',                     [PatientController::class, 'listDocuments'])->name('documents')->middleware('permission:patient_documents,list');
     Route::post('{id}/upload-documents',             [PatientController::class, 'uploadDocuments'])->name('upload-documents')->middleware('permission:patient_documents,add');
     Route::delete('{id}/document/{docId}',           [PatientController::class, 'deleteDocument'])->name('delete-document')->middleware('permission:patient_documents,delete');
