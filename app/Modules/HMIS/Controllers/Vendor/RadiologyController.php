@@ -296,9 +296,15 @@ class RadiologyController extends Controller
     public function worklist(Request $request)
     {
         $this->boot();
+        // The queue must never drop work that is still open — a date window alone hid pending
+        // studies once they aged past it. Outstanding studies stay until they are finished;
+        // finished ones (verified/sent) linger briefly so the technician still sees them.
         $studies = RadiologyStudy::where('store_id', $this->storeId())
             ->with(['patient', 'doctorProfile.employee'])
-            ->whereDate('created_at', '>=', today()->subDays(3))
+            ->where(function ($q) {
+                $q->whereNotIn('status', ['verified', 'sent'])
+                    ->orWhereDate('created_at', '>=', today()->subDays(3));
+            })
             ->when($request->modality, fn($q) => $q->where('modality', $request->modality))
             ->latest()->get();
         $equipment = RadiologyEquipment::where('store_id', $this->storeId())->get();

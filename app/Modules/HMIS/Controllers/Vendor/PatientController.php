@@ -254,7 +254,7 @@ class PatientController extends Controller
         // What has already been raised for this patient, so the doctor sees it before re-ordering.
         $labOrders = $hasLab
             ? LabOrder::where('store_id', $store_id)->where('patient_id', $id)
-                ->with(['items', 'doctorProfile.employee'])
+                ->with(['items', 'doctorProfile.employee', 'results'])
                 ->orderByDesc('created_at')->get()
             : collect();
 
@@ -264,16 +264,35 @@ class PatientController extends Controller
                 ->orderByDesc('created_at')->get()
             : collect();
 
+        // Every HMIS counter — consultation, hospital bill, lab, radiology, pharmacy — bills the
+        // patient through a ManualInvoice keyed by bill_to/bill_to_type, so one query is the
+        // patient's whole billing history. vendor_id holds the STORE id here, not a user id.
+        $invoices = \App\Models\ManualInvoice::where('vendor_id', $store_id)
+            ->where('bill_to_type', 'patient')
+            ->where('bill_to', $id)
+            ->withCount('invoiceItems')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $invoiceTotals = [
+            'billed' => $invoices->sum('total_amount'),
+            'due'    => $invoices->where('payment_status', '!=', 'Paid')->sum('total_amount'),
+        ];
+
         return view('hmis::vendor.patient.view', compact(
             'patient', 'appointments', 'opdVisits', 'ipdAdmissions', 'prescriptions', 'consents',
-            'labTests', 'radiologyTests', 'doctors', 'labOrders', 'radiologyStudies'
+            'labTests', 'radiologyTests', 'doctors', 'labOrders', 'radiologyStudies',
+            'invoices', 'invoiceTotals'
         ));
     }
 
     /**
-     * Raise the tests a doctor selected on the patient page: one lab order carrying every
-     * selected lab test, plus one radiology study per selected scan (radiology tracks each
-     * scan as its own study). Both land in their department's worklist queue.
+     * Raise the tests a doctor selected: one lab order carrying every selected lab test, plus
+     * one radiology study per selected scan (radiology tracks each scan as its own study). Both
+     * land in their department's worklist queue.
+     *
+     * Shared by the patient page (form post) and the OPD consultation tab (fetch) — one ordering
+     * path, so the two screens cannot drift apart. Answers JSON when the caller asks for it.
      */
     public function orderTests(Request $request, $id)
     {
@@ -285,6 +304,7 @@ class PatientController extends Controller
             'radiology_tests'   => 'nullable|array',
             'radiology_tests.*' => 'integer',
             'doctor_profile_id' => 'nullable|integer',
+            'opd_id'            => 'nullable|integer',
             'priority'          => 'nullable|in:routine,urgent,stat',
             'clinical_notes'    => 'nullable|string|max:1000',
         ]);
@@ -304,6 +324,9 @@ class PatientController extends Controller
             : collect();
 
         if ($labSelected->isEmpty() && $radSelected->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Select at least one test or scan.'], 422);
+            }
             Toastr::error('Select at least one test or scan.');
             return back();
         }
@@ -312,6 +335,8 @@ class PatientController extends Controller
         $actorType = auth('vendor_employee')->check() ? 'vendor_employee' : 'vendor';
         $doctorId  = $request->doctor_profile_id ?: null;
         $priority  = $request->priority ?: 'routine';
+        $opdId     = $request->opd_id ?: null;
+        $source    = $opdId ? 'opd' : 'patient';
 
         DB::beginTransaction();
         try {
@@ -322,7 +347,8 @@ class PatientController extends Controller
                     'store_id'          => $store_id,
                     'patient_id'        => $patient->id,
                     'doctor_profile_id' => $doctorId,
-                    'source'            => 'patient',
+                    'opd_id'            => $opdId,
+                    'source'            => $source,
                     'department'        => 'OPD',
                     'priority'          => $priority,
                     'status'            => 'ordered',
@@ -358,7 +384,8 @@ class PatientController extends Controller
                     'body_part'         => $t->body_part,
                     'priority'          => $priority,
                     'status'            => 'pending',
-                    'source'            => 'patient',
+                    // radiology_studies has no opd_id column, so the visit link lives in source only.
+                    'source'            => $source,
                     'department'        => 'OPD',
                     'clinical_history'  => $request->clinical_notes,
                     'price'             => $t->price,
@@ -373,6 +400,9 @@ class PatientController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Could not raise the tests: ' . $e->getMessage()], 500);
+            }
             Toastr::error('Could not raise the tests: ' . $e->getMessage());
             return back();
         }
@@ -381,6 +411,18 @@ class PatientController extends Controller
             $store_id, 'patient', $patient->id, 'tests_ordered',
             'Tests ordered for ' . $patient->name . ': ' . implode(', ', $summary)
         );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success'  => true,
+                'summary'  => implode(', ', $summary),
+                'lab'      => $labSelected->count(),
+                'scans'    => $radSelected->count(),
+                'redirect' => $radSelected->isNotEmpty() && $labSelected->isEmpty()
+                    ? route('vendor.radiology.worklist')
+                    : route('vendor.lab.worklist'),
+            ]);
+        }
 
         Toastr::success('Raised ' . implode(', ', $summary) . '.');
         return back();
