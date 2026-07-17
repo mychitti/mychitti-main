@@ -396,7 +396,7 @@
                                                     @endforeach
                                                 </tbody>
                                             </table>
-                                            @if (count($inventory_items) !== 0)
+                                             @if (count($inventory_items) !== 0)
                                                 <hr>
                                             @endif
                                             <div class="page-area">

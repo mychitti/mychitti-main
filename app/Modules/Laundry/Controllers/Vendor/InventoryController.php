@@ -491,7 +491,7 @@ class InventoryController extends Controller
             // ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->when($filter, function ($query) {
                 $query->where('stock', '<', 5);
-            })
+            }) 
             ->when($missing, function ($query) use ($missing) {
                 $this->applyMissingFieldFilter($query, $missing);
             })

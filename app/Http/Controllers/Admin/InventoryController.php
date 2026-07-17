@@ -425,7 +425,7 @@ class InventoryController extends Controller
                 $query->where(function ($q) use ($type) {
                     $q->where('item_type', $type);
                 });
-            })
+            }) 
             ->when($filter, function ($query) {
                 $query->where('stock', '<', 5);
             })

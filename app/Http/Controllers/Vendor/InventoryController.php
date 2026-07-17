@@ -722,7 +722,7 @@ class InventoryController extends Controller
                 $query->where(function ($q) use ($type) {
                     $q->where('item_type', $type);
                 });
-            })
+            }) 
             // ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->when($filter, function ($query) {
                 $query->where('stock', '<', 5);
