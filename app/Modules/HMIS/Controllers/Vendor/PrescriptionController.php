@@ -161,6 +161,10 @@ class PrescriptionController extends Controller
             $doctorProfileId = $serviceRequest->preferred_doctor_id;
         } elseif ($request->filled('patient_id')) {
             $patient = Patient::where('store_id', $storeId)->findOrFail($request->patient_id);
+            // Carried through from IPD/OPD "Write Prescription" so the attending doctor is preselected.
+            if ($request->filled('doctor_profile_id')) {
+                $doctorProfileId = (int) $request->doctor_profile_id;
+             }
         }
 
         $patients = Patient::where('store_id', $storeId)
@@ -483,13 +487,14 @@ class PrescriptionController extends Controller
         }
 
         $total = 0;
+        $createdItemIds = [];
         foreach ($lines as $line) {
             $base      = $line['price'] * $line['qty'];
             $gstRate   = $taxType === 'gst' ? (float) $line['gst_rate'] : 0;
             $lineTotal = $taxType === 'gst' ? round($base * (1 + $gstRate / 100), 2) : $base;
             $total    += $lineTotal;
 
-            InvoiceItem::create([
+            $invoiceItem = InvoiceItem::create([
                 'rand_invoice_id'   => $invoice->invoice_id,
                 'manual_invoice_id' => $invoice->id,
                 'name'              => $line['name'],
@@ -500,9 +505,19 @@ class PrescriptionController extends Controller
                 'gst_status'        => 'excluding',
                 'tax'               => $gstRate,
             ]);
+            if ($line['inv_id']) {
+                $createdItemIds[] = $invoiceItem->id;
+            }
         }
 
         $invoice->increment('total_amount', $total);
+
+        // Record this dispense as an inventory Sale Order (same as walk-in), scoped to just the
+        // lines dispensed now — so it surfaces in Pharmacy → Sale Orders. Only inventory-linked
+        // lines form an order; a free-text medicine with no inv_id is billed but not an order line.
+        if (!empty($createdItemIds)) {
+            Helpers::_placeInventoryOrder($invoice, $createdItemIds);
+        }
 
         try {
             $invoice->refresh();

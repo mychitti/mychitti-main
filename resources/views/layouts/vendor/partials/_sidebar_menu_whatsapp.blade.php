@@ -1,3 +1,5 @@
+{{-- Owner-only: staff (vendor_employee) logins do not see the WhatsApp menu. --}}
+@if(auth('vendor')->check())
 <li class="navbar-vertical-aside-has-menu {{ Request::is('*whatsapp*') ? 'active' : '' }}">
     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="{{ translate('WhatsApp') }}">
         <i class="tio-chat nav-link-icon" style="font-size:20px;"></i>
@@ -8,8 +10,8 @@
             <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Add-ons') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
                 <span class="text-truncate">{{ translate('Connection & Add-ons') }}</span>
-            </a>
-        </li>
+            </a> 
+        </li> 
         {{-- <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
@@ -18,3 +20,5 @@
         </li> --}}
     </ul>
 </li>
+@endif
+ 

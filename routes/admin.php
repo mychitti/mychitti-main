@@ -1318,16 +1318,17 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::get('deduct-reasons', 'VendorWalletController@deductReasons')->name('deduct-reasons');
                 Route::get('view/{id}', 'VendorWalletController@view')->name('view');
             });
-
+  
             Route::get('get-matches', 'VendorController@get_matches')->name('get-matches');
             Route::get('get-vendor-log-matches', 'VendorController@get_vendor_log_matches')->name('get-vendor-log-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc')->middleware('permission:store,documents');
-
+ 
 
             Route::post('update_id', 'VendorController@update_id')->name('update_id');
             Route::get('terms-and-conditions', 'VendorController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('terms-and-conditions', 'VendorController@terms_and_conditions_store')->name('terms-and-conditions.store');
             Route::post('suspend-account', 'VendorController@suspend_account')->name('suspend-account');
+            Route::post('reset-inventory', 'VendorController@reset_inventory')->name('reset-inventory');
             Route::get('get-stores-data/{store}', 'VendorController@get_store_data')->name('get-stores-data');
             Route::get('store-filter/{id}', 'VendorController@store_filter')->name('store-filter');
             Route::get('get-account-data/{store}', 'VendorController@get_account_data')->name('store-filters');

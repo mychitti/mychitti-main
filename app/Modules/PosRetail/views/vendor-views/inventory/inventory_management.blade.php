@@ -188,10 +188,11 @@
                                                         <option value="any" {{ request('missing') == 'any' ? 'selected' : '' }}>{{ translate('messages.Any missing field') }}</option>
                                                         <option value="selling_price" {{ request('missing') == 'selling_price' ? 'selected' : '' }}>{{ translate('messages.No Selling Price') }}</option>
                                                         <option value="mrp" {{ request('missing') == 'mrp' ? 'selected' : '' }}>{{ translate('messages.No MRP') }}</option>
-                                                        <option value="unit" {{ request('missing') == 'unit' ? 'selected' : '' }}>{{ translate('messages.No Unit') }}</option>
+                                                          <option value="unit" {{ request('missing') == 'unit' ? 'selected' : '' }}>{{ translate('messages.No Unit') }}</option>
                                                         <option value="hsn" {{ request('missing') == 'hsn' ? 'selected' : '' }}>{{ translate('messages.No HSN Code') }}</option>
                                                         <option value="sku_id" {{ request('missing') == 'sku_id' ? 'selected' : '' }}>{{ translate('messages.No SKU ID') }}</option>
                                                         <option value="category" {{ request('missing') == 'category' ? 'selected' : '' }}>{{ translate('messages.No Category') }}</option>
+                                                        <option value="landing_price" {{ request('missing') == 'landing_price' ? 'selected' : '' }}>{{ translate('messages.No Purchase Price') }}</option>
                                                     </select>
                                                 </form>
                                                 @if (hasPermission('inventory_item', 'export'))

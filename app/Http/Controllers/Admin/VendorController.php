@@ -2141,6 +2141,80 @@ class VendorController extends Controller
 
         return redirect()->back();
     }
+
+    // Admin-triggered inventory reset for one store. OTP-gated (OTP goes to the platform
+    // business phone, same as Account Management reset). Permanently deletes the store's
+    // sale orders + sale returns (inventory_orders/details), purchase stock-in entries,
+    // purchase orders (supply orders), purchase return slips, and purchase/sale gatepasses;
+    // drops all branch stock rows; and zeroes on-hand stock on the surviving item catalog.
+    // Does NOT delete the item catalog itself, nor any ManualInvoice/InvoiceItem billing
+    // records (those span other modules).
+    public function reset_inventory(Request $request)
+    { 
+        $request->validate(['store_id' => 'required']);
+
+        $phone = BusinessSetting::where('key', 'phone')->first()?->value;
+        $otp   = is_array($request->otp) ? implode('', $request->otp) : $request->otp;
+
+        if (!_verify_otp($phone, $otp)) {
+            Toastr::error('Incorrect OTP');
+            return redirect()->back();
+        }
+
+        $store = Store::find($request->store_id);
+        if (!$store) {
+            Toastr::error('Store not found');
+            return redirect()->back();
+        }
+        $storeId = $store->id;
+
+        DB::beginTransaction();
+        try {
+            // Sales bills — inventory orders + their line details.
+            $orderIds = \App\Models\InventoryOrder::where('store_id', $storeId)->pluck('order_id');
+            if ($orderIds->isNotEmpty()) {
+                \App\Models\InventoryOrderDetail::whereIn('order_id', $orderIds)->delete();
+            }
+            \App\Models\InventoryOrder::where('store_id', $storeId)->delete();
+
+            // Purchase bills — stock-in entries.
+            \App\Models\ItemEntry::where('store_id', $storeId)->delete();
+
+            // Purchase orders + their line items.
+            $supplyOrderIds = \App\Models\SupplyOrder::where('store_id', $storeId)->pluck('id');
+            if ($supplyOrderIds->isNotEmpty()) {
+                \App\Models\SupplyOrderItem::whereIn('order_table_id', $supplyOrderIds)->delete();
+            }
+            \App\Models\SupplyOrder::where('store_id', $storeId)->delete();
+
+            // Purchase return slips.
+            \App\Models\ReturnPurchaseSlip::where('store_id', $storeId)->delete();
+
+            // Gatepasses — both purchase and sale, plus their line items.
+            $gatepassIds = \App\Models\InventoryGatepass::where('store_id', $storeId)->pluck('id');
+            if ($gatepassIds->isNotEmpty()) {
+                \App\Models\InventoryGatepassItem::whereIn('gatepass_id', $gatepassIds)->delete();
+            }
+            \App\Models\InventoryGatepass::where('store_id', $storeId)->delete();
+
+            // Branch stock — pivot rows for every branch of this store.
+            DB::table('branch_inventory_item')->where('store_id', $storeId)->delete();
+
+            // Zero on-hand stock on the surviving item catalog.
+            \App\Models\InventoryItem::where('store_id', $storeId)
+                ->update(['stock' => 0, 'primary_qty' => 0, 'secondary_qty' => 0]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Toastr::error('Inventory reset failed: ' . $e->getMessage());
+            return redirect()->back();
+        }
+
+        Toastr::success('Inventory reset successfully for ' . $store->name);
+        return redirect()->back();
+    }
+
     public function disbursement_export(Request $request, $id, $type)
     {
         $key = explode(' ', $request['search']);
