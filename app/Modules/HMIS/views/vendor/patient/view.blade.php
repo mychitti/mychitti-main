@@ -212,6 +212,18 @@
                         <span class="badge badge-soft-warning ml-1">{{ $consents->count() }}</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#tab-tests">
+                        Tests &amp; Scans
+                        <span class="badge badge-soft-danger ml-1">{{ $labOrders->count() + $radiologyStudies->count() }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#tab-bills">
+                        Bills
+                        <span class="badge badge-soft-dark ml-1">{{ $invoices->count() }}</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -422,6 +434,307 @@
                                 </tr>
                                 @empty
                                 <tr><td colspan="5" class="text-center text-muted py-3">No consent forms.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Tests & Scans --}}
+                <div class="tab-pane fade" id="tab-tests">
+                    <div class="p-3">
+
+                        {{-- Already raised for this patient --}}
+                        <h6 class="font-weight-bold mb-2" style="font-size:13px;">Ordered Tests &amp; Scans</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr><th>Order</th><th>Type</th><th>Tests</th><th>Doctor</th><th>Status</th><th>Ordered</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($labOrders as $o)
+                                    @php $resulted = $o->results->whereNotNull('result_value'); @endphp
+                                    <tr>
+                                        <td style="font-size:12px;">{{ $o->order_no }}</td>
+                                        <td><span class="badge badge-soft-info">Lab</span></td>
+                                        <td style="font-size:12px;">{{ $o->items->pluck('test_name')->implode(', ') ?: '—' }}</td>
+                                        <td style="font-size:12px;">
+                                            {{ $o->doctorProfile?->employee ? trim($o->doctorProfile->employee->f_name . ' ' . $o->doctorProfile->employee->l_name) : '—' }}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft-{{ in_array($o->status, ['verified','sent']) ? 'success' : 'secondary' }}">{{ ucfirst($o->status) }}</span>
+                                            @if($o->results->where('is_critical', 1)->isNotEmpty())
+                                                <span class="badge badge-soft-danger">Critical</span>
+                                            @endif
+                                        </td>
+                                        <td style="font-size:12px;">{{ $o->created_at?->format('d M Y') }}</td>
+                                        <td class="text-right">
+                                            @if($resulted->isNotEmpty())
+                                                <button type="button" class="btn btn-xs btn-outline-secondary"
+                                                        data-toggle="collapse" data-target="#labres-{{ $o->id }}">
+                                                    <i class="tio-visible"></i> Results
+                                                </button>
+                                                <a href="{{ route('vendor.lab.orders.report', $o->id) }}" class="btn btn-xs btn-outline-primary">
+                                                    <i class="tio-print"></i>
+                                                </a>
+                                            @else
+                                                <span class="text-muted" style="font-size:11px;">Awaiting result</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @if($resulted->isNotEmpty())
+                                    <tr class="p-0">
+                                        <td colspan="7" class="p-0" style="border-top:0;">
+                                            <div class="collapse" id="labres-{{ $o->id }}">
+                                                <div class="p-3" style="background:#f8fafc;">
+                                                    <table class="table table-sm mb-0" style="font-size:12px;">
+                                                        <thead><tr><th>Parameter</th><th>Result</th><th>Unit</th><th>Reference</th><th>Flag</th></tr></thead>
+                                                        <tbody>
+                                                            @foreach($resulted as $r)
+                                                            <tr @if($r->is_critical) style="background:#fef2f2;" @endif>
+                                                                <td>{{ $r->parameter_name }}</td>
+                                                                <td class="font-weight-bold">{{ $r->result_value }}</td>
+                                                                <td>{{ $r->unit ?: '—' }}</td>
+                                                                <td>{{ $r->ref_range_text ?: trim(($r->normal_low ?? '') . ' – ' . ($r->normal_high ?? '')) ?: '—' }}</td>
+                                                                <td>
+                                                                    @if($r->is_critical)
+                                                                        <span class="badge badge-soft-danger">Critical</span>
+                                                                    @elseif($r->result_flag)
+                                                                        <span class="badge badge-soft-warning">{{ strtoupper($r->result_flag) }}</span>
+                                                                    @else
+                                                                        <span class="text-muted">Normal</span>
+                                                                    @endif
+                                                                </td>
+                                                            </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                    @if($o->verified_by_name)
+                                                        <div class="text-muted mt-2" style="font-size:11px;">
+                                                            Verified by {{ $o->verified_by_name }}
+                                                            @if($o->reported_at) on {{ $o->reported_at->format('d M Y, h:i a') }} @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @empty
+                                    @endforelse
+
+                                    @forelse($radiologyStudies as $s)
+                                    @php $reported = $s->findings || $s->impression; @endphp
+                                    <tr>
+                                        <td style="font-size:12px;">{{ $s->study_no }}</td>
+                                        <td><span class="badge badge-soft-warning">Radiology</span></td>
+                                        <td style="font-size:12px;">{{ $s->study_name }} @if($s->modality)<span class="text-muted">· {{ $s->modality }}</span>@endif</td>
+                                        <td style="font-size:12px;">
+                                            {{ $s->doctorProfile?->employee ? trim($s->doctorProfile->employee->f_name . ' ' . $s->doctorProfile->employee->l_name) : '—' }}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft-{{ in_array($s->status, ['verified','sent']) ? 'success' : 'secondary' }}">{{ ucfirst($s->status) }}</span>
+                                            @if($s->is_critical)<span class="badge badge-soft-danger">Critical</span>@endif
+                                        </td>
+                                        <td style="font-size:12px;">{{ $s->created_at?->format('d M Y') }}</td>
+                                        <td class="text-right">
+                                            @if($reported)
+                                                <button type="button" class="btn btn-xs btn-outline-secondary"
+                                                        data-toggle="collapse" data-target="#radres-{{ $s->id }}">
+                                                    <i class="tio-visible"></i> Report
+                                                </button>
+                                                <a href="{{ route('vendor.radiology.studies.print', $s->id) }}" class="btn btn-xs btn-outline-primary">
+                                                    <i class="tio-print"></i>
+                                                </a>
+                                            @else
+                                                <span class="text-muted" style="font-size:11px;">Awaiting report</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @if($reported)
+                                    <tr class="p-0">
+                                        <td colspan="7" class="p-0" style="border-top:0;">
+                                            <div class="collapse" id="radres-{{ $s->id }}">
+                                                <div class="p-3" style="background:#f8fafc; font-size:12px;">
+                                                    @if($s->findings)
+                                                        <div class="mb-2"><span class="font-weight-bold">Findings:</span>
+                                                            <div style="white-space:pre-wrap;">{{ $s->findings }}</div>
+                                                        </div>
+                                                    @endif
+                                                    @if($s->impression)
+                                                        <div class="mb-2"><span class="font-weight-bold">Impression:</span>
+                                                            <div style="white-space:pre-wrap;">{{ $s->impression }}</div>
+                                                        </div>
+                                                    @endif
+                                                    @if($s->recommendations)
+                                                        <div class="mb-2"><span class="font-weight-bold">Recommendations:</span>
+                                                            <div style="white-space:pre-wrap;">{{ $s->recommendations }}</div>
+                                                        </div>
+                                                    @endif
+                                                    @if($s->radiologist)
+                                                        <div class="text-muted" style="font-size:11px;">
+                                                            Reported by {{ $s->radiologist }}
+                                                            @if($s->reported_at) on {{ $s->reported_at->format('d M Y, h:i a') }} @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @empty
+                                    @endforelse
+
+                                    @if($labOrders->isEmpty() && $radiologyStudies->isEmpty())
+                                    <tr><td colspan="7" class="text-center text-muted py-3">Nothing ordered for this patient yet.</td></tr>
+                                    @endif
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Order new --}}
+                        <h6 class="font-weight-bold mb-2" style="font-size:13px;">Order Tests &amp; Scans</h6>
+
+                        @if($labTests->isEmpty() && $radiologyTests->isEmpty())
+                            <div class="alert py-2 px-3" style="background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; font-size:12.5px;">
+                                No tests are set up yet. Add them in
+                                <a href="{{ route('vendor.lab.catalog') }}">Laboratory → Test Catalog</a> or
+                                <a href="{{ route('vendor.radiology.catalog') }}">Radiology → Catalog</a>, and they will appear here.
+                            </div>
+                        @else
+                        <form action="{{ route('vendor.patient.order-tests', $patient->id) }}" method="post">
+                            @csrf
+                            <div class="row">
+                                {{-- Lab catalog --}}
+                                <div class="col-md-6 mb-3">
+                                    <div class="font-weight-bold mb-2" style="font-size:12.5px; color:#0f172a;">
+                                        <i class="tio-labs"></i> Lab Tests
+                                    </div>
+                                    @forelse($labTests as $department => $tests)
+                                        <div class="mb-2">
+                                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $department }}</div>
+                                            @foreach($tests as $t)
+                                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                                    <input type="checkbox" name="lab_tests[]" value="{{ $t->id }}" class="mr-2">
+                                                    {{ $t->name }}
+                                                    <span class="text-muted ml-1">
+                                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                                        @if($t->sample_type) · {{ $t->sample_type }} @endif
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @empty
+                                        <div class="text-muted" style="font-size:12px;">No lab tests in the catalog.</div>
+                                    @endforelse
+                                </div>
+
+                                {{-- Radiology catalog --}}
+                                <div class="col-md-6 mb-3">
+                                    <div class="font-weight-bold mb-2" style="font-size:12.5px; color:#0f172a;">
+                                        <i class="tio-heart-outlined"></i> Radiology Scans
+                                    </div>
+                                    @forelse($radiologyTests as $modality => $tests)
+                                        <div class="mb-2">
+                                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $modality }}</div>
+                                            @foreach($tests as $t)
+                                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                                    <input type="checkbox" name="radiology_tests[]" value="{{ $t->id }}" class="mr-2">
+                                                    {{ $t->name }}
+                                                    <span class="text-muted ml-1">
+                                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                                        @if($t->body_part) · {{ $t->body_part }} @endif
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @empty
+                                        <div class="text-muted" style="font-size:12px;">No radiology scans in the catalog.</div>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label style="font-size:12px;">Referring Doctor</label>
+                                    <select name="doctor_profile_id" class="form-control form-control-sm">
+                                        <option value="">— Select —</option>
+                                        @foreach($doctors as $d)
+                                            <option value="{{ $d->id }}">
+                                                {{ $d->employee ? trim($d->employee->f_name . ' ' . $d->employee->l_name) : ('Doctor #' . $d->id) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label style="font-size:12px;">Priority</label>
+                                    <select name="priority" class="form-control form-control-sm">
+                                        <option value="routine">Routine</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="stat">STAT</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label style="font-size:12px;">Clinical Notes</label>
+                                    <input type="text" name="clinical_notes" class="form-control form-control-sm"
+                                           placeholder="Indication / provisional diagnosis (optional)">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-sm btn--primary">
+                                <i class="tio-checkmark-circle"></i> Order Selected
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Bills --}}
+                <div class="tab-pane fade" id="tab-bills">
+                    <div class="px-3 pt-3">
+                        <div class="d-flex mb-3" style="gap:24px;">
+                            <div>
+                                <div class="text-muted" style="font-size:11px; text-transform:uppercase;">Total Billed</div>
+                                <div class="font-weight-bold" style="font-size:18px;">
+                                    {{ \App\CentralLogics\Helpers::format_currency($invoiceTotals['billed']) }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-muted" style="font-size:11px; text-transform:uppercase;">Outstanding</div>
+                                <div class="font-weight-bold" style="font-size:18px; color:{{ $invoiceTotals['due'] > 0 ? '#b91c1c' : '#15803d' }};">
+                                    {{ \App\CentralLogics\Helpers::format_currency($invoiceTotals['due']) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr><th>Invoice</th><th>Date</th><th>Items</th><th>Amount</th><th>Payment</th><th>Status</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                @forelse($invoices as $inv)
+                                <tr>
+                                    <td style="font-size:12px;">{{ $inv->invoice_id }}</td>
+                                    <td style="font-size:12px;">{{ $inv->invoice_date ?: $inv->created_at?->format('Y-m-d') }}</td>
+                                    <td style="font-size:12px;">{{ $inv->invoice_items_count }}</td>
+                                    <td style="font-size:12px;">{{ \App\CentralLogics\Helpers::format_currency($inv->total_amount) }}</td>
+                                    <td style="font-size:12px;">{{ $inv->payment_method ?: '—' }}</td>
+                                    <td>
+                                        <span class="badge badge-soft-{{ $inv->payment_status === 'Paid' ? 'success' : 'danger' }}">
+                                            {{ $inv->payment_status ?: 'Unpaid' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{-- Route name prefix is invoice., though the URI reads billing/veiw-invoice --}}
+                                        <a href="{{ route('vendor.invoice.view-invoice', $inv->invoice_id) }}"
+                                           class="btn btn-xs btn-outline-primary">
+                                            <i class="tio-visible"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr><td colspan="7" class="text-center text-muted py-3">No bills raised for this patient yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

@@ -7,12 +7,16 @@ use App\Http\Controllers\Controller;
 use App\Models\IpdAdmission;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
+use App\Models\LabOrder;
 use App\Models\ManualInvoice;
 use App\Models\OpdVisit;
 use App\Models\Patient;
 use App\Models\Prescription;
+use App\Models\RadiologyInvoice;
+use App\Models\RadiologyStudy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class HospitalBillController extends Controller
 {
@@ -121,6 +125,13 @@ class HospitalBillController extends Controller
             ],
         ];
 
+        // Tests and scans raised during this visit belong on the same bill as the consultation.
+        // Anything the Lab/Radiology modules already invoiced themselves is skipped — those are
+        // separate invoice trails and pulling them in again would charge the patient twice.
+        foreach ($this->testChargesForVisit($store_id, $patient->id, $visitId, $visit->visit_date) as $line) {
+            $serviceItems[] = $line;
+        }
+
         $prescriptions = Prescription::where('store_id', $store_id)
             ->where('patient_id', $patient->id)
             ->whereDate('created_at', $visit->visit_date)
@@ -147,6 +158,62 @@ class HospitalBillController extends Controller
             'patient', 'serviceItems', 'medicineItems',
             'context', 'contextId', 'visit'
         ));
+    }
+
+    /**
+     * Lab tests and radiology scans raised for this visit, as bill lines.
+     *
+     * Excludes anything already invoiced by the Lab/Radiology modules (they mint their own
+     * LabInvoice/RadiologyInvoice), so a test is billed once whichever counter takes the money.
+     * Lab orders raised from an OPD consultation carry opd_id; older ones and all radiology
+     * studies have no visit link, so those fall back to same-patient-same-day.
+     */
+    private function testChargesForVisit(int $storeId, int $patientId, $visitId, $visitDate): array
+    {
+        $lines = [];
+
+        if (Schema::hasTable('lab_orders')) {
+            $orders = LabOrder::where('store_id', $storeId)
+                ->where(function ($q) use ($visitId, $patientId, $visitDate) {
+                    $q->where('opd_id', $visitId)
+                        ->orWhere(fn ($w) => $w->where('patient_id', $patientId)->whereDate('created_at', $visitDate));
+                })
+                ->whereDoesntHave('invoice')
+                ->with('items')
+                ->get();
+
+            foreach ($orders as $order) {
+                foreach ($order->items as $item) {
+                    $lines[] = [
+                        'name'  => 'Lab — ' . $item->test_name . ' (' . $order->order_no . ')',
+                        'qty'   => 1,
+                        'price' => (float) ($item->price ?? 0),
+                    ];
+                }
+            }
+        }
+
+        if (Schema::hasTable('radiology_studies')) {
+            $billed = Schema::hasTable('radiology_invoices')
+                ? RadiologyInvoice::where('store_id', $storeId)->pluck('radiology_study_id')->filter()->all()
+                : [];
+
+            $studies = RadiologyStudy::where('store_id', $storeId)
+                ->where('patient_id', $patientId)
+                ->whereDate('created_at', $visitDate)
+                ->whereNotIn('id', $billed)
+                ->get();
+
+            foreach ($studies as $study) {
+                $lines[] = [
+                    'name'  => 'Radiology — ' . $study->study_name . ' (' . $study->study_no . ')',
+                    'qty'   => 1,
+                    'price' => (float) ($study->price ?? 0),
+                ];
+            }
+        }
+
+        return $lines;
     }
 
     public function store(Request $request)

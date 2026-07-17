@@ -3734,6 +3734,7 @@ if (!function_exists('permission_action_label')) {
             'pay' => 'Payment', 'share' => 'Share', 'download' => 'Download', 'settings' => 'Settings',
             'dashboard' => 'Dashboard', 'status_change' => 'Status Change', 'slots' => 'Slots',
             'discharge' => 'Discharge', 'generate_bill' => 'Generate Bill', 'dispense' => 'Dispense',
+            'receipt_view' => 'OP Receipt',
             // Radiology
             'viewer' => 'DICOM Viewer', 'report' => 'Write Report', 'view_report' => 'View / Print Reports',
             'send' => 'Send Report', 'urgent' => 'Urgent Findings', 'notify' => 'Notify Doctor',
@@ -5923,6 +5924,40 @@ if (!function_exists('_isHospital')) {
     {
         $store = Helpers::get_store_data();
         return $store ? strtolower($store->business_type ?? '') === 'hospital' : false;
+    }
+}
+if (!function_exists('_isReceptionistRole')) {
+    /**
+     * Compares against the raw column, not $role->name — EmployeeRole translates that accessor,
+     * so a store that renamed the role in its own language would otherwise never match.
+     */
+    function _isReceptionistRole($role): bool
+    {
+        if (!$role) {
+            return false;
+        }
+        return strtolower(trim((string) $role->getRawOriginal('name'))) === 'receptionist';
+    }
+}
+if (!function_exists('_canViewOpdReceipt')) {
+    /**
+     * The OP consultation receipt is open to every role except Receptionist — reception's access
+     * is the one that hospitals want to control, via opd_register.receipt_view on the roles page.
+     * The store owner always passes.
+     */
+    function _canViewOpdReceipt(): bool
+    {
+        if (auth('vendor')->check()) {
+            return true;
+        }
+        $user = auth('vendor_employee')->user();
+        if (!$user) {
+            return false;
+        }
+        if (!_isReceptionistRole($user->role)) {
+            return true;
+        }
+        return hasPermission('opd_register', 'receipt_view');
     }
 }
 if (!function_exists('_currentFinancialYear')) {

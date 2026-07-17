@@ -494,9 +494,15 @@ class LabController extends Controller
         $this->boot();
         $storeId = $this->storeId();
 
+        // The queue must never drop work that is still open — a date window alone hid pending
+        // orders once they aged past it. Outstanding orders stay until they are finished;
+        // finished ones (verified/sent) linger briefly so the technician still sees them.
         $orders = LabOrder::where('store_id', $storeId)
             ->with(['patient', 'items', 'doctorProfile.employee'])
-            ->whereDate('created_at', '>=', today()->subDays(2))
+            ->where(function ($q) {
+                $q->whereNotIn('status', ['verified', 'sent'])
+                    ->orWhereDate('created_at', '>=', today()->subDays(2));
+            })
             ->when($request->department, fn($q) => $q->where('department', $request->department))
             ->latest()->get();
 

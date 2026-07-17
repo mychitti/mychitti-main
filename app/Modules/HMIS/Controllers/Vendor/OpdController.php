@@ -31,7 +31,9 @@ class OpdController extends Controller
         if (!$featureId) {
             return;
         }
-        foreach (['edit'] as $action) {
+        // receipt_view gates the OP consultation receipt for the Receptionist role only; every
+        // other role gets it unconditionally (see _canViewOpdReceipt).
+        foreach (['edit', 'receipt_view'] as $action) {
             if (!DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', $action)->exists()) {
                 DB::table('feature_permissions')->insert(['feature_id' => $featureId, 'action' => $action, 'free' => 0]);
             }
@@ -380,7 +382,38 @@ class OpdController extends Controller
             ->latest()
             ->get();
 
-        return view('hmis::vendor.opd.show', compact('visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions'));
+        // Lab/Radiology build their tables lazily on first visit to those modules, so guard every
+        // read — the OPD page must not break for a hospital that has never opened them.
+        $hasLab = Schema::hasTable('lab_tests') && Schema::hasTable('lab_orders');
+        $hasRad = Schema::hasTable('radiology_tests') && Schema::hasTable('radiology_studies');
+
+        $labTests = $hasLab
+            ? \App\Models\LabTest::where('store_id', $store_id)->where('is_active', 1)
+                ->orderBy('department')->orderBy('name')->get()
+                ->groupBy(fn ($t) => $t->department ?: 'Other')
+            : collect();
+
+        $radiologyTests = $hasRad
+            ? \App\Models\RadiologyTest::where('store_id', $store_id)->where('is_active', 1)
+                ->orderBy('modality')->orderBy('name')->get()
+                ->groupBy(fn ($t) => $t->modality ?: 'Other')
+            : collect();
+
+        // Already raised for this patient, so the doctor doesn't re-order what is pending.
+        $labOrders = $hasLab
+            ? \App\Models\LabOrder::where('store_id', $store_id)->where('patient_id', $visit->patient_id)
+                ->with('items')->orderByDesc('created_at')->get()
+            : collect();
+
+        $radiologyStudies = $hasRad
+            ? \App\Models\RadiologyStudy::where('store_id', $store_id)->where('patient_id', $visit->patient_id)
+                ->orderByDesc('created_at')->get()
+            : collect();
+
+        return view('hmis::vendor.opd.show', compact(
+            'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
+            'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies'
+        ));
     }
 
     public function quickUpdate(Request $request, $id)

@@ -454,13 +454,22 @@
                                                 @php
                                                     $perm = $byAction->get($action);
                                                     $pid = $perm->id ?? null;
+
+                                                    // The OP consultation receipt is open to every role except Receptionist,
+                                                    // so this toggle is only meaningful on that role. For anyone else there
+                                                    // is nothing to allow or disallow — the receipt is always theirs.
+                                                    $isReceiptGate = $feature->name === 'opd_register' && $action === 'receipt_view';
+                                                    $hideReceiptGate = $isReceiptGate && !_isReceptionistRole($role);
+
                                                     $isChecked = $pid && in_array($pid, $assigned);
-                                                    if ($isChecked) {
+                                                    if ($isChecked && !$hideReceiptGate) {
                                                         $rowCheckedCount++;
                                                     }
                                                 @endphp
                                                 <td class="text-center">
-                                                    @if ($pid)
+                                                    @if ($hideReceiptGate)
+                                                        <span class="text-muted" style="font-size:11px;" title="Always available to this role">Always</span>
+                                                    @elseif ($pid)
                                                         <div class="form-check d-inline-block">
                                                             <input class="form-check-input perm-checkbox" type="checkbox"
                                                                 id="p_{{ $pid }}" name="permissions[]"

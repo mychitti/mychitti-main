@@ -68,6 +68,8 @@ class OpdConsultationReceiptController extends Controller
      */
     public function receipt($id)
     {
+        // Hiding the button is not a gate — the route is still reachable by URL.
+        if (!_canViewOpdReceipt()) abort(403);
         $this->ensureSchema();
         $store_id = Helpers::get_store_id();
         $visit = OpdVisit::where('store_id', $store_id)
@@ -108,6 +110,8 @@ class OpdConsultationReceiptController extends Controller
 
     public function store(Request $request, $id)
     {
+        // A receptionist who cannot view the receipt must not be able to raise one either.
+        if (!_canViewOpdReceipt()) abort(403);
         $this->ensureSchema();
         $request->validate([
             'amount'         => 'required|numeric|min:0',
@@ -224,6 +228,7 @@ class OpdConsultationReceiptController extends Controller
 
     public function pdf($id)
     {
+        if (!_canViewOpdReceipt()) abort(403);
         $this->ensureSchema();
         $store_id = Helpers::get_store_id();
         $visit = OpdVisit::where('store_id', $store_id)

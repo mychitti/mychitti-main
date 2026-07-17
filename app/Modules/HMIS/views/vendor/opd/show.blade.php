@@ -1229,33 +1229,105 @@
             {{-- TAB: TESTS --}}
             <div class="tab-pane" id="tabTests">
                 <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Diagnostic &amp; Lab Recommendation</h4>
-                <p class="small text-muted mb-3">Select diagnostic test panels to recommend for this patient consultation.</p>
-                <div class="row text-dark mb-4" style="font-size:13px">
-                    <div class="col-md-4">
-                        <h6 class="font-weight-bold mb-2">Hematology &amp; Metabolism</h6>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="CBC"> Complete Blood Count (CBC)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="HbA1c"> HbA1c (Glycated Hb)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Lipid"> Lipid Profile</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="FBS"> Fasting Blood Sugar</label>
+
+                @if($labOrders->isNotEmpty() || $radiologyStudies->isNotEmpty())
+                    <div class="mb-3">
+                        <h6 class="font-weight-bold mb-2" style="font-size:13px;">Already ordered for this patient</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
+                                <thead class="thead-light"><tr><th>Order</th><th>Type</th><th>Tests</th><th>Status</th><th>Ordered</th></tr></thead>
+                                <tbody>
+                                    @foreach($labOrders as $o)
+                                    <tr>
+                                        <td>{{ $o->order_no }}</td>
+                                        <td><span class="badge badge-soft-info">Lab</span></td>
+                                        <td>{{ $o->items->pluck('test_name')->implode(', ') ?: '—' }}</td>
+                                        <td><span class="badge badge-soft-secondary">{{ ucfirst($o->status) }}</span></td>
+                                        <td>{{ $o->created_at?->format('d M Y') }}</td>
+                                    </tr>
+                                    @endforeach
+                                    @foreach($radiologyStudies as $s)
+                                    <tr>
+                                        <td>{{ $s->study_no }}</td>
+                                        <td><span class="badge badge-soft-warning">Radiology</span></td>
+                                        <td>{{ $s->study_name }}</td>
+                                        <td><span class="badge badge-soft-secondary">{{ ucfirst($s->status) }}</span></td>
+                                        <td>{{ $s->created_at?->format('d M Y') }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <h6 class="font-weight-bold mb-2">Organ Function Tests</h6>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="RFT"> Renal Function Test (RFT)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="LFT"> Liver Function Test (LFT)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Thyroid"> Thyroid Profile (T3, T4, TSH)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Electrolyte"> Serum Electrolytes</label>
+                @endif
+
+                @if($labTests->isEmpty() && $radiologyTests->isEmpty())
+                    <div class="alert py-2 px-3" style="background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; font-size:12.5px;">
+                        No tests are set up yet. Add them in
+                        <a href="{{ route('vendor.lab.catalog') }}">Laboratory → Test Catalog</a> or
+                        <a href="{{ route('vendor.radiology.catalog') }}">Radiology → Catalog</a>, and they will appear here.
                     </div>
-                    <div class="col-md-4">
-                        <h6 class="font-weight-bold mb-2">Cardiology &amp; Urine</h6>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="ECG"> Electrocardiogram (ECG)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Echo"> Echocardiography (ECHO)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Urine"> Urine Routine Analysis</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Microalbumin"> Urine Microalbumin</label>
+                @else
+                <p class="small text-muted mb-3">Select the tests and scans this patient needs. They are raised against this visit and queue in their department.</p>
+                <div class="row text-dark mb-3" style="font-size:13px">
+                    <div class="col-md-6">
+                        <h6 class="font-weight-bold mb-2">Lab Tests</h6>
+                        @forelse($labTests as $department => $tests)
+                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $department }}</div>
+                            @foreach($tests as $t)
+                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                    <input type="checkbox" name="lab_tests[]" value="{{ $t->id }}" class="mr-2">
+                                    {{ $t->name }}
+                                    <span class="text-muted ml-1">
+                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                        @if($t->sample_type) · {{ $t->sample_type }} @endif
+                                    </span>
+                                </label>
+                            @endforeach
+                        @empty
+                            <div class="text-muted" style="font-size:12px;">No lab tests in the catalog.</div>
+                        @endforelse
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="font-weight-bold mb-2">Radiology Scans</h6>
+                        @forelse($radiologyTests as $modality => $tests)
+                            <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase;">{{ $modality }}</div>
+                            @foreach($tests as $t)
+                                <label class="d-flex align-items-center mb-1" style="font-size:12.5px;">
+                                    <input type="checkbox" name="radiology_tests[]" value="{{ $t->id }}" class="mr-2">
+                                    {{ $t->name }}
+                                    <span class="text-muted ml-1">
+                                        @if($t->price > 0) · {{ \App\CentralLogics\Helpers::format_currency($t->price) }} @endif
+                                        @if($t->body_part) · {{ $t->body_part }} @endif
+                                    </span>
+                                </label>
+                            @endforeach
+                        @empty
+                            <div class="text-muted" style="font-size:12px;">No radiology scans in the catalog.</div>
+                        @endforelse
                     </div>
                 </div>
+
+                <div class="form-row mb-2" style="max-width:640px;">
+                    <div class="form-group col-md-5">
+                        <label style="font-size:12px;">Priority</label>
+                        <select id="testPriority" class="form-control form-control-sm">
+                            <option value="routine">Routine</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="stat">STAT</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-7">
+                        <label style="font-size:12px;">Clinical Notes</label>
+                        <input type="text" id="testClinicalNotes" class="form-control form-control-sm"
+                               placeholder="Indication / provisional diagnosis (optional)">
+                    </div>
+                </div>
+
                 <button type="button" id="saveTestsBtn" class="btn btn-sm btn-primary" onclick="recommendLabTests()">
                     <i class="tio-checkmark-circle"></i> Save Recommended Tests
                 </button>
+                @endif
             </div>
 
             {{-- TAB: REPORTS --}}
@@ -1591,7 +1663,7 @@
     };
     const patientUpdateUrl     = "{{ route('vendor.patient.update', $visit->patient_id) }}";
     const pharmacySearchUrl    = "{{ route('vendor.prescription.search-medicines') }}";
-    const labOrderFromOpdUrl   = "{{ route('vendor.lab.order.from-opd') }}";
+    const orderTestsUrl        = "{{ route('vendor.patient.order-tests', $visit->patient_id) }}";
     const labWorklistUrl       = "{{ route('vendor.lab.worklist') }}";
     const csrfToken            = "{{ csrf_token() }}";
 
@@ -1865,38 +1937,52 @@
         .catch(() => { btn.disabled = false; alert('Failed to delete document.'); });
     }
 
-    // ── Lab tests recommendations ──
-    // Raises a real LabOrder so the tests land in the Laboratory worklist queue.
+    // ── Lab tests / radiology recommendations ──
+    // Posts to the shared patient ordering endpoint, so this tab and the patient page raise
+    // orders through exactly the same path.
     function recommendLabTests() {
         const btn = document.getElementById('saveTestsBtn');
-        const selected = [];
-        document.querySelectorAll('input[name="lab_tests[]"]:checked').forEach(cb => {
-            selected.push(cb.value);
-        });
-        if (!selected.length) { alert('Select at least one test.'); return; }
+        if (!btn) return;
+
+        const labTests = [...document.querySelectorAll('input[name="lab_tests[]"]:checked')].map(cb => cb.value);
+        const radTests = [...document.querySelectorAll('input[name="radiology_tests[]"]:checked')].map(cb => cb.value);
+        if (!labTests.length && !radTests.length) { alert('Select at least one test or scan.'); return; }
 
         btn.disabled = true;
         const original = btn.innerHTML;
         btn.innerHTML = 'Saving…';
 
-        fetch(labOrderFromOpdUrl, {
+        fetch(orderTestsUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
             body: JSON.stringify({
-                patient_id:        {{ (int) $visit->patient_id }},
                 opd_id:            {{ (int) $visit->id }},
                 doctor_profile_id: {{ (int) ($visit->doctor_profile_id ?? 0) }} || null,
-                source:            'opd',
-                department:        'OPD',
-                tests:             selected,
+                priority:          document.getElementById('testPriority')?.value || 'routine',
+                clinical_notes:    document.getElementById('testClinicalNotes')?.value || null,
+                lab_tests:         labTests,
+                radiology_tests:   radTests,
             }),
         })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            if (!ok || !d.success) throw new Error(d.message || 'Could not save the tests.');
+        .then(async r => {
+            // Not every failure answers JSON (a 403/419/500 may be an HTML error page), and
+            // abort() sends an empty message — so always fall back to the status code rather
+            // than a generic string that says nothing about what went wrong.
+            const body = await r.text();
+            let d = null;
+            try { d = JSON.parse(body); } catch (_) { /* not JSON */ }
+            if (!r.ok || !d || !d.success) {
+                const detail = (d && (d.message || d.error)) || `${r.status} ${r.statusText}`;
+                throw new Error('Could not save the tests — ' + detail);
+            }
+            return d;
+        })
+        .then(d => {
             updateSaveTime();
-            if (confirm(`Lab order ${d.order_no} raised with ${d.count} test(s).\n\nOpen the Laboratory worklist now?`)) {
+            if (confirm(`Raised ${d.summary}.\n\nOpen the department worklist now?`)) {
                 window.location.href = d.redirect || labWorklistUrl;
+            } else {
+                window.location.reload();
             }
         })
         .catch(e => alert(e.message || 'Could not save the tests. Please try again.'))
