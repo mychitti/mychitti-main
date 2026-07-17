@@ -31,7 +31,9 @@ class OpdController extends Controller
         if (!$featureId) {
             return;
         }
-        foreach (['edit'] as $action) {
+        // receipt_view gates the OP consultation receipt for the Receptionist role only; every
+        // other role gets it unconditionally (see _canViewOpdReceipt).
+        foreach (['edit', 'receipt_view'] as $action) {
             if (!DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', $action)->exists()) {
                 DB::table('feature_permissions')->insert(['feature_id' => $featureId, 'action' => $action, 'free' => 0]);
             }

@@ -384,10 +384,12 @@
                                                 class="btn btn-hmis-action-view">
                                                 <i class="tio-visible"></i> View
                                             </a>
-                                            <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
-                                                class="btn btn-hmis-action-receipt" title="OP Consultation Receipt">
-                                                <i class="tio-receipt"></i> Receipt
-                                            </a>
+                                            @if (_canViewOpdReceipt())
+                                                <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
+                                                    class="btn btn-hmis-action-receipt" title="OP Consultation Receipt">
+                                                    <i class="tio-receipt"></i> Receipt
+                                                </a>
+                                            @endif
                                             @if (hasPermission('opd_register', 'generate_bill'))
                                                 <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}"
                                                     class="btn btn-hmis-action-receipt" title="Generate Bill">
