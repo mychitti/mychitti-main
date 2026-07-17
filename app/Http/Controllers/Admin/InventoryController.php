@@ -433,7 +433,8 @@ class InventoryController extends Controller
                 $this->applyMissingFieldFilter($query, $missing);
             })
             ->orderBy('id', 'desc')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         $variations = AccountDropdownOption::where('type', 'item_variation')
             ->where('store_id', $this->getStoreId())
@@ -451,7 +452,8 @@ class InventoryController extends Controller
             ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->where('store_id', $this->getStoreId())
             ->orderBy('created_at', 'desc')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         return view('admin-views.inventory.inventory_management', compact('tab', 'preset', 'categories', 'entries', 'storage_units', 'inventory_items', 'items', 'variations', 'missing'));
     }
