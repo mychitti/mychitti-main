@@ -1234,13 +1234,13 @@
                     <div class="col-md-4">
                         <h6 class="font-weight-bold mb-2">Hematology &amp; Metabolism</h6>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="CBC"> Complete Blood Count (CBC)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="HbA1c" checked> HbA1c (Glycated Hb)</label>
+                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="HbA1c"> HbA1c (Glycated Hb)</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Lipid"> Lipid Profile</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="FBS"> Fasting Blood Sugar</label>
                     </div>
                     <div class="col-md-4">
                         <h6 class="font-weight-bold mb-2">Organ Function Tests</h6>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="RFT" checked> Renal Function Test (RFT)</label>
+                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="RFT"> Renal Function Test (RFT)</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="LFT"> Liver Function Test (LFT)</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Thyroid"> Thyroid Profile (T3, T4, TSH)</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Electrolyte"> Serum Electrolytes</label>
@@ -1249,11 +1249,11 @@
                         <h6 class="font-weight-bold mb-2">Cardiology &amp; Urine</h6>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="ECG"> Electrocardiogram (ECG)</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Echo"> Echocardiography (ECHO)</label>
-                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Urine" checked> Urine Routine Analysis</label>
+                        <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Urine"> Urine Routine Analysis</label>
                         <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" name="lab_tests[]" value="Microalbumin"> Urine Microalbumin</label>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="recommendLabTests()">
+                <button type="button" id="saveTestsBtn" class="btn btn-sm btn-primary" onclick="recommendLabTests()">
                     <i class="tio-checkmark-circle"></i> Save Recommended Tests
                 </button>
             </div>
@@ -1591,6 +1591,8 @@
     };
     const patientUpdateUrl     = "{{ route('vendor.patient.update', $visit->patient_id) }}";
     const pharmacySearchUrl    = "{{ route('vendor.prescription.search-medicines') }}";
+    const labOrderFromOpdUrl   = "{{ route('vendor.lab.order.from-opd') }}";
+    const labWorklistUrl       = "{{ route('vendor.lab.worklist') }}";
     const csrfToken            = "{{ csrf_token() }}";
 
     // ── Real-time Clock ──
@@ -1864,13 +1866,41 @@
     }
 
     // ── Lab tests recommendations ──
+    // Raises a real LabOrder so the tests land in the Laboratory worklist queue.
     function recommendLabTests() {
+        const btn = document.getElementById('saveTestsBtn');
         const selected = [];
         document.querySelectorAll('input[name="lab_tests[]"]:checked').forEach(cb => {
             selected.push(cb.value);
         });
-        alert('Recommended Lab Tests saved successfully:\n' + (selected.join(', ') || 'None'));
-        updateSaveTime();
+        if (!selected.length) { alert('Select at least one test.'); return; }
+
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = 'Saving…';
+
+        fetch(labOrderFromOpdUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({
+                patient_id:        {{ (int) $visit->patient_id }},
+                opd_id:            {{ (int) $visit->id }},
+                doctor_profile_id: {{ (int) ($visit->doctor_profile_id ?? 0) }} || null,
+                source:            'opd',
+                department:        'OPD',
+                tests:             selected,
+            }),
+        })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok || !d.success) throw new Error(d.message || 'Could not save the tests.');
+            updateSaveTime();
+            if (confirm(`Lab order ${d.order_no} raised with ${d.count} test(s).\n\nOpen the Laboratory worklist now?`)) {
+                window.location.href = d.redirect || labWorklistUrl;
+            }
+        })
+        .catch(e => alert(e.message || 'Could not save the tests. Please try again.'))
+        .finally(() => { btn.disabled = false; btn.innerHTML = original; });
     }
 
     // ── Prescription Form Logic ──

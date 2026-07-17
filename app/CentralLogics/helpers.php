@@ -1316,14 +1316,21 @@ class Helpers
         } else {
             $year = '';
         }
-
+  
         $po_number = 'PO_' . $store_prefix . '_' . $year . $paddedNumber;
 
         return ['po_number' => $po_number, 'serial_number' => $nextNumber];
     }
-    public static function _placeInventoryOrder($invoice)
+    public static function _placeInventoryOrder($invoice, ?array $onlyInvoiceItemIds = null)
     {
-        $invItemsInInvoice = InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get();
+        // $onlyInvoiceItemIds restricts the order to a specific batch of invoice lines — needed
+        // when an invoice is appended to over time (pharmacy dispense reuses one daily invoice
+        // per patient), so each dispense event becomes its own sale order instead of re-emitting
+        // every earlier line. Null = all inventory lines on the invoice (walk-in, one-shot).
+        $invItemsInInvoice = InvoiceItem::where('manual_invoice_id', $invoice->id)
+            ->whereNotNull('inv_id')
+            ->when($onlyInvoiceItemIds !== null, fn($q) => $q->whereIn('id', $onlyInvoiceItemIds))
+            ->get();
 
         $order_id = self::_invOrderIdGenerate();
         if (count($invItemsInInvoice)) {

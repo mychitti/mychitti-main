@@ -10,11 +10,11 @@
                 </th>
                 <th class="text-center border-0">
                     <span class="control-label">Selling Price</span>
-                </th>
-                <th class="text-center border-0" style="display: none;">
+                 </th>
+                 <th class="text-center border-0">
                     <span class="control-label">Purchase Price</span>
                 </th>
-                <th class="text-center border-0">
+                <th class="text-center border-0"> 
                     <span class="control-label">SKU</span>
                 </th>
                 @if ($secondary_unit)
@@ -62,7 +62,7 @@
                         <input type="number" name="askingprice_{{ $str }}" min="0" step="0.001"
                             class="form-control" placeholder="{{ $placeholder . ' Selling Price' }}" required>
                     </td>
-                    <td style="display: none;">
+                    <td>
                         <input type="number" name="purchaseprice_{{ $str }}" min="0" step="0.001"
                             class="form-control" placeholder="{{ $placeholder . ' Purchase Price' }}" value="0">
                     </td>

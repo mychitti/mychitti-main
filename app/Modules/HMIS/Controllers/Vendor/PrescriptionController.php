@@ -163,6 +163,10 @@ class PrescriptionController extends Controller
             $doctorProfileId = $serviceRequest->preferred_doctor_id;
         } elseif ($request->filled('patient_id')) {
             $patient = Patient::where('store_id', $storeId)->findOrFail($request->patient_id);
+            // Carried through from IPD/OPD "Write Prescription" so the attending doctor is preselected.
+            if ($request->filled('doctor_profile_id')) {
+                $doctorProfileId = (int) $request->doctor_profile_id;
+             }
         }
 
         $patients = Patient::where('store_id', $storeId)

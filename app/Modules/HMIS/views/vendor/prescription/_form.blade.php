@@ -18,10 +18,10 @@
     @endif
     @if(isset($serviceRequest) && $serviceRequest)
         <input type="hidden" name="service_request_id" value="{{ $serviceRequest->id }}">
-    @endif
+    @endif  
 
     {{-- Dynamic hidden fields filled by JS when appointment mode is used --}}
-    @if(!isset($rx) && !isset($appointment) && !isset($serviceRequest))
+    @if(!isset($rx) && !isset($appointment) && !isset($serviceRequest) && !(isset($patient) && $patient))
         <input type="hidden" name="appointment_id"    id="rxApptId">
         <input type="hidden" name="patient_id"        id="rxPatientId">
         <input type="hidden" name="doctor_profile_id" id="rxDoctorId">
@@ -31,7 +31,7 @@
         {{-- LEFT: Patient + Doctor + Diagnosis --}}
         <div class="col-lg-7">
 
-            @if(!isset($rx) && !isset($appointment) && !isset($serviceRequest))
+            @if(!isset($rx) && !isset($appointment) && !isset($serviceRequest) && !(isset($patient) && $patient))
                 {{-- ── Mode toggle: Appointment vs Manual ── --}}
                 <div class="card mb-3">
                     <div class="card-body pb-2">
@@ -164,6 +164,37 @@
                             </select>
                         </div>
                         @endif
+                    </div>
+                </div>
+
+            @elseif(isset($patient) && $patient && !isset($rx))
+                {{-- Pre-filled from a patient context (IPD/OPD "Write Prescription") — patient is
+                     locked to the one clicked; doctor is preselected to the attending doctor but
+                     remains editable. --}}
+                <div class="card mb-3">
+                    <div class="card-header"><h5 class="card-title mb-0">Patient</h5></div>
+                    <div class="card-body">
+                        <input type="hidden" name="patient_id" value="{{ $patient->id }}">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="rx-avatar">{{ strtoupper(substr($patient->name ?? 'P', 0, 1)) }}</div>
+                            <div>
+                                <p class="mb-0 font-weight-bold">{{ $patient->name }}</p>
+                                <small class="text-muted">{{ $patient->patient_uid }}</small>
+                            </div>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="input-label">Doctor <span class="text-danger">*</span></label>
+                            <select name="doctor_profile_id" class="form-control" required>
+                                <option value="">-- Select doctor --</option>
+                                @foreach($doctors as $d)
+                                    <option value="{{ $d->id }}"
+                                        {{ (string) old('doctor_profile_id', $doctorProfileId) === (string) $d->id ? 'selected' : '' }}>
+                                        Dr. {{ $d->employee?->f_name }} {{ $d->employee?->l_name }}
+                                        {{ $d->specialization ? '— '.$d->specialization : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
 

@@ -9,9 +9,9 @@
                     <span class="control-label">{{ translate('messages.Variant MRP') }}</span>
                 </th>
                 <th class="text-center border-0"> 
-                    <span class="control-label">{{ translate('messages.Selling Price') }}</span>
+                     <span class="control-label">{{ translate('messages.Selling Price') }}</span>
                 </th>
-                <th class="text-center border-0" style="display: none;">
+                 <th class="text-center border-0">
                     <span class="control-label">{{ translate('messages.Purchase Price') }}</span>
                 </th>
                 <th class="text-center border-0">
@@ -51,7 +51,7 @@
                             value="{{ $combination['price'] }}" min="0" step="0.000001" class="form-control"
                             >
                     </td>
-                    <td style="display: none;">
+                    <td>
                         {{-- <div class="input-group mb-3"> --}}
                             <input oninput="calcValues()" type="number" value="{{ $combination['purchaseprice'] }}"
                                 min="0" name="purchaseprice_{{ $combination['type'] }}" class="form-control"

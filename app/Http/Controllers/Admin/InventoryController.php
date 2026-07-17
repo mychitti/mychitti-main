@@ -425,7 +425,7 @@ class InventoryController extends Controller
                 $query->where(function ($q) use ($type) {
                     $q->where('item_type', $type);
                 });
-            })
+            }) 
             ->when($filter, function ($query) {
                 $query->where('stock', '<', 5);
             })
@@ -433,7 +433,8 @@ class InventoryController extends Controller
                 $this->applyMissingFieldFilter($query, $missing);
             })
             ->orderBy('id', 'desc')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         $variations = AccountDropdownOption::where('type', 'item_variation')
             ->where('store_id', $this->getStoreId())
@@ -451,7 +452,8 @@ class InventoryController extends Controller
             ->whereBetween('created_at', [$formatted_from, $formatted_to])
             ->where('store_id', $this->getStoreId())
             ->orderBy('created_at', 'desc')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         return view('admin-views.inventory.inventory_management', compact('tab', 'preset', 'categories', 'entries', 'storage_units', 'inventory_items', 'items', 'variations', 'missing'));
     }
@@ -468,6 +470,25 @@ class InventoryController extends Controller
         };
         $blankId = function ($q, $col) {
             $q->whereNull($col)->orWhere($col, 0);
+        }; 
+
+        // IDs of items with variations where at least one variation is missing its purchase
+        // price (variations JSON holds a `purchaseprice` per variation). Cloned off the already
+        // store-scoped query so it stays within the same store's items.
+        $variationMissingPurchase = function ($q) {
+            return (clone $q)
+                ->whereNotNull('variations')
+                ->where('variations', '!=', '')
+                ->where('variations', '!=', '[]')
+                ->pluck('variations', 'id')
+                ->filter(function ($json) {
+                    foreach (json_decode($json, true) ?: [] as $v) {
+                        if (!isset($v['purchaseprice']) || (float) $v['purchaseprice'] <= 0) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })->keys()->all();
         };
 
         switch ($missing) {
@@ -489,14 +510,24 @@ class InventoryController extends Controller
             case 'category':
                 $query->where(fn ($q) => $blankId($q, 'category_id'));
                 break;
+            case 'landing_price':
+                $ppVarIds = $variationMissingPurchase($query);
+                $query->where(function ($q) use ($blankPrice, $ppVarIds) {
+                    $q->where(fn ($s) => $blankPrice($s, 'landing_price'))
+                        ->orWhereIn('id', $ppVarIds);
+                });
+                break;
             case 'any':
-                $query->where(function ($q) use ($blank, $blankPrice, $blankId) {
+                $ppVarIds = $variationMissingPurchase($query);
+                $query->where(function ($q) use ($blank, $blankPrice, $blankId, $ppVarIds) {
                     $q->where(fn ($s) => $blankPrice($s, 'selling_price'))
                         ->orWhere(fn ($s) => $blankPrice($s, 'mrp'))
                         ->orWhere(fn ($s) => $blankId($s, 'unit'))
                         ->orWhere(fn ($s) => $blank($s, 'hsn'))
                         ->orWhere(fn ($s) => $blank($s, 'sku_id'))
-                        ->orWhere(fn ($s) => $blankId($s, 'category_id'));
+                        ->orWhere(fn ($s) => $blankId($s, 'category_id'))
+                        ->orWhere(fn ($s) => $blankPrice($s, 'landing_price'))
+                        ->orWhereIn('id', $ppVarIds);
                 });
                 break;
         }
