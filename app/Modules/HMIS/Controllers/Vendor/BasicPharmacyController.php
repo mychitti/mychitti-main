@@ -131,7 +131,18 @@ class BasicPharmacyController extends Controller
             'stock_val' => $items->sum(fn($i) => (float) $i->stock * (float) ($i->selling_price ?? 0)),
         ];
 
-        return view('hmis::vendor.pharmacy.medicines', compact('items', 'stats', 'search'));
+        // Unit suggestions for the Add/Edit Medicine dropdown: the units already in the catalog,
+        // merged with common pharmacy defaults so a fresh hospital still gets a useful list.
+        // The field stays free-typeable — a new unit is created on save via _saveUnitIfNotExist.
+        $defaultUnits = ['Tablet', 'Strip', 'Capsule', 'Bottle', 'Vial', 'Ampoule', 'Sachet', 'Tube', 'ml', 'mg', 'gm', 'Unit', 'Box', 'Piece'];
+        $units = \App\Models\Unit::orderBy('unit')->pluck('unit')
+            ->merge($defaultUnits)
+            ->map(fn($u) => trim((string) $u))
+            ->filter()
+            ->unique(fn($u) => mb_strtolower($u))
+            ->values();
+
+        return view('hmis::vendor.pharmacy.medicines', compact('items', 'stats', 'search', 'units'));
     }
 
     // ── Banned / Blocked Items ──────────────────────────────────────────────

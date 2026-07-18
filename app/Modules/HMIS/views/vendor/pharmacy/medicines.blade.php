@@ -136,6 +136,13 @@
         </div>
     </div>
 
+    {{-- Shared unit suggestions for the Add/Edit Medicine "Unit" fields (type-to-add still works). --}}
+    <datalist id="medicineUnitOptions">
+        @foreach ($units as $u)
+            <option value="{{ $u }}"></option>
+        @endforeach
+    </datalist>
+
     {{-- ── Add Medicine (item add) ───────────────────────────────────── --}}
     @if (hasPermission('pharmacy', 'add'))
         <div class="modal fade" id="addMedModal" tabindex="-1" aria-hidden="true">
@@ -153,7 +160,7 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label>
-                                <input type="text" name="unit" class="form-control" placeholder="Tablet, Strip, ml..." required></div>
+                                <input type="text" name="unit" class="form-control" list="medicineUnitOptions" placeholder="Tablet, Strip, ml..." required autocomplete="off"></div>
                             <div class="form-group col-4"><label>MRP (₹) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="mrp" class="form-control" required></div>
                             <div class="form-group col-4"><label>Selling Price (₹)</label>
@@ -208,7 +215,7 @@
                             <div class="form-group col-6"><label>SKU / Code</label><input type="text" name="sku_id" id="e_sku" class="form-control"></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label><input type="text" name="unit" id="e_unit" class="form-control" required></div>
+                            <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label><input type="text" name="unit" id="e_unit" class="form-control" list="medicineUnitOptions" required autocomplete="off"></div>
                             <div class="form-group col-4"><label>MRP (₹) <span class="text-danger">*</span></label><input type="number" step="0.01" name="mrp" id="e_mrp" class="form-control" required></div>
                             <div class="form-group col-4"><label>Selling Price (₹)</label><input type="number" step="0.01" name="selling_price" id="e_selling" class="form-control"></div>
                         </div>
