@@ -2291,19 +2291,30 @@ class VendorController extends Controller
             // Branch stock — pivot rows for every branch of this store.
             DB::table('branch_inventory_item')->where('store_id', $storeId)->delete();
 
+            // Store's branch ids, used to scope the POS Retail branch tables below (some of which
+            // allow a null store_id on older rows, so branch_id is a fallback match).
+            $branchIds = \App\Models\Branch::where('store_id', $storeId)->pluck('id');
+            $scopeByStoreOrBranch = function ($q) use ($storeId, $branchIds) {
+                $q->where('store_id', $storeId);
+                if ($branchIds->isNotEmpty()) {
+                    $q->orWhereIn('branch_id', $branchIds);
+                }
+            };
+
             // POS Retail keeps its own per-branch stock in pos_branch_stock (Main Store, Branch 2,
-            // etc.) — a separate table from branch_inventory_item — so clear that too. Match on
-            // store_id and also on the store's branch ids, in case any legacy row has a null store_id.
+            // etc.) — a separate table from branch_inventory_item — so clear that too.
             if (Schema::hasTable('pos_branch_stock')) {
-                $branchIds = \App\Models\Branch::where('store_id', $storeId)->pluck('id');
-                DB::table('pos_branch_stock')
-                    ->where(function ($q) use ($storeId, $branchIds) {
-                        $q->where('store_id', $storeId);
-                        if ($branchIds->isNotEmpty()) {
-                            $q->orWhereIn('branch_id', $branchIds);
-                        }
-                    })
-                    ->delete();
+                DB::table('pos_branch_stock')->where($scopeByStoreOrBranch)->delete();
+            }
+
+            // POS Retail damaged / theft write-offs (the Dmg / Theft figures on Branch Stock) live
+            // in pos_stock_writeoff, with per-disposition child rows in pos_writeoff_dispositions.
+            if (Schema::hasTable('pos_stock_writeoff')) {
+                $writeoffIds = DB::table('pos_stock_writeoff')->where($scopeByStoreOrBranch)->pluck('id');
+                if ($writeoffIds->isNotEmpty() && Schema::hasTable('pos_writeoff_dispositions')) {
+                    DB::table('pos_writeoff_dispositions')->whereIn('writeoff_id', $writeoffIds)->delete();
+                }
+                DB::table('pos_stock_writeoff')->where($scopeByStoreOrBranch)->delete();
             }
 
             // Zero on-hand stock on the surviving item catalog.
