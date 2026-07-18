@@ -1328,6 +1328,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('terms-and-conditions', 'VendorController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('terms-and-conditions', 'VendorController@terms_and_conditions_store')->name('terms-and-conditions.store');
             Route::post('suspend-account', 'VendorController@suspend_account')->name('suspend-account');
+            Route::post('reset-inventory/send-otp', 'VendorController@send_inventory_reset_otp')->name('reset-inventory.send-otp');
             Route::post('reset-inventory', 'VendorController@reset_inventory')->name('reset-inventory');
             Route::get('get-stores-data/{store}', 'VendorController@get_store_data')->name('get-stores-data');
             Route::get('store-filter/{id}', 'VendorController@store_filter')->name('store-filter');

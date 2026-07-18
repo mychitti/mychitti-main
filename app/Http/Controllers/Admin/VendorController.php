@@ -2142,30 +2142,69 @@ class VendorController extends Controller
         return redirect()->back();
     }
 
-    // Admin-triggered inventory reset for one store. OTP-gated (OTP goes to the platform
-    // business phone, same as Account Management reset). Permanently deletes the store's
-    // sale orders + sale returns (inventory_orders/details), purchase stock-in entries,
-    // purchase orders (supply orders), purchase return slips, and purchase/sale gatepasses;
-    // drops all branch stock rows; and zeroes on-hand stock on the surviving item catalog.
-    // Does NOT delete the item catalog itself, nor any ManualInvoice/InvoiceItem billing
-    // records (those span other modules).
-    public function reset_inventory(Request $request)
-    { 
+    // The store's own registered phone, which the inventory-reset OTP is sent to and verified
+    // against. Falls back to the owning vendor's phone if the store row has none.
+    private function storeResetOtpPhone(?Store $store): ?string
+    {
+        if (!$store) {
+            return null;
+        }
+        $phone = trim((string) ($store->phone ?? ''));
+        if ($phone === '') {
+            $phone = trim((string) ($store->vendor->phone ?? ''));
+        }
+        return $phone !== '' ? $phone : null;
+    }
+
+    // Sends the inventory-reset OTP to the STORE's registered phone (not the platform business
+    // phone — this reset destroys that store's data, so the store must authorise it).
+    public function send_inventory_reset_otp(Request $request)
+    {
         $request->validate(['store_id' => 'required']);
 
-        $phone = BusinessSetting::where('key', 'phone')->first()?->value;
-        $otp   = is_array($request->otp) ? implode('', $request->otp) : $request->otp;
-
-        if (!_verify_otp($phone, $otp)) {
-            Toastr::error('Incorrect OTP');
-            return redirect()->back();
+        $store = Store::find($request->store_id);
+        $phone = $this->storeResetOtpPhone($store);
+        if (!$phone) {
+            return response()->json(['status' => false, 'message' => "This store has no registered phone number to send an OTP to."], 422);
         }
+
+        $check = _check_otp_send_allowed($phone);
+        if (!$check['allowed']) {
+            return response()->json(['status' => false, 'message' => $check['message']], 429);
+        }
+
+        $otp = rand(1000, 9999);
+        _send_confirmation_sms('mobile_verification', $phone, $otp);
+        _store_otp($phone, $otp);
+
+        return response()->json(['status' => true, 'message' => "OTP sent to the store's registered phone number.", 'action' => 'otp_sent']);
+    }
+
+    // Admin-triggered inventory reset for one store. OTP-gated — the OTP goes to the STORE's
+    // registered phone. Permanently deletes the store's sale orders + sale returns
+    // (inventory_orders/details), purchase stock-in entries, purchase orders (supply orders),
+    // purchase return slips, and purchase/sale gatepasses; drops all branch stock rows; and
+    // zeroes on-hand stock on the surviving item catalog. Does NOT delete the item catalog
+    // itself, nor any ManualInvoice/InvoiceItem billing records (those span other modules).
+    public function reset_inventory(Request $request)
+    {
+        $request->validate(['store_id' => 'required']);
 
         $store = Store::find($request->store_id);
         if (!$store) {
             Toastr::error('Store not found');
             return redirect()->back();
         }
+
+        // Verify against the same store phone the OTP was sent to.
+        $phone = $this->storeResetOtpPhone($store);
+        $otp   = is_array($request->otp) ? implode('', $request->otp) : $request->otp;
+
+        if (!$phone || !_verify_otp($phone, $otp)) {
+            Toastr::error('Incorrect OTP');
+            return redirect()->back();
+        }
+
         $storeId = $store->id;
 
         DB::beginTransaction();

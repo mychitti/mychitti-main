@@ -164,7 +164,7 @@
                                 action="{{ route('admin.store.reset-inventory') }}" method="post">
                                 @csrf
                                 <input type="hidden" name="store_id" value="{{ $store->id }}">
-                                <p>OTP sent to the registered business phone number.</p>
+                                <p>OTP sent to the store's registered phone number.</p>
                                 <div class="d-flex justify-content-center w-100">
                                     <input type="text" maxlength="1" class="otp-input" name="otp[]" />
                                     <input type="text" maxlength="1" class="otp-input" name="otp[]" />
@@ -278,7 +278,8 @@
         $(".send_inv_otp").on('click', function(e) {
             e.preventDefault();
             $.post({
-                url: "{{ route('admin.account.send_otp') }}",
+                url: "{{ route('admin.store.reset-inventory.send-otp') }}",
+                data: { store_id: "{{ $store->id }}" },
                 headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}" },
                 success: function(data) {
                     if (!data.status && data.message && window.toastr) {
