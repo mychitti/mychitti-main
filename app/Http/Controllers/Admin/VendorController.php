@@ -2213,10 +2213,11 @@ class VendorController extends Controller
 
     // Admin-triggered inventory reset for one store. OTP-gated — the OTP goes to the STORE's
     // registered phone. Permanently deletes the store's sale orders + sale returns
-    // (inventory_orders/details), purchase stock-in entries, purchase orders (supply orders),
-    // purchase return slips, and purchase/sale gatepasses; drops all branch stock rows; and
-    // zeroes on-hand stock on the surviving item catalog. Does NOT delete the item catalog
-    // itself, nor any ManualInvoice/InvoiceItem billing records (those span other modules).
+    // (inventory_orders/details) AND the ManualInvoice bills those inventory sales produced,
+    // purchase stock-in entries, purchase orders (supply orders), purchase return slips, and
+    // purchase/sale gatepasses; drops all branch stock rows; and zeroes on-hand stock on the
+    // surviving item catalog. Does NOT delete the item catalog itself, nor billing that is not
+    // an inventory sale (service invoices, consultation receipts, etc. are left untouched).
     public function reset_inventory(Request $request)
     {
         $request->validate(['store_id' => 'required']);
@@ -2240,12 +2241,32 @@ class VendorController extends Controller
 
         DB::beginTransaction();
         try {
-            // Sales bills — inventory orders + their line details.
-            $orderIds = \App\Models\InventoryOrder::where('store_id', $storeId)->pluck('order_id');
+            // Sales bills — inventory orders + their line details. Capture each order's linked
+            // invoice_id BEFORE deleting the orders, so the bills behind them can be removed too.
+            $invOrders   = \App\Models\InventoryOrder::where('store_id', $storeId)->get(['order_id', 'invoice_id']);
+            $orderIds    = $invOrders->pluck('order_id')->filter()->values();
+            $invoiceRefs = $invOrders->pluck('invoice_id')->filter()->unique()->values();
+
             if ($orderIds->isNotEmpty()) {
                 \App\Models\InventoryOrderDetail::whereIn('order_id', $orderIds)->delete();
             }
             \App\Models\InventoryOrder::where('store_id', $storeId)->delete();
+
+            // The ManualInvoice bills those inventory sales generated (POS Retail, pharmacy walk-in
+            // and dispense, inventory sale orders) — plus their line items and any POS payment legs.
+            // Scoped to this store (manual_invoices.vendor_id holds the STORE id) and only to the
+            // invoice_ids tied to an inventory order, so non-inventory billing is left alone.
+            if ($invoiceRefs->isNotEmpty()) {
+                $billIds = \App\Models\ManualInvoice::where('vendor_id', $storeId)
+                    ->whereIn('invoice_id', $invoiceRefs)->pluck('id');
+                if ($billIds->isNotEmpty()) {
+                    \App\Models\InvoiceItem::whereIn('manual_invoice_id', $billIds)->delete();
+                    if (Schema::hasTable('pos_payment_legs')) {
+                        DB::table('pos_payment_legs')->whereIn('manual_invoice_id', $billIds)->delete();
+                    }
+                    \App\Models\ManualInvoice::whereIn('id', $billIds)->delete();
+                }
+            }
 
             // Purchase bills — stock-in entries.
             \App\Models\ItemEntry::where('store_id', $storeId)->delete();
