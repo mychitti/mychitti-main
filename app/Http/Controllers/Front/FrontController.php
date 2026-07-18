@@ -3090,9 +3090,10 @@ class FrontController extends Controller
             $viewData['cityName']  = $cityName;
             $viewData['canonical'] = $canonical;
 
-            // Thin-content guard: a service page with no providers in this city is an empty
-            // listing — keep it out of the index (still follow) so it isn't flagged thin/soft-404.
-            if (count($stores) === 0) {
+            // Thin-content guard: a service page with fewer than 2 providers in this city is a
+            // thin listing — keep it out of the index (still follow) so it isn't flagged
+            // thin/soft-404. It flips back to indexable automatically once a 2nd vendor registers.
+            if (count($stores) < 2) {
                 view()->share('metaRobots', 'noindex, follow');
             }
         }
