@@ -69,12 +69,15 @@
         </div>
 
         <div class="rp-card">
-            @php $canVoid = hasPermission('pos_bills', 'void'); @endphp
+            @php
+                $canVoid = hasPermission('pos_bills', 'void');
+                $canDelete = hasPermission('pos_bills', 'delete');
+            @endphp
             <div class="hd d-flex align-items-center justify-content-between">
                 <span class="accent">All bills today</span>
-                @if ($canVoid)
-                    <button type="button" id="rpBulkVoidBtn" class="rp-btn o sm" style="display:none;">
-                        <i class="tio-delete"></i> Void selected (<span id="rpBulkCount">0</span>)
+                @if ($canDelete)
+                    <button type="button" id="rpBulkDeleteBtn" class="rp-btn o sm text-danger" style="display:none;">
+                        <i class="tio-delete"></i> Delete selected (<span id="rpBulkCount">0</span>)
                     </button>
                 @endif
             </div>
@@ -82,7 +85,7 @@
                 <table class="rp-table">
                     <thead>
                         <tr>
-                            @if ($canVoid)<th style="width:34px;"><input type="checkbox" id="rpSelectAll" title="Select all"></th>@endif
+                            @if ($canDelete)<th style="width:34px;"><input type="checkbox" id="rpSelectAll" title="Select all"></th>@endif
                             <th>#</th><th>Invoice</th><th>Customer</th>
                             @if (!($isStaff ?? false))<th>Staff</th><th>Counter</th>@endif
                             <th class="text-right">Amount</th>
@@ -92,11 +95,10 @@
                     <tbody>
                         @forelse ($bills as $k => $bill)
                             <tr @if ($bill->pos_status === 'void') style="opacity:.55" @endif>
-                                @if ($canVoid)
+                                @if ($canDelete)
                                     <td>
-                                        @if ($bill->pos_status !== 'void')
-                                            <input type="checkbox" class="rp-bill-check" value="{{ $bill->id }}">
-                                        @endif
+                                        {{-- Delete applies to any bill, void or not, so every row is selectable. --}}
+                                        <input type="checkbox" class="rp-bill-check" value="{{ $bill->id }}">
                                     </td>
                                 @endif
                                 <td>{{ $k + 1 }}</td>
@@ -119,8 +121,8 @@
                                 </td>
                                 <td class="text-muted">{{ $bill->created_at->format('h:i A') }}</td>
                                 <td class="text-right">
-                                    @php $canPrint = hasPermission('pos_bills', 'print'); $canVoid = hasPermission('pos_bills', 'void'); @endphp
-                                    @if ($canPrint || $canVoid)
+                                    @php $canPrint = hasPermission('pos_bills', 'print'); $canVoid = hasPermission('pos_bills', 'void'); $canDelete = hasPermission('pos_bills', 'delete'); @endphp
+                                    @if ($canPrint || $canVoid || $canDelete)
                                     <div class="dropdown act-dd">
                                         <button type="button" class="rp-btn o sm" data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true" aria-expanded="false" title="Actions"><i class="tio-menu-hamburger" style="font-size: 21px;"></i></button>
                                         <div class="dropdown-menu dropdown-menu-right">
@@ -149,13 +151,22 @@
                                                     </span>
                                                 @endif
                                             @endif
-                                            @if ($bill->pos_status !== 'void' && $canVoid)
+                                            @if (($bill->pos_status !== 'void' && $canVoid) || $canDelete)
                                                 @if ($canPrint)<div class="dropdown-divider"></div>@endif
+                                            @endif
+                                            @if ($bill->pos_status !== 'void' && $canVoid)
                                                 <form action="{{ route('vendor.retail-pos.void', $bill->id) }}" method="post"
                                                     onsubmit="return confirm('Void this invoice? Stock will be restored.');">
                                                     @csrf
                                                     <input type="hidden" name="reason" value="Voided from Today's Bills">
-                                                    <button type="submit" class="dropdown-item text-danger"><i class="tio-delete"></i> Void bill</button>
+                                                    <button type="submit" class="dropdown-item text-warning"><i class="tio-clear-circle"></i> Void bill</button>
+                                                </form>
+                                            @endif
+                                            @if ($canDelete)
+                                                <form action="{{ route('vendor.retail-pos.delete', $bill->id) }}" method="post"
+                                                    onsubmit="return confirm('Delete this bill permanently? This cannot be undone.');">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="tio-delete"></i> Delete bill</button>
                                                 </form>
                                             @endif
                                         </div>
@@ -164,7 +175,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="{{ (($isStaff ?? false) ? 8 : 10) + ($canVoid ? 1 : 0) }}"><div class="rp-empty">No bills today yet.</div></td></tr>
+                            <tr><td colspan="{{ (($isStaff ?? false) ? 8 : 10) + ($canDelete ? 1 : 0) }}"><div class="rp-empty">No bills today yet.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -172,11 +183,10 @@
         </div>
     </div>
 
-    @if ($canVoid)
-        {{-- Bulk-void form lives outside the table (the rows carry their own per-bill void forms). --}}
-        <form id="rpBulkVoidForm" action="{{ route('vendor.retail-pos.void-bulk') }}" method="post" style="display:none;">
+    @if ($canDelete)
+        {{-- Bulk-delete form lives outside the table (the rows carry their own per-bill forms). --}}
+        <form id="rpBulkDeleteForm" action="{{ route('vendor.retail-pos.delete-bulk') }}" method="post" style="display:none;">
             @csrf
-            <input type="hidden" name="reason" value="Bulk void from Today's Bills">
             <div id="rpBulkIds"></div>
         </form>
     @endif
@@ -184,13 +194,13 @@
 
 @push('script_2')
     @include('vendor-views.js.date_range')
-    @if ($canVoid)
+    @if ($canDelete)
     <script>
         (function () {
             const selectAll = document.getElementById('rpSelectAll');
-            const bulkBtn   = document.getElementById('rpBulkVoidBtn');
+            const bulkBtn   = document.getElementById('rpBulkDeleteBtn');
             const countEl   = document.getElementById('rpBulkCount');
-            const form      = document.getElementById('rpBulkVoidForm');
+            const form      = document.getElementById('rpBulkDeleteForm');
             const idsWrap   = document.getElementById('rpBulkIds');
             const boxes = () => Array.from(document.querySelectorAll('.rp-bill-check'));
             const checked = () => boxes().filter(b => b.checked);
@@ -219,7 +229,7 @@
             bulkBtn.addEventListener('click', function () {
                 const sel = checked();
                 if (!sel.length) return;
-                if (!confirm('Void ' + sel.length + ' selected bill(s)? Stock will be restored. This cannot be undone.')) return;
+                if (!confirm('Delete ' + sel.length + ' selected bill(s) permanently? This cannot be undone.')) return;
                 idsWrap.innerHTML = '';
                 sel.forEach(b => {
                     const input = document.createElement('input');

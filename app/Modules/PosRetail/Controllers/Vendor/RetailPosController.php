@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\InventoryItem;
+use App\Models\InventoryOrder;
+use App\Models\InventoryOrderDetail;
 use App\Models\InvoiceItem;
 use App\Models\ManualInvoice;
 use App\Models\StoreCustomer;
@@ -22,7 +24,7 @@ class RetailPosController extends Controller
     public const FEATURES = [
         'pos_billing'       => ['New Sale', ['create', 'price_override', 'hold', 'resume']],
         'pos_bill_discount' => ['Bill Discount', ['apply']],
-        'pos_bills'         => ['Bills', ['view', 'void', 'print']],
+        'pos_bills'         => ['Bills', ['view', 'void', 'print', 'delete']],
         'pos_gst_report'    => ['GST Report', ['view']],
         'pos_branch'        => ['Branches', ['view', 'create', 'delete']],
         'pos_counter'       => ['Counters', ['create', 'delete']],
@@ -2244,6 +2246,88 @@ class RetailPosController extends Controller
             Toastr::success($voided . ' bill' . ($voided > 1 ? 's' : '') . ' voided, stock restored.');
         }
         return back();
+    }
+
+    public function deleteBill(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $invoice = ManualInvoice::where('vendor_id', $storeId)->findOrFail($id);
+
+        $this->performDelete($invoice, $storeId);
+        Toastr::success('Bill deleted');
+        return back();
+    }
+
+    // Permanently delete several bills from Today's Bills. Unlike void (which keeps the record),
+    // this removes the invoice, its lines, payment legs and inventory-order mirror outright.
+    public function bulkDelete(Request $request)
+    {
+        $this->ensureSchema();
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ]);
+        $storeId = $this->storeId();
+
+        $invoices = ManualInvoice::where('vendor_id', $storeId)
+            ->whereIn('id', $request->ids)
+            ->get();
+
+        $deleted = 0;
+        foreach ($invoices as $invoice) {
+            $this->performDelete($invoice, $storeId);
+            $deleted++;
+        }
+
+        if ($deleted === 0) {
+            Toastr::info('No bills deleted.');
+        } else {
+            Toastr::success($deleted . ' bill' . ($deleted > 1 ? 's' : '') . ' deleted.');
+        }
+        return back();
+    }
+
+    // Permanently removes one bill and everything a sale created for it: inventory-order mirror,
+    // payment legs, invoice lines, then the invoice. Stock is restored only if the bill was NOT
+    // already void — a voided bill already had its stock returned, so restoring again would
+    // double-count. All in one transaction.
+    private function performDelete(ManualInvoice $invoice, int $storeId): void
+    {
+        DB::transaction(function () use ($invoice, $storeId) {
+            $lines = InvoiceItem::where('manual_invoice_id', $invoice->id)->get();
+
+            // A live (non-void) sale still holds its stock as sold — return it on delete so the
+            // catalog stays accurate. A void bill already restored stock; leave it alone.
+            if ($invoice->pos_status !== 'void') {
+                foreach ($lines->whereNotNull('inv_id') as $line) {
+                    $item = InventoryItem::where('id', $line->inv_id)->where('store_id', $storeId)->first();
+                    if ($item) {
+                        $item->stock = (float) $item->stock + (float) $line->qty;
+                        $item->save();
+                    }
+                    if ($invoice->pos_branch_id) {
+                        DB::table('pos_branch_stock')
+                            ->where('branch_id', $invoice->pos_branch_id)->where('inventory_item_id', $line->inv_id)
+                            ->update(['stock' => DB::raw('stock + ' . (float) $line->qty), 'updated_at' => now()]);
+                    }
+                }
+            }
+
+            // Inventory-order mirror created by Helpers::_placeInventoryOrder (linked by invoice_id).
+            $orderIds = InventoryOrder::where('store_id', $storeId)
+                ->where('invoice_id', $invoice->invoice_id)->pluck('order_id');
+            if ($orderIds->isNotEmpty()) {
+                InventoryOrderDetail::whereIn('order_id', $orderIds)->delete();
+                InventoryOrder::where('store_id', $storeId)->where('invoice_id', $invoice->invoice_id)->delete();
+            }
+
+            DB::table('pos_payment_legs')->where('manual_invoice_id', $invoice->id)->delete();
+            InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
+
+            $this->logAudit('delete', $invoice->invoice_id, $invoice->pos_status === 'void' ? 'Deleted (was void)' : 'Deleted');
+            $invoice->delete();
+        });
     }
 
     // Marks one invoice void and restores its stock (global + branch). Returns false if it was
