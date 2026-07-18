@@ -35,6 +35,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::post('held/{id}/delete', [RetailPosController::class, 'deleteHeld'])->name('held.delete')->middleware('permission:pos_billing,hold');
     Route::get('today',        [RetailPosController::class, 'todaysBills'])->name('today')->middleware('permission:pos_bills,view');
     Route::post('void/{id}',   [RetailPosController::class, 'voidBill'])->name('void')->middleware('permission:pos_bills,void');
+    Route::post('void-bulk',   [RetailPosController::class, 'bulkVoid'])->name('void-bulk')->middleware('permission:pos_bills,void');
     Route::get('thermal/{id}', [RetailPosController::class, 'thermal'])->name('thermal')->middleware('permission:pos_bills,print');
     Route::get('email/{id}',   [RetailPosController::class, 'emailInvoice'])->name('email')->middleware('permission:pos_bills,print');
     Route::get('whatsapp/{id}',[RetailPosController::class, 'whatsappInvoice'])->name('whatsapp')->middleware('permission:pos_bills,print');

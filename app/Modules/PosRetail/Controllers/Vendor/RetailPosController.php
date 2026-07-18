@@ -2207,13 +2207,55 @@ class RetailPosController extends Controller
         $storeId = $this->storeId();
         $invoice = ManualInvoice::where('vendor_id', $storeId)->findOrFail($id);
 
-        if ($invoice->pos_status === 'void') {
+        if (!$this->performVoid($invoice, $request->input('reason'), $storeId)) {
             Toastr::info('Invoice already voided');
             return back();
         }
 
+        Toastr::success('Invoice voided');
+        return back();
+    }
+
+    // Void several bills at once from Today's Bills. Same effect as voiding each individually —
+    // stock is restored and every void is audited. Already-void bills in the selection are skipped.
+    public function bulkVoid(Request $request)
+    {
+        $this->ensureSchema();
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ]);
+        $storeId = $this->storeId();
+
+        $invoices = ManualInvoice::where('vendor_id', $storeId)
+            ->whereIn('id', $request->ids)
+            ->get();
+
+        $voided = 0;
+        foreach ($invoices as $invoice) {
+            if ($this->performVoid($invoice, $request->input('reason') ?: 'Bulk void from Today\'s Bills', $storeId)) {
+                $voided++;
+            }
+        }
+
+        if ($voided === 0) {
+            Toastr::info('Nothing to void — the selected bills were already voided.');
+        } else {
+            Toastr::success($voided . ' bill' . ($voided > 1 ? 's' : '') . ' voided, stock restored.');
+        }
+        return back();
+    }
+
+    // Marks one invoice void and restores its stock (global + branch). Returns false if it was
+    // already void. Shared by voidBill and bulkVoid so both behave identically.
+    private function performVoid(ManualInvoice $invoice, ?string $reason, int $storeId): bool
+    {
+        if ($invoice->pos_status === 'void') {
+            return false;
+        }
+
         $invoice->pos_status = 'void';
-        $invoice->void_reason = $request->input('reason');
+        $invoice->void_reason = $reason;
         $invoice->voided_by = auth('vendor')->id() ?? auth('vendor_employee')->id();
         $invoice->save();
 
@@ -2232,8 +2274,7 @@ class RetailPosController extends Controller
         }
 
         $this->logAudit('void', $invoice->invoice_id, $invoice->void_reason);
-        Toastr::success('Invoice voided');
-        return back();
+        return true;
     }
 
     // ── 80mm thermal receipt (browser print) ───────────────────────────────────

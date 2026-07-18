@@ -69,11 +69,20 @@
         </div>
 
         <div class="rp-card">
-            <div class="hd"><span class="accent">All bills today</span></div>
+            @php $canVoid = hasPermission('pos_bills', 'void'); @endphp
+            <div class="hd d-flex align-items-center justify-content-between">
+                <span class="accent">All bills today</span>
+                @if ($canVoid)
+                    <button type="button" id="rpBulkVoidBtn" class="rp-btn o sm" style="display:none;">
+                        <i class="tio-delete"></i> Void selected (<span id="rpBulkCount">0</span>)
+                    </button>
+                @endif
+            </div>
             <div class="table-responsive">
                 <table class="rp-table">
                     <thead>
                         <tr>
+                            @if ($canVoid)<th style="width:34px;"><input type="checkbox" id="rpSelectAll" title="Select all"></th>@endif
                             <th>#</th><th>Invoice</th><th>Customer</th>
                             @if (!($isStaff ?? false))<th>Staff</th><th>Counter</th>@endif
                             <th class="text-right">Amount</th>
@@ -83,6 +92,13 @@
                     <tbody>
                         @forelse ($bills as $k => $bill)
                             <tr @if ($bill->pos_status === 'void') style="opacity:.55" @endif>
+                                @if ($canVoid)
+                                    <td>
+                                        @if ($bill->pos_status !== 'void')
+                                            <input type="checkbox" class="rp-bill-check" value="{{ $bill->id }}">
+                                        @endif
+                                    </td>
+                                @endif
                                 <td>{{ $k + 1 }}</td>
                                 <td><b>{{ $bill->pos_status === 'void' ? 'V' . $bill->invoice_id : $bill->invoice_id }}</b></td>
                                 <td>{{ optional($customers[$bill->bill_to] ?? null)->f_name ?: 'Walk-in' }}</td>
@@ -148,15 +164,73 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="{{ ($isStaff ?? false) ? 8 : 10 }}"><div class="rp-empty">No bills today yet.</div></td></tr>
+                            <tr><td colspan="{{ (($isStaff ?? false) ? 8 : 10) + ($canVoid ? 1 : 0) }}"><div class="rp-empty">No bills today yet.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+
+    @if ($canVoid)
+        {{-- Bulk-void form lives outside the table (the rows carry their own per-bill void forms). --}}
+        <form id="rpBulkVoidForm" action="{{ route('vendor.retail-pos.void-bulk') }}" method="post" style="display:none;">
+            @csrf
+            <input type="hidden" name="reason" value="Bulk void from Today's Bills">
+            <div id="rpBulkIds"></div>
+        </form>
+    @endif
 @endsection
 
 @push('script_2')
     @include('vendor-views.js.date_range')
+    @if ($canVoid)
+    <script>
+        (function () {
+            const selectAll = document.getElementById('rpSelectAll');
+            const bulkBtn   = document.getElementById('rpBulkVoidBtn');
+            const countEl   = document.getElementById('rpBulkCount');
+            const form      = document.getElementById('rpBulkVoidForm');
+            const idsWrap   = document.getElementById('rpBulkIds');
+            const boxes = () => Array.from(document.querySelectorAll('.rp-bill-check'));
+            const checked = () => boxes().filter(b => b.checked);
+
+            function refresh() {
+                const n = checked().length;
+                countEl.textContent = n;
+                bulkBtn.style.display = n ? '' : 'none';
+                if (selectAll) {
+                    const all = boxes();
+                    selectAll.checked = all.length > 0 && n === all.length;
+                    selectAll.indeterminate = n > 0 && n < all.length;
+                }
+            }
+
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    boxes().forEach(b => { b.checked = selectAll.checked; });
+                    refresh();
+                });
+            }
+            document.addEventListener('change', function (e) {
+                if (e.target.classList.contains('rp-bill-check')) refresh();
+            });
+
+            bulkBtn.addEventListener('click', function () {
+                const sel = checked();
+                if (!sel.length) return;
+                if (!confirm('Void ' + sel.length + ' selected bill(s)? Stock will be restored. This cannot be undone.')) return;
+                idsWrap.innerHTML = '';
+                sel.forEach(b => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids[]';
+                    input.value = b.value;
+                    idsWrap.appendChild(input);
+                });
+                form.submit();
+            });
+        })();
+    </script>
+    @endif
 @endpush
