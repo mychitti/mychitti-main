@@ -2213,7 +2213,8 @@ class VendorController extends Controller
 
     // Admin-triggered inventory reset for one store. OTP-gated — the OTP goes to the STORE's
     // registered phone. Permanently deletes the store's sale orders + sale returns
-    // (inventory_orders/details) AND the ManualInvoice bills those inventory sales produced,
+    // (inventory_orders/details) AND the ManualInvoice bills those inventory sales produced — every
+    // POS Retail bill regardless of date, plus any bill linked to a deleted inventory order —
     // purchase stock-in entries, purchase orders (supply orders), purchase return slips, and
     // purchase/sale gatepasses; drops all branch stock rows; and zeroes on-hand stock on the
     // surviving item catalog. Does NOT delete the item catalog itself, nor billing that is not
@@ -2254,18 +2255,33 @@ class VendorController extends Controller
 
             // The ManualInvoice bills those inventory sales generated (POS Retail, pharmacy walk-in
             // and dispense, inventory sale orders) — plus their line items and any POS payment legs.
-            // Scoped to this store (manual_invoices.vendor_id holds the STORE id) and only to the
-            // invoice_ids tied to an inventory order, so non-inventory billing is left alone.
-            if ($invoiceRefs->isNotEmpty()) {
-                $billIds = \App\Models\ManualInvoice::where('vendor_id', $storeId)
-                    ->whereIn('invoice_id', $invoiceRefs)->pluck('id');
-                if ($billIds->isNotEmpty()) {
-                    \App\Models\InvoiceItem::whereIn('manual_invoice_id', $billIds)->delete();
-                    if (Schema::hasTable('pos_payment_legs')) {
-                        DB::table('pos_payment_legs')->whereIn('manual_invoice_id', $billIds)->delete();
-                    }
-                    \App\Models\ManualInvoice::whereIn('id', $billIds)->delete();
+            // Scoped to this store (manual_invoices.vendor_id holds the STORE id). Two independent
+            // sources, unioned, so every inventory-sale bill goes regardless of date:
+            //   (a) EVERY POS Retail bill — marked by type='manual' + a non-null pos_status. This
+            //       catches older bills whose InventoryOrder mirror was never written, which is why
+            //       a mirror-only match previously left all but the most recent (mirror-bearing)
+            //       bills behind.
+            //   (b) Bills linked to a deleted inventory order by invoice_id — covers pharmacy /
+            //       sale-order bills that carry no pos_status marker.
+            // Non-inventory billing (service invoices, consultation receipts, etc.) matches neither
+            // and is left untouched.
+            $posBillIds = \App\Models\ManualInvoice::where('vendor_id', $storeId)
+                ->where('type', 'manual')
+                ->whereNotNull('pos_status')
+                ->pluck('id');
+
+            $linkedBillIds = $invoiceRefs->isNotEmpty()
+                ? \App\Models\ManualInvoice::where('vendor_id', $storeId)
+                    ->whereIn('invoice_id', $invoiceRefs)->pluck('id')
+                : collect();
+
+            $billIds = $posBillIds->merge($linkedBillIds)->unique()->values();
+            if ($billIds->isNotEmpty()) {
+                \App\Models\InvoiceItem::whereIn('manual_invoice_id', $billIds)->delete();
+                if (Schema::hasTable('pos_payment_legs')) {
+                    DB::table('pos_payment_legs')->whereIn('manual_invoice_id', $billIds)->delete();
                 }
+                \App\Models\ManualInvoice::whereIn('id', $billIds)->delete();
             }
 
             // Purchase bills — stock-in entries.
