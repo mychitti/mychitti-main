@@ -2274,6 +2274,31 @@ class VendorController extends Controller
             \App\Models\InventoryItem::where('store_id', $storeId)
                 ->update(['stock' => 0, 'primary_qty' => 0, 'secondary_qty' => 0]);
 
+            // Per-variation stock lives inside the `variations` JSON, not in the columns above,
+            // so zero each variation's `stock` key too — otherwise a variant product keeps its
+            // old variation stock after a reset. Walk only rows that actually have variations.
+            \App\Models\InventoryItem::where('store_id', $storeId)
+                ->whereNotNull('variations')
+                ->where('variations', '!=', '')
+                ->where('variations', '!=', '[]')
+                ->select('id', 'variations')
+                ->chunkById(200, function ($items) {
+                    foreach ($items as $item) {
+                        $variations = json_decode($item->variations, true);
+                        if (!is_array($variations) || empty($variations)) {
+                            continue;
+                        }
+                        foreach ($variations as &$v) {
+                            if (is_array($v)) {
+                                $v['stock'] = 0;
+                            }
+                        }
+                        unset($v);
+                        $item->variations = json_encode($variations);
+                        $item->save();
+                    }
+                });
+
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
