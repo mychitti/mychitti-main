@@ -33,15 +33,6 @@
             'areaServed' => ['@type' => 'City', 'name' => $zone->name],
             'url' => $canonical,
         ];
-        if (($ratingValue ?? null) && ($reviewCount ?? 0) > 0) {
-            $serviceNode['aggregateRating'] = [
-                '@type' => 'AggregateRating',
-                'ratingValue' => $ratingValue,
-                'reviewCount' => $reviewCount,
-                'bestRating' => 5,
-                'worstRating' => 1,
-            ];
-        }
 
         // BreadcrumbList: Home → {Category} in {City} → {Item} (item pages only).
         $crumbs = [

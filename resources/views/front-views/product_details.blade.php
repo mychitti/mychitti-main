@@ -43,15 +43,6 @@
             'areaServed' => ['@type' => 'City', 'name' => $city_name],
             'url' => url()->current(),
         ];
-        if ((int) ($item->rating_count ?? 0) > 0) {
-            $svcSchema['aggregateRating'] = [
-                '@type' => 'AggregateRating',
-                'ratingValue' => round((float) $item->avg_rating, 1),
-                'reviewCount' => (int) $item->rating_count,
-                'bestRating' => 5,
-                'worstRating' => 1,
-            ];
-        }
     @endphp
     <script type="application/ld+json">
     {!! json_encode($svcSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
