@@ -2291,6 +2291,21 @@ class VendorController extends Controller
             // Branch stock — pivot rows for every branch of this store.
             DB::table('branch_inventory_item')->where('store_id', $storeId)->delete();
 
+            // POS Retail keeps its own per-branch stock in pos_branch_stock (Main Store, Branch 2,
+            // etc.) — a separate table from branch_inventory_item — so clear that too. Match on
+            // store_id and also on the store's branch ids, in case any legacy row has a null store_id.
+            if (Schema::hasTable('pos_branch_stock')) {
+                $branchIds = \App\Models\Branch::where('store_id', $storeId)->pluck('id');
+                DB::table('pos_branch_stock')
+                    ->where(function ($q) use ($storeId, $branchIds) {
+                        $q->where('store_id', $storeId);
+                        if ($branchIds->isNotEmpty()) {
+                            $q->orWhereIn('branch_id', $branchIds);
+                        }
+                    })
+                    ->delete();
+            }
+
             // Zero on-hand stock on the surviving item catalog.
             \App\Models\InventoryItem::where('store_id', $storeId)
                 ->update(['stock' => 0, 'primary_qty' => 0, 'secondary_qty' => 0]);
