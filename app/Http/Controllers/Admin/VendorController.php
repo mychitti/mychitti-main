@@ -2154,7 +2154,7 @@ class VendorController extends Controller
             $phone = trim((string) ($store->vendor->phone ?? ''));
         }
         return $phone !== '' ? $phone : null;
-    }
+    } 
 
     // Sends the inventory-reset OTP to the STORE's registered phone (not the platform business
     // phone — this reset destroys that store's data, so the store must authorise it).
@@ -2168,13 +2168,44 @@ class VendorController extends Controller
             return response()->json(['status' => false, 'message' => "This store has no registered phone number to send an OTP to."], 422);
         }
 
+        // The SMS gateway only accepts a 10-digit Indian mobile. A short/junk store phone would
+        // be silently dropped there, so reject it here rather than claim an OTP was sent.
+        $digits = preg_replace('/\D/', '', $phone);
+        if (strlen($digits) < 10) {
+            return response()->json([
+                'status'  => false,
+                'message' => "The store's phone number ({$phone}) is not a valid 10-digit mobile, so no OTP could be sent.",
+            ], 422);
+        }
+
         $check = _check_otp_send_allowed($phone);
         if (!$check['allowed']) {
             return response()->json(['status' => false, 'message' => $check['message']], 429);
         }
 
         $otp = rand(1000, 9999);
-        _send_confirmation_sms('mobile_verification', $phone, $otp);
+
+        // _send_confirmation_sms returns the gateway's decoded JSON (smsgatewayhub: ErrorCode
+        // "000" = accepted). Only block on a DEFINITE rejection — an ErrorCode that is present and
+        // not "000". If the response is unreadable, fall through and behave as every other caller
+        // does (store the OTP, report sent) rather than block a possibly-valid send; log either
+        // way so a silently-failing gateway leaves a trail.
+        $resp = _send_confirmation_sms('mobile_verification', $phone, $otp);
+        $errorCode = is_object($resp) ? ($resp->ErrorCode ?? null) : (is_array($resp) ? ($resp['ErrorCode'] ?? null) : null);
+
+        if ($errorCode !== null && (string) $errorCode !== '000') {
+            $reason = is_object($resp) ? ($resp->ErrorMessage ?? null) : (is_array($resp) ? ($resp['ErrorMessage'] ?? null) : null);
+            \Log::warning('Inventory-reset OTP rejected by gateway', ['store_id' => $store->id, 'phone' => $phone, 'gateway' => $resp]);
+            return response()->json([
+                'status'  => false,
+                'message' => 'The SMS gateway did not accept the OTP' . ($reason ? ' (' . $reason . ')' : '') . '. Check the store phone number and try again.',
+            ], 502);
+        }
+
+        if ($errorCode === null) {
+            \Log::warning('Inventory-reset OTP: unreadable gateway response', ['store_id' => $store->id, 'phone' => $phone, 'gateway' => $resp]);
+        }
+
         _store_otp($phone, $otp);
 
         return response()->json(['status' => true, 'message' => "OTP sent to the store's registered phone number.", 'action' => 'otp_sent']);

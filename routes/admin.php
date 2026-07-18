@@ -1323,7 +1323,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('get-vendor-log-matches', 'VendorController@get_vendor_log_matches')->name('get-vendor-log-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc')->middleware('permission:store,documents');
  
-
+ 
             Route::post('update_id', 'VendorController@update_id')->name('update_id');
             Route::get('terms-and-conditions', 'VendorController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('terms-and-conditions', 'VendorController@terms_and_conditions_store')->name('terms-and-conditions.store');
