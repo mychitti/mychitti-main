@@ -136,13 +136,6 @@
         </div>
     </div>
 
-    {{-- Shared unit suggestions for the Add/Edit Medicine "Unit" fields (type-to-add still works). --}}
-    <datalist id="medicineUnitOptions">
-        @foreach ($units as $u)
-            <option value="{{ $u }}"></option>
-        @endforeach
-    </datalist>
-
     {{-- ── Add Medicine (item add) ───────────────────────────────────── --}}
     @if (hasPermission('pharmacy', 'add'))
         <div class="modal fade" id="addMedModal" tabindex="-1" aria-hidden="true">
@@ -160,7 +153,12 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label>
-                                <input type="text" name="unit" class="form-control" list="medicineUnitOptions" placeholder="Tablet, Strip, ml..." required autocomplete="off"></div>
+                                <select name="unit" id="a_unit" class="form-control med-unit-select" required>
+                                    <option value=""></option>
+                                    @foreach ($units as $u)
+                                        <option value="{{ $u }}">{{ $u }}</option>
+                                    @endforeach
+                                </select></div>
                             <div class="form-group col-4"><label>MRP (₹) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="mrp" class="form-control" required></div>
                             <div class="form-group col-4"><label>Selling Price (₹)</label>
@@ -215,7 +213,13 @@
                             <div class="form-group col-6"><label>SKU / Code</label><input type="text" name="sku_id" id="e_sku" class="form-control"></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label><input type="text" name="unit" id="e_unit" class="form-control" list="medicineUnitOptions" required autocomplete="off"></div>
+                            <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label>
+                                <select name="unit" id="e_unit" class="form-control med-unit-select" required>
+                                    <option value=""></option>
+                                    @foreach ($units as $u)
+                                        <option value="{{ $u }}">{{ $u }}</option>
+                                    @endforeach
+                                </select></div>
                             <div class="form-group col-4"><label>MRP (₹) <span class="text-danger">*</span></label><input type="number" step="0.01" name="mrp" id="e_mrp" class="form-control" required></div>
                             <div class="form-group col-4"><label>Selling Price (₹)</label><input type="number" step="0.01" name="selling_price" id="e_selling" class="form-control"></div>
                         </div>
@@ -258,7 +262,7 @@
             document.getElementById('e_name').value = d.name || '';
             document.getElementById('e_brand').value = d.brand || '';
             document.getElementById('e_sku').value = d.sku || '';
-            document.getElementById('e_unit').value = d.unit || '';
+            setEditUnit(d.unit || '');
             document.getElementById('e_mrp').value = d.mrp || ''; 
             document.getElementById('e_selling').value = d.selling || '';
             document.getElementById('e_reorder').value = d.reorder || '';
@@ -270,5 +274,26 @@
             document.getElementById('s_name').textContent = this.dataset.name || '';
             $('#addStockModal').modal('show');
         }));
+
+        // Unit fields: select2 with tags (pick an existing unit or type a new one). dropdownParent
+        // is the modal so the search box stays focusable inside the Bootstrap modal.
+        $('#a_unit').select2({
+            tags: true, width: '100%', placeholder: 'Tablet, Strip, ml…',
+            dropdownParent: $('#addMedModal'),
+        });
+        $('#e_unit').select2({
+            tags: true, width: '100%', placeholder: 'Select or type a unit',
+            dropdownParent: $('#editMedModal'),
+        });
+
+        // Set the edit modal's unit, adding it as an option first if it isn't already listed
+        // (an existing medicine may use a unit that is not in the suggestion list).
+        function setEditUnit(unit) {
+            const $eu = $('#e_unit');
+            if (unit && !$eu.find('option').filter(function () { return this.value === unit; }).length) {
+                $eu.append(new Option(unit, unit, true, true));
+            }
+            $eu.val(unit).trigger('change');
+        }
     </script>
 @endpush

@@ -80,14 +80,14 @@
                                                     <button type="button" class="btn btn-outline-primary btn-sm btn_sm" data-toggle="modal"
                                                         data-target="#storageUnitManageModal">Stock Management</button>
                                                 @endif
-                                                @if (hasPermission('inventory_item_entry', 'add'))
+                                                {{-- @if (hasPermission('inventory_item_entry', 'add'))
                                                     <a href="{{ route('vendor.invoice.my-bills', ['add_purchase' => 1]) }}"
                                                         class="btn btn-outline-primary btn-sm btn_sm">Item Entry</a>
                                                 @endif
                                                 @if (hasPermission('inventory_item', 'add'))
                                                     <button type="button" class="btn btn-primary btn-sm btn_sm add_item_btn" data-toggle="modal"
                                                         data-target="#addInventoryItemModal">Add Item</button>
-                                                @endif
+                                                @endif --}}
                                                 <div class="divider mx-2" style="border-left: 1px solid #cbd5e1; height: 24px;"></div>
                                                 {{-- <form action="" class="d-flex date-range-form2">
                                                     <input type="hidden" name="tab" value="items">
