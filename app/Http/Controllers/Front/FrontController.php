@@ -2347,7 +2347,9 @@ class FrontController extends Controller
     public function store_gallery(Request $request)
     {
         $store = Store::with('galleries')->where('slug', $request->slug)->first();
-        // prx($store->galleries);
+        if (!$store) {
+            abort(404);
+        }
         return view('front-views.store_gallery', compact('store'));
     }
     public function trackBannerClick(Request $request)
