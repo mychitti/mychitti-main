@@ -117,6 +117,11 @@
                                                 MyChitti users <span class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
                                             </a>
                                         </li>
+                                        <li class="nav-item">
+                                            <a href="javascript:;" class="nav-link wb-mode" data-mode="nearby" style="font-size:13px;padding:6px 14px;">
+                                                Opted in to offers <span class="badge badge-soft-light ml-1">{{ $nearbyUserCount }}</span>
+                                            </a>
+                                        </li>
                                     </ul>
 
                                     <div id="wb-pane-clients">
@@ -130,6 +135,33 @@
                                             <div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>
                                         </div>
                                         <small id="wb-truncated" class="text-muted" style="display:none;"></small>
+                                    </div>
+
+                                    <div id="wb-pane-nearby" style="display:none;">
+                                        <div class="border rounded p-3">
+                                            <p class="text-muted mb-2" style="font-size:13px;">
+                                                People in your zone who ticked <b>“offers from businesses near me”</b>.
+                                                They have no history with you — they asked to hear from local businesses.
+                                                Numbers stay private and are never shown to you.
+                                            </p>
+                                            @if ($nearbyUserCount == 0)
+                                                <div class="alert alert-info mb-0" style="font-size:13px;">
+                                                    Nobody in your zone has opted in yet. This pool fills as customers
+                                                    tick the box at signup or in their account settings.
+                                                </div>
+                                            @else
+                                                <label style="font-size:12px;" class="mb-1">How many to message</label>
+                                                <input id="wb-nearby-count" type="number" class="form-control form-control-sm"
+                                                       style="max-width:200px;" min="1" max="{{ $nearbyUserCount }}"
+                                                       value="{{ min(50, $nearbyUserCount) }}">
+                                                <small class="text-muted d-block mt-1">
+                                                    Maximum {{ $nearbyUserCount }} available now. Anyone who has already
+                                                    received {{ \App\Http\Controllers\Vendor\WhatsAppController::NEARBY_MONTHLY_CAP }}
+                                                    offers from any business this month is excluded automatically, so the
+                                                    number moves as other vendors send.
+                                                </small>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     <div id="wb-pane-platform" style="display:none;">
@@ -193,6 +225,7 @@
             var CSRF = '{{ csrf_token() }}';
 
             var PLATFORM_MAX = {{ $platformUserCount }};
+            var NEARBY_MAX = {{ $nearbyUserCount }};
 
             var selected = new Set();
             var loaded = [];
@@ -266,16 +299,18 @@
                 syncSend();
             }
 
-            function platformCount() {
-                var $input = document.getElementById('wb-platform-count');
+            function countFrom(inputId, max) {
+                var $input = document.getElementById(inputId);
                 if (!$input) return 0;
                 var n = parseInt($input.value, 10);
                 if (isNaN(n) || n < 1) return 0;
-                return Math.min(n, PLATFORM_MAX);
+                return Math.min(n, max);
             }
 
             function recipientCount() {
-                return mode === 'platform' ? platformCount() : selected.size;
+                if (mode === 'platform') return countFrom('wb-platform-count', PLATFORM_MAX);
+                if (mode === 'nearby') return countFrom('wb-nearby-count', NEARBY_MAX);
+                return selected.size;
             }
 
             function syncSend() {
@@ -283,9 +318,9 @@
                 var filled = !t || !t.var_count || paramValues().every(function (v) { return v.trim() !== ''; });
                 var n = recipientCount();
                 $send.disabled = !t || !filled || n === 0;
-                $count.textContent = mode === 'platform'
-                    ? n + ' MyChitti user' + (n === 1 ? '' : 's')
-                    : selected.size + ' selected';
+                $count.textContent = mode === 'clients'
+                    ? selected.size + ' selected'
+                    : n + (mode === 'nearby' ? ' opted in' : ' MyChitti user' + (n === 1 ? '' : 's'));
                 $send.textContent = n
                     ? 'Send to ' + n + ' recipient' + (n === 1 ? '' : 's')
                     : 'Send';
@@ -298,6 +333,7 @@
                 });
                 document.getElementById('wb-pane-clients').style.display = next === 'clients' ? 'block' : 'none';
                 document.getElementById('wb-pane-platform').style.display = next === 'platform' ? 'block' : 'none';
+                document.getElementById('wb-pane-nearby').style.display = next === 'nearby' ? 'block' : 'none';
                 syncSend();
             }
 
@@ -349,11 +385,11 @@
                 var total = recipientCount();
                 var batches = [];
 
-                if (mode === 'platform') {
+                if (mode === 'platform' || mode === 'nearby') {
                     // The server walks users ordered by id, so an offset/limit pair addresses
                     // each recipient exactly once without the browser ever seeing a number.
                     for (var o = 0; o < total; o += BATCH) {
-                        batches.push({ mode: 'platform', offset: o, limit: Math.min(BATCH, total - o) });
+                        batches.push({ mode: mode, offset: o, limit: Math.min(BATCH, total - o) });
                     }
                 } else {
                     var ids = Array.from(selected);
@@ -368,7 +404,7 @@
                 $results.style.display = 'none';
 
                 function batchSize(b) {
-                    return b.mode === 'platform' ? b.limit : b.client_ids.length;
+                    return b.mode === 'clients' ? b.client_ids.length : b.limit;
                 }
 
                 function step(index) {
@@ -449,13 +485,17 @@
             Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
                 el.addEventListener('click', function () { setMode(this.dataset.mode); });
             });
-            var $platformInput = document.getElementById('wb-platform-count');
-            if ($platformInput) {
-                $platformInput.addEventListener('input', syncSend);
-            }
+            ['wb-platform-count', 'wb-nearby-count'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('input', syncSend);
+            });
             $send.addEventListener('click', function () {
                 var n = recipientCount();
-                var who = mode === 'platform' ? 'MyChitti user(s) in your zone' : 'client(s)';
+                var who = mode === 'clients'
+                    ? 'client(s)'
+                    : (mode === 'nearby'
+                        ? 'people who opted in to offers from nearby businesses'
+                        : 'MyChitti user(s) in your zone');
                 if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
                 sendBatches();
             });

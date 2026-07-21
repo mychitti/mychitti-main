@@ -702,6 +702,7 @@ class UserController extends Controller
         // Capture where they signed up from — $this->zone_id is the JSON zone list resolved by
         // _setLocation() in the constructor, and set_user_zone() takes the most specific zone.
         Helpers::set_user_zone($user->id, $this->zone_id);
+        \App\Models\UserNotificationPreference::setNearbyOffersAtSignup($user->id, $request->boolean('nearby_offers'));
 
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 
@@ -981,9 +982,10 @@ class UserController extends Controller
         }
 
         \App\Models\UserNotificationPreference::saveFor($userId, [
-            'sms'      => $request->has('sms'),
-            'whatsapp' => $request->has('whatsapp'),
-            'push'     => $request->has('push'),
+            'sms'           => $request->has('sms'),
+            'whatsapp'      => $request->has('whatsapp'),
+            'push'          => $request->has('push'),
+            'nearby_offers' => $request->has('nearby_offers'),
         ]);
 
         return back()->with('success', 'Your notification preferences have been saved.');

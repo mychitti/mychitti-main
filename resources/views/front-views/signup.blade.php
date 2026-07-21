@@ -66,6 +66,15 @@
                             <input type="checkbox" class="form-check-input" id="exampleCheck1">
                             <label class="form-check-label" for="exampleCheck1">Remember Me</label>
                         </div> -->
+                        {{-- Unticked on purpose: consent has to be an affirmative action, and a
+                             pre-ticked box would not be valid opt-in for marketing. --}}
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="nearbyOffers" name="nearby_offers" value="1">
+                            <label class="form-check-label" for="nearbyOffers" style="font-size:13px;">
+                                Send me offers from businesses near me on WhatsApp
+                            </label>
+                        </div>
+
                         <button type="submit" class="w-100 btn btn-primary mb-3">Signup</button>
 
                         <small>Already have an account? <a href="{{ route('user-login') }}">Login</a></small><br>

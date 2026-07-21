@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class WhatsAppController extends Controller
 {
@@ -55,12 +56,13 @@ class WhatsAppController extends Controller
             }
             $clientCount = $this->clientQuery($storeId)->count();
             $platformUserCount = $this->platformUserQuery($storeId)->count();
+            $nearbyUserCount = $this->nearbyUserQuery($storeId)->count();
             $optOutCount = count(WhatsAppService::optedOutPhones($storeId));
         }
 
         return view('vendor-views.whatsapp.connect', compact(
             'es', 'store', 'connected', 'templates', 'templateError',
-            'clientCount', 'platformUserCount', 'optOutCount'
+            'clientCount', 'platformUserCount', 'nearbyUserCount', 'optOutCount'
         ));
     }
 
@@ -74,6 +76,67 @@ class WhatsAppController extends Controller
                 ->where('phone', '!=', ''),
             $storeId
         );
+    }
+
+    /** Messages one person may receive from the shared nearby-offers pool per 30 days. */
+    const NEARBY_MONTHLY_CAP = 4;
+
+    /**
+     * Customers who opted in to hearing from nearby businesses they have no relationship with.
+     *
+     * Distinct from clientQuery(): these people consented to the shared pool, so any vendor in
+     * their zone may reach them. The frequency cap is what keeps the pool alive — without it
+     * the first vendors to find it each blast the same few hundred people, everyone opts out,
+     * and the pool is dead in a month.
+     */
+    private function nearbyUserQuery(int $storeId)
+    {
+        $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
+        $zoneIds = Helpers::zone_with_descendants($zoneId);
+
+        if (empty($zoneIds) || !Schema::hasTable('user_notification_prefs')) {
+            return DB::table('users')->whereRaw('1 = 0');
+        }
+
+        $query = DB::table('users')
+            ->join('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
+            ->where('p.nearby_offers', 1)
+            // A pool opt-in never overrides turning WhatsApp off entirely.
+            ->where('p.whatsapp', 1)
+            ->whereIn('users.zone_id', $zoneIds)
+            ->whereNotNull('users.phone')
+            ->where('users.phone', '!=', '')
+            ->select('users.*');
+
+        $capped = $this->nearbyCappedPhones();
+        if (!empty($capped)) {
+            $query->whereNotIn(
+                DB::raw("RIGHT(REPLACE(REPLACE(REPLACE(`users`.`phone`, ' ', ''), '-', ''), '+', ''), 10)"),
+                $capped
+            );
+        }
+
+        return $this->excludeOptedOut($query, $storeId);
+    }
+
+    /** Last-10-digit forms of numbers that already hit the pool's 30-day cap. */
+    private function nearbyCappedPhones(): array
+    {
+        try {
+            $phones = DB::table('whatsapp_messages')
+                ->where('context', 'nearby')
+                ->where('sent_at', '>=', now()->subDays(30))
+                ->whereNotNull('recipient')
+                ->groupBy('recipient')
+                ->havingRaw('count(*) >= ?', [self::NEARBY_MONTHLY_CAP])
+                ->pluck('recipient');
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($phones
+            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
+            ->all())));
     }
 
     /**
@@ -212,11 +275,11 @@ class WhatsAppController extends Controller
         $request->validate([
             'template'     => 'required|string',
             'language'     => 'required|string',
-            'mode'         => 'required|in:clients,platform',
+            'mode'         => 'required|in:clients,platform,nearby',
             'client_ids'   => 'required_if:mode,clients|array|max:' . self::BULK_BATCH_LIMIT,
             'client_ids.*' => 'integer',
-            'offset'       => 'required_if:mode,platform|integer|min:0',
-            'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
+            'offset'       => 'required_if:mode,platform,nearby|integer|min:0',
+            'limit'        => 'required_if:mode,platform,nearby|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
             'params'       => 'nullable|array',
         ]);
 
@@ -230,15 +293,18 @@ class WhatsAppController extends Controller
             ], 422);
         }
 
-        $platform = $request->input('mode') === 'platform';
+        $mode = $request->input('mode');
+        $platform = in_array($mode, ['platform', 'nearby'], true);
 
         if ($platform) {
             // Ordered by id so the browser's offset walk covers each user exactly once.
-            $recipients = $this->platformUserQuery($storeId)
-                ->orderBy('id')
+            $recipients = ($mode === 'nearby' ? $this->nearbyUserQuery($storeId) : $this->platformUserQuery($storeId))
+                ->orderBy('users.id')
                 ->offset((int) $request->input('offset'))
                 ->limit((int) $request->input('limit'))
-                ->get(['id', 'f_name', 'l_name', 'phone'])
+                // Qualified: the nearby query joins user_notification_prefs, so a bare `id`
+                // or `phone` would be ambiguous.
+                ->get(['users.id', 'users.f_name', 'users.l_name', 'users.phone'])
                 ->map(fn($u) => (object) [
                     'id'    => $u->id,
                     'name'  => trim($u->f_name . ' ' . $u->l_name),
@@ -272,7 +338,15 @@ class WhatsAppController extends Controller
                 ? [['type' => 'body', 'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params)]]
                 : [];
 
-            $res = $wa->sendTemplate($client->phone, $request->template, $request->language, $components, 'bulk');
+            // Context 'nearby' is what nearbyCappedPhones() counts — it must stay distinct
+            // from ordinary bulk sends or the frequency cap silently stops working.
+            $res = $wa->sendTemplate(
+                $client->phone,
+                $request->template,
+                $request->language,
+                $components,
+                $mode === 'nearby' ? 'nearby' : 'bulk'
+            );
 
             $results[] = [
                 'id'      => $client->id,

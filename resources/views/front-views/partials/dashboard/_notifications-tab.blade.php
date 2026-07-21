@@ -31,6 +31,22 @@
                     </div>
                 @endforeach
 
+                @php $nearby = \App\Models\UserNotificationPreference::NEARBY_OFFERS; @endphp
+                <div class="af-security-box-p9x2 mb-3" style="border:1px solid #e4e4e7;">
+                    <div class="d-flex align-items-center justify-content-between" style="gap:16px;">
+                        <div>
+                            <h4 class="mb-1">{{ $nearby['label'] }}</h4>
+                            <p class="mb-0" style="font-size:13px;color:#666;">{{ $nearby['desc'] }}</p>
+                        </div>
+                        <div class="form-check form-switch" style="flex-shrink:0;">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   style="width:46px;height:24px;cursor:pointer;"
+                                   id="notif-nearby" name="nearby_offers" value="1"
+                                   {{ ($notification_prefs['nearby_offers'] ?? false) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="af-security-box-p9x2 mb-3" style="background:#f8f9fa;">
                     <p class="mb-0" style="font-size:13px;color:#666;">
                         <b>Always sent:</b> login and password-reset codes, and messages about a booking
