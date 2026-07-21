@@ -7,6 +7,16 @@
             })
             ->get();
     @endphp
+    @php
+        // The city segment is absent on vendor custom domains (ResolveStoreByDomain calls
+        // store_details() directly for "/"), so derive it from the store's zone instead of
+        // the URL. On a custom domain every path is swallowed by that middleware, so point
+        // the doctors link at the platform domain where the route actually resolves.
+        $apptCity = _storeCity($store);
+        $apptDoctorsUrl = request()->attributes->get('is_store_domain')
+            ? rtrim(config('app.url'), '/') . '/' . $apptCity . '/store/' . $store->slug . '/doctors'
+            : route('front.store.doctors', [$apptCity, $store->slug]);
+    @endphp
     @if ($doctors->isNotEmpty())
 
         {{-- ════════════════════════════════════════════
@@ -26,7 +36,7 @@
                             <p class="appt-subtitle">Consult our doctors — pick a slot that works for you</p>
                         </div>
                     </div>
-                    {{-- <a href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}"
+                    {{-- <a href="{{ $apptDoctorsUrl }}"
                         class="appt-btn-full">
                         View All Doctors & Book
                     </a> --}}
@@ -40,7 +50,7 @@
                             $initial = strtoupper(substr($d->employee?->f_name ?? 'D', 0, 1));
                         @endphp
                         <a class="appt-doctor-card"
-                            href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}">
+                            href="{{ $apptDoctorsUrl }}">
                             @if ($d->employee?->image)
                                 <img class="appt-doc-avatar" src="{{ asset('storage/app/public/vendor/' . $d->employee->image) }}"
                                     alt="{{ trim($name) }}"
@@ -63,7 +73,7 @@
 
                     @if ($doctors->count() > 4)
                         <a class="appt-doctor-card appt-more-card"
-                            href="{{ route('front.store.doctors', [request()->segment(1), $store->slug]) }}">
+                            href="{{ $apptDoctorsUrl }}">
                             <div class="appt-doc-avatar" style="background:#f3f4f6; color:#6b7280;">
                                 +{{ $doctors->count() - 4 }}
                             </div>
