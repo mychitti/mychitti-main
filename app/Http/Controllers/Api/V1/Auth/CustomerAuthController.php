@@ -257,6 +257,10 @@ class CustomerAuthController extends Controller
         $user->ref_code = Helpers::generate_referer_code($user);
         $user->save();
 
+        // The app sends its resolved zone as a header on every request — record it at signup
+        // so the account has a location before the customer adds an address.
+        Helpers::set_user_zone($user->id, $request->header('zoneId'));
+
         _sendSMSToAdmin("A new user registered on MYCHITTI", 'New User Registration');
 
 

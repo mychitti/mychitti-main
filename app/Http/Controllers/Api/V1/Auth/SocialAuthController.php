@@ -76,6 +76,9 @@ class SocialAuthController extends Controller
                     $user->ref_code = Helpers::generate_referer_code();
                     $user->save();
 
+                    // Record where they signed up from; the app sends its resolved zone as a header.
+                    Helpers::set_user_zone($user->id, $request->header('zoneId'));
+
                     //Save point to refeer
                     if ($request->ref_code) {
                         $checkRefCode = $request->ref_code;
@@ -232,6 +235,9 @@ class SocialAuthController extends Controller
 
                     $user->ref_code = Helpers::generate_referer_code();
                     $user->save();
+
+                    // Record where they signed up from; the app sends its resolved zone as a header.
+                    Helpers::set_user_zone($user->id, $request->header('zoneId'));
 
                     //Save point to refeer
                     if ($request->ref_code) {

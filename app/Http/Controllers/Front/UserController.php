@@ -699,7 +699,9 @@ class UserController extends Controller
         $user->ref_code = Helpers::generate_referer_code($user);
         $user->save();
 
-
+        // Capture where they signed up from — $this->zone_id is the JSON zone list resolved by
+        // _setLocation() in the constructor, and set_user_zone() takes the most specific zone.
+        Helpers::set_user_zone($user->id, $this->zone_id);
 
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 
