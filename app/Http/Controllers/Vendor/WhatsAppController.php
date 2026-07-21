@@ -55,20 +55,47 @@ class WhatsAppController extends Controller
             }
             $clientCount = $this->clientQuery($storeId)->count();
             $platformUserCount = $this->platformUserQuery($storeId)->count();
+            $optOutCount = count(WhatsAppService::optedOutPhones($storeId));
         }
 
         return view('vendor-views.whatsapp.connect', compact(
-            'es', 'store', 'connected', 'templates', 'templateError', 'clientCount', 'platformUserCount'
+            'es', 'store', 'connected', 'templates', 'templateError',
+            'clientCount', 'platformUserCount', 'optOutCount'
         ));
     }
 
     /** Clients of this store that are actually reachable on WhatsApp. */
     private function clientQuery(int $storeId)
     {
-        return DB::table('store_customers')
-            ->where('store_id', $storeId)
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '');
+        return $this->excludeOptedOut(
+            DB::table('store_customers')
+                ->where('store_id', $storeId)
+                ->whereNotNull('phone')
+                ->where('phone', '!=', ''),
+            $storeId
+        );
+    }
+
+    /**
+     * Drop anyone who has opted out of marketing from this store (or platform-wide).
+     * Matched on the last 10 digits because stored numbers vary between "+91 98…",
+     * "098…" and "98…" — the opt-out table holds the normalized form.
+     */
+    private function excludeOptedOut($query, int $storeId)
+    {
+        $suffixes = array_values(array_unique(array_filter(array_map(
+            fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10),
+            WhatsAppService::optedOutPhones($storeId)
+        ))));
+
+        if (empty($suffixes)) {
+            return $query;
+        }
+
+        return $query->whereNotIn(
+            DB::raw("RIGHT(REPLACE(REPLACE(REPLACE(`phone`, ' ', ''), '-', ''), '+', ''), 10)"),
+            $suffixes
+        );
     }
 
     /**
@@ -79,14 +106,17 @@ class WhatsAppController extends Controller
     {
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
 
-        return DB::table('users')
-            ->when(
-                $zoneId,
-                fn($q) => $q->where('zone_id', $zoneId),
-                fn($q) => $q->whereRaw('1 = 0')
-            )
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '');
+        return $this->excludeOptedOut(
+            DB::table('users')
+                ->when(
+                    $zoneId,
+                    fn($q) => $q->where('zone_id', $zoneId),
+                    fn($q) => $q->whereRaw('1 = 0')
+                )
+                ->whereNotNull('phone')
+                ->where('phone', '!=', ''),
+            $storeId
+        );
     }
 
     /**

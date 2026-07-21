@@ -68,14 +68,24 @@ class WhatsAppWebhookController extends Controller
                     foreach (data_get($value, 'messages', []) as $msg) {
                         $type = $msg['type'] ?? 'text';
                         $body = data_get($msg, 'text.body') ?: ('[' . $type . ']');
+                        $from = $msg['from'] ?? null;
+
+                        // "STOP" and friends must actually stop the marketing — otherwise the
+                        // recipient blocks the number instead, and that hits the sender's
+                        // WhatsApp quality rating.
+                        $optOut = $from && WhatsAppService::isOptOutMessage(data_get($msg, 'text.body'));
+                        if ($optOut) {
+                            WhatsAppService::recordOptOut($storeId, $from, 'reply');
+                        }
+
                         DB::table('whatsapp_messages')->insert([
                             'store_id'   => $storeId,
                             'wamid'      => $msg['id'] ?? null,
                             'direction'  => 'in',
-                            'recipient'  => $msg['from'] ?? null,
+                            'recipient'  => $from,
                             'type'       => $type,
                             'body'       => mb_substr((string) $body, 0, 1000),
-                            'context'    => 'inbound',
+                            'context'    => $optOut ? 'opt-out' : 'inbound',
                             'status'     => 'received',
                             'sent_at'    => !empty($msg['timestamp']) ? date('Y-m-d H:i:s', (int) $msg['timestamp']) : now(),
                             'status_at'  => now(),

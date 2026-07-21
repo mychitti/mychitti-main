@@ -140,6 +140,12 @@
                                     </div>
                                 </div>
 
+                                <small class="text-muted d-block mb-3">
+                                    Anyone who replies <b>STOP</b> is removed automatically and excluded from every
+                                    future send.@if (($optOutCount ?? 0) > 0) {{ $optOutCount }} {{ $optOutCount == 1 ? 'person has' : 'people have' }} opted out and {{ $optOutCount == 1 ? 'is' : 'are' }} already excluded from the counts above.@endif
+                                    Keeping unwanted messages down protects your number's WhatsApp quality rating.
+                                </small>
+
                                 <div class="d-flex align-items-center" style="gap:12px;">
                                     <button id="wb-send" class="btn btn--primary" disabled>Send</button>
                                     <div id="wb-progress" class="flex-grow-1" style="display:none;">
