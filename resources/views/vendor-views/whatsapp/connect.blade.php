@@ -48,9 +48,19 @@
             @if ($connected)
                 <div class="col-lg-8">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        {{-- Audience counts live in the header, not the picker below: the picker is
+                             hidden until an approved template exists, and the vendor still needs to
+                             see who they could reach while deciding whether to make one. --}}
+                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
                             <h5 class="card-title mb-0"><i class="tio-send"></i> Bulk Message</h5>
-                            <span class="badge badge-soft-info">{{ $clientCount }} client{{ $clientCount == 1 ? '' : 's' }} with a phone number</span>
+                            <div class="d-flex flex-wrap" style="gap:6px;">
+                                <span class="badge badge-soft-info">
+                                    {{ $clientCount }} {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                </span>
+                                <span class="badge badge-soft-primary">
+                                    {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }} in your zone
+                                </span>
+                            </div>
                         </div>
                         <div class="card-body">
                             @if ($templateError)
@@ -61,8 +71,11 @@
 
                             @if (empty($templates))
                                 <p class="text-muted mb-2">
-                                    You have no approved message templates yet. WhatsApp only allows business-initiated
-                                    messages using a template Meta has approved.
+                                    You could reach <b>{{ $clientCount + $platformUserCount }}</b> people —
+                                    {{ $clientCount }} of your own {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                    and {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
+                                    in your zone — but you have no approved message templates yet. WhatsApp only allows
+                                    business-initiated messages using a template Meta has approved.
                                 </p>
                                 <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary">
                                     <i class="tio-receipt"></i> Create a Template
@@ -122,12 +135,15 @@
                                     <div id="wb-pane-platform" style="display:none;">
                                         <div class="border rounded p-3">
                                             <p class="text-muted mb-2" style="font-size:13px;">
-                                                MyChitti users in your zone. You choose how many to reach — their phone
-                                                numbers stay private and are never shown to you.
+                                                People who have requested services in your zone on MyChitti. You choose
+                                                how many to reach — their phone numbers stay private and are never
+                                                shown to you.
                                             </p>
                                             @if ($platformUserCount == 0)
-                                                <div class="alert alert-warning mb-0" style="font-size:13px;">
-                                                    No MyChitti users with a phone number in your store's zone yet.
+                                                <div class="alert alert-info mb-0" style="font-size:13px;">
+                                                    No MyChitti users have requested services in your zone yet, so there
+                                                    is nobody to reach here right now. This grows as customers in your
+                                                    area start using MyChitti — your own clients are unaffected.
                                                 </div>
                                             @else
                                                 <label style="font-size:12px;" class="mb-1">How many users to message</label>

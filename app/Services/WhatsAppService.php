@@ -659,6 +659,28 @@ class WhatsAppService
         Log::info('WA opt-out recorded', ['store_id' => $storeId, 'phone' => $normalized, 'platform_wide' => !$isOwnClient]);
     }
 
+    /** Undo an opt-out — the customer turning WhatsApp back on in their dashboard. */
+    public static function clearOptOut(?int $storeId, string $phone): void
+    {
+        static::ensureOptOutTable();
+        $normalized = static::make($storeId)->normalizePhone($phone);
+        if ($normalized === '') {
+            return;
+        }
+
+        // Only the matching scope. Turning the dashboard toggle back on clears the
+        // platform-wide row but leaves any explicit "STOP" the customer sent to a specific
+        // vendor — that was a decision about that vendor, not about MyChitti as a whole.
+        DB::table('wa_opt_outs')
+            ->where('phone', $normalized)
+            ->when(
+                $storeId,
+                fn($q) => $q->where('store_id', $storeId),
+                fn($q) => $q->whereNull('store_id')
+            )
+            ->delete();
+    }
+
     /**
      * Normalized phone numbers that must not receive marketing from this store —
      * its own opt-outs plus everyone who opted out platform-wide.

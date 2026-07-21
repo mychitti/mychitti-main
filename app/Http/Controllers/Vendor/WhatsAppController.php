@@ -100,19 +100,32 @@ class WhatsAppController extends Controller
 
     /**
      * MyChitti users in this store's OWN zone who are reachable on WhatsApp.
-     * A store with no zone gets no platform recipients rather than the whole user base.
+     *
+     * Zone comes from service_requests, not users.zone_id — that column is effectively
+     * unpopulated (4 rows platform-wide carry a real zone), so filtering on it returns
+     * nothing. service_requests.zone_id holds the zones a request was broadcast to as a
+     * JSON array ("[95,70,21]"), hence JSON_CONTAINS rather than a plain where().
+     *
+     * The resulting audience is behavioural: people who actually sought services in this
+     * zone. A store with no zone gets nobody rather than the entire user base.
      */
     private function platformUserQuery(int $storeId)
     {
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
 
+        if (!$zoneId) {
+            return DB::table('users')->whereRaw('1 = 0');
+        }
+
+        $userIds = DB::table('service_requests')
+            ->whereRaw('JSON_CONTAINS(zone_id, ?)', [(string) $zoneId])
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->pluck('user_id');
+
         return $this->excludeOptedOut(
             DB::table('users')
-                ->when(
-                    $zoneId,
-                    fn($q) => $q->where('zone_id', $zoneId),
-                    fn($q) => $q->whereRaw('1 = 0')
-                )
+                ->whereIn('id', $userIds)
                 ->whereNotNull('phone')
                 ->where('phone', '!=', ''),
             $storeId
