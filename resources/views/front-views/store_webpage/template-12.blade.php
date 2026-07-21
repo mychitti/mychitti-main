@@ -1085,10 +1085,12 @@
                         <div class="t12-hero-stat-val">{{ $store->rating_count }}+</div>
                         <div class="t12-hero-stat-lbl">Reviews</div>
                     </div>
-                    <div class="t12-hero-stat">
-                        <div class="t12-hero-stat-val">{{ count($productdata) }}+</div>
-                        <div class="t12-hero-stat-lbl">Products</div>
-                    </div>
+                    @if ($inventoryProductCount > 0)
+                        <div class="t12-hero-stat">
+                            <div class="t12-hero-stat-val">{{ $inventoryProductCount }}+</div>
+                            <div class="t12-hero-stat-lbl">Products</div>
+                        </div>
+                    @endif
                 </div>
             </div>
             <div class="t12-hero-img">

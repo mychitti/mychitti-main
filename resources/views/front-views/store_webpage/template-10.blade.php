@@ -1201,10 +1201,12 @@
                         <div class="stat-value-animated">{{ $store->rating_count }}+</div>
                         <div class="stat-label-animated">Reviews</div>
                     </div>
-                    <div class="stat-animated">
-                        <div class="stat-value-animated">{{ count($productdata) }}+</div>
-                        <div class="stat-label-animated">Products</div>
-                    </div>
+                    @if ($inventoryProductCount > 0)
+                        <div class="stat-animated">
+                            <div class="stat-value-animated">{{ $inventoryProductCount }}+</div>
+                            <div class="stat-label-animated">Products</div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -1486,10 +1486,14 @@
                         <div class="stat-number">{{ $store->rating_count }}+</div>
                         <div class="stat-label">Patients Served</div>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{{ count($productdata) }}+</div>
-                        <div class="stat-label">Services</div>
-                    </div>
+                    {{-- Labelled "Services", so it counts services — hiding this on a
+                         services-only store would drop the one stat that store can fill. --}}
+                    @if ($serviceItemCount > 0)
+                        <div class="stat-box">
+                            <div class="stat-number">{{ $serviceItemCount }}+</div>
+                            <div class="stat-label">Services</div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="share-medical">

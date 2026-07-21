@@ -1230,10 +1230,12 @@
                         <div class="t14-counter-val" data-target="{{ $store->rating_count }}">0</div>
                         <div class="t14-counter-lbl">Reviews</div>
                     </div>
-                    <div class="t14-counter">
-                        <div class="t14-counter-val" data-target="{{ count($productdata) }}">0</div>
-                        <div class="t14-counter-lbl">Products</div>
-                    </div>
+                    @if ($inventoryProductCount > 0)
+                        <div class="t14-counter">
+                            <div class="t14-counter-val" data-target="{{ $inventoryProductCount }}">0</div>
+                            <div class="t14-counter-lbl">Products</div>
+                        </div>
+                    @endif
                 </div>
             </div>
 

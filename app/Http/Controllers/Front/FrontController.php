@@ -2738,6 +2738,13 @@ class FrontController extends Controller
         } else {
             return redirect()->route('home');
         }
+        // Hero "Products"/"Items"/"Services" counters. Templates used to render
+        // count($productdata), which is the number of CATEGORY rows, not items — a store with
+        // 12 services in one category advertised "1+". Counted here once so every template
+        // shares one definition, and so a template can hide the stat when it would be zero.
+        $inventoryProductCount = collect($invItemdata)->sum(fn($cat) => count($cat->items ?? []));
+        $serviceItemCount      = collect($productdata)->sum(fn($cat) => count($cat->items ?? []));
+
         $data['store_config']    = StoreConfig::where('store_id', $store->id)->first();
         $data['has_appointment'] = \App\Models\DoctorProfile::where('store_id', $store->id)->exists();
         $data['galleries'] = StoreGallery::where('store_id', $store->id)->get();
@@ -2800,7 +2807,7 @@ class FrontController extends Controller
                 'front-views.store_webpage.template-1',
             ])->first(fn($v) => view()->exists($v));
 
-            return view($schoolView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module', 'city', 'slug'));
+            return view($schoolView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module', 'city', 'slug', 'inventoryProductCount', 'serviceItemCount'));
         }
 
         // Regular store webpage
@@ -2812,7 +2819,7 @@ class FrontController extends Controller
             ? 'front-views.store_webpage.' . $viewName
             : 'front-views.store_webpage.template-1';
 
-        return view($regularView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module'));
+        return view($regularView, compact('store', 'productdata', 'invItemdata', 'keywords', 'data', 'module', 'inventoryProductCount', 'serviceItemCount'));
     }
 
     public function store_removal_request(Request $request)

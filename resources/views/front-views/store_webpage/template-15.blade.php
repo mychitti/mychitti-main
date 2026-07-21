@@ -1239,10 +1239,12 @@
                             <div class="stat-val-mini">{{ $store->rating_count }}+</div>
                             <div class="stat-lbl-mini">Reviews</div>
                         </div>
-                        <div class="stat-mini">
-                            <div class="stat-val-mini">{{ count($productdata) }}+</div>
-                            <div class="stat-lbl-mini">Items</div>
-                        </div>
+                        @if ($inventoryProductCount > 0)
+                            <div class="stat-mini">
+                                <div class="stat-val-mini">{{ $inventoryProductCount }}+</div>
+                                <div class="stat-lbl-mini">Items</div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

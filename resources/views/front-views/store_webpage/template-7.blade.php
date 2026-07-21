@@ -1437,15 +1437,19 @@
                             <p>{{ $store->rating_count }} Reviews</p>
                         </div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-icon">
-                            <i class="fas fa-briefcase"></i>
+                    {{-- Labelled "Products/Services", so it counts both and only hides when the
+                         store genuinely has neither. --}}
+                    @if ($inventoryProductCount + $serviceItemCount > 0)
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-briefcase"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>{{ $inventoryProductCount + $serviceItemCount }}+</h3>
+                                <p>Products/Services</p>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <h3>{{ count($productdata) }}+</h3>
-                            <p>Products/Services</p>
-                        </div>
-                    </div>
+                    @endif
                     <div class="stat-item">
                         <div class="stat-icon">
                             <i class="fas fa-users"></i>
