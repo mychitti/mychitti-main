@@ -1274,7 +1274,13 @@
                     <a href="#contact" class="t13-btn-ghost">Contact Us</a>
                 </div>
 
-                @php $store_rating = number_format($store->average_rating, 1); @endphp
+                @php
+                    $store_rating = number_format($store->average_rating, 1);
+                    // Only inventory items read as "products" on the storefront; $productdata is
+                    // services. Sum the items rather than the categories — count($productdata)
+                    // counted category rows, which is why this used to show "1+".
+                    $inventoryProductCount = collect($invItemdata)->sum(fn($cat) => count($cat->items ?? []));
+                @endphp
                 <div class="t13-stats-row">
                     <div class="t13-stat-box">
                         <div class="t13-stat-val">{{ $store_rating }}</div>
@@ -1284,10 +1290,12 @@
                         <div class="t13-stat-val">{{ $store->rating_count }}+</div>
                         <div class="t13-stat-lbl">Reviews</div>
                     </div>
-                    <div class="t13-stat-box">
-                        <div class="t13-stat-val">{{ count($productdata) }}+</div>
-                        <div class="t13-stat-lbl">Products</div>
-                    </div>
+                    @if ($inventoryProductCount > 0)
+                        <div class="t13-stat-box">
+                            <div class="t13-stat-val">{{ $inventoryProductCount }}+</div>
+                            <div class="t13-stat-lbl">Products</div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
