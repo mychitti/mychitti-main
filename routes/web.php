@@ -341,6 +341,7 @@ Route::group(['middleware' => ['frontuser']], function () {
 Route::group(['middleware' => ['registereduser']], function () {
     Route::get('dashboard/{tab?}', [FrontUserController::class, 'dashboard'])->name('dashboard');
     Route::get('dashboard-bookings', [FrontUserController::class, 'load_bookings'])->name('dashboard.bookings');
+    Route::post('dashboard/notification-preferences', [FrontUserController::class, 'update_notification_preferences'])->name('dashboard.notification-preferences');
 
     // School Parent/Student portal
     Route::get('my-school', [SchoolPortalController::class, 'index'])->name('school.portal.index');
