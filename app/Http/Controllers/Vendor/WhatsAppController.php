@@ -208,6 +208,26 @@ class WhatsAppController extends Controller
         ]);
     }
 
+    /**
+     * Meta rejects a template body whose first or last character is a variable
+     * ("Leading or trailing params not allowed", error_subcode 2388299). Catch it here so the
+     * vendor gets a fixable message instead of a raw OAuthException from Graph.
+     */
+    private function templateBodyError(string $body): ?string
+    {
+        $body = trim($body);
+        if ($body === '') {
+            return null;
+        }
+        if (preg_match('/^\{\{\s*\d+\s*\}\}/', $body)) {
+            return 'The message can’t start with a variable. Put some text before it — e.g. "Hi {{1}}" instead of "{{1}}".';
+        }
+        if (preg_match('/\{\{\s*\d+\s*\}\}$/', $body)) {
+            return 'The message can’t end with a variable. Add some text after it — e.g. "{{2}}. See you then!" instead of ending on "{{2}}".';
+        }
+        return null;
+    }
+
     private function sanitizeParam(string $value): string
     {
         $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
@@ -391,6 +411,11 @@ class WhatsAppController extends Controller
             return back();
         }
 
+        if ($bodyError = $this->templateBodyError((string) $request->tpl_body)) {
+            Toastr::error($bodyError);
+            return back()->withInput();
+        }
+
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
         $buttons = [];
         if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
@@ -432,6 +457,11 @@ class WhatsAppController extends Controller
         if (!$wa->hasWaba()) {
             Toastr::error('Connect your WhatsApp number first.');
             return back();
+        }
+
+        if ($bodyError = $this->templateBodyError((string) $request->tpl_body)) {
+            Toastr::error($bodyError);
+            return back()->withInput();
         }
 
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
