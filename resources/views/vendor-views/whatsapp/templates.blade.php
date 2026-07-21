@@ -147,8 +147,9 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Body</label>
-                                    <textarea class="form-control" name="tpl_body" rows="3" placeholder="Hi @{{1}}, your order @{{2}} is confirmed." required></textarea>
-                                    <small class="text-muted">Use @{{1}}, @{{2}} for variables.</small>
+                                    <textarea class="form-control wa-tpl-body" name="tpl_body" rows="3" placeholder="Hi @{{1}}, your order @{{2}} is confirmed." required>{{ old('tpl_body') }}</textarea>
+                                    <small class="text-muted">Use @{{1}}, @{{2}} for variables. Meta does not allow the message to start or end with a variable — always have text on both ends.</small>
+                                    <div class="invalid-feedback wa-tpl-body-error"></div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Example Values</label>
@@ -228,7 +229,9 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Body</label>
-                            <textarea class="form-control" name="tpl_body" id="waeBody" rows="4" required></textarea>
+                            <textarea class="form-control wa-tpl-body" name="tpl_body" id="waeBody" rows="4" required></textarea>
+                            <small class="text-muted">Meta does not allow the message to start or end with a variable — always have text on both ends.</small>
+                            <div class="invalid-feedback wa-tpl-body-error"></div>
                             <small class="text-muted">Use @{{1}}, @{{2}} for variables.</small>
                         </div>
                         <div class="form-group">
@@ -279,6 +282,36 @@
         $('#waeBody').val(d.body || '');
         $('#waeBtnText').val(d.btntext || ''); $('#waeBtnUrl').val(d.btnurl || '');
         $('#waTplEditModal').modal('show');
+    });
+
+    // Meta rejects a body that starts or ends with a variable (error_subcode 2388299).
+    // Block the submit here so the vendor isn't bounced by a raw Graph error.
+    var VAR_LEAD = new RegExp('^\\{\\{\\s*\\d+\\s*\\}\\}');
+    var VAR_TRAIL = new RegExp('\\{\\{\\s*\\d+\\s*\\}\\}$');
+
+    function waBodyError(body) {
+        body = $.trim(body);
+        if (!body) return null;
+        if (VAR_LEAD.test(body)) return 'The message can’t start with a variable. Put some text before it.';
+        if (VAR_TRAIL.test(body)) return 'The message can’t end with a variable. Add some text after it.';
+        return null;
+    }
+
+    $(document).on('input', '.wa-tpl-body', function () {
+        var err = waBodyError($(this).val());
+        $(this).toggleClass('is-invalid', !!err);
+        $(this).closest('.form-group').find('.wa-tpl-body-error').text(err || '');
+    });
+
+    $(document).on('submit', 'form', function (e) {
+        var $body = $(this).find('.wa-tpl-body');
+        if (!$body.length) return;
+        var err = waBodyError($body.val());
+        if (err) {
+            e.preventDefault();
+            $body.addClass('is-invalid').focus();
+            $body.closest('.form-group').find('.wa-tpl-body-error').text(err);
+        }
     });
 </script>
 @endpush

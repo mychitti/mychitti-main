@@ -472,6 +472,10 @@ class UserController extends Controller
 
         try {
             if ($serviceReq->save()) {
+                // Remember where this customer is — $this->zone_id is the JSON zone list from
+                // _setLocation(), and set_user_zone() takes the primary zone from it.
+                Helpers::set_user_zone($user_id, $this->zone_id);
+
                 $itemName = DB::table('items')->where('id', $request->serviceId)->value('name') ?? '';
                 SuspiciousActivity::checkEnquiry($user_id, $request->serviceId, $itemName, $request->ip());
 
@@ -614,6 +618,7 @@ class UserController extends Controller
             'updated_at' => now()
         ];
         DB::table('customer_addresses')->insert($address);
+        Helpers::set_user_zone($request->user()->id, $zone[0]->id);
         return response()->json(['message' => translate('messages.successfully_added'), 'zone_ids' => array_column($zone->toArray(), 'id')]);
     }
 
@@ -958,7 +963,28 @@ class UserController extends Controller
         //     }
         // }
 
-        return view('front-views.dashboard', compact('coupons', 'user_details', 'user_addresses', 'orders', 'p_orders', 'wishlists', 'services'));
+        $notification_prefs = auth('web')->check()
+            ? \App\Models\UserNotificationPreference::forUser($user_id)
+            : ['sms' => true, 'whatsapp' => true, 'push' => true];
+
+        return view('front-views.dashboard', compact('coupons', 'user_details', 'user_addresses', 'orders', 'p_orders', 'wishlists', 'services', 'notification_prefs'));
+    }
+
+    /** Save the customer's marketing channel choices from the dashboard. */
+    public function update_notification_preferences(Request $request)
+    {
+        $userId = auth('web')->id();
+        if (!$userId) {
+            return back();
+        }
+
+        \App\Models\UserNotificationPreference::saveFor($userId, [
+            'sms'      => $request->has('sms'),
+            'whatsapp' => $request->has('whatsapp'),
+            'push'     => $request->has('push'),
+        ]);
+
+        return back()->with('success', 'Your notification preferences have been saved.');
     }
 
     public function load_bookings(Request $request)
@@ -1274,6 +1300,7 @@ class UserController extends Controller
             'updated_at' => now()
         ];
         DB::table('customer_addresses')->where('id', $id)->update($address);
+        Helpers::set_user_zone($request->user()->id, $zone[0]->id);
         return response()->json(['message' => translate('messages.updated_successfully'), 'zone_id' => $zone[0]->id], 200);
     }
 

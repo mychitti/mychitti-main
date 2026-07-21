@@ -9,10 +9,10 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-7">
+            <div class="{{ $connected ? 'col-lg-4' : 'col-lg-7' }}">
                 <div class="card">
                     <div class="card-body">
-                        @if ($store && $store->wa_enabled && $store->wa_phone_number_id)
+                        @if ($connected)
                             <div class="alert alert-success">
                                 <b>✓ Connected.</b> Your WhatsApp number is linked and messages will send from your own number.
                             </div>
@@ -45,69 +45,428 @@
                 </div>
             </div>
 
-            <div class="col-lg-5">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0"><i class="tio-shopping-cart"></i> Message Receiving Add-ons</h5>
-                        <span class="badge badge-soft-info">Wallet: {{ _price($walletBalance ?? 0) }}</span>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted" style="font-size:13px;">
-                            Get notified on WhatsApp when MyChitti sends you new business. Each add-on is billed monthly from your wallet and delivered to your registered phone number.
-                        </p>
-                        @foreach (($features ?? []) as $key => $f)
-                            <div class="border rounded p-3 mb-2">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <b>{{ $f['meta']['label'] }}</b>
-                                        <span class="text-muted">— {{ _price($f['meta']['price']) }}/mo</span>
-                                        <div class="text-muted" style="font-size:12px;">{{ $f['meta']['desc'] }}</div>
+            @if ($connected)
+                <div class="col-lg-8">
+                    <div class="card">
+                        {{-- Audience counts live in the header, not the picker below: the picker is
+                             hidden until an approved template exists, and the vendor still needs to
+                             see who they could reach while deciding whether to make one. --}}
+                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
+                            <h5 class="card-title mb-0"><i class="tio-send"></i> Bulk Message</h5>
+                            <div class="d-flex flex-wrap" style="gap:6px;">
+                                <span class="badge badge-soft-info">
+                                    {{ $clientCount }} {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                </span>
+                                <span class="badge badge-soft-primary">
+                                    {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }} in your zone
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @if ($templateError)
+                                <div class="alert alert-warning" style="font-size:13px;">
+                                    Couldn’t load your templates: {{ $templateError }}
+                                </div>
+                            @endif
+
+                            @if (empty($templates))
+                                <p class="text-muted mb-2">
+                                    You could reach <b>{{ $clientCount + $platformUserCount }}</b> people —
+                                    {{ $clientCount }} of your own {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                    and {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
+                                    in your zone — but you have no approved message templates yet. WhatsApp only allows
+                                    business-initiated messages using a template Meta has approved.
+                                </p>
+                                <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="tio-receipt"></i> Create a Template
+                                </a>
+                            @else
+                                <div class="form-group">
+                                    <label class="font-weight-bold" style="font-size:13px;">Template</label>
+                                    <select id="wb-template" class="form-control">
+                                        <option value="">— Select an approved template —</option>
+                                        @foreach ($templates as $i => $t)
+                                            <option value="{{ $i }}" @if ($t['unsupported']) disabled @endif>
+                                                {{ $t['name'] }} ({{ $t['language'] }})@if ($t['unsupported']) — not supported here, {{ $t['unsupported'] }} @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div id="wb-preview" class="border rounded p-3 mb-3 bg-light" style="display:none;">
+                                    <div class="text-muted mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;">Message preview</div>
+                                    <div id="wb-preview-body" style="font-size:13px;white-space:pre-wrap;"></div>
+                                </div>
+
+                                <div id="wb-vars" class="mb-3"></div>
+
+                                <div class="form-group">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <label class="font-weight-bold mb-0" style="font-size:13px;">Recipients</label>
+                                        <span id="wb-selected-count" class="badge badge-soft-secondary">0 selected</span>
                                     </div>
-                                    <div class="text-right" style="min-width:90px;">
-                                        @if ($f['live'])
-                                            <span class="badge badge-soft-success">Active</span>
-                                        @elseif ($f['paid_active'])
-                                            <span class="badge badge-soft-warning">Paused</span>
-                                        @else
-                                            <span class="badge badge-soft-secondary">Inactive</span>
-                                        @endif
+
+                                    <ul class="nav nav-pills mb-3" style="gap:6px;">
+                                        <li class="nav-item">
+                                            <a href="javascript:;" class="nav-link active wb-mode" data-mode="clients" style="font-size:13px;padding:6px 14px;">
+                                                My clients <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="javascript:;" class="nav-link wb-mode" data-mode="platform" style="font-size:13px;padding:6px 14px;">
+                                                MyChitti users <span class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+
+                                    <div id="wb-pane-clients">
+                                        <div class="d-flex mb-2" style="gap:8px;">
+                                            <input id="wb-search" type="text" class="form-control form-control-sm"
+                                                   placeholder="Search clients by name or phone…">
+                                            <button id="wb-select-all" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Select all</button>
+                                            <button id="wb-clear" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Clear</button>
+                                        </div>
+                                        <div id="wb-clients" class="border rounded" style="max-height:260px;overflow-y:auto;">
+                                            <div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>
+                                        </div>
+                                        <small id="wb-truncated" class="text-muted" style="display:none;"></small>
+                                    </div>
+
+                                    <div id="wb-pane-platform" style="display:none;">
+                                        <div class="border rounded p-3">
+                                            <p class="text-muted mb-2" style="font-size:13px;">
+                                                People who have requested services in your zone on MyChitti. You choose
+                                                how many to reach — their phone numbers stay private and are never
+                                                shown to you.
+                                            </p>
+                                            @if ($platformUserCount == 0)
+                                                <div class="alert alert-info mb-0" style="font-size:13px;">
+                                                    No MyChitti users have requested services in your zone yet, so there
+                                                    is nobody to reach here right now. This grows as customers in your
+                                                    area start using MyChitti — your own clients are unaffected.
+                                                </div>
+                                            @else
+                                                <label style="font-size:12px;" class="mb-1">How many users to message</label>
+                                                <input id="wb-platform-count" type="number" class="form-control form-control-sm"
+                                                       style="max-width:200px;" min="1" max="{{ $platformUserCount }}"
+                                                       value="{{ min(50, $platformUserCount) }}">
+                                                <small class="text-muted d-block mt-1">Maximum {{ $platformUserCount }} in your zone.</small>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
 
-                                @if ($f['paid_active'])
-                                    <div class="text-muted mt-2" style="font-size:12px;">Paid until <b>{{ $f['active_until'] }}</b></div>
-                                    <div class="d-flex mt-2" style="gap:8px;">
-                                        <form method="post" action="{{ route('vendor.whatsapp.features.toggle') }}">
-                                            @csrf
-                                            <input type="hidden" name="feature" value="{{ $key }}">
-                                            <button class="btn btn-sm {{ $f['enabled'] ? 'btn-outline-warning' : 'btn-outline-success' }}">
-                                                {{ $f['enabled'] ? 'Pause' : 'Resume' }}
-                                            </button>
-                                        </form>
-                                        <form method="post" action="{{ route('vendor.whatsapp.features.subscribe') }}">
-                                            @csrf
-                                            <input type="hidden" name="feature" value="{{ $key }}">
-                                            <button class="btn btn-sm btn-outline-primary">Renew (+1 month)</button>
-                                        </form>
+                                <small class="text-muted d-block mb-3">
+                                    Anyone who replies <b>STOP</b> is removed automatically and excluded from every
+                                    future send.@if (($optOutCount ?? 0) > 0) {{ $optOutCount }} {{ $optOutCount == 1 ? 'person has' : 'people have' }} opted out and {{ $optOutCount == 1 ? 'is' : 'are' }} already excluded from the counts above.@endif
+                                    Keeping unwanted messages down protects your number's WhatsApp quality rating.
+                                </small>
+
+                                <div class="d-flex align-items-center" style="gap:12px;">
+                                    <button id="wb-send" class="btn btn--primary" disabled>Send</button>
+                                    <div id="wb-progress" class="flex-grow-1" style="display:none;">
+                                        <div class="progress" style="height:6px;">
+                                            <div id="wb-progress-bar" class="progress-bar bg-success" style="width:0%;"></div>
+                                        </div>
+                                        <small id="wb-progress-text" class="text-muted"></small>
                                     </div>
-                                @else
-                                    <form method="post" action="{{ route('vendor.whatsapp.features.subscribe') }}" class="mt-2"
-                                          onsubmit="return confirm('Subscribe to {{ $f['meta']['label'] }} for {{ _price($f['meta']['price']) }} from your wallet?');">
-                                        @csrf
-                                        <input type="hidden" name="feature" value="{{ $key }}">
-                                        <button class="btn btn-sm btn--primary">Subscribe — {{ _price($f['meta']['price']) }}/mo</button>
-                                    </form>
-                                @endif
-                            </div>
-                        @endforeach
+                                </div>
+
+                                <div id="wb-results" class="mt-3" style="display:none;"></div>
+                            @endif
+                        </div>
                     </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 @endsection
 
-@if (!($store && $store->wa_enabled) && $es['ready'])
+@if ($connected && !empty($templates))
+@push('script_2')
+    <script>
+        (function () {
+            var TEMPLATES = @json($templates);
+            var BATCH = {{ \App\Http\Controllers\Vendor\WhatsAppController::BULK_BATCH_LIMIT }};
+            var RECIPIENTS_URL = '{{ route('vendor.whatsapp.bulk.recipients') }}';
+            var SEND_URL = '{{ route('vendor.whatsapp.bulk.send') }}';
+            var CSRF = '{{ csrf_token() }}';
+
+            var PLATFORM_MAX = {{ $platformUserCount }};
+
+            var selected = new Set();
+            var loaded = [];
+            var searchTimer = null;
+            var mode = 'clients';
+
+            // Built by concatenation so Blade never sees a literal double-brace in this script.
+            var OPEN = '{' + '{', CLOSE = '}' + '}';
+            function token(n) { return OPEN + n + CLOSE; }
+
+            var $tpl = document.getElementById('wb-template');
+            var $vars = document.getElementById('wb-vars');
+            var $preview = document.getElementById('wb-preview');
+            var $previewBody = document.getElementById('wb-preview-body');
+            var $list = document.getElementById('wb-clients');
+            var $search = document.getElementById('wb-search');
+            var $count = document.getElementById('wb-selected-count');
+            var $truncated = document.getElementById('wb-truncated');
+            var $send = document.getElementById('wb-send');
+            var $progress = document.getElementById('wb-progress');
+            var $bar = document.getElementById('wb-progress-bar');
+            var $ptext = document.getElementById('wb-progress-text');
+            var $results = document.getElementById('wb-results');
+
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            function currentTemplate() {
+                return $tpl.value === '' ? null : TEMPLATES[parseInt($tpl.value, 10)];
+            }
+
+            function paramValues() {
+                return Array.prototype.map.call($vars.querySelectorAll('.wb-var'), function (i) { return i.value; });
+            }
+
+            function renderPreview() {
+                var t = currentTemplate();
+                if (!t) { $preview.style.display = 'none'; return; }
+                var body = t.body;
+                paramValues().forEach(function (v, i) {
+                    body = body.split(token(i + 1)).join(v || token(i + 1));
+                });
+                $previewBody.innerHTML = esc(body).replace(/\{name\}/g, '<b>[client name]</b>');
+                $preview.style.display = 'block';
+            }
+
+            function renderVars() {
+                var t = currentTemplate();
+                $vars.innerHTML = '';
+                if (!t || !t.var_count) { renderPreview(); syncSend(); return; }
+
+                var help = document.createElement('small');
+                help.className = 'text-muted d-block mb-2';
+                help.innerHTML = 'Fill each variable. Type <code>{name}</code> to insert the client’s name.';
+                $vars.appendChild(help);
+
+                for (var i = 1; i <= t.var_count; i++) {
+                    var wrap = document.createElement('div');
+                    wrap.className = 'form-group mb-2';
+                    wrap.innerHTML = '<label style="font-size:12px;" class="mb-1">Variable ' + token(i) + '</label>' +
+                        '<input type="text" class="form-control form-control-sm wb-var" placeholder="Value for ' + token(i) + '">';
+                    $vars.appendChild(wrap);
+                }
+                Array.prototype.forEach.call($vars.querySelectorAll('.wb-var'), function (input) {
+                    input.addEventListener('input', function () { renderPreview(); syncSend(); });
+                });
+                renderPreview();
+                syncSend();
+            }
+
+            function platformCount() {
+                var $input = document.getElementById('wb-platform-count');
+                if (!$input) return 0;
+                var n = parseInt($input.value, 10);
+                if (isNaN(n) || n < 1) return 0;
+                return Math.min(n, PLATFORM_MAX);
+            }
+
+            function recipientCount() {
+                return mode === 'platform' ? platformCount() : selected.size;
+            }
+
+            function syncSend() {
+                var t = currentTemplate();
+                var filled = !t || !t.var_count || paramValues().every(function (v) { return v.trim() !== ''; });
+                var n = recipientCount();
+                $send.disabled = !t || !filled || n === 0;
+                $count.textContent = mode === 'platform'
+                    ? n + ' MyChitti user' + (n === 1 ? '' : 's')
+                    : selected.size + ' selected';
+                $send.textContent = n
+                    ? 'Send to ' + n + ' recipient' + (n === 1 ? '' : 's')
+                    : 'Send';
+            }
+
+            function setMode(next) {
+                mode = next;
+                Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
+                    el.classList.toggle('active', el.dataset.mode === next);
+                });
+                document.getElementById('wb-pane-clients').style.display = next === 'clients' ? 'block' : 'none';
+                document.getElementById('wb-pane-platform').style.display = next === 'platform' ? 'block' : 'none';
+                syncSend();
+            }
+
+            function renderClients() {
+                if (!loaded.length) {
+                    $list.innerHTML = '<div class="text-muted text-center p-3" style="font-size:13px;">No clients match.</div>';
+                    return;
+                }
+                $list.innerHTML = loaded.map(function (c) {
+                    return '<label class="d-flex align-items-center px-3 py-2 mb-0 border-bottom" style="cursor:pointer;gap:10px;">' +
+                        '<input type="checkbox" class="wb-client" value="' + c.id + '"' + (selected.has(c.id) ? ' checked' : '') + '>' +
+                        '<span style="font-size:13px;"><b>' + esc(c.f_name || 'Unnamed') + '</b> ' +
+                        '<span class="text-muted">' + esc(c.phone) + '</span></span></label>';
+                }).join('');
+
+                Array.prototype.forEach.call($list.querySelectorAll('.wb-client'), function (box) {
+                    box.addEventListener('change', function () {
+                        var id = parseInt(this.value, 10);
+                        this.checked ? selected.add(id) : selected.delete(id);
+                        syncSend();
+                    });
+                });
+            }
+
+            function loadClients() {
+                $list.innerHTML = '<div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>';
+                fetch(RECIPIENTS_URL + '?search=' + encodeURIComponent($search.value), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    loaded = d.clients || [];
+                    if (d.truncated) {
+                        $truncated.style.display = 'block';
+                        $truncated.textContent = 'Showing the first ' + loaded.length + ' of ' + d.total + ' clients — search to narrow the list.';
+                    } else {
+                        $truncated.style.display = 'none';
+                    }
+                    renderClients();
+                    syncSend();
+                })
+                .catch(function () {
+                    $list.innerHTML = '<div class="text-danger text-center p-3" style="font-size:13px;">Could not load clients.</div>';
+                });
+            }
+
+            function sendBatches() {
+                var t = currentTemplate();
+                var total = recipientCount();
+                var batches = [];
+
+                if (mode === 'platform') {
+                    // The server walks users ordered by id, so an offset/limit pair addresses
+                    // each recipient exactly once without the browser ever seeing a number.
+                    for (var o = 0; o < total; o += BATCH) {
+                        batches.push({ mode: 'platform', offset: o, limit: Math.min(BATCH, total - o) });
+                    }
+                } else {
+                    var ids = Array.from(selected);
+                    for (var i = 0; i < ids.length; i += BATCH) {
+                        batches.push({ mode: 'clients', client_ids: ids.slice(i, i + BATCH) });
+                    }
+                }
+
+                var done = 0, sent = 0, failures = [];
+                $send.disabled = true;
+                $progress.style.display = 'block';
+                $results.style.display = 'none';
+
+                function batchSize(b) {
+                    return b.mode === 'platform' ? b.limit : b.client_ids.length;
+                }
+
+                function step(index) {
+                    if (index >= batches.length) {
+                        $ptext.textContent = 'Finished — ' + sent + ' sent, ' + failures.length + ' failed.';
+                        showResults(sent, failures);
+                        $send.disabled = false;
+                        return;
+                    }
+                    fetch(SEND_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': CSRF,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(Object.assign({
+                            template: t.name,
+                            language: t.language,
+                            params: paramValues()
+                        }, batches[index]))
+                    })
+                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            failures.push({ name: '—', phone: '—', error: res.d.message || 'Request rejected.' });
+                        } else {
+                            sent += res.d.sent || 0;
+                            (res.d.results || []).forEach(function (r) { if (!r.success) failures.push(r); });
+                        }
+                        done += batchSize(batches[index]);
+                        var pct = Math.round((done / total) * 100);
+                        $bar.style.width = pct + '%';
+                        $ptext.textContent = done + ' of ' + total + ' processed…';
+                        step(index + 1);
+                    })
+                    .catch(function () {
+                        failures.push({ name: '—', phone: '—', error: 'Network error on a batch of ' + batchSize(batches[index]) + '.' });
+                        done += batchSize(batches[index]);
+                        step(index + 1);
+                    });
+                }
+                step(0);
+            }
+
+            function showResults(sent, failures) {
+                var html = '<div class="alert ' + (failures.length ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
+                    '<b>' + sent + '</b> message' + (sent === 1 ? '' : 's') + ' sent' +
+                    (failures.length ? ', <b>' + failures.length + '</b> failed.' : '.') + '</div>';
+
+                if (failures.length) {
+                    html += '<div class="border rounded" style="max-height:200px;overflow-y:auto;">' +
+                        failures.map(function (f) {
+                            return '<div class="px-3 py-2 border-bottom" style="font-size:12px;">' +
+                                '<b>' + esc(f.name) + '</b> <span class="text-muted">' + esc(f.phone) + '</span><br>' +
+                                '<span class="text-danger">' + esc(f.error) + '</span></div>';
+                        }).join('') + '</div>';
+                }
+                $results.innerHTML = html;
+                $results.style.display = 'block';
+            }
+
+            $tpl.addEventListener('change', renderVars);
+            $search.addEventListener('input', function () {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(loadClients, 300);
+            });
+            document.getElementById('wb-select-all').addEventListener('click', function () {
+                loaded.forEach(function (c) { selected.add(c.id); });
+                renderClients();
+                syncSend();
+            });
+            document.getElementById('wb-clear').addEventListener('click', function () {
+                selected.clear();
+                renderClients();
+                syncSend();
+            });
+            Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
+                el.addEventListener('click', function () { setMode(this.dataset.mode); });
+            });
+            var $platformInput = document.getElementById('wb-platform-count');
+            if ($platformInput) {
+                $platformInput.addEventListener('input', syncSend);
+            }
+            $send.addEventListener('click', function () {
+                var n = recipientCount();
+                var who = mode === 'platform' ? 'MyChitti user(s) in your zone' : 'client(s)';
+                if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
+                sendBatches();
+            });
+
+            loadClients();
+        })();
+    </script>
+@endpush
+@endif
+
+@if (!$connected && $es['ready'])
 @push('script_2')
     <script>
         window.fbAsyncInit = function () {

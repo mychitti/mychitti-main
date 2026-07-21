@@ -273,7 +273,7 @@
                     $('.send_inv_otp').click();
                 }
             });
-        });
+        }); 
  
         $(".send_inv_otp").on('click', function(e) {
             e.preventDefault();

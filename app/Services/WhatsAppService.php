@@ -558,6 +558,30 @@ class WhatsAppService
         }
     }
 
+    /**
+     * Per-store status of every receiving add-on (subscribed / paid-until / live).
+     * Shared by the vendor lead-settings screen and anything else that renders the add-on cards.
+     */
+    public static function receivingFeatureStatus(int $storeId): array
+    {
+        static::ensureReceivingTable();
+        $rows = DB::table('wa_receiving_features')->where('store_id', $storeId)->get()->keyBy('feature');
+
+        $out = [];
+        foreach (self::RECEIVING_FEATURES as $key => $meta) {
+            $row = $rows->get($key);
+            $active = $row && $row->active_until && $row->active_until >= now()->toDateString();
+            $out[$key] = [
+                'meta'         => $meta,
+                'enabled'      => (bool) ($row->enabled ?? false),
+                'active_until' => $row->active_until ?? null,
+                'paid_active'  => (bool) $active,
+                'live'         => $active && (bool) ($row->enabled ?? false),
+            ];
+        }
+        return $out;
+    }
+
     /** True only when the store has the add-on enabled AND the paid period is still valid. */
     public static function storeHasFeature(int $storeId, string $feature): bool
     {
@@ -568,6 +592,106 @@ class WhatsAppService
         $row = DB::table('wa_receiving_features')
             ->where('store_id', $storeId)->where('feature', $feature)->first();
         return $row && $row->enabled && $row->active_until && $row->active_until >= now()->toDateString();
+    }
+
+    /** Keywords that mean "stop messaging me". Matched on the whole message, case-insensitive. */
+    const OPT_OUT_KEYWORDS = ['stop', 'unsubscribe', 'opt out', 'optout', 'remove me', 'do not message', 'dont message'];
+
+    /** Marketing opt-outs. store_id NULL means "every sender on the platform". */
+    public static function ensureOptOutTable(): void
+    {
+        if (!Schema::hasTable('wa_opt_outs')) {
+            DB::statement("CREATE TABLE `wa_opt_outs` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NULL,
+                `phone` VARCHAR(32) NOT NULL,
+                `source` VARCHAR(40) NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `wao_store_phone` (`store_id`, `phone`),
+                KEY `wao_phone_idx` (`phone`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    /** Does this message body ask us to stop? */
+    public static function isOptOutMessage(?string $body): bool
+    {
+        $text = trim(mb_strtolower(preg_replace('/[^\p{L}\s]/u', ' ', (string) $body) ?? ''));
+        $text = trim(preg_replace('/\s+/', ' ', $text) ?? '');
+        return $text !== '' && in_array($text, self::OPT_OUT_KEYWORDS, true);
+    }
+
+    /**
+     * Record an opt-out. Always scoped to the store whose number was messaged.
+     *
+     * When the number is not in that store's own client book we reached them through the
+     * platform user base, so the opt-out is also recorded platform-wide — otherwise the
+     * person would have to reply STOP separately to every vendor we hand their number to.
+     */
+    public static function recordOptOut(?int $storeId, string $phone, string $source = 'reply'): void
+    {
+        static::ensureOptOutTable();
+        $normalized = static::make($storeId)->normalizePhone($phone);
+        if ($normalized === '') {
+            return;
+        }
+
+        $scopes = [$storeId];
+
+        $isOwnClient = $storeId && DB::table('store_customers')
+            ->where('store_id', $storeId)
+            ->whereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%' . substr($normalized, -10)])
+            ->exists();
+
+        if (!$isOwnClient) {
+            $scopes[] = null;
+        }
+
+        foreach (array_unique($scopes, SORT_REGULAR) as $scope) {
+            DB::table('wa_opt_outs')->updateOrInsert(
+                ['store_id' => $scope, 'phone' => $normalized],
+                ['source' => $source, 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+
+        Log::info('WA opt-out recorded', ['store_id' => $storeId, 'phone' => $normalized, 'platform_wide' => !$isOwnClient]);
+    }
+
+    /** Undo an opt-out — the customer turning WhatsApp back on in their dashboard. */
+    public static function clearOptOut(?int $storeId, string $phone): void
+    {
+        static::ensureOptOutTable();
+        $normalized = static::make($storeId)->normalizePhone($phone);
+        if ($normalized === '') {
+            return;
+        }
+
+        // Only the matching scope. Turning the dashboard toggle back on clears the
+        // platform-wide row but leaves any explicit "STOP" the customer sent to a specific
+        // vendor — that was a decision about that vendor, not about MyChitti as a whole.
+        DB::table('wa_opt_outs')
+            ->where('phone', $normalized)
+            ->when(
+                $storeId,
+                fn($q) => $q->where('store_id', $storeId),
+                fn($q) => $q->whereNull('store_id')
+            )
+            ->delete();
+    }
+
+    /**
+     * Normalized phone numbers that must not receive marketing from this store —
+     * its own opt-outs plus everyone who opted out platform-wide.
+     */
+    public static function optedOutPhones(?int $storeId): array
+    {
+        static::ensureOptOutTable();
+        return DB::table('wa_opt_outs')
+            ->where(fn($q) => $q->whereNull('store_id')->orWhere('store_id', $storeId))
+            ->pluck('phone')
+            ->all();
     }
 
     /** Resolve which store owns an inbound message, by its Cloud API phone_number_id. */

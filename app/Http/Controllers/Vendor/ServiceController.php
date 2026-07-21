@@ -1541,7 +1541,15 @@ class ServiceController extends Controller
         $storeId = Helpers::get_store_id();
         $storeConfig = \App\Models\StoreConfig::firstOrCreate(['store_id' => $storeId]);
         $store_data = Helpers::get_store_data();
-        return view('vendor-views.service.lead_settings', compact('storeConfig', 'store_data'));
+
+        // WhatsApp receiving add-ons live here rather than on the Connect screen — they are
+        // lead notifications, so they belong with the rest of the lead settings.
+        $waFeatures = \App\Services\WhatsAppService::receivingFeatureStatus($storeId);
+        $wallet = \App\Models\StoreWallet::where('vendor_id', auth('vendor')->id())->first();
+        // total_earning is the live wallet balance for this store; total_withdrawn isn't maintained here.
+        $walletBalance = $wallet ? $wallet->total_earning : 0;
+
+        return view('vendor-views.service.lead_settings', compact('storeConfig', 'store_data', 'waFeatures', 'walletBalance'));
     }
 
     public function lead_settings_update(Request $request)

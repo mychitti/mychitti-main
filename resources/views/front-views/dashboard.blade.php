@@ -133,6 +133,8 @@
                     class=" text-center nav-link  {{ Request::is('dashboard/favourites') ? 'active' : '' }}">Favourites</a>
                 <a href="{{ route('school.portal.index') }}"
                     class=" text-center nav-link  {{ Request::is('my-school*') ? 'active' : '' }}">My School</a>
+                <a href="{{ route('dashboard', ['notifications']) }}"
+                    class=" text-center nav-link  {{ Request::is('dashboard/notifications') ? 'active' : '' }}">Notifications</a>
                 <button class="nav-link" type="button" data-bs-toggle="modal"
                     data-bs-target="#exampleModalLogout">Logout</button>
 
@@ -148,6 +150,8 @@
                     @include('front-views.partials.dashboard._service-tab')
                 @elseif(request()->tab == 'coupons')
                     @include('front-views.partials.dashboard._coupons-tab')
+                @elseif(request()->tab == 'notifications')
+                    @include('front-views.partials.dashboard._notifications-tab')
                 @endif
                 {{-- @include('front-views.partials.dashboard._orders-tab') --}}
             </div>

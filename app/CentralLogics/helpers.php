@@ -4555,6 +4555,123 @@ class Helpers
 
 
 
+    /** Zone id => polygon area. Smaller area = more specific zone. Cached per request. */
+    public static function zone_areas(): array
+    {
+        static $areas = null;
+        if ($areas === null) {
+            try {
+                $areas = DB::table('zones')->selectRaw('id, ST_Area(coordinates) as area')
+                    ->pluck('area', 'id')->map(fn($a) => (float) $a)->all();
+            } catch (\Throwable $e) {
+                $areas = [];
+            }
+        }
+        return $areas;
+    }
+
+    /**
+     * The single most specific zone out of a location result.
+     *
+     * Zones nest: a point in Tirupati sits inside "India", "Andhra Pradesh" AND "Tirupati",
+     * and _setLocation() returns all of them broad-first — so taking the first entry lands
+     * the customer in a state- or country-sized zone that no store belongs to. Smallest
+     * polygon area is the specific one.
+     *
+     * @param mixed $zone int, array of ids, or the JSON string "[95,70,21]"
+     */
+    public static function resolve_primary_zone($zone): ?int
+    {
+        if (is_string($zone)) {
+            $decoded = json_decode($zone, true);
+            $zone = is_array($decoded) ? $decoded : [$zone];
+        } elseif (!is_array($zone)) {
+            $zone = [$zone];
+        }
+
+        $areas = self::zone_areas();
+        $best = null;
+        $bestArea = null;
+
+        foreach ($zone as $candidate) {
+            $id = (int) $candidate;
+            if ($id <= 0 || !isset($areas[$id])) {
+                continue;
+            }
+            if ($bestArea === null || $areas[$id] < $bestArea) {
+                $bestArea = $areas[$id];
+                $best = $id;
+            }
+        }
+
+        // Every candidate unknown to the zones table — fall back to the first usable id
+        // rather than losing the location entirely.
+        if ($best === null) {
+            foreach ($zone as $candidate) {
+                if ((int) $candidate > 0) {
+                    return (int) $candidate;
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Persist a customer's zone on the user row.
+     *
+     * users.zone_id was historically only written when someone placed an order, so most rows
+     * sit NULL — anything filtering customers by zone (admin dashboards, WhatsApp bulk sends)
+     * silently sees nobody. Call this wherever the app learns a customer's location.
+     *
+     * $zone accepts what the callers actually hold: an int, or the JSON array that
+     * Helpers::_setLocation() produces ("[95,70,21]"). Latest known location replaces the
+     * old one — customers move.
+     */
+    public static function set_user_zone($userId, $zone): void
+    {
+        if (!$userId) {
+            return;
+        }
+
+        $zoneId = (int) self::resolve_primary_zone($zone);
+        if ($zoneId <= 0) {
+            return;
+        }
+
+        try {
+            DB::table('users')
+                ->where('id', $userId)
+                ->where(fn($q) => $q->whereNull('zone_id')->orWhere('zone_id', '!=', $zoneId))
+                ->update(['zone_id' => $zoneId]);
+        } catch (\Throwable $e) {
+            // Learning a zone is a side effect — never fail the action that triggered it.
+            \Illuminate\Support\Facades\Log::error('set_user_zone failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * False only when the token belongs to a customer who turned app notifications off.
+     * Cached per request — a bulk send hits the same tokens repeatedly.
+     */
+    public static function device_accepts_push($fcm_token): bool
+    {
+        static $cache = [];
+        $key = (string) $fcm_token;
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        try {
+            $userId = DB::table('users')->where('cm_firebase_token', $fcm_token)->value('id');
+            $allowed = !$userId || \App\Models\UserNotificationPreference::allows((int) $userId, 'push');
+        } catch (\Throwable $e) {
+            $allowed = true;
+        }
+
+        return $cache[$key] = $allowed;
+    }
+
     public static function send_push_notif_to_device_new($fcm_token, $data, $web_push_link = null)
     {
         // Get OAuth 2.0 access token
@@ -4636,6 +4753,13 @@ class Helpers
 
     public static function send_push_notif_to_device($fcm_token, $data, $web_push_link = null, $testing = false)
     {
+        // Honour the customer's dashboard opt-out here rather than at ~20 call sites.
+        // Resolved by token because callers pass a token, not a user; vendors, delivery men
+        // and admins have no row and are unaffected.
+        if ($fcm_token && !self::device_accepts_push($fcm_token)) {
+            return null;
+        }
+
         // Get OAuth 2.0 access token
         $accessToken = self::getAccessToken();
         // prx($accessToken);

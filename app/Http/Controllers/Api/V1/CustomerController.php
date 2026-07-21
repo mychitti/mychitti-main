@@ -470,6 +470,7 @@ class CustomerController extends Controller
             'updated_at' => now()
         ];
         $addressId = DB::table('customer_addresses')->insertGetId($address);
+        Helpers::set_user_zone($request->user()->id, $zone[0]->id);
         return response()->json(['message' => translate('messages.successfully_added'), 'id' => $addressId, 'zone_ids' => array_column($zone->toArray(), 'id')], 200);
     }
     public function update_pincode(Request $request, $id)
@@ -526,6 +527,7 @@ class CustomerController extends Controller
             'updated_at' => now()
         ];
         DB::table('customer_addresses')->where('id', $id)->update($address);
+        Helpers::set_user_zone($request->user()->id, $zone[0]->id);
         return response()->json(['message' => translate('messages.updated_successfully'), 'zone_id' => $zone[0]->id], 200);
     }
 
