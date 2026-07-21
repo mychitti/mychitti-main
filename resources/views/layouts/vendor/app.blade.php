@@ -244,11 +244,23 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             /* Section subtitles + submenus */
             body.hmis-skin .navbar-vertical-aside .nav-subtitle,
             body.hmis-skin .navbar-vertical-aside .navbar-vertical-aside-has-menu .nav-subtitle { color: rgba(255,255,255,.38) !important; }
-            /* Expanded submenu — keep on navy, never white, links light not red */
+            /* Expanded submenu — keep on navy, never white, links light not red.
+               Solid colour (not rgba): in collapsed/mini mode the theme renders .nav-sub as a
+               popup floating OVER the page, so a translucent background let page content bleed
+               through it. --hmis-navy2 matches what navy + 16% black rendered as when inline. */
             body.hmis-skin .navbar-vertical-aside .nav-sub,
             body.hmis-skin .navbar-vertical-aside .js-navbar-vertical-aside-submenu,
             body.hmis-skin .navbar-vertical-aside .navbar-vertical-aside-has-menu .nav-sub {
-                background: rgba(0,0,0,.16) !important;
+                background: var(--hmis-navy2) !important;
+            }
+            /* Collapsed-sidebar hover popup: lift it above page content and give it an edge */
+            body.hmis-skin.navbar-vertical-aside-mini-mode .navbar-vertical-aside .nav-sub,
+            body.hmis-skin.navbar-vertical-aside-compact-mode .navbar-vertical-aside .nav-sub,
+            body.hmis-skin .navbar-vertical-aside-mini-mode .navbar-vertical-aside .nav-sub,
+            body.hmis-skin .navbar-vertical-aside-compact-mode .navbar-vertical-aside .nav-sub {
+                box-shadow: 0 8px 24px rgba(0,0,0,.28) !important;
+                border-radius: 0 6px 6px 0;
+                z-index: 1001;
             }
             body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link,
             body.hmis-skin .navbar-vertical-aside .nav-sub .nav-link .text-truncate {
