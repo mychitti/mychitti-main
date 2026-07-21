@@ -92,16 +92,52 @@
                                         <label class="font-weight-bold mb-0" style="font-size:13px;">Recipients</label>
                                         <span id="wb-selected-count" class="badge badge-soft-secondary">0 selected</span>
                                     </div>
-                                    <div class="d-flex mb-2" style="gap:8px;">
-                                        <input id="wb-search" type="text" class="form-control form-control-sm"
-                                               placeholder="Search clients by name or phone…">
-                                        <button id="wb-select-all" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Select all</button>
-                                        <button id="wb-clear" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Clear</button>
+
+                                    <ul class="nav nav-pills mb-3" style="gap:6px;">
+                                        <li class="nav-item">
+                                            <a href="javascript:;" class="nav-link active wb-mode" data-mode="clients" style="font-size:13px;padding:6px 14px;">
+                                                My clients <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="javascript:;" class="nav-link wb-mode" data-mode="platform" style="font-size:13px;padding:6px 14px;">
+                                                MyChitti users <span class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+
+                                    <div id="wb-pane-clients">
+                                        <div class="d-flex mb-2" style="gap:8px;">
+                                            <input id="wb-search" type="text" class="form-control form-control-sm"
+                                                   placeholder="Search clients by name or phone…">
+                                            <button id="wb-select-all" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Select all</button>
+                                            <button id="wb-clear" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Clear</button>
+                                        </div>
+                                        <div id="wb-clients" class="border rounded" style="max-height:260px;overflow-y:auto;">
+                                            <div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>
+                                        </div>
+                                        <small id="wb-truncated" class="text-muted" style="display:none;"></small>
                                     </div>
-                                    <div id="wb-clients" class="border rounded" style="max-height:260px;overflow-y:auto;">
-                                        <div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>
+
+                                    <div id="wb-pane-platform" style="display:none;">
+                                        <div class="border rounded p-3">
+                                            <p class="text-muted mb-2" style="font-size:13px;">
+                                                MyChitti users in your zone. You choose how many to reach — their phone
+                                                numbers stay private and are never shown to you.
+                                            </p>
+                                            @if ($platformUserCount == 0)
+                                                <div class="alert alert-warning mb-0" style="font-size:13px;">
+                                                    No MyChitti users with a phone number in your store's zone yet.
+                                                </div>
+                                            @else
+                                                <label style="font-size:12px;" class="mb-1">How many users to message</label>
+                                                <input id="wb-platform-count" type="number" class="form-control form-control-sm"
+                                                       style="max-width:200px;" min="1" max="{{ $platformUserCount }}"
+                                                       value="{{ min(50, $platformUserCount) }}">
+                                                <small class="text-muted d-block mt-1">Maximum {{ $platformUserCount }} in your zone.</small>
+                                            @endif
+                                        </div>
                                     </div>
-                                    <small id="wb-truncated" class="text-muted" style="display:none;"></small>
                                 </div>
 
                                 <div class="d-flex align-items-center" style="gap:12px;">
@@ -134,9 +170,12 @@
             var SEND_URL = '{{ route('vendor.whatsapp.bulk.send') }}';
             var CSRF = '{{ csrf_token() }}';
 
+            var PLATFORM_MAX = {{ $platformUserCount }};
+
             var selected = new Set();
             var loaded = [];
             var searchTimer = null;
+            var mode = 'clients';
 
             // Built by concatenation so Blade never sees a literal double-brace in this script.
             var OPEN = '{' + '{', CLOSE = '}' + '}';
@@ -205,12 +244,39 @@
                 syncSend();
             }
 
+            function platformCount() {
+                var $input = document.getElementById('wb-platform-count');
+                if (!$input) return 0;
+                var n = parseInt($input.value, 10);
+                if (isNaN(n) || n < 1) return 0;
+                return Math.min(n, PLATFORM_MAX);
+            }
+
+            function recipientCount() {
+                return mode === 'platform' ? platformCount() : selected.size;
+            }
+
             function syncSend() {
                 var t = currentTemplate();
                 var filled = !t || !t.var_count || paramValues().every(function (v) { return v.trim() !== ''; });
-                $send.disabled = !t || !filled || selected.size === 0;
-                $count.textContent = selected.size + ' selected';
-                $send.textContent = selected.size ? 'Send to ' + selected.size + ' client' + (selected.size === 1 ? '' : 's') : 'Send';
+                var n = recipientCount();
+                $send.disabled = !t || !filled || n === 0;
+                $count.textContent = mode === 'platform'
+                    ? n + ' MyChitti user' + (n === 1 ? '' : 's')
+                    : selected.size + ' selected';
+                $send.textContent = n
+                    ? 'Send to ' + n + ' recipient' + (n === 1 ? '' : 's')
+                    : 'Send';
+            }
+
+            function setMode(next) {
+                mode = next;
+                Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
+                    el.classList.toggle('active', el.dataset.mode === next);
+                });
+                document.getElementById('wb-pane-clients').style.display = next === 'clients' ? 'block' : 'none';
+                document.getElementById('wb-pane-platform').style.display = next === 'platform' ? 'block' : 'none';
+                syncSend();
             }
 
             function renderClients() {
@@ -258,16 +324,30 @@
 
             function sendBatches() {
                 var t = currentTemplate();
-                var ids = Array.from(selected);
+                var total = recipientCount();
                 var batches = [];
-                for (var i = 0; i < ids.length; i += BATCH) {
-                    batches.push(ids.slice(i, i + BATCH));
+
+                if (mode === 'platform') {
+                    // The server walks users ordered by id, so an offset/limit pair addresses
+                    // each recipient exactly once without the browser ever seeing a number.
+                    for (var o = 0; o < total; o += BATCH) {
+                        batches.push({ mode: 'platform', offset: o, limit: Math.min(BATCH, total - o) });
+                    }
+                } else {
+                    var ids = Array.from(selected);
+                    for (var i = 0; i < ids.length; i += BATCH) {
+                        batches.push({ mode: 'clients', client_ids: ids.slice(i, i + BATCH) });
+                    }
                 }
 
                 var done = 0, sent = 0, failures = [];
                 $send.disabled = true;
                 $progress.style.display = 'block';
                 $results.style.display = 'none';
+
+                function batchSize(b) {
+                    return b.mode === 'platform' ? b.limit : b.client_ids.length;
+                }
 
                 function step(index) {
                     if (index >= batches.length) {
@@ -283,12 +363,11 @@
                             'X-CSRF-TOKEN': CSRF,
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({
+                        body: JSON.stringify(Object.assign({
                             template: t.name,
                             language: t.language,
-                            params: paramValues(),
-                            client_ids: batches[index]
-                        })
+                            params: paramValues()
+                        }, batches[index]))
                     })
                     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
                     .then(function (res) {
@@ -298,15 +377,15 @@
                             sent += res.d.sent || 0;
                             (res.d.results || []).forEach(function (r) { if (!r.success) failures.push(r); });
                         }
-                        done += batches[index].length;
-                        var pct = Math.round((done / ids.length) * 100);
+                        done += batchSize(batches[index]);
+                        var pct = Math.round((done / total) * 100);
                         $bar.style.width = pct + '%';
-                        $ptext.textContent = done + ' of ' + ids.length + ' processed…';
+                        $ptext.textContent = done + ' of ' + total + ' processed…';
                         step(index + 1);
                     })
                     .catch(function () {
-                        batches[index].forEach(function () { failures.push({ name: '—', phone: '—', error: 'Network error.' }); });
-                        done += batches[index].length;
+                        failures.push({ name: '—', phone: '—', error: 'Network error on a batch of ' + batchSize(batches[index]) + '.' });
+                        done += batchSize(batches[index]);
                         step(index + 1);
                     });
                 }
@@ -345,8 +424,17 @@
                 renderClients();
                 syncSend();
             });
+            Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
+                el.addEventListener('click', function () { setMode(this.dataset.mode); });
+            });
+            var $platformInput = document.getElementById('wb-platform-count');
+            if ($platformInput) {
+                $platformInput.addEventListener('input', syncSend);
+            }
             $send.addEventListener('click', function () {
-                if (!confirm('Send this template to ' + selected.size + ' client(s)?')) return;
+                var n = recipientCount();
+                var who = mode === 'platform' ? 'MyChitti user(s) in your zone' : 'client(s)';
+                if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
                 sendBatches();
             });
 

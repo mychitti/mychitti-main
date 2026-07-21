@@ -54,9 +54,12 @@ class WhatsAppController extends Controller
                 $templateError = $res['error'];
             }
             $clientCount = $this->clientQuery($storeId)->count();
+            $platformUserCount = $this->platformUserQuery($storeId)->count();
         }
 
-        return view('vendor-views.whatsapp.connect', compact('es', 'store', 'connected', 'templates', 'templateError', 'clientCount'));
+        return view('vendor-views.whatsapp.connect', compact(
+            'es', 'store', 'connected', 'templates', 'templateError', 'clientCount', 'platformUserCount'
+        ));
     }
 
     /** Clients of this store that are actually reachable on WhatsApp. */
@@ -64,6 +67,24 @@ class WhatsAppController extends Controller
     {
         return DB::table('store_customers')
             ->where('store_id', $storeId)
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '');
+    }
+
+    /**
+     * MyChitti users in this store's OWN zone who are reachable on WhatsApp.
+     * A store with no zone gets no platform recipients rather than the whole user base.
+     */
+    private function platformUserQuery(int $storeId)
+    {
+        $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
+
+        return DB::table('users')
+            ->when(
+                $zoneId,
+                fn($q) => $q->where('zone_id', $zoneId),
+                fn($q) => $q->whereRaw('1 = 0')
+            )
             ->whereNotNull('phone')
             ->where('phone', '!=', '');
     }
@@ -151,11 +172,14 @@ class WhatsAppController extends Controller
     public function bulkSend(Request $request)
     {
         $request->validate([
-            'template'   => 'required|string',
-            'language'   => 'required|string',
-            'client_ids' => 'required|array|max:' . self::BULK_BATCH_LIMIT,
+            'template'     => 'required|string',
+            'language'     => 'required|string',
+            'mode'         => 'required|in:clients,platform',
+            'client_ids'   => 'required_if:mode,clients|array|max:' . self::BULK_BATCH_LIMIT,
             'client_ids.*' => 'integer',
-            'params'     => 'nullable|array',
+            'offset'       => 'required_if:mode,platform|integer|min:0',
+            'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
+            'params'       => 'nullable|array',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -168,15 +192,36 @@ class WhatsAppController extends Controller
             ], 422);
         }
 
-        $clients = $this->clientQuery($storeId)
-            ->whereIn('id', $request->input('client_ids'))
-            ->get(['id', 'f_name', 'phone']);
+        $platform = $request->input('mode') === 'platform';
+
+        if ($platform) {
+            // Ordered by id so the browser's offset walk covers each user exactly once.
+            $recipients = $this->platformUserQuery($storeId)
+                ->orderBy('id')
+                ->offset((int) $request->input('offset'))
+                ->limit((int) $request->input('limit'))
+                ->get(['id', 'f_name', 'l_name', 'phone'])
+                ->map(fn($u) => (object) [
+                    'id'    => $u->id,
+                    'name'  => trim($u->f_name . ' ' . $u->l_name),
+                    'phone' => $u->phone,
+                ]);
+        } else {
+            $recipients = $this->clientQuery($storeId)
+                ->whereIn('id', $request->input('client_ids'))
+                ->get(['id', 'f_name', 'phone'])
+                ->map(fn($c) => (object) [
+                    'id'    => $c->id,
+                    'name'  => trim((string) $c->f_name),
+                    'phone' => $c->phone,
+                ]);
+        }
 
         $rawParams = array_values((array) $request->input('params', []));
         $results = [];
 
-        foreach ($clients as $client) {
-            $name = trim((string) $client->f_name) ?: 'Customer';
+        foreach ($recipients as $client) {
+            $name = trim((string) $client->name) ?: 'Customer';
 
             // {name} is substituted per recipient; everything else is the literal text the
             // vendor typed. Meta rejects newlines and runs of 4+ spaces inside a parameter.
@@ -194,7 +239,9 @@ class WhatsAppController extends Controller
             $results[] = [
                 'id'      => $client->id,
                 'name'    => $name,
-                'phone'   => $client->phone,
+                // Platform users are not the vendor's contacts — report the outcome without
+                // handing their full number back to the sender.
+                'phone'   => $platform ? $this->maskPhone($client->phone) : $client->phone,
                 'success' => (bool) $res['success'],
                 'error'   => $res['error'] ?? null,
             ];
@@ -226,6 +273,12 @@ class WhatsAppController extends Controller
             return 'The message can’t end with a variable. Add some text after it — e.g. "{{2}}. See you then!" instead of ending on "{{2}}".';
         }
         return null;
+    }
+
+    private function maskPhone(?string $phone): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', (string) $phone) ?? '';
+        return strlen($digits) < 4 ? '••••' : '••••••' . substr($digits, -4);
     }
 
     private function sanitizeParam(string $value): string

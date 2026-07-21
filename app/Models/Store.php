@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\GenerateStoreMeta;
 use App\Scopes\ZoneScope;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -332,6 +333,16 @@ class Store extends Model
         return $this->belongsTo(Zone::class);
     }
 
+    // Stores with no SEO meta yet — used by the admin store-meta screen and the
+    // store:generate-meta backfill command.
+    public function scopeMissingMeta($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('stores.meta_title')->orWhere('stores.meta_title', '')
+                ->orWhereNull('stores.meta_description')->orWhere('stores.meta_description', '');
+        });
+    }
+
     /**
      * @return BelongsToMany
      */
@@ -541,6 +552,13 @@ class Store extends Model
         static::created(function ($store) {
             $store->slug = $store->generateSlug($store->name);
             $store->save();
+
+            // Auto-fill SEO meta on registration. Queued on the low-priority 'seo' queue so
+            // registration never waits on the AI service, and skipped when the creator already
+            // supplied meta. Covers every creation path (admin, self-registration, API, import).
+            if (!$store->meta_title || !$store->meta_description) {
+                GenerateStoreMeta::dispatch($store->id);
+            }
         });
     }
 
