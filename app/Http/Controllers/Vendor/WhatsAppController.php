@@ -6,6 +6,7 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\AccountTransaction;
 use App\Models\StoreWallet;
+use App\Models\UserNotificationPreference;
 use App\Services\WhatsAppService;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -94,7 +95,23 @@ class WhatsAppController extends Controller
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
         $zoneIds = Helpers::zone_with_descendants($zoneId);
 
-        if (empty($zoneIds) || !Schema::hasTable('user_notification_prefs')) {
+        if (empty($zoneIds)) {
+            return DB::table('users')->whereRaw('1 = 0');
+        }
+
+        // ensureTable() rather than a bare hasTable() check: on an environment where the table
+        // was created by an earlier deploy it exists but has no nearby_offers column, and the
+        // query below would fail with "Unknown column 'p.nearby_offers'". ensureTable() is
+        // idempotent and adds the column when it is missing.
+        try {
+            UserNotificationPreference::ensureTable();
+            $ready = Schema::hasColumn('user_notification_prefs', 'nearby_offers');
+        } catch (\Throwable $e) {
+            Log::warning('nearby pool unavailable: ' . $e->getMessage());
+            $ready = false;
+        }
+
+        if (!$ready) {
             return DB::table('users')->whereRaw('1 = 0');
         }
 
