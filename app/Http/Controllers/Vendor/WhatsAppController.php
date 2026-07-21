@@ -16,6 +16,13 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppController extends Controller
 {
+    /** How many clients the bulk recipient picker will load at once. */
+    const BULK_PICKER_LIMIT = 1000;
+
+    /** Recipients accepted per bulk-send call — the browser drives the batches so a long run
+     *  never hits max_execution_time and the vendor sees live progress. */
+    const BULK_BATCH_LIMIT = 25;
+
     // Vendor "Connect WhatsApp" screen (Embedded Signup).
     public function connect(Request $request)
     {
@@ -33,33 +40,178 @@ class WhatsAppController extends Controller
             'ready'       => !empty($config['es_app_id']) && !empty($config['es_config_id']),
         ];
 
-        $features = $this->featureStatus($storeId);
-        $wallet = StoreWallet::where('vendor_id', auth('vendor')->id())->first();
-        // total_earning is the live wallet balance for this store; total_withdrawn isn't maintained here.
-        $walletBalance = $wallet ? $wallet->total_earning : 0;
+        $connected = (bool) ($store && $store->wa_enabled && $store->wa_phone_number_id);
 
-        return view('vendor-views.whatsapp.connect', compact('es', 'store', 'features', 'walletBalance'));
+        // Bulk sending is only offered on the vendor's own connected number — Meta bills them
+        // directly and a marketing blast must never burn the platform number's quality rating.
+        $templates = [];
+        $templateError = null;
+        $clientCount = 0;
+        if ($connected) {
+            $res = WhatsAppService::make($storeId)->listTemplates();
+            $templates = $this->bulkTemplateOptions($res['data']);
+            if (!$res['success']) {
+                $templateError = $res['error'];
+            }
+            $clientCount = $this->clientQuery($storeId)->count();
+        }
+
+        return view('vendor-views.whatsapp.connect', compact('es', 'store', 'connected', 'templates', 'templateError', 'clientCount'));
     }
 
-    // Builds the per-store status for every receiving add-on (subscribed/active/expiry).
-    private function featureStatus(int $storeId): array
+    /** Clients of this store that are actually reachable on WhatsApp. */
+    private function clientQuery(int $storeId)
     {
-        WhatsAppService::ensureReceivingTable();
-        $rows = DB::table('wa_receiving_features')->where('store_id', $storeId)->get()->keyBy('feature');
+        return DB::table('store_customers')
+            ->where('store_id', $storeId)
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '');
+    }
 
+    /**
+     * Reduce Meta's template payload to what the bulk composer needs.
+     * Only APPROVED templates can be sent, and only BODY variables are supported — a template
+     * with a variable header or a dynamic URL button needs parameters this UI doesn't collect,
+     * so it is listed as unsupported instead of failing at send time.
+     */
+    private function bulkTemplateOptions(array $data): array
+    {
         $out = [];
-        foreach (WhatsAppService::RECEIVING_FEATURES as $key => $meta) {
-            $row = $rows->get($key);
-            $active = $row && $row->active_until && $row->active_until >= now()->toDateString();
-            $out[$key] = [
-                'meta'         => $meta,
-                'enabled'      => (bool) ($row->enabled ?? false),
-                'active_until' => $row->active_until ?? null,
-                'paid_active'  => (bool) $active,
-                'live'         => $active && (bool) ($row->enabled ?? false),
+        foreach ($data as $tpl) {
+            if (strtoupper((string) data_get($tpl, 'status')) !== 'APPROVED') {
+                continue;
+            }
+
+            $body = '';
+            $unsupported = null;
+            foreach ((array) data_get($tpl, 'components', []) as $c) {
+                $type = strtoupper((string) data_get($c, 'type'));
+                if ($type === 'BODY') {
+                    $body = (string) data_get($c, 'text', '');
+                } elseif ($type === 'HEADER' && str_contains((string) data_get($c, 'text', ''), '{{')) {
+                    $unsupported = 'has a variable in its header';
+                } elseif ($type === 'BUTTONS') {
+                    foreach ((array) data_get($c, 'buttons', []) as $b) {
+                        if (str_contains((string) data_get($b, 'url', ''), '{{')) {
+                            $unsupported = 'has a dynamic button URL';
+                        }
+                    }
+                }
+            }
+
+            preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $body, $m);
+            $varCount = $m[1] ? max(array_map('intval', $m[1])) : 0;
+
+            $out[] = [
+                'name'        => data_get($tpl, 'name'),
+                'language'    => data_get($tpl, 'language', 'en_US'),
+                'category'    => data_get($tpl, 'category'),
+                'body'        => $body,
+                'var_count'   => $varCount,
+                'unsupported' => $unsupported,
             ];
         }
+
+        usort($out, fn($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
         return $out;
+    }
+
+    /** Client list for the bulk composer's recipient picker. */
+    public function bulkRecipients(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $query = $this->clientQuery($storeId);
+
+        if ($search = trim((string) $request->input('search'))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('f_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+        if ($type = $request->input('user_type')) {
+            $query->where('user_type', $type);
+        }
+
+        $total = (clone $query)->count();
+        $clients = $query->orderBy('f_name')
+            ->limit(self::BULK_PICKER_LIMIT)
+            ->get(['id', 'f_name', 'phone', 'user_type']);
+
+        return response()->json([
+            'success'   => true,
+            'total'     => $total,
+            'truncated' => $total > self::BULK_PICKER_LIMIT,
+            'clients'   => $clients,
+        ]);
+    }
+
+    /**
+     * Send one approved template to a batch of clients from the vendor's own number.
+     * Returns a per-recipient result so the composer can show exactly what failed and why.
+     */
+    public function bulkSend(Request $request)
+    {
+        $request->validate([
+            'template'   => 'required|string',
+            'language'   => 'required|string',
+            'client_ids' => 'required|array|max:' . self::BULK_BATCH_LIMIT,
+            'client_ids.*' => 'integer',
+            'params'     => 'nullable|array',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+
+        if ($wa->source() !== 'vendor') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Connect your own WhatsApp number before sending bulk messages.',
+            ], 422);
+        }
+
+        $clients = $this->clientQuery($storeId)
+            ->whereIn('id', $request->input('client_ids'))
+            ->get(['id', 'f_name', 'phone']);
+
+        $rawParams = array_values((array) $request->input('params', []));
+        $results = [];
+
+        foreach ($clients as $client) {
+            $name = trim((string) $client->f_name) ?: 'Customer';
+
+            // {name} is substituted per recipient; everything else is the literal text the
+            // vendor typed. Meta rejects newlines and runs of 4+ spaces inside a parameter.
+            $params = array_map(
+                fn($v) => $this->sanitizeParam(str_replace('{name}', $name, (string) $v)),
+                $rawParams
+            );
+
+            $components = $params
+                ? [['type' => 'body', 'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params)]]
+                : [];
+
+            $res = $wa->sendTemplate($client->phone, $request->template, $request->language, $components, 'bulk');
+
+            $results[] = [
+                'id'      => $client->id,
+                'name'    => $name,
+                'phone'   => $client->phone,
+                'success' => (bool) $res['success'],
+                'error'   => $res['error'] ?? null,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'sent'    => count(array_filter($results, fn($r) => $r['success'])),
+            'failed'  => count(array_filter($results, fn($r) => !$r['success'])),
+            'results' => $results,
+        ]);
+    }
+
+    private function sanitizeParam(string $value): string
+    {
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+        return trim(mb_substr($value, 0, 900));
     }
 
     // Subscribe / renew a receiving add-on — debits the vendor wallet for one month.

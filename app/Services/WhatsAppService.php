@@ -558,6 +558,30 @@ class WhatsAppService
         }
     }
 
+    /**
+     * Per-store status of every receiving add-on (subscribed / paid-until / live).
+     * Shared by the vendor lead-settings screen and anything else that renders the add-on cards.
+     */
+    public static function receivingFeatureStatus(int $storeId): array
+    {
+        static::ensureReceivingTable();
+        $rows = DB::table('wa_receiving_features')->where('store_id', $storeId)->get()->keyBy('feature');
+
+        $out = [];
+        foreach (self::RECEIVING_FEATURES as $key => $meta) {
+            $row = $rows->get($key);
+            $active = $row && $row->active_until && $row->active_until >= now()->toDateString();
+            $out[$key] = [
+                'meta'         => $meta,
+                'enabled'      => (bool) ($row->enabled ?? false),
+                'active_until' => $row->active_until ?? null,
+                'paid_active'  => (bool) $active,
+                'live'         => $active && (bool) ($row->enabled ?? false),
+            ];
+        }
+        return $out;
+    }
+
     /** True only when the store has the add-on enabled AND the paid period is still valid. */
     public static function storeHasFeature(int $storeId, string $feature): bool
     {

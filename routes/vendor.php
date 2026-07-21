@@ -45,6 +45,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create');
         Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
         Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete');
+        Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
+        Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
         Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
         Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
 
