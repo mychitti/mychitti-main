@@ -7,17 +7,17 @@
     </a>
     <ul class="js-navbar-vertical-aside-submenu nav nav-sub {{ Request::is('*whatsapp*') ? 'd-block' : '' }}">
         <li class="nav-item {{ Request::is('*whatsapp/connect*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Add-ons') }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Bulk Message') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Connection & Add-ons') }}</span>
-            </a> 
-        </li> 
-        {{-- <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
+                <span class="text-truncate">{{ translate('Connection & Bulk Message') }}</span>
+            </a>
+        </li>
+        <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
                 <span class="text-truncate">{{ translate('Message Templates') }}</span>
             </a>
-        </li> --}}
+        </li>
     </ul>
 </li>
 @endif
