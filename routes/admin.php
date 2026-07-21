@@ -762,13 +762,6 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::put('{id}', 'SeoPageController@update')->name('update');
         });
 
-        // Store SEO meta (auto-filled on registration; this screen backfills the existing ones)
-        Route::group(['prefix' => 'store-meta', 'as' => 'store-meta.'], function () {
-            Route::get('/', 'StoreMetaController@index')->name('index');
-            Route::post('generate-missing', 'StoreMetaController@generateMissing')->name('generate-missing');
-            Route::post('{id}/generate', 'StoreMetaController@generate')->name('generate');
-        });
-
         // Webpage Template Management
         Route::group(['prefix' => 'webpage-templates', 'as' => 'webpage-templates.'], function () {
             Route::get('/', 'SettingsController@webpageTemplates')->name('index');
