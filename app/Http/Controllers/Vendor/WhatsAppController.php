@@ -596,7 +596,7 @@ class WhatsAppController extends Controller
         );
 
         if ($res['success']) {
-            Toastr::success('Template submitted to Meta for review (id: ' . ($res['id'] ?? '—') . ').');
+            Toastr::success('Template submitted to Meta for review. Approval usually takes a few minutes but can take up to 24 hours — you can send with it once its status shows APPROVED.');
         } else {
             Toastr::error('Create failed: ' . $res['error']);
         }
@@ -644,7 +644,7 @@ class WhatsAppController extends Controller
         );
 
         if ($res['success']) {
-            Toastr::success('Template updated and re-submitted to Meta for review.');
+            Toastr::success('Template re-submitted to Meta for review. Approval usually takes a few minutes but can take up to 24 hours — it stays unusable until its status shows APPROVED again.');
         } else {
             Toastr::error('Update failed: ' . $res['error']);
         }

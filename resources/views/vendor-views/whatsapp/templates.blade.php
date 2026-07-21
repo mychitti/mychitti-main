@@ -83,6 +83,9 @@
                                                 <td>{{ $tpl['language'] ?? '' }}</td>
                                                 <td>
                                                     <span class="badge badge-soft-{{ $st == 'APPROVED' ? 'success' : ($st == 'REJECTED' ? 'danger' : 'warning') }}">{{ $st ?: '—' }}</span>
+                                                    @if ($st === 'PENDING')
+                                                        <small class="text-muted d-block" style="font-size:11px;">Under review — up to 24 hours</small>
+                                                    @endif
                                                 </td>
                                                 <td class="text-right text-nowrap">
                                                     <button type="button" class="btn btn-sm btn-outline-secondary wa-tpl-view"
@@ -120,6 +123,12 @@
                     <div class="card">
                         <div class="card-header"><h5 class="card-title mb-0">Create Template</h5></div>
                         <div class="card-body">
+                            <div class="alert alert-info" style="font-size:13px;">
+                                <i class="tio-info-outined"></i>
+                                Meta reviews every new template. Approval usually takes a few minutes but
+                                <b>can take up to 24 hours</b>. You can’t send with a template until its
+                                status here shows <b>APPROVED</b>.
+                            </div>
                             <form action="{{ route('vendor.whatsapp.templates.create') }}" method="post">
                                 @csrf
                                 <div class="form-group">
@@ -218,7 +227,7 @@
                         <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert alert-info" style="font-size:12px;">Editing re-submits the template to Meta for review. Name and language cannot be changed.</div>
+                        <div class="alert alert-info" style="font-size:12px;">Editing re-submits the template to Meta for review, which can take up to 24 hours — the template can’t be used again until it is APPROVED. Name and language cannot be changed.</div>
                         <div class="form-group">
                             <label class="form-label">Category</label>
                             <select class="form-control" name="tpl_category" id="waeCategory">
