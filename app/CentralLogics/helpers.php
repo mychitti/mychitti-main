@@ -4618,6 +4618,46 @@ class Helpers
     }
 
     /**
+     * A zone plus every zone geographically inside it.
+     *
+     * Zones nest: "India" contains "Andhra Pradesh" contains "Tirupati". A store whose own
+     * zone is a broad one must reach customers sitting in the narrower zones within it, so an
+     * exact zone_id match is wrong — India would match only the handful of users literally
+     * tagged "India" and miss every Tirupati customer inside it.
+     *
+     * Cached for a day: zone polygons effectively never change, and the widest case (India,
+     * 777 descendants) is a ~57ms spatial scan over the whole zones table.
+     *
+     * @return array<int> always includes $zoneId itself
+     */
+    public static function zone_with_descendants($zoneId): array
+    {
+        $zoneId = (int) $zoneId;
+        if ($zoneId <= 0) {
+            return [];
+        }
+
+        try {
+            return \Illuminate\Support\Facades\Cache::remember(
+                'zone_descendants_' . $zoneId,
+                now()->addDay(),
+                function () use ($zoneId) {
+                    $rows = DB::select(
+                        'SELECT z.id FROM zones z, zones p
+                         WHERE p.id = ? AND (z.id = p.id OR ST_Within(z.coordinates, p.coordinates))',
+                        [$zoneId]
+                    );
+                    return array_map('intval', array_column($rows, 'id'));
+                }
+            );
+        } catch (\Throwable $e) {
+            // Bad geometry or no cache — fall back to the zone itself rather than nothing.
+            \Illuminate\Support\Facades\Log::warning('zone_with_descendants failed for ' . $zoneId . ': ' . $e->getMessage());
+            return [$zoneId];
+        }
+    }
+
+    /**
      * Persist a customer's zone on the user row.
      *
      * users.zone_id was historically only written when someone placed an order, so most rows
