@@ -27,9 +27,15 @@ Options -Indexes
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Serve public storage assets directly (bypass Laravel) on vendor/admin domains
+    # Serve public storage assets directly (bypass Laravel) on vendor/admin domains.
+    # Vendor custom domains (firozdental.com etc) render the full storefront from this same
+    # docroot, so every public media directory the front-end references must be listed here —
+    # anything missing falls through to the rule below and is answered with the storefront HTML
+    # instead of the image. Private media (documents, invoice, quotations, employee, admin,
+    # patient, order, refund, purchase-order, gatepass, service_report, task, project, temp)
+    # is deliberately absent so it keeps going through Laravel's auth check.
     RewriteCond %{HTTP_HOST} !^(www\.)?mychitti\.net$ [NC]
-    RewriteCond %{REQUEST_URI} ^/storage/(store|profile|business|uploaded|vendor_login)/
+    RewriteCond %{REQUEST_URI} ^/storage/(store|profile|business|business_image|uploaded|vendor_login|product|product-variations|category|banner|banners|promotional_banner|header_banner|header_icon|campaign|module|restaurant|blog|blog_content_images|review|reviewer_image|reviewer_company_image|school|inventory|inventory-item|inventory-variations|nav|util|preview)/
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
