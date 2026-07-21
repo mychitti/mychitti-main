@@ -31,6 +31,15 @@ class WhatsAppService
     const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted2';
 
     /**
+     * Template for the vendor's "send test message" button. Defaults to hello_world — Meta
+     * ships it pre-approved on every WABA and it takes no variables, so the test works without
+     * waiting on template review. Override with whatsapp_config.test_template once a branded
+     * one is approved.
+     */
+    const DEFAULT_TEST_TEMPLATE = 'hello_world';
+    const DEFAULT_TEST_TEMPLATE_LANG = 'en_US';
+
+    /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
      * Add a new receiving capability here — no schema change needed.
      */
@@ -580,6 +589,56 @@ class WhatsAppService
             ];
         }
         return $out;
+    }
+
+    /**
+     * Send a test WhatsApp to the store's own registered number, from the MyChitti platform
+     * number — deliberately not the vendor's own connection, so this answers "can MyChitti
+     * reach me on WhatsApp?" even before (or without) the vendor connecting their number.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public static function sendTestMessage(int $storeId): array
+    {
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store || empty($store->phone)) {
+            return ['success' => false, 'message' => 'Your store has no phone number saved. Add one in your store profile first.'];
+        }
+
+        $wa = static::make(); // platform credentials, never the vendor's
+        if (!$wa->isConfigured()) {
+            return ['success' => false, 'message' => 'MyChitti WhatsApp is not configured yet. Please contact support.'];
+        }
+
+        $cfg = Helpers::get_business_settings('whatsapp_config');
+        $template = !empty($cfg['test_template']) ? $cfg['test_template'] : self::DEFAULT_TEST_TEMPLATE;
+        $lang     = !empty($cfg['test_template_lang']) ? $cfg['test_template_lang'] : self::DEFAULT_TEST_TEMPLATE_LANG;
+
+        $res = $wa->sendTemplate($store->phone, $template, $lang, [], 'test message');
+
+        // Plain text only lands inside a 24h window, so treat it as a bonus attempt rather
+        // than a reliable fallback — report the template error if both fail.
+        if (empty($res['success'])) {
+            $text = static::make()->sendText(
+                $store->phone,
+                "This is a test message from MyChitti. If you received this, WhatsApp notifications to "
+                    . ($store->name ?: 'your store') . " are working.",
+                false,
+                'test message'
+            );
+            if (empty($text['success'])) {
+                return ['success' => false, 'message' => $res['error'] ?: 'Send failed.'];
+            }
+        }
+
+        return ['success' => true, 'message' => 'Test message sent to ' . static::maskForDisplay($store->phone) . '.'];
+    }
+
+    /** Show enough of the number to confirm it is the right one, without printing it in full. */
+    protected static function maskForDisplay(?string $phone): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', (string) $phone) ?? '';
+        return strlen($digits) < 4 ? 'your registered number' : '******' . substr($digits, -4);
     }
 
     /** True only when the store has the add-on enabled AND the paid period is still valid. */

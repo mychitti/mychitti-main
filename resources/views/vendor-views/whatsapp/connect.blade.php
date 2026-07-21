@@ -41,6 +41,32 @@
                                 a phone number not currently active on the WhatsApp app, and access to receive its verification code.
                             </small>
                         @endif
+
+                        {{-- Sends from the MyChitti platform number, not the vendor's own, so it
+                             works before they connect and answers "can MyChitti reach me?". --}}
+                        <hr>
+                        <h6 class="mb-1" style="font-size:14px;">Test WhatsApp delivery</h6>
+                        @php
+                            $storePhone = preg_replace('/[^0-9]/', '', (string) ($store->phone ?? ''));
+                            $storePhoneMasked = strlen($storePhone) >= 4 ? '******' . substr($storePhone, -4) : null;
+                        @endphp
+                        @if ($storePhoneMasked)
+                            <p class="text-muted mb-2" style="font-size:13px;">
+                                We’ll send a test message from MyChitti to your registered number
+                                <b>{{ $storePhoneMasked }}</b>. Use this to confirm you can receive
+                                WhatsApp alerts such as new-lead notifications.
+                            </p>
+                            <form method="post" action="{{ route('vendor.whatsapp.test-message') }}">
+                                @csrf
+                                <button class="btn btn-outline-success btn-sm">
+                                    <i class="tio-send"></i> Send Test Message
+                                </button>
+                            </form>
+                        @else
+                            <div class="alert alert-warning mb-0" style="font-size:13px;">
+                                Add a phone number to your store profile to send yourself a test message.
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

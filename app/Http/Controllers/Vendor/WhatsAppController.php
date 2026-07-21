@@ -32,7 +32,7 @@ class WhatsAppController extends Controller
         $config = Helpers::get_business_settings('whatsapp_config');
         $storeId = Helpers::get_store_id();
         $store = DB::table('stores')->where('id', $storeId)
-            ->select('wa_enabled', 'wa_phone_number_id', 'wa_business_account_id')
+            ->select('wa_enabled', 'wa_phone_number_id', 'wa_business_account_id', 'phone')
             ->first();
 
         $es = [
@@ -65,6 +65,20 @@ class WhatsAppController extends Controller
             'es', 'store', 'connected', 'templates', 'templateError',
             'clientCount', 'platformUserCount', 'nearbyUserCount', 'optOutCount'
         ));
+    }
+
+    /** Send the vendor a test WhatsApp from the MyChitti platform number. */
+    public function sendTestMessage()
+    {
+        $outcome = WhatsAppService::sendTestMessage(Helpers::get_store_id());
+
+        if (!empty($outcome['success'])) {
+            Toastr::success($outcome['message'] . ' It can take a few seconds to arrive.');
+        } else {
+            Toastr::error($outcome['message']);
+        }
+
+        return back();
     }
 
     /** Clients of this store that are actually reachable on WhatsApp. */
