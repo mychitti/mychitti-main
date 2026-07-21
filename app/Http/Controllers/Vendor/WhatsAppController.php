@@ -101,22 +101,26 @@ class WhatsAppController extends Controller
     /**
      * MyChitti users in this store's OWN zone who are reachable on WhatsApp.
      *
-     * Straight indexed lookup on users.zone_id (users_zone_id_index). That column is now
-     * populated at registration, on address add/update and on service-request creation, and
-     * was backfilled for existing accounts — so it is both the cheapest and the most current
-     * answer to "who is in my zone". A store with no zone gets nobody rather than everybody.
+     * Matches users.zone_id, which is populated at registration, on address add/update and on
+     * service-request creation, and was backfilled for existing accounts.
+     *
+     * Matched against the store's zone AND every zone inside it, because zones nest: a store
+     * registered in "India" or "Andhra Pradesh" must reach the Tirupati customers within it,
+     * not just the few tagged with that exact broad zone. A store with no zone gets nobody
+     * rather than everybody.
      */
     private function platformUserQuery(int $storeId)
     {
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
+        $zoneIds = Helpers::zone_with_descendants($zoneId);
 
-        if (!$zoneId) {
+        if (empty($zoneIds)) {
             return DB::table('users')->whereRaw('1 = 0');
         }
 
         return $this->excludeOptedOut(
             DB::table('users')
-                ->where('zone_id', $zoneId)
+                ->whereIn('zone_id', $zoneIds)
                 ->whereNotNull('phone')
                 ->where('phone', '!=', ''),
             $storeId
