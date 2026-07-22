@@ -65,7 +65,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <small class="text-muted d-block mt-1">Include the country code (91 for India). No template approval needed.</small>
+                            <small class="text-muted d-block mt-1">Include the country code (91 for India).</small>
                         </form>
                     </div>
                 </div>

@@ -31,12 +31,11 @@ class WhatsAppService
     const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted2';
 
     /**
-     * Template for the vendor's "send test message" button. Defaults to hello_world — Meta
-     * ships it pre-approved on every WABA and it takes no variables, so the test works without
-     * waiting on template review. Override with whatsapp_config.test_template once a branded
-     * one is approved.
+     * Template for the vendor's "send test message" button. vendor_test_template is the branded
+     * one approved on the platform WABA; its body takes one variable — the recipient's name.
+     * Override with whatsapp_config.test_template / test_template_lang.
      */
-    const DEFAULT_TEST_TEMPLATE = 'hello_world';
+    const DEFAULT_TEST_TEMPLATE = 'vendor_test_template';
     const DEFAULT_TEST_TEMPLATE_LANG = 'en_US';
 
     /**
@@ -622,7 +621,18 @@ class WhatsAppService
         $template = !empty($cfg['test_template']) ? $cfg['test_template'] : self::DEFAULT_TEST_TEMPLATE;
         $lang     = !empty($cfg['test_template_lang']) ? $cfg['test_template_lang'] : self::DEFAULT_TEST_TEMPLATE_LANG;
 
-        $res = $wa->sendTemplate($target, $template, $lang, [], 'test message');
+        // vendor_test_template's body is "Hi {{1}}, ..." — {{1}} is the recipient name.
+        // Sending a body param to a variable-less template (e.g. hello_world override) errors,
+        // so only attach it for the default branded template.
+        $components = [];
+        if ($template === self::DEFAULT_TEST_TEMPLATE) {
+            $components = [[
+                'type'       => 'body',
+                'parameters' => [['type' => 'text', 'text' => $store->name ?? 'there']],
+            ]];
+        }
+
+        $res = $wa->sendTemplate($target, $template, $lang, $components, 'test message');
 
         // Plain text only lands inside a 24h window, so treat it as a bonus attempt rather
         // than a reliable fallback — report the template error if both fail.
