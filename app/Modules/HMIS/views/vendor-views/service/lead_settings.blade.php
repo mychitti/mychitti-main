@@ -63,9 +63,20 @@
                             value="{{ $storeConfig->lead_visiting_charge ?? '' }}">
                     </div>
 
-                    @if ($store_data->module_id == 6)
-                        <div class="mt-4" style="max-width:650px;">
-                            <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @include('vendor-views.service._whatsapp_lead_addon')
+
+        @if ($store_data->module_id == 6)
+            <div class="card mt-3">
+                <div class="card-body" style="max-width:680px;">
+                    <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>
                             <div class="d-flex flex-column" style="gap:10px;">
 
                                 <div class="p-3 rounded border-left border-warning bg-white" style="border-left:4px solid #ffc107!important;">
@@ -84,15 +95,9 @@
                                 </div>
 
                             </div>
-                        </div>
-                    @endif
-
-                    <div class="d-flex justify-content-end mt-3">
-                        <button type="submit" class="btn btn--primary">Save Settings</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+        @endif
     </div>
 
     {{-- â”€â”€ How It Works modal â”€â”€ --}}
