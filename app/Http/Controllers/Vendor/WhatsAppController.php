@@ -102,18 +102,17 @@ class WhatsAppController extends Controller
             ->select('status', DB::raw('count(*) c'))->groupBy('status')
             ->pluck('c', 'status');
 
+        // A read message is also delivered; read isn't surfaced on its own because WhatsApp
+        // only reports it when the recipient has read receipts on and the webhook receives it.
         $delivered = ($statusCounts['delivered'] ?? 0) + ($statusCounts['read'] ?? 0);
-        $read      = $statusCounts['read'] ?? 0;
         $failed    = $statusCounts['failed'] ?? 0;
         $total     = (int) $statusCounts->sum();
 
         $stats = [
             'total'         => $total,
             'delivered'     => $delivered,
-            'read'          => $read,
             'failed'        => $failed,
             'delivery_rate' => $total > 0 ? round((($total - $failed) / $total) * 100) : 0,
-            'read_rate'     => $delivered > 0 ? round(($read / $delivered) * 100) : 0,
         ];
 
         // Daily volume, last 14 days — one grouped query, zero-filled in PHP so gaps show as 0.
@@ -161,8 +160,9 @@ class WhatsAppController extends Controller
             'counts'        => $counts,
             'status'        => [
                 'sent'      => (int) (($statusCounts['sent'] ?? 0) + ($statusCounts['accepted'] ?? 0)),
-                'delivered' => (int) (($statusCounts['delivered'] ?? 0)),
-                'read'      => (int) $read,
+                // "read" folds into delivered — WhatsApp only reports read when the recipient
+                // has read receipts on and the webhook receives it, so it is not shown on its own.
+                'delivered' => $delivered,
                 'failed'    => (int) $failed,
             ],
         ];

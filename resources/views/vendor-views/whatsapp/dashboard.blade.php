@@ -36,7 +36,7 @@
 
         {{-- ── Stat cards ── --}}
         <div class="row" style="row-gap:16px;">
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg-4">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ number_format($stats['total']) }}</div>
@@ -45,7 +45,7 @@
                     <div class="wd-stat-ico badge-soft-primary"><i class="tio-chat"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg-4">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ $stats['delivery_rate'] }}%</div>
@@ -54,16 +54,7 @@
                     <div class="wd-stat-ico badge-soft-success"><i class="tio-checkmark-circle-outlined"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="wd-stat d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="wd-stat-val">{{ $stats['read_rate'] }}%</div>
-                        <div class="wd-stat-lbl">Read rate</div>
-                    </div>
-                    <div class="wd-stat-ico badge-soft-info"><i class="tio-visible-outlined"></i></div>
-                </div>
-            </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg-4">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ number_format($stats['failed']) }}</div>
@@ -100,7 +91,7 @@
                             <div style="height:220px;"><canvas id="wdStatus"></canvas></div>
                             <div class="d-flex justify-content-around mt-3" style="font-size:12px;">
                                 <span><b>{{ number_format($stats['delivered']) }}</b> delivered</span>
-                                <span><b>{{ number_format($stats['read']) }}</b> read</span>
+                                <span><b>{{ number_format($stats['failed']) }}</b> failed</span>
                             </div>
                         @endif
                     </div>
@@ -212,10 +203,10 @@
                 new Chart(stEl.getContext('2d'), {
                     type: 'doughnut',
                     data: {
-                        labels: ['Sent', 'Delivered', 'Read', 'Failed'],
+                        labels: ['Sent', 'Delivered', 'Failed'],
                         datasets: [{
-                            data: [s.sent, s.delivered, s.read, s.failed],
-                            backgroundColor: ['#94a3b8', '#38bdf8', '#22c55e', '#ef4444'],
+                            data: [s.sent, s.delivered, s.failed],
+                            backgroundColor: ['#94a3b8', '#22c55e', '#ef4444'],
                             borderWidth: 0
                         }]
                     },
