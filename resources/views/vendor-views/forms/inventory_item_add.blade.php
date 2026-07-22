@@ -522,12 +522,6 @@
             <!-- Variations Tab -->
             <div class="tab-pane fade" id="variations" role="tabpanel">
                 <div class="row g-0">
-                    <div class="col-12 my-2" id="add_variations_wrap">
-                        <label class="custom-label cursor-pointer mb-0">
-                            <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
-                            Add Variations
-                        </label>
-                    </div>
                     <div class="col-12" id="variations_wrap" style="display:none;">
                         <div class="alert alert-info py-2 px-3 mb-2" style="font-size:12px;">
                             Set the main product price &amp; base unit (e.g. 1 kg = ₹1000) under <b>Sales Info</b>,
@@ -566,6 +560,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end mt-3 gap-2">
+                        <a class="btn btn-outline-primary next_btn" data-next="sales">Back</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
                     </div>
                 </div>
             </div>
@@ -641,11 +639,24 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-12 p-1" id="add_variations_wrap">
+                    <label for="add_variations_cb" class="custom-label cursor-pointer mb-0 d-inline-block">
+                        <div class="badge badge-soft-primary align-items-center" style="height: 39px;display: flex;">
+                            <div class="form-check d-flex mr-1">
+                                <input id="add_variations_cb" type="checkbox" class="form-check-input">
+                                <span style="white-space: nowrap;" class="mt-1 form-check-label">Add Variations</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
                 <div class="col-12 d-flex justify-content-end mt-3 gap-2">
                     <a class="btn btn-outline-primary next_btn" data-next="attributes">
                         Back
                     </a>
-                    <button type="submit" class="btn btn-primary">
+                    <a class="btn btn-primary next_btn" id="sales_next_btn" data-next="variations" style="display:none;">
+                        Next
+                    </a>
+                    <button type="submit" class="btn btn-primary" id="sales_save_btn">
                         Save
                     </button>
                 </div>
@@ -702,8 +713,8 @@
             showEl(box, on); setDisabled(box, !on);
             showEl(extraImages, on); setDisabled(extraImages, !on);
             showEl(addVarWrap, prod);
-            // Variations tab only applies to products.
-            showEl(variationsLi, prod);
+            // Variations tab appears only when "Add Variations" is ticked.
+            showEl(variationsLi, varsVisible);
 
             showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
             // Per-variation Highlights/Specs/Images — website only.
@@ -712,17 +723,23 @@
                 tr.querySelectorAll('input, select, textarea').forEach(function (c) { c.disabled = !on; });
             });
 
-            // Sales Info tab hidden when variations exist.
-            showEl(salesLi, !hasVars);
-            setDisabled(salesPane, hasVars);
-            if (hasVars && salesTab && salesTab.classList.contains('active')) {
-                var b = document.getElementById('basic-tab'); if (b) b.click();
-            } 
-            // Save button placement when Sales tab is gone.
-            var activeTab = document.querySelector('#itemTabs .nav-link.active');
-            var isAttrActive = activeTab && activeTab.id === 'attributes-tab';
-            showEl(document.getElementById('attr_next_btn'), !hasVars);
-            showEl(document.getElementById('attr_save_btn'), hasVars && isAttrActive);
+            // Sales Info stays visible & editable. Its footer shows Next → Variations when
+            // variations are enabled, otherwise the Save button lives here. The Save on the
+            // Variations tab is used once variations are on.
+            showEl(salesLi, prod);
+            setDisabled(salesPane, false);
+            showEl(document.getElementById('sales_next_btn'), varsVisible);
+            showEl(document.getElementById('sales_save_btn'), !varsVisible);
+            showEl(document.getElementById('attr_next_btn'), true);
+            showEl(document.getElementById('attr_save_btn'), false);
+
+            // If variations were just turned off while on the Variations tab, fall back to Sales.
+            if (!varsVisible) {
+                var vt = document.getElementById('variations-tab');
+                if (vt && vt.classList.contains('active')) {
+                    var s = document.getElementById('sales-tab'); if (s) s.click();
+                }
+            }
         }
 
         $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function () {
