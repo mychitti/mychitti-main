@@ -74,28 +74,6 @@
             </div>
         </div>
 
-        {{-- ── Add-on status banner ── --}}
-        @if ($feature)
-            <div class="wd-card mt-3">
-                <div class="wd-card-b d-flex justify-content-between align-items-center flex-wrap" style="gap:12px;">
-                    <div>
-                        <b style="font-size:14px;">Lead Notifications on WhatsApp</b>
-                        @if ($feature['live'])
-                            <span class="wd-chip badge-soft-success ml-1">Active</span>
-                            <div class="text-muted" style="font-size:12px;">You get a WhatsApp whenever MyChitti sends you a new lead. Paid until {{ $feature['active_until'] }}.</div>
-                        @elseif ($feature['paid_active'])
-                            <span class="wd-chip badge-soft-warning ml-1">Paused</span>
-                            <div class="text-muted" style="font-size:12px;">Paid until {{ $feature['active_until'] }}, currently paused.</div>
-                        @else
-                            <span class="wd-chip badge-soft-secondary ml-1">Inactive</span>
-                            <div class="text-muted" style="font-size:12px;">Subscribe to get new leads on WhatsApp, not just in the panel.</div>
-                        @endif
-                    </div>
-                    <a href="{{ route('vendor.service.lead-settings') }}" class="btn btn-sm btn-outline-primary">Manage</a>
-                </div>
-            </div>
-        @endif
-
         <div class="row mt-3" style="row-gap:16px;">
             {{-- ── Volume line chart ── --}}
             <div class="col-lg-8">

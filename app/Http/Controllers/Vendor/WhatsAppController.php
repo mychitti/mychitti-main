@@ -156,9 +156,6 @@ class WhatsAppController extends Controller
             ->orderByDesc('sent_at')->limit(15)
             ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
 
-        // Lead Notifications add-on status, mirrored from the lead-settings screen.
-        $feature = WhatsAppService::receivingFeatureStatus($storeId)['leads'] ?? null;
-
         $chart = [
             'days'          => $days,
             'counts'        => $counts,
@@ -171,7 +168,7 @@ class WhatsAppController extends Controller
         ];
 
         return view('vendor-views.whatsapp.dashboard', compact(
-            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent', 'feature'
+            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent'
         ));
     }
 
