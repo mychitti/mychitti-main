@@ -4,13 +4,18 @@
 
 @push('css_or_js')
     <style>
-        .wd-stat { border:1px solid #eef0f4; border-radius:14px; padding:18px 20px; background:#fff; height:100%; }
+        /* Every card/stat shares one box so rows line up. margin-bottom on the column gives a
+           uniform vertical gap; overflow:hidden keeps charts and tables inside the rounded card. */
+        .wd-col { margin-bottom:16px; }
+        .wd-stat, .wd-card { border:1px solid #eef0f4; border-radius:14px; background:#fff; height:100%; overflow:hidden; }
+        .wd-stat { padding:18px 20px; display:flex; justify-content:space-between; align-items:flex-start; }
         .wd-stat-val { font-size:26px; font-weight:800; line-height:1.1; color:#1e293b; }
         .wd-stat-lbl { font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:#8a94a6; margin-top:4px; }
-        .wd-stat-ico { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:19px; }
-        .wd-card { border:1px solid #eef0f4; border-radius:14px; background:#fff; }
+        .wd-stat-ico { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
         .wd-card-h { padding:16px 20px; border-bottom:1px solid #f1f3f7; font-weight:700; font-size:14px; color:#1e293b; }
         .wd-card-b { padding:20px; }
+        .wd-chart { position:relative; width:100%; }
+        .wd-chart canvas { max-width:100%; }
         .wd-chip { font-size:11px; padding:3px 10px; border-radius:20px; font-weight:600; }
         .wd-empty { color:#8a94a6; font-size:13px; text-align:center; padding:26px 10px; }
         .wd-ctx-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:8px 0; border-bottom:1px dashed #eef0f4; }
@@ -35,8 +40,8 @@
         </div>
 
         {{-- ── Stat cards ── --}}
-        <div class="row" style="row-gap:16px;">
-            <div class="col-sm-6 col-lg-4">
+        <div class="row">
+            <div class="col-sm-6 col-lg-4 wd-col">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ number_format($stats['total']) }}</div>
@@ -45,7 +50,7 @@
                     <div class="wd-stat-ico badge-soft-primary"><i class="tio-chat"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-4">
+            <div class="col-sm-6 col-lg-4 wd-col">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ $stats['delivery_rate'] }}%</div>
@@ -54,7 +59,7 @@
                     <div class="wd-stat-ico badge-soft-success"><i class="tio-checkmark-circle-outlined"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-4">
+            <div class="col-sm-6 col-lg-4 wd-col">
                 <div class="wd-stat d-flex justify-content-between align-items-start">
                     <div>
                         <div class="wd-stat-val">{{ number_format($stats['failed']) }}</div>
@@ -65,30 +70,30 @@
             </div>
         </div>
 
-        <div class="row mt-3" style="row-gap:16px;">
+        <div class="row">
             {{-- ── Volume line chart ── --}}
-            <div class="col-lg-8">
+            <div class="col-lg-8 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h">Messages — last 14 days</div>
                     <div class="wd-card-b">
                         @if (array_sum($chart['counts']) === 0)
                             <div class="wd-empty">No messages in the last 14 days yet.</div>
                         @else
-                            <div style="height:280px;"><canvas id="wdVolume"></canvas></div>
+                            <div class="wd-chart" style="height:280px;"><canvas id="wdVolume"></canvas></div>
                         @endif
                     </div>
                 </div>
             </div>
 
             {{-- ── Status doughnut ── --}}
-            <div class="col-lg-4">
+            <div class="col-lg-4 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h">Delivery status</div>
                     <div class="wd-card-b">
                         @if ($stats['total'] === 0)
                             <div class="wd-empty">Nothing sent yet.</div>
                         @else
-                            <div style="height:220px;"><canvas id="wdStatus"></canvas></div>
+                            <div class="wd-chart" style="height:220px;"><canvas id="wdStatus"></canvas></div>
                             <div class="d-flex justify-content-around mt-3" style="font-size:12px;">
                                 <span><b>{{ number_format($stats['delivered']) }}</b> delivered</span>
                                 <span><b>{{ number_format($stats['failed']) }}</b> failed</span>
@@ -99,9 +104,9 @@
             </div>
         </div>
 
-        <div class="row mt-1" style="row-gap:16px;">
+        <div class="row">
             {{-- ── Breakdown by type ── --}}
-            <div class="col-lg-4">
+            <div class="col-lg-4 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h">What was sent</div>
                     <div class="wd-card-b">
@@ -118,7 +123,7 @@
             </div>
 
             {{-- ── Recent messages ── --}}
-            <div class="col-lg-8">
+            <div class="col-lg-8 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h">Recent messages</div>
                     <div class="wd-card-b" style="padding:0;">
@@ -165,8 +170,8 @@
         </div>
 
         {{-- ── Your customers (bulk-send audience) + Excel import ── --}}
-        <div class="row mt-1" style="row-gap:16px;">
-            <div class="col-lg-5">
+        <div class="row">
+            <div class="col-lg-5 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h d-flex justify-content-between align-items-center">
                         <span>Your customers</span>
@@ -180,15 +185,13 @@
 
                         <form method="post" action="{{ route('vendor.whatsapp.customers.import') }}" enctype="multipart/form-data">
                             @csrf
-                            <div class="input-group input-group-sm mb-2">
-                                <div class="custom-file">
-                                    <input type="file" name="file" id="wdCustFile" class="custom-file-input"
-                                           accept=".xlsx,.xls,.csv" required>
-                                    <label class="custom-file-label" for="wdCustFile">Choose Excel / CSV…</label>
-                                </div>
-                                <div class="input-group-append">
-                                    <button class="btn btn--primary" type="submit"><i class="tio-upload"></i> Import</button>
-                                </div>
+                            <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
+                                <input type="file" name="file" id="wdCustFile"
+                                       class="form-control form-control-sm" style="flex:1 1 200px;min-width:0;"
+                                       accept=".xlsx,.xls,.csv" required>
+                                <button class="btn btn--primary btn-sm text-nowrap" type="submit">
+                                    <i class="tio-upload"></i> Import
+                                </button>
                             </div>
                             <small class="text-muted d-block">
                                 Columns: <b>Name, Phone, Email, GST, Address</b> — only Name and Phone are required.
@@ -206,7 +209,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-7">
+            <div class="col-lg-7 wd-col">
                 <div class="wd-card h-100">
                     <div class="wd-card-h">Recently added customers</div>
                     <div class="wd-card-b" style="padding:0;">
@@ -289,16 +292,6 @@
                         cutout: '62%',
                         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
                     }
-                });
-            }
-
-            // Show the chosen filename on the Bootstrap custom-file label.
-            var cust = document.getElementById('wdCustFile');
-            if (cust) {
-                cust.addEventListener('change', function () {
-                    var name = this.files && this.files.length ? this.files[0].name : 'Choose Excel / CSV…';
-                    var lbl = this.nextElementSibling;
-                    if (lbl) lbl.textContent = name;
                 });
             }
         })();
