@@ -3,18 +3,18 @@
      service, hospital, laundry and POS stores. Fed by ServiceController@lead_settings:
      $waFeatures (WhatsAppService::receivingFeatureStatus) and $walletBalance.
      Its own <form>s, so it must live OUTSIDE the settings form — nesting forms is invalid. --}}
-<div class="card mt-3">
+<div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0"><i class="tio-chat"></i> WhatsApp Lead Notifications</h5>
         <span class="badge badge-soft-info">Wallet: {{ _price($walletBalance ?? 0) }}</span>
     </div>
     <div class="card-body">
-        <p class="text-muted" style="font-size:13px;max-width:650px;">
+        <p class="text-muted" style="font-size:13px;">
             Get notified on WhatsApp when MyChitti sends you new business. Each add-on is billed
             monthly from your wallet and delivered to your registered phone number.
         </p>
         @foreach (($waFeatures ?? []) as $key => $f)
-            <div class="border rounded p-3 mb-2" style="max-width:650px;">
+            <div class="border rounded p-3 mb-2" style="">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <b>{{ $f['meta']['label'] }}</b>

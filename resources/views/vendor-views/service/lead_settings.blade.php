@@ -11,6 +11,8 @@
             </button>
         </div>
 
+        <div class="row">
+        <div class="col-lg-7">
         <div class="card">
             <div class="card-body">
                 <form action="{{ route('vendor.service.lead-settings.update') }}" method="POST">
@@ -88,8 +90,6 @@
             </div>
         </div>
 
-        @include('vendor-views.service._whatsapp_lead_addon')
-
         @if ($store_data->module_id == 6)
             <div class="card mt-3">
                 <div class="card-body" style="max-width:680px;">
@@ -115,6 +115,12 @@
                 </div>
             </div>
         @endif
+        </div>{{-- /col-lg-7 --}}
+
+        <div class="col-lg-5">
+            @include('vendor-views.service._whatsapp_lead_addon')
+        </div>
+        </div>{{-- /row --}}
     </div>
 
     {{-- ── How It Works modal ── --}}
