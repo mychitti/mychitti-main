@@ -67,6 +67,114 @@ class WhatsAppController extends Controller
         ));
     }
 
+    /**
+     * WhatsApp activity dashboard for the vendor.
+     *
+     * "Involving this store" is two things: campaigns the vendor sent from their own connected
+     * number (whatsapp_messages.store_id = this store) and alerts MyChitti sent TO the store
+     * (platform-sent, so store_id is NULL but recipient matches the store phone). Both are
+     * surfaced because a vendor with no bulk activity yet still receives lead notifications,
+     * and an all-zero dashboard would read as broken.
+     */
+    public function dashboard(Request $request)
+    {
+        WhatsAppService::ensureMessagesTable();
+        $storeId = Helpers::get_store_id();
+        $store = DB::table('stores')->where('id', $storeId)
+            ->select('id', 'name', 'phone', 'wa_enabled', 'wa_phone_number_id')
+            ->first();
+
+        $connected = (bool) ($store && $store->wa_enabled && $store->wa_phone_number_id);
+        $phone10 = substr(preg_replace('/[^0-9]/', '', (string) ($store->phone ?? '')) ?? '', -10);
+
+        // One filter reused across every aggregate below.
+        $scope = function ($q) use ($storeId, $phone10) {
+            $q->where('whatsapp_messages.store_id', $storeId);
+            if (strlen($phone10) === 10) {
+                $q->orWhereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phone10]);
+            }
+        };
+
+        // Delivery funnel. Meta's webhook advances status accepted → sent → delivered → read
+        // (or failed), keyed on wamid, so these update regardless of store_id attribution.
+        $statusCounts = DB::table('whatsapp_messages')->where($scope)
+            ->where('direction', 'out')
+            ->select('status', DB::raw('count(*) c'))->groupBy('status')
+            ->pluck('c', 'status');
+
+        $delivered = ($statusCounts['delivered'] ?? 0) + ($statusCounts['read'] ?? 0);
+        $read      = $statusCounts['read'] ?? 0;
+        $failed    = $statusCounts['failed'] ?? 0;
+        $total     = (int) $statusCounts->sum();
+
+        $stats = [
+            'total'         => $total,
+            'delivered'     => $delivered,
+            'read'          => $read,
+            'failed'        => $failed,
+            'delivery_rate' => $total > 0 ? round((($total - $failed) / $total) * 100) : 0,
+            'read_rate'     => $delivered > 0 ? round(($read / $delivered) * 100) : 0,
+        ];
+
+        // Daily volume, last 14 days — one grouped query, zero-filled in PHP so gaps show as 0.
+        $since = now()->subDays(13)->startOfDay();
+        $daily = DB::table('whatsapp_messages')->where($scope)
+            ->where('direction', 'out')
+            ->where('sent_at', '>=', $since)
+            ->select(DB::raw('DATE(sent_at) d'), DB::raw('count(*) c'))
+            ->groupBy('d')->pluck('c', 'd');
+
+        $days = [];
+        $counts = [];
+        for ($i = 13; $i >= 0; $i--) {
+            $day = now()->subDays($i)->toDateString();
+            $days[] = now()->subDays($i)->format('d M');
+            $counts[] = (int) ($daily[$day] ?? 0);
+        }
+
+        // What the traffic is: lead alerts vs campaigns vs tests.
+        $contextLabels = [
+            'lead notify'    => 'Lead alerts',
+            'lead accepted'  => 'Lead accepted alerts',
+            'bulk'           => 'Bulk campaigns',
+            'nearby'         => 'Nearby-offer campaigns',
+            'test message'   => 'Test messages',
+        ];
+        $byContext = DB::table('whatsapp_messages')->where($scope)
+            ->where('direction', 'out')
+            ->select('context', DB::raw('count(*) c'))->groupBy('context')
+            ->pluck('c', 'context');
+
+        $contextRows = [];
+        foreach ($byContext as $ctx => $c) {
+            $contextRows[$contextLabels[$ctx] ?? ucfirst($ctx ?: 'Other')] = ($contextRows[$contextLabels[$ctx] ?? ucfirst($ctx ?: 'Other')] ?? 0) + $c;
+        }
+        arsort($contextRows);
+
+        $recent = DB::table('whatsapp_messages')->where($scope)
+            ->where('direction', 'out')
+            ->orderByDesc('sent_at')->limit(15)
+            ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
+
+        // Lead Notifications add-on status, mirrored from the lead-settings screen.
+        $feature = WhatsAppService::receivingFeatureStatus($storeId)['leads'] ?? null;
+
+        $chart = [
+            'days'          => $days,
+            'counts'        => $counts,
+            'status'        => [
+                'sent'      => (int) (($statusCounts['sent'] ?? 0) + ($statusCounts['accepted'] ?? 0)),
+                'delivered' => (int) (($statusCounts['delivered'] ?? 0)),
+                'read'      => (int) $read,
+                'failed'    => (int) $failed,
+            ],
+        ];
+
+        return view('vendor-views.whatsapp.dashboard', compact(
+            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent', 'feature'
+        ));
+    }
+
     /** Send a test WhatsApp from the MyChitti platform number to a chosen or the registered number. */
     public function sendTestMessage(Request $request)
     {

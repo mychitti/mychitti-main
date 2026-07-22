@@ -6,6 +6,12 @@
         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('WhatsApp') }}</span>
     </a>
     <ul class="js-navbar-vertical-aside-submenu nav nav-sub {{ Request::is('*whatsapp*') ? 'd-block' : '' }}">
+        <li class="nav-item {{ Request::is('*whatsapp/dashboard*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.dashboard') }}" title="{{ translate('Dashboard') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Dashboard') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/connect*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Bulk Message') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
