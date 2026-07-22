@@ -343,7 +343,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
+                    <div class="col-12 my-2" id="add_variations_wrap">
                         <label class="custom-label cursor-pointer mb-0">
                             <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
                             Add Variations
@@ -678,12 +678,12 @@
         function sync() {
             var on = websiteOn();
             var prod = isProduct();
-            var varsVisible = prod && (on || (addVarCb && addVarCb.checked));
+            var varsVisible = prod && (addVarCb && addVarCb.checked);
             var hasVars = varsVisible && variationsAdded();
 
             showEl(box, on); setDisabled(box, !on);
             showEl(extraImages, on); setDisabled(extraImages, !on);
-            showEl(addVarWrap, prod && !on);
+            showEl(addVarWrap, prod);
 
             showEl(varsWrap, varsVisible); setDisabled(varsWrap, !varsVisible);
             // Per-variation Highlights/Specs/Images — website only.
