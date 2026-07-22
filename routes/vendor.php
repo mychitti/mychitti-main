@@ -39,6 +39,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
         // WhatsApp Embedded Signup (vendor connects their own number — DoubleTick-style).
         Route::get('whatsapp/dashboard', 'WhatsAppController@dashboard')->name('whatsapp.dashboard');
+        Route::post('whatsapp/customers/import', 'WhatsAppController@importCustomers')->name('whatsapp.customers.import');
+        Route::get('whatsapp/customers/template', 'WhatsAppController@customerTemplate')->name('whatsapp.customers.template');
         Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
         Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
         Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');

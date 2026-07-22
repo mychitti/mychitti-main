@@ -163,6 +163,79 @@
                 </div>
             </div>
         </div>
+
+        {{-- ── Your customers (bulk-send audience) + Excel import ── --}}
+        <div class="row mt-1" style="row-gap:16px;">
+            <div class="col-lg-5">
+                <div class="wd-card h-100">
+                    <div class="wd-card-h d-flex justify-content-between align-items-center">
+                        <span>Your customers</span>
+                        <span class="wd-chip badge-soft-primary">{{ number_format($customerStats['with_phone']) }} with a phone</span>
+                    </div>
+                    <div class="wd-card-b">
+                        <p class="text-muted" style="font-size:13px;">
+                            These are your own customers — the audience for a bulk WhatsApp send.
+                            Import a spreadsheet to add more in one go.
+                        </p>
+
+                        <form method="post" action="{{ route('vendor.whatsapp.customers.import') }}" enctype="multipart/form-data">
+                            @csrf
+                            <div class="input-group input-group-sm mb-2">
+                                <div class="custom-file">
+                                    <input type="file" name="file" id="wdCustFile" class="custom-file-input"
+                                           accept=".xlsx,.xls,.csv" required>
+                                    <label class="custom-file-label" for="wdCustFile">Choose Excel / CSV…</label>
+                                </div>
+                                <div class="input-group-append">
+                                    <button class="btn btn--primary" type="submit"><i class="tio-upload"></i> Import</button>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block">
+                                Columns: <b>Name, Phone, Email, GST, Address</b> — only Name and Phone are required.
+                                <a href="{{ route('vendor.whatsapp.customers.template') }}">Download template</a>.
+                                Duplicates (same phone) are skipped automatically.
+                            </small>
+                        </form>
+
+                        <div class="mt-3">
+                            <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="tio-send"></i> Send a bulk message
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="wd-card h-100">
+                    <div class="wd-card-h">Recently added customers</div>
+                    <div class="wd-card-b" style="padding:0;">
+                        @if ($recentCustomers->isEmpty())
+                            <div class="wd-empty">No customers yet. Import a sheet to get started.</div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0" style="font-size:13px;">
+                                    <thead>
+                                        <tr class="text-muted">
+                                            <th class="pl-3">Name</th>
+                                            <th>Phone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($recentCustomers as $c)
+                                            <tr>
+                                                <td class="pl-3">{{ $c->f_name ?: '—' }}</td>
+                                                <td class="text-muted">{{ $c->phone ?: '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 
@@ -216,6 +289,16 @@
                         cutout: '62%',
                         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
                     }
+                });
+            }
+
+            // Show the chosen filename on the Bootstrap custom-file label.
+            var cust = document.getElementById('wdCustFile');
+            if (cust) {
+                cust.addEventListener('change', function () {
+                    var name = this.files && this.files.length ? this.files[0].name : 'Choose Excel / CSV…';
+                    var lbl = this.nextElementSibling;
+                    if (lbl) lbl.textContent = name;
                 });
             }
         })();

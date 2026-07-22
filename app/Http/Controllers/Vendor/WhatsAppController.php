@@ -155,6 +155,16 @@ class WhatsAppController extends Controller
             ->orderByDesc('sent_at')->limit(15)
             ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
 
+        // The vendor's own customer book — the audience for bulk sends, and what the Excel
+        // import below fills.
+        $customerStats = [
+            'total'       => DB::table('store_customers')->where('store_id', $storeId)->count(),
+            'with_phone'  => DB::table('store_customers')->where('store_id', $storeId)
+                ->whereNotNull('phone')->where('phone', '!=', '')->count(),
+        ];
+        $recentCustomers = DB::table('store_customers')->where('store_id', $storeId)
+            ->orderByDesc('id')->limit(8)->get(['f_name', 'phone']);
+
         $chart = [
             'days'          => $days,
             'counts'        => $counts,
@@ -168,8 +178,59 @@ class WhatsAppController extends Controller
         ];
 
         return view('vendor-views.whatsapp.dashboard', compact(
-            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent'
+            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent',
+            'customerStats', 'recentCustomers'
         ));
+    }
+
+    /** Import the vendor's customers into store_customers from an uploaded Excel/CSV sheet. */
+    public function importCustomers(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+        ], [
+            'file.mimes' => 'Upload an Excel (.xlsx, .xls) or CSV file.',
+            'file.max'   => 'The file must be 5 MB or smaller.',
+        ]);
+
+        $import = new \App\Imports\StoreCustomerImport(Helpers::get_store_id());
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            Log::error('Store customer import failed: ' . $e->getMessage());
+            Toastr::error('Could not read that file. Make sure it has columns: Name, Phone, Email, GST, Address.');
+            return back();
+        }
+
+        $msg = "Imported {$import->imported} customer(s).";
+        if ($import->duplicate) {
+            $msg .= " {$import->duplicate} already existed.";
+        }
+        if ($import->skipped) {
+            $msg .= " {$import->skipped} row(s) skipped (missing name or phone).";
+        }
+
+        $import->imported > 0 ? Toastr::success($msg) : Toastr::warning($msg);
+        return back();
+    }
+
+    /** A ready-to-fill sample sheet so the vendor uses the right columns. */
+    public function customerTemplate()
+    {
+        $headers = ['Name', 'Phone', 'Email', 'GST', 'Address'];
+        $sample  = ['Ramesh Kumar', '9876543210', 'ramesh@example.com', '', 'MG Road, Tirupati'];
+
+        $csv = fopen('php://temp', 'r+');
+        fputcsv($csv, $headers);
+        fputcsv($csv, $sample);
+        rewind($csv);
+        $content = stream_get_contents($csv);
+        fclose($csv);
+
+        return response($content, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="customers-template.csv"',
+        ]);
     }
 
     /** Send a test WhatsApp from the MyChitti platform number to a chosen or the registered number. */
