@@ -81,30 +81,6 @@
                             value="{{ $storeConfig->lead_visiting_charge ?? '' }}">
                     </div>
 
-                    @if ($store_data->module_id == 6)
-                        <div class="mt-4" style="max-width:650px;">
-                            <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>
-                            <div class="d-flex flex-column" style="gap:10px;">
-
-                                <div class="p-3 rounded border-left border-warning bg-white" style="border-left:4px solid #ffc107!important;">
-                                    <div class="font-weight-bold mb-1" style="font-size:13px;">🔓 No Subscription</div>
-                                    <div style="font-size:12px;color:#555;">Every accepted lead (shared or dedicated) is charged from your wallet based on your zone's lead charges. You need a minimum wallet balance to receive leads.</div>
-                                </div>
-
-                                <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #17a2b8!important;">
-                                    <div class="font-weight-bold mb-1" style="font-size:13px;">📦 Shared Leads Plan</div>
-                                    <div style="font-size:12px;color:#555;">Shared leads are covered — no wallet deduction when you accept a shared lead. However, if you enable Dedicated Leads, those are still charged per lead from your wallet.</div>
-                                </div>
-
-                                <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #28a745!important;">
-                                    <div class="font-weight-bold mb-1" style="font-size:13px;">⭐ Dedicated Leads Plan</div>
-                                    <div style="font-size:12px;color:#555;">All leads — shared and dedicated — are covered. No wallet deduction on accepted leads. Enquiries from your store page come exclusively to you.</div>
-                                </div>
-
-                            </div>
-                        </div>
-                    @endif
-
                     <div class="d-flex justify-content-end mt-3">
                         <button type="submit" class="btn btn--primary">Save Settings</button>
                     </div>
@@ -114,7 +90,8 @@
 
         {{-- ── WhatsApp receiving add-ons ──
              Separate card, outside the settings form: each add-on posts its own form and
-             nesting forms is invalid HTML. --}}
+             nesting forms is invalid HTML. Placed directly under the settings so the
+             notification option is visible without scrolling past the charges explainer. --}}
         <div class="card mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0"><i class="tio-chat"></i> WhatsApp Lead Notifications</h5>
@@ -172,6 +149,32 @@
                 @endforeach
             </div>
         </div>
+
+        @if ($store_data->module_id == 6)
+            <div class="card mt-3">
+                <div class="card-body" style="max-width:680px;">
+                    <h6 class="font-weight-bold mb-3">How Lead Charges Work</h6>
+                    <div class="d-flex flex-column" style="gap:10px;">
+
+                        <div class="p-3 rounded border-left border-warning bg-white" style="border-left:4px solid #ffc107!important;">
+                            <div class="font-weight-bold mb-1" style="font-size:13px;">🔓 No Subscription</div>
+                            <div style="font-size:12px;color:#555;">Every accepted lead (shared or dedicated) is charged from your wallet based on your zone's lead charges. You need a minimum wallet balance to receive leads.</div>
+                        </div>
+
+                        <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #17a2b8!important;">
+                            <div class="font-weight-bold mb-1" style="font-size:13px;">📦 Shared Leads Plan</div>
+                            <div style="font-size:12px;color:#555;">Shared leads are covered — no wallet deduction when you accept a shared lead. However, if you enable Dedicated Leads, those are still charged per lead from your wallet.</div>
+                        </div>
+
+                        <div class="p-3 rounded border-left bg-white" style="border-left:4px solid #28a745!important;">
+                            <div class="font-weight-bold mb-1" style="font-size:13px;">⭐ Dedicated Leads Plan</div>
+                            <div style="font-size:12px;color:#555;">All leads — shared and dedicated — are covered. No wallet deduction on accepted leads. Enquiries from your store page come exclusively to you.</div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- ── How It Works modal ── --}}
