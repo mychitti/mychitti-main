@@ -48,25 +48,25 @@
                         <h6 class="mb-1" style="font-size:14px;">Test WhatsApp delivery</h6>
                         @php
                             $storePhone = preg_replace('/[^0-9]/', '', (string) ($store->phone ?? ''));
-                            $storePhoneMasked = strlen($storePhone) >= 4 ? '******' . substr($storePhone, -4) : null;
                         @endphp
-                        @if ($storePhoneMasked)
-                            <p class="text-muted mb-2" style="font-size:13px;">
-                                We’ll send a test message from MyChitti to your registered number
-                                <b>{{ $storePhoneMasked }}</b>. Use this to confirm you can receive
-                                WhatsApp alerts such as new-lead notifications.
-                            </p>
-                            <form method="post" action="{{ route('vendor.whatsapp.test-message') }}">
-                                @csrf
-                                <button class="btn btn-outline-success btn-sm">
-                                    <i class="tio-send"></i> Send Test Message
-                                </button>
-                            </form>
-                        @else
-                            <div class="alert alert-warning mb-0" style="font-size:13px;">
-                                Add a phone number to your store profile to send yourself a test message.
+                        <p class="text-muted mb-2" style="font-size:13px;">
+                            Send a test message from MyChitti to any WhatsApp number to confirm delivery of
+                            alerts such as new-lead notifications. Defaults to your registered number.
+                        </p>
+                        <form method="post" action="{{ route('vendor.whatsapp.test-message') }}">
+                            @csrf
+                            <div class="input-group input-group-sm" style="max-width:340px;">
+                                <input type="text" name="test_phone" class="form-control"
+                                       value="{{ $storePhone }}"
+                                       placeholder="e.g. 91XXXXXXXXXX" inputmode="numeric" required>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-success" type="submit">
+                                        <i class="tio-send"></i> Send Test
+                                    </button>
+                                </div>
                             </div>
-                        @endif
+                            <small class="text-muted d-block mt-1">Include the country code (91 for India). No template approval needed.</small>
+                        </form>
                     </div>
                 </div>
             </div>

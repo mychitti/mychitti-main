@@ -592,17 +592,25 @@ class WhatsAppService
     }
 
     /**
-     * Send a test WhatsApp to the store's own registered number, from the MyChitti platform
-     * number — deliberately not the vendor's own connection, so this answers "can MyChitti
-     * reach me on WhatsApp?" even before (or without) the vendor connecting their number.
+     * Send a test WhatsApp from the MyChitti platform number — deliberately not the vendor's
+     * own connection, so this answers "can MyChitti reach this number?" even before (or
+     * without) the vendor connecting a number of their own.
+     *
+     * $toPhone lets the vendor test any number; it falls back to the store's registered phone.
      *
      * @return array{success: bool, message: string}
      */
-    public static function sendTestMessage(int $storeId): array
+    public static function sendTestMessage(int $storeId, ?string $toPhone = null): array
     {
         $store = DB::table('stores')->where('id', $storeId)->first();
-        if (!$store || empty($store->phone)) {
-            return ['success' => false, 'message' => 'Your store has no phone number saved. Add one in your store profile first.'];
+
+        $toPhone = trim((string) $toPhone);
+        $target  = $toPhone !== '' ? $toPhone : ($store->phone ?? '');
+        if ($target === '') {
+            return ['success' => false, 'message' => 'Enter a phone number to send the test to, or add one to your store profile first.'];
+        }
+        if (strlen(preg_replace('/[^0-9]/', '', $target)) < 10) {
+            return ['success' => false, 'message' => 'That does not look like a valid phone number. Include the number with country code, e.g. 91XXXXXXXXXX.'];
         }
 
         $wa = static::make(); // platform credentials, never the vendor's
@@ -614,15 +622,15 @@ class WhatsAppService
         $template = !empty($cfg['test_template']) ? $cfg['test_template'] : self::DEFAULT_TEST_TEMPLATE;
         $lang     = !empty($cfg['test_template_lang']) ? $cfg['test_template_lang'] : self::DEFAULT_TEST_TEMPLATE_LANG;
 
-        $res = $wa->sendTemplate($store->phone, $template, $lang, [], 'test message');
+        $res = $wa->sendTemplate($target, $template, $lang, [], 'test message');
 
         // Plain text only lands inside a 24h window, so treat it as a bonus attempt rather
         // than a reliable fallback — report the template error if both fail.
         if (empty($res['success'])) {
             $text = static::make()->sendText(
-                $store->phone,
+                $target,
                 "This is a test message from MyChitti. If you received this, WhatsApp notifications to "
-                    . ($store->name ?: 'your store') . " are working.",
+                    . ($store->name ?? 'your store') . " are working.",
                 false,
                 'test message'
             );
@@ -631,7 +639,7 @@ class WhatsAppService
             }
         }
 
-        return ['success' => true, 'message' => 'Test message sent to ' . static::maskForDisplay($store->phone) . '.'];
+        return ['success' => true, 'message' => 'Test message sent to ' . static::maskForDisplay($target) . '.'];
     }
 
     /** Show enough of the number to confirm it is the right one, without printing it in full. */

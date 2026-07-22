@@ -67,10 +67,10 @@ class WhatsAppController extends Controller
         ));
     }
 
-    /** Send the vendor a test WhatsApp from the MyChitti platform number. */
-    public function sendTestMessage()
+    /** Send a test WhatsApp from the MyChitti platform number to a chosen or the registered number. */
+    public function sendTestMessage(Request $request)
     {
-        $outcome = WhatsAppService::sendTestMessage(Helpers::get_store_id());
+        $outcome = WhatsAppService::sendTestMessage(Helpers::get_store_id(), $request->input('test_phone'));
 
         if (!empty($outcome['success'])) {
             Toastr::success($outcome['message'] . ' It can take a few seconds to arrive.');
