@@ -61,7 +61,9 @@ class GenerateStoreMeta implements ShouldQueue
             systemPrompt: $this->systemPrompt(),
             // Force OpenAI explicitly: the 'admin' guard has no ACTIVE row in system_prompts, so
             // it would fall through to the AI service default (Anthropic) which is unfunded.
-            modelConfig: ['ai_provider' => 'openai', 'ai_model' => 'gpt-4o']
+            // gpt-4o-mini deliberately: ~17x cheaper than gpt-4o and fully adequate for a
+            // 60-char title + 155-char description — full backfill costs well under $1.
+            modelConfig: ['ai_provider' => 'openai', 'ai_model' => 'gpt-4o-mini']
         );
 
         if (empty($result['success']) || empty($result['message'])) {

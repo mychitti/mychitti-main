@@ -19,6 +19,7 @@ class GenerateStoreMetaCommand extends Command
         {--store= : Generate for a single store by id}
         {--all : Regenerate for every store, OVERWRITING existing meta}
         {--limit= : Cap the number of stores processed}
+        {--shard= : Process one shard i/n (e.g. 0/4 .. 3/4) so N terminals can run in parallel without overlap}
         {--queue : Push onto the \'seo\' queue instead of generating inline (needs a worker)}';
 
     protected $description = 'Generate missing store SEO meta (meta_title / meta_description) via AI';
@@ -37,6 +38,15 @@ class GenerateStoreMetaCommand extends Command
                 $q->whereNull('meta_title')->orWhere('meta_title', '')
                     ->orWhereNull('meta_description')->orWhere('meta_description', '');
             });
+        }
+
+        // Disjoint id-modulo shards, so parallel runs never process (and bill) the same store.
+        if ($shard = $this->option('shard')) {
+            if (!preg_match('/^(\d+)\/(\d+)$/', $shard, $m) || (int) $m[2] < 1 || (int) $m[1] >= (int) $m[2]) {
+                $this->error('Invalid --shard. Use i/n with 0 <= i < n, e.g. --shard=0/4');
+                return self::FAILURE;
+            }
+            $query->whereRaw('id % ? = ?', [(int) $m[2], (int) $m[1]]);
         }
 
         if ($limit = $this->option('limit')) {
