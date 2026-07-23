@@ -187,7 +187,9 @@
     }
 
     function renderMessages(msgs) {
-        var sig = msgs.length ? (msgs.length + '|' + (msgs[msgs.length-1].id || '') + '|' + (msgs[msgs.length-1].status || '')) : '0';
+        // Signature covers every message's status — a delivered/read tick landing on an
+        // EARLIER bubble must trigger a re-render too, not just new messages.
+        var sig = msgs.map(function (m) { return m.id + ':' + (m.status || ''); }).join(',');
         if (sig === lastRenderSignature) return;
         lastRenderSignature = sig;
 
