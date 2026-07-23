@@ -82,8 +82,15 @@ class SendAutoReply implements ShouldQueue
             $storeName = DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store';
             $reply = $this->generateReply($storeName, $docs, $key);
 
-            // AI unavailable — the customer got no answer at all; the vendor must know.
+            // AI unavailable — never leave the customer on silence: send a holding reply
+            // and alert the vendor to take over.
             if ($reply === '') {
+                $wa->sendText(
+                    $this->from,
+                    'Thanks for your message! Our team will get back to you shortly.',
+                    false,
+                    'auto reply'
+                );
                 $this->escalateToVendor($key, 'Auto-reply could not respond');
                 return;
             }
