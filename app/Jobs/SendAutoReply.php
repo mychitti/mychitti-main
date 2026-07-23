@@ -124,16 +124,32 @@ class SendAutoReply implements ShouldQueue
             return;
         }
 
-        $name = DB::table('store_customers')
+        // Everything the vendor needs to take over the conversation, in one notification.
+        $customer = DB::table('store_customers')
             ->where('store_id', $this->storeId)
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
-            ->value('f_name');
-        $who = $name ?: ('+' . ltrim($this->from, '+'));
+            ->first(['f_name', 'phone', 'email', 'address', 'user_type']);
 
-        $question = mb_substr($this->body, 0, 120);
+        $phone = '+' . ltrim($this->from, '+');
+        $lines = [];
+        if ($customer) {
+            $lines[] = 'Customer: ' . ($customer->f_name ?: 'Unknown') . ' (' . $phone . ')'
+                . ($customer->user_type && $customer->user_type !== 'customer' ? ' — ' . ucfirst($customer->user_type) : '');
+            if ($customer->email) {
+                $lines[] = 'Email: ' . $customer->email;
+            }
+            if ($customer->address) {
+                $lines[] = 'Address: ' . mb_substr($customer->address, 0, 80);
+            }
+        } else {
+            $lines[] = 'Customer: ' . $phone . ' (not in your customer list)';
+        }
+        $lines[] = 'Asked: "' . mb_substr($this->body, 0, 200) . '"';
+        $lines[] = $reason . ' — open WhatsApp Chats to reply.';
+
         _inAppNotification(
             'WhatsApp: customer needs your reply',
-            "{$who} asked: \"{$question}\" — {$reason}. Open WhatsApp Chats to reply.",
+            implode("\n", $lines),
             null,
             $this->storeId,
             route('vendor.whatsapp.inbox'),
