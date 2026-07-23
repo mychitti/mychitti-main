@@ -26,7 +26,7 @@
         background-image:radial-gradient(#d9d3c8 0.6px, transparent 0.6px);
         background-size:22px 22px; }
     .wchat-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#667781; background:#f0f2f5; }
-    .wbubble { max-width:70%; margin-bottom:6px; padding:6px 9px 7px; border-radius:8px; font-size:13.5px; line-height:1.45;
+    .wbubble { width:fit-content; min-width:110px; max-width:70%; margin-bottom:6px; padding:6px 9px 7px; border-radius:8px; font-size:13.5px; line-height:1.45;
         box-shadow:0 1px 0.5px rgba(11,20,26,.13); position:relative; white-space:pre-wrap; word-wrap:break-word; }
     .wbubble.in  { background:#fff;    margin-right:auto; border-top-left-radius:0; }
     .wbubble.out { background:#d9fdd3; margin-left:auto;  border-top-right-radius:0; }
