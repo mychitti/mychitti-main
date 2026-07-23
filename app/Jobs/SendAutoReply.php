@@ -31,8 +31,12 @@ class SendAutoReply implements ShouldQueue
     public int $tries = 1;
     public int $timeout = 150;
 
-    /** Loop guard: if the other side is also a bot, stop after this many replies per window. */
-    const MAX_PER_WINDOW = 10;
+    /**
+     * Loop guard: if the other side is also a bot, stop after this many replies per window.
+     * Generous because legitimate booking conversations take 4-6 bot turns each — a real
+     * bot-to-bot loop burns through this in minutes and then goes quiet, which is the point.
+     */
+    const MAX_PER_WINDOW = 40;
     const WINDOW_HOURS   = 6;
 
     /** How much of the thread the model sees for context. */
@@ -82,8 +86,15 @@ class SendAutoReply implements ShouldQueue
             $storeName = DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store';
             $reply = $this->generateReply($storeName, $docs, $key);
 
-            // AI unavailable — the customer got no answer at all; the vendor must know.
+            // AI unavailable — never leave the customer on silence: send a holding reply
+            // and alert the vendor to take over.
             if ($reply === '') {
+                $wa->sendText(
+                    $this->from,
+                    'Thanks for your message! Our team will get back to you shortly.',
+                    false,
+                    'auto reply'
+                );
                 $this->escalateToVendor($key, 'Auto-reply could not respond');
                 return;
             }
@@ -177,7 +188,9 @@ class SendAutoReply implements ShouldQueue
         // the prompt. Falls back to all active docs when RAG is unreachable or not yet synced.
         $knowledge = '';
         try {
-            $resp = Http::timeout(15)->post(rtrim((string) config('services.ai_server.url'), '/') . '/rag/search', [
+            // Short timeout: a hung RAG server must degrade to the full-docs fallback fast,
+            // not stall every reply (seen live: uvicorn hang cost 15s per message).
+            $resp = Http::timeout(5)->post(rtrim((string) config('services.ai_server.url'), '/') . '/rag/search', [
                 'query'    => $this->body,
                 'category' => StoreKnowledgeDoc::ragCategory($this->storeId),
                 'top_k'    => 4,

@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessNewLeadNotifications;
 use App\Models\Appointment;
 use App\Models\AppointmentToken;
 use App\Models\DoctorProfile;
+use App\Models\DoctorService;
 use App\Models\Patient;
+use App\Models\ServiceRequest;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * WhatsApp appointment actions for the auto-reply bot (HMIS stores).
@@ -63,6 +68,7 @@ class WhatsAppAppointmentBot
             . "Doctors:\n{$doctors}\n"
             . "Customer's upcoming appointments:\n" . ($upcoming ?: '- none') . "\n\n"
             . "ACTION RULES:\n"
+            . "- Booking submits an appointment REQUEST that the clinic confirms — never promise a confirmed slot, say the clinic will confirm shortly.\n"
             . "- To BOOK: collect (1) the patient's full name if they are new, (2) which doctor if there is more than one, (3) date, (4) time. "
             . "Confirm all details with the customer first. After they confirm, reply with ONLY this marker and no other text:\n"
             . '[[' . self::BOOK_MARKER . ': {"name":"<patient full name>","doctor":"<doctor name>","date":"YYYY-MM-DD","time":"HH:MM","reason":"<short reason>"}]]' . "\n"
@@ -102,6 +108,14 @@ class WhatsAppAppointmentBot
         }
     }
 
+    /**
+     * Booking follows the SAME flow as a website appointment booking: it creates a
+     * dedicated appointment-type ServiceRequest lead (service_type doctor_appointment),
+     * records the lead status, and fans out the standard vendor notifications
+     * (ProcessNewLeadNotifications, isAppointment) — so it appears on the vendor's
+     * Appointments screen, and vendor acceptance, lead billing and the HMIS
+     * lead→appointment conversion all work exactly as for web bookings.
+     */
     protected static function book(int $storeId, string $phoneKey, string $fromPhone, array $data): array
     {
         $when = static::parseWhen($data['date'] ?? '', $data['time'] ?? '');
@@ -114,40 +128,86 @@ class WhatsAppAppointmentBot
             return static::failure('No matching doctor found.');
         }
 
-        $patient = static::resolvePatient($storeId, $phoneKey, $fromPhone, (string) ($data['name'] ?? ''));
+        // The service item this doctor offers — appointment leads are item-based like the
+        // website's flow, where the doctor is picked FROM a service.
+        $itemId = DoctorService::where('doctor_profile_id', $doctor->id)->value('item_id');
+        if (!$itemId) {
+            return static::failure('This doctor has no bookable service configured.');
+        }
 
-        $appt = null;
-        DB::transaction(function () use (&$appt, $storeId, $patient, $doctor, $when, $data) {
-            $appt = Appointment::create([
-                'store_id'          => $storeId,
-                'patient_id'        => $patient->id,
-                'doctor_profile_id' => $doctor->id,
-                'slot_id'           => null,
-                'appointment_date'  => $when->toDateString(),
-                'appointment_time'  => $when->format('H:i'),
-                'booking_type'      => 'online',
-                'status'            => 'scheduled',
-                'reason'            => trim((string) ($data['reason'] ?? '')) ?: 'Booked via WhatsApp',
-                'booked_by'         => null,
-            ]);
-            static::generateToken($doctor->id, $when->toDateString(), $appt->id);
-        });
+        $store = DB::table('stores')->where('id', $storeId)
+            ->first(['id', 'name', 'zone_id', 'latitude', 'longitude', 'module_id', 'address']);
 
-        static::activityLog($storeId, $appt->id, 'booked_via_whatsapp',
-            "Appointment #{$appt->id} booked via WhatsApp for patient #{$patient->id}");
+        $user = static::resolveUser($storeId, $phoneKey, $fromPhone, (string) ($data['name'] ?? ''), $store->zone_id ?? null);
+
+        $sr = new ServiceRequest();
+        $sr->user_id             = $user->id;
+        $sr->item_id             = $itemId;
+        $sr->sent_to             = (string) $storeId;
+        $sr->is_dedicated        = 1;
+        $sr->module_id           = $store->module_id ?? null;
+        $sr->zone_id             = $store->zone_id ?? null;
+        $sr->latitude            = (float) ($store->latitude ?? 0);
+        $sr->longitude           = (float) ($store->longitude ?? 0);
+        $sr->status              = 'new';
+        $sr->address             = $store->address ?? null;
+        $sr->requirements        = trim((string) ($data['reason'] ?? '')) ?: 'Booked via WhatsApp';
+        $sr->patient_for         = 'myself';
+        $sr->preferred_doctor_id = $doctor->id;
+        $sr->preferred_date      = $when->toDateString();
+        $sr->preferred_slot_id   = null;
+        $sr->preferred_time      = $when->format('H:i');
+        $sr->reason              = trim((string) ($data['reason'] ?? '')) ?: null;
+        $sr->service_type        = 'doctor_appointment';
+        $sr->created_at          = now();
+        $sr->save();
+
+        DB::table('lead_statuses')->insert([
+            'service_request_id' => $sr->id,
+            'status'             => 'User Requested Appointment',
+            'created_at'         => now(),
+        ]);
+
+        // Standard vendor fan-out (SMS / panel / WhatsApp alert, auto-accept, wallet nudge)
+        // — identical to a website appointment request.
+        ProcessNewLeadNotifications::dispatch($sr->id, [$storeId], true);
 
         $drName = trim(($doctor->employee->f_name ?? '') . ' ' . ($doctor->employee->l_name ?? ''));
-        $token  = $appt->token->token_number ?? null;
-        $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our clinic';
 
         return [
-            'message' => "✅ Your appointment at {$storeName} is booked for " . $when->format('d M Y') . ' at ' . $when->format('h:i A')
+            'message' => '✅ Your appointment request at ' . ($store->name ?? 'the clinic') . ' has been sent for '
+                . $when->format('d M Y') . ' at ' . $when->format('h:i A')
                 . ($drName ? " with Dr. {$drName}" : '')
-                . ($token ? ". Your token number is {$token}" : '')
-                . ". We'll remind you before the visit. Reply here anytime to reschedule.",
+                . ". The clinic will confirm it shortly — you'll get a message here once it's confirmed.",
             'escalate' => false,
             'reason'   => '',
         ];
+    }
+
+    /** Find (or minimally register) the platform user this WhatsApp number belongs to. */
+    protected static function resolveUser(int $storeId, string $phoneKey, string $fromPhone, string $name, $zoneId): User
+    {
+        $user = User::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
+            ->orderBy('id')
+            ->first();
+        if ($user) {
+            return $user;
+        }
+
+        $name = trim($name) ?: (DB::table('store_customers')->where('store_id', $storeId)
+            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
+            ->value('f_name') ?: 'WhatsApp Customer');
+
+        $user = User::create([
+            'f_name'   => $name,
+            'phone'    => preg_replace('/[^0-9]/', '', $fromPhone),
+            'password' => bcrypt(Str::random(16)),
+        ]);
+        if ($zoneId) {
+            $user->zone_id = $zoneId;
+            $user->save();
+        }
+        return $user;
     }
 
     protected static function reschedule(int $storeId, string $phoneKey, array $data): array
@@ -248,30 +308,6 @@ class WhatsAppAppointmentBot
             }
         }
         return $doctors->first();
-    }
-
-    protected static function resolvePatient(int $storeId, string $phoneKey, string $fromPhone, string $name): Patient
-    {
-        $patient = Patient::where('store_id', $storeId)
-            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
-            ->first();
-        if ($patient) {
-            return $patient;
-        }
-
-        // New patient — registered from the WhatsApp conversation.
-        $name = trim($name) ?: (DB::table('store_customers')->where('store_id', $storeId)
-            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
-            ->value('f_name') ?: 'WhatsApp Patient');
-
-        return Patient::create([
-            'store_id'    => $storeId,
-            'patient_uid' => Patient::generateUid($storeId),
-            'name'        => $name,
-            'phone'       => preg_replace('/[^0-9]/', '', $fromPhone),
-            'status'      => 'active',
-            'created_by'  => null,
-        ]);
     }
 
     protected static function parseWhen(string $date, string $time): ?Carbon
