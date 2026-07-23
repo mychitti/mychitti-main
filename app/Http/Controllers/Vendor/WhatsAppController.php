@@ -135,6 +135,10 @@ class WhatsAppController extends Controller
         $contextLabels = [
             'lead notify'    => 'Lead alerts',
             'lead accepted'  => 'Lead accepted alerts',
+            'welcome'        => 'Customer welcome messages',
+            'chat reply'     => 'Chat replies',
+            'auto reply'     => 'AI auto-replies',
+            'inbound'        => 'Customer messages (received)',
             'bulk'           => 'Bulk campaigns',
             'nearby'         => 'Nearby-offer campaigns',
             'test message'   => 'Test messages',
@@ -146,7 +150,11 @@ class WhatsAppController extends Controller
 
         $contextRows = [];
         foreach ($byContext as $ctx => $c) {
-            $contextRows[$contextLabels[$ctx] ?? ucfirst($ctx ?: 'Other')] = ($contextRows[$contextLabels[$ctx] ?? ucfirst($ctx ?: 'Other')] ?? 0) + $c;
+            // Appointment reminders carry a per-appointment context ("appt reminder:{id}:{mode}")
+            // for dedupe — fold them into one row here.
+            $label = $contextLabels[$ctx]
+                ?? (str_starts_with((string) $ctx, 'appt reminder') ? 'Appointment reminders' : ucfirst($ctx ?: 'Other'));
+            $contextRows[$label] = ($contextRows[$label] ?? 0) + $c;
         }
         arsort($contextRows);
 
@@ -183,6 +191,125 @@ class WhatsAppController extends Controller
         ));
     }
 
+    // WhatsApp-like inbox: two-way chat on the vendor's own connected number.
+    public function inbox(Request $request)
+    {
+        WhatsAppService::ensureMessagesTable();
+        WhatsAppService::ensureStoreColumns();
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+        $connected = $wa->source() === 'vendor';
+
+        // Self-heal: without this subscription Meta never forwards the customer's messages
+        // to our webhook, and the inbox stays silently empty. Idempotent, so safe per load.
+        $subscribeError = null;
+        if ($connected) {
+            $sub = $wa->ensureWebhookSubscription();
+            if (!$sub['success']) {
+                $subscribeError = $sub['error'];
+            }
+        }
+
+        return view('vendor-views.whatsapp.inbox', compact('connected', 'subscribeError'));
+    }
+
+    /** Conversation list: one row per contact, newest activity first. */
+    public function inboxThreads(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        $rows = DB::table('whatsapp_messages')
+            ->where('store_id', $storeId)
+            ->whereNotNull('recipient')
+            ->where('recipient', '!=', '')
+            ->orderByDesc('sent_at')
+            ->limit(2000)
+            ->get(['recipient', 'direction', 'body', 'type', 'sent_at']);
+
+        // Newest-first walk: the first row seen per contact IS the thread's latest message.
+        $threads = [];
+        foreach ($rows as $m) {
+            $key = substr(preg_replace('/[^0-9]/', '', (string) $m->recipient) ?? '', -10);
+            if (strlen($key) < 10) {
+                continue;
+            }
+            if (!isset($threads[$key])) {
+                $threads[$key] = [
+                    'key'       => $key,
+                    'phone'     => $m->recipient,
+                    'name'      => null,
+                    'last_body' => mb_substr((string) $m->body, 0, 80),
+                    'last_dir'  => $m->direction,
+                    'last_at'   => $m->sent_at,
+                ];
+            }
+        }
+
+        // Contact names from the store's own customer book, matched on the last 10 digits.
+        if ($threads) {
+            foreach (DB::table('store_customers')->where('store_id', $storeId)
+                ->whereNotNull('phone')->where('phone', '!=', '')
+                ->get(['f_name', 'phone']) as $c) {
+                $ckey = substr(preg_replace('/[^0-9]/', '', (string) $c->phone) ?? '', -10);
+                if (isset($threads[$ckey]) && $threads[$ckey]['name'] === null) {
+                    $threads[$ckey]['name'] = $c->f_name;
+                }
+            }
+        }
+
+        return response()->json(['success' => true, 'threads' => array_values($threads)]);
+    }
+
+    /** Full message history with one contact + whether the 24h free-text window is open. */
+    public function inboxThread(Request $request)
+    {
+        $request->validate(['phone' => 'required|digits:10']);
+        $storeId = Helpers::get_store_id();
+        $key = $request->phone;
+
+        $messages = DB::table('whatsapp_messages')
+            ->where('store_id', $storeId)
+            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+            ->orderByDesc('sent_at')
+            ->limit(300)
+            ->get(['id', 'direction', 'type', 'body', 'context', 'status', 'error', 'sent_at'])
+            ->reverse()
+            ->values();
+
+        // Free-form text only delivers within 24h of the customer's last inbound message;
+        // outside that, Meta requires an approved template.
+        $lastInbound = $messages->where('direction', 'in')->last();
+        $windowOpen = $lastInbound && Carbon::parse($lastInbound->sent_at)->gt(now()->subHours(24));
+
+        return response()->json([
+            'success'     => true,
+            'messages'    => $messages,
+            'window_open' => (bool) $windowOpen,
+        ]);
+    }
+
+    /** Send a manual reply (free text) from the vendor's own number. */
+    public function inboxSend(Request $request)
+    {
+        $request->validate([
+            'phone'   => 'required|digits:10',
+            'message' => 'required|string|max:4000',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+        if ($wa->source() !== 'vendor') {
+            return response()->json(['success' => false, 'error' => 'Connect your own WhatsApp number to reply to chats.'], 422);
+        }
+
+        $res = $wa->sendText($request->phone, trim((string) $request->message), false, 'chat reply');
+
+        return response()->json([
+            'success' => (bool) $res['success'],
+            'error'   => $res['error'] ?? null,
+        ]);
+    }
+
     /** Import the vendor's customers into store_customers from an uploaded Excel/CSV sheet. */
     public function importCustomers(Request $request)
     {
@@ -193,13 +320,20 @@ class WhatsAppController extends Controller
             'file.max'   => 'The file must be 5 MB or smaller.',
         ]);
 
-        $import = new \App\Imports\StoreCustomerImport(Helpers::get_store_id());
+        $storeId = Helpers::get_store_id();
+        $import = new \App\Imports\StoreCustomerImport($storeId);
+
+        // Per-row synchronous welcomes would stall a big upload — suppress the model hook
+        // and queue the batch below instead when the vendor opted in.
+        \App\Models\StoreCustomer::$welcomeOnCreate = false;
         try {
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
             Log::error('Store customer import failed: ' . $e->getMessage());
             Toastr::error('Could not read that file. Make sure it has columns: Name, Phone, Email, GST, Address.');
             return back();
+        } finally {
+            \App\Models\StoreCustomer::$welcomeOnCreate = true;
         }
 
         $msg = "Imported {$import->imported} customer(s).";
@@ -208,6 +342,13 @@ class WhatsAppController extends Controller
         }
         if ($import->skipped) {
             $msg .= " {$import->skipped} row(s) skipped (missing name or phone).";
+        }
+
+        if ($request->boolean('send_welcome') && !empty($import->welcomeRecipients)) {
+            foreach (array_chunk($import->welcomeRecipients, 50) as $chunk) {
+                \App\Jobs\SendWelcomeMessages::dispatch($storeId, $chunk);
+            }
+            $msg .= ' WhatsApp welcome messages are being sent in the background to ' . count($import->welcomeRecipients) . ' new customer(s).';
         }
 
         $import->imported > 0 ? Toastr::success($msg) : Toastr::warning($msg);
@@ -711,7 +852,11 @@ class WhatsAppController extends Controller
             $token = data_get($tokenResp->json(), 'access_token');
 
             // 2) Subscribe our app to the vendor's WABA so webhooks/status flow in.
-            Http::withToken($token)->post("https://graph.facebook.com/{$version}/{$request->waba_id}/subscribed_apps");
+            // Without this Meta never forwards inbound messages — fail loudly, not silently.
+            $sub = Http::withToken($token)->post("https://graph.facebook.com/{$version}/{$request->waba_id}/subscribed_apps");
+            if (!$sub->successful()) {
+                Log::warning('WA ES subscribed_apps failed', ['waba' => $request->waba_id, 'body' => $sub->json()]);
+            }
 
             // 3) Register the phone number for Cloud API (idempotent; ignore "already registered").
             Http::withToken($token)->post("https://graph.facebook.com/{$version}/{$request->phone_number_id}/register", [
@@ -745,15 +890,106 @@ class WhatsAppController extends Controller
         $connected = $wa->hasWaba();
         $templates = [];
         $templateError = null;
+        $presets = collect();
         if ($connected) {
             $res = $wa->listTemplates();
             $templates = $res['data'];
             if (!$res['success']) {
                 $templateError = $res['error'];
             }
+
+            // Admin-suggested presets, annotated with this vendor's WABA status so a preset
+            // already submitted shows its review state instead of a second "Use" button.
+            $statusByName = [];
+            foreach ($templates as $tpl) {
+                $statusByName[strtolower((string) data_get($tpl, 'name'))] = strtoupper((string) data_get($tpl, 'status'));
+            }
+            $presets = WhatsAppService::templatePresets()->map(function ($p) use ($statusByName) {
+                $p->waba_status = $statusByName[strtolower($p->name)] ?? null;
+                return $p;
+            });
         }
 
-        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError'));
+        // Hours before the appointment that the reminder goes out; 0 = off, unset = 2 (default).
+        $apptRaw = DB::table('stores')->where('id', $storeId)->value('wa_appt_reminder');
+        $apptReminder = ($apptRaw === null || $apptRaw === '') ? WhatsAppService::DEFAULT_APPT_REMINDER_HOURS : (int) $apptRaw;
+
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError', 'presets', 'apptReminder'));
+    }
+
+    // Vendor picks how many hours before the appointment the reminder goes out (0 = off).
+    public function reminderSchedule(Request $request)
+    {
+        $request->validate([
+            'hours' => 'required|integer|min:0|max:168',
+        ], [
+            'hours.max' => 'Reminders can be at most 168 hours (7 days) before the appointment.',
+        ]);
+
+        $hours = (int) $request->hours;
+        WhatsAppService::ensureStoreColumns();
+        // '0' is stored (not NULL): NULL means "never chose" and gets the 2-hour default,
+        // while an explicit 0 means the vendor turned reminders off.
+        DB::table('stores')->where('id', Helpers::get_store_id())->update([
+            'wa_appt_reminder' => (string) $hours,
+        ]);
+
+        $hours > 0
+            ? Toastr::success("Appointment reminders will be sent about {$hours} hour(s) before each appointment, once your appointment_reminder template is approved.")
+            : Toastr::success('Appointment reminders turned off.');
+        return back();
+    }
+
+    // Vendor picked an admin preset — submit it to THEIR OWN WABA for Meta review.
+    public function templateFromPreset(Request $request)
+    {
+        $request->validate(['preset_id' => 'required|integer']);
+
+        $wa = WhatsAppService::make(Helpers::get_store_id());
+        if (!$wa->hasWaba()) {
+            Toastr::error('Connect your WhatsApp number first.');
+            return back();
+        }
+
+        WhatsAppService::ensurePresetsTable();
+        $preset = DB::table('wa_template_presets')
+            ->where('id', $request->preset_id)->where('active', 1)->first();
+        if (!$preset) {
+            Toastr::error('This suggested template is no longer available.');
+            return back();
+        }
+
+        $example = array_values(array_filter(array_map('trim', explode('|', (string) $preset->example)), fn($v) => $v !== ''));
+        $buttons = [];
+        if ($preset->btn_text && $preset->btn_url) {
+            $buttons[] = ['text' => $preset->btn_text, 'url' => $preset->btn_url];
+        }
+
+        $res = $wa->createTemplate(
+            $preset->name,
+            $preset->category,
+            $preset->language ?: 'en_US',
+            $preset->body,
+            $example,
+            $buttons,
+            $preset->header,
+            $preset->footer
+        );
+
+        if ($res['success']) {
+            Toastr::success('"' . $preset->title . '" submitted to Meta for review on your WhatsApp account. Approval usually takes a few minutes but can take up to 24 hours — you can send with it once its status shows APPROVED.');
+        } else {
+            Toastr::error('Submit failed: ' . $res['error']);
+        }
+
+        $waba = DB::table('stores')->where('id', Helpers::get_store_id())->value('wa_business_account_id') ?: '{WABA_ID}';
+        return back()->with('wa_create_result', [
+            'success'  => $res['success'],
+            'endpoint' => 'POST /' . $waba . '/message_templates',
+            'id'       => $res['id'] ?? null,
+            'error'    => $res['error'] ?? null,
+            'response' => $res['response'] ?? null,
+        ]);
     }
 
     public function templateCreate(Request $request)

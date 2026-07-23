@@ -20,27 +20,26 @@
         @else
             @if (session('wa_create_result'))
                 @php $r = session('wa_create_result'); @endphp
-                <div class="alert {{ $r['success'] ? 'alert-success' : 'alert-danger' }}">
-                    <h6 class="mb-2">
-                        @if ($r['success'])
-                            <i class="tio-checkmark-circle"></i> Template created via Business Management API
-                        @else
-                            <i class="tio-clear-circle"></i> Template create failed
-                        @endif
-                    </h6>
-                    <div style="font-size:13px;">
-                        <div><b>Endpoint:</b> <code class="text-white">{{ $r['endpoint'] }}</code></div>
-                        @if ($r['success'])
-                            <div><b>Template ID:</b> <code>{{ $r['id'] ?? '—' }}</code></div>
-                        @else
-                            <div><b>Error:</b> {{ $r['error'] }}</div>
-                        @endif
+                @if ($r['success'])
+                    <div class="alert alert-success d-flex align-items-start" style="gap:12px;">
+                        <i class="tio-checkmark-circle" style="font-size:24px;line-height:1.2;"></i>
+                        <div>
+                            <h6 class="mb-1">Template submitted for review</h6>
+                            <div style="font-size:13px;">
+                                Meta is now reviewing your template. Approval usually takes a few minutes but can
+                                take up to 24 hours — you can send with it once its status shows <b>APPROVED</b>.
+                            </div>
+                        </div>
                     </div>
-                    @if (!empty($r['response']))
-                            <summary style="cursor:pointer;font-size:12px;">Raw API response</summary>
-                            <pre class="mt-2 mb-0 p-2" style="background:#0d1117;color:#c9d1d9;border-radius:6px;font-size:12px;overflow:auto;max-height:240px;">{{ json_encode($r['response'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
-                    @endif
-                </div>
+                @else
+                    <div class="alert alert-danger d-flex align-items-start" style="gap:12px;">
+                        <i class="tio-clear-circle" style="font-size:24px;line-height:1.2;"></i>
+                        <div style="min-width:0;flex:1;">
+                            <h6 class="mb-1">Template could not be submitted</h6>
+                            <div style="font-size:13px;">{{ $r['error'] }}</div>
+                        </div>
+                    </div>
+                @endif
             @endif
             <div class="row">
                 <div class="col-lg-7">
@@ -120,6 +119,69 @@
                 </div>
 
                 <div class="col-lg-5">
+                    @if ($presets->isNotEmpty())
+                        <div class="card mb-3">
+                            <div class="card-header"><h5 class="card-title mb-0"><i class="tio-star-outlined"></i> Suggested Templates</h5></div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3" style="font-size:13px;">
+                                    Ready-made templates from MyChitti. One click submits it to Meta on
+                                    <b>your</b> WhatsApp account — once approved, you can send with it.
+                                </p>
+                                @foreach ($presets as $preset)
+                                    <div class="border rounded p-2 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <b>{{ $preset->title }}</b>
+                                                <code style="font-size:11px;">{{ $preset->name }}</code>
+                                                <span class="badge badge-soft-secondary ml-1">{{ $preset->category }}</span>
+                                            </div>
+                                            @if ($preset->waba_status === 'APPROVED')
+                                                <span class="badge badge-soft-success">APPROVED</span>
+                                            @elseif ($preset->waba_status === 'PENDING')
+                                                <span class="badge badge-soft-warning" title="Meta is reviewing this template — up to 24 hours.">PENDING</span>
+                                            @elseif ($preset->waba_status)
+                                                <span class="badge badge-soft-danger">{{ $preset->waba_status }}</span>
+                                            @else
+                                                <form action="{{ route('vendor.whatsapp.templates.use-preset') }}" method="post" class="mb-0">
+                                                    @csrf
+                                                    <input type="hidden" name="preset_id" value="{{ $preset->id }}">
+                                                    <button type="submit" class="btn btn-sm btn--primary">Use this template</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                        <div class="text-muted mt-1" style="font-size:12px;white-space:pre-wrap;">{{ $preset->body }}</div>
+                                        @if ($preset->footer)
+                                            <small class="text-muted d-block mt-1" style="font-size:11px;font-style:italic;">{{ $preset->footer }}</small>
+                                        @endif
+                                        @if ($preset->name === \App\Services\WhatsAppService::DEFAULT_WELCOME_TEMPLATE)
+                                            <small class="d-block mt-1 text-info" style="font-size:11px;">
+                                                <i class="tio-flash"></i> Once approved, this is sent automatically to every new customer you add.
+                                            </small>
+                                        @endif
+                                        @if ($preset->name === \App\Services\WhatsAppService::DEFAULT_APPT_REMINDER_TEMPLATE)
+                                            <small class="d-block mt-1 text-info" style="font-size:11px;">
+                                                <i class="tio-flash"></i> Once approved, reminders are sent automatically for your scheduled appointments.
+                                            </small>
+                                            <form action="{{ route('vendor.whatsapp.templates.reminder-schedule') }}" method="post"
+                                                  class="d-flex align-items-center flex-wrap mt-2" style="gap:6px;">
+                                                @csrf
+                                                <label class="mb-0 text-muted" style="font-size:12px;">Send reminder</label>
+                                                <input type="number" name="hours" class="form-control form-control-sm" style="width:70px;"
+                                                       min="0" max="168" value="{{ $apptReminder }}">
+                                                <span class="text-muted" style="font-size:12px;">hour(s) before the appointment</span>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                                <small class="text-muted d-block w-100" style="font-size:11px;">
+                                                    {{ $apptReminder > 0 ? 'Currently: about ' . $apptReminder . ' hour(s) before.' : 'Currently off — set the hours and save to enable.' }}
+                                                    Set 0 to turn off. Max 168 (7 days).
+                                                </small>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="card">
                         <div class="card-header"><h5 class="card-title mb-0">Create Template</h5></div>
                         <div class="card-body">

@@ -2413,6 +2413,7 @@
                          this default menu (pos, laundry, pos_retail, school, generic). --}}
                     @if (auth('vendor')->check())
                         @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                        @include('layouts.vendor.partials._sidebar_menu_notifications')
                     @endif
                     {{-- Laundry --}}
                     @if (0)

@@ -83,6 +83,7 @@
                          doesn't use the default menu, so its WhatsApp is shown here instead. --}}
                     @if (in_array($bt, ['ecommerce']))
                         @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                        @include('layouts.vendor.partials._sidebar_menu_notifications')
                     @endif
                 </ul>
             </div> 

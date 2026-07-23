@@ -12,6 +12,7 @@ use App\Jobs\Scheduled\DatabaseBackupJob;
 use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
 use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
+use App\Jobs\Scheduled\SendAppointmentRemindersJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
 use App\Models\Banner;
@@ -60,6 +61,12 @@ class Kernel extends ConsoleKernel
         $schedule->job(new MonthlyMaintenanceReminderJob)->dailyAt('09:00')
             ->timezone($tz)
             ->name('maintenance-reminders')
+            ->withoutOverlapping();
+
+        // WhatsApp reminders for HMIS appointments (per-vendor schedule; deduped per appointment)
+        $schedule->job(new SendAppointmentRemindersJob)->hourly()
+            ->timezone($tz)
+            ->name('whatsapp-appointment-reminders')
             ->withoutOverlapping();
 
         $schedule->job(new RegenerateSitemapJob)->dailyAt('00:00')

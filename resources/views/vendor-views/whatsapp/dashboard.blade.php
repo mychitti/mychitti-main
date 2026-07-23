@@ -193,6 +193,13 @@
                                     <i class="tio-upload"></i> Import
                                 </button>
                             </div>
+                            <div class="custom-control custom-checkbox mb-2">
+                                <input type="checkbox" class="custom-control-input" id="wdSendWelcome" name="send_welcome" value="1">
+                                <label class="custom-control-label" for="wdSendWelcome" style="font-size:13px;">
+                                    Send a WhatsApp welcome message to the newly imported customers
+                                    <small class="text-muted d-block">Sent in the background from your connected WhatsApp number using your approved welcome template.</small>
+                                </label>
+                            </div>
                             <small class="text-muted d-block">
                                 Columns: <b>Name, Phone, Email, GST, Address</b> — only Name and Phone are required.
                                 <a href="{{ route('vendor.whatsapp.customers.template') }}">Download template</a>.

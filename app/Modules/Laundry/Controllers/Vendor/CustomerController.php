@@ -100,7 +100,22 @@ class CustomerController extends Controller
 
         $vendorId = Helpers::get_store_id();
         $import = new CustomerImport($vendorId);
-        Excel::import($import, $request->file('file'));
+
+        // Per-row synchronous welcomes would stall a big upload — suppress the model hook
+        // and queue the batch below instead when the vendor opted in.
+        StoreCustomer::$welcomeOnCreate = false;
+        try {
+            Excel::import($import, $request->file('file'));
+        } finally {
+            StoreCustomer::$welcomeOnCreate = true;
+        }
+
+        if ($request->boolean('send_welcome') && !empty($import->welcomeRecipients)) {
+            foreach (array_chunk($import->welcomeRecipients, 50) as $chunk) {
+                \App\Jobs\SendWelcomeMessages::dispatch($vendorId, $chunk);
+            }
+            Toastr::info('WhatsApp welcome messages are being sent in the background to ' . count($import->welcomeRecipients) . ' new customer(s).');
+        }
 
         if ($import->failedRows) {
             Toastr::warning($import->failedRows . '. Uploaded Successfully');
@@ -396,6 +411,7 @@ class CustomerController extends Controller
             $id_proof = Helpers::upload('customer/documents/', $extension, $request->file('id_proof'));
             $customer->id_proof = $id_proof;
         }
+        // Saving fires StoreCustomer::created → WhatsApp welcome from the vendor's own number.
         $customer->save();
         $user_t = $request->user_type == 'customer' ? 'store_customer' : 'store_vendor';
         if ($request->has('ba_address1') && $request->ba_address1 != '' && $request->has('ba_state') && $request->ba_state != '') {

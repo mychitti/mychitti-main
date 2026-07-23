@@ -63,7 +63,17 @@ class WhatsAppWebhookController extends Controller
                     }
 
                     // 2) Inbound messages — log so the 24h window / two-way chat is visible.
-                    $storeId = WhatsAppService::storeByPhoneNumberId(data_get($value, 'metadata.phone_number_id'));
+                    $phoneNumberId = data_get($value, 'metadata.phone_number_id');
+                    $storeId = WhatsAppService::storeByPhoneNumberId($phoneNumberId);
+
+                    // A message we can't attribute is stored with store_id NULL and shows in no
+                    // vendor's inbox — make that loudly visible instead of silently losing it.
+                    if (!$storeId && !empty(data_get($value, 'messages'))) {
+                        Log::warning('WA inbound: no store matches phone_number_id — message will not appear in any vendor inbox', [
+                            'phone_number_id' => $phoneNumberId,
+                            'from'            => data_get($value, 'messages.0.from'),
+                        ]);
+                    }
 
                     foreach (data_get($value, 'messages', []) as $msg) {
                         $type = $msg['type'] ?? 'text';
@@ -92,6 +102,13 @@ class WhatsAppWebhookController extends Controller
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
+
+                        // AI auto-reply from the store's knowledge — queued so Meta gets its
+                        // 200 immediately. Text only; opt-outs get silence, not a sales pitch.
+                        $text = trim((string) data_get($msg, 'text.body'));
+                        if ($storeId && $from && !$optOut && $type === 'text' && $text !== '') {
+                            \App\Jobs\SendAutoReply::dispatch($storeId, (string) $from, $text);
+                        }
                     }
                 }
             }

@@ -39,6 +39,23 @@ class WhatsAppService
     const DEFAULT_TEST_TEMPLATE_LANG = 'en_US';
 
     /**
+     * Template sent to a customer when the vendor adds them (Add Customer / Vendor screen).
+     * This is the admin preset the vendor submits to their own WABA — the welcome only goes
+     * out from the vendor's own connected number, once that copy is APPROVED.
+     */
+    const DEFAULT_WELCOME_TEMPLATE = 'customer_welcome';
+
+    /**
+     * Template for automatic HMIS appointment reminders — the admin preset the vendor submits
+     * to their own WABA. Sent by the hourly SendAppointmentReminders job on the schedule the
+     * vendor chose (stores.wa_appt_reminder: day_before | 2h_before | both).
+     */
+    const DEFAULT_APPT_REMINDER_TEMPLATE = 'appointment_reminder';
+
+    /** Hours-before default when the vendor never chose a value (stores.wa_appt_reminder NULL). */
+    const DEFAULT_APPT_REMINDER_HOURS = 2;
+
+    /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
      * Add a new receiving capability here — no schema change needed.
      */
@@ -155,6 +172,23 @@ class WhatsAppService
         );
     }
 
+    /**
+     * Human-friendly error from a Graph API response. Meta's error_user_title/error_user_msg
+     * explain the actual problem and fix (e.g. "Message template language is being deleted —
+     * try again in less than 1 minute"); the bare error.message is often just "Invalid
+     * parameter". Prefer the user-facing fields, fall back to the raw message.
+     */
+    protected function graphError($resp): string
+    {
+        $err   = data_get($resp->json(), 'error', []);
+        $title = trim((string) data_get($err, 'error_user_title', ''));
+        $msg   = trim((string) data_get($err, 'error_user_msg', ''));
+        if ($msg !== '') {
+            return ($title !== '' && stripos($msg, $title) === false) ? $title . ' — ' . $msg : $msg;
+        }
+        return (string) (data_get($err, 'message') ?: 'HTTP ' . $resp->status());
+    }
+
     /** Low-level send. $payload is merged onto {messaging_product:'whatsapp'}. */
     public function send(array $payload, array $meta = []): array
     {
@@ -174,7 +208,7 @@ class WhatsAppService
                     'response' => $resp->json(),
                 ];
             } else {
-                $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+                $err = $this->graphError($resp);
                 Log::warning('WhatsApp send failed', ['status' => $resp->status(), 'body' => $resp->json()]);
                 $result = ['success' => false, 'error' => $err, 'id' => null, 'response' => $resp->json()];
             }
@@ -254,6 +288,32 @@ class WhatsAppService
     }
 
     /**
+     * Make sure our app is subscribed to this WABA so inbound messages and delivery
+     * statuses reach the platform webhook. Idempotent — Meta returns success when already
+     * subscribed — so it doubles as a self-heal for stores whose original subscription
+     * failed silently or that connected before webhooks were wired.
+     */
+    public function ensureWebhookSubscription(): array
+    {
+        if (!$this->hasWaba()) {
+            return ['success' => false, 'error' => 'No WhatsApp Business Account connected.'];
+        }
+        try {
+            $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->post($this->wabaEndpoint('subscribed_apps'));
+            if ($resp->successful()) {
+                return ['success' => true, 'error' => null];
+            }
+            $err = $this->graphError($resp);
+            Log::warning('WhatsApp subscribed_apps failed', ['waba' => $this->cfg['business_account_id'], 'error' => $err]);
+            return ['success' => false, 'error' => $err];
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp subscribed_apps exception: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * List message templates on the WABA (Business Management API).
      * GET /{WABA_ID}/message_templates
      */
@@ -271,7 +331,7 @@ class WhatsAppService
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null, 'data' => data_get($resp->json(), 'data', [])];
             }
-            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            $err = $this->graphError($resp);
             Log::warning('WhatsApp listTemplates failed', ['status' => $resp->status(), 'body' => $resp->json()]);
             return ['success' => false, 'error' => $err, 'data' => []];
         } catch (\Throwable $e) {
@@ -338,7 +398,7 @@ class WhatsAppService
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null, 'id' => data_get($resp->json(), 'id'), 'response' => $resp->json()];
             }
-            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            $err = $this->graphError($resp);
             Log::warning('WhatsApp createTemplate failed', ['status' => $resp->status(), 'body' => $resp->json()]);
             return ['success' => false, 'error' => $err, 'id' => null, 'response' => $resp->json()];
         } catch (\Throwable $e) {
@@ -370,7 +430,7 @@ class WhatsAppService
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null, 'response' => $resp->json()];
             }
-            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            $err = $this->graphError($resp);
             Log::warning('WhatsApp updateTemplate failed', ['status' => $resp->status(), 'body' => $resp->json()]);
             return ['success' => false, 'error' => $err, 'response' => $resp->json()];
         } catch (\Throwable $e) {
@@ -394,7 +454,7 @@ class WhatsAppService
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null];
             }
-            $err = data_get($resp->json(), 'error.message', 'HTTP ' . $resp->status());
+            $err = $this->graphError($resp);
             return ['success' => false, 'error' => $err];
         } catch (\Throwable $e) {
             return ['success' => false, 'error' => $e->getMessage()];
@@ -417,12 +477,147 @@ class WhatsAppService
             'wa_token'               => 'TEXT NULL',
             'wa_business_account_id' => 'VARCHAR(64) NULL',
             'wa_api_version'         => 'VARCHAR(12) NULL',
+            'wa_appt_reminder'       => 'VARCHAR(20) NULL',
         ];
         foreach ($cols as $name => $def) {
             if (!Schema::hasColumn('stores', $name)) {
                 DB::statement("ALTER TABLE `stores` ADD COLUMN `$name` $def");
             }
         }
+    }
+
+    /**
+     * Admin-curated template presets. Stored locally; nothing is sent to Meta until a vendor
+     * picks one, at which point it is submitted to THAT vendor's own WABA for review.
+     * Idempotent, no migration files. Seeded with starter presets on first creation only,
+     * so an admin deleting a default doesn't see it resurrected.
+     */
+    public static function ensurePresetsTable(): void
+    {
+        if (Schema::hasTable('wa_template_presets')) {
+            return;
+        }
+        DB::statement("CREATE TABLE `wa_template_presets` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `title` VARCHAR(120) NOT NULL,
+            `name` VARCHAR(120) NOT NULL,
+            `category` VARCHAR(30) NOT NULL DEFAULT 'UTILITY',
+            `language` VARCHAR(12) NOT NULL DEFAULT 'en_US',
+            `header` VARCHAR(200) NULL,
+            `body` TEXT NOT NULL,
+            `footer` VARCHAR(200) NULL,
+            `example` TEXT NULL,
+            `btn_text` VARCHAR(60) NULL,
+            `btn_url` VARCHAR(500) NULL,
+            `active` TINYINT(1) NOT NULL DEFAULT 1,
+            `created_at` TIMESTAMP NULL,
+            `updated_at` TIMESTAMP NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `watp_name` (`name`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $now = now();
+        DB::table('wa_template_presets')->insert([
+            [
+                'title'    => 'Welcome Message',
+                'name'     => 'customer_welcome',
+                'category' => 'MARKETING',
+                'language' => 'en_US',
+                'header'   => null,
+                'body'     => "Hi {{1}}, thank you for choosing {{2}}! We've added you to our customer list — you'll now receive your bills, updates and offers from us right here on WhatsApp. Reply to this message anytime and we'll be happy to help.",
+                'footer'   => 'Reply STOP to unsubscribe',
+                'example'  => 'Ramesh | Krishna Hospital',
+                'btn_text' => null,
+                'btn_url'  => null,
+                'active'   => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'title'    => 'Appointment Reminder',
+                'name'     => 'appointment_reminder',
+                'category' => 'UTILITY',
+                'language' => 'en_US',
+                'header'   => null,
+                'body'     => "Hi {{1}}, this is a reminder of your appointment with {{2}} on {{3}} at {{4}}. Please arrive 10 minutes early. If you need to reschedule, just reply to this message.",
+                'footer'   => null,
+                'example'  => 'Ramesh | Krishna Hospital | 25 July | 10:30 AM',
+                'btn_text' => null,
+                'btn_url'  => null,
+                'active'   => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ]);
+    }
+
+    /**
+     * Welcome a customer the vendor just added (Add Customer / Vendor screen).
+     *
+     * Sent from the VENDOR's own connected number using the `customer_welcome` template they
+     * submitted from the admin preset — never the platform number. Silently skips when the
+     * vendor hasn't connected WhatsApp; if their copy of the template isn't APPROVED yet,
+     * Meta rejects the send and it's logged as failed under context 'welcome'.
+     * Never throws — adding a customer must not fail because a WhatsApp send did.
+     */
+    public static function sendWelcomeMessage(int $storeId, ?string $customerName, ?string $phone): void
+    {
+        try {
+            $phone = trim((string) $phone);
+            if (strlen(preg_replace('/[^0-9]/', '', $phone) ?? '') < 10) {
+                return;
+            }
+
+            if (!NotificationPrefs::enabled($storeId, 'whatsapp_send', 'customer_welcome')) {
+                return;
+            }
+
+            $wa = static::make($storeId);
+            if ($wa->source() !== 'vendor') {
+                return;
+            }
+
+            // One welcome per number per store — re-adding the same person must not re-send.
+            static::ensureMessagesTable();
+            $normalized = $wa->normalizePhone($phone);
+            $already = DB::table('whatsapp_messages')
+                ->where('store_id', $storeId)
+                ->where('context', 'welcome')
+                ->where('recipient', $normalized)
+                ->where('status', '!=', 'failed')
+                ->exists();
+            if ($already) {
+                return;
+            }
+
+            static::ensurePresetsTable();
+            $preset = DB::table('wa_template_presets')->where('name', self::DEFAULT_WELCOME_TEMPLATE)->first();
+            $lang = $preset->language ?? 'en_US';
+            $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
+
+            // Body vars: {{1}} customer name, {{2}} store name.
+            $components = [[
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn($v) => ['type' => 'text', 'text' => $v],
+                    [trim((string) $customerName) ?: 'there', $storeName]
+                ),
+            ]];
+
+            $wa->sendTemplate($phone, self::DEFAULT_WELCOME_TEMPLATE, $lang, $components, 'welcome');
+        } catch (\Throwable $e) {
+            Log::warning('WA welcome send skipped: ' . $e->getMessage());
+        }
+    }
+
+    /** Presets shown to vendors (active only) or to the admin manage screen (all). */
+    public static function templatePresets(bool $activeOnly = true)
+    {
+        static::ensurePresetsTable();
+        return DB::table('wa_template_presets')
+            ->when($activeOnly, fn($q) => $q->where('active', 1))
+            ->orderBy('title')
+            ->get();
     }
 
     /** Per-store paid receiving add-ons. Idempotent, no migration files. */
@@ -454,6 +649,10 @@ class WhatsAppService
 
         if (!static::storeHasFeature($storeId, 'leads')) {
             Log::info('LEAD-WA: skipped — store does not have active "leads" add-on', ['store_id' => $storeId]);
+            return;
+        }
+        if (!NotificationPrefs::enabled($storeId, 'whatsapp_receive', 'lead_notify')) {
+            Log::info('LEAD-WA: skipped — store muted lead alerts in notification settings', ['store_id' => $storeId]);
             return;
         }
         $store = DB::table('stores')->where('id', $storeId)->first();
@@ -511,6 +710,9 @@ class WhatsAppService
      */
     public static function sendLeadAcceptedNotification(int $storeId, ?string $serviceName, ?string $clientName, $visitingCharge = null, ?string $clientPhone = null): void
     {
+        if (!NotificationPrefs::enabled($storeId, 'whatsapp_receive', 'lead_accepted')) {
+            return;
+        }
         $store = DB::table('stores')->where('id', $storeId)->first();
         if (!$store || empty($store->phone)) {
             return;

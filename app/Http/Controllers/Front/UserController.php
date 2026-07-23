@@ -511,8 +511,12 @@ class UserController extends Controller
                         $store2 = DB::table('stores')->where('id', $store)->first();
                         $url =  route('vendor.service.leads_list');
                         if ($store2) {
-                            _sendSMS($store2->phone, $msg_to_vendor);
-                            _inAppNotification($title, $msg_to_vendor, null, $store2->id, $url, 'vendor');
+                            if (\App\Services\NotificationPrefs::enabled($store2->id, 'sms_receive', 'new_lead')) {
+                                _sendSMS($store2->phone, $msg_to_vendor);
+                            }
+                            if (\App\Services\NotificationPrefs::enabled($store2->id, 'push_receive', 'new_lead')) {
+                                _inAppNotification($title, $msg_to_vendor, null, $store2->id, $url, 'vendor');
+                            }
                             if (!_autoAcceptLeadForStore($store2->id, $serviceReq->id)) {
                                 \App\Services\WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
                             }

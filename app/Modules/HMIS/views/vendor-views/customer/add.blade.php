@@ -51,6 +51,13 @@
                                 @csrf
 
                                 <input type="file" name="file" class="form-control" accept=".xls,.xlsx" />
+                                <div class="custom-control custom-checkbox my-2">
+                                    <input type="checkbox" class="custom-control-input" id="importSendWelcome" name="send_welcome" value="1">
+                                    <label class="custom-control-label" for="importSendWelcome" style="font-size:13px;">
+                                        Send a WhatsApp welcome message to the newly imported customers
+                                        <small class="text-muted d-block">Sent in the background from your connected WhatsApp number using your approved welcome template.</small>
+                                    </label>
+                                </div>
                                 <button type="submit" class="btn btn-primary btn--primary ">Upload
                                 </button>
                             </form>

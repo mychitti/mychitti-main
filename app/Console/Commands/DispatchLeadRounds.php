@@ -64,8 +64,12 @@ class DispatchLeadRounds extends Command
             foreach ($newStoreIds as $storeId) {
                 $store = DB::table('stores')->where('id', $storeId)->first();
                 if (!$store) continue;
-                _sendSMS($store->phone, $msg);
-                _inAppNotification($title, $msg, null, $store->id, $url, 'vendor');
+                if (\App\Services\NotificationPrefs::enabled($store->id, 'sms_receive', 'new_lead')) {
+                    _sendSMS($store->phone, $msg);
+                }
+                if (\App\Services\NotificationPrefs::enabled($store->id, 'push_receive', 'new_lead')) {
+                    _inAppNotification($title, $msg, null, $store->id, $url, 'vendor');
+                }
                 // WhatsApp-subscribed stores auto-accept + get the "accepted" template + confirmation;
                 // everyone else just gets the normal new-lead WhatsApp.
                 if (!_autoAcceptLeadForStore($store->id, $lead->id)) {

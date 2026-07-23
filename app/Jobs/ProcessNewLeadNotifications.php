@@ -65,8 +65,12 @@ class ProcessNewLeadNotifications implements ShouldQueue
                     if (!$store2) {
                         continue;
                     }
-                    _sendSMS($store2->phone, $msg);
-                    _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
+                    if (\App\Services\NotificationPrefs::enabled($store2->id, 'sms_receive', 'new_lead')) {
+                        _sendSMS($store2->phone, $msg);
+                    }
+                    if (\App\Services\NotificationPrefs::enabled($store2->id, 'push_receive', 'new_lead')) {
+                        _inAppNotification($title, $msg, null, $store2->id, $url, 'vendor');
+                    }
                     if (!_autoAcceptLeadForStore($store2->id, $serviceReq->id)) {
                         WhatsAppService::sendLeadNotification($store2->id, $itemDet->name ?? null, $userDet->f_name ?? null);
                     }

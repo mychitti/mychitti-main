@@ -77,8 +77,8 @@
                                 <div class="col-sm-6">
                                     <div class="form-group">
                                         <label class="form-label">{{ translate('Callback URL') }}</label>
-                                        <input type="text" class="form-control" value="{{ url('whatsapp/webhook') }}" readonly onclick="this.select()">
-                                        <small class="text-muted">{{ translate('Paste this in Meta → WhatsApp → Configuration → Webhook.') }}</small>
+                                        <input type="text" class="form-control" value="https://vendor.mcvendorhub.com/whatsapp/webhook" readonly onclick="this.select()">
+                                        <small class="text-muted">{{ translate('Paste this in Meta → WhatsApp → Configuration → Webhook. Served by the vendor panel — all servers share the same database.') }}</small>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
@@ -201,29 +201,25 @@
                     <div class="card-body">
                         @if(session('wa_create_result'))
                             @php $r = session('wa_create_result'); @endphp
-                            <div class="alert {{ $r['success'] ? 'alert-success' : 'alert-danger' }}">
-                                <h6 class="mb-2">
-                                    @if($r['success'])
-                                        <i class="tio-checkmark-circle"></i> {{ translate('Template created via Business Management API') }}
-                                    @else
-                                        <i class="tio-clear-circle"></i> {{ translate('Template create failed') }}
-                                    @endif
-                                </h6>
-                                <div style="font-size:13px;">
-                                    <div><b>{{ translate('Endpoint') }}:</b> <code>{{ $r['endpoint'] }}</code></div>
-                                    @if($r['success'])
-                                        <div><b>{{ translate('Template ID') }}:</b> <code>{{ $r['id'] ?? '—' }}</code></div>
-                                    @else
-                                        <div><b>{{ translate('Error') }}:</b> {{ $r['error'] }}</div>
-                                    @endif
+                            @if ($r['success'])
+                                <div class="alert alert-success d-flex align-items-start" style="gap:12px;">
+                                    <i class="tio-checkmark-circle" style="font-size:24px;line-height:1.2;"></i>
+                                    <div>
+                                        <h6 class="mb-1">{{ translate('Template submitted for review') }}</h6>
+                                        <div style="font-size:13px;">
+                                            {{ translate('Meta is now reviewing the template. Approval usually takes a few minutes but can take up to 24 hours — it can be used once its status shows APPROVED.') }}
+                                        </div>
+                                    </div>
                                 </div>
-                                @if(!empty($r['response']))
-                                    <details class="mt-2">
-                                        <summary style="cursor:pointer;font-size:12px;">{{ translate('Raw API response') }}</summary>
-                                        <pre class="mt-2 mb-0 p-2" style="background:#0d1117;color:#c9d1d9;border-radius:6px;font-size:12px;overflow:auto;max-height:240px;">{{ json_encode($r['response'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
-                                    </details>
-                                @endif
-                            </div>
+                            @else
+                                <div class="alert alert-danger d-flex align-items-start" style="gap:12px;">
+                                    <i class="tio-clear-circle" style="font-size:24px;line-height:1.2;"></i>
+                                    <div style="min-width:0;flex:1;">
+                                        <h6 class="mb-1">{{ translate('Template could not be submitted') }}</h6>
+                                        <div style="font-size:13px;">{{ $r['error'] }}</div>
+                                    </div>
+                                </div>
+                            @endif
                         @endif
                         <div class="row">
                             <div class="col-lg-7">

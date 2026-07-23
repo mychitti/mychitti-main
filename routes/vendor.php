@@ -44,8 +44,23 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
         Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
         Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
+        Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox');
+        Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
+        Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread');
+        Route::post('whatsapp/inbox/send', 'WhatsAppController@inboxSend')->name('whatsapp.inbox.send');
         Route::get('whatsapp/templates', 'WhatsAppController@templates')->name('whatsapp.templates');
         Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create');
+        Route::post('whatsapp/templates/use-preset', 'WhatsAppController@templateFromPreset')->name('whatsapp.templates.use-preset');
+        Route::post('whatsapp/templates/reminder-schedule', 'WhatsAppController@reminderSchedule')->name('whatsapp.templates.reminder-schedule');
+        // Auto-reply knowledge documents (used by WhatsApp auto-reply).
+        Route::get('whatsapp/knowledge', 'KnowledgeController@index')->name('whatsapp.knowledge');
+        Route::post('whatsapp/knowledge/store', 'KnowledgeController@store')->name('whatsapp.knowledge.store');
+        Route::post('whatsapp/knowledge/update', 'KnowledgeController@update')->name('whatsapp.knowledge.update');
+        Route::post('whatsapp/knowledge/toggle', 'KnowledgeController@toggle')->name('whatsapp.knowledge.toggle');
+        Route::post('whatsapp/knowledge/delete', 'KnowledgeController@delete')->name('whatsapp.knowledge.delete');
+        // Per-action notification preferences — one page per direction, tabbed by channel.
+        Route::post('notification-settings/toggle', 'NotificationSettingController@toggle')->name('notification-settings.toggle');
+        Route::get('notification-settings/{direction?}', 'NotificationSettingController@index')->name('notification-settings');
         Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
         Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete');
         Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1');

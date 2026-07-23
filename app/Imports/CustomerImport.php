@@ -13,6 +13,9 @@ class CustomerImport implements ToCollection
     public $failedRows = false;
     protected $vendorId;
 
+    /** New rows from this sheet, for the opt-in queued WhatsApp welcome. */
+    public array $welcomeRecipients = [];
+
     public function __construct($vendorId = null) // Optional
     {
         $this->vendorId = $vendorId;
@@ -54,6 +57,9 @@ class CustomerImport implements ToCollection
 
             $user = StoreCustomer::create($userData);
             $user->save();
+            if (strlen($phone) >= 10) {
+                $this->welcomeRecipients[] = ['name' => $row[1], 'phone' => $phone];
+            }
         }
     }
 }

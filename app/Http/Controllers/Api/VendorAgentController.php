@@ -296,6 +296,8 @@ class VendorAgentController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    // Raw insert bypasses the StoreCustomer::created hook — welcome explicitly.
+                    \App\Services\WhatsAppService::sendWelcomeMessage($storeId, $customerName, $customerPhone);
                 } else {
                     $storeCustomerId = $storeCustomer->id;
                 }
@@ -941,6 +943,8 @@ class VendorAgentController extends Controller
                     'gst'        => $data['gst'] ?? null,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
+                // Raw insert bypasses the StoreCustomer::created hook — welcome explicitly.
+                \App\Services\WhatsAppService::sendWelcomeMessage($storeId, $name, $data['phone'] ?? null);
                 return response()->json(['success' => true, 'message' => "Client '{$name}' added. ID: #{$id}"]);
 
             case 'count':

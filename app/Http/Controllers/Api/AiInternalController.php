@@ -197,8 +197,12 @@ class AiInternalController extends Controller
                 foreach ($storesChunk as $storeId) {
                     $store = DB::table('stores')->where('id', $storeId)->first();
                     if ($store) {
-                        _sendSMS($store->phone, $vendorMsg);
-                        _inAppNotification($adminTitle, $vendorMsg, null, $store->id, $vendorUrl, 'vendor');
+                        if (\App\Services\NotificationPrefs::enabled($store->id, 'sms_receive', 'new_lead')) {
+                            _sendSMS($store->phone, $vendorMsg);
+                        }
+                        if (\App\Services\NotificationPrefs::enabled($store->id, 'push_receive', 'new_lead')) {
+                            _inAppNotification($adminTitle, $vendorMsg, null, $store->id, $vendorUrl, 'vendor');
+                        }
                         if (!_autoAcceptLeadForStore($store->id, $serviceReq->id)) {
                             \App\Services\WhatsAppService::sendLeadNotification($store->id, $itemDet->name ?? null, $user->f_name ?? null);
                         }

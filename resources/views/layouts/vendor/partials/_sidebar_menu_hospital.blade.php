@@ -2095,6 +2095,7 @@
                 @endif
                 {{-- WhatsApp — right after Post Ads --}}
                 @include('layouts.vendor.partials._sidebar_menu_whatsapp')
+                @include('layouts.vendor.partials._sidebar_menu_notifications')
                 {{-- =============================== MY BUSINESS =========================== --}}
                 @if (selected_menu('my_business') && \App\CentralLogics\Helpers::employee_module_permission_check('my_business'))
                     <li

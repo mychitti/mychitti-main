@@ -19,6 +19,9 @@ class StoreCustomerImport implements ToCollection
     public int $skipped  = 0;
     public int $duplicate = 0;
 
+    /** New rows from this sheet, for the opt-in queued WhatsApp welcome. */
+    public array $welcomeRecipients = [];
+
     public function __construct(private int $storeId)
     {
     }
@@ -72,6 +75,7 @@ class StoreCustomerImport implements ToCollection
             ]);
 
             $this->imported++;
+            $this->welcomeRecipients[] = ['name' => $name, 'phone' => $phone];
         }
     }
 }

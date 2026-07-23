@@ -12,6 +12,12 @@
                 <span class="text-truncate">{{ translate('Dashboard') }}</span>
             </a>
         </li>
+        <li class="nav-item {{ Request::is('*whatsapp/inbox*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.inbox') }}" title="{{ translate('Chats') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Chats') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/connect*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Bulk Message') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
@@ -22,6 +28,12 @@
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
                 <span class="text-truncate">{{ translate('Message Templates') }}</span>
+            </a>
+        </li>
+        <li class="nav-item {{ Request::is('*whatsapp/knowledge*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.knowledge') }}" title="{{ translate('Auto-Reply Knowledge') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Auto-Reply Knowledge') }}</span>
             </a>
         </li>
     </ul>

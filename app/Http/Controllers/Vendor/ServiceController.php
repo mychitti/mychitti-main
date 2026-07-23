@@ -362,7 +362,10 @@ class ServiceController extends Controller
                     'image'       => '',
                     'type'        => 'service',
                 ];
-                Helpers::send_push_notif_to_device($user->cm_firebase_token, $notifData);
+                // Store preference gates the push only; the in-app notification record stays.
+                if (\App\Services\NotificationPrefs::enabled((int) $store_id, 'push_send', 'lead_status')) {
+                    Helpers::send_push_notif_to_device($user->cm_firebase_token, $notifData);
+                }
                 DB::table('user_notifications')->insert([
                     'data'       => json_encode($notifData),
                     'user_id'    => $user->id,
@@ -504,7 +507,10 @@ class ServiceController extends Controller
                 'image'       => '',
                 'type'        => 'service',
             ];
-            Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
+            // Store preference gates the push only; the in-app notification record stays.
+            if (\App\Services\NotificationPrefs::enabled((int) Helpers::get_store_id(), 'push_send', 'lead_status')) {
+                Helpers::send_push_notif_to_device($user->cm_firebase_token, $data);
+            }
             DB::table('user_notifications')->insert([
                 'data'       => json_encode($data),
                 'user_id'    => $user->id,
