@@ -18,6 +18,9 @@ class KnowledgeController extends Controller
         StoreKnowledgeDoc::ensureTable();
         $storeId = Helpers::get_store_id();
 
+        // Index anything created before RAG wiring (or while the RAG server was down).
+        StoreKnowledgeDoc::syncMissing($storeId);
+
         $docs = StoreKnowledgeDoc::where('store_id', $storeId)
             ->when($request->filled('type'), fn($q) => $q->where('doc_type', $request->type))
             ->orderByDesc('updated_at')
@@ -44,13 +47,14 @@ class KnowledgeController extends Controller
             return back()->withInput();
         }
 
-        StoreKnowledgeDoc::create([
+        $doc = StoreKnowledgeDoc::create([
             'store_id' => $storeId,
             'doc_type' => $request->doc_type,
             'title'    => trim((string) $request->title),
             'content'  => trim((string) $request->content),
             'active'   => 1,
         ]);
+        $doc->syncToRag();
 
         Toastr::success('Knowledge added. Auto-reply will use it to answer customer messages.');
         return back();
@@ -76,6 +80,9 @@ class KnowledgeController extends Controller
             'title'    => trim((string) $request->title),
             'content'  => trim((string) $request->content),
         ]);
+        if ($doc->active) {
+            $doc->syncToRag();
+        }
 
         Toastr::success('Knowledge updated.');
         return back();
@@ -92,6 +99,8 @@ class KnowledgeController extends Controller
         }
 
         $doc->update(['active' => $doc->active ? 0 : 1]);
+        // Paused docs leave the RAG index entirely; resuming re-indexes them.
+        $doc->active ? $doc->syncToRag() : $doc->removeFromRag();
         Toastr::success($doc->active ? 'Document is now used for auto-reply.' : 'Document paused — auto-reply will not use it.');
         return back();
     }
@@ -100,9 +109,11 @@ class KnowledgeController extends Controller
     {
         $request->validate(['id' => 'required|integer']);
 
-        StoreKnowledgeDoc::where('store_id', Helpers::get_store_id())
-            ->where('id', $request->id)
-            ->delete();
+        $doc = StoreKnowledgeDoc::where('store_id', Helpers::get_store_id())->find($request->id);
+        if ($doc) {
+            $doc->removeFromRag();
+            $doc->delete();
+        }
 
         Toastr::success('Document deleted.');
         return back();

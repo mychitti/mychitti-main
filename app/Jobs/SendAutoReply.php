@@ -143,9 +143,31 @@ class SendAutoReply implements ShouldQueue
 
     protected function generateReply(string $storeName, $docs, string $key): string
     {
-        $knowledge = $docs->map(function ($d) {
-            return '### ' . StoreKnowledgeDoc::typeLabel($d->doc_type) . " — {$d->title}\n{$d->content}";
-        })->implode("\n\n");
+        // RAG first: semantic search over this store's indexed knowledge returns only the
+        // chunks relevant to THIS question — scales past the point where every doc fits in
+        // the prompt. Falls back to all active docs when RAG is unreachable or not yet synced.
+        $knowledge = '';
+        try {
+            $resp = Http::timeout(15)->post(rtrim((string) config('services.ai_server.url'), '/') . '/rag/search', [
+                'query'    => $this->body,
+                'category' => StoreKnowledgeDoc::ragCategory($this->storeId),
+                'top_k'    => 4,
+            ]);
+            if ($resp->successful()) {
+                $chunks = (array) data_get($resp->json(), 'results', []);
+                $knowledge = collect($chunks)
+                    ->map(fn($c) => '### ' . data_get($c, 'title') . "\n" . data_get($c, 'content'))
+                    ->implode("\n\n");
+            }
+        } catch (\Throwable $e) {
+            Log::warning('WA auto-reply RAG search failed, using full docs: ' . $e->getMessage());
+        }
+
+        if (trim($knowledge) === '') {
+            $knowledge = $docs->map(function ($d) {
+                return '### ' . StoreKnowledgeDoc::typeLabel($d->doc_type) . " — {$d->title}\n{$d->content}";
+            })->implode("\n\n");
+        }
 
         $system = "You are the WhatsApp assistant replying on behalf of \"{$storeName}\". "
             . "A customer has messaged the business and you answer for it.\n\n"
