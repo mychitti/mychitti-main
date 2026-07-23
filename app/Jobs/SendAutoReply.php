@@ -88,6 +88,19 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
+            // Appointment action marker (book / reschedule) — execute it and send the
+            // deterministic result instead of the model's text.
+            $action = \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->storeId, $key, $this->from);
+            if ($action !== null) {
+                if ($action['message'] !== '') {
+                    $wa->sendText($this->from, $action['message'], false, 'auto reply');
+                }
+                if (!empty($action['escalate'])) {
+                    $this->escalateToVendor($key, $action['reason'] ?: 'Appointment request needs attention');
+                }
+                return;
+            }
+
             // The model flags questions it couldn't answer from the knowledge docs with a
             // marker — strip it from the customer-facing text and alert the vendor.
             $needsVendor = str_contains($reply, self::ESCALATE_MARKER);
@@ -195,8 +208,15 @@ class SendAutoReply implements ShouldQueue
             . "- Keep replies short and WhatsApp-friendly: 1–4 sentences, plain text. No markdown, no headings, no asterisks.\n"
             . "- Reply in the same language the customer wrote in.\n"
             . "- Be warm and professional. Do not say you are an AI unless the customer asks directly.\n"
-            . "- For booking, appointment or order requests: share what the knowledge says and tell them the team will confirm shortly.\n"
             . "- Never share information about other customers.";
+
+        // Hospital stores get live appointment tooling (book / reschedule via markers).
+        $apptSection = \App\Services\WhatsAppAppointmentBot::promptSection($this->storeId, $key);
+        if ($apptSection !== '') {
+            $system .= $apptSection;
+        } else {
+            $system .= "\n- For booking or order requests: share what the knowledge says and tell them the team will confirm shortly.";
+        }
 
         // Thread history, oldest first. The webhook stored the current inbound before
         // dispatching this job, so drop the trailing user turn — it goes as `message`.
