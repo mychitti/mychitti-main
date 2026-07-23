@@ -1,6 +1,6 @@
 @extends('front-views.layout')
 
-@section('title', $store->name)
+@section('title', $store->name . ' in ' . _storeCityDisplay($store) . ' | My Chitti')
 
 @section('content')
     <!-- FULL STORE CONTENT FOR TEMPLATE 16 -->

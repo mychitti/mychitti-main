@@ -12,7 +12,9 @@
       "Bash(php artisan:*)",
       "Bash(xargs -0 grep -l \"service_requests\")",
       "Bash(find . -name \"*.php\" -type f -exec grep -l \"schema.*service_requests\\\\|create.*service_requests\" {} \\\\;)",
-      "Bash(find '/d/Work Projects/mychitti-main' -type f -name \"*.php\" -path \"*/Models/*\" -exec grep -l \"subscription\\\\|Subscription\" {} \\\\;)"
+      "Bash(find '/d/Work Projects/mychitti-main' -type f -name \"*.php\" -path \"*/Models/*\" -exec grep -l \"subscription\\\\|Subscription\" {} \\\\;)",
+      "Bash(php -l app/Http/Controllers/Vendor/WhatsAppController.php)",
+      "Bash(php scratch_bladelint.php resources/views/vendor-views/whatsapp/dashboard.blade.php)"
     ]
   }
 }

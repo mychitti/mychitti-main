@@ -552,11 +552,9 @@ class Store extends Model
             $store->slug = $store->generateSlug($store->name);
             $store->save();
 
-            // Auto-generating SEO meta on registration is deliberately NOT wired up here.
-            // Admin and vendor run QUEUE_DRIVER=sync, so a dispatch would run the AI call
-            // inline and make store creation wait on it (120s timeout); on the shop server it
-            // would queue to 'seo', which has no worker. Meta is generated on demand from the
-            // admin store-meta screen or `php artisan store:generate-meta` instead.
+            // afterResponse: runs once the HTTP response is sent, so registration never waits
+            // on the AI call even with QUEUE_DRIVER=sync, and no 'seo' queue worker is needed.
+            \App\Jobs\GenerateStoreMeta::dispatchAfterResponse($store->id);
         });
     }
 

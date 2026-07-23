@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Generate SEO meta (meta_title + meta_description) for one store via the AI service.
  *
- * Dispatched automatically when a store is created (see Store::boot) and on demand from
- * admin / the store:generate-meta command for backfilling stores that are missing it.
+ * Dispatched automatically after the response when a store is created (see Store::boot,
+ * dispatchAfterResponse) and on demand from admin / the store:generate-meta command for
+ * backfilling stores that are missing it.
  */
 class GenerateStoreMeta implements ShouldQueue
 {

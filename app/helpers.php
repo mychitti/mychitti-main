@@ -5642,6 +5642,20 @@ if (!function_exists('_zoneCityName')) {
     }
 }
 
+if (!function_exists('_storeCityDisplay')) {
+    /**
+     * Display city name for a store, from its zone — the display-name counterpart of
+     * _storeCity(). Falls back to the default city for zone-less stores, matching the
+     * canonical URL they 301 to. Used by the store-page templates to put the city in
+     * the main <h1> for local SEO.
+     */
+    function _storeCityDisplay($store): string
+    {
+        $zid = is_object($store) ? ($store->zone_id ?? null) : ($store['zone_id'] ?? null);
+        return _zoneCityName($zid ? [(int) $zid] : []);
+    }
+}
+
 if (!function_exists('_selectedCity')) {
     function _selectedCity()
     {

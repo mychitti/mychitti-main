@@ -1,9 +1,9 @@
 @extends('front-views.layout')
 
-@section('title', $store['meta_title'] ?? ($data['store_config']?->webpage_name ?? $store['name']))
+@section('title', $store['meta_title'] ?: (($data['store_config']?->webpage_name ?? $store['name']) . ' in ' . _storeCityDisplay($store) . ' | My Chitti'))
 
 @section('meta_keywords', $keywords)
-@section('meta_description', $store['meta_description'])
+@section('meta_description', $store['meta_description'] ?: (($data['store_config']?->webpage_name ?? $store['name']) . ' — trusted local business in ' . _storeCityDisplay($store) . '. View services, ratings and contact details on My Chitti.'))
  
 
 @push('css_or_js')

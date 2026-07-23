@@ -1330,7 +1330,6 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('get-vendor-log-matches', 'VendorController@get_vendor_log_matches')->name('get-vendor-log-matches');
             Route::get('verify-doc/{id}', 'VendorController@verify_doc')->name('verify-doc')->middleware('permission:store,documents');
  
- 
             Route::post('update_id', 'VendorController@update_id')->name('update_id');
             Route::get('terms-and-conditions', 'VendorController@terms_and_conditions')->name('terms-and-conditions');
             Route::post('terms-and-conditions', 'VendorController@terms_and_conditions_store')->name('terms-and-conditions.store');
@@ -1347,7 +1346,6 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             //  IF HAS EITHER store OR store_add_edit PERMISSION
             Route::group(['middleware' => ['module:store']], function () {
                 Route::post('import', 'VendorController@import')->name('import');
-
                 Route::get('add', 'VendorController@index')->name('add')->middleware('permission:store,add_basic,store,add_advanced');
                 Route::post('store', 'VendorController@store')->name('store')->middleware('permission:store,add_basic,store,add_advanced');
                 Route::get('edit/{id}', 'VendorController@edit')->name('edit')->middleware('permission:store,edit_basic,store,edit_advanced');
