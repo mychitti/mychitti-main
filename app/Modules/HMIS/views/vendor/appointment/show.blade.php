@@ -209,6 +209,46 @@
                 </div>
             </div>
             @endif
+
+            {{-- Next Visit (follow-up) — available even after completion --}}
+            @if(!in_array($appointment->status, ['cancelled', 'no_show']))
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="tio-calendar-note"></i> Schedule Next Visit</h5></div>
+                <div class="card-body">
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        Books a follow-up for this patient with the same doctor. The patient gets a WhatsApp
+                        confirmation now and an automatic reminder before the visit.
+                    </p>
+                    <form action="{{ route('vendor.appointment.next-visit', $appointment->id) }}" method="POST">
+                        @csrf
+                        <div class="form-group">
+                            <label class="input-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="appointment_date" id="nextVisitDate" class="form-control"
+                                min="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Slot</label>
+                            <select name="slot_id" id="nextVisitSlot" class="form-control">
+                                <option value="">-- Select date first --</option>
+                            </select>
+                            <small class="text-muted">Leave blank to enter time manually</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Time <span class="text-danger">*</span></label>
+                            <input type="time" name="appointment_time" id="nextVisitTime" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Reason / Notes</label>
+                            <input type="text" name="reason" class="form-control" maxlength="500"
+                                   placeholder="Review, dressing change, report follow-up…">
+                        </div>
+                        <button type="submit" class="btn btn--primary w-100">
+                            <i class="tio-calendar-note"></i> Schedule Next Visit
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -405,6 +445,33 @@
     document.getElementById('rescheduleSlot')?.addEventListener('change', function () {
         const start = this.options[this.selectedIndex].getAttribute('data-start');
         if (start) document.getElementById('rescheduleTime').value = start.substring(0, 5);
+    });
+
+    // ── Next-visit slot loader (same doctor, same slots endpoint) ──
+    document.getElementById('nextVisitDate')?.addEventListener('change', function () {
+        const date    = this.value;
+        const slotSel = document.getElementById('nextVisitSlot');
+
+        slotSel.innerHTML = '<option value="">Loading...</option>';
+
+        fetch(`${slotsUrl}?doctor_profile_id=${doctorId}&date=${date}`)
+            .then(r => r.json())
+            .then(slots => {
+                slotSel.innerHTML = '<option value="">-- Manual time --</option>';
+                slots.forEach(s => {
+                    const label    = `${formatTime(s.slot_start)} – ${formatTime(s.slot_end)} | ${s.available}/${s.max_patients} available`;
+                    const disabled = s.available <= 0 ? 'disabled' : '';
+                    slotSel.innerHTML += `<option value="${s.id}" data-start="${s.slot_start}" ${disabled}>${label}</option>`;
+                });
+                if (slots.length === 0) {
+                    slotSel.innerHTML = '<option value="">No slots for this day</option>';
+                }
+            });
+    });
+
+    document.getElementById('nextVisitSlot')?.addEventListener('change', function () {
+        const start = this.options[this.selectedIndex].getAttribute('data-start');
+        if (start) document.getElementById('nextVisitTime').value = start.substring(0, 5);
     });
 
     function formatTime(t) {

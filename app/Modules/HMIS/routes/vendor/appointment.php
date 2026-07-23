@@ -14,5 +14,6 @@ Route::group(['prefix' => 'appointment', 'as' => 'appointment.'], function () {
     Route::get('{id}',                               [AppointmentController::class, 'show'])->name('show');
     Route::post('{id}/status',                       [AppointmentController::class, 'updateStatus'])->name('status');
     Route::post('{id}/reschedule',                   [AppointmentController::class, 'reschedule'])->name('reschedule');
+    Route::post('{id}/next-visit',                   [AppointmentController::class, 'nextVisit'])->name('next-visit');
     Route::post('{id}/reassign',                     [AppointmentController::class, 'reassign'])->name('reassign');
 });

@@ -305,6 +305,93 @@ class AppointmentController extends Controller
         }
     }
 
+    /**
+     * Schedule the patient's NEXT VISIT (follow-up) from an existing appointment.
+     * Creates a fresh 'scheduled' appointment for the same patient and doctor, so it
+     * automatically rides the WhatsApp appointment-reminder automation. The patient also
+     * gets an immediate courtesy confirmation on WhatsApp (best-effort).
+     */
+    public function nextVisit(Request $request, $id)
+    {
+        $request->validate([
+            'appointment_date' => 'required|date|after_or_equal:today',
+            'appointment_time' => 'required',
+            'slot_id'          => 'nullable|integer|exists:doctor_slots,id',
+            'reason'           => 'nullable|string|max:500',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $current  = Appointment::where('store_id', $store_id)->with('patient')->findOrFail($id);
+
+        if ($request->slot_id) {
+            $booked = Appointment::where('slot_id', $request->slot_id)
+                ->where('appointment_date', $request->appointment_date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->count();
+            $slot = DoctorSlot::findOrFail($request->slot_id);
+            if ($booked >= $slot->max_patients) {
+                Toastr::error('Selected slot is fully booked.');
+                return back();
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $next = Appointment::create([
+                'store_id'          => $store_id,
+                'patient_id'        => $current->patient_id,
+                'doctor_profile_id' => $current->doctor_profile_id,
+                'slot_id'           => $request->slot_id,
+                'appointment_date'  => $request->appointment_date,
+                'appointment_time'  => $request->appointment_time,
+                'booking_type'      => 'follow_up',
+                'status'            => 'scheduled',
+                'reason'            => trim((string) $request->reason) ?: ('Follow-up of appointment #' . $current->id),
+                'booked_by'         => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            ]);
+
+            $this->generateToken($current->doctor_profile_id, $request->appointment_date, $next->id);
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Toastr::error('Could not schedule next visit: ' . $e->getMessage());
+            return back();
+        }
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'appointment', $next->id, 'next_visit_scheduled',
+            "Next visit for appointment #{$current->id} scheduled on {$request->appointment_date}. New appointment #{$next->id}",
+            ['from_appointment_id' => $current->id, 'date' => $request->appointment_date, 'time' => $request->appointment_time]
+        );
+
+        // Courtesy WhatsApp confirmation from the vendor's own number — free text, so it
+        // only delivers inside the patient's 24h window; the scheduled reminder template
+        // covers everyone regardless, closer to the visit.
+        try {
+            $patient = $current->patient;
+            if ($patient && $patient->phone) {
+                $wa = \App\Services\WhatsAppService::make($store_id);
+                if ($wa->source() === 'vendor') {
+                    $storeName = DB::table('stores')->where('id', $store_id)->value('name') ?: 'our clinic';
+                    $when = Carbon::parse($request->appointment_date)->format('d M Y')
+                        . ' at ' . Carbon::parse($request->appointment_time)->format('h:i A');
+                    $wa->sendText(
+                        $patient->phone,
+                        "Hi {$patient->name}, your next visit at {$storeName} has been scheduled for {$when}. "
+                            . "We'll remind you before the appointment. Reply here if you need to change it.",
+                        false,
+                        'next visit'
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Next-visit WhatsApp skipped: ' . $e->getMessage());
+        }
+
+        Toastr::success('Next visit scheduled for ' . Carbon::parse($request->appointment_date)->format('d M Y') . '. The patient will get a WhatsApp reminder before it.');
+        return redirect()->route('vendor.appointment.show', $next->id);
+    }
+
     public function reassign(Request $request, $id)
     {
         $request->validate([
