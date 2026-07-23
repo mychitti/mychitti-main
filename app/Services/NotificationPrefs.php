@@ -86,6 +86,11 @@ class NotificationPrefs
                     'desc'    => 'Panel notification when a new lead or appointment request reaches your store.',
                     'default' => true,
                 ],
+                'chat_escalation' => [
+                    'label'   => 'Customer chat needs your reply',
+                    'desc'    => 'Panel notification when the WhatsApp auto-reply could not answer a customer\'s question from your knowledge documents.',
+                    'default' => true,
+                ],
             ],
         ],
         'sms_receive' => [

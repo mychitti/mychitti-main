@@ -81,14 +81,64 @@ class SendAutoReply implements ShouldQueue
 
             $storeName = DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store';
             $reply = $this->generateReply($storeName, $docs, $key);
+
+            // AI unavailable — the customer got no answer at all; the vendor must know.
             if ($reply === '') {
+                $this->escalateToVendor($key, 'Auto-reply could not respond');
                 return;
             }
 
-            $wa->sendText($this->from, $reply, false, 'auto reply');
+            // The model flags questions it couldn't answer from the knowledge docs with a
+            // marker — strip it from the customer-facing text and alert the vendor.
+            $needsVendor = str_contains($reply, self::ESCALATE_MARKER);
+            if ($needsVendor) {
+                $reply = trim(str_replace(self::ESCALATE_MARKER, '', $reply));
+            }
+
+            if ($reply !== '') {
+                $wa->sendText($this->from, $reply, false, 'auto reply');
+            }
+
+            if ($needsVendor) {
+                $this->escalateToVendor($key, 'Auto-reply could not answer from your knowledge');
+            }
         } catch (\Throwable $e) {
             Log::warning('WA auto-reply skipped (store ' . $this->storeId . '): ' . $e->getMessage());
         }
+    }
+
+    /** Marker the model appends when the knowledge does not cover the question. */
+    const ESCALATE_MARKER = '[[NEEDS_VENDOR]]';
+
+    /**
+     * Panel notification: a customer question is waiting for a human. Throttled to one
+     * notification per contact per 30 minutes so a rapid back-and-forth (or an AI outage
+     * during a busy hour) doesn't bury the vendor in duplicates.
+     */
+    protected function escalateToVendor(string $key, string $reason): void
+    {
+        if (!NotificationPrefs::enabled($this->storeId, 'push_receive', 'chat_escalation')) {
+            return;
+        }
+        if (!\Illuminate\Support\Facades\Cache::add("wa_escalate:{$this->storeId}:{$key}", 1, 1800)) {
+            return;
+        }
+
+        $name = DB::table('store_customers')
+            ->where('store_id', $this->storeId)
+            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+            ->value('f_name');
+        $who = $name ?: ('+' . ltrim($this->from, '+'));
+
+        $question = mb_substr($this->body, 0, 120);
+        _inAppNotification(
+            'WhatsApp: customer needs your reply',
+            "{$who} asked: \"{$question}\" — {$reason}. Open WhatsApp Chats to reply.",
+            null,
+            $this->storeId,
+            route('vendor.whatsapp.inbox'),
+            'vendor'
+        );
     }
 
     protected function generateReply(string $storeName, $docs, string $key): string
@@ -102,7 +152,8 @@ class SendAutoReply implements ShouldQueue
             . "BUSINESS KNOWLEDGE (your ONLY source of truth):\n\n{$knowledge}\n\n"
             . "RULES:\n"
             . "- Answer ONLY from the business knowledge above. Never invent prices, timings, availability or policies.\n"
-            . "- If the answer is not in the knowledge, say you will pass the question to the team and they will reply shortly. Do not guess.\n"
+            . "- If the answer is not in the knowledge, say you will pass the question to the team and they will reply shortly. Do not guess. "
+            . "Then append the exact marker " . self::ESCALATE_MARKER . " at the very end of your reply (the customer never sees it; it alerts the team).\n"
             . "- Keep replies short and WhatsApp-friendly: 1–4 sentences, plain text. No markdown, no headings, no asterisks.\n"
             . "- Reply in the same language the customer wrote in.\n"
             . "- Be warm and professional. Do not say you are an AI unless the customer asks directly.\n"
