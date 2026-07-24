@@ -199,10 +199,10 @@
                         </li>
                     @endif
                     {{-- =============================== PHARMACY/INVENTORY Management =========================== --}}
-                    @if (
-                        (selected_menu('inventory_manage') && hasMasterModulePermission('inventory_manage')) ||
+                    @if (selected_menu('inventory_manage') &&
+                        (hasMasterModulePermission('inventory_manage') ||
                             hasPermission('pharmacy_dispense_queue', 'list') ||
-                            hasAnyPermission(['pharmacy.list', 'pharmacy.add']))
+                            hasAnyPermission(['pharmacy.list', 'pharmacy.add'])))
                         @php
                             // Land on the free Medicines & Stock page by default; the pharmacy header
                             // tabs provide access to Dispense Queue, Dashboard and the paid modules.
@@ -1627,7 +1627,7 @@
                 @endif
 
                 {{-- =============================== Basic Staff (free, shown when HR not subscribed) --}}
-                @if (auth('vendor')->check() && !\App\CentralLogics\Helpers::permission_check('hr_manage'))
+                @if (selected_menu('staff_manage') && auth('vendor')->check() && !\App\CentralLogics\Helpers::permission_check('hr_manage'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('basic-staff*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
                             title="Staff Management">
