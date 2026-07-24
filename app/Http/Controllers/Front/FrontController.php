@@ -2356,13 +2356,6 @@ class FrontController extends Controller
     }
     public function store_gallery(Request $request, $slug = null)
     {
-        dd([
-            'slug_arg' => $slug,
-            'route_slug' => $request->route('slug'),
-            'store_from_domain' => $request->attributes->get('store_domain_store')?->toArray(),
-            'host' => $request->getHost(),
-            'path' => $request->path(),
-        ]);
         // If the store is already resolved via custom domain middleware, use that context
         $store = $request->attributes->get('store_domain_store');
         if ($store) {
