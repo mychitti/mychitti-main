@@ -495,6 +495,7 @@ class WhatsAppService
     public static function ensurePresetsTable(): void
     {
         if (Schema::hasTable('wa_template_presets')) {
+            static::ensureStaffForwardPreset();
             return;
         }
         DB::statement("CREATE TABLE `wa_template_presets` (
@@ -549,6 +550,54 @@ class WhatsAppService
                 'updated_at' => $now,
             ],
         ]);
+
+        static::ensureStaffForwardPreset();
+    }
+
+    /**
+     * Suggested preset for forwarding an inbox message (with the customer's details) to a
+     * staff member. Structure lives in the template's fixed text so it keeps its layout;
+     * only {{4}} carries the forwarded message, whose own line breaks Meta collapses to spaces.
+     *
+     * Added after the two starter presets, so it must be back-filled on installs whose table
+     * predates it. Guarded by a settings flag — a one-time insert that an admin can delete for
+     * good, matching how the starter presets are seeded only once.
+     */
+    public static function ensureStaffForwardPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('business_settings')->where('key', 'wa_preset_staff_forward_seeded')->exists()) {
+            return;
+        }
+
+        if (!DB::table('wa_template_presets')->where('name', 'staff_forward')->exists()) {
+            $now = now();
+            DB::table('wa_template_presets')->insert([
+                'title'    => 'Forward to Staff',
+                'name'     => 'staff_forward',
+                'category' => 'UTILITY',
+                'language' => 'en_US',
+                'header'   => null,
+                'body'     => "📩 New message forwarded from {{1}}.\n\nFrom: {{2}} ({{3}})\nMessage: {{4}}\n\nPlease follow up with the customer.",
+                'footer'   => null,
+                'example'  => 'Krishna Hospital | Ramesh | +919876543210 | I need to reschedule my appointment',
+                'btn_text' => null,
+                'btn_url'  => null,
+                'active'   => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        DB::table('business_settings')->updateOrInsert(
+            ['key' => 'wa_preset_staff_forward_seeded'],
+            ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
+        );
     }
 
     /**

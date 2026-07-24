@@ -132,13 +132,25 @@
                                     <option value="">Loading staff…</option>
                                 </select>
                             </div>
+                            <div class="form-row">
+                                <div class="form-group col-sm-6">
+                                    <label class="input-label">From (name)</label>
+                                    <input type="text" id="wfwdName" class="form-control" maxlength="200">
+                                </div>
+                                <div class="form-group col-sm-6">
+                                    <label class="input-label">Phone</label>
+                                    <input type="text" id="wfwdPhone" class="form-control" maxlength="40">
+                                </div>
+                            </div>
                             <div class="form-group mb-1">
                                 <label class="input-label">Message</label>
-                                <textarea id="wfwdText" class="form-control" rows="7" style="font-size:13px;"></textarea>
+                                <textarea id="wfwdText" class="form-control" rows="5" style="font-size:13px;"></textarea>
                             </div>
                             <small class="text-muted" style="font-size:11.5px;">
-                                <i class="tio-info-outined"></i> Sent from your WhatsApp number. The staff member
-                                must have messaged your number in the last 24 hours to receive a free-text forward.
+                                <i class="tio-info-outined"></i> Sent from your WhatsApp number using the
+                                <b>Forward to Staff</b> template. Submit and get it approved on the
+                                <a href="{{ route('vendor.whatsapp.templates') }}">Templates</a> page first. Until then it
+                                falls back to free text, which only delivers if the staff member messaged your number in the last 24 hours.
                             </small>
                         </div>
                         <div class="modal-footer">
@@ -161,7 +173,6 @@
     var SEND_URL    = '{{ route('vendor.whatsapp.inbox.send') }}';
     var STAFF_URL   = '{{ route('vendor.whatsapp.inbox.staff') }}';
     var FORWARD_URL = '{{ route('vendor.whatsapp.inbox.forward') }}';
-    var STORE_NAME  = @json($storeName ?? '');
     var CSRF        = '{{ csrf_token() }}';
 
     var threads = [];
@@ -323,25 +334,23 @@
     function openForward(body) {
         if (!activeKey) return;
         loadStaffOnce();
-        var name  = activeLabel || 'Customer';
-        var phone = '+' + String(activePhone || activeKey).replace(/^\+/, '');
-        var text  = '📩 Forwarded WhatsApp message\n\n'
-            + 'From: ' + name + ' (' + phone + ')\n'
-            + 'Message:\n' + body
-            + (STORE_NAME ? '\n\n— via ' + STORE_NAME : '');
-        $('#wfwdText').val(text);
+        $('#wfwdName').val(activeLabel || 'Customer');
+        $('#wfwdPhone').val('+' + String(activePhone || activeKey).replace(/^\+/, ''));
+        $('#wfwdText').val(body);
         $('#wfwdStaff').val('');
         $('#wfwdModal').modal('show');
     }
 
     function sendForward() {
         var staffId = $('#wfwdStaff').val();
+        var name    = ($('#wfwdName').val() || '').trim();
+        var phone   = ($('#wfwdPhone').val() || '').trim();
         var text    = ($('#wfwdText').val() || '').trim();
         if (!staffId) { toastr.error('Choose a staff member to forward to.'); return; }
         if (!text)    { toastr.error('The message is empty.'); return; }
 
         $('#wfwdSend').prop('disabled', true);
-        $.post(FORWARD_URL, { _token: CSRF, staff_id: staffId, message: text }, function (res) {
+        $.post(FORWARD_URL, { _token: CSRF, staff_id: staffId, sender_name: name, sender_phone: phone, message: text }, function (res) {
             $('#wfwdSend').prop('disabled', false);
             if (res && res.success) {
                 $('#wfwdModal').modal('hide');

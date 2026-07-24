@@ -235,14 +235,20 @@ class WhatsAppController extends Controller
 
     /**
      * Forward an inbox message (with the customer's details) to a staff member's WhatsApp,
-     * sent from the store's own connected number. Same 24h-window rule as inboxSend(): a
-     * free-text forward only delivers if the staff member messaged the store number recently.
+     * sent from the store's own connected number.
+     *
+     * Prefers the approved `staff_forward` template so it delivers any time; the template's
+     * fixed text keeps the layout and {{4}} carries the message (its own line breaks collapse
+     * to spaces, per Meta). Falls back to free text — which only lands if the staff member
+     * messaged the store number in the last 24h — when the template isn't approved yet.
      */
     public function inboxForward(Request $request)
     {
         $request->validate([
-            'staff_id' => 'required|integer',
-            'message'  => 'required|string|max:4000',
+            'staff_id'     => 'required|integer',
+            'sender_name'  => 'nullable|string|max:200',
+            'sender_phone' => 'nullable|string|max:40',
+            'message'      => 'required|string|max:4000',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -259,13 +265,40 @@ class WhatsAppController extends Controller
             return response()->json(['success' => false, 'error' => 'That staff member has no phone number on file.'], 422);
         }
 
-        $res = $wa->sendText($staff->phone, trim((string) $request->message), false, 'forward to staff');
+        $storeName   = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
+        $senderName  = trim((string) $request->sender_name) ?: 'Customer';
+        $senderPhone = trim((string) $request->sender_phone) ?: '—';
+        $message     = trim((string) $request->message);
 
-        return response()->json([
-            'success' => (bool) $res['success'],
-            'error'   => $res['error'] ?? null,
-            'staff'   => $staff->name,
-        ]);
+        WhatsAppService::ensurePresetsTable();
+        $lang = DB::table('wa_template_presets')->where('name', 'staff_forward')->value('language') ?: 'en_US';
+
+        // Body vars: {{1}} store, {{2}} sender name, {{3}} phone, {{4}} message.
+        $params = array_map(fn($v) => $this->sanitizeParam((string) $v), [$storeName, $senderName, $senderPhone, $message]);
+        $components = [[
+            'type'       => 'body',
+            'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params),
+        ]];
+
+        $res  = $wa->sendTemplate($staff->phone, 'staff_forward', $lang, $components, 'forward to staff');
+        $sent = !empty($res['success']);
+
+        // Free-text fallback mirrors the template and keeps the message's own line breaks.
+        if (!$sent) {
+            $text = "📩 New message forwarded from {$storeName}.\n\n"
+                . "From: {$senderName} ({$senderPhone})\n"
+                . "Message: {$message}\n\n"
+                . "Please follow up with the customer.";
+            $fallback = $wa->sendText($staff->phone, $text, false, 'forward to staff');
+            if (empty($fallback['success'])) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => $res['error'] ?: ($fallback['error'] ?? 'Could not forward the message.'),
+                ]);
+            }
+        }
+
+        return response()->json(['success' => true, 'staff' => $staff->name]);
     }
 
     /** Conversation list: one row per contact, newest activity first. */
