@@ -122,14 +122,7 @@
                                 <span class="text-truncate">{{ translate('messages.firebase_notification') }}</span>
                             </a>
                         </li>
-                        @php
-                            $waActive = Request::is('business-settings/third-party/whatsapp-config*')
-                                || Request::is('business-settings/third-party/whatsapp-template-presets*')
-                                || Request::is('business-settings/third-party/whatsapp-inbox*')
-                                || Request::is('business-settings/third-party/whatsapp-knowledge*')
-                                || Request::is('business-settings/third-party/whatsapp-report*')
-                                || Request::is('business-settings/third-party/whatsapp-lead-notifications*');
-                        @endphp
+                        @php($waActive = Request::is('business-settings/third-party/whatsapp-config*') || Request::is('business-settings/third-party/whatsapp-template-presets*') || Request::is('business-settings/third-party/whatsapp-inbox*') || Request::is('business-settings/third-party/whatsapp-knowledge*') || Request::is('business-settings/third-party/whatsapp-report*') || Request::is('business-settings/third-party/whatsapp-lead-notifications*'))
                         <li class="navbar-vertical-aside-has-menu {{ $waActive ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('WhatsApp') }}">
                                 <span class="tio-chat nav-indicator-icon"></span>
