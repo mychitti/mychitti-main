@@ -42,8 +42,18 @@ class ResolveStoreByDomain
 
         if ($store) {
             $request->attributes->set('is_store_domain', true);
-            $result = (new FrontController())->store_details($request, _selectedCity(), $store->slug);
-            return Router::toResponse($request, $result);
+            $request->attributes->set('store_domain_store', $store);
+
+            // Only the domain ROOT renders the store's storefront homepage. Every other
+            // path (product, gallery, category, cart…) must fall through to normal routing —
+            // otherwise each internal link on the custom domain just re-renders the homepage,
+            // which looks like "links redirect to the same page".
+            if (trim($request->path(), '/') === '') {
+                $result = (new FrontController())->store_details($request, _selectedCity(), $store->slug);
+                return Router::toResponse($request, $result);
+            }
+
+            return $next($request);
         } else {
             return redirect('https://mychitti.net');
         }
