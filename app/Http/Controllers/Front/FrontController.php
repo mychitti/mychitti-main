@@ -345,7 +345,7 @@ class FrontController extends Controller
     public function registration_success(Request $request)
     {
         return view('front-views.store_reg_successfull');
-    }
+    } 
     public function store_reviews(Request $request, $slug = null)
     {
         $storeFromDomain = $request->attributes->get('store_domain_store');
