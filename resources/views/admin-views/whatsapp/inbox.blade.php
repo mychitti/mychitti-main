@@ -65,6 +65,15 @@
                 <a href="{{ route('admin.business-settings.third-party.whatsapp-config') }}" class="alert-link">{{ translate('WhatsApp API') }}</a>.
             </div>
         @else
+            @if (!empty($subscribeError))
+                <div class="alert alert-warning" style="font-size:13px;">
+                    <i class="tio-info-outined"></i>
+                    <b>{{ translate('Incoming messages may not arrive:') }}</b>
+                    {{ translate('the MyChitti WhatsApp account could not be linked to the message receiver') }}
+                    ({{ $subscribeError }}). {{ translate('Check the WhatsApp Business Account ID and token in') }}
+                    <a href="{{ route('admin.business-settings.third-party.whatsapp-config') }}" class="alert-link">{{ translate('WhatsApp API') }}</a>.
+                </div>
+            @endif
             <div class="wchat-wrap">
                 <div class="wchat-side">
                     <div class="wchat-side-head">

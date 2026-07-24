@@ -18,8 +18,21 @@ class WhatsAppInboxController extends Controller
     public function inbox(Request $request)
     {
         WhatsAppService::ensureMessagesTable();
-        $connected = WhatsAppService::make()->isConfigured();
-        return view('admin-views.whatsapp.inbox', compact('connected'));
+        $wa = WhatsAppService::make();
+        $connected = $wa->isConfigured();
+
+        // Self-heal: subscribe the MyChitti platform WABA to our app so Meta forwards its
+        // INBOUND messages to the webhook. Without this the platform number can send but
+        // never receive. Idempotent — Meta returns success when already subscribed.
+        $subscribeError = null;
+        if ($connected && $wa->hasWaba()) {
+            $sub = $wa->ensureWebhookSubscription();
+            if (!$sub['success']) {
+                $subscribeError = $sub['error'];
+            }
+        }
+
+        return view('admin-views.whatsapp.inbox', compact('connected', 'subscribeError'));
     }
 
     /** Conversation list: one row per contact, newest activity first. */
@@ -53,7 +66,6 @@ class WhatsAppInboxController extends Controller
         }
 
         if ($threads) {
-            $keys = array_keys($threads);
             // Vendors first (store name), then customers (user name) — vendor identity wins.
             foreach (DB::table('stores')->whereNotNull('phone')->where('phone', '!=', '')
                 ->get(['name', 'phone']) as $s) {
