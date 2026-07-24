@@ -48,6 +48,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
         Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread');
         Route::post('whatsapp/inbox/send', 'WhatsAppController@inboxSend')->name('whatsapp.inbox.send');
+        Route::get('whatsapp/inbox/staff', 'WhatsAppController@inboxStaff')->name('whatsapp.inbox.staff');
+        Route::post('whatsapp/inbox/forward', 'WhatsAppController@inboxForward')->name('whatsapp.inbox.forward');
         Route::get('whatsapp/templates', 'WhatsAppController@templates')->name('whatsapp.templates');
         Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create');
         Route::post('whatsapp/templates/use-preset', 'WhatsAppController@templateFromPreset')->name('whatsapp.templates.use-preset');

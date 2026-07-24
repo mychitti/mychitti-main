@@ -34,6 +34,11 @@
     .wbubble .wticks { letter-spacing:-2px; margin-left:3px; }
     .wbubble .wticks.read { color:#53bdeb; }
     .wbubble .wfail { color:#dc3545; font-size:11px; display:block; text-align:right; }
+    /* Forward-to-staff control, shown on bubble hover */
+    .wbubble .wfwd { position:absolute; top:2px; right:4px; border:0; background:transparent; color:#54656f;
+        font-size:14px; line-height:1; padding:2px 4px; border-radius:4px; opacity:0; transition:opacity .15s; cursor:pointer; }
+    .wbubble:hover .wfwd { opacity:.85; }
+    .wbubble .wfwd:hover { opacity:1; background:rgba(0,0,0,.06); }
     .wchat-day { text-align:center; margin:10px 0; }
     .wchat-day span { background:#fff; color:#54656f; font-size:11px; padding:4px 10px; border-radius:8px; box-shadow:0 1px 0.5px rgba(11,20,26,.13); }
     .wchat-window-note { background:#fff8e1; color:#7a6a1f; font-size:12px; padding:6px 14px; border-top:1px solid #f0e6bb; }
@@ -111,6 +116,38 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Forward-to-staff modal --}}
+            <div class="modal fade" id="wfwdModal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="tio-share"></i> Forward to Staff</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label class="input-label">Staff member</label>
+                                <select id="wfwdStaff" class="form-control">
+                                    <option value="">Loading staff…</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-1">
+                                <label class="input-label">Message</label>
+                                <textarea id="wfwdText" class="form-control" rows="7" style="font-size:13px;"></textarea>
+                            </div>
+                            <small class="text-muted" style="font-size:11.5px;">
+                                <i class="tio-info-outined"></i> Sent from your WhatsApp number. The staff member
+                                must have messaged your number in the last 24 hours to receive a free-text forward.
+                            </small>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-white btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn--primary btn-sm" id="wfwdSend"><i class="tio-send"></i> Forward</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
 @endsection
@@ -122,10 +159,16 @@
     var THREADS_URL = '{{ route('vendor.whatsapp.inbox.threads') }}';
     var THREAD_URL  = '{{ route('vendor.whatsapp.inbox.thread') }}';
     var SEND_URL    = '{{ route('vendor.whatsapp.inbox.send') }}';
+    var STAFF_URL   = '{{ route('vendor.whatsapp.inbox.staff') }}';
+    var FORWARD_URL = '{{ route('vendor.whatsapp.inbox.forward') }}';
+    var STORE_NAME  = @json($storeName ?? '');
     var CSRF        = '{{ csrf_token() }}';
 
     var threads = [];
     var activeKey = null;
+    var activeLabel = '';
+    var activePhone = '';
+    var staffLoaded = false;
     var lastRenderSignature = '';
 
     function esc(s) {
@@ -197,8 +240,10 @@
         msgs.forEach(function (m) {
             var d = fmtDay(m.sent_at);
             if (d && d !== day) { day = d; html += '<div class="wchat-day"><span>' + esc(d) + '</span></div>'; }
+            var body = m.body || '[' + (m.type || 'message') + ']';
             html += '<div class="wbubble ' + (m.direction === 'in' ? 'in' : 'out') + '">'
-                + esc(m.body || '[' + (m.type || 'message') + ']')
+                + '<button type="button" class="wfwd" title="Forward to staff" data-body="' + esc(body) + '">↪</button>'
+                + esc(body)
                 + '<div class="wmeta">' + fmtTime(m.sent_at) + ticks(m) + '</div>'
                 + '</div>';
         });
@@ -209,6 +254,8 @@
 
     function openThread(key, label, phone) {
         activeKey = key;
+        activeLabel = label;
+        activePhone = phone;
         lastRenderSignature = '';
         $('#wchatEmpty').hide();
         $('#wchatHead, #wchatMsgs, #wchatInput').show();
@@ -251,6 +298,69 @@
             toastr.error(msg);
         });
     }
+
+    // ── Forward to staff ─────────────────────────────────────
+    function loadStaffOnce() {
+        if (staffLoaded) return;
+        staffLoaded = true;
+        $.get(STAFF_URL, function (res) {
+            var opts = '<option value="">Select staff member…</option>';
+            if (res && res.success) {
+                (res.staff || []).forEach(function (s) {
+                    opts += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+                });
+                if (!(res.staff || []).length) {
+                    opts = '<option value="">No staff with a phone number on file</option>';
+                }
+            }
+            $('#wfwdStaff').html(opts);
+        }).fail(function () {
+            staffLoaded = false;
+            $('#wfwdStaff').html('<option value="">Could not load staff</option>');
+        });
+    }
+
+    function openForward(body) {
+        if (!activeKey) return;
+        loadStaffOnce();
+        var name  = activeLabel || 'Customer';
+        var phone = '+' + String(activePhone || activeKey).replace(/^\+/, '');
+        var text  = '📩 Forwarded WhatsApp message\n\n'
+            + 'From: ' + name + ' (' + phone + ')\n'
+            + 'Message:\n' + body
+            + (STORE_NAME ? '\n\n— via ' + STORE_NAME : '');
+        $('#wfwdText').val(text);
+        $('#wfwdStaff').val('');
+        $('#wfwdModal').modal('show');
+    }
+
+    function sendForward() {
+        var staffId = $('#wfwdStaff').val();
+        var text    = ($('#wfwdText').val() || '').trim();
+        if (!staffId) { toastr.error('Choose a staff member to forward to.'); return; }
+        if (!text)    { toastr.error('The message is empty.'); return; }
+
+        $('#wfwdSend').prop('disabled', true);
+        $.post(FORWARD_URL, { _token: CSRF, staff_id: staffId, message: text }, function (res) {
+            $('#wfwdSend').prop('disabled', false);
+            if (res && res.success) {
+                $('#wfwdModal').modal('hide');
+                toastr.success('Forwarded to ' + (res.staff || 'staff') + '.');
+            } else {
+                toastr.error((res && res.error) || 'Could not forward the message.');
+            }
+        }).fail(function (xhr) {
+            $('#wfwdSend').prop('disabled', false);
+            var msg = (xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message)) || 'Could not forward the message.';
+            toastr.error(msg);
+        });
+    }
+
+    $(document).on('click', '.wfwd', function (e) {
+        e.stopPropagation();
+        openForward($(this).data('body') + '');
+    });
+    $('#wfwdSend').on('click', sendForward);
 
     $(document).on('click', '.wchat-thread', function () {
         openThread($(this).data('key') + '', $(this).data('label') + '', $(this).data('phone') + '');

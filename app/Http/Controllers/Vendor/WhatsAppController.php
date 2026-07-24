@@ -210,7 +210,62 @@ class WhatsAppController extends Controller
             }
         }
 
-        return view('vendor-views.whatsapp.inbox', compact('connected', 'subscribeError'));
+        $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: '';
+
+        return view('vendor-views.whatsapp.inbox', compact('connected', 'subscribeError', 'storeName'));
+    }
+
+    /** Active staff (with a phone on file) for the "forward to staff" picker. */
+    public function inboxStaff(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        // Resigned staff have their phone nulled, so the phone filter already excludes them.
+        $staff = \App\Models\VendorEmployee::where('store_id', $storeId)
+            ->whereNotNull('phone')->where('phone', '!=', '')
+            ->orderBy('f_name')
+            ->get(['id', 'f_name', 'l_name', 'phone'])
+            ->map(fn($e) => [
+                'id'   => $e->id,
+                'name' => trim($e->f_name . ' ' . $e->l_name),
+            ]);
+
+        return response()->json(['success' => true, 'staff' => $staff]);
+    }
+
+    /**
+     * Forward an inbox message (with the customer's details) to a staff member's WhatsApp,
+     * sent from the store's own connected number. Same 24h-window rule as inboxSend(): a
+     * free-text forward only delivers if the staff member messaged the store number recently.
+     */
+    public function inboxForward(Request $request)
+    {
+        $request->validate([
+            'staff_id' => 'required|integer',
+            'message'  => 'required|string|max:4000',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+        if ($wa->source() !== 'vendor') {
+            return response()->json(['success' => false, 'error' => 'Connect your own WhatsApp number to forward chats.'], 422);
+        }
+
+        // Phone comes from the staff record, never the client — resigned staff (phone nulled) are excluded.
+        $staff = \App\Models\VendorEmployee::where('store_id', $storeId)
+            ->whereNotNull('phone')->where('phone', '!=', '')
+            ->find($request->staff_id);
+        if (!$staff) {
+            return response()->json(['success' => false, 'error' => 'That staff member has no phone number on file.'], 422);
+        }
+
+        $res = $wa->sendText($staff->phone, trim((string) $request->message), false, 'forward to staff');
+
+        return response()->json([
+            'success' => (bool) $res['success'],
+            'error'   => $res['error'] ?? null,
+            'staff'   => $staff->name,
+        ]);
     }
 
     /** Conversation list: one row per contact, newest activity first. */
