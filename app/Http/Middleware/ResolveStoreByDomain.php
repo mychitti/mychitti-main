@@ -35,7 +35,7 @@ class ResolveStoreByDomain
         // If system domain → skip resolving
         if (in_array($host, $systemDomains)) { 
             return $next($request);
-        } 
+        }  
    
         // Try to find store by custom domain (handle both www. and non-www. variants)
         $hosts = [$host];

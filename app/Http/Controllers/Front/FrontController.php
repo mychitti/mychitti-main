@@ -341,7 +341,7 @@ class FrontController extends Controller
                 ]);
             }
         }
-    } 
+    }  
     public function registration_success(Request $request)
     {
         return view('front-views.store_reg_successfull');

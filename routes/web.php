@@ -301,7 +301,7 @@ Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
         Route::post('return-approval', [ServiceController::class, 'quotation_return_approval'])->name('return-approval');
         Route::get('details', [ServiceController::class, 'quotation_details'])->name('details');
     });
-}); 
+});  
 Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home'); 
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
