@@ -3,6 +3,86 @@
 @section('title', 'Connect WhatsApp')
 
 @section('content')
+<style>
+.waba-payment-guide{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:24px;
+    color:#374151;
+    font-size:15px;
+    line-height:1.7;
+}
+
+.waba-payment-guide__header{
+    margin-bottom:20px;
+}
+
+.waba-payment-guide__header h3{
+    margin:0 0 8px;
+    font-size:22px;
+    color:#111827;
+}
+
+.waba-payment-guide__header p{
+    margin:0;
+    color:#6b7280;
+}
+
+.waba-payment-guide__notice{
+    background:#fff8e6;
+    border-left:4px solid #f59e0b;
+    padding:14px 16px;
+    border-radius:6px;
+    margin-bottom:24px;
+}
+
+.waba-payment-guide h4{
+    margin:22px 0 12px;
+    font-size:17px;
+    color:#111827;
+}
+
+.waba-payment-guide__steps{
+    padding-left:22px;
+    margin:0;
+}
+
+.waba-payment-guide__steps li{
+    margin-bottom:10px;
+}
+
+.waba-payment-guide__checklist{
+    list-style:none;
+    padding:0;
+    margin:0;
+}
+
+.waba-payment-guide__checklist li{
+    position:relative;
+    padding-left:28px;
+    margin-bottom:10px;
+}
+
+.waba-payment-guide__checklist li::before{
+    content:"✔";
+    position:absolute;
+    left:0;
+    top:0;
+    color:#16a34a;
+    font-weight:bold;
+}
+
+.waba-payment-guide__footer{
+    margin-top:24px;
+    padding:14px 16px;
+    background:#f9fafb;
+    border:1px solid #e5e7eb;
+    border-radius:6px;
+    color:#4b5563;
+}
+
+</style>
     <div class="content container-fluid">
         <div class="page-header">
             <h1 class="page-header-title"><i class="tio-chat"></i> Connect WhatsApp</h1>
@@ -69,6 +149,46 @@
                         </form>
                     </div>
                 </div>
+                
+                <div class="waba-payment-guide mt-3">
+
+    <div class="waba-payment-guide__header">
+        <h3>💳 Add a Payment Method</h3>
+        <p>To continue sending WhatsApp messages, Meta may require a valid payment method on your WhatsApp Business Account (WABA).</p>
+    </div>
+
+    <div class="waba-payment-guide__notice">
+        <strong>Important:</strong> Payment methods are managed directly by Meta. For security reasons, we cannot add or modify your payment method on your behalf.
+    </div>
+
+    <h4>Steps to Add a Payment Method</h4>
+
+    <ol class="waba-payment-guide__steps">
+        <li>Log in to <strong>Meta Business Suite</strong>.</li>
+        <li>Select the <strong>Business Portfolio</strong> that contains your WhatsApp Business Account.</li>
+        <li>Go to <strong>Settings (⚙️)</strong>.</li>
+        <li>Navigate to <strong>Accounts → WhatsApp Accounts</strong>.</li>
+        <li>Select your <strong>WhatsApp Business Account (WABA)</strong>.</li>
+        <li>Open <strong>Payment Settings</strong>.</li>
+        <li>Click <strong>Add Payment Method</strong>.</li>
+        <li>Enter your payment details and complete any bank verification.</li>
+        <li>Save the payment method.</li>
+    </ol>
+
+    <h4>Can't find the option?</h4>
+
+    <ul class="waba-payment-guide__checklist">
+        <li>You're logged into the correct <strong>Business Portfolio</strong>.</li>
+        <li>You have <strong>Admin</strong> access to the Business Portfolio and WhatsApp Business Account.</li>
+        <li>Your WhatsApp Business Account setup is complete.</li>
+    </ul>
+
+    <div class="waba-payment-guide__footer">
+        If the option is still unavailable, please contact <strong>Meta Support</strong> or your Meta Business administrator.
+    </div>
+
+</div>
+
             </div>
 
             @if ($connected)

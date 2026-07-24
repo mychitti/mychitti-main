@@ -13,7 +13,7 @@ class ResolveStoreByDomain
     public function handle(Request $request, Closure $next)
     {
         $host = $request->getHost();
-      
+     
         // your system domains (important for your setup)
         $systemDomains = [
             'mychitti.net',
