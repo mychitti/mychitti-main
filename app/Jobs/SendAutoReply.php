@@ -153,6 +153,15 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
+            // Platform only: a message showing interest in MyChitti auto-creates a Sales Query
+            // (Sales & Marketing CRM). Strips its marker from the customer-facing reply.
+            if ($this->isPlatform()) {
+                $cleaned = \App\Modules\SalesCRM\Services\WhatsAppSalesLead::extractAndCreate($reply, $key, $this->from, $this->body);
+                if ($cleaned !== null) {
+                    $reply = $cleaned;
+                }
+            }
+
             // The model flags questions it couldn't answer from the knowledge with a marker —
             // strip it from the customer-facing text and alert the team.
             $needsHuman = str_contains($reply, self::ESCALATE_MARKER);
@@ -288,10 +297,12 @@ class SendAutoReply implements ShouldQueue
         }
 
         $intro = $this->isPlatform()
-            ? "You are the official WhatsApp assistant for MyChitti, a multi-vendor business platform. "
+            ? "You are the official WhatsApp assistant for MyChitti, a multi-vendor business platform in India. "
                 . "You are talking to a vendor or a customer who messaged MyChitti.\n\n"
             : "You are the WhatsApp assistant replying on behalf of \"{$storeName}\". "
                 . "A customer has messaged the business and you answer for it.\n\n";
+
+        $greetingName = $this->isPlatform() ? 'MyChitti' : $storeName;
 
         $system = $intro
             . "KNOWLEDGE (your ONLY source of truth):\n\n{$knowledge}\n\n"
@@ -299,8 +310,11 @@ class SendAutoReply implements ShouldQueue
             . "- Answer ONLY from the knowledge above. Never invent prices, timings, availability or policies.\n"
             . "- If the answer is not in the knowledge, say you will pass the question to the team and they will reply shortly. Do not guess. "
             . "Then append the exact marker " . self::ESCALATE_MARKER . " at the very end of your reply (the sender never sees it; it alerts the team).\n"
+            . "- If the message is just a greeting (hi, hello, hii, hey) or has no clear question, greet them warmly by name — "
+            . "e.g. \"Hi! Welcome to {$greetingName}. How can I help you today?\" — and do NOT append the marker.\n"
             . "- Keep replies short and WhatsApp-friendly: 1–4 sentences, plain text. No markdown, no headings, no asterisks.\n"
-            . "- Reply in the same language the sender wrote in.\n"
+            . "- ALWAYS reply in English unless the sender clearly wrote a full sentence in another language — then match that language. "
+            . "Short words like \"hi\", \"hii\", \"ok\", \"k\" are English; never assume any other language from them.\n"
             . "- Be warm and professional. Do not say you are an AI unless asked directly.\n"
             . "- Never share information about other customers or vendors.";
 
@@ -310,6 +324,11 @@ class SendAutoReply implements ShouldQueue
             $system .= $apptSection;
         } else {
             $system .= "\n- For booking or order requests: share what the knowledge says and tell them the team will confirm shortly.";
+        }
+
+        // Platform assistant can capture sales leads into the Sales & Marketing CRM.
+        if ($this->isPlatform()) {
+            $system .= \App\Modules\SalesCRM\Services\WhatsAppSalesLead::promptSection();
         }
 
         // Thread history, oldest first. The webhook stored the current inbound before
