@@ -301,13 +301,13 @@ Route::group(['prefix' => 'service', 'as' => 'service.'], function () {
         Route::post('return-approval', [ServiceController::class, 'quotation_return_approval'])->name('return-approval');
         Route::get('details', [ServiceController::class, 'quotation_details'])->name('details');
     });
-});
+}); 
 Route::group(['middleware' => ['frontuser']], function () {
     Route::get('/', [FrontController::class, 'index'])->name('home'); 
     Route::get('/shop', [FrontController::class, 'index'])->name('home.shop');
     Route::get('contact', [FrontController::class, 'contact'])->name('contact');
     Route::get('cart', [FrontController::class, 'cart'])->name('cart'); 
-    Route::get('store-reviews/{slug}', [FrontController::class, 'store_reviews'])->name('store.reviews');
+    Route::get('store-reviews/{slug?}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
     Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');
     // Programmatic SEO landing pages — city resolved from the URL slug (never the session/default zone).
@@ -321,7 +321,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::post('{city}/store/{slug}/admission', [FrontSchoolAdmissionController::class, 'submit'])->name('front.school.admission.store');
     Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');
     Route::get('appointment/doctors', [FrontAppointmentController::class, 'doctors'])->name('front.appointment.doctors');
-    Route::get('gallery/{slug}', [FrontController::class, 'store_gallery'])->name('store.gallery');
+    Route::get('gallery/{slug?}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');
     Route::post('add-to-cart', [CartController::class, 'add_to_cart'])->name('add-to-cart');

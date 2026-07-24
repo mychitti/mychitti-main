@@ -36,9 +36,15 @@ class ResolveStoreByDomain
         if (in_array($host, $systemDomains)) { 
             return $next($request);
         } 
-  
-        // Try to find store by custom domain 
-        $store = Store::where('domain', $host)->first();
+   
+        // Try to find store by custom domain (handle both www. and non-www. variants)
+        $hosts = [$host];
+        if (str_starts_with($host, 'www.')) {
+            $hosts[] = substr($host, 4);
+        } else {
+            $hosts[] = 'www.' . $host;
+        }
+        $store = Store::whereIn('domain', $hosts)->first();
 
         if ($store) {
             $request->attributes->set('is_store_domain', true);

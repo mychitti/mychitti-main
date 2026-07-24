@@ -341,13 +341,24 @@ class FrontController extends Controller
                 ]);
             }
         }
-    }
+    } 
     public function registration_success(Request $request)
     {
         return view('front-views.store_reg_successfull');
     }
-    public function store_reviews(Request $request, $slug)
+    public function store_reviews(Request $request, $slug = null)
     {
+        $storeFromDomain = $request->attributes->get('store_domain_store');
+        if ($storeFromDomain) {
+            $slug = $storeFromDomain->slug;
+        } else {
+            $slug = $slug ?: $request->route('slug');
+        }
+
+        if (!$slug) {
+            abort(404);
+        }
+
         $reviews = DB::table('store_reviews')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->where('stores.slug', $slug)->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'stores.*', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->get();
 
         $store = Store::with(['discount' => function ($q) {
@@ -360,7 +371,6 @@ class FrontController extends Controller
 
 
         return view('front-views.store-reviews', compact('reviews', 'store'));
-        return view('front-views.store-terms-and-conditions', compact('reviews'));
     }
     public function index(Request $request)
     {
@@ -2344,13 +2354,19 @@ class FrontController extends Controller
         $order_id = $order_id;
         return view('front-views.order-success', compact('order_id'));
     }
-    public function store_gallery(Request $request)
+    public function store_gallery(Request $request, $slug = null)
     {
-        // Resolve from the route param explicitly (not $request->slug, which can be shadowed
-        // by input) and bypass global scopes — the slug is unique, and on a custom domain
-        // there's no zone/session context to scope by.
-        $slug = $request->route('slug');
-        $store = Store::withoutGlobalScopes()->with('galleries')->where('slug', $slug)->first();
+        // If the store is already resolved via custom domain middleware, use that context
+        $store = $request->attributes->get('store_domain_store');
+        if ($store) {
+            $store->load('galleries');
+        } else {
+            // Resolve from the route param explicitly (not $request->slug, which can be shadowed
+            // by input) and bypass global scopes — the slug is unique, and on a custom domain
+            // there's no zone/session context to scope by.
+            $slug = $slug ?: $request->route('slug');
+            $store = Store::withoutGlobalScopes()->with('galleries')->where('slug', $slug)->first();
+        }
         if (!$store) {
             abort(404);
         }
