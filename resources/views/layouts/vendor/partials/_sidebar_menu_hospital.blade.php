@@ -1,12 +1,16 @@
-                {{-- Hospital Management label --}}
-                <li class="nav-item">
-                    <small class="nav-subtitle"
-                        title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
-                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
-                </li>
+                {{-- Section header shows if either the Hospital Management or Appointment
+                     (leads_manage) menu-preference toggle is on. --}}
+                @if (selected_menu('hospital_manage') || selected_menu('leads_manage'))
+                    {{-- Hospital Management label --}}
+                    <li class="nav-item">
+                        <small class="nav-subtitle"
+                            title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
+                        <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                    </li>
+                @endif
 
                 {{-- Hospital Dashboard --}}
-                @if (hasPermission('hospital_manage', 'dashboard'))
+                @if (selected_menu('hospital_manage') && hasPermission('hospital_manage', 'dashboard'))
                     <li class="nav-item {{ Request::is('dashboard') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.dashboard') }}"
                             title="Hospital Dashboard">
@@ -18,7 +22,7 @@
                 @endif
 
 
-                @if (!auth('vendor')->check() && vendorPlanHasModule('hospital_manage'))
+                @if (selected_menu('hospital_manage') && !auth('vendor')->check() && vendorPlanHasModule('hospital_manage'))
                     <li class="nav-item {{ Request::is('opd*') && request('scope') === 'my' ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('vendor.opd.index', ['scope' => 'my']) }}" title="My OPD Appointments">
@@ -77,7 +81,7 @@
                     </li>
                 @endif
 
-                  @if (!auth('vendor')->check())
+                  @if (selected_menu('hospital_manage') && !auth('vendor')->check())
                     @php
                         $__empId = auth('vendor_employee')->id();
                         $__sid = \App\CentralLogics\Helpers::get_store_id();
@@ -113,7 +117,7 @@
                 @endif
 
                 {{-- Staff (free for doctors — outside hospital_manage plan gate) --}}
-                @if (hasAnyPermission([
+                @if (selected_menu('hospital_manage') && hasAnyPermission([
                         'staff_doctor.list',
                         'staff_doctor.add',
                         'staff_doctor.export',
@@ -139,7 +143,7 @@
                     </li>
                 @endif
 
-                @if (hasMasterModulePermission('hospital_manage'))
+                @if (selected_menu('hospital_manage') && hasMasterModulePermission('hospital_manage'))
                     {{-- Patients  --}}
                     @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
                         <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
