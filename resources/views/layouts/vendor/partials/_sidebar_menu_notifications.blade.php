@@ -1,5 +1,6 @@
-{{-- Owner-only: staff (vendor_employee) logins do not see notification settings. --}}
-@if(auth('vendor')->check())
+{{-- Owner-only: staff (vendor_employee) logins do not see notification settings.
+     Toggleable via Menu Preference (slug: notifications); on by default. --}}
+@if(selected_menu('notifications') && auth('vendor')->check())
 <li class="navbar-vertical-aside-has-menu {{ Request::is('*notification-settings*') ? 'active' : '' }}">
     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="{{ translate('Notifications') }}">
         <i class="tio-notifications-on-outlined nav-link-icon" style="font-size:20px;"></i>

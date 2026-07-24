@@ -1,5 +1,6 @@
-{{-- Owner-only: staff (vendor_employee) logins do not see the WhatsApp menu. --}}
-@if(auth('vendor')->check())
+{{-- Owner-only: staff (vendor_employee) logins do not see the WhatsApp menu.
+     Toggleable via Menu Preference (slug: whatsapp); on by default. --}}
+@if(selected_menu('whatsapp') && auth('vendor')->check())
 <li class="navbar-vertical-aside-has-menu {{ Request::is('*whatsapp*') ? 'active' : '' }}">
     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="{{ translate('WhatsApp') }}">
         <i class="tio-chat nav-link-icon" style="font-size:20px;"></i>

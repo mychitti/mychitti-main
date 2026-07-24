@@ -1,16 +1,12 @@
-                {{-- Section header shows if either the Hospital Management or Appointment
-                     (leads_manage) menu-preference toggle is on. --}}
-                @if (selected_menu('hospital_manage') || selected_menu('leads_manage'))
-                    {{-- Hospital Management label --}}
-                    <li class="nav-item">
-                        <small class="nav-subtitle"
-                            title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
-                        <small class="tio-more-horizontal nav-subtitle-replacer"></small>
-                    </li>
-                @endif
+                {{-- Hospital Management label --}}
+                <li class="nav-item">
+                    <small class="nav-subtitle"
+                        title="{{ translate('Hospital Management') }}">{{ translate('Hospital Management') }}</small>
+                    <small class="tio-more-horizontal nav-subtitle-replacer"></small>
+                </li>
 
                 {{-- Hospital Dashboard --}}
-                @if (selected_menu('hospital_manage') && hasPermission('hospital_manage', 'dashboard'))
+                @if (selected_menu('hospital_dashboard') && hasPermission('hospital_manage', 'dashboard'))
                     <li class="nav-item {{ Request::is('dashboard') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('vendor.dashboard') }}"
                             title="Hospital Dashboard">
@@ -22,7 +18,7 @@
                 @endif
 
 
-                @if (selected_menu('hospital_manage') && !auth('vendor')->check() && vendorPlanHasModule('hospital_manage'))
+                @if (!auth('vendor')->check() && vendorPlanHasModule('hospital_manage'))
                     <li class="nav-item {{ Request::is('opd*') && request('scope') === 'my' ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('vendor.opd.index', ['scope' => 'my']) }}" title="My OPD Appointments">
@@ -81,7 +77,7 @@
                     </li>
                 @endif
 
-                  @if (selected_menu('hospital_manage') && !auth('vendor')->check())
+                  @if (!auth('vendor')->check())
                     @php
                         $__empId = auth('vendor_employee')->id();
                         $__sid = \App\CentralLogics\Helpers::get_store_id();
@@ -117,7 +113,7 @@
                 @endif
 
                 {{-- Staff (free for doctors — outside hospital_manage plan gate) --}}
-                @if (selected_menu('hospital_manage') && hasAnyPermission([
+                @if (selected_menu('hospital_staff') && hasAnyPermission([
                         'staff_doctor.list',
                         'staff_doctor.add',
                         'staff_doctor.export',
@@ -143,9 +139,9 @@
                     </li>
                 @endif
 
-                @if (selected_menu('hospital_manage') && hasMasterModulePermission('hospital_manage'))
+                @if (hasMasterModulePermission('hospital_manage'))
                     {{-- Patients  --}}
-                    @if (hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
+                    @if (selected_menu('patient') && hasAnyPermission(['patient.add', 'patient.export', 'patient.list']))
                         <li class="nav-item {{ Request::is('patient/list') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.patient.list') }}" title="Patients">
@@ -159,7 +155,7 @@
 
                     {{-- Outpatient --}}
                     {{-- Outpatient — single direct OPD Register link (only live item) --}}
-                    @if (hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))
+                    @if (selected_menu('opd_register') && hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))
                         <li class="nav-item {{ Request::is('opd*') && request('scope') !== 'my' ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.opd.index') }}" title="OPD Register">
@@ -171,7 +167,7 @@
                         </li>
                     @endif
 
-                    @if (hasAnyPermission([
+                    @if (selected_menu('inpatient') && hasAnyPermission([
                             'ipd_admission.list',
                             'ipd_admission.add',
                             'ipd_admission.export',
@@ -229,7 +225,7 @@
 
                     {{-- Dispense Queue — its own entry. Prescriptions are written on the clinical
                          screens (OPD / Patient), so the pharmacy header tab alone is easy to miss. --}}
-                    @if (Route::has('vendor.prescription.dispense.queue') && hasPermission('pharmacy_dispense_queue', 'list'))
+                    @if (selected_menu('pharmacy_dispense') && Route::has('vendor.prescription.dispense.queue') && hasPermission('pharmacy_dispense_queue', 'list'))
                         <li class="nav-item {{ Request::is('prescription/dispense*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.prescription.dispense.queue') }}" title="Dispense Queue">
@@ -249,7 +245,7 @@
                     @endif
 
                     {{-- Laboratory — bundled with Hospital Management --}}
-                    @if (Route::has('vendor.lab.home') &&
+                    @if (selected_menu('lab') && Route::has('vendor.lab.home') &&
                             (auth('vendor')->check() ||
                                 hasAnyPermission([
                                     'lab_worklist.view',
@@ -281,7 +277,7 @@
                     @endif
 
                     {{-- Nursing Station — ward workstation, bundled with Hospital Management --}}
-                    @if (Route::has('vendor.nursing.index') &&
+                    @if (selected_menu('nursing') && Route::has('vendor.nursing.index') &&
                             (auth('vendor')->check() ||
                                 hasAnyPermission([
                                     'nursing_vitals.view',
@@ -310,7 +306,7 @@
                     @endif
 
                     {{-- Pre-Op Preparation — surgical prep, bundled with Hospital Management --}}
-                    @if (Route::has('vendor.preop.index') &&
+                    @if (selected_menu('preop') && Route::has('vendor.preop.index') &&
                             (auth('vendor')->check() ||
                                 hasAnyPermission([
                                     'preop_schedule.view',
@@ -344,7 +340,7 @@
                     @endif
 
                     {{-- Radiology — imaging department, bundled with Hospital Management --}}
-                    @if (Route::has('vendor.radiology.home') &&
+                    @if (selected_menu('radiology') && Route::has('vendor.radiology.home') &&
                             (auth('vendor')->check() ||
                                 hasAnyPermission([
                                     'radiology_study.view',
@@ -374,7 +370,7 @@
                         </li>
                     @endif
 
-                    @if (hasAnyPermission(['consent_form.list', 'consent_form.add', 'consent_template.list', 'consent_template.add']))
+                    @if (selected_menu('forms_and_consents') && hasAnyPermission(['consent_form.list', 'consent_form.add', 'consent_template.list', 'consent_template.add']))
                         @php
                             $consentDefaultRoute = '#';
                             if (hasAnyPermission(['consent_form.list', 'consent_form.add'])) {
@@ -394,7 +390,7 @@
                         </li>
                     @endif
 
-                    @if (hasPermission('hospital_manage', 'settings'))
+                    @if (selected_menu('hospital_settings') && hasPermission('hospital_manage', 'settings'))
                         {{-- Hospital Settings --}}
                         <li class="nav-item {{ Request::is('hospital/settings') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
@@ -2086,7 +2082,7 @@
                 @endif
 
 
-                @if (\App\CentralLogics\Helpers::employee_module_permission_check('post_ads'))
+                @if (selected_menu('post_ads') && \App\CentralLogics\Helpers::employee_module_permission_check('post_ads'))
                     <li
                         class="navbar-vertical-aside-has-menu {{ Request::is('notification*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link "
