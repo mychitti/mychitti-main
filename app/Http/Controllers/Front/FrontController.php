@@ -2346,7 +2346,11 @@ class FrontController extends Controller
     }
     public function store_gallery(Request $request)
     {
-        $store = Store::with('galleries')->where('slug', $request->slug)->first();
+        // Resolve from the route param explicitly (not $request->slug, which can be shadowed
+        // by input) and bypass global scopes — the slug is unique, and on a custom domain
+        // there's no zone/session context to scope by.
+        $slug = $request->route('slug');
+        $store = Store::withoutGlobalScopes()->with('galleries')->where('slug', $slug)->first();
         if (!$store) {
             abort(404);
         }
