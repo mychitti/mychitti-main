@@ -17,7 +17,7 @@ class ResolveStoreByDomain
         // your system domains (important for your setup)
         $systemDomains = [
             'mychitti.net', 
-            'www.mychitti.net', 
+            'www.mychitti.net',  
             'admin.mychitti.net',
             'www.admin.mychitti.net',
             'mcvendorhub.com',

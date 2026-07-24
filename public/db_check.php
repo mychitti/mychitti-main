@@ -11,13 +11,13 @@ $store = Store::withoutGlobalScopes()->where('name', 'like', '%firoz%')->first()
 
 header('Content-Type: text/plain');
 if ($store) {
-    echo "Store ID: " . $store->id . "\n";
+    echo "Store ID: " . $store->id . "\n"; 
     echo "Name: " . $store->name . "\n";
     echo "Slug: " . $store->slug . "\n";
     echo "Domain: '" . $store->domain . "'\n";
     echo "Galleries count: " . $store->galleries()->count() . "\n";
     echo "Active status: " . $store->active . "\n";
     echo "Status: " . $store->status . "\n";
-} else {
+} else { 
     echo "Store not found!\n";
 }
