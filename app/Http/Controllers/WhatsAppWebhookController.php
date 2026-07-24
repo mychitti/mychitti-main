@@ -103,11 +103,13 @@ class WhatsAppWebhookController extends Controller
                             'updated_at' => now(),
                         ]);
 
-                        // AI auto-reply from the store's knowledge — queued so Meta gets its
-                        // 200 immediately. Text only; opt-outs get silence, not a sales pitch.
+                        // AI auto-reply — queued so Meta gets its 200 immediately. Text only;
+                        // opt-outs get silence, not a sales pitch. A message on a vendor's own
+                        // number (storeId set) uses that store's knowledge; a message on the
+                        // MyChitti platform number (storeId null) uses the platform knowledge.
                         $text = trim((string) data_get($msg, 'text.body'));
-                        if ($storeId && $from && !$optOut && $type === 'text' && $text !== '') {
-                            \App\Jobs\SendAutoReply::dispatch($storeId, (string) $from, $text);
+                        if ($from && !$optOut && $type === 'text' && $text !== '') {
+                            \App\Jobs\SendAutoReply::dispatch($storeId ?: null, (string) $from, $text);
                         }
                     }
                 }

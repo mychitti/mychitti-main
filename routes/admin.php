@@ -1653,6 +1653,16 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::post('whatsapp-preset-save', 'BusinessSettingsController@whatsapp_preset_save')->name('whatsapp-preset-save');
                 Route::post('whatsapp-preset-toggle', 'BusinessSettingsController@whatsapp_preset_toggle')->name('whatsapp-preset-toggle');
                 Route::post('whatsapp-preset-delete', 'BusinessSettingsController@whatsapp_preset_delete')->name('whatsapp-preset-delete');
+                // MyChitti platform WhatsApp: two-way chat inbox + auto-reply knowledge base.
+                Route::get('whatsapp-inbox', 'WhatsAppInboxController@inbox')->name('whatsapp-inbox');
+                Route::get('whatsapp-inbox/threads', 'WhatsAppInboxController@threads')->name('whatsapp-inbox.threads');
+                Route::get('whatsapp-inbox/thread', 'WhatsAppInboxController@thread')->name('whatsapp-inbox.thread');
+                Route::post('whatsapp-inbox/send', 'WhatsAppInboxController@send')->name('whatsapp-inbox.send');
+                Route::get('whatsapp-knowledge', 'WhatsAppKnowledgeController@index')->name('whatsapp-knowledge');
+                Route::post('whatsapp-knowledge/store', 'WhatsAppKnowledgeController@store')->name('whatsapp-knowledge.store');
+                Route::post('whatsapp-knowledge/update', 'WhatsAppKnowledgeController@update')->name('whatsapp-knowledge.update');
+                Route::post('whatsapp-knowledge/toggle', 'WhatsAppKnowledgeController@toggle')->name('whatsapp-knowledge.toggle');
+                Route::post('whatsapp-knowledge/delete', 'WhatsAppKnowledgeController@delete')->name('whatsapp-knowledge.delete');
             });
             // Offline payment Methods
             Route::get('/offline-payment', 'OfflinePaymentMethodController@index')->name('offline');

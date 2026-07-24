@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\CentralLogics\Helpers;
 use App\Models\StoreKnowledgeDoc;
 use App\Services\NotificationPrefs;
 use App\Services\WhatsAppService;
@@ -15,13 +16,16 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * AI auto-reply to an inbound customer WhatsApp message, answered ONLY from the store's
- * saved Auto-Reply Knowledge documents and sent from the vendor's own connected number.
+ * AI auto-reply to an inbound WhatsApp message, answered ONLY from saved Auto-Reply
+ * Knowledge documents and sent from the relevant number.
  *
- * Dispatched by the webhook per inbound text message. A store with no active knowledge
- * documents never auto-replies — adding knowledge is how a vendor turns the feature on
- * (plus the toggle on the Send Notifications page). Replies always land inside the 24h
- * customer-service window because the customer just messaged.
+ * Two modes, chosen by $storeId:
+ *   - VENDOR   (storeId = the store id): the vendor's own connected number, the store's
+ *              knowledge, replies to that store's customers.
+ *   - PLATFORM (storeId = null): MyChitti's own WABA, the platform knowledge base
+ *              (store_id 0), replies to vendors and customers who message MyChitti.
+ *
+ * Dispatched by the webhook per inbound text message. No active knowledge = no auto-reply.
  */
 class SendAutoReply implements ShouldQueue
 {
@@ -42,28 +46,62 @@ class SendAutoReply implements ShouldQueue
     /** How much of the thread the model sees for context. */
     const HISTORY_MESSAGES = 12;
 
+    /** Marker the model appends when the knowledge does not cover the question. */
+    const ESCALATE_MARKER = '[[NEEDS_VENDOR]]';
+
+    /** Knowledge / prefs sentinel for the platform (store_id 0). */
+    const PLATFORM_SCOPE = 0;
+
     public function __construct(
-        public int $storeId,
+        public ?int $storeId,
         public string $from,
         public string $body
     ) {
     }
 
+    protected function isPlatform(): bool
+    {
+        return $this->storeId === null;
+    }
+
+    /** store_id used for knowledge, prefs and RAG (0 for platform). */
+    protected function scopeId(): int
+    {
+        return $this->storeId ?? self::PLATFORM_SCOPE;
+    }
+
+    /** Apply the whatsapp_messages store scope: a real store id, or NULL for platform. */
+    protected function applyMsgScope($query)
+    {
+        return $this->isPlatform()
+            ? $query->whereNull('store_id')
+            : $query->where('store_id', $this->storeId);
+    }
+
     public function handle(): void
     {
         try {
-            if (!NotificationPrefs::enabled($this->storeId, 'whatsapp_send', 'auto_reply')) {
+            // Feature gate — platform uses a business-setting toggle; vendors use their own.
+            if ($this->isPlatform()) {
+                if (!static::platformAutoReplyEnabled()) {
+                    return;
+                }
+            } elseif (!NotificationPrefs::enabled($this->storeId, 'whatsapp_send', 'auto_reply')) {
                 return;
             }
 
             $wa = WhatsAppService::make($this->storeId);
-            if ($wa->source() !== 'vendor') {
-                return;
+            if ($this->isPlatform()) {
+                if (!$wa->isConfigured()) {
+                    return; // platform WABA not set up
+                }
+            } elseif ($wa->source() !== 'vendor') {
+                return; // vendor hasn't connected their own number
             }
 
-            // No knowledge = the vendor hasn't set auto-reply up. Stay silent rather than
-            // improvising answers about a business we know nothing about.
-            $docs = StoreKnowledgeDoc::activeForStore($this->storeId);
+            // No knowledge = auto-reply not set up. Stay silent rather than improvising
+            // answers about a business we know nothing about.
+            $docs = StoreKnowledgeDoc::activeForStore($this->scopeId());
             if ($docs->isEmpty()) {
                 return;
             }
@@ -73,21 +111,24 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
-            $sentRecently = DB::table('whatsapp_messages')
-                ->where('store_id', $this->storeId)
-                ->where('context', 'auto reply')
-                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
-                ->where('sent_at', '>=', now()->subHours(self::WINDOW_HOURS))
-                ->count();
+            $sentRecently = $this->applyMsgScope(
+                DB::table('whatsapp_messages')
+                    ->where('context', 'auto reply')
+                    ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+                    ->where('sent_at', '>=', now()->subHours(self::WINDOW_HOURS))
+            )->count();
             if ($sentRecently >= self::MAX_PER_WINDOW) {
                 return;
             }
 
-            $storeName = DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store';
+            $storeName = $this->isPlatform()
+                ? 'MyChitti'
+                : (DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store');
+
             $reply = $this->generateReply($storeName, $docs, $key);
 
-            // AI unavailable — never leave the customer on silence: send a holding reply
-            // and alert the vendor to take over.
+            // AI unavailable — never leave the sender on silence: send a holding reply
+            // and alert the team to take over.
             if ($reply === '') {
                 $wa->sendText(
                     $this->from,
@@ -95,27 +136,27 @@ class SendAutoReply implements ShouldQueue
                     false,
                     'auto reply'
                 );
-                $this->escalateToVendor($key, 'Auto-reply could not respond');
+                $this->escalate($key, 'Auto-reply could not respond');
                 return;
             }
 
-            // Appointment action marker (book / reschedule) — execute it and send the
-            // deterministic result instead of the model's text.
-            $action = \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->storeId, $key, $this->from);
+            // Appointment action marker (book / reschedule) — vendor hospital stores only;
+            // platform (scope 0) has no doctors so this never matches.
+            $action = \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->scopeId(), $key, $this->from);
             if ($action !== null) {
                 if ($action['message'] !== '') {
                     $wa->sendText($this->from, $action['message'], false, 'auto reply');
                 }
                 if (!empty($action['escalate'])) {
-                    $this->escalateToVendor($key, $action['reason'] ?: 'Appointment request needs attention');
+                    $this->escalate($key, $action['reason'] ?: 'Appointment request needs attention');
                 }
                 return;
             }
 
-            // The model flags questions it couldn't answer from the knowledge docs with a
-            // marker — strip it from the customer-facing text and alert the vendor.
-            $needsVendor = str_contains($reply, self::ESCALATE_MARKER);
-            if ($needsVendor) {
+            // The model flags questions it couldn't answer from the knowledge with a marker —
+            // strip it from the customer-facing text and alert the team.
+            $needsHuman = str_contains($reply, self::ESCALATE_MARKER);
+            if ($needsHuman) {
                 $reply = trim(str_replace(self::ESCALATE_MARKER, '', $reply));
             }
 
@@ -123,39 +164,75 @@ class SendAutoReply implements ShouldQueue
                 $wa->sendText($this->from, $reply, false, 'auto reply');
             }
 
-            if ($needsVendor) {
-                $this->escalateToVendor($key, 'Auto-reply could not answer from your knowledge');
+            if ($needsHuman) {
+                $this->escalate($key, 'Auto-reply could not answer from the knowledge base');
             }
         } catch (\Throwable $e) {
-            Log::warning('WA auto-reply skipped (store ' . $this->storeId . '): ' . $e->getMessage());
+            Log::warning('WA auto-reply skipped (scope ' . $this->scopeId() . '): ' . $e->getMessage());
         }
     }
 
-    /** Marker the model appends when the knowledge does not cover the question. */
-    const ESCALATE_MARKER = '[[NEEDS_VENDOR]]';
+    /** Platform auto-reply on/off — admin toggle in whatsapp_config (default on). */
+    public static function platformAutoReplyEnabled(): bool
+    {
+        $cfg = Helpers::get_business_settings('whatsapp_config');
+        return !is_array($cfg) || !array_key_exists('auto_reply', $cfg) || !empty($cfg['auto_reply']);
+    }
 
     /**
-     * Panel notification: a customer question is waiting for a human. Throttled to one
-     * notification per contact per 30 minutes so a rapid back-and-forth (or an AI outage
-     * during a busy hour) doesn't bury the vendor in duplicates.
+     * Notify a human that a message is waiting: the vendor (vendor mode) or the admin
+     * (platform mode). Throttled to one per contact per 30 minutes.
      */
-    protected function escalateToVendor(string $key, string $reason): void
+    protected function escalate(string $key, string $reason): void
     {
-        if (!NotificationPrefs::enabled($this->storeId, 'push_receive', 'chat_escalation')) {
+        if (!$this->isPlatform() && !NotificationPrefs::enabled($this->storeId, 'push_receive', 'chat_escalation')) {
             return;
         }
-        if (!\Illuminate\Support\Facades\Cache::add("wa_escalate:{$this->storeId}:{$key}", 1, 1800)) {
+        if (!\Illuminate\Support\Facades\Cache::add("wa_escalate:{$this->scopeId()}:{$key}", 1, 1800)) {
             return;
         }
 
-        // Everything the vendor needs to take over the conversation, in one notification.
+        $phone = '+' . ltrim($this->from, '+');
+        $lines = [];
+
+        if ($this->isPlatform()) {
+            // Identify the sender from platform data — a customer (users) or a vendor (stores).
+            $user   = DB::table('users')
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+                ->first(['f_name', 'l_name', 'email']);
+            $store  = DB::table('stores')
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+                ->first(['name']);
+            if ($store) {
+                $lines[] = 'Vendor store: ' . $store->name . ' (' . $phone . ')';
+            } elseif ($user) {
+                $lines[] = 'Customer: ' . trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) . ' (' . $phone . ')';
+                if ($user->email) {
+                    $lines[] = 'Email: ' . $user->email;
+                }
+            } else {
+                $lines[] = 'From: ' . $phone . ' (unknown number)';
+            }
+            $lines[] = 'Asked: "' . mb_substr($this->body, 0, 200) . '"';
+            $lines[] = $reason . ' — open WhatsApp Chats to reply.';
+
+            _inAppNotification(
+                'WhatsApp: message needs a reply',
+                implode("\n", $lines),
+                null,
+                null,
+                route('admin.business-settings.third-party.whatsapp-inbox'),
+                'admin'
+            );
+            return;
+        }
+
+        // Vendor mode — full customer detail from the store's own book.
         $customer = DB::table('store_customers')
             ->where('store_id', $this->storeId)
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
             ->first(['f_name', 'phone', 'email', 'address', 'user_type']);
 
-        $phone = '+' . ltrim($this->from, '+');
-        $lines = [];
         if ($customer) {
             $lines[] = 'Customer: ' . ($customer->f_name ?: 'Unknown') . ' (' . $phone . ')'
                 . ($customer->user_type && $customer->user_type !== 'customer' ? ' — ' . ucfirst($customer->user_type) : '');
@@ -183,16 +260,15 @@ class SendAutoReply implements ShouldQueue
 
     protected function generateReply(string $storeName, $docs, string $key): string
     {
-        // RAG first: semantic search over this store's indexed knowledge returns only the
-        // chunks relevant to THIS question — scales past the point where every doc fits in
-        // the prompt. Falls back to all active docs when RAG is unreachable or not yet synced.
+        // RAG first: semantic search over the indexed knowledge returns only the chunks
+        // relevant to THIS question. Falls back to all active docs when RAG is unreachable.
         $knowledge = '';
         try {
             // Short timeout: a hung RAG server must degrade to the full-docs fallback fast,
             // not stall every reply (seen live: uvicorn hang cost 15s per message).
             $resp = Http::timeout(5)->post(rtrim((string) config('services.ai_server.url'), '/') . '/rag/search', [
                 'query'    => $this->body,
-                'category' => StoreKnowledgeDoc::ragCategory($this->storeId),
+                'category' => StoreKnowledgeDoc::ragCategory($this->scopeId()),
                 'top_k'    => 4,
             ]);
             if ($resp->successful()) {
@@ -211,20 +287,25 @@ class SendAutoReply implements ShouldQueue
             })->implode("\n\n");
         }
 
-        $system = "You are the WhatsApp assistant replying on behalf of \"{$storeName}\". "
-            . "A customer has messaged the business and you answer for it.\n\n"
-            . "BUSINESS KNOWLEDGE (your ONLY source of truth):\n\n{$knowledge}\n\n"
+        $intro = $this->isPlatform()
+            ? "You are the official WhatsApp assistant for MyChitti, a multi-vendor business platform. "
+                . "You are talking to a vendor or a customer who messaged MyChitti.\n\n"
+            : "You are the WhatsApp assistant replying on behalf of \"{$storeName}\". "
+                . "A customer has messaged the business and you answer for it.\n\n";
+
+        $system = $intro
+            . "KNOWLEDGE (your ONLY source of truth):\n\n{$knowledge}\n\n"
             . "RULES:\n"
-            . "- Answer ONLY from the business knowledge above. Never invent prices, timings, availability or policies.\n"
+            . "- Answer ONLY from the knowledge above. Never invent prices, timings, availability or policies.\n"
             . "- If the answer is not in the knowledge, say you will pass the question to the team and they will reply shortly. Do not guess. "
-            . "Then append the exact marker " . self::ESCALATE_MARKER . " at the very end of your reply (the customer never sees it; it alerts the team).\n"
+            . "Then append the exact marker " . self::ESCALATE_MARKER . " at the very end of your reply (the sender never sees it; it alerts the team).\n"
             . "- Keep replies short and WhatsApp-friendly: 1–4 sentences, plain text. No markdown, no headings, no asterisks.\n"
-            . "- Reply in the same language the customer wrote in.\n"
-            . "- Be warm and professional. Do not say you are an AI unless the customer asks directly.\n"
-            . "- Never share information about other customers.";
+            . "- Reply in the same language the sender wrote in.\n"
+            . "- Be warm and professional. Do not say you are an AI unless asked directly.\n"
+            . "- Never share information about other customers or vendors.";
 
         // Hospital stores get live appointment tooling (book / reschedule via markers).
-        $apptSection = \App\Services\WhatsAppAppointmentBot::promptSection($this->storeId, $key);
+        $apptSection = \App\Services\WhatsAppAppointmentBot::promptSection($this->scopeId(), $key);
         if ($apptSection !== '') {
             $system .= $apptSection;
         } else {
@@ -233,11 +314,12 @@ class SendAutoReply implements ShouldQueue
 
         // Thread history, oldest first. The webhook stored the current inbound before
         // dispatching this job, so drop the trailing user turn — it goes as `message`.
-        $history = DB::table('whatsapp_messages')
-            ->where('store_id', $this->storeId)
-            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
-            ->where('type', '!=', 'template')
-            ->whereNotNull('body')
+        $history = $this->applyMsgScope(
+            DB::table('whatsapp_messages')
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+                ->where('type', '!=', 'template')
+                ->whereNotNull('body')
+        )
             ->orderByDesc('sent_at')
             ->limit(self::HISTORY_MESSAGES)
             ->get(['direction', 'body'])
@@ -268,7 +350,7 @@ class SendAutoReply implements ShouldQueue
         $resp = Http::withHeaders(['X-Api-Key' => config('services.ai_service.key', '')])
             ->timeout(100)
             ->post(rtrim(config('services.ai_service.url', ''), '/') . '/api/ai/chat', [
-                'user_id'       => $this->storeId,
+                'user_id'       => 900000000 + $this->scopeId(), // stable, collision-free memory id
                 'guard'         => 'agent_test',
                 'message'       => $this->body,
                 'type'          => 'text',
@@ -278,7 +360,7 @@ class SendAutoReply implements ShouldQueue
             ]);
 
         if (!$resp->successful() || empty($resp->json('success'))) {
-            Log::warning('WA auto-reply AI call failed', ['store' => $this->storeId, 'status' => $resp->status(), 'body' => $resp->json()]);
+            Log::warning('WA auto-reply AI call failed', ['scope' => $this->scopeId(), 'status' => $resp->status(), 'body' => $resp->json()]);
             return '';
         }
 

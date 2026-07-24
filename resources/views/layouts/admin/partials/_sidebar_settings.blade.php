@@ -134,6 +134,18 @@
                                 <span class="text-truncate">{{ translate('WhatsApp Templates') }}</span>
                             </a>
                         </li>
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/whatsapp-inbox*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.business-settings.third-party.whatsapp-inbox') }}" title="{{ translate('WhatsApp Chats') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('WhatsApp Chats') }}</span>
+                            </a>
+                        </li>
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/whatsapp-knowledge*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.business-settings.third-party.whatsapp-knowledge') }}" title="{{ translate('WhatsApp Auto-Reply Knowledge') }}">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('WhatsApp Knowledge') }}</span>
+                            </a>
+                        </li>
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/whatsapp-report*') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.business-settings.third-party.whatsapp-report') }}" title="{{ translate('WhatsApp Report') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>

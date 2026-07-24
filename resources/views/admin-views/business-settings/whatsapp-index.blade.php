@@ -11,9 +11,17 @@
                 </span>
                 <span>{{ translate('WhatsApp Cloud API (Meta) Setup') }}</span>
             </h1>
-            <a href="{{ route('admin.business-settings.third-party.whatsapp-report') }}" class="btn btn-sm btn-outline-primary">
-                <i class="tio-chart-bar-4"></i> {{ translate('Delivery Report') }}
-            </a>
+            <div class="d-flex align-items-center" style="gap:8px;">
+                <a href="{{ route('admin.business-settings.third-party.whatsapp-inbox') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="tio-chat"></i> {{ translate('Chats') }}
+                </a>
+                <a href="{{ route('admin.business-settings.third-party.whatsapp-knowledge') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="tio-book-opened"></i> {{ translate('Auto-Reply Knowledge') }}
+                </a>
+                <a href="{{ route('admin.business-settings.third-party.whatsapp-report') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="tio-chart-bar-4"></i> {{ translate('Delivery Report') }}
+                </a>
+            </div>
         </div>
 
         <div class="row">
@@ -87,6 +95,19 @@
                                         <input type="text" class="form-control" name="verify_token"
                                                value="{{ $config['verify_token'] ?? '' }}" placeholder="{{ translate('a secret you choose') }}">
                                         <small class="text-muted">{{ translate('Any secret string — must match what you enter in Meta. Subscribe to the "messages" field.') }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-12"><hr class="my-2"><b class="text-muted" style="font-size:12px;">{{ translate('AI AUTO-REPLY') }}</b></div>
+                                <div class="col-12">
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="waAutoReply" name="auto_reply" value="1"
+                                               {{ (!isset($config['auto_reply']) || $config['auto_reply']) ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="waAutoReply">
+                                            {{ translate('Auto-reply to vendors & customers who message the MyChitti number') }}
+                                            <small class="text-muted d-block">{{ translate('Answers come from your') }}
+                                                <a href="{{ route('admin.business-settings.third-party.whatsapp-knowledge') }}">{{ translate('Auto-Reply Knowledge') }}</a>.
+                                                {{ translate('Stays silent if no knowledge is saved.') }}</small>
+                                        </label>
                                     </div>
                                 </div>
                                 <div class="col-12"><hr class="my-2"><b class="text-muted" style="font-size:12px;">{{ translate('EMBEDDED SIGNUP (vendor self-connect)') }}</b></div>

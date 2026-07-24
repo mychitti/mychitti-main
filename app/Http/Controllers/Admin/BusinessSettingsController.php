@@ -3045,24 +3045,33 @@ class BusinessSettingsController extends Controller
             Toastr::info(translate('messages.update_option_is_disable_for_demo'));
             return back();
         }
+        // Merge onto the existing config so keys not on this form (presets, template
+        // overrides) survive a save.
+        $existing = \App\CentralLogics\Helpers::get_business_settings('whatsapp_config');
+        $existing = is_array($existing) ? $existing : [];
+
+        $config = array_merge($existing, [
+            'status' => $request->status ? 1 : 0,
+            'api_version' => $request->api_version ?: 'v21.0',
+            'phone_number_id' => trim((string) $request->phone_number_id),
+            'token' => trim((string) $request->token),
+            'business_account_id' => trim((string) $request->business_account_id),
+            'default_country_code' => preg_replace('/[^0-9]/', '', (string) $request->default_country_code) ?: '91',
+            'verify_token' => trim((string) $request->verify_token),
+            // Embedded Signup (DoubleTick-style vendor onboarding).
+            'es_app_id' => trim((string) $request->es_app_id),
+            'es_app_secret' => trim((string) $request->es_app_secret),
+            'es_config_id' => trim((string) $request->es_config_id),
+            // Template used to notify vendors of new leads (business-initiated).
+            'lead_template' => trim((string) $request->lead_template),
+            'lead_template_lang' => trim((string) $request->lead_template_lang) ?: 'en_US',
+            // MyChitti platform WhatsApp auto-reply on/off.
+            'auto_reply' => $request->has('auto_reply') ? 1 : 0,
+        ]);
+
         DB::table('business_settings')->updateOrInsert(['key' => 'whatsapp_config'], [
             'key' => 'whatsapp_config',
-            'value' => json_encode([
-                'status' => $request->status ? 1 : 0,
-                'api_version' => $request->api_version ?: 'v21.0',
-                'phone_number_id' => trim((string) $request->phone_number_id),
-                'token' => trim((string) $request->token),
-                'business_account_id' => trim((string) $request->business_account_id),
-                'default_country_code' => preg_replace('/[^0-9]/', '', (string) $request->default_country_code) ?: '91',
-                'verify_token' => trim((string) $request->verify_token),
-                // Embedded Signup (DoubleTick-style vendor onboarding).
-                'es_app_id' => trim((string) $request->es_app_id),
-                'es_app_secret' => trim((string) $request->es_app_secret),
-                'es_config_id' => trim((string) $request->es_config_id),
-                // Template used to notify vendors of new leads (business-initiated).
-                'lead_template' => trim((string) $request->lead_template),
-                'lead_template_lang' => trim((string) $request->lead_template_lang) ?: 'en_US',
-            ]),
+            'value' => json_encode($config),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
