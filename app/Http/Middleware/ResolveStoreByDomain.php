@@ -11,7 +11,13 @@ use Illuminate\Routing\Router;
 class ResolveStoreByDomain
 { 
     public function handle(Request $request, Closure $next)
-    {
+    { 
+        dd([
+            'middleware' => 'ResolveStoreByDomain',
+            'host' => $request->getHost(),
+            'path' => $request->path(),
+            'uri' => $request->getRequestUri(),
+        ]);
         $host = $request->getHost();
      
         // your system domains (important for your setup)
