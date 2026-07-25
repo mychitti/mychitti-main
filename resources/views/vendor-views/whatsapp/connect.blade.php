@@ -201,7 +201,7 @@
                             <h5 class="card-title mb-0"><i class="tio-send"></i> Bulk Message</h5>
                             <div class="d-flex flex-wrap" style="gap:6px;">
                                 <span class="badge badge-soft-info">
-                                    {{ $clientCount }} business {{ $clientCount == 1 ? 'customer' : 'customers' }}
+                                    {{ $clientCount }} of your {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                 </span>
                                 <span class="badge badge-soft-primary">
                                     {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
@@ -218,7 +218,7 @@
                             @if (empty($templates))
                                 <p class="text-muted mb-2">
                                     You could reach <b>{{ $clientCount + $platformUserCount }}</b> people —
-                                    {{ $clientCount }} business {{ $clientCount == 1 ? 'customer' : 'customers' }}
+                                    {{ $clientCount }} of your own {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                     and {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
                                     — but you have no approved message templates yet. WhatsApp only allows
                                     business-initiated messages using a template Meta has approved.
@@ -255,7 +255,7 @@
                                     <ul class="nav nav-pills mb-3" style="gap:6px;">
                                         <li class="nav-item">
                                             <a href="javascript:;" class="nav-link active wb-mode" data-mode="clients" style="font-size:13px;padding:6px 14px;">
-                                                Business customers <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
+                                                My customers <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
                                             </a>
                                         </li>
                                         <li class="nav-item">
@@ -263,19 +263,9 @@
                                                 MyChitti users <span class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
                                             </a>
                                         </li>
-                                        <li class="nav-item">
-                                            <a href="javascript:;" class="nav-link wb-mode" data-mode="nearby" style="font-size:13px;padding:6px 14px;">
-                                                Opted in to offers <span class="badge badge-soft-light ml-1">{{ $nearbyUserCount }}</span>
-                                            </a>
-                                        </li>
                                     </ul>
 
                                     <div id="wb-pane-clients">
-                                        <p class="text-muted mb-2" style="font-size:13px;">
-                                            Customers on record with businesses in your city — yours included.
-                                            Anyone who has turned <b>“offers from businesses near me”</b> off on their
-                                            MyChitti account, or replied STOP, is already excluded.
-                                        </p>
                                         <div class="d-flex mb-2" style="gap:8px;">
                                             <input id="wb-search" type="text" class="form-control form-control-sm"
                                                    placeholder="Search customers by name or phone…">
@@ -288,52 +278,29 @@
                                         <small id="wb-truncated" class="text-muted" style="display:none;"></small>
                                     </div>
 
-                                    <div id="wb-pane-nearby" style="display:none;">
-                                        <div class="border rounded p-3">
-                                            <p class="text-muted mb-2" style="font-size:13px;">
-                                                People in your zone who ticked <b>“offers from businesses near me”</b>.
-                                                They have no history with you — they asked to hear from local businesses.
-                                                Numbers stay private and are never shown to you.
-                                            </p>
-                                            @if ($nearbyUserCount == 0)
-                                                <div class="alert alert-info mb-0" style="font-size:13px;">
-                                                    Nobody in your zone has opted in yet. This pool fills as customers
-                                                    tick the box at signup or in their account settings.
-                                                </div>
-                                            @else
-                                                <label style="font-size:12px;" class="mb-1">How many to message</label>
-                                                <input id="wb-nearby-count" type="number" class="form-control form-control-sm"
-                                                       style="max-width:200px;" min="1" max="{{ $nearbyUserCount }}"
-                                                       value="{{ min(50, $nearbyUserCount) }}">
-                                                <small class="text-muted d-block mt-1">
-                                                    Maximum {{ $nearbyUserCount }} available now. Anyone who has already
-                                                    received {{ \App\Http\Controllers\Vendor\WhatsAppController::NEARBY_MONTHLY_CAP }}
-                                                    offers from any business this month is excluded automatically, so the
-                                                    number moves as other vendors send.
-                                                </small>
-                                            @endif
-                                        </div>
-                                    </div>
-
                                     <div id="wb-pane-platform" style="display:none;">
                                         <div class="border rounded p-3">
                                             <p class="text-muted mb-2" style="font-size:13px;">
-                                                MyChitti users in your city, plus those whose city we don't have on
-                                                record. You choose how many to reach — their phone numbers stay
-                                                private and are never shown to you.
+                                                MyChitti users in your city. You choose how many to reach — their phone
+                                                numbers stay private and are never shown to you.
                                             </p>
                                             @if ($platformUserCount == 0)
                                                 <div class="alert alert-info mb-0" style="font-size:13px;">
                                                     No MyChitti users match your city yet, so there is nobody to reach
                                                     here right now. This grows as customers in your area start using
-                                                    MyChitti — business customers are unaffected.
+                                                    MyChitti — your own customers are unaffected.
                                                 </div>
                                             @else
                                                 <label style="font-size:12px;" class="mb-1">How many users to message</label>
                                                 <input id="wb-platform-count" type="number" class="form-control form-control-sm"
                                                        style="max-width:200px;" min="1" max="{{ $platformUserCount }}"
                                                        value="{{ min(50, $platformUserCount) }}">
-                                                <small class="text-muted d-block mt-1">Maximum {{ $platformUserCount }} available.</small>
+                                                <small class="text-muted d-block mt-1">
+                                                    Maximum {{ $platformUserCount }} available now. Anyone who has already
+                                                    received {{ \App\Http\Controllers\Vendor\WhatsAppController::NEARBY_MONTHLY_CAP }}
+                                                    offers from any business this month is excluded automatically, so the
+                                                    number moves as other vendors send.
+                                                </small>
                                             @endif
                                         </div>
                                     </div>
@@ -376,7 +343,6 @@
             var CSRF = '{{ csrf_token() }}';
 
             var PLATFORM_MAX = {{ $platformUserCount }};
-            var NEARBY_MAX = {{ $nearbyUserCount }};
 
             var selected = new Set();
             var loaded = [];
@@ -460,7 +426,6 @@
 
             function recipientCount() {
                 if (mode === 'platform') return countFrom('wb-platform-count', PLATFORM_MAX);
-                if (mode === 'nearby') return countFrom('wb-nearby-count', NEARBY_MAX);
                 return selected.size;
             }
 
@@ -471,7 +436,7 @@
                 $send.disabled = !t || !filled || n === 0;
                 $count.textContent = mode === 'clients'
                     ? selected.size + ' selected'
-                    : n + (mode === 'nearby' ? ' opted in' : ' MyChitti user' + (n === 1 ? '' : 's'));
+                    : n + ' MyChitti user' + (n === 1 ? '' : 's');
                 $send.textContent = n
                     ? 'Send to ' + n + ' recipient' + (n === 1 ? '' : 's')
                     : 'Send';
@@ -484,7 +449,6 @@
                 });
                 document.getElementById('wb-pane-clients').style.display = next === 'clients' ? 'block' : 'none';
                 document.getElementById('wb-pane-platform').style.display = next === 'platform' ? 'block' : 'none';
-                document.getElementById('wb-pane-nearby').style.display = next === 'nearby' ? 'block' : 'none';
                 syncSend();
             }
 
@@ -536,9 +500,10 @@
                 var total = recipientCount();
                 var batches = [];
 
-                if (mode === 'platform' || mode === 'nearby') {
-                    // The server walks users ordered by id, so an offset/limit pair addresses
-                    // each recipient exactly once without the browser ever seeing a number.
+                if (mode === 'platform') {
+                    // The server walks the audience in a fixed order, so an offset/limit pair
+                    // addresses each recipient exactly once without the browser ever seeing a
+                    // number.
                     for (var o = 0; o < total; o += BATCH) {
                         batches.push({ mode: mode, offset: o, limit: Math.min(BATCH, total - o) });
                     }
@@ -636,17 +601,13 @@
             Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
                 el.addEventListener('click', function () { setMode(this.dataset.mode); });
             });
-            ['wb-platform-count', 'wb-nearby-count'].forEach(function (id) {
+            ['wb-platform-count'].forEach(function (id) {
                 var el = document.getElementById(id);
                 if (el) el.addEventListener('input', syncSend);
             });
             $send.addEventListener('click', function () {
                 var n = recipientCount();
-                var who = mode === 'clients'
-                    ? 'business customer(s)'
-                    : (mode === 'nearby'
-                        ? 'people who opted in to offers from nearby businesses'
-                        : 'MyChitti user(s)');
+                var who = mode === 'clients' ? 'of your customers' : 'MyChitti user(s)';
                 if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
                 sendBatches();
             });

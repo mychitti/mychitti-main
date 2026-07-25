@@ -14,7 +14,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 class WhatsAppController extends Controller
 {
@@ -50,7 +49,6 @@ class WhatsAppController extends Controller
         $templateError = null;
         $clientCount = 0;
         $platformUserCount = 0;
-        $nearbyUserCount = 0;
         $optOutCount = 0;
         if ($connected) {
             $res = WhatsAppService::make($storeId)->listTemplates();
@@ -59,14 +57,13 @@ class WhatsAppController extends Controller
                 $templateError = $res['error'];
             }
             $clientCount = $this->clientQuery($storeId)->count();
-            $platformUserCount = $this->platformUserQuery($storeId)->count();
-            $nearbyUserCount = $this->nearbyUserQuery($storeId)->count();
+            $platformUserCount = $this->outreachCount($storeId);
             $optOutCount = count(WhatsAppService::optedOutPhones($storeId));
         }
 
         return view('vendor-views.whatsapp.connect', compact(
             'es', 'store', 'connected', 'templates', 'templateError',
-            'clientCount', 'platformUserCount', 'nearbyUserCount', 'optOutCount'
+            'clientCount', 'platformUserCount', 'optOutCount'
         ));
     }
 
@@ -166,8 +163,8 @@ class WhatsAppController extends Controller
             ->orderByDesc('sent_at')->limit(15)
             ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
 
-        // The vendor's own customer book — what the Excel import below fills. The bulk-send
-        // audience is wider than this (see clientQuery()); this stat is about their own data.
+        // The vendor's own customer book — what the Excel import below fills, and the audience
+        // behind the composer's "My customers" tab.
         $customerStats = [
             'total'       => DB::table('store_customers')->where('store_id', $storeId)->count(),
             'with_phone'  => DB::table('store_customers')->where('store_id', $storeId)
@@ -480,64 +477,115 @@ class WhatsAppController extends Controller
     }
 
     /**
-     * The shared store-customer pool: every customer the stores in this city have on their
-     * books, plus the orphan rows whose store_id was never saved (NULL or 0), which used to
-     * be reachable by nobody.
+     * The store's own client book — people it already has a relationship with.
      *
-     * Not scoped to $storeId — the pool is shared, so every store in the same city sees the
-     * same customers: 20 / 70 / 30 across three Tirupati stores is one pool of 120.
-     *
-     * City comes from the store whose book the row sits in, since store_customers has no zone
-     * of its own. Same rule as everywhere else: the store's zone (and every zone nested inside
-     * it), or no zone on record. Rows whose store_id was never saved — NULL or 0, previously
-     * reachable by nobody — count as unknown and stay in.
-     *
-     * Consent is `user_notification_prefs.nearby_offers`, the box the customer ticks on their
-     * own MyChitti account. Most people in these books were typed in or imported by a vendor
-     * and have no account at all, so a missing preference means "not excluded" — the flag only
-     * ever removes someone who has it turned off. The usual STOP opt-outs apply on top.
-     *
-     * Deduped on the last 10 digits of the phone, keeping the lowest id. Without it someone
-     * who appears in three vendors' books receives the same blast three times, which the old
-     * per-store scoping made impossible. The city filter is repeated inside the dedupe
-     * subquery — applied only outside it, the lowest id could belong to an out-of-city store
-     * and drop someone an in-city store also has.
+     * nearby_offers deliberately does not apply here: that preference is about businesses the
+     * customer has NOT dealt with, and this is the one store they have. Only an explicit STOP
+     * removes someone.
      */
     private function clientQuery(int $storeId)
     {
-        $phone10 = "RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10)";
-        $localStoreIds = $this->storeIdsInCity($storeId);
+        return $this->excludeOptedOut(
+            DB::table('store_customers')
+                ->where('store_id', $storeId)
+                ->whereNotNull('phone')
+                ->where('phone', '!=', ''),
+            $storeId
+        );
+    }
+
+    /**
+     * Everyone else reachable in this store's city, as one list: MyChitti account holders plus
+     * the client books of the other stores in the city (and the orphan rows whose store_id was
+     * never saved, which used to be reachable by nobody).
+     *
+     * Presented to the vendor as a single "MyChitti users" count. Numbers are never shown for
+     * this audience and results come back masked — the vendor addresses it by size, not by
+     * picking people out of it.
+     *
+     * Deduped on the last 10 digits of the phone across BOTH sources, so an account holder who
+     * also sits in another store's book counts once and is messaged once. The store's own
+     * customers are subtracted so this and clientQuery() never overlap.
+     */
+    private function outreachQuery(int $storeId)
+    {
+        $ownPhones = $this->ownClientPhones($storeId);
+
+        $users = $this->platformUserQuery($storeId)
+            ->select(
+                DB::raw("TRIM(CONCAT(COALESCE(`users`.`f_name`, ''), ' ', COALESCE(`users`.`l_name`, ''))) as name"),
+                'users.phone as phone'
+            );
+
+        $clients = $this->otherStoreClientQuery($storeId)
+            ->select('f_name as name', 'phone as phone');
+
+        if (!empty($ownPhones)) {
+            $users->whereNotIn(DB::raw($this->phone10Sql('users.phone')), $ownPhones);
+            $clients->whereNotIn(DB::raw($this->phone10Sql('phone')), $ownPhones);
+        }
+
+        $phone10 = $this->phone10Sql('t.phone');
+
+        $query = DB::query()
+            ->fromSub($users->unionAll($clients), 't')
+            ->selectRaw("MIN(t.name) as name, MIN(t.phone) as phone")
+            ->groupByRaw($phone10);
+
+        // Same 30-day cap the shared pool has always had. It is what stops every vendor in a
+        // city blasting the same few thousand people until they all opt out.
+        $capped = $this->nearbyCappedPhones();
+        if (!empty($capped)) {
+            $query->whereNotIn(DB::raw($phone10), $capped);
+        }
+
+        return $query;
+    }
+
+    /** How many distinct people outreachQuery() would reach. */
+    private function outreachCount(int $storeId): int
+    {
+        return DB::query()->fromSub($this->outreachQuery($storeId), 'c')->count();
+    }
+
+    /** Client books of the OTHER stores in this city, plus rows with no store_id at all. */
+    private function otherStoreClientQuery(int $storeId)
+    {
+        $otherStoreIds = array_values(array_diff($this->storeIdsInCity($storeId), [$storeId]));
 
         // Resolved to a list of store ids rather than joined to `stores`: that table has its
-        // own `phone` column, which would make the opt-out filter below ambiguous.
-        $reachable = function ($q) use ($localStoreIds) {
-            $q->whereNotNull('phone')
-                ->where('phone', '!=', '')
-                ->where(function ($w) use ($localStoreIds) {
-                    $w->whereNull('store_id')->orWhere('store_id', 0);
-                    if (!empty($localStoreIds)) {
-                        $w->orWhereIn('store_id', $localStoreIds);
-                    }
-                });
-        };
-
-        $query = DB::table('store_customers');
-        $reachable($query);
-
-        $query->whereIn('id', function ($q) use ($reachable, $phone10) {
-            $q->from('store_customers')->selectRaw('MIN(id)');
-            $reachable($q);
-            $q->groupByRaw($phone10);
-        });
+        // own `phone` column, which would make the opt-out filters below ambiguous.
+        $query = DB::table('store_customers')
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->where(function ($w) use ($otherStoreIds) {
+                $w->whereNull('store_id')->orWhere('store_id', 0);
+                if (!empty($otherStoreIds)) {
+                    $w->orWhereIn('store_id', $otherStoreIds);
+                }
+            });
 
         // Phone-matched rather than joined: store_customers has no user_id, and the only thing
         // tying a vendor's client row to a MyChitti account is the number.
         $blocked = $this->offersOptedOutPhones();
         if (!empty($blocked)) {
-            $query->whereNotIn(DB::raw($phone10), $blocked);
+            $query->whereNotIn(DB::raw($this->phone10Sql('phone')), $blocked);
         }
 
         return $this->excludeOptedOut($query, $storeId);
+    }
+
+    /** Last-10-digit forms of the numbers already in this store's own book. */
+    private function ownClientPhones(int $storeId): array
+    {
+        $phones = DB::table('store_customers')
+            ->where('store_id', $storeId)
+            ->whereNotNull('phone')
+            ->pluck('phone');
+
+        return array_values(array_unique(array_filter($phones
+            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
+            ->all())));
     }
 
     /**
@@ -554,6 +602,13 @@ class WhatsAppController extends Controller
             ->where(fn($q) => $this->inZoneOrUnknown($q, 'zone_id', $zoneIds))
             ->pluck('id')
             ->all();
+    }
+
+    /** Stored numbers vary between "+91 98…", "098…" and "98…" — compare the last 10 digits. */
+    private function phone10Sql(string $column): string
+    {
+        $quoted = implode('.', array_map(fn($p) => "`$p`", explode('.', $column)));
+        return "RIGHT(REPLACE(REPLACE(REPLACE($quoted, ' ', ''), '-', ''), '+', ''), 10)";
     }
 
     /**
@@ -579,62 +634,8 @@ class WhatsAppController extends Controller
             ->all())));
     }
 
-    /** Messages one person may receive from the shared nearby-offers pool per 30 days. */
+    /** Messages one person may receive from the shared outreach pool per 30 days. */
     const NEARBY_MONTHLY_CAP = 4;
-
-    /**
-     * MyChitti accounts that still accept offers from businesses they have no relationship
-     * with — everyone except those who turned it off in their settings or replied STOP.
-     *
-     * Distinct from clientQuery() in what it sends, not who it can reach: this pool carries a
-     * 30-day frequency cap, and the cap is what keeps it alive — without it the first vendors
-     * to find it each blast the same few hundred people, everyone opts out, and the pool is
-     * dead in a month.
-     */
-    private function nearbyUserQuery(int $storeId)
-    {
-        $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
-        $zoneIds = Helpers::zone_with_descendants($zoneId);
-
-        // ensureTable() rather than a bare hasTable() check: on an environment where the table
-        // was created by an earlier deploy it exists but has no nearby_offers column, and the
-        // query below would fail with "Unknown column 'p.nearby_offers'". ensureTable() is
-        // idempotent and adds the column when it is missing.
-        try {
-            UserNotificationPreference::ensureTable();
-            $ready = Schema::hasColumn('user_notification_prefs', 'nearby_offers');
-        } catch (\Throwable $e) {
-            Log::warning('nearby pool unavailable: ' . $e->getMessage());
-            $ready = false;
-        }
-
-        if (!$ready) {
-            return DB::table('users')->whereRaw('1 = 0');
-        }
-
-        // leftJoin: nearby offers are on by default, so most customers have no preference row
-        // at all. An inner join would reduce the pool to the handful who happen to have saved
-        // their settings at some point.
-        $query = DB::table('users')
-            ->leftJoin('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
-            ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1))
-            // Staying in the pool never overrides turning WhatsApp off entirely.
-            ->where(fn($q) => $q->whereNull('p.whatsapp')->orWhere('p.whatsapp', 1))
-            ->where(fn($q) => $this->inZoneOrUnknown($q, 'users.zone_id', $zoneIds))
-            ->whereNotNull('users.phone')
-            ->where('users.phone', '!=', '')
-            ->select('users.*');
-
-        $capped = $this->nearbyCappedPhones();
-        if (!empty($capped)) {
-            $query->whereNotIn(
-                DB::raw("RIGHT(REPLACE(REPLACE(REPLACE(`users`.`phone`, ' ', ''), '-', ''), '+', ''), 10)"),
-                $capped
-            );
-        }
-
-        return $this->excludeOptedOut($query, $storeId);
-    }
 
     /** Last-10-digit forms of numbers that already hit the pool's 30-day cap. */
     private function nearbyCappedPhones(): array
@@ -661,7 +662,7 @@ class WhatsAppController extends Controller
      * Matched on the last 10 digits because stored numbers vary between "+91 98…",
      * "098…" and "98…" — the opt-out table holds the normalized form.
      */
-    private function excludeOptedOut($query, int $storeId)
+    private function excludeOptedOut($query, int $storeId, string $phoneColumn = 'phone')
     {
         $suffixes = array_values(array_unique(array_filter(array_map(
             fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10),
@@ -672,10 +673,7 @@ class WhatsAppController extends Controller
             return $query;
         }
 
-        return $query->whereNotIn(
-            DB::raw("RIGHT(REPLACE(REPLACE(REPLACE(`phone`, ' ', ''), '-', ''), '+', ''), 10)"),
-            $suffixes
-        );
+        return $query->whereNotIn(DB::raw($this->phone10Sql($phoneColumn)), $suffixes);
     }
 
     /**
@@ -690,8 +688,8 @@ class WhatsAppController extends Controller
      *
      * Users whose zone was never resolved are included too — see inZoneOrUnknown().
      *
-     * Gated on the same nearby_offers box as clientQuery(): a saved preference of 0 removes
-     * them, no preference row at all does not.
+     * Gated on nearby_offers: a saved preference of 0 removes them, no preference row at all
+     * does not. Feeds outreachQuery() rather than being an audience on its own.
      */
     private function platformUserQuery(int $storeId)
     {
@@ -704,16 +702,20 @@ class WhatsAppController extends Controller
             ->where('users.phone', '!=', '')
             ->select('users.*');
 
-        // leftJoin, not a phone match: these rows have a real user_id to key on.
+        // leftJoin, not a phone match: these rows have a real user_id to key on. Nearby offers
+        // are on by default, so most accounts have no preference row and an inner join would
+        // cut the audience to the handful who once saved their settings.
         try {
             UserNotificationPreference::ensureTable();
             $query->leftJoin('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
-                ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1));
+                ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1))
+                // Staying in the pool never overrides turning WhatsApp off entirely.
+                ->where(fn($q) => $q->whereNull('p.whatsapp')->orWhere('p.whatsapp', 1));
         } catch (\Throwable $e) {
             Log::warning('offers preference unavailable: ' . $e->getMessage());
         }
 
-        return $this->excludeOptedOut($query, $storeId);
+        return $this->excludeOptedOut($query, $storeId, 'users.phone');
     }
 
     /**
@@ -824,11 +826,11 @@ class WhatsAppController extends Controller
         $request->validate([
             'template'     => 'required|string',
             'language'     => 'required|string',
-            'mode'         => 'required|in:clients,platform,nearby',
+            'mode'         => 'required|in:clients,platform',
             'client_ids'   => 'required_if:mode,clients|array|max:' . self::BULK_BATCH_LIMIT,
             'client_ids.*' => 'integer',
-            'offset'       => 'required_if:mode,platform,nearby|integer|min:0',
-            'limit'        => 'required_if:mode,platform,nearby|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
+            'offset'       => 'required_if:mode,platform|integer|min:0',
+            'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
             'params'       => 'nullable|array',
         ]);
 
@@ -843,21 +845,20 @@ class WhatsAppController extends Controller
         }
 
         $mode = $request->input('mode');
-        $platform = in_array($mode, ['platform', 'nearby'], true);
+        $platform = $mode === 'platform';
 
         if ($platform) {
-            // Ordered by id so the browser's offset walk covers each user exactly once.
-            $recipients = ($mode === 'nearby' ? $this->nearbyUserQuery($storeId) : $this->platformUserQuery($storeId))
-                ->orderBy('users.id')
+            // Ordered by the dedupe key so the browser's offset walk covers each person exactly
+            // once — the underlying rows come from two tables with unrelated id spaces.
+            $recipients = $this->outreachQuery($storeId)
+                ->orderByRaw($this->phone10Sql('t.phone'))
                 ->offset((int) $request->input('offset'))
                 ->limit((int) $request->input('limit'))
-                // Qualified: the nearby query joins user_notification_prefs, so a bare `id`
-                // or `phone` would be ambiguous.
-                ->get(['users.id', 'users.f_name', 'users.l_name', 'users.phone'])
-                ->map(fn($u) => (object) [
-                    'id'    => $u->id,
-                    'name'  => trim($u->f_name . ' ' . $u->l_name),
-                    'phone' => $u->phone,
+                ->get()
+                ->map(fn($r) => (object) [
+                    'id'    => null,
+                    'name'  => trim((string) $r->name),
+                    'phone' => $r->phone,
                 ]);
         } else {
             $recipients = $this->clientQuery($storeId)
@@ -888,13 +889,13 @@ class WhatsAppController extends Controller
                 : [];
 
             // Context 'nearby' is what nearbyCappedPhones() counts — it must stay distinct
-            // from ordinary bulk sends or the frequency cap silently stops working.
+            // from sends to the store's own book or the frequency cap silently stops working.
             $res = $wa->sendTemplate(
                 $client->phone,
                 $request->template,
                 $request->language,
                 $components,
-                $mode === 'nearby' ? 'nearby' : 'bulk'
+                $platform ? 'nearby' : 'bulk'
             );
 
             $results[] = [
